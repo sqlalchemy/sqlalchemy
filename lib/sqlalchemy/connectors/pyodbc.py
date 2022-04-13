@@ -1,14 +1,35 @@
 # connectors/pyodbc.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import re
+from types import ModuleType
+import typing
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+from urllib.parse import unquote_plus
 
 from . import Connector
+from .. import ExecutionContext
+from .. import pool
 from .. import util
+from ..engine import ConnectArgsType
+from ..engine import Connection
+from ..engine import interfaces
+from ..engine import URL
+from ..sql.type_api import TypeEngine
+
+if typing.TYPE_CHECKING:
+    from ..engine.interfaces import _IsolationLevel
 
 
 class PyODBCConnector(Connector):
@@ -18,31 +39,25 @@ class PyODBCConnector(Connector):
     supports_sane_rowcount_returning = True
     supports_sane_multi_rowcount = False
 
-    supports_unicode_statements = True
-    supports_unicode_binds = True
-
     supports_native_decimal = True
     default_paramstyle = "named"
 
-    use_setinputsizes = False
-
     # for non-DSN connections, this *may* be used to
     # hold the desired driver name
-    pyodbc_driver_name = None
+    pyodbc_driver_name: Optional[str] = None
 
-    def __init__(
-        self, supports_unicode_binds=None, use_setinputsizes=False, **kw
-    ):
+    dbapi: ModuleType
+
+    def __init__(self, use_setinputsizes: bool = False, **kw: Any):
         super(PyODBCConnector, self).__init__(**kw)
-        if supports_unicode_binds is not None:
-            self.supports_unicode_binds = supports_unicode_binds
-        self.use_setinputsizes = use_setinputsizes
+        if use_setinputsizes:
+            self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls) -> ModuleType:
         return __import__("pyodbc")
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url: URL) -> ConnectArgsType:
         opts = url.translate_connect_args(username="user")
         opts.update(url.query)
 
@@ -50,16 +65,18 @@ class PyODBCConnector(Connector):
 
         query = url.query
 
-        connect_args = {}
+        connect_args: Dict[str, Any] = {}
+        connectors: List[str]
+
         for param in ("ansi", "unicode_results", "autocommit"):
             if param in keys:
                 connect_args[param] = util.asbool(keys.pop(param))
 
         if "odbc_connect" in keys:
-            connectors = [util.unquote_plus(keys.pop("odbc_connect"))]
+            connectors = [unquote_plus(keys.pop("odbc_connect"))]
         else:
 
-            def check_quote(token):
+            def check_quote(token: str) -> str:
                 if ";" in str(token):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
@@ -121,9 +138,16 @@ class PyODBCConnector(Connector):
 
             connectors.extend(["%s=%s" % (k, v) for k, v in keys.items()])
 
-        return [[";".join(connectors)], connect_args]
+        return ((";".join(connectors),), connect_args)
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: Exception,
+        connection: Optional[
+            Union[pool.PoolProxiedConnection, interfaces.DBAPIConnection]
+        ],
+        cursor: Optional[interfaces.DBAPICursor],
+    ) -> bool:
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(
                 e
@@ -131,44 +155,53 @@ class PyODBCConnector(Connector):
         else:
             return False
 
-    def _dbapi_version(self):
+    def _dbapi_version(self) -> interfaces.VersionInfoType:
         if not self.dbapi:
             return ()
         return self._parse_dbapi_version(self.dbapi.version)
 
-    def _parse_dbapi_version(self, vers):
+    def _parse_dbapi_version(self, vers: str) -> interfaces.VersionInfoType:
         m = re.match(r"(?:py.*-)?([\d\.]+)(?:-(\w+))?", vers)
         if not m:
             return ()
-        vers = tuple([int(x) for x in m.group(1).split(".")])
+        vers_tuple: interfaces.VersionInfoType = tuple(
+            [int(x) for x in m.group(1).split(".")]
+        )
         if m.group(2):
-            vers += (m.group(2),)
-        return vers
+            vers_tuple += (m.group(2),)
+        return vers_tuple
 
-    def _get_server_version_info(self, connection, allow_chars=True):
+    def _get_server_version_info(
+        self, connection: Connection
+    ) -> interfaces.VersionInfoType:
         # NOTE: this function is not reliable, particularly when
         # freetds is in use.   Implement database-specific server version
         # queries.
-        dbapi_con = connection.connection
-        version = []
+        dbapi_con = connection.connection.dbapi_connection
+        version: Tuple[Union[int, str], ...] = ()
         r = re.compile(r"[.\-]")
-        for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):
+        for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):  # type: ignore[union-attr]  # noqa: E501
             try:
-                version.append(int(n))
+                version += (int(n),)
             except ValueError:
-                if allow_chars:
-                    version.append(n)
+                pass
         return tuple(version)
 
-    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+    def do_set_input_sizes(
+        self,
+        cursor: interfaces.DBAPICursor,
+        list_of_tuples: List[Tuple[str, Any, TypeEngine[Any]]],
+        context: ExecutionContext,
+    ) -> None:
         # the rules for these types seems a little strange, as you can pass
         # non-tuples as well as tuples, however it seems to assume "0"
         # for the subsequent values if you don't pass a tuple which fails
         # for types such as pyodbc.SQL_WLONGVARCHAR, which is the datatype
         # that ticket #5649 is targeting.
 
-        # NOTE: as of #6058, this won't be called if the use_setinputsizes flag
-        # is False, or if no types were specified in list_of_tuples
+        # NOTE: as of #6058, this won't be called if the use_setinputsizes
+        # parameter were not passed to the dialect, or if no types were
+        # specified in list_of_tuples
 
         cursor.setinputsizes(
             [
@@ -179,15 +212,24 @@ class PyODBCConnector(Connector):
             ]
         )
 
-    def set_isolation_level(self, connection, level):
+    def get_isolation_level_values(
+        self, dbapi_connection: interfaces.DBAPIConnection
+    ) -> List[_IsolationLevel]:
+        return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa: E501
+            "AUTOCOMMIT"
+        ]
+
+    def set_isolation_level(
+        self,
+        dbapi_connection: interfaces.DBAPIConnection,
+        level: _IsolationLevel,
+    ) -> None:
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"
         # to work properly
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
 
         if level == "AUTOCOMMIT":
-            connection.autocommit = True
+            dbapi_connection.autocommit = True
         else:
-            connection.autocommit = False
-            super(PyODBCConnector, self).set_isolation_level(connection, level)
+            dbapi_connection.autocommit = False
+            super().set_isolation_level(dbapi_connection, level)

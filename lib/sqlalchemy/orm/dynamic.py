@@ -1,5 +1,5 @@
 # orm/dynamic.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,15 +12,17 @@ basic add/delete mutation.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
-from . import object_mapper
-from . import object_session
 from . import relationships
 from . import strategies
 from . import util as orm_util
+from .base import object_mapper
 from .query import Query
+from .session import object_session
 from .. import exc
 from .. import log
 from .. import util
@@ -28,7 +30,7 @@ from ..engine import result
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
+@relationships.Relationship.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -77,7 +79,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         target_mapper,
         order_by,
         query_class=None,
-        **kw
+        **kw,
     ):
         super(DynamicAttributeImpl, self).__init__(
             class_, key, typecallable, dispatch, **kw
@@ -263,7 +265,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         self.remove(state, dict_, value, initiator, passive=passive)
 
 
-class DynamicCollectionAdapter(object):
+class DynamicCollectionAdapter:
     """simplified CollectionAdapter for internal API consistency"""
 
     def __init__(self, data):
@@ -284,7 +286,7 @@ class DynamicCollectionAdapter(object):
     __nonzero__ = __bool__
 
 
-class AppenderMixin(object):
+class AppenderMixin:
     query_class = None
 
     def __init__(self, attr, state):
@@ -302,7 +304,10 @@ class AppenderMixin(object):
             # is in the FROM.  So we purposely put the mapper selectable
             # in _from_obj[0] to ensure a user-defined join() later on
             # doesn't fail, and secondary is then in _from_obj[1].
-            self._from_obj = (prop.mapper.selectable, prop.secondary)
+
+            # note also, we are using the official ORM-annotated selectable
+            # from __clause_element__(), see #7868
+            self._from_obj = (prop.mapper.__clause_element__(), prop.secondary)
 
         self._where_criteria = (
             prop._with_parent(instance, alias_secondary=False),
@@ -434,7 +439,7 @@ def mixin_user_query(cls):
     return type(name, (AppenderMixin, cls), {"query_class": cls})
 
 
-class CollectionHistory(object):
+class CollectionHistory:
     """Overrides AttributeHistory to receive append/remove events directly."""
 
     def __init__(self, attr, state, apply_to=None):

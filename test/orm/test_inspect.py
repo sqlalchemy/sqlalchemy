@@ -65,7 +65,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert not insp.is_aliased_class
 
     def test_mapper_selectable_fixed(self):
-        class Foo(object):
+        class Foo:
             pass
 
         class Bar(Foo):
@@ -96,7 +96,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert insp.is_aliased_class
 
     def test_not_mapped_class(self):
-        class Foo(object):
+        class Foo:
             pass
 
         assert_raises_message(
@@ -107,7 +107,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         )
 
     def test_not_mapped_instance(self):
-        class Foo(object):
+        class Foo:
             pass
 
         assert_raises_message(
@@ -235,16 +235,15 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_extension_types(self):
         from sqlalchemy.ext.associationproxy import (
             association_proxy,
-            ASSOCIATION_PROXY,
+            AssociationProxyExtensionType,
         )
         from sqlalchemy.ext.hybrid import (
             hybrid_property,
             hybrid_method,
-            HYBRID_PROPERTY,
-            HYBRID_METHOD,
+            HybridExtensionType,
         )
         from sqlalchemy import Table, MetaData, Integer, Column
-        from sqlalchemy.orm.interfaces import NOT_EXTENSION
+        from sqlalchemy.orm.interfaces import NotExtension
 
         class SomeClass(self.classes.User):
             some_assoc = association_proxy("addresses", "email_address")
@@ -290,15 +289,15 @@ class TestORMInspection(_fixtures.FixtureTest):
                 for k, v in list(insp.all_orm_descriptors.items())
             ),
             {
-                "id": NOT_EXTENSION,
-                "name": NOT_EXTENSION,
-                "name_syn": NOT_EXTENSION,
-                "addresses": NOT_EXTENSION,
-                "orders": NOT_EXTENSION,
-                "upper_name": HYBRID_PROPERTY,
-                "foo": HYBRID_PROPERTY,
-                "conv": HYBRID_METHOD,
-                "some_assoc": ASSOCIATION_PROXY,
+                "id": NotExtension.NOT_EXTENSION,
+                "name": NotExtension.NOT_EXTENSION,
+                "name_syn": NotExtension.NOT_EXTENSION,
+                "addresses": NotExtension.NOT_EXTENSION,
+                "orders": NotExtension.NOT_EXTENSION,
+                "upper_name": HybridExtensionType.HYBRID_PROPERTY,
+                "foo": HybridExtensionType.HYBRID_PROPERTY,
+                "conv": HybridExtensionType.HYBRID_METHOD,
+                "some_assoc": AssociationProxyExtensionType.ASSOCIATION_PROXY,
             },
         )
         is_(
@@ -363,11 +362,11 @@ class TestORMInspection(_fixtures.FixtureTest):
         u1 = User(name="ed")
         insp = inspect(u1)
         hist = insp.attrs.addresses.history
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
         u1.addresses
         hist = insp.attrs.addresses.history
         # stays, this is #4519
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
 
     def test_instance_state_scalar_attr_hist(self):
         User = self.classes.User
@@ -378,7 +377,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert "name" not in u1.__dict__
         insp = inspect(u1)
         hist = insp.attrs.name.history
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
         assert "name" not in u1.__dict__
 
     def test_instance_state_collection_attr_load_hist(self):
@@ -408,7 +407,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         class Thing(InspectionAttr):
             pass
 
-        class AnonClass(object):
+        class AnonClass:
             __foo__ = "bar"
             __bat__ = Thing()
 
@@ -515,7 +514,6 @@ class %s(SuperCls):
         exec(code, glbls)
         return names, glbls[clsname]
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_noinh(self):
         from sqlalchemy.orm import declarative_base
 
@@ -528,7 +526,6 @@ class %s(SuperCls):
 
         eq_(MyClass.__mapper__.all_orm_descriptors.keys(), names)
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_onelevel_inh(self):
         from sqlalchemy.orm import declarative_base
 
@@ -549,9 +546,8 @@ class %s(SuperCls):
             sub_names + base_names,
         )
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_classical(self):
-        class MyClass(object):
+        class MyClass:
             pass
 
         from sqlalchemy import Table, MetaData, Column, Integer
@@ -563,7 +559,7 @@ class %s(SuperCls):
             "t",
             m,
             Column("id", Integer, primary_key=True),
-            *[Column(name, Integer) for name in names]
+            *[Column(name, Integer) for name in names],
         )
 
         m = self.mapper_registry.map_imperatively(MyClass, t)
@@ -584,7 +580,7 @@ class %s(SuperCls):
         s.flush()
         insp = inspect(u1)
         eq_(insp.identity, (u1.id,))
-        is_(s.query(User).get(insp.identity), u1)
+        is_(s.get(User, insp.identity), u1)
 
     def test_is_instance(self):
         User = self.classes.User

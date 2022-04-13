@@ -216,7 +216,7 @@ methods.   Using SQLAlchemy 2.0-style operation, these methods affect the
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.connect() as conn:
         conn.execute(
@@ -252,7 +252,7 @@ that will maintain a begin/commit/rollback context for that object.
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.begin() as conn:
         conn.execute(
@@ -290,7 +290,7 @@ specific behavior that is reversed from the 1.x series.
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.begin() as conn:
         savepoint = conn.begin_nested()
@@ -323,24 +323,10 @@ Session::
 
 
 
-.. _session_autocommit:
-
 .. _session_explicit_begin:
 
 Explicit Begin
 ---------------
-
-.. versionchanged:: 1.4
-    SQLAlchemy 1.4 deprecates "autocommit mode", which is historically enabled
-    by using the :paramref:`_orm.Session.autocommit` flag.    Going forward,
-    a new approach to allowing usage of the :meth:`_orm.Session.begin` method
-    is new "autobegin" behavior so that the method may now be called when
-    a :class:`_orm.Session` is first constructed, or after the previous
-    transaction has ended and before it begins a new one.
-
-    For background on migrating away from the "subtransaction" pattern for
-    frameworks that rely upon nesting of begin()/commit() pairs, see the
-    next section :ref:`session_subtransactions`.
 
 The :class:`_orm.Session` features "autobegin" behavior, meaning that as soon
 as operations begin to take place, it ensures a :class:`_orm.SessionTransaction`
@@ -357,8 +343,8 @@ point at which the "begin" operation occurs.  To suit this, the
     session = Session()
     session.begin()
     try:
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
+        item1 = session.get(Item, 1)
+        item2 = session.get(Item, 2)
         item1.foo = 'bar'
         item2.bar = 'foo'
         session.commit()
@@ -371,8 +357,8 @@ The above pattern is more idiomatically invoked using a context manager::
     Session = sessionmaker(bind=engine)
     session = Session()
     with session.begin():
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
+        item1 = session.get(Item, 1)
+        item2 = session.get(Item, 2)
         item1.foo = 'bar'
         item2.bar = 'foo'
 
@@ -383,87 +369,6 @@ when it occurs; this hook is used by frameworks in order to integrate their
 own transactional processes with that of the ORM :class:`_orm.Session`.
 
 
-.. _session_subtransactions:
-
-Migrating from the "subtransaction" pattern
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. deprecated:: 1.4  The :paramref:`_orm.Session.begin.subtransactions`
-   flag is deprecated.  While the :class:`_orm.Session` still uses the
-   "subtransactions" pattern internally, it is not suitable for end-user
-   use as it leads to confusion, and additionally it may be removed from
-   the :class:`_orm.Session` itself in version 2.0 once "autocommit"
-   mode is removed.
-
-The "subtransaction" pattern that was often used with autocommit mode is
-also deprecated in 1.4.  This pattern allowed the use of the
-:meth:`_orm.Session.begin` method when a transaction were already begun,
-resulting in a construct called a "subtransaction", which was essentially
-a block that would prevent the :meth:`_orm.Session.commit` method from actually
-committing.
-
-This pattern has been shown to be confusing in real world applications, and
-it is preferable for an application to ensure that the top-most level of database
-operations are performed with a single begin/commit pair.
-
-To provide backwards compatibility for applications that make use of this
-pattern, the following context manager or a similar implementation based on
-a decorator may be used::
-
-
-    import contextlib
-
-    @contextlib.contextmanager
-    def transaction(session):
-        if not session.in_transaction():
-            with session.begin():
-                yield
-        else:
-            yield
-
-
-The above context manager may be used in the same way the
-"subtransaction" flag works, such as in the following example::
-
-
-    # method_a starts a transaction and calls method_b
-    def method_a(session):
-        with transaction(session):
-            method_b(session)
-
-    # method_b also starts a transaction, but when
-    # called from method_a participates in the ongoing
-    # transaction.
-    def method_b(session):
-        with transaction(session):
-            session.add(SomeObject('bat', 'lala'))
-
-    Session = sessionmaker(engine)
-
-    # create a Session and call method_a
-    with Session() as session:
-        method_a(session)
-
-To compare towards the preferred idiomatic pattern, the begin block should
-be at the outermost level.  This removes the need for individual functions
-or methods to be concerned with the details of transaction demarcation::
-
-    def method_a(session):
-        method_b(session)
-
-    def method_b(session):
-        session.add(SomeObject('bat', 'lala'))
-
-    Session = sessionmaker(engine)
-
-    # create a Session and call method_a
-    with Session() as session:
-        with session.begin():
-            method_a(session)
-
-.. seealso::
-
-    :ref:`connections_subtransactions` - similar pattern based on Core only
 
 .. _session_twophase:
 
@@ -478,8 +383,8 @@ also :meth:`_orm.Session.prepare` the session for
 interacting with transactions not managed by SQLAlchemy. To use two phase
 transactions set the flag ``twophase=True`` on the session::
 
-    engine1 = create_engine('postgresql://db1')
-    engine2 = create_engine('postgresql://db2')
+    engine1 = create_engine('postgresql+psycopg2://db1')
+    engine2 = create_engine('postgresql+psycopg2://db2')
 
     Session = sessionmaker(twophase=True)
 
@@ -543,7 +448,7 @@ in all cases, which is then used as the source of connectivity for a
     from sqlalchemy.orm import sessionmaker
 
     eng = create_engine(
-        "postgresql://scott:tiger@localhost/test",
+        "postgresql+psycopg2://scott:tiger@localhost/test",
         isolation_level='REPEATABLE READ'
     )
 
@@ -560,7 +465,7 @@ operations::
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    eng = create_engine("postgresql://scott:tiger@localhost/test")
+    eng = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
 
@@ -600,7 +505,7 @@ we can pass the ``bind`` argument directly, overriding the pre-existing bind.
 We can for example create our :class:`_orm.Session` from a default
 :class:`.sessionmaker` and pass an engine set for autocommit::
 
-    plain_engine = create_engine("postgresql://scott:tiger@localhost/test")
+    plain_engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = plain_engine.execution_options(isolation_level="AUTOCOMMIT")
 
@@ -725,7 +630,7 @@ are reverted::
     # global application scope.  create Session class, engine
     Session = sessionmaker()
 
-    engine = create_engine('postgresql://...')
+    engine = create_engine('postgresql+psycopg2://...')
 
     class SomeTest(TestCase):
         def setUp(self):

@@ -1,6 +1,8 @@
 import random
 import threading
 import time
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
@@ -19,8 +21,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from ..orm._fixtures import FixtureTest
@@ -287,7 +287,7 @@ class AutomapTest(fixtures.MappedTest):
                 attrname,
                 local_cls,
                 referred_cls,
-                **kw
+                **kw,
             )
 
         Base.prepare(generate_relationship=_gen_relationship)

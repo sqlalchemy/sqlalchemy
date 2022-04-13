@@ -27,13 +27,13 @@ How do I pass custom connect arguments to my database API?
 The :func:`_sa.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
 
-    e = create_engine("mysql://scott:tiger@localhost/test",
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test",
                         connect_args={"encoding": "utf8"})
 
 Or for basic string and integer arguments, they can usually be specified
 in the query string of the URL::
 
-    e = create_engine("mysql://scott:tiger@localhost/test?encoding=utf8")
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test?encoding=utf8")
 
 .. seealso::
 
@@ -312,7 +312,7 @@ using the following proof of concept script.  Once run, it will emit a
 
     if __name__ == "__main__":
 
-        engine = create_engine("mysql://scott:tiger@localhost/test", echo_pool=True)
+        engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True)
 
         def do_a_thing(engine):
             with engine.begin() as conn:
@@ -322,7 +322,7 @@ using the following proof of concept script.  Once run, it will emit a
 
         e = reconnecting_engine(
             create_engine(
-                "mysql://scott:tiger@localhost/test", echo_pool=True
+                "mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True
             ),
             num_retries=5,
             retry_interval=2,
@@ -379,7 +379,7 @@ configured using ``reset_on_return``::
     from sqlalchemy import create_engine
     from sqlalchemy.pool import QueuePool
 
-    engine = create_engine('mysql://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
+    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
 
 I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -388,7 +388,7 @@ I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 to ``True``, ``False``, and ``None``.   Setting to ``commit`` will cause
 a COMMIT as any connection is returned to the pool::
 
-    engine = create_engine('mssql://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
+    engine = create_engine('mssql+pyodbc://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
 
 
 I am using multiple connections with a SQLite database (typically to test transaction operation), and my test program is not working!
@@ -414,14 +414,14 @@ How do I get at the raw DBAPI connection when using an Engine?
 With a regular SA engine-level Connection, you can get at a pool-proxied
 version of the DBAPI connection via the :attr:`_engine.Connection.connection` attribute on
 :class:`_engine.Connection`, and for the really-real DBAPI connection you can call the
-:attr:`._ConnectionFairy.dbapi_connection` attribute on that.  On regular sync drivers
+:attr:`.PoolProxiedConnection.dbapi_connection` attribute on that.  On regular sync drivers
 there is usually no need to access the non-pool-proxied DBAPI connection,
 as all methods are proxied through::
 
     engine = create_engine(...)
     conn = engine.connect()
 
-    # pep-249 style ConnectionFairy connection pool proxy object
+    # pep-249 style PoolProxiedConnection (historically called a "connection fairy")
     connection_fairy = conn.connection
 
     # typically to run statements one would get a cursor() from this
@@ -438,28 +438,28 @@ as all methods are proxied through::
     also_raw_dbapi_connection = connection_fairy.driver_connection
 
 .. versionchanged:: 1.4.24  Added the
-   :attr:`._ConnectionFairy.dbapi_connection` attribute,
+   :attr:`.PoolProxiedConnection.dbapi_connection` attribute,
    which supersedes the previous
-   :attr:`._ConnectionFairy.connection` attribute which still remains
+   :attr:`.PoolProxiedConnection.connection` attribute which still remains
    available; this attribute always provides a pep-249 synchronous style
-   connection object.  The :attr:`._ConnectionFairy.driver_connection`
+   connection object.  The :attr:`.PoolProxiedConnection.driver_connection`
    attribute is also added which will always refer to the real driver-level
    connection regardless of what API it presents.
 
-Accessing the underlying connnection for an asyncio driver
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Accessing the underlying connection for an asyncio driver
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When an asyncio driver is in use, there are two changes to the above
 scheme.  The first is that when using an :class:`_asyncio.AsyncConnection`,
-the :class:`._ConnectionFairy` must be accessed using the awaitable method
+the :class:`.PoolProxiedConnection` must be accessed using the awaitable method
 :meth:`_asyncio.AsyncConnection.get_raw_connection`.   The
-returned :class:`._ConnectionFairy` in this case retains a sync-style
-pep-249 usage pattern, and the :attr:`._ConnectionFairy.dbapi_connection`
+returned :class:`.PoolProxiedConnection` in this case retains a sync-style
+pep-249 usage pattern, and the :attr:`.PoolProxiedConnection.dbapi_connection`
 attribute refers to a
 a SQLAlchemy-adapted connection object which adapts the asyncio
 connection to a sync style pep-249 API, in other words there are *two* levels
 of proxying going on when using an asyncio driver.   The actual asyncio connection
-is available from the :class:`._ConnectionFairy.driver_connection` attribute.
+is available from the :class:`.PoolProxiedConnection.driver_connection` attribute.
 To restate the previous example in terms of asyncio looks like::
 
     async def main():
@@ -483,8 +483,8 @@ To restate the previous example in terms of asyncio looks like::
         result = await raw_asyncio_connection.execute(...)
 
 .. versionchanged:: 1.4.24  Added the
-   :attr:`._ConnectionFairy.dbapi_connection`
-   and :attr:`._ConnectionFairy.driver_connection` attributes to allow access
+   :attr:`.PoolProxiedConnection.dbapi_connection`
+   and :attr:`.PoolProxiedConnection.driver_connection` attributes to allow access
    to pep-249 connections, pep-249 adaption layers, and underlying driver
    connections using a consistent interface.
 
@@ -493,10 +493,10 @@ SQLAlchemy-adapted form of connection which presents a synchronous-style
 pep-249 style API.  To access the actual
 asyncio driver connection, which will present the original asyncio API
 of the driver in use, this can be accessed via the
-:attr:`._ConnectionFairy.driver_connection` attribute of
-:class:`._ConnectionFairy`.
-For a standard pep-249 driver, :attr:`._ConnectionFairy.dbapi_connection`
-and :attr:`._ConnectionFairy.driver_connection` are synonymous.
+:attr:`.PoolProxiedConnection.driver_connection` attribute of
+:class:`.PoolProxiedConnection`.
+For a standard pep-249 driver, :attr:`.PoolProxiedConnection.dbapi_connection`
+and :attr:`.PoolProxiedConnection.driver_connection` are synonymous.
 
 You must ensure that you revert any isolation level settings or other
 operation-specific settings on the connection back to normal before returning

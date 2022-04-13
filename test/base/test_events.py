@@ -1,5 +1,8 @@
 """Test event registration and listening."""
 
+from unittest.mock import call
+from unittest.mock import Mock
+
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import testing
@@ -7,15 +10,14 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import gc_collect
 
 
-class TearDownLocalEventsFixture(object):
+class TearDownLocalEventsFixture:
     def teardown_test(self):
         classes = set()
         for entry in event.base._registrars.values():
@@ -41,7 +43,7 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_three(self, x):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         self.Target = Target
@@ -197,6 +199,50 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         eq_(m1.mock_calls, [call(5, 6), call(9, 10)])
 
+    def test_real_name_wrong_dispatch(self):
+        m1 = Mock()
+
+        class E1(event.Events):
+            @classmethod
+            def _accept_with(cls, target):
+                if isinstance(target, T1):
+                    return target
+                else:
+                    m1.yup()
+                    return None
+
+            def event_one(self, x, y):
+                pass
+
+            def event_two(self, x):
+                pass
+
+            def event_three(self, x):
+                pass
+
+        class T1:
+            dispatch = event.dispatcher(E1)
+
+        class T2:
+            pass
+
+        class E2(event.Events):
+
+            _dispatch_target = T2
+
+            def event_four(self, x):
+                pass
+
+        with expect_raises_message(
+            exc.InvalidRequestError, "No such event 'event_three'"
+        ):
+
+            @event.listens_for(E2, "event_three")
+            def go(*arg):
+                pass
+
+        eq_(m1.mock_calls, [call.yup()])
+
     def test_exec_once_exception(self):
         m1 = Mock()
         m1.side_effect = ValueError
@@ -268,9 +314,8 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class SlotsEventsTest(fixtures.TestBase):
-    @testing.requires.python3
     def test_no_slots_dispatch(self):
-        class Target(object):
+        class Target:
             __slots__ = ()
 
         class TargetEvents(event.Events):
@@ -295,7 +340,7 @@ class SlotsEventsTest(fixtures.TestBase):
             event.listen(t1, "event_one", Mock())
 
     def test_slots_dispatch(self):
-        class Target(object):
+        class Target:
             __slots__ = ("_slots_dispatch",)
 
         class TargetEvents(event.Events):
@@ -332,7 +377,7 @@ class NamedCallTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_five(self, x, y, z, q):
                 pass
 
-        class TargetOne(object):
+        class TargetOne:
             dispatch = event.dispatcher(TargetEventsOne)
 
         return TargetOne
@@ -356,7 +401,7 @@ class NamedCallTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_five(self, x, y, z, q):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         return Target
@@ -454,7 +499,7 @@ class LegacySignatureTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_six(self, x, y):
                 pass
 
-        class TargetOne(object):
+        class TargetOne:
             dispatch = event.dispatcher(TargetEventsOne)
 
         self.TargetOne = TargetOne
@@ -557,7 +602,7 @@ class LegacySignatureTest(TearDownLocalEventsFixture, fixtures.TestBase):
     def test_legacy_accept_from_method(self):
         canary = Mock()
 
-        class MyClass(object):
+        class MyClass:
             def handler1(self, x, y):
                 canary(x, y)
 
@@ -613,7 +658,7 @@ class ClsLevelListenTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, x, y):
                 pass
 
-        class TargetOne(object):
+        class TargetOne:
             dispatch = event.dispatcher(TargetEventsOne)
 
         self.TargetOne = TargetOne
@@ -686,10 +731,10 @@ class AcceptTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, x, y):
                 pass
 
-        class TargetOne(object):
+        class TargetOne:
             dispatch = event.dispatcher(TargetEventsOne)
 
-        class TargetTwo(object):
+        class TargetTwo:
             dispatch = event.dispatcher(TargetEventsTwo)
 
         self.TargetOne = TargetOne
@@ -746,7 +791,7 @@ class CustomTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, x, y):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         self.Target = Target
@@ -776,7 +821,7 @@ class SubclassGrowthTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def some_event(self, x, y):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         self.Target = Target
@@ -814,7 +859,7 @@ class ListenOverrideTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, x, y):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         self.Target = Target
@@ -863,7 +908,7 @@ class PropagateTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_two(self, arg):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         self.Target = Target
@@ -894,7 +939,7 @@ class JoinTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, target, arg):
                 pass
 
-        class BaseTarget(object):
+        class BaseTarget:
             dispatch = event.dispatcher(TargetEvents)
 
         class TargetFactory(BaseTarget):
@@ -1114,7 +1159,7 @@ class DisableClsPropagateTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, target, arg):
                 pass
 
-        class BaseTarget(object):
+        class BaseTarget:
             dispatch = event.dispatcher(TargetEvents)
 
         class SubTarget(BaseTarget):
@@ -1172,7 +1217,7 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_three(self, x):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         return Target
@@ -1193,7 +1238,7 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def event_one(self, x):
                 pass
 
-        class Target(object):
+        class Target:
             dispatch = event.dispatcher(TargetEvents)
 
         return Target
@@ -1236,7 +1281,7 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
     def test_instance(self):
         Target = self._fixture()
 
-        class Foo(object):
+        class Foo:
             def __init__(self):
                 self.mock = Mock()
 

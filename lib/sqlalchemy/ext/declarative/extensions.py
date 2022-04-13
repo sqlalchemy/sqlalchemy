@@ -1,5 +1,5 @@
 # ext/declarative/extensions.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,9 +8,7 @@
 
 
 from ... import inspection
-from ... import util
 from ...orm import exc as orm_exc
-from ...orm import registry
 from ...orm import relationships
 from ...orm.base import _mapper_or_none
 from ...orm.clsregistry import _resolver
@@ -20,24 +18,7 @@ from ...schema import Table
 from ...util import OrderedDict
 
 
-@util.deprecated(
-    "2.0",
-    "the instrument_declarative function is deprecated "
-    "and will be removed in SQLAlhcemy 2.0.  Please use "
-    ":meth:`_orm.registry.map_declaratively",
-)
-def instrument_declarative(cls, cls_registry, metadata):
-    """Given a class, configure the class declaratively,
-    using the given registry, which can be any dictionary, and
-    MetaData object.
-
-    """
-    registry(metadata=metadata, class_registry=cls_registry).map_declaratively(
-        cls
-    )
-
-
-class ConcreteBase(object):
+class ConcreteBase:
     """A helper class for 'concrete' declarative mappings.
 
     :class:`.ConcreteBase` will use the :func:`.polymorphic_union`
@@ -315,7 +296,7 @@ class AbstractConcreteBase(ConcreteBase):
         )
 
 
-class DeferredReflection(object):
+class DeferredReflection:
     """A helper class for construction of mappings based on
     a deferred reflection step.
 
@@ -397,7 +378,7 @@ class DeferredReflection(object):
                 metadata = mapper.class_.metadata
                 for rel in mapper._props.values():
                     if (
-                        isinstance(rel, relationships.RelationshipProperty)
+                        isinstance(rel, relationships.Relationship)
                         and rel.secondary is not None
                     ):
                         if isinstance(rel.secondary, Table):

@@ -16,6 +16,7 @@ from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
+from sqlalchemy import PickleType
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -67,6 +68,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.selectable import Selectable
 from sqlalchemy.sql.selectable import SelectStatementGrouping
+from sqlalchemy.sql.type_api import UserDefinedType
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -165,7 +167,7 @@ class MyType3(TypeDecorator):
         self.arg = arg
 
 
-class CoreFixtures(object):
+class CoreFixtures:
     # lambdas which return a tuple of ColumnElement objects.
     # must return at least two objects that should compare differently.
     # to test more varieties of "difference" additional objects can be added.
@@ -206,6 +208,8 @@ class CoreFixtures(object):
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
+            (column("z") == column("x")).self_group(),
+            (column("q") == column("x")).self_group(),
             column("z") + column("x"),
             column("z") - column("x"),
             column("x") - column("z"),
@@ -283,6 +287,7 @@ class CoreFixtures(object):
         ),
         lambda: (
             bindparam("x"),
+            bindparam("x", literal_execute=True),
             bindparam("y"),
             bindparam("x", type_=Integer),
             bindparam("x", type_=String),
@@ -502,6 +507,7 @@ class CoreFixtures(object):
         ),
         lambda: (
             select(table_a.c.a).cte(),
+            select(table_a.c.a).cte(nesting=True),
             select(table_a.c.a).cte(recursive=True),
             select(table_a.c.a).cte(name="some_cte", recursive=True),
             select(table_a.c.a).cte(name="some_cte"),
@@ -830,7 +836,17 @@ class CoreFixtures(object):
             )
             return stmt
 
-        return [one(), one_diff(), two(), three()]
+        def four():
+            stmt = select(table_a.c.a).cte(recursive=True)
+            stmt = stmt.union(select(stmt.c.a + 1).where(stmt.c.a < 10))
+            return stmt
+
+        def five():
+            stmt = select(table_a.c.a).cte(recursive=True, nesting=True)
+            stmt = stmt.union(select(stmt.c.a + 1).where(stmt.c.a < 10))
+            return stmt
+
+        return [one(), one_diff(), two(), three(), four(), five()]
 
     fixtures.append(_complex_fixtures)
 
@@ -945,8 +961,7 @@ class CoreFixtures(object):
             .where(table_b_b.c.c > 10),
         )
 
-    if util.py37:
-        fixtures.append(_update_dml_w_dicts)
+    fixtures.append(_update_dml_w_dicts)
 
     def _lambda_fixtures():
         def one():
@@ -1037,7 +1052,7 @@ class CoreFixtures(object):
     ]
 
 
-class CacheKeyFixture(object):
+class CacheKeyFixture:
     def _compare_equal(self, a, b, compare_values):
         a_key = a._generate_cache_key()
         b_key = b._generate_cache_key()
@@ -1253,13 +1268,20 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         # the None for cache key will prevent objects
         # which contain these elements from being cached.
         f1 = Foobar1()
-        eq_(f1._generate_cache_key(), None)
+        with expect_warnings(
+            "Class Foobar1 will not make use of SQL compilation caching"
+        ):
+            eq_(f1._generate_cache_key(), None)
 
         f2 = Foobar2()
-        eq_(f2._generate_cache_key(), None)
+        with expect_warnings(
+            "Class Foobar2 will not make use of SQL compilation caching"
+        ):
+            eq_(f2._generate_cache_key(), None)
 
         s1 = select(column("q"), Foobar2())
 
+        # warning is memoized, won't happen the second time
         eq_(s1._generate_cache_key(), None)
 
     def test_get_children_no_method(self):
@@ -1337,6 +1359,10 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         ]
 
     def test_all_present(self):
+        """test for elements that are in SQLAlchemy Core, that they are
+        also included in the fixtures above.
+
+        """
         need = set(
             cls
             for cls in class_hierarchy(ClauseElement)
@@ -1346,6 +1372,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                 or issubclass(cls, AliasedReturnsRows)
             )
             and not issubclass(cls, (Annotated))
+            and cls.__module__.startswith("sqlalchemy.")
             and "orm" not in cls.__module__
             and "compiler" not in cls.__module__
             and "crud" not in cls.__module__
@@ -1581,7 +1608,7 @@ class CompareClausesTest(fixtures.TestBase):
         )
 
         l2 = ClauseList(
-            table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.div
+            table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.truediv
         )
 
         is_false(l1.compare(l2))
@@ -1623,6 +1650,7 @@ class CompareClausesTest(fixtures.TestBase):
 
     def test_compare_binds(self):
         b1 = bindparam("foo", type_=Integer())
+        b1l = bindparam("foo", type_=Integer(), literal_execute=True)
         b2 = bindparam("foo", type_=Integer())
         b3 = bindparam("foo", type_=String())
 
@@ -1633,6 +1661,9 @@ class CompareClausesTest(fixtures.TestBase):
             return 6
 
         b4 = bindparam("foo", type_=Integer(), callable_=c1)
+        b4l = bindparam(
+            "foo", type_=Integer(), callable_=c1, literal_execute=True
+        )
         b5 = bindparam("foo", type_=Integer(), callable_=c2)
         b6 = bindparam("foo", type_=Integer(), callable_=c1)
 
@@ -1652,6 +1683,22 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(b1.compare(b7))
         is_false(b7.compare(b8))
         is_true(b7.compare(b7))
+
+        # cache key
+        def compare_key(left, right, expected):
+            lk = left._generate_cache_key().key
+            rk = right._generate_cache_key().key
+            is_(lk == rk, expected)
+
+        compare_key(b1, b4, True)
+        compare_key(b1, b5, True)
+        compare_key(b8, b5, True)
+        compare_key(b8, b7, True)
+        compare_key(b8, b3, False)
+        compare_key(b1, b1l, False)
+        compare_key(b1, b4l, False)
+        compare_key(b4, b4l, False)
+        compare_key(b7, b4l, False)
 
     def test_compare_tables(self):
         is_true(table_a.compare(table_a_2))
@@ -1733,19 +1780,21 @@ class ExecutableFlagsTest(fixtures.TestBase):
 
 
 class TypesTest(fixtures.TestBase):
-    def test_typedec_no_cache(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_no_cache(self, base):
+        class MyType(base):
             impl = String
 
         expr = column("q", MyType()) == 1
 
         with expect_warnings(
-            r"TypeDecorator MyType\(\) will not produce a cache key"
+            r"%s MyType\(\) will not produce a cache key" % base.__name__
         ):
             is_(expr._generate_cache_key(), None)
 
-    def test_typedec_cache_false(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_cache_false(self, base):
+        class MyType(base):
             impl = String
 
             cache_ok = False
@@ -1754,8 +1803,9 @@ class TypesTest(fixtures.TestBase):
 
         is_(expr._generate_cache_key(), None)
 
-    def test_typedec_cache_ok(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_cache_ok(self, base):
+        class MyType(base):
             impl = String
 
             cache_ok = True
@@ -1805,3 +1855,69 @@ class TypesTest(fixtures.TestBase):
         eq_(c1, c2)
         ne_(c1, c3)
         eq_(c1, c4)
+
+    def test_thirdparty_sub_subclass_no_cache(self):
+        class MyType(PickleType):
+            pass
+
+        expr = column("q", MyType()) == 1
+
+        with expect_warnings(
+            r"TypeDecorator MyType\(\) will not produce a cache key"
+        ):
+            is_(expr._generate_cache_key(), None)
+
+    def test_userdefined_sub_subclass_no_cache(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+        class MySubType(MyType):
+            pass
+
+        expr = column("q", MySubType()) == 1
+
+        with expect_warnings(
+            r"UserDefinedType MySubType\(\) will not produce a cache key"
+        ):
+            is_(expr._generate_cache_key(), None)
+
+    def test_userdefined_sub_subclass_cache_ok(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+        class MySubType(MyType):
+            cache_ok = True
+
+        def go1():
+            expr = column("q", MySubType()) == 1
+            return expr
+
+        def go2():
+            expr = column("p", MySubType()) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)
+
+    def test_thirdparty_sub_subclass_cache_ok(self):
+        class MyType(PickleType):
+            cache_ok = True
+
+        def go1():
+            expr = column("q", MyType()) == 1
+            return expr
+
+        def go2():
+            expr = column("p", MyType()) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)

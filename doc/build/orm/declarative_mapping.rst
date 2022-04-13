@@ -12,6 +12,7 @@ top level introduction.
 .. toctree::
     :maxdepth: 3
 
+    declarative_styles
     declarative_tables
     declarative_config
     declarative_mixins

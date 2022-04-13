@@ -1,101 +1,132 @@
 # orm/identity.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
+from typing import Any
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import NoReturn
+from typing import Optional
+from typing import Set
+from typing import TYPE_CHECKING
+from typing import TypeVar
 import weakref
 
 from . import util as orm_util
 from .. import exc as sa_exc
-from .. import util
+
+if TYPE_CHECKING:
+    from ._typing import _IdentityKeyType
+    from .state import InstanceState
 
 
-class IdentityMap(object):
-    def __init__(self):
+_T = TypeVar("_T", bound=Any)
+
+_O = TypeVar("_O", bound=object)
+
+
+class IdentityMap:
+    _wr: weakref.ref[IdentityMap]
+
+    _dict: Dict[_IdentityKeyType[Any], Any]
+    _modified: Set[InstanceState[Any]]
+
+    def __init__(self) -> None:
         self._dict = {}
         self._modified = set()
         self._wr = weakref.ref(self)
 
-    def _kill(self):
-        self._add_unpresent = _killed
+    def _kill(self) -> None:
+        self._add_unpresent = _killed  # type: ignore
+
+    def all_states(self) -> List[InstanceState[Any]]:
+        raise NotImplementedError()
+
+    def contains_state(self, state: InstanceState[Any]) -> bool:
+        raise NotImplementedError()
+
+    def __contains__(self, key: _IdentityKeyType[Any]) -> bool:
+        raise NotImplementedError()
+
+    def safe_discard(self, state: InstanceState[Any]) -> None:
+        raise NotImplementedError()
+
+    def __getitem__(self, key: _IdentityKeyType[_O]) -> _O:
+        raise NotImplementedError()
+
+    def get(
+        self, key: _IdentityKeyType[_O], default: Optional[_O] = None
+    ) -> Optional[_O]:
+        raise NotImplementedError()
 
     def keys(self):
         return self._dict.keys()
 
-    def replace(self, state):
+    def values(self) -> Iterable[object]:
         raise NotImplementedError()
 
-    def add(self, state):
+    def replace(self, state: InstanceState[_O]) -> Optional[InstanceState[_O]]:
         raise NotImplementedError()
 
-    def _add_unpresent(self, state, key):
+    def add(self, state: InstanceState[Any]) -> bool:
+        raise NotImplementedError()
+
+    def _fast_discard(self, state: InstanceState[Any]) -> None:
+        raise NotImplementedError()
+
+    def _add_unpresent(
+        self, state: InstanceState[Any], key: _IdentityKeyType[Any]
+    ) -> None:
         """optional inlined form of add() which can assume item isn't present
         in the map"""
         self.add(state)
 
-    def update(self, dict_):
-        raise NotImplementedError("IdentityMap uses add() to insert data")
-
-    def clear(self):
-        raise NotImplementedError("IdentityMap uses remove() to remove data")
-
-    def _manage_incoming_state(self, state):
+    def _manage_incoming_state(self, state: InstanceState[Any]) -> None:
         state._instance_dict = self._wr
 
         if state.modified:
             self._modified.add(state)
 
-    def _manage_removed_state(self, state):
+    def _manage_removed_state(self, state: InstanceState[Any]) -> None:
         del state._instance_dict
         if state.modified:
             self._modified.discard(state)
 
-    def _dirty_states(self):
+    def _dirty_states(self) -> Set[InstanceState[Any]]:
         return self._modified
 
-    def check_modified(self):
+    def check_modified(self) -> bool:
         """return True if any InstanceStates present have been marked
         as 'modified'.
 
         """
         return bool(self._modified)
 
-    def has_key(self, key):
+    def has_key(self, key: _IdentityKeyType[Any]) -> bool:
         return key in self
 
-    def popitem(self):
-        raise NotImplementedError("IdentityMap uses remove() to remove data")
-
-    def pop(self, key, *args):
-        raise NotImplementedError("IdentityMap uses remove() to remove data")
-
-    def setdefault(self, key, default=None):
-        raise NotImplementedError("IdentityMap uses add() to insert data")
-
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dict)
-
-    def copy(self):
-        raise NotImplementedError()
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError("IdentityMap uses add() to insert data")
-
-    def __delitem__(self, key):
-        raise NotImplementedError("IdentityMap uses remove() to remove data")
 
 
 class WeakInstanceDict(IdentityMap):
-    def __getitem__(self, key):
+    _dict: Dict[Optional[_IdentityKeyType[Any]], InstanceState[Any]]
+
+    def __getitem__(self, key: _IdentityKeyType[_O]) -> _O:
         state = self._dict[key]
         o = state.obj()
         if o is None:
             raise KeyError(key)
         return o
 
-    def __contains__(self, key):
+    def __contains__(self, key: _IdentityKeyType[Any]) -> bool:
         try:
             if key in self._dict:
                 state = self._dict[key]
@@ -107,7 +138,7 @@ class WeakInstanceDict(IdentityMap):
         else:
             return o is not None
 
-    def contains_state(self, state):
+    def contains_state(self, state: InstanceState[Any]) -> bool:
         if state.key in self._dict:
             try:
                 return self._dict[state.key] is state
@@ -116,13 +147,15 @@ class WeakInstanceDict(IdentityMap):
         else:
             return False
 
-    def replace(self, state):
+    def replace(
+        self, state: InstanceState[Any]
+    ) -> Optional[InstanceState[Any]]:
         if state.key in self._dict:
             try:
                 existing = self._dict[state.key]
             except KeyError:
                 # catch gc removed the key after we just checked for it
-                pass
+                existing = None
             else:
                 if existing is not state:
                     self._manage_removed_state(existing)
@@ -135,7 +168,7 @@ class WeakInstanceDict(IdentityMap):
         self._manage_incoming_state(state)
         return existing
 
-    def add(self, state):
+    def add(self, state: InstanceState[Any]) -> bool:
         key = state.key
         # inline of self.__contains__
         if key in self._dict:
@@ -160,12 +193,16 @@ class WeakInstanceDict(IdentityMap):
         self._manage_incoming_state(state)
         return True
 
-    def _add_unpresent(self, state, key):
+    def _add_unpresent(
+        self, state: InstanceState[Any], key: _IdentityKeyType[Any]
+    ) -> None:
         # inlined form of add() called by loading.py
         self._dict[key] = state
         state._instance_dict = self._wr
 
-    def get(self, key, default=None):
+    def get(
+        self, key: _IdentityKeyType[_O], default: Optional[_O] = None
+    ) -> Optional[_O]:
         if key not in self._dict:
             return default
         try:
@@ -179,7 +216,7 @@ class WeakInstanceDict(IdentityMap):
                 return default
             return o
 
-    def items(self):
+    def items(self) -> List[InstanceState[Any]]:
         values = self.all_states()
         result = []
         for state in values:
@@ -188,7 +225,7 @@ class WeakInstanceDict(IdentityMap):
                 result.append((state.key, value))
         return result
 
-    def values(self):
+    def values(self) -> List[object]:
         values = self.all_states()
         result = []
         for state in values:
@@ -198,24 +235,13 @@ class WeakInstanceDict(IdentityMap):
 
         return result
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_IdentityKeyType[Any]]:
         return iter(self.keys())
 
-    if util.py2k:
+    def all_states(self) -> List[InstanceState[Any]]:
+        return list(self._dict.values())
 
-        def iteritems(self):
-            return iter(self.items())
-
-        def itervalues(self):
-            return iter(self.values())
-
-    def all_states(self):
-        if util.py2k:
-            return self._dict.values()
-        else:
-            return list(self._dict.values())
-
-    def _fast_discard(self, state):
+    def _fast_discard(self, state: InstanceState[Any]) -> None:
         # used by InstanceState for state being
         # GC'ed, inlines _managed_removed_state
         try:
@@ -227,10 +253,10 @@ class WeakInstanceDict(IdentityMap):
             if st is state:
                 self._dict.pop(state.key, None)
 
-    def discard(self, state):
+    def discard(self, state: InstanceState[Any]) -> None:
         self.safe_discard(state)
 
-    def safe_discard(self, state):
+    def safe_discard(self, state: InstanceState[Any]) -> None:
         if state.key in self._dict:
             try:
                 st = self._dict[state.key]
@@ -243,7 +269,7 @@ class WeakInstanceDict(IdentityMap):
                     self._manage_removed_state(state)
 
 
-def _killed(state, key):
+def _killed(state: InstanceState[Any], key: _IdentityKeyType[Any]) -> NoReturn:
     # external function to avoid creating cycles when assigned to
     # the IdentityMap
     raise sa_exc.InvalidRequestError(

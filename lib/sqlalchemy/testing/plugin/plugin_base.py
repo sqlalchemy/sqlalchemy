@@ -1,9 +1,21 @@
 # plugin/plugin_base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+from __future__ import annotations
+
+import abc
+import configparser
+import logging
+import os
+import re
+import sys
+from typing import Any
+
+from sqlalchemy.testing import asyncio
 
 """Testing extensions.
 
@@ -14,33 +26,11 @@ is pytest.
 
 """
 
-from __future__ import absolute_import
-
-import abc
-import logging
-import re
-import sys
-
 # flag which indicates we are in the SQLAlchemy testing suite,
 # and not that of Alembic or a third party dialect.
 bootstrapped_as_sqlalchemy = False
 
 log = logging.getLogger("sqlalchemy.testing.plugin_base")
-
-
-py3k = sys.version_info >= (3, 0)
-
-if py3k:
-    import configparser
-
-    ABC = abc.ABC
-else:
-    import ConfigParser as configparser
-    import collections as collections_abc  # noqa
-
-    class ABC(object):
-        __metaclass__ = abc.ABCMeta
-
 
 # late imports
 fixtures = None
@@ -101,7 +91,7 @@ def setup_options(make_option):
     make_option(
         "--dbdriver",
         action="append",
-        type="string",
+        type=str,
         dest="dbdriver",
         help="Additional database drivers to include in tests.  "
         "These are linked to the existing database URLs by the "
@@ -120,21 +110,28 @@ def setup_options(make_option):
     )
     make_option(
         "--backend-only",
-        action="store_true",
-        dest="backend_only",
-        help="Run only tests marked with __backend__ or __sparse_backend__",
+        action="callback",
+        zeroarg_callback=_set_tag_include("backend"),
+        help=(
+            "Run only tests marked with __backend__ or __sparse_backend__; "
+            "this is now equivalent to the pytest -m backend mark expression"
+        ),
     )
     make_option(
         "--nomemory",
-        action="store_true",
-        dest="nomemory",
-        help="Don't run memory profiling tests",
+        action="callback",
+        zeroarg_callback=_set_tag_exclude("memory_intensive"),
+        help="Don't run memory profiling tests; "
+        "this is now equivalent to the pytest -m 'not memory_intensive' "
+        "mark expression",
     )
     make_option(
         "--notimingintensive",
-        action="store_true",
-        dest="notimingintensive",
-        help="Don't run timing intensive tests",
+        action="callback",
+        zeroarg_callback=_set_tag_exclude("timing_intensive"),
+        help="Don't run timing intensive tests; "
+        "this is now equivalent to the pytest -m 'not timing_intensive' "
+        "mark expression",
     )
     make_option(
         "--profile-sort",
@@ -185,26 +182,20 @@ def setup_options(make_option):
         help="requirements class for testing, overrides setup.cfg",
     )
     make_option(
-        "--with-cdecimal",
-        action="store_true",
-        dest="cdecimal",
-        default=False,
-        help="Monkeypatch the cdecimal library into Python 'decimal' "
-        "for all tests",
-    )
-    make_option(
         "--include-tag",
         action="callback",
         callback=_include_tag,
         type=str,
-        help="Include tests with tag <tag>",
+        help="Include tests with tag <tag>; "
+        "legacy, use pytest -m 'tag' instead",
     )
     make_option(
         "--exclude-tag",
         action="callback",
         callback=_exclude_tag,
         type=str,
-        help="Exclude tests with tag <tag>",
+        help="Exclude tests with tag <tag>; "
+        "legacy, use pytest -m 'not tag' instead",
     )
     make_option(
         "--write-profiles",
@@ -254,15 +245,9 @@ def memoize_important_follower_config(dict_):
 
     This invokes in the parent process after normal config is set up.
 
-    This is necessary as pytest seems to not be using forking, so we
-    start with nothing in memory, *but* it isn't running our argparse
-    callables, so we have to just copy all of that over.
+    Hook is currently not used.
 
     """
-    dict_["memoized_config"] = {
-        "include_tags": include_tags,
-        "exclude_tags": exclude_tags,
-    }
 
 
 def restore_important_follower_config(dict_):
@@ -270,10 +255,9 @@ def restore_important_follower_config(dict_):
 
     This invokes in the follower process.
 
+    Hook is currently not used.
+
     """
-    global include_tags, exclude_tags
-    include_tags.update(dict_["memoized_config"]["include_tags"])
-    exclude_tags.update(dict_["memoized_config"]["exclude_tags"])
 
 
 def read_config():
@@ -336,6 +320,20 @@ def _requirements_opt(opt_str, value, parser):
     _setup_requirements(value)
 
 
+def _set_tag_include(tag):
+    def _do_include_tag(opt_str, value, parser):
+        _include_tag(opt_str, tag, parser)
+
+    return _do_include_tag
+
+
+def _set_tag_exclude(tag):
+    def _do_exclude_tag(opt_str, value, parser):
+        _exclude_tag(opt_str, tag, parser)
+
+    return _do_exclude_tag
+
+
 def _exclude_tag(opt_str, value, parser):
     exclude_tags.add(value.replace("-", "_"))
 
@@ -364,24 +362,18 @@ def _setup_options(opt, file_config):
     options = opt
 
 
-@pre
-def _set_nomemory(opt, file_config):
-    if opt.nomemory:
-        exclude_tags.add("memory_intensive")
+@post
+def __ensure_cext(opt, file_config):
+    if os.environ.get("REQUIRE_SQLALCHEMY_CEXT", "0") == "1":
+        from sqlalchemy.util import has_compiled_ext
 
-
-@pre
-def _set_notimingintensive(opt, file_config):
-    if opt.notimingintensive:
-        exclude_tags.add("timing_intensive")
-
-
-@pre
-def _monkeypatch_cdecimal(options, file_config):
-    if options.cdecimal:
-        import cdecimal
-
-        sys.modules["decimal"] = cdecimal
+        try:
+            has_compiled_ext(raise_=True)
+        except ImportError as err:
+            raise AssertionError(
+                "REQUIRE_SQLALCHEMY_CEXT is set but can't import the "
+                "cython extensions"
+            ) from err
 
 
 @post
@@ -393,8 +385,7 @@ def _init_symbols(options, file_config):
 
 @post
 def _set_disable_asyncio(opt, file_config):
-    if opt.disable_asyncio or not py3k:
-        from sqlalchemy.testing import asyncio
+    if opt.disable_asyncio:
 
         asyncio.ENABLE_ASYNCIO = False
 
@@ -434,7 +425,7 @@ def _engine_uri(options, file_config):
     for db_url in expanded_urls:
         log.info("Adding database URL: %s", db_url)
 
-        if options.write_idents and provision.FOLLOWER_IDENT:  # != 'master':
+        if options.write_idents and provision.FOLLOWER_IDENT:
             with open(options.write_idents, "a") as file_:
                 file_.write(provision.FOLLOWER_IDENT + " " + db_url + "\n")
 
@@ -516,13 +507,6 @@ def want_class(name, cls):
         return False
     elif name.startswith("_"):
         return False
-    elif (
-        config.options.backend_only
-        and not getattr(cls, "__backend__", False)
-        and not getattr(cls, "__sparse_backend__", False)
-        and not getattr(cls, "__only_on__", False)
-    ):
-        return False
     else:
         return True
 
@@ -532,33 +516,13 @@ def want_method(cls, fn):
         return False
     elif fn.__module__ is None:
         return False
-    elif include_tags:
-        return (
-            hasattr(cls, "__tags__")
-            and exclusions.tags(cls.__tags__).include_test(
-                include_tags, exclude_tags
-            )
-        ) or (
-            hasattr(fn, "_sa_exclusion_extend")
-            and fn._sa_exclusion_extend.include_test(
-                include_tags, exclude_tags
-            )
-        )
-    elif exclude_tags and hasattr(cls, "__tags__"):
-        return exclusions.tags(cls.__tags__).include_test(
-            include_tags, exclude_tags
-        )
-    elif exclude_tags and hasattr(fn, "_sa_exclusion_extend"):
-        return fn._sa_exclusion_extend.include_test(include_tags, exclude_tags)
     else:
         return True
 
 
-def generate_sub_tests(cls, module):
-    if getattr(cls, "__backend__", False) or getattr(
-        cls, "__sparse_backend__", False
-    ):
-        sparse = getattr(cls, "__sparse_backend__", False)
+def generate_sub_tests(cls, module, markers):
+    if "backend" in markers or "sparse_backend" in markers:
+        sparse = "sparse_backend" in markers
         for cfg in _possible_configs_for_cls(cls, sparse=sparse):
             orig_name = cls.__name__
 
@@ -722,7 +686,8 @@ def _do_skips(cls):
                 )
 
     if not all_configs:
-        msg = "'%s' unsupported on any DB implementation %s%s" % (
+        msg = "'%s.%s' unsupported on any DB implementation %s%s" % (
+            cls.__module__,
             cls.__name__,
             ", ".join(
                 "'%s(%s)+%s'"
@@ -756,7 +721,7 @@ def _setup_config(config_obj, ctx):
     config._current.push(config_obj, testing)
 
 
-class FixtureFunctions(ABC):
+class FixtureFunctions(abc.ABC):
     @abc.abstractmethod
     def skip_test_exception(self, *arg, **kw):
         raise NotImplementedError()
@@ -777,7 +742,11 @@ class FixtureFunctions(ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def mark_base_test_class(self):
+    def mark_base_test_class(self) -> Any:
+        raise NotImplementedError()
+
+    @abc.abstractproperty
+    def add_to_marker(self):
         raise NotImplementedError()
 
 

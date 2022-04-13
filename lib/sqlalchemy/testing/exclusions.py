@@ -1,5 +1,5 @@
 # testing/exclusions.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -31,11 +31,10 @@ def fails_if(predicate, reason=None):
     return rule
 
 
-class compound(object):
+class compound:
     def __init__(self):
         self.fails = set()
         self.skips = set()
-        self.tags = set()
 
     def __add__(self, other):
         return self.add(other)
@@ -44,25 +43,22 @@ class compound(object):
         rule = compound()
         rule.skips.update(self.skips)
         rule.skips.update(self.fails)
-        rule.tags.update(self.tags)
         return rule
 
     def add(self, *others):
         copy = compound()
         copy.fails.update(self.fails)
         copy.skips.update(self.skips)
-        copy.tags.update(self.tags)
+
         for other in others:
             copy.fails.update(other.fails)
             copy.skips.update(other.skips)
-            copy.tags.update(other.tags)
         return copy
 
     def not_(self):
         copy = compound()
         copy.fails.update(NotPredicate(fail) for fail in self.fails)
         copy.skips.update(NotPredicate(skip) for skip in self.skips)
-        copy.tags.update(self.tags)
         return copy
 
     @property
@@ -83,16 +79,9 @@ class compound(object):
             if predicate(config)
         ]
 
-    def include_test(self, include_tags, exclude_tags):
-        return bool(
-            not self.tags.intersection(exclude_tags)
-            and (not include_tags or self.tags.intersection(include_tags))
-        )
-
     def _extend(self, other):
         self.skips.update(other.skips)
         self.fails.update(other.fails)
-        self.tags.update(other.tags)
 
     def __call__(self, fn):
         if hasattr(fn, "_sa_exclusion_extend"):
@@ -139,21 +128,15 @@ class compound(object):
     def _expect_failure(self, config, ex, name="block"):
         for fail in self.fails:
             if fail(config):
-                if util.py2k:
-                    str_ex = unicode(ex).encode(  # noqa: F821
-                        "utf-8", errors="ignore"
-                    )
-                else:
-                    str_ex = str(ex)
                 print(
                     (
                         "%s failed as expected (%s): %s "
-                        % (name, fail._as_string(config), str_ex)
+                        % (name, fail._as_string(config), ex)
                     )
                 )
                 break
         else:
-            util.raise_(ex, with_traceback=sys.exc_info()[2])
+            raise ex.with_traceback(sys.exc_info()[2])
 
     def _expect_success(self, config, name="block"):
         if not self.fails:
@@ -172,16 +155,6 @@ class compound(object):
                 )
 
 
-def requires_tag(tagname):
-    return tags([tagname])
-
-
-def tags(tagnames):
-    comp = compound()
-    comp.tags.update(tagnames)
-    return comp
-
-
 def only_if(predicate, reason=None):
     predicate = _as_predicate(predicate)
     return skip_if(NotPredicate(predicate), reason)
@@ -192,7 +165,7 @@ def succeeds_if(predicate, reason=None):
     return fails_if(NotPredicate(predicate), reason)
 
 
-class Predicate(object):
+class Predicate:
     @classmethod
     def as_predicate(cls, predicate, description=None):
         if isinstance(predicate, compound):
@@ -207,7 +180,7 @@ class Predicate(object):
             )
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
-        elif isinstance(predicate, util.string_types):
+        elif isinstance(predicate, str):
             tokens = re.match(
                 r"([\+\w]+)\s*(?:(>=|==|!=|<=|<|>)\s*([\d\.]+))?", predicate
             )

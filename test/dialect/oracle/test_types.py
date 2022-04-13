@@ -12,11 +12,15 @@ from sqlalchemy import CHAR
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy import Double
+from sqlalchemy import DOUBLE_PRECISION
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import FLOAT
 from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import NCHAR
 from sqlalchemy import Numeric
@@ -32,7 +36,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
-from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
@@ -41,6 +44,7 @@ from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
@@ -48,8 +52,6 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
-from sqlalchemy.util import py2k
-from sqlalchemy.util import u
 
 
 def exec_sql(conn, sql, *args, **kwargs):
@@ -65,7 +67,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         from setting up cx_oracle.CLOBs on
         string-based bind params [ticket:793]."""
 
-        class FakeDBAPI(object):
+        class FakeDBAPI:
             def __getattr__(self, attr):
                 return attr
 
@@ -82,11 +84,11 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(oracle.LONG(), "LONG")
 
     @testing.combinations(
-        (Date(), cx_oracle._OracleDate),
+        (Date(), cx_oracle._CXOracleDate),
         (oracle.OracleRaw(), cx_oracle._OracleRaw),
         (String(), String),
         (VARCHAR(), cx_oracle._OracleString),
-        (DATE(), cx_oracle._OracleDate),
+        (DATE(), cx_oracle._CXOracleDate),
         (oracle.DATE(), oracle.DATE),
         (String(50), cx_oracle._OracleString),
         (Unicode(), cx_oracle._OracleUnicodeStringCHAR),
@@ -202,11 +204,7 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("data", char_type(30), nullable=False),
         )
-
-        if py2k and char_type is NCHAR:
-            v1, v2, v3 = u"value 1", u"value 2", u"value 3"
-        else:
-            v1, v2, v3 = "value 1", "value 2", "value 3"
+        v1, v2, v3 = "value 1", "value 2", "value 3"
 
         t.create(connection)
         connection.execute(
@@ -262,6 +260,12 @@ class TypesTest(fixtures.TestBase):
             assert x == 5
             assert isinstance(x, int)
 
+    def test_integer_truediv(self, connection):
+        """test #4926"""
+
+        stmt = select(literal(1, Integer) / literal(2, Integer))
+        eq_(connection.scalar(stmt), decimal.Decimal("0.5"))
+
     def test_rowid(self, metadata, connection):
         t = Table("t1", metadata, Column("x", Integer))
 
@@ -300,6 +304,18 @@ class TypesTest(fixtures.TestBase):
             datetime.timedelta(days=35, seconds=5743),
         )
 
+    def test_no_decimal_float_precision(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Oracle FLOAT types use 'binary precision', which does not "
+            "convert cleanly from decimal 'precision'.  Please specify this "
+            "type with a separate Oracle variant, such as "
+            r"FLOAT\(precision=5\).with_variant\(oracle.FLOAT\("
+            r"binary_precision=16\), 'oracle'\), so that the Oracle "
+            "specific 'binary_precision' may be specified accurately.",
+        ):
+            FLOAT(5).compile(dialect=oracle.dialect())
+
     def test_numerics(self, metadata, connection):
         m = metadata
         t1 = Table(
@@ -309,7 +325,8 @@ class TypesTest(fixtures.TestBase):
             Column("numericcol", Numeric(precision=9, scale=2)),
             Column("floatcol1", Float()),
             Column("floatcol2", FLOAT()),
-            Column("doubleprec", oracle.DOUBLE_PRECISION),
+            Column("doubleprec1", DOUBLE_PRECISION),
+            Column("doubleprec2", Double()),
             Column("numbercol1", oracle.NUMBER(9)),
             Column("numbercol2", oracle.NUMBER(9, 3)),
             Column("numbercol3", oracle.NUMBER),
@@ -322,7 +339,8 @@ class TypesTest(fixtures.TestBase):
                 numericcol=5.2,
                 floatcol1=6.5,
                 floatcol2=8.5,
-                doubleprec=9.5,
+                doubleprec1=9.5,
+                doubleprec2=14.5,
                 numbercol1=12,
                 numbercol2=14.85,
                 numbercol3=15.76,
@@ -343,6 +361,7 @@ class TypesTest(fixtures.TestBase):
                     (6.5, float),
                     (8.5, float),
                     (9.5, float),
+                    (14.5, float),
                     (12, int),
                     (decimal.Decimal("14.85"), decimal.Decimal),
                     (15.76, float),
@@ -719,21 +738,6 @@ class TypesTest(fixtures.TestBase):
 
             eq_(sqla_result, cx_oracle_result)
 
-    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
-    @testing.fails_if(
-        testing.requires.python3, "cx_oracle always returns unicode on py3k"
-    )
-    def test_coerce_to_unicode(self, connection):
-        engine = testing_engine(options=dict(coerce_to_unicode=False))
-        with engine.connect() as conn_no_coerce:
-            value = exec_sql(
-                conn_no_coerce, "SELECT 'hello' FROM DUAL"
-            ).scalar()
-            assert isinstance(value, util.binary_type)
-
-        value = exec_sql(connection, "SELECT 'hello' FROM DUAL").scalar()
-        assert isinstance(value, util.text_type)
-
     def test_reflect_dates(self, metadata, connection):
         Table(
             "date_types",
@@ -804,13 +808,13 @@ class TypesTest(fixtures.TestBase):
                 cx_oracle._OracleNChar,
             )
 
-        data = u("m’a réveillé.")
+        data = "m’a réveillé."
         connection.execute(t2.insert(), dict(nv_data=data, c_data=data))
         nv_data, c_data = connection.execute(t2.select()).first()
         eq_(nv_data, data)
         eq_(c_data, data + (" " * 7))  # char is space padded
-        assert isinstance(nv_data, util.text_type)
-        assert isinstance(c_data, util.text_type)
+        assert isinstance(nv_data, str)
+        assert isinstance(c_data, str)
 
     def test_reflect_unicode_no_nvarchar(self, metadata, connection):
         Table("tnv", metadata, Column("data", sqltypes.Unicode(255)))
@@ -825,11 +829,11 @@ class TypesTest(fixtures.TestBase):
                 cx_oracle._OracleString,
             )
 
-        data = u("m’a réveillé.")
+        data = "m’a réveillé."
         connection.execute(t2.insert(), {"data": data})
         res = connection.execute(t2.select()).first().data
         eq_(res, data)
-        assert isinstance(res, util.text_type)
+        assert isinstance(res, str)
 
     def test_char_length(self, metadata, connection):
         t1 = Table(
@@ -1018,11 +1022,11 @@ class LOBFetchTest(fixtures.TablesTest):
         long_text.create(connection)
 
         if isinstance(datatype, UnicodeText):
-            word_seed = u"ab🐍’«cdefg"
+            word_seed = "ab🐍’«cdefg"
         else:
             word_seed = "abcdef"
 
-        some_text = u" ".join(
+        some_text = " ".join(
             "".join(random.choice(word_seed) for j in range(150))
             for i in range(datasize)
         )
@@ -1048,9 +1052,9 @@ class LOBFetchTest(fixtures.TablesTest):
         )
         long_text.create(connection)
 
-        word_seed = u"ab🐍’«cdefg"
+        word_seed = "ab🐍’«cdefg"
 
-        some_text = u" ".join(
+        some_text = " ".join(
             "".join(random.choice(word_seed) for j in range(10))
             for i in range(15)
         )
@@ -1153,7 +1157,7 @@ class EuroNumericTest(fixtures.TestBase):
                     {},
                 ),
             ]:
-                if isinstance(stmt, util.string_types):
+                if isinstance(stmt, str):
                     test_exp = conn.exec_driver_sql(stmt, kw).scalar()
                 else:
                     test_exp = conn.scalar(stmt, **kw)
@@ -1169,17 +1173,17 @@ class SetInputSizesTest(fixtures.TestBase):
         (SmallInteger, 25, int, False),
         (Integer, 25, int, False),
         (Numeric(10, 8), decimal.Decimal("25.34534"), None, False),
-        (Float(15), 25.34534, None, False),
+        (oracle.FLOAT(15), 25.34534, None, False),
         (oracle.BINARY_DOUBLE, 25.34534, "NATIVE_FLOAT", False),
         (oracle.BINARY_FLOAT, 25.34534, "NATIVE_FLOAT", False),
         (oracle.DOUBLE_PRECISION, 25.34534, None, False),
-        (Unicode(30), u("test"), "NCHAR", True),
-        (UnicodeText(), u("test"), "NCLOB", True),
-        (Unicode(30), u("test"), None, False),
-        (UnicodeText(), u("test"), "CLOB", False),
+        (Unicode(30), "test", "NCHAR", True),
+        (UnicodeText(), "test", "NCLOB", True),
+        (Unicode(30), "test", None, False),
+        (UnicodeText(), "test", "CLOB", False),
         (String(30), "test", None, False),
         (CHAR(30), "test", "FIXED_CHAR", False),
-        (NCHAR(30), u("test"), "FIXED_NCHAR", False),
+        (NCHAR(30), "test", "FIXED_NCHAR", False),
         (oracle.LONG(), "test", None, False),
         argnames="datatype, value, sis_value_text, set_nchar_flag",
     )
@@ -1210,7 +1214,7 @@ class SetInputSizesTest(fixtures.TestBase):
         )
         t3 = Table("t3", m, Column("foo", TestTypeDec()))
 
-        class CursorWrapper(object):
+        class CursorWrapper:
             # cx_oracle cursor can't be modified so we have to
             # invent a whole wrapping scheme
 

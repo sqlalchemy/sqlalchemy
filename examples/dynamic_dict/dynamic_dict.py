@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
 
-class ProxyDict(object):
+class ProxyDict:
     def __init__(self, parent, collection_name, childclass, keyname):
         self.parent = parent
         self.collection_name = collection_name

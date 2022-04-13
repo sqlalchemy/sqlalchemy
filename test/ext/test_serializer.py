@@ -24,7 +24,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import ue
 
 
 def pickle_protocols():
@@ -179,7 +178,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             .scalar(),
             1,
         )
-        u1 = Session.query(User).get(8)
+        u1 = Session.get(User, 8)
         q = (
             Session.query(Address)
             .filter(Address.user == u1)
@@ -195,7 +194,6 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             ],
         )
 
-    @testing.requires.non_broken_pickle
     def test_query_two(self):
         q = (
             Session.query(User)
@@ -206,7 +204,6 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         eq_(q2.all(), [User(name="fred")])
         eq_(list(q2.with_entities(User.id, User.name)), [(9, "fred")])
 
-    @testing.requires.non_broken_pickle
     def test_query_three(self):
         ua = aliased(User)
         q = (
@@ -233,9 +230,8 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             pickled_failing = serializer.dumps(j, prot)
             serializer.loads(pickled_failing, users.metadata, None)
 
-    @testing.requires.non_broken_pickle
     def test_orm_join(self):
-        from sqlalchemy.orm.util import join
+        from sqlalchemy.orm import join
 
         j = join(User, Address, User.addresses)
 
@@ -264,7 +260,6 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)],
         )
 
-    @testing.requires.non_broken_pickle
     def test_any(self):
         r = User.addresses.any(Address.email == "x")
         ser = serializer.dumps(r, -1)
@@ -273,20 +268,16 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
 
     def test_unicode(self):
         m = MetaData()
-        t = Table(
-            ue("\u6e2c\u8a66"), m, Column(ue("\u6e2c\u8a66_id"), Integer)
-        )
+        t = Table("\u6e2c\u8a66", m, Column("\u6e2c\u8a66_id", Integer))
 
-        expr = select(t).where(t.c[ue("\u6e2c\u8a66_id")] == 5)
+        expr = select(t).where(t.c["\u6e2c\u8a66_id"] == 5)
 
         expr2 = serializer.loads(serializer.dumps(expr, -1), m)
 
         self.assert_compile(
             expr2,
-            ue(
-                'SELECT "\u6e2c\u8a66"."\u6e2c\u8a66_id" FROM "\u6e2c\u8a66" '
-                'WHERE "\u6e2c\u8a66"."\u6e2c\u8a66_id" = :\u6e2c\u8a66_id_1'
-            ),
+            'SELECT "\u6e2c\u8a66"."\u6e2c\u8a66_id" FROM "\u6e2c\u8a66" '
+            'WHERE "\u6e2c\u8a66"."\u6e2c\u8a66_id" = :\u6e2c\u8a66_id_1',
             dialect="default",
         )
 

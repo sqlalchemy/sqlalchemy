@@ -1,11 +1,18 @@
 # orm/exc.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """SQLAlchemy ORM exceptions."""
+
+from __future__ import annotations
+
+from typing import Any
+from typing import Optional
+from typing import Type
+
 from .. import exc as sa_exc
 from .. import util
 from ..exc import MultipleResultsFound  # noqa
@@ -70,7 +77,7 @@ class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 
     @util.preload_module("sqlalchemy.orm.base")
-    def __init__(self, obj, msg=None):
+    def __init__(self, obj: object, msg: Optional[str] = None):
         base = util.preloaded.orm_base
 
         if not msg:
@@ -84,7 +91,7 @@ class UnmappedInstanceError(UnmappedError):
                     "was called." % (name, name)
                 )
             except UnmappedClassError:
-                msg = _default_unmapped(type(obj))
+                msg = f"Class '{_safe_cls_name(type(obj))}' is not mapped"
                 if isinstance(obj, type):
                     msg += (
                         "; was a class (%s) supplied where an instance was "
@@ -99,12 +106,12 @@ class UnmappedInstanceError(UnmappedError):
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
 
-    def __init__(self, cls, msg=None):
+    def __init__(self, cls: Type[object], msg: Optional[str] = None):
         if not msg:
             msg = _default_unmapped(cls)
         UnmappedError.__init__(self, msg)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return self.__class__, (None, self.args[0])
 
 
@@ -191,7 +198,7 @@ def _safe_cls_name(cls):
 
 
 @util.preload_module("sqlalchemy.orm.base")
-def _default_unmapped(cls):
+def _default_unmapped(cls) -> Optional[str]:
     base = util.preloaded.orm_base
 
     try:
@@ -201,4 +208,6 @@ def _default_unmapped(cls):
     name = _safe_cls_name(cls)
 
     if not mappers:
-        return "Class '%s' is not mapped" % name
+        return f"Class '{name}' is not mapped"
+    else:
+        return None

@@ -1,17 +1,18 @@
+from contextlib import nullcontext
+
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
@@ -21,6 +22,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -57,8 +59,9 @@ class Paperwork(fixtures.ComparableEntity):
 
 def _aliased_join_warning(arg):
     return testing.expect_warnings(
-        "An alias is being generated automatically against joined entity "
-        "mapped class %s due to overlapping tables" % (arg,)
+        r"An alias is being generated automatically against joined entity "
+        r"Mapper\[%s\] due to overlapping tables" % (arg,),
+        raise_on_any_unexpected=True,
     )
 
 
@@ -164,7 +167,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
         pa = aliased(Person)
         eq_(
             sess.query(Engineer)
-            .join(pa, "reports_to")
+            .join(pa, Engineer.reports_to)
             .filter(pa.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -276,7 +279,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         eq_(
             sess.query(Engineer)
-            .join(ma, "reports_to")
+            .join(ma, Engineer.reports_to)
             .filter(ma.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -297,7 +300,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         if autoalias:
             # filter aliasing applied to Engineer doesn't whack Manager
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -306,7 +309,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [m1],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -315,7 +318,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [m2],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager, Engineer)
                     .join(Manager.engineers)
@@ -367,7 +370,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         sess.expunge_all()
 
         if autoalias:
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -376,7 +379,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -507,7 +510,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join(ea, "reports_to")
+            .join(ea, Engineer.reports_to)
             .filter(ea.name == "wally")
             .first(),
             Engineer(name="dilbert"),
@@ -795,13 +798,13 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = select(Child1).join(Child1.left_child2)
 
-        with _aliased_join_warning("Child2->child2"):
+        with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
                 set([c11, c12, c13]),
             )
 
-        with _aliased_join_warning("Child2->child2"):
+        with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.query(Child1, Child2).join(Child1.left_child2)),
                 set([(c11, c22), (c12, c22), (c13, c23)]),
@@ -829,7 +832,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             .join(Child2.right_children)
             .where(Child1.left_child2 == c22)
         )
-        with _aliased_join_warning("Child1->child1"):
+        with _aliased_join_warning(r"Child1\(child1\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
                 set([c22]),
@@ -848,7 +851,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
         # test the same again
-        with _aliased_join_warning("Child1->child1"):
+        with _aliased_join_warning(r"Child1\(child1\)"):
             self.assert_compile(
                 sess.query(Child2)
                 .join(Child2.right_children)
@@ -937,7 +940,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
-        q = sess.query(Child1).options(joinedload("left_child2"))
+        q = sess.query(Child1).options(joinedload(Child1.left_child2))
         self.assert_compile(
             q.limit(1).statement,
             "SELECT child1.id, parent.id AS id_1, parent.cls, "
@@ -969,7 +972,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.expunge_all()
 
-        query_ = sess.query(Child1).options(subqueryload("left_child2"))
+        query_ = sess.query(Child1).options(subqueryload(Child1.left_child2))
         for row in query_.all():
             assert row.left_child2
 
@@ -1283,7 +1286,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(joinedload("children")).all(),
+                sess.query(Subparent)
+                .options(joinedload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1311,7 +1316,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             eq_(
                 sess.query(Subparent)
                 .join(Subparent.children)
-                .options(contains_eager("children"))
+                .options(contains_eager(Subparent.children))
                 .all(),
                 [p1, p2],
             )
@@ -1337,7 +1342,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(subqueryload("children")).all(),
+                sess.query(Subparent)
+                .options(subqueryload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1467,27 +1474,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_fixed_w_poly_subquery(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            # NOTE: subqueryload is broken for this case, first found
-            # when cartesian product detection was added.
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(selectinload(B.related), selectinload(C.related))
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 3)
-
     def test_free_w_poly_joined(self):
         A = self.classes.A
         B = self.classes.B
@@ -1501,25 +1487,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         def go():
             for a in session.query(a_poly).options(
                 joinedload(a_poly.B.related), joinedload(a_poly.C.related)
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 1)
-
-    def test_fixed_w_poly_joined(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(joinedload(B.related), joinedload(C.related))
             ):
                 eq_(a.related, [d])
 
@@ -1770,7 +1737,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = fixture_session()
         self.assert_compile(
             s.query(Parent)
-            .join(Parent.sub1, Sub1.sub2)
+            .join(Parent.sub1)
+            .join(Sub1.sub2)
             .join(Sub2.ep1)
             .join(Sub2.ep2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
@@ -1851,31 +1819,6 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep2 ON base2.id = ep2.base2_id",
         )
 
-    def test_six_legacy(self):
-        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
-
-        s = fixture_session()
-
-        # as of from_self() changing in
-        # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
-        # this query is coming out instead which is equivalent, but not
-        # totally sure where this happens
-
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            self.assert_compile(
-                s.query(Sub2).from_self().join(Sub2.ep1).join(Sub2.ep2),
-                "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
-                "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
-                "anon_1.base2_data AS anon_1_base2_data, "
-                "anon_1.sub2_subdata AS anon_1_sub2_subdata "
-                "FROM (SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
-                "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
-                "sub2.subdata AS sub2_subdata "
-                "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_1 "
-                "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
-                "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
-            )
-
     def test_six(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
@@ -1910,48 +1853,6 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
             "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
         )
-
-    def test_seven_legacy(self):
-        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
-
-        s = fixture_session()
-
-        # as of from_self() changing in
-        # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
-        # this query is coming out instead which is equivalent, but not
-        # totally sure where this happens
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-
-            self.assert_compile(
-                # adding Sub2 to the entities list helps it,
-                # otherwise the joins for Sub2.ep1/ep2 don't have columns
-                # to latch onto.   Can't really make it better than this
-                s.query(Parent, Sub2)
-                .join(Parent.sub1)
-                .join(Sub1.sub2)
-                .from_self()
-                .join(Sub2.ep1)
-                .join(Sub2.ep2),
-                "SELECT anon_1.parent_id AS anon_1_parent_id, "
-                "anon_1.parent_data AS anon_1_parent_data, "
-                "anon_1.sub2_id AS anon_1_sub2_id, "
-                "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
-                "anon_1.base2_data AS anon_1_base2_data, "
-                "anon_1.sub2_subdata AS anon_1_sub2_subdata "
-                "FROM (SELECT parent.id AS parent_id, "
-                "parent.data AS parent_data, "
-                "sub2.id AS sub2_id, "
-                "base2.id AS base2_id, "
-                "base2.base1_id AS base2_base1_id, "
-                "base2.data AS base2_data, "
-                "sub2.subdata AS sub2_subdata "
-                "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
-                "ON parent.id = sub1.parent_id JOIN "
-                "(base2 JOIN sub2 ON base2.id = sub2.id) "
-                "ON base1.id = base2.base1_id) AS anon_1 "
-                "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
-                "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
-            )
 
     def test_seven(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
@@ -2226,7 +2127,7 @@ class ContainsEagerMultipleOfType(
             "a_b.kind AS a_b_kind, a_b.a_id AS a_b_a_id, a.id AS a_id_1, "
             "a.kind AS a_kind, a.a_id AS a_a_id FROM a "
             "LEFT OUTER JOIN a AS a_b ON a.id = a_b.a_id AND a_b.kind IN "
-            "([POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
+            "(__[POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
             "ON a_b.id = b_x.a_id",
         )
 
@@ -2415,11 +2316,45 @@ class JoinedloadOverWPolyAliased(
         Link = self.classes.Link
 
         session = fixture_session()
-        q = session.query(cls).options(
-            joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
-        )
+
+        if (
+            cls is self.classes.Sub1
+            and Link.child.entity.class_ is self.classes.Parent
+        ):
+            # in 1.x we weren't checking for this:
+            # query(Sub1).options(
+            #   joinedload(Sub1.links).joinedload(Link.child).joinedload(Sub1.links)
+            # )
+            #
+            # where Link.child points to Parent.  the above is illegal because
+            # Link.child will return Parent instances that are not Sub1,
+            # so we cannot assume we will have Sub1.links available.  this now
+            # raises
+
+            with expect_raises_message(
+                exc.ArgumentError,
+                r'ORM mapped attribute "Sub1.links" does not link from '
+                r'relationship "Link.child".  Did you mean to use '
+                r'"Link.child.of_type\(Sub1\)"\?',
+            ):
+                session.query(cls).options(
+                    joinedload(cls.links)
+                    .joinedload(Link.child)
+                    .joinedload(cls.links)
+                )
+            q = session.query(cls).options(
+                joinedload(cls.links)
+                .joinedload(Link.child.of_type(cls))
+                .joinedload(cls.links)
+            )
+        else:
+            q = session.query(cls).options(
+                joinedload(cls.links)
+                .joinedload(Link.child)
+                .joinedload(cls.links)
+            )
         if cls is self.classes.Sub1:
-            extra = " WHERE parent.type IN ([POSTCOMPILE_type_1])"
+            extra = " WHERE parent.type IN (__[POSTCOMPILE_type_1])"
         else:
             extra = ""
 
@@ -2449,7 +2384,7 @@ class JoinedloadOverWPolyAliased(
         )
 
         if Link.child.property.mapper.class_ is self.classes.Sub1:
-            extra = "AND parent_1.type IN ([POSTCOMPILE_type_1]) "
+            extra = "AND parent_1.type IN (__[POSTCOMPILE_type_1]) "
         else:
             extra = ""
 
@@ -2775,7 +2710,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_adaption(self):
         a, c, d = self.tables.a, self.tables.c, self.tables.d
 
-        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
+            r"D\(d\)"
+        ):
             q = self._two_join_fixture()._compile_state()
 
         btoc = q.from_clauses[0].left
@@ -2806,7 +2743,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
 
-        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
+            r"D\(d\)"
+        ):
             self.assert_compile(
                 q,
                 "SELECT a.name AS a_name, a_1.name AS a_1_name, "
@@ -2957,8 +2896,8 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
 
         with _aliased_join_warning(
-            "Manager->managers"
-        ) if autoalias else util.nullcontext():
+            r"Manager\(managers\)"
+        ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
                 "SELECT people.type AS people_type, engineers.id AS "

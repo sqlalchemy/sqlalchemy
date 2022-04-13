@@ -61,11 +61,11 @@ from sqlalchemy import types
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import util
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
-from sqlalchemy.dialects import sybase
 from sqlalchemy.dialects.postgresql.base import PGCompiler
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import default
@@ -79,9 +79,9 @@ from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
-from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
@@ -96,7 +96,6 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
-from sqlalchemy.util import u
 
 table1 = table(
     "mytable",
@@ -215,6 +214,25 @@ class TestCompilerFixture(fixtures.TestBase, AssertsCompiledSQL):
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_compiler_column_element_is_slots(self):
+        class SomeColThing(CompilerColumnElement):
+            __slots__ = ("name",)
+            __visit_name__ = "some_col_thing"
+
+            def __init__(self, name):
+                self.name = name
+
+        c1 = SomeColThing("some name")
+        eq_(c1.name, "some name")
+        assert not hasattr(c1, "__dict__")
+
+    def test_compile_label_is_slots(self):
+
+        c1 = compiler._CompileLabel(column("q"), "somename")
+
+        eq_(c1.name, "somename")
+        assert not hasattr(c1, "__dict__")
+
     def test_attribute_sanity(self):
         assert hasattr(table1, "c")
         assert hasattr(table1.select().subquery(), "c")
@@ -249,18 +267,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             getattr,
             select(table1.c.myid).scalar_subquery(),
             "columns",
-        )
-
-    def test_prefix_constructor(self):
-        class Pref(HasPrefixes):
-            def _generate(self):
-                return self
-
-        assert_raises(
-            exc.ArgumentError,
-            Pref().prefix_with,
-            "some prefix",
-            not_a_dialect=True,
         )
 
     def test_table_select(self):
@@ -1220,6 +1226,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(~(~exists(1))),
             "SELECT NOT (NOT (EXISTS (SELECT 1))) AS anon_1",
+        )
+
+        self.assert_compile(
+            exists(42)
+            .select_from(table1)
+            .where(table1.c.name == "foo", table1.c.description == "bar"),
+            "EXISTS (SELECT 42 FROM mytable WHERE mytable.name = :name_1 "
+            "AND mytable.description = :description_1)",
         )
 
     def test_exists_method(self):
@@ -2217,7 +2231,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 (value_tbl.c.val2 - value_tbl.c.val1) / value_tbl.c.val1,
             ),
             "SELECT values.id, (values.val2 - values.val1) "
-            "/ values.val1 AS anon_1 FROM values",
+            "/ CAST(values.val1 AS FLOAT) AS anon_1 FROM values",
         )
 
         self.assert_compile(
@@ -2225,7 +2239,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 (value_tbl.c.val2 - value_tbl.c.val1) / value_tbl.c.val1 > 2.0,
             ),
             "SELECT values.id FROM values WHERE "
-            "(values.val2 - values.val1) / values.val1 > :param_1",
+            "(values.val2 - values.val1) / "
+            "CAST(values.val1 AS FLOAT) > :param_1",
         )
 
         self.assert_compile(
@@ -2236,8 +2251,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 > 2.0,
             ),
             "SELECT values.id FROM values WHERE "
-            "(values.val1 / (values.val2 - values.val1)) "
-            "/ values.val1 > :param_1",
+            "(values.val1 / CAST((values.val2 - values.val1) AS FLOAT)) "
+            "/ CAST(values.val1 AS FLOAT) > :param_1",
         )
 
     def test_percent_chars(self):
@@ -3259,7 +3274,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = (
             select(table1.c.myid)
             .with_hint(table1, "index(%(name)s idx)", "oracle")
-            .with_hint(table1, "WITH HINT INDEX idx", "sybase")
+            .with_hint(table1, "WITH HINT INDEX idx", "mssql")
         )
 
         a1 = table1.alias()
@@ -3294,10 +3309,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_hint(a2, "%(name)s idx1")
         )
 
-        mysql_d, oracle_d, sybase_d = (
+        mysql_d, oracle_d, mssql_d = (
             mysql.dialect(),
             oracle.dialect(),
-            sybase.dialect(),
+            mssql.dialect(),
         )
 
         for stmt, dialect, expected in [
@@ -3309,7 +3324,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable.myid FROM mytable test hint mytable",
             ),
             (s2, mysql_d, "SELECT mytable.myid FROM mytable"),
@@ -3320,7 +3335,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s2,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable.myid FROM mytable WITH HINT INDEX idx",
             ),
             (
@@ -3337,7 +3352,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s3,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable_1.myid FROM mytable AS mytable_1 "
                 "index(mytable_1 hint)",
             ),
@@ -3357,7 +3372,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s4,
-                sybase_d,
+                mssql_d,
                 "SELECT thirdtable.userid, thirdtable.otherstuff "
                 "FROM thirdtable "
                 "hint3 JOIN (SELECT mytable.myid AS myid, "
@@ -3930,7 +3945,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             extracted_parameters=s1_cache_key[1],
         )
 
-    def test_construct_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_params_w_bind_clones_post(self, adapt_before_key):
         """test that a BindParameter that has been cloned after the cache
         key was generated still matches up when construct_params()
         is called with an extracted parameter collection.
@@ -3953,6 +3969,11 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # test #7903 - adapt the statement *before* we make the cache
+        # key also
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4006,7 +4027,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 10},
         )
 
-    def test_construct_duped_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_duped_params_w_bind_clones_post(self, adapt_before_key):
         """same as previous test_construct_params_w_bind_clones_post but
         where the binds have been used
         repeatedly, and the adaption occurs on a per-subquery basis.
@@ -4028,6 +4050,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # variant that exercises #7903
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4110,7 +4136,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         be unique, still matches up when construct_params()
         is called with an extracted parameter collection.
 
-        other ORM feaures like optimized_compare() end up doing something
+        other ORM features like optimized_compare() end up doing something
         like this, such as if there are multiple "has()" or "any()" which would
         have cloned the join condition and changed the values of bound
         parameters.
@@ -4174,7 +4200,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             expr,
-            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
             check_literal_execute={},
@@ -4209,7 +4235,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
             dialect=dialect,
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
@@ -4345,7 +4371,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             tuple_(table1.c.myid, table1.c.name).in_(
                 bindparam("foo", expanding=True)
             ),
-            "(mytable.myid, mytable.name) IN ([POSTCOMPILE_foo])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_foo])",
         )
 
         dialect = default.DefaultDialect()
@@ -4354,13 +4380,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             tuple_(table1.c.myid, table1.c.name).in_(
                 bindparam("foo", expanding=True)
             ),
-            "(mytable.myid, mytable.name) IN ([POSTCOMPILE_foo])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_foo])",
             dialect=dialect,
         )
 
         self.assert_compile(
             table1.c.myid.in_(bindparam("foo", expanding=True)),
-            "mytable.myid IN ([POSTCOMPILE_foo])",
+            "mytable.myid IN (__[POSTCOMPILE_foo])",
         )
 
     def test_limit_offset_select_literal_binds(self):
@@ -4421,7 +4447,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "one",
             select(literal("someliteral")),
-            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            "SELECT __[POSTCOMPILE_param_1] AS anon_1",
             dict(
                 check_literal_execute={"param_1": "someliteral"},
                 check_post_param={},
@@ -4430,14 +4456,14 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "two",
             select(table1.c.myid + 3),
-            "SELECT mytable.myid + [POSTCOMPILE_myid_1] "
+            "SELECT mytable.myid + __[POSTCOMPILE_myid_1] "
             "AS anon_1 FROM mytable",
             dict(check_literal_execute={"myid_1": 3}, check_post_param={}),
         ),
         (
             "three",
             select(table1.c.myid.in_([4, 5, 6])),
-            "SELECT mytable.myid IN ([POSTCOMPILE_myid_1]) "
+            "SELECT mytable.myid IN (__[POSTCOMPILE_myid_1]) "
             "AS anon_1 FROM mytable",
             dict(
                 check_literal_execute={"myid_1": [4, 5, 6]},
@@ -4447,14 +4473,14 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "four",
             select(func.mod(table1.c.myid, 5)),
-            "SELECT mod(mytable.myid, [POSTCOMPILE_mod_2]) "
+            "SELECT mod(mytable.myid, __[POSTCOMPILE_mod_2]) "
             "AS mod_1 FROM mytable",
             dict(check_literal_execute={"mod_2": 5}, check_post_param={}),
         ),
         (
             "five",
             select(literal("foo").in_([])),
-            "SELECT [POSTCOMPILE_param_1] IN ([POSTCOMPILE_param_2]) "
+            "SELECT __[POSTCOMPILE_param_1] IN (__[POSTCOMPILE_param_2]) "
             "AS anon_1",
             dict(
                 check_literal_execute={"param_1": "foo", "param_2": []},
@@ -4464,7 +4490,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "six",
             select(literal(util.b("foo"))),
-            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            "SELECT __[POSTCOMPILE_param_1] AS anon_1",
             dict(
                 check_literal_execute={"param_1": util.b("foo")},
                 check_post_param={},
@@ -4473,7 +4499,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "seven",
             select(table1.c.myid == bindparam("foo", callable_=lambda: 5)),
-            "SELECT mytable.myid = [POSTCOMPILE_foo] AS anon_1 FROM mytable",
+            "SELECT mytable.myid = __[POSTCOMPILE_foo] AS anon_1 FROM mytable",
             dict(check_literal_execute={"foo": 5}, check_post_param={}),
         ),
         argnames="stmt, expected, kw",
@@ -4495,7 +4521,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
             "SELECT mytable.myid FROM mytable "
-            "WHERE mytable.myid = [POSTCOMPILE_foo]",
+            "WHERE mytable.myid = __[POSTCOMPILE_foo]",
         )
 
     def test_render_literal_execute_parameter_literal_binds(self):
@@ -4540,7 +4566,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 table1.c.myid.in_(bindparam("foo", expanding=True))
             ),
             "SELECT mytable.myid FROM mytable "
-            "WHERE mytable.myid IN ([POSTCOMPILE_foo])",
+            "WHERE mytable.myid IN (__[POSTCOMPILE_foo])",
         )
 
     def test_render_expanding_parameter_literal_binds(self):
@@ -4926,38 +4952,36 @@ class KwargPropagationTest(fixtures.TestBase):
 
 class ExecutionOptionsTest(fixtures.TestBase):
     def test_non_dml(self):
-        stmt = table1.select()
+        stmt = table1.select().execution_options(foo="bar")
         compiled = stmt.compile()
 
-        eq_(compiled.execution_options, {})
+        eq_(compiled.execution_options, {"foo": "bar"})
 
     def test_dml(self):
-        stmt = table1.insert()
+        stmt = table1.insert().execution_options(foo="bar")
         compiled = stmt.compile()
 
-        eq_(compiled.execution_options, {"autocommit": True})
+        eq_(compiled.execution_options, {"foo": "bar"})
 
     def test_embedded_element_true_to_none(self):
-        stmt = table1.insert()
-        eq_(stmt._execution_options, {"autocommit": True})
+        stmt = table1.insert().execution_options(foo="bar")
+        eq_(stmt._execution_options, {"foo": "bar"})
         s2 = select(table1).select_from(stmt.cte())
         eq_(s2._execution_options, {})
 
         compiled = s2.compile()
-        eq_(compiled.execution_options, {"autocommit": True})
+        eq_(compiled.execution_options, {})
 
     def test_embedded_element_true_to_false(self):
-        stmt = table1.insert()
-        eq_(stmt._execution_options, {"autocommit": True})
+        stmt = table1.insert().execution_options(foo="bar")
+        eq_(stmt._execution_options, {"foo": "bar"})
         s2 = (
-            select(table1)
-            .select_from(stmt.cte())
-            .execution_options(autocommit=False)
+            select(table1).select_from(stmt.cte()).execution_options(foo="bat")
         )
-        eq_(s2._execution_options, {"autocommit": False})
+        eq_(s2._execution_options, {"foo": "bat"})
 
         compiled = s2.compile()
-        eq_(compiled.execution_options, {"autocommit": False})
+        eq_(compiled.execution_options, {"foo": "bat"})
 
 
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -4984,10 +5008,10 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reraise_of_column_spec_issue_unicode(self):
         MyType = self._illegal_type_fixture()
-        t1 = Table("t", MetaData(), Column(u("méil"), MyType()))
+        t1 = Table("t", MetaData(), Column("méil", MyType()))
         assert_raises_message(
             exc.CompileError,
-            u(r"\(in table 't', column 'méil'\): Couldn't compile type"),
+            r"\(in table 't', column 'méil'\): Couldn't compile type",
             schema.CreateTable(t1).compile,
         )
 
@@ -5122,7 +5146,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA__none].t1 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5134,7 +5158,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA_foo].t2 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_foo].t2 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5146,7 +5170,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA_bar].t3 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_bar].t3 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5167,7 +5191,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA__none].t1 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5179,7 +5203,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA_foo % ^ #].t2 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_foo % ^ #].t2 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5191,7 +5215,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA_bar {}].t3 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_bar {}].t3 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5236,39 +5260,39 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateSequence(s1),
-            "CREATE SEQUENCE [SCHEMA__none].s1 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA__none].s1 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s1.next_value(),
-            "<next sequence value: [SCHEMA__none].s1>",
+            "<next sequence value: __[SCHEMA__none].s1>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
 
         self.assert_compile(
             schema.CreateSequence(s2),
-            "CREATE SEQUENCE [SCHEMA_foo].s2 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA_foo].s2 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s2.next_value(),
-            "<next sequence value: [SCHEMA_foo].s2>",
+            "<next sequence value: __[SCHEMA_foo].s2>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
 
         self.assert_compile(
             schema.CreateSequence(s3),
-            "CREATE SEQUENCE [SCHEMA_bar].s3 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA_bar].s3 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s3.next_value(),
-            "<next sequence value: [SCHEMA_bar].s3>",
+            "<next sequence value: __[SCHEMA_bar].s3>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
@@ -5306,24 +5330,24 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA__none].s1> "
+            "CREATE TABLE __[SCHEMA__none].t1 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA__none].s1> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA__none].t2 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_foo].s2> "
+            "CREATE TABLE __[SCHEMA__none].t2 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA_foo].s2> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA__none].t3 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_bar].s3> "
+            "CREATE TABLE __[SCHEMA__none].t3 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA_bar].s3> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
@@ -5517,12 +5541,12 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT [SCHEMA__none].myothertable.otherid, "
-            "[SCHEMA__none].myothertable.othername, "
+            "SELECT __[SCHEMA__none].myothertable.otherid, "
+            "__[SCHEMA__none].myothertable.othername, "
             "mytable_1.myid, mytable_1.name, mytable_1.description "
-            "FROM [SCHEMA__none].myothertable JOIN "
-            "[SCHEMA__none].mytable AS mytable_1 "
-            "ON [SCHEMA__none].myothertable.otherid = mytable_1.myid "
+            "FROM __[SCHEMA__none].myothertable JOIN "
+            "__[SCHEMA__none].mytable AS mytable_1 "
+            "ON __[SCHEMA__none].myothertable.otherid = mytable_1.myid "
             "WHERE mytable_1.name = :name_1",
             schema_translate_map=schema_translate_map,
         )
@@ -5596,6 +5620,78 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "foob.remotetable.value = :value_1",
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
+        )
+
+    def test_schema_non_schema_disambiguation(self):
+        """test #7471"""
+
+        t1 = table("some_table", column("id"), column("q"))
+        t2 = table("some_table", column("id"), column("p"), schema="foo")
+
+        self.assert_compile(
+            select(t1, t2),
+            "SELECT some_table_1.id, some_table_1.q, "
+            "foo.some_table.id AS id_1, foo.some_table.p "
+            "FROM some_table AS some_table_1, foo.some_table",
+        )
+
+        self.assert_compile(
+            select(t1, t2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            # the original "tablename_colname" label is preserved despite
+            # the alias of some_table
+            "SELECT some_table_1.id AS some_table_id, some_table_1.q AS "
+            "some_table_q, foo.some_table.id AS foo_some_table_id, "
+            "foo.some_table.p AS foo_some_table_p "
+            "FROM some_table AS some_table_1, foo.some_table",
+        )
+
+        self.assert_compile(
+            select(t1, t2).join_from(t1, t2, t1.c.id == t2.c.id),
+            "SELECT some_table_1.id, some_table_1.q, "
+            "foo.some_table.id AS id_1, foo.some_table.p "
+            "FROM some_table AS some_table_1 "
+            "JOIN foo.some_table ON some_table_1.id = foo.some_table.id",
+        )
+
+        self.assert_compile(
+            select(t1, t2).where(t1.c.id == t2.c.id),
+            "SELECT some_table_1.id, some_table_1.q, "
+            "foo.some_table.id AS id_1, foo.some_table.p "
+            "FROM some_table AS some_table_1, foo.some_table "
+            "WHERE some_table_1.id = foo.some_table.id",
+        )
+
+        self.assert_compile(
+            select(t1).where(t1.c.id == t2.c.id),
+            "SELECT some_table_1.id, some_table_1.q "
+            "FROM some_table AS some_table_1, foo.some_table "
+            "WHERE some_table_1.id = foo.some_table.id",
+        )
+
+        subq = select(t1).where(t1.c.id == t2.c.id).subquery()
+        self.assert_compile(
+            select(t2).select_from(t2).join(subq, t2.c.id == subq.c.id),
+            "SELECT foo.some_table.id, foo.some_table.p "
+            "FROM foo.some_table JOIN "
+            "(SELECT some_table_1.id AS id, some_table_1.q AS q "
+            "FROM some_table AS some_table_1, foo.some_table "
+            "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
+            "ON foo.some_table.id = anon_1.id",
+        )
+
+        self.assert_compile(
+            select(t1, subq.c.id)
+            .select_from(t1)
+            .join(subq, t1.c.id == subq.c.id),
+            # some_table is only aliased inside the subquery.  this is not
+            # any challenge for the compiler, just checking as this is a new
+            # source of aliasing.
+            "SELECT some_table.id, some_table.q, anon_1.id AS id_1 "
+            "FROM some_table "
+            "JOIN (SELECT some_table_1.id AS id, some_table_1.q AS q "
+            "FROM some_table AS some_table_1, foo.some_table "
+            "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
+            "ON some_table.id = anon_1.id",
         )
 
     def test_alias(self):
@@ -5891,6 +5987,14 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         self._assert_where_all_correlated(
             select(t1, t2).where(
                 t2.c.a == s1.correlate_except(value).scalar_subquery()
+            )
+        )
+
+    def test_correlate_except_empty(self):
+        t1, t2, s1 = self._fixture()
+        self._assert_where_all_correlated(
+            select(t1, t2).where(
+                t2.c.a == s1.correlate_except().scalar_subquery()
             )
         )
 

@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -105,7 +104,7 @@ class LogParamsTest(fixtures.TestBase):
         )
 
     def test_log_positional_array(self):
-        with self.eng.connect() as conn:
+        with self.eng.begin() as conn:
             exc_info = assert_raises(
                 tsa.exc.DBAPIError,
                 conn.execute,
@@ -119,7 +118,7 @@ class LogParamsTest(fixtures.TestBase):
             )
 
             eq_regex(
-                self.buf.buffer[1].message,
+                self.buf.buffer[2].message,
                 r"\[generated .*\] \(\[1, 2, 3\], 'hi'\)",
             )
 
@@ -353,31 +352,17 @@ class LogParamsTest(fixtures.TestBase):
             % (largeparam[0:149], largeparam[-149:]),
         )
 
-        if util.py3k:
-            eq_(
-                self.buf.buffer[5].message,
-                "Row ('%s ... (4702 characters truncated) ... %s',)"
-                % (largeparam[0:149], largeparam[-149:]),
-            )
-        else:
-            eq_(
-                self.buf.buffer[5].message,
-                "Row (u'%s ... (4703 characters truncated) ... %s',)"
-                % (largeparam[0:148], largeparam[-149:]),
-            )
+        eq_(
+            self.buf.buffer[5].message,
+            "Row ('%s ... (4702 characters truncated) ... %s',)"
+            % (largeparam[0:149], largeparam[-149:]),
+        )
 
-        if util.py3k:
-            eq_(
-                repr(row),
-                "('%s ... (4702 characters truncated) ... %s',)"
-                % (largeparam[0:149], largeparam[-149:]),
-            )
-        else:
-            eq_(
-                repr(row),
-                "(u'%s ... (4703 characters truncated) ... %s',)"
-                % (largeparam[0:148], largeparam[-149:]),
-            )
+        eq_(
+            repr(row),
+            "('%s ... (4702 characters truncated) ... %s',)"
+            % (largeparam[0:149], largeparam[-149:]),
+        )
 
     def test_error_large_dict(self):
         assert_raises_message(
@@ -587,6 +572,30 @@ class LoggingNameTest(fixtures.TestBase):
 
 
 class TransactionContextLoggingTest(fixtures.TestBase):
+    __only_on__ = "sqlite"
+
+    @testing.fixture()
+    def plain_assert_buf(self, plain_logging_engine):
+        buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.addHandler(buf)
+
+        def go(expected):
+            assert buf.buffer
+
+            buflines = [rec.msg % rec.args for rec in buf.buffer]
+
+            eq_(buflines, expected)
+            buf.flush()
+
+        yield go
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.removeHandler(buf)
+
     @testing.fixture()
     def assert_buf(self, logging_engine):
         buf = logging.handlers.BufferingHandler(100)
@@ -616,6 +625,28 @@ class TransactionContextLoggingTest(fixtures.TestBase):
         e.connect().close()
         return e
 
+    @testing.fixture()
+    def autocommit_iso_logging_engine(self, testing_engine):
+        kw = {"echo": True, "future": True, "isolation_level": "AUTOCOMMIT"}
+        e = testing_engine(options=kw)
+        e.connect().close()
+        return e
+
+    @testing.fixture()
+    def plain_logging_engine(self, testing_engine):
+        # deliver an engine with logging using the plain logging API,
+        # not the echo parameter
+        log = logging.getLogger("sqlalchemy.engine")
+        existing_level = log.level
+        log.setLevel(logging.DEBUG)
+
+        try:
+            e = testing_engine()
+            e.connect().close()
+            yield e
+        finally:
+            log.setLevel(existing_level)
+
     def test_begin_once_block(self, logging_engine, assert_buf):
         with logging_engine.begin():
             pass
@@ -636,6 +667,38 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(["BEGIN (implicit)", "ROLLBACK"])
 
+    def test_commit_as_you_go_block_commit_engine_level_autocommit(
+        self, autocommit_iso_logging_engine, assert_buf
+    ):
+        with autocommit_iso_logging_engine.connect() as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(
+            [
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
+                "COMMIT using DBAPI connection.commit(), DBAPI "
+                "should ignore due to autocommit mode",
+            ]
+        )
+
+    def test_commit_engine_level_autocommit_exec_opt_nonauto(
+        self, autocommit_iso_logging_engine, assert_buf
+    ):
+        with autocommit_iso_logging_engine.execution_options(
+            isolation_level=testing.db.dialect.default_isolation_level
+        ).connect() as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(
+            [
+                "BEGIN (implicit)",
+                "COMMIT",
+            ]
+        )
+
     def test_commit_as_you_go_block_commit_autocommit(
         self, logging_engine, assert_buf
     ):
@@ -647,7 +710,8 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(
             [
-                "BEGIN (implicit)",
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
                 "COMMIT using DBAPI connection.commit(), DBAPI "
                 "should ignore due to autocommit mode",
             ]
@@ -664,11 +728,79 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(
             [
-                "BEGIN (implicit)",
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
                 "ROLLBACK using DBAPI connection.rollback(), DBAPI "
                 "should ignore due to autocommit mode",
             ]
         )
+
+    def test_logging_compatibility(
+        self, plain_assert_buf, plain_logging_engine
+    ):
+        """ensure plain logging doesn't produce API errors.
+
+        Added as part of #7612
+
+        """
+        e = plain_logging_engine
+
+        with e.connect() as conn:
+            result = conn.exec_driver_sql("select 1")
+            result.all()
+
+        plain_assert_buf(
+            [
+                "BEGIN (implicit)",
+                "select 1",
+                "[raw sql] ()",
+                "Col ('1',)",
+                "Row (1,)",
+                "ROLLBACK",
+            ]
+        )
+
+    @testing.requires.python38
+    def test_log_messages_have_correct_metadata_plain(
+        self, plain_logging_engine
+    ):
+        """test #7612"""
+        self._test_log_messages_have_correct_metadata(plain_logging_engine)
+
+    @testing.requires.python38
+    def test_log_messages_have_correct_metadata_echo(self, logging_engine):
+        """test #7612"""
+        self._test_log_messages_have_correct_metadata(logging_engine)
+
+    def _test_log_messages_have_correct_metadata(self, logging_engine):
+        buf = logging.handlers.BufferingHandler(100)
+        log = logging.getLogger("sqlalchemy.engine")
+        try:
+            log.addHandler(buf)
+
+            with logging_engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                conn.begin()
+                conn.rollback()
+        finally:
+            log.removeHandler(buf)
+
+        assert len(buf.buffer) >= 2
+
+        # log messages must originate from functions called 'begin'/'rollback'
+        logging_functions = {rec.funcName for rec in buf.buffer}
+        assert any(
+            "begin" in fn for fn in logging_functions
+        ), logging_functions
+        assert any(
+            "rollback" in fn for fn in logging_functions
+        ), logging_functions
+
+        # log messages must originate from different lines
+        log_lines = {rec.lineno for rec in buf.buffer}
+        assert len(log_lines) > 1, log_lines
+        buf.flush()
 
 
 class LoggingTokenTest(fixtures.TestBase):
@@ -799,25 +931,26 @@ class EchoTest(fixtures.TestBase):
 
         e1.echo = True
 
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(1)).close()
 
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(2)).close()
 
         e1.echo = False
 
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(3)).close()
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(4)).close()
 
         e2.echo = True
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(5)).close()
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(6)).close()
 
-        assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
-        assert self.buf.buffer[2].getMessage().startswith("SELECT 6")
-        assert len(self.buf.buffer) == 4
+        assert self.buf.buffer[1].getMessage().startswith("SELECT 1")
+
+        assert self.buf.buffer[5].getMessage().startswith("SELECT 6")
+        assert len(self.buf.buffer) == 8

@@ -1,5 +1,5 @@
 # orm/dependency.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,6 +8,8 @@
 """Relationship dependencies.
 
 """
+
+from __future__ import annotations
 
 from . import attributes
 from . import exc
@@ -22,7 +24,7 @@ from .. import sql
 from .. import util
 
 
-class DependencyProcessor(object):
+class DependencyProcessor:
     def __init__(self, prop):
         self.prop = prop
         self.cascade = prop.cascade

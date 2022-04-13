@@ -51,7 +51,7 @@ mapper_registry.metadata.create_all(e)
 # and the ElementTree root element.
 
 
-class Document(object):
+class Document:
     def __init__(self, name, element):
         self.filename = name
         self.element = element

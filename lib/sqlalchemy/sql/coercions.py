@@ -1,31 +1,78 @@
 # sql/coercions.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
+import collections.abc as collections_abc
 import numbers
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import NoReturn
+from typing import Optional
+from typing import overload
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
 from . import operators
 from . import roles
 from . import visitors
+from .base import ExecutableOption
 from .base import Options
-from .traversals import HasCacheKey
+from .cache_key import HasCacheKey
 from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util import collections_abc
+from ..util.typing import Literal
 
+if not typing.TYPE_CHECKING:
+    elements = None
+    lambdas = None
+    schema = None
+    selectable = None
+    traversals = None
 
-elements = None
-lambdas = None
-schema = None
-selectable = None
-sqltypes = None
-traversals = None
+if typing.TYPE_CHECKING:
+    from . import elements
+    from . import lambdas
+    from . import schema
+    from . import selectable
+    from . import traversals
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnsClauseArgument
+    from ._typing import _DMLTableArgument
+    from ._typing import _FromClauseArgument
+    from .dml import _DMLTableElement
+    from .elements import ClauseElement
+    from .elements import ColumnClause
+    from .elements import ColumnElement
+    from .elements import DQLDMLClauseElement
+    from .elements import SQLCoreOperations
+    from .schema import Column
+    from .selectable import _ColumnsClauseElement
+    from .selectable import _JoinTargetElement
+    from .selectable import _JoinTargetProtocol
+    from .selectable import _OnClauseElement
+    from .selectable import FromClause
+    from .selectable import HasCTE
+    from .selectable import SelectBase
+    from .selectable import Subquery
+    from .visitors import _TraverseCallableType
+
+_SR = TypeVar("_SR", bound=roles.SQLRole)
+_F = TypeVar("_F", bound=Callable[..., Any])
+_StringOnlyR = TypeVar("_StringOnlyR", bound=roles.StringRole)
+_T = TypeVar("_T", bound=Any)
 
 
 def _is_literal(element):
@@ -34,13 +81,10 @@ def _is_literal(element):
 
     """
 
-    return (
-        not isinstance(
-            element,
-            (Visitable, schema.SchemaEventTarget),
-        )
-        and not hasattr(element, "__clause_element__")
-    )
+    return not isinstance(
+        element,
+        (Visitable, schema.SchemaEventTarget),
+    ) and not hasattr(element, "__clause_element__")
 
 
 def _deep_is_literal(element):
@@ -70,7 +114,7 @@ def _deep_is_literal(element):
                 schema.SchemaEventTarget,
                 HasCacheKey,
                 Options,
-                util.langhelpers._symbol,
+                util.langhelpers.symbol,
             ),
         )
         and not hasattr(element, "__clause_element__")
@@ -81,7 +125,9 @@ def _deep_is_literal(element):
     )
 
 
-def _document_text_coercion(paramname, meth_rst, param_rst):
+def _document_text_coercion(
+    paramname: str, meth_rst: str, param_rst: str
+) -> Callable[[_F], _F]:
     return util.add_parameter_text(
         paramname,
         (
@@ -98,24 +144,154 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
 def _expression_collection_was_a_list(attrname, fnname, args):
     if args and isinstance(args[0], (list, set, dict)) and len(args) == 1:
         if isinstance(args[0], list):
-            util.warn_deprecated_20(
-                'The "%s" argument to %s(), when referring to a sequence '
+            raise exc.ArgumentError(
+                f'The "{attrname}" argument to {fnname}(), when '
+                "referring to a sequence "
                 "of items, is now passed as a series of positional "
-                "elements, rather than as a list. " % (attrname, fnname)
+                "elements, rather than as a list. "
             )
         return args[0]
-    else:
-        return args
+
+    return args
+
+
+@overload
+def expect(
+    role: Type[roles.TruncatedLabelRole],
+    element: Any,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.StatementOptionRole],
+    element: Any,
+    **kw: Any,
+) -> DQLDMLClauseElement:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.DDLReferredColumnRole],
+    element: Any,
+    **kw: Any,
+) -> Column[Any]:
+    ...
+
+
+@overload
+def expect(
+    role: Union[
+        Type[roles.ExpressionElementRole[Any]],
+        Type[roles.LimitOffsetRole],
+        Type[roles.WhereHavingRole],
+    ],
+    element: _ColumnExpressionArgument[_T],
+    **kw: Any,
+) -> ColumnElement[_T]:
+    ...
+
+
+@overload
+def expect(
+    role: Union[
+        Type[roles.ExpressionElementRole[Any]],
+        Type[roles.LimitOffsetRole],
+        Type[roles.WhereHavingRole],
+    ],
+    element: Any,
+    **kw: Any,
+) -> ColumnElement[Any]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.DMLTableRole],
+    element: _DMLTableArgument,
+    **kw: Any,
+) -> _DMLTableElement:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.HasCTERole],
+    element: HasCTE,
+    **kw: Any,
+) -> HasCTE:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.SelectStatementRole],
+    element: SelectBase,
+    **kw: Any,
+) -> SelectBase:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.FromClauseRole],
+    element: _FromClauseArgument,
+    **kw: Any,
+) -> FromClause:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.FromClauseRole],
+    element: SelectBase,
+    *,
+    explicit_subquery: Literal[True] = ...,
+    **kw: Any,
+) -> Subquery:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.ColumnsClauseRole],
+    element: _ColumnsClauseArgument,
+    **kw: Any,
+) -> _ColumnsClauseElement:
+    ...
+
+
+@overload
+def expect(
+    role: Union[Type[roles.JoinTargetRole], Type[roles.OnClauseRole]],
+    element: _JoinTargetProtocol,
+    **kw: Any,
+) -> _JoinTargetProtocol:
+    ...
+
+
+# catchall for not-yet-implemented overloads
+@overload
+def expect(
+    role: Type[_SR],
+    element: Any,
+    **kw: Any,
+) -> Any:
+    ...
 
 
 def expect(
-    role,
-    element,
-    apply_propagate_attrs=None,
-    argname=None,
-    post_inspect=False,
-    **kw
-):
+    role: Type[_SR],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> Any:
     if (
         role.allows_lambda
         # note callable() will not invoke a __getattr__() method, whereas
@@ -191,12 +367,16 @@ def expect(
                 resolved = element
     else:
         resolved = element
-    if (
-        apply_propagate_attrs is not None
-        and not apply_propagate_attrs._propagate_attrs
-        and resolved._propagate_attrs
-    ):
-        apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
+
+    if apply_propagate_attrs is not None:
+        if typing.TYPE_CHECKING:
+            assert isinstance(resolved, (SQLCoreOperations, ClauseElement))
+
+        if (
+            not apply_propagate_attrs._propagate_attrs
+            and resolved._propagate_attrs
+        ):
+            apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
 
     if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
@@ -204,7 +384,7 @@ def expect(
                 resolved,
                 argname=argname,
                 original_element=original_element,
-                **kw
+                **kw,
             )
         return resolved
     else:
@@ -224,24 +404,25 @@ def expect_col_expression_collection(role, expressions):
         column = None
 
         resolved = expect(role, expr)
-        if isinstance(resolved, util.string_types):
+        if isinstance(resolved, str):
             strname = resolved = expr
         else:
-            cols = []
-            visitors.traverse(resolved, {}, {"column": cols.append})
+            cols: List[ColumnClause[Any]] = []
+            col_append: _TraverseCallableType[ColumnClause[Any]] = cols.append
+            visitors.traverse(resolved, {}, {"column": col_append})
             if cols:
                 column = cols[0]
         add_element = column if column is not None else strname
         yield resolved, column, strname, add_element
 
 
-class RoleImpl(object):
+class RoleImpl:
     __slots__ = ("_role_class", "name", "_use_inspection")
 
     def _literal_coercion(self, element, **kw):
         raise NotImplementedError()
 
-    _post_coercion = None
+    _post_coercion: Any = None
     _resolve_literal_only = False
     _skip_clauseelement_for_target_match = False
 
@@ -250,18 +431,25 @@ class RoleImpl(object):
         self.name = role_class._role_name
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
 
-    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+    def _implicit_coercions(
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         self._raise_for_expected(element, argname, resolved)
 
     def _raise_for_expected(
         self,
-        element,
-        argname=None,
-        resolved=None,
-        advice=None,
-        code=None,
-        err=None,
-    ):
+        element: Any,
+        argname: Optional[str] = None,
+        resolved: Optional[Any] = None,
+        advice: Optional[str] = None,
+        code: Optional[str] = None,
+        err: Optional[Exception] = None,
+        **kw: Any,
+    ) -> NoReturn:
         if resolved is not None and resolved is not element:
             got = "%r object resolved from %r object" % (resolved, element)
         else:
@@ -279,10 +467,10 @@ class RoleImpl(object):
         if advice:
             msg += " " + advice
 
-        util.raise_(exc.ArgumentError(msg, code=code), replace_context=err)
+        raise exc.ArgumentError(msg, code=code) from err
 
 
-class _Deannotate(object):
+class _Deannotate:
     __slots__ = ()
 
     def _post_coercion(self, resolved, **kw):
@@ -291,28 +479,26 @@ class _Deannotate(object):
         return _deep_deannotate(resolved)
 
 
-class _StringOnly(object):
+class _StringOnly:
     __slots__ = ()
 
     _resolve_literal_only = True
 
 
-class _ReturnsStringKey(object):
+class _ReturnsStringKey(RoleImpl):
     __slots__ = ()
 
-    def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
-        if isinstance(original_element, util.string_types):
-            return original_element
+    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+        if isinstance(element, str):
+            return element
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
     def _literal_coercion(self, element, **kw):
         return element
 
 
-class _ColumnCoercions(object):
+class _ColumnCoercions(RoleImpl):
     __slots__ = ()
 
     def _warn_for_scalar_subquery_coercion(self):
@@ -322,12 +508,11 @@ class _ColumnCoercions(object):
             "subquery.",
         )
 
-    def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+        original_element = element
         if not getattr(resolved, "is_clause_element", False):
             self._raise_for_expected(original_element, argname, resolved)
-        elif resolved._is_select_statement:
+        elif resolved._is_select_base:
             self._warn_for_scalar_subquery_coercion()
             return resolved.scalar_subquery()
         elif resolved._is_from_clause and isinstance(
@@ -342,27 +527,28 @@ class _ColumnCoercions(object):
 
 
 def _no_text_coercion(
-    element, argname=None, exc_cls=exc.ArgumentError, extra=None, err=None
-):
-    util.raise_(
-        exc_cls(
-            "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
-            "explicitly declared as text(%(expr)r)"
-            % {
-                "expr": util.ellipses_string(element),
-                "argname": "for argument %s" % (argname,) if argname else "",
-                "extra": "%s " % extra if extra else "",
-            }
-        ),
-        replace_context=err,
-    )
+    element: Any,
+    argname: Optional[str] = None,
+    exc_cls: Type[exc.SQLAlchemyError] = exc.ArgumentError,
+    extra: Optional[str] = None,
+    err: Optional[Exception] = None,
+) -> NoReturn:
+    raise exc_cls(
+        "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
+        "explicitly declared as text(%(expr)r)"
+        % {
+            "expr": util.ellipses_string(element),
+            "argname": "for argument %s" % (argname,) if argname else "",
+            "extra": "%s " % extra if extra else "",
+        }
+    ) from err
 
 
-class _NoTextCoercion(object):
+class _NoTextCoercion(RoleImpl):
     __slots__ = ()
 
     def _literal_coercion(self, element, argname=None, **kw):
-        if isinstance(element, util.string_types) and issubclass(
+        if isinstance(element, str) and issubclass(
             elements.TextClause, self._role_class
         ):
             _no_text_coercion(element, argname)
@@ -370,7 +556,7 @@ class _NoTextCoercion(object):
             self._raise_for_expected(element, argname)
 
 
-class _CoerceLiterals(object):
+class _CoerceLiterals(RoleImpl):
     __slots__ = ()
     _coerce_consts = False
     _coerce_star = False
@@ -380,7 +566,7 @@ class _CoerceLiterals(object):
         return _no_text_coercion(element, argname)
 
     def _literal_coercion(self, element, argname=None, **kw):
-        if isinstance(element, util.string_types):
+        if isinstance(element, str):
             if self._coerce_star and element == "*":
                 return elements.ColumnClause("*", is_literal=True)
             else:
@@ -417,12 +603,23 @@ class LiteralValueImpl(RoleImpl):
         return element
 
 
-class _SelectIsNotFrom(object):
+class _SelectIsNotFrom(RoleImpl):
     __slots__ = ()
 
-    def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
-        if isinstance(element, roles.SelectStatementRole) or isinstance(
-            resolved, roles.SelectStatementRole
+    def _raise_for_expected(
+        self,
+        element: Any,
+        argname: Optional[str] = None,
+        resolved: Optional[Any] = None,
+        advice: Optional[str] = None,
+        code: Optional[str] = None,
+        err: Optional[Exception] = None,
+        **kw: Any,
+    ) -> NoReturn:
+        if (
+            not advice
+            and isinstance(element, roles.SelectStatementRole)
+            or isinstance(resolved, roles.SelectStatementRole)
         ):
             advice = (
                 "To create a "
@@ -431,28 +628,54 @@ class _SelectIsNotFrom(object):
             )
             code = "89ve"
         else:
-            advice = code = None
+            code = None
 
-        return super(_SelectIsNotFrom, self)._raise_for_expected(
+        super()._raise_for_expected(
             element,
             argname=argname,
             resolved=resolved,
             advice=advice,
             code=code,
-            **kw
+            err=err,
+            **kw,
         )
+        # never reached
+        assert False
 
 
 class HasCacheKeyImpl(RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
-        if isinstance(original_element, traversals.HasCacheKey):
-            return original_element
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
+        if isinstance(element, HasCacheKey):
+            return element
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
+
+    def _literal_coercion(self, element, **kw):
+        return element
+
+
+class ExecutableOptionImpl(RoleImpl):
+    __slots__ = ()
+
+    def _implicit_coercions(
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
+        if isinstance(element, ExecutableOption):
+            return element
+        else:
+            self._raise_for_expected(element, argname, resolved)
 
     def _literal_coercion(self, element, **kw):
         return element
@@ -518,12 +741,16 @@ class InElementImpl(RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.element._is_select_statement
+                and resolved.element._is_select_base
             ):
                 self._warn_for_implicit_coercion(resolved)
                 return self._post_coercion(resolved.element, **kw)
@@ -531,7 +758,7 @@ class InElementImpl(RoleImpl):
                 self._warn_for_implicit_coercion(resolved)
                 return self._post_coercion(resolved.select(), **kw)
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
     def _warn_for_implicit_coercion(self, elem):
         util.warn(
@@ -542,14 +769,18 @@ class InElementImpl(RoleImpl):
 
     def _literal_coercion(self, element, expr, operator, **kw):
         if isinstance(element, collections_abc.Iterable) and not isinstance(
-            element, util.string_types
+            element, str
         ):
-            non_literal_expressions = {}
+            non_literal_expressions: Dict[
+                Optional[operators.ColumnOperators],
+                operators.ColumnOperators,
+            ] = {}
             element = list(element)
             for o in element:
                 if not _is_literal(o):
                     if not isinstance(o, operators.ColumnOperators):
                         self._raise_for_expected(element, **kw)
+
                     else:
                         non_literal_expressions[o] = o
                 elif o is None:
@@ -571,7 +802,7 @@ class InElementImpl(RoleImpl):
             self._raise_for_expected(element, **kw)
 
     def _post_coercion(self, element, expr, operator, **kw):
-        if element._is_select_statement:
+        if element._is_select_base:
             # for IN, we are doing scalar_subquery() coercion without
             # a warning
             return element.scalar_subquery()
@@ -589,36 +820,15 @@ class InElementImpl(RoleImpl):
             return element
 
 
-class OnClauseImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
+class OnClauseImpl(_ColumnCoercions, RoleImpl):
     __slots__ = ()
 
     _coerce_consts = True
 
-    def _implicit_coercions(
-        self, original_element, resolved, argname=None, legacy=False, **kw
+    def _literal_coercion(
+        self, element, name=None, type_=None, argname=None, is_crud=False, **kw
     ):
-        if legacy and isinstance(resolved, str):
-            return resolved
-        else:
-            return super(OnClauseImpl, self)._implicit_coercions(
-                original_element,
-                resolved,
-                argname=argname,
-                legacy=legacy,
-                **kw
-            )
-
-    def _text_coercion(self, element, argname=None, legacy=False):
-        if legacy and isinstance(element, str):
-            util.warn_deprecated_20(
-                "Using strings to indicate relationship names in "
-                "Query.join() is deprecated and will be removed in "
-                "SQLAlchemy 2.0.  Please use the class-bound attribute "
-                "directly."
-            )
-            return element
-
-        return super(OnClauseImpl, self)._text_coercion(element, argname)
+        self._raise_for_expected(element)
 
     def _post_coercion(self, resolved, original_element=None, **kw):
         # this is a hack right now as we want to use coercion on an
@@ -691,8 +901,12 @@ class GroupByImpl(ByOfImpl, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if isinstance(resolved, roles.StrictFromClauseRole):
             return elements.ClauseList(*resolved.c)
         else:
@@ -727,12 +941,16 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
-        if isinstance(original_element, util.string_types):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
+        if isinstance(element, str):
             return resolved
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
     def _literal_coercion(self, element, argname=None, **kw):
         """coerce the given value to :class:`._truncated_label`.
@@ -773,7 +991,13 @@ class DDLReferredColumnImpl(DDLConstraintColumnImpl):
 class LimitOffsetImpl(RoleImpl):
     __slots__ = ()
 
-    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+    def _implicit_coercions(
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if resolved is None:
             return None
         else:
@@ -793,18 +1017,22 @@ class LabeledColumnExprImpl(ExpressionElementImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if isinstance(resolved, roles.ExpressionElementRole):
             return resolved.label(None)
         else:
             new = super(LabeledColumnExprImpl, self)._implicit_coercions(
-                original_element, resolved, argname=argname, **kw
+                element, resolved, argname=argname, **kw
             )
             if isinstance(new, roles.ExpressionElementRole):
                 return new.label(None)
             else:
-                self._raise_for_expected(original_element, argname, resolved)
+                self._raise_for_expected(element, argname, resolved)
 
 
 class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
@@ -815,6 +1043,19 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
     _coerce_star = True
 
     _guess_straight_column = re.compile(r"^\w\S*$", re.I)
+
+    def _raise_for_expected(
+        self, element, argname=None, resolved=None, advice=None, **kw
+    ):
+        if not advice and isinstance(element, list):
+            advice = (
+                f"Did you mean to say select("
+                f"{', '.join(repr(e) for e in element)})?"
+            )
+
+        return super(ColumnsClauseImpl, self)._raise_for_expected(
+            element, argname=argname, resolved=resolved, advice=advice, **kw
+        )
 
     def _text_coercion(self, element, argname=None):
         element = str(element)
@@ -844,7 +1085,7 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
 
     def _post_coercion(self, resolved, original_element, argname=None, **kw):
         if resolved is not original_element and not isinstance(
-            original_element, util.string_types
+            original_element, str
         ):
             # use same method as Connection uses; this will later raise
             # ObjectNotExecutableError
@@ -865,35 +1106,34 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
         return resolved
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if resolved._is_lambda_element:
             return resolved
         else:
-            return super(StatementImpl, self)._implicit_coercions(
-                original_element, resolved, argname=argname, **kw
+            return super()._implicit_coercions(
+                element, resolved, argname=argname, **kw
             )
-
-    def _text_coercion(self, element, argname=None):
-        util.warn_deprecated_20(
-            "Using plain strings to indicate SQL statements without using "
-            "the text() construct is  "
-            "deprecated and will be removed in version 2.0.  Ensure plain "
-            "SQL statements are passed using the text() construct."
-        )
-        return elements.TextClause(element)
 
 
 class SelectStatementImpl(_NoTextCoercion, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if resolved._is_text_clause:
             return resolved.columns()
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
 
 class HasCTEImpl(ReturnsRowsImpl):
@@ -909,29 +1149,23 @@ class JoinTargetImpl(RoleImpl):
 
     _skip_clauseelement_for_target_match = True
 
-    def _literal_coercion(self, element, legacy=False, **kw):
-        if isinstance(element, str):
-            return element
+    def _literal_coercion(self, element, argname=None, **kw):
+        self._raise_for_expected(element, argname)
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, legacy=False, **kw
-    ):
-        if isinstance(original_element, roles.JoinTargetRole):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        legacy: bool = False,
+        **kw: Any,
+    ) -> Any:
+        if isinstance(element, roles.JoinTargetRole):
             # note that this codepath no longer occurs as of
             # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
             # were set to False.
-            return original_element
-        elif legacy and isinstance(resolved, str):
-            util.warn_deprecated_20(
-                "Using strings to indicate relationship names in "
-                "Query.join() is deprecated and will be removed in "
-                "SQLAlchemy 2.0.  Please use the class-bound attribute "
-                "directly."
-            )
-            return resolved
-        elif legacy and isinstance(resolved, roles.WhereHavingRole):
-            return resolved
-        elif legacy and resolved._is_select_statement:
+            return element
+        elif legacy and resolved._is_select_base:
             util.warn_deprecated(
                 "Implicit coercion of SELECT and textual SELECT "
                 "constructs into FROM clauses is deprecated; please call "
@@ -945,7 +1179,7 @@ class JoinTargetImpl(RoleImpl):
             # in _ORMJoin->Join
             return resolved
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
 
 class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
@@ -953,14 +1187,14 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
 
     def _implicit_coercions(
         self,
-        original_element,
-        resolved,
-        argname=None,
-        explicit_subquery=False,
-        allow_select=True,
-        **kw
-    ):
-        if resolved._is_select_statement:
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        explicit_subquery: bool = False,
+        allow_select: bool = True,
+        **kw: Any,
+    ) -> Any:
+        if resolved._is_select_base:
             if explicit_subquery:
                 return resolved.subquery()
             elif allow_select:
@@ -975,7 +1209,7 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
         elif resolved._is_text_clause:
             return resolved
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
     def _post_coercion(self, element, deannotate=False, **kw):
         if deannotate:
@@ -989,13 +1223,14 @@ class StrictFromClauseImpl(FromClauseImpl):
 
     def _implicit_coercions(
         self,
-        original_element,
-        resolved,
-        argname=None,
-        allow_select=False,
-        **kw
-    ):
-        if resolved._is_select_statement and allow_select:
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        explicit_subquery: bool = False,
+        allow_select: bool = False,
+        **kw: Any,
+    ) -> Any:
+        if resolved._is_select_base and allow_select:
             util.warn_deprecated(
                 "Implicit coercion of SELECT and textual SELECT constructs "
                 "into FROM clauses is deprecated; please call .subquery() "
@@ -1005,7 +1240,7 @@ class StrictFromClauseImpl(FromClauseImpl):
             )
             return resolved._implicit_subquery
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
 
 class AnonymizedFromClauseImpl(StrictFromClauseImpl):
@@ -1031,18 +1266,22 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+        self,
+        element: Any,
+        resolved: Any,
+        argname: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.element._is_select_statement
+                and resolved.element._is_select_base
             ):
                 return resolved.element
             else:
                 return resolved.select()
         else:
-            self._raise_for_expected(original_element, argname, resolved)
+            self._raise_for_expected(element, argname, resolved)
 
 
 class CompoundElementImpl(_NoTextCoercion, RoleImpl):
@@ -1076,3 +1315,9 @@ for name in dir(roles):
         if name in globals():
             impl = globals()[name](cls)
             _impl_lookup[cls] = impl
+
+if not TYPE_CHECKING:
+    ee_impl = _impl_lookup[roles.ExpressionElementRole]
+
+    for py_type in (int, bool, str, float):
+        _impl_lookup[roles.ExpressionElementRole[py_type]] = ee_impl

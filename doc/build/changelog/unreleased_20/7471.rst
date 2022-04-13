@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7471
+
+    Added an additional lookup step to the compiler which will track all FROM
+    clauses which are tables, that may have the same name shared in multiple
+    schemas where one of the schemas is the implicit "default" schema; in this
+    case, the table name when referring to that name without a schema
+    qualification will be rendered with an anonymous alias name at the compiler
+    level in order to disambiguate the two (or more) names. The approach of
+    schema-qualifying the normally unqualified name with the server-detected
+    "default schema name" value was also considered, however this approach
+    doesn't apply to Oracle nor is it accepted by SQL Server, nor would it work
+    with multiple entries in the PostgreSQL search path. The name collision
+    issue resolved here has been identified as affecting at least Oracle,
+    PostgreSQL, SQL Server, MySQL and MariaDB.
+

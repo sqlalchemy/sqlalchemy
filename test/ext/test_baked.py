@@ -223,7 +223,7 @@ class LikeQueryTest(BakedTest):
 
         self.assert_sql_count(testing.db, go, 1)
 
-        u1 = sess.query(User).get(7)  # noqa
+        u1 = sess.get(User, 7)  # noqa
 
         def go():
             u2 = bq(sess).get(7)
@@ -280,19 +280,19 @@ class LikeQueryTest(BakedTest):
         # calling with *args
         eq_(bq(sess).params(uname="fred").count(), 1)
         # with multiple params, the **kwargs will be used
-        bq += lambda q: q.filter(User.id == bindparam("anid"))
-        eq_(bq(sess).params(uname="fred", anid=9).count(), 1)
+        bq += lambda q: q.filter(User.id == bindparam("an_id"))
+        eq_(bq(sess).params(uname="fred", an_id=9).count(), 1)
 
         eq_(
             # wrong id, so 0 results:
-            bq(sess).params(uname="fred", anid=8).count(),
+            bq(sess).params(uname="fred", an_id=8).count(),
             0,
         )
 
     def test_get_pk_w_null(self):
         """test the re-implementation of logic to do get with IS NULL."""
 
-        class AddressUser(object):
+        class AddressUser:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -314,7 +314,7 @@ class LikeQueryTest(BakedTest):
 
         self.assert_sql_count(testing.db, go, 1)
 
-        u1 = sess.query(AddressUser).get((10, None))  # noqa
+        u1 = sess.get(AddressUser, (10, None))  # noqa
 
         def go():
             u2 = bq(sess).get((10, None))
@@ -533,7 +533,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = fixture_session(autocommit=True, enable_baked_queries=False)
+            sess = fixture_session(enable_baked_queries=False)
             eq_(bq.add_criteria(fn3)(sess).params(id=7).all(), [(7, "jack")])
 
         eq_(
@@ -647,7 +647,9 @@ class ResultTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User.id, User.name))
 
-        bq += lambda q: q._from_self().with_entities(func.count(User.id))
+        bq += lambda q: q._legacy_from_self().with_entities(
+            func.count(User.id)
+        )
 
         for i in range(3):
             session = fixture_session()
@@ -682,7 +684,7 @@ class ResultTest(BakedTest):
                     bq += lambda q: q.filter(User.name == "jack")
 
                 if cond4:
-                    bq += lambda q: q._from_self().with_entities(
+                    bq += lambda q: q._legacy_from_self().with_entities(
                         func.count(User.id)
                     )
                 sess = fixture_session()
@@ -744,7 +746,7 @@ class ResultTest(BakedTest):
                 result = bq(sess).all()
 
                 if cond1:
-                    eq_(result, [(8, u"ed"), (9, u"fred"), (10, u"chuck")])
+                    eq_(result, [(8, "ed"), (9, "fred"), (10, "chuck")])
                 else:
                     eq_(result, [(7, "jack")])
 
@@ -991,7 +993,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                     Address,
                     order_by=self.tables.addresses.c.id,
                     lazy=lazy,
-                    **kw
+                    **kw,
                 )
             },
         )
@@ -1043,6 +1045,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         from sqlalchemy.orm.interfaces import UserDefinedOption
 
         class RelationshipCache(UserDefinedOption):
+            inherit_cache = True
 
             propagate_to_loaders = True
 

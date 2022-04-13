@@ -1,12 +1,9 @@
 # mysql/json.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-
-from __future__ import absolute_import
-
 from ... import types as sqltypes
 
 
@@ -36,7 +33,7 @@ class JSON(sqltypes.JSON):
     pass
 
 
-class _FormatTypeMixin(object):
+class _FormatTypeMixin:
     def _format_value(self, value):
         raise NotImplementedError()
 

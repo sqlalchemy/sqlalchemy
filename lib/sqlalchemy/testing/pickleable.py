@@ -1,5 +1,5 @@
 # testing/pickleable.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,6 +8,8 @@
 """Classes used in pickling tests, need to be at the module level for
 unpickling.
 """
+
+from __future__ import annotations
 
 from . import fixtures
 
@@ -45,13 +47,13 @@ class Parent(fixtures.ComparableEntity):
     pass
 
 
-class Screen(object):
+class Screen:
     def __init__(self, obj, parent=None):
         self.obj = obj
         self.parent = parent
 
 
-class Foo(object):
+class Foo:
     def __init__(self, moredata, stuff="im stuff"):
         self.data = "im data"
         self.stuff = stuff
@@ -67,7 +69,7 @@ class Foo(object):
         )
 
 
-class Bar(object):
+class Bar:
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -104,7 +106,7 @@ class OldSchoolWithoutCompare:
         self.y = y
 
 
-class BarWithoutCompare(object):
+class BarWithoutCompare:
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -113,7 +115,7 @@ class BarWithoutCompare(object):
         return "Bar(%d, %d)" % (self.x, self.y)
 
 
-class NotComparable(object):
+class NotComparable:
     def __init__(self, data):
         self.data = data
 
@@ -127,7 +129,7 @@ class NotComparable(object):
         return NotImplemented
 
 
-class BrokenComparable(object):
+class BrokenComparable:
     def __init__(self, data):
         self.data = data
 

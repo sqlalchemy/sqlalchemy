@@ -35,7 +35,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.engines import testing_reaper
 
 
-class ShardTest(object):
+class ShardTest:
     __skip_if__ = (lambda: util.win32,)
     __requires__ = ("sqlite",)
 
@@ -135,9 +135,7 @@ class ShardTest(object):
             else:
                 return ids
 
-        sharded_session = sessionmaker(
-            class_=ShardedSession, autoflush=True, autocommit=False
-        )
+        sharded_session = sessionmaker(class_=ShardedSession, autoflush=True)
         sharded_session.configure(
             shards={
                 "north_america": db1,
@@ -154,12 +152,12 @@ class ShardTest(object):
     def setup_mappers(cls):
         global WeatherLocation, Report
 
-        class WeatherLocation(object):
+        class WeatherLocation:
             def __init__(self, continent, city):
                 self.continent = continent
                 self.city = city
 
-        class Report(object):
+        class Report:
             def __init__(self, temperature, id_=None):
                 self.temperature = temperature
                 if id_:
@@ -207,25 +205,35 @@ class ShardTest(object):
 
     def test_get(self):
         sess = self._fixture_data()
-        tokyo = sess.query(WeatherLocation).get(1)
+        tokyo = sess.get(WeatherLocation, 1)
         eq_(tokyo.city, "Tokyo")
 
-        newyork = sess.query(WeatherLocation).get(2)
+        newyork = sess.get(WeatherLocation, 2)
         eq_(newyork.city, "New York")
 
-        t2 = sess.query(WeatherLocation).get(1)
+        t2 = sess.get(WeatherLocation, 1)
         is_(t2, tokyo)
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()
-        tokyo = sess.query(WeatherLocation).set_shard("europe").get(1)
+        tokyo = (
+            sess.query(WeatherLocation)
+            .set_shard("europe")
+            .where(WeatherLocation.id == 1)
+            .first()
+        )
         is_(tokyo, None)
 
-        newyork = sess.query(WeatherLocation).set_shard("north_america").get(2)
+        newyork = (
+            sess.query(WeatherLocation)
+            .set_shard("north_america")
+            .where(WeatherLocation.id == 2)
+            .first()
+        )
         eq_(newyork.city, "New York")
 
         # now it found it
-        t2 = sess.query(WeatherLocation).get(1)
+        t2 = sess.get(WeatherLocation, 1)
         eq_(t2.city, "Tokyo")
 
     def test_query_explicit_shard_via_bind_opts(self):
@@ -260,7 +268,8 @@ class ShardTest(object):
         sess = self._fixture_data()
         eq_(
             sess.execute(
-                weather_locations.select(), shard_id="asia"
+                weather_locations.select(),
+                bind_arguments=dict(shard_id="asia"),
             ).fetchall(),
             [(1, "Asia", "Tokyo")],
         )
@@ -293,7 +302,7 @@ class ShardTest(object):
         tokyo.city  # reload 'city' attribute on tokyo
         sess.expire_all()
 
-        t = sess.query(WeatherLocation).get(tokyo.id)
+        t = sess.get(WeatherLocation, tokyo.id)
         eq_(t.city, tokyo.city)
         eq_(t.reports[0].temperature, 80.0)
         north_american_cities = sess.query(WeatherLocation).filter(
@@ -447,9 +456,7 @@ class ShardTest(object):
             t = bq(sess).get(tokyo.id)
             return t
 
-        Sess = sessionmaker(
-            class_=Session, bind=db2, autoflush=True, autocommit=False
-        )
+        Sess = sessionmaker(class_=Session, bind=db2, autoflush=True)
         sess2 = Sess()
 
         t = get_tokyo(sess)
@@ -688,30 +695,22 @@ class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
-    @testing.combinations((True,), (False,))
-    @testing.uses_deprecated("Using plain strings")
-    def test_plain_core_textual_lookup_w_shard(self, use_legacy_text):
+    def test_plain_core_textual_lookup_w_shard(self):
         sess = self._fixture_data()
 
-        if use_legacy_text:
-            stmt = "SELECT * FROM weather_locations"
-        else:
-            stmt = text("SELECT * FROM weather_locations")
+        stmt = text("SELECT * FROM weather_locations")
 
         eq_(
-            sess.execute(stmt, shard_id="asia").fetchall(),
+            sess.execute(
+                stmt, bind_arguments=dict(shard_id="asia")
+            ).fetchall(),
             [(1, "Asia", "Tokyo")],
         )
 
-    @testing.combinations((True,), (False,))
-    @testing.uses_deprecated("Using plain strings")
-    def test_plain_core_textual_lookup(self, use_legacy_text):
+    def test_plain_core_textual_lookup(self):
         sess = self._fixture_data()
 
-        if use_legacy_text:
-            stmt = "SELECT * FROM weather_locations WHERE id=1"
-        else:
-            stmt = text("SELECT * FROM weather_locations WHERE id=1")
+        stmt = text("SELECT * FROM weather_locations WHERE id=1")
         eq_(
             sess.execute(stmt).fetchall(),
             [(1, "Asia", "Tokyo")],
@@ -863,7 +862,7 @@ class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
         session.add(book)
         session.commit()
 
-        result = session.query(Book).options(selectinload("pages")).all()
+        result = session.query(Book).options(selectinload(Book.pages)).all()
         eq_(result, [book])
 
 
@@ -895,7 +894,7 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
             shard_chooser=lambda *args: "main",
             id_chooser=lambda *args: ["fake", "main"],
             execute_chooser=lambda *args: ["fake", "main"],
-            **kw
+            **kw,
         )
 
     def test_refresh(self):
@@ -918,13 +917,6 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         a1 = session.query(A).set_shard("main").first()
 
         session.expire(a1)
-        eq_(a1.data, "d1")
-
-    def test_autocommit_session(self):
-        A = self.classes.A
-        session = self._session_fixture(autocommit=True)
-        a1 = session.query(A).set_shard("main").first()
-
         eq_(a1.data, "d1")
 
 

@@ -1,5 +1,5 @@
 # orm/descriptor_props.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,11 +10,31 @@ that exist as configurational elements, but don't participate
 as actively in the load/persist ORM loop.
 
 """
+from __future__ import annotations
+
+from dataclasses import is_dataclass
+import inspect
+import itertools
+import operator
+import typing
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from . import attributes
 from . import util as orm_util
+from .base import Mapped
+from .interfaces import _IntrospectsAnnotations
+from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
+from .util import _extract_mapped_subtype
 from .util import _none_set
 from .. import event
 from .. import exc as sa_exc
@@ -23,20 +43,36 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import operators
+from ..util.typing import Protocol
+
+if typing.TYPE_CHECKING:
+    from .attributes import InstrumentedAttribute
+    from .properties import MappedColumn
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql.schema import Column
+
+_T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
 
 
-class DescriptorProperty(MapperProperty):
+class _CompositeClassProto(Protocol):
+    def __composite_values__(self) -> Tuple[Any, ...]:
+        ...
+
+
+class DescriptorProperty(MapperProperty[_T]):
     """:class:`.MapperProperty` which proxies access to a
     user-defined descriptor."""
 
     doc = None
 
     uses_objects = False
+    _links_to_entity = False
 
     def instrument_class(self, mapper):
         prop = self
 
-        class _ProxyImpl(object):
+        class _ProxyImpl:
             accepts_scalar_loader = False
             load_on_unexpire = True
             collection = False
@@ -85,12 +121,23 @@ class DescriptorProperty(MapperProperty):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
-class CompositeProperty(DescriptorProperty):
+_CompositeAttrType = Union[
+    str, "Column[Any]", "MappedColumn[Any]", "InstrumentedAttribute[Any]"
+]
+
+
+class Composite(
+    _MapsColumns[_T], _IntrospectsAnnotations, DescriptorProperty[_T]
+):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
 
-    :class:`.CompositeProperty` is constructed using the :func:`.composite`
+    :class:`.Composite` is constructed using the :func:`.composite`
     function.
+
+    .. versionchanged:: 2.0 Renamed :class:`_orm.CompositeProperty`
+       to :class:`_orm.Composite`.  The old name
+       :class:`_orm.CompositeProperty` remains as an alias.
 
     .. seealso::
 
@@ -98,71 +145,69 @@ class CompositeProperty(DescriptorProperty):
 
     """
 
-    def __init__(self, class_, *attrs, **kwargs):
-        r"""Return a composite column-based property for use with a Mapper.
+    composite_class: Union[
+        Type[_CompositeClassProto], Callable[..., Type[_CompositeClassProto]]
+    ]
+    attrs: Tuple[_CompositeAttrType, ...]
 
-        See the mapping documentation section :ref:`mapper_composite` for a
-        full usage example.
+    def __init__(
+        self,
+        class_: Union[None, _CompositeClassProto, _CompositeAttrType] = None,
+        *attrs: _CompositeAttrType,
+        active_history: bool = False,
+        deferred: bool = False,
+        group: Optional[str] = None,
+        comparator_factory: Optional[Type[Comparator]] = None,
+        info: Optional[Dict[Any, Any]] = None,
+    ):
+        super().__init__()
 
-        The :class:`.MapperProperty` returned by :func:`.composite`
-        is the :class:`.CompositeProperty`.
+        if isinstance(class_, (Mapped, str, sql.ColumnElement)):
+            self.attrs = (class_,) + attrs
+            # will initialize within declarative_scan
+            self.composite_class = None  # type: ignore
+        else:
+            self.composite_class = class_
+            self.attrs = attrs
 
-        :param class\_:
-          The "composite type" class, or any classmethod or callable which
-          will produce a new instance of the composite object given the
-          column values in order.
-
-        :param \*cols:
-          List of Column objects to be mapped.
-
-        :param active_history=False:
-          When ``True``, indicates that the "previous" value for a
-          scalar attribute should be loaded when replaced, if not
-          already loaded.  See the same flag on :func:`.column_property`.
-
-        :param group:
-          A group name for this property when marked as deferred.
-
-        :param deferred:
-          When True, the column property is "deferred", meaning that it does
-          not load immediately, and is instead loaded when the attribute is
-          first accessed on an instance.  See also
-          :func:`~sqlalchemy.orm.deferred`.
-
-        :param comparator_factory:  a class which extends
-          :class:`.CompositeProperty.Comparator` which provides custom SQL
-          clause generation for comparison operations.
-
-        :param doc:
-          optional string that will be applied as the doc on the
-          class-bound descriptor.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.MapperProperty.info` attribute of this object.
-
-        """
-        super(CompositeProperty, self).__init__()
-
-        self.attrs = attrs
-        self.composite_class = class_
-        self.active_history = kwargs.get("active_history", False)
-        self.deferred = kwargs.get("deferred", False)
-        self.group = kwargs.get("group", None)
-        self.comparator_factory = kwargs.pop(
-            "comparator_factory", self.__class__.Comparator
+        self.active_history = active_history
+        self.deferred = deferred
+        self.group = group
+        self.comparator_factory = (
+            comparator_factory
+            if comparator_factory is not None
+            else self.__class__.Comparator
         )
-        if "info" in kwargs:
-            self.info = kwargs.pop("info")
+        self._generated_composite_accessor = None
+        if info is not None:
+            self.info = info
 
         util.set_creation_order(self)
         self._create_descriptor()
 
     def instrument_class(self, mapper):
-        super(CompositeProperty, self).instrument_class(mapper)
+        super().instrument_class(mapper)
         self._setup_event_handlers()
 
+    def _composite_values_from_instance(
+        self, value: _CompositeClassProto
+    ) -> Tuple[Any, ...]:
+        if self._generated_composite_accessor:
+            return self._generated_composite_accessor(value)
+        else:
+            try:
+                accessor = value.__composite_values__
+            except AttributeError as ae:
+                raise sa_exc.InvalidRequestError(
+                    f"Composite class {self.composite_class.__name__} is not "
+                    f"a dataclass and does not define a __composite_values__()"
+                    " method; can't get state"
+                ) from ae
+            else:
+                return accessor()
+
     def do_init(self):
-        """Initialization which occurs after the :class:`.CompositeProperty`
+        """Initialization which occurs after the :class:`.Composite`
         has been associated with its parent mapper.
 
         """
@@ -216,7 +261,8 @@ class CompositeProperty(DescriptorProperty):
                     setattr(instance, key, None)
             else:
                 for key, value in zip(
-                    self._attribute_keys, value.__composite_values__()
+                    self._attribute_keys,
+                    self._composite_values_from_instance(value),
                 ):
                     setattr(instance, key, value)
 
@@ -231,18 +277,83 @@ class CompositeProperty(DescriptorProperty):
 
         self.descriptor = property(fget, fset, fdel)
 
+    @util.preload_module("sqlalchemy.orm.properties")
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            MappedColumn,
+            self.composite_class is None,
+            is_dataclass_field,
+        )
+
+        if argument and self.composite_class is None:
+            if isinstance(argument, str) or hasattr(
+                argument, "__forward_arg__"
+            ):
+                raise sa_exc.ArgumentError(
+                    f"Can't use forward ref {argument} for composite "
+                    f"class argument"
+                )
+            self.composite_class = argument
+
+        if is_dataclass(self.composite_class):
+            self._setup_for_dataclass(registry, cls, key)
+
+    @util.preload_module("sqlalchemy.orm.properties")
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def _setup_for_dataclass(self, registry, cls, key):
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
+        decl_base = util.preloaded.orm_decl_base
+
+        insp = inspect.signature(self.composite_class)
+        for param, attr in itertools.zip_longest(
+            insp.parameters.values(), self.attrs
+        ):
+            if param is None or attr is None:
+                raise sa_exc.ArgumentError(
+                    f"number of arguments to {self.composite_class.__name__} "
+                    f"class and number of attributes don't match"
+                )
+            if isinstance(attr, MappedColumn):
+                attr.declarative_scan_for_composite(
+                    registry, cls, key, param.name, param.annotation
+                )
+            elif isinstance(attr, schema.Column):
+                decl_base._undefer_column_name(param.name, attr)
+
+        if not hasattr(self.composite_class, "__composite_values__"):
+            getter = operator.attrgetter(
+                *[p.name for p in insp.parameters.values()]
+            )
+            if len(insp.parameters) == 1:
+                self._generated_composite_accessor = lambda obj: (getter(obj),)
+            else:
+                self._generated_composite_accessor = getter
+
     @util.memoized_property
     def _comparable_elements(self):
         return [getattr(self.parent.class_, prop.key) for prop in self.props]
 
     @util.memoized_property
+    @util.preload_module("orm.properties")
     def props(self):
         props = []
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
         for attr in self.attrs:
             if isinstance(attr, str):
                 prop = self.parent.get_property(attr, _configure_mappers=False)
             elif isinstance(attr, schema.Column):
                 prop = self.parent._columntoproperty[attr]
+            elif isinstance(attr, MappedColumn):
+                prop = self.parent._columntoproperty[attr.column]
             elif isinstance(attr, attributes.InstrumentedAttribute):
                 prop = attr.property
             else:
@@ -255,8 +366,22 @@ class CompositeProperty(DescriptorProperty):
         return props
 
     @property
+    @util.preload_module("orm.properties")
     def columns(self):
-        return [a for a in self.attrs if isinstance(a, schema.Column)]
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+        return [
+            a.column if isinstance(a, MappedColumn) else a
+            for a in self.attrs
+            if isinstance(a, (schema.Column, MappedColumn))
+        ]
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        return self
+
+    @property
+    def columns_to_assign(self) -> List[schema.Column]:
+        return [c for c in self.columns if c.table is None]
 
     def _setup_arguments_on_columns(self):
         """Propagate configuration arguments made on this composite
@@ -386,9 +511,7 @@ class CompositeProperty(DescriptorProperty):
     class CompositeBundle(orm_util.Bundle):
         def __init__(self, property_, expr):
             self.property = property_
-            super(CompositeProperty.CompositeBundle, self).__init__(
-                property_.key, *expr
-            )
+            super().__init__(property_.key, *expr)
 
         def create_row_processor(self, query, procs, labels):
             def proc(row):
@@ -398,9 +521,9 @@ class CompositeProperty(DescriptorProperty):
 
             return proc
 
-    class Comparator(PropComparator):
+    class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
-        :class:`.CompositeProperty` attributes.
+        :class:`.Composite` attributes.
 
         See the example in :ref:`composite_operations` for an overview
         of usage , as well as the documentation for :class:`.PropComparator`.
@@ -417,7 +540,8 @@ class CompositeProperty(DescriptorProperty):
 
         """
 
-        __hash__ = None
+        # https://github.com/python/mypy/issues/4266
+        __hash__ = None  # type: ignore
 
         @util.memoized_property
         def clauses(self):
@@ -437,7 +561,7 @@ class CompositeProperty(DescriptorProperty):
                     "proxy_key": self.prop.key,
                 }
             )
-            return CompositeProperty.CompositeBundle(self.prop, clauses)
+            return Composite.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(self, value):
             if isinstance(value, sql.elements.BindParameter):
@@ -446,7 +570,7 @@ class CompositeProperty(DescriptorProperty):
             if value is None:
                 values = [None for key in self.prop._attribute_keys]
             elif isinstance(value, self.prop.composite_class):
-                values = value.__composite_values__()
+                values = self.prop._composite_values_from_instance(value)
             else:
                 raise sa_exc.ArgumentError(
                     "Can't UPDATE composite attribute %s to %r"
@@ -469,7 +593,7 @@ class CompositeProperty(DescriptorProperty):
             if other is None:
                 values = [None] * len(self.prop._comparable_elements)
             else:
-                values = other.__composite_values__()
+                values = self.prop._composite_values_from_instance(other)
             comparisons = [
                 a == b for a, b in zip(self.prop._comparable_elements, values)
             ]
@@ -484,7 +608,7 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 
-class ConcreteInheritedProperty(DescriptorProperty):
+class ConcreteInheritedProperty(DescriptorProperty[_T]):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
     on the inherited mapper, not the concrete classes' mapper.
@@ -512,7 +636,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
         return comparator_callable
 
     def __init__(self):
-        super(ConcreteInheritedProperty, self).__init__()
+        super().__init__()
 
         def warn():
             raise AttributeError(
@@ -522,7 +646,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
                 % (self.parent, self.key, self.parent)
             )
 
-        class NoninheritedConcreteProp(object):
+        class NoninheritedConcreteProp:
             def __set__(s, obj, value):
                 warn()
 
@@ -537,7 +661,24 @@ class ConcreteInheritedProperty(DescriptorProperty):
         self.descriptor = NoninheritedConcreteProp()
 
 
-class SynonymProperty(DescriptorProperty):
+class Synonym(DescriptorProperty[_T]):
+    """Denote an attribute name as a synonym to a mapped property,
+    in that the attribute will mirror the value and expression behavior
+    of another attribute.
+
+    :class:`.Synonym` is constructed using the :func:`_orm.synonym`
+    function.
+
+    .. versionchanged:: 2.0 Renamed :class:`_orm.SynonymProperty`
+       to :class:`_orm.Synonym`.  The old name
+       :class:`_orm.SynonymProperty` remains as an alias.
+
+    .. seealso::
+
+        :ref:`synonyms` - Overview of synonyms
+
+    """
+
     def __init__(
         self,
         name,
@@ -547,110 +688,7 @@ class SynonymProperty(DescriptorProperty):
         doc=None,
         info=None,
     ):
-        """Denote an attribute name as a synonym to a mapped property,
-        in that the attribute will mirror the value and expression behavior
-        of another attribute.
-
-        e.g.::
-
-            class MyClass(Base):
-                __tablename__ = 'my_table'
-
-                id = Column(Integer, primary_key=True)
-                job_status = Column(String(50))
-
-                status = synonym("job_status")
-
-
-        :param name: the name of the existing mapped property.  This
-          can refer to the string name ORM-mapped attribute
-          configured on the class, including column-bound attributes
-          and relationships.
-
-        :param descriptor: a Python :term:`descriptor` that will be used
-          as a getter (and potentially a setter) when this attribute is
-          accessed at the instance level.
-
-        :param map_column: **For classical mappings and mappings against
-          an existing Table object only**.  if ``True``, the :func:`.synonym`
-          construct will locate the :class:`_schema.Column`
-          object upon the mapped
-          table that would normally be associated with the attribute name of
-          this synonym, and produce a new :class:`.ColumnProperty` that instead
-          maps this :class:`_schema.Column`
-          to the alternate name given as the "name"
-          argument of the synonym; in this way, the usual step of redefining
-          the mapping of the :class:`_schema.Column`
-          to be under a different name is
-          unnecessary. This is usually intended to be used when a
-          :class:`_schema.Column`
-          is to be replaced with an attribute that also uses a
-          descriptor, that is, in conjunction with the
-          :paramref:`.synonym.descriptor` parameter::
-
-            my_table = Table(
-                "my_table", metadata,
-                Column('id', Integer, primary_key=True),
-                Column('job_status', String(50))
-            )
-
-            class MyClass(object):
-                @property
-                def _job_status_descriptor(self):
-                    return "Status: %s" % self._job_status
-
-
-            mapper(
-                MyClass, my_table, properties={
-                    "job_status": synonym(
-                        "_job_status", map_column=True,
-                        descriptor=MyClass._job_status_descriptor)
-                }
-            )
-
-          Above, the attribute named ``_job_status`` is automatically
-          mapped to the ``job_status`` column::
-
-            >>> j1 = MyClass()
-            >>> j1._job_status = "employed"
-            >>> j1.job_status
-            Status: employed
-
-          When using Declarative, in order to provide a descriptor in
-          conjunction with a synonym, use the
-          :func:`sqlalchemy.ext.declarative.synonym_for` helper.  However,
-          note that the :ref:`hybrid properties <mapper_hybrids>` feature
-          should usually be preferred, particularly when redefining attribute
-          behavior.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.InspectionAttr.info` attribute of this object.
-
-            .. versionadded:: 1.0.0
-
-        :param comparator_factory: A subclass of :class:`.PropComparator`
-          that will provide custom comparison behavior at the SQL expression
-          level.
-
-          .. note::
-
-            For the use case of providing an attribute which redefines both
-            Python-level and SQL-expression level behavior of an attribute,
-            please refer to the Hybrid attribute introduced at
-            :ref:`mapper_hybrids` for a more effective technique.
-
-        .. seealso::
-
-            :ref:`synonyms` - Overview of synonyms
-
-            :func:`.synonym_for` - a helper oriented towards Declarative
-
-            :ref:`mapper_hybrids` - The Hybrid Attribute extension provides an
-            updated approach to augmenting attribute behavior more flexibly
-            than can be achieved with synonyms.
-
-        """
-        super(SynonymProperty, self).__init__()
+        super().__init__()
 
         self.name = name
         self.map_column = map_column

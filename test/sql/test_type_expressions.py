@@ -9,12 +9,13 @@ from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.sql.type_api import UserDefinedType
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
-class _ExprFixture(object):
+class _ExprFixture:
     def _test_table(self, type_):
         test_table = Table(
             "test_table", MetaData(), Column("x", String), Column("y", type_)
@@ -182,6 +183,29 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             "test_table WHERE test_table.y = lower(:y_1)",
         )
 
+    def test_in_binds(self):
+        table = self._fixture()
+
+        self.assert_compile(
+            select(table).where(
+                table.c.y.in_(["hi", "there", "some", "expr"])
+            ),
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y IN "
+            "(__[POSTCOMPILE_y_1~~lower(~~REPL~~)~~])",
+            render_postcompile=False,
+        )
+
+        self.assert_compile(
+            select(table).where(
+                table.c.y.in_(["hi", "there", "some", "expr"])
+            ),
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y IN "
+            "(lower(:y_1_1), lower(:y_1_2), lower(:y_1_3), lower(:y_1_4))",
+            render_postcompile=True,
+        )
+
     def test_dialect(self):
         table = self._fixture()
         dialect = self._dialect_level_fixture()
@@ -340,7 +364,7 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class RoundTripTestBase(object):
+class RoundTripTestBase:
     def test_round_trip(self, connection):
         connection.execute(
             self.tables.test_table.insert(),
@@ -408,6 +432,8 @@ class RoundTripTestBase(object):
 
 
 class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    __requires__ = ("string_type_isnt_subtype",)
+
     @classmethod
     def define_tables(cls, metadata):
         class MyString(String):
@@ -422,6 +448,29 @@ class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
             metadata,
             Column("x", String(50)),
             Column("y", MyString(50)),
+        )
+
+
+class UserDefinedTypeRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyString(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "VARCHAR(50)"
+
+            def bind_expression(self, bindvalue):
+                return func.lower(bindvalue)
+
+            def column_expression(self, col):
+                return func.upper(col)
+
+        Table(
+            "test_table",
+            metadata,
+            Column("x", String(50)),
+            Column("y", MyString()),
         )
 
 
@@ -451,7 +500,11 @@ class ReturningTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        class MyString(String):
+        class MyString(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
             def column_expression(self, col):
                 return func.lower(col)
 

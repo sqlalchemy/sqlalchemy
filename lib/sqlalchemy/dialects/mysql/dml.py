@@ -1,3 +1,11 @@
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+import typing
+
 from ... import exc
 from ... import util
 from ...sql.base import _exclusive_against
@@ -6,10 +14,31 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table):
+    """Construct a MySQL/MariaDB-specific variant :class:`_mysql.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.mysql.insert` function creates
+        a :class:`sqlalchemy.dialects.mysql.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_mysql.Insert` construct includes additional methods
+    :meth:`_mysql.Insert.on_duplicate_key_update`.
+
+    """
+    return Insert(table)
+
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -25,6 +54,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "mysql"
+    inherit_cache = False
 
     @property
     def inserted(self):
@@ -69,7 +99,7 @@ class Insert(StandardInsert):
             "has an ON DUPLICATE KEY clause present"
         },
     )
-    def on_duplicate_key_update(self, *args, **kw):
+    def on_duplicate_key_update(self: SelfInsert, *args, **kw) -> SelfInsert:
         r"""
         Specifies the ON DUPLICATE KEY UPDATE clause.
 
@@ -130,11 +160,7 @@ class Insert(StandardInsert):
 
         inserted_alias = getattr(self, "inserted_alias", None)
         self._post_values_clause = OnDuplicateClause(inserted_alias, values)
-
-
-insert = public_factory(
-    Insert, ".dialects.mysql.insert", ".dialects.mysql.Insert"
-)
+        return self
 
 
 class OnDuplicateClause(ClauseElement):

@@ -19,10 +19,6 @@ def _pg_create_db(cfg, eng, ident):
     template_db = cfg.options.postgresql_templatedb
 
     with eng.execution_options(isolation_level="AUTOCOMMIT").begin() as conn:
-        try:
-            _pg_drop_db(cfg, conn, ident)
-        except Exception:
-            pass
         if not template_db:
             template_db = conn.exec_driver_sql(
                 "select current_database()"
@@ -88,7 +84,9 @@ def _postgresql_set_default_schema_on_connection(
 @drop_all_schema_objects_pre_tables.for_db("postgresql")
 def drop_all_schema_objects_pre_tables(cfg, eng):
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        for xid in conn.execute("select gid from pg_prepared_xacts").scalars():
+        for xid in conn.exec_driver_sql(
+            "select gid from pg_prepared_xacts"
+        ).scalars():
             conn.execute("ROLLBACK PREPARED '%s'" % xid)
 
 

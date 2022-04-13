@@ -249,7 +249,7 @@ class RelationshipTest2(fixtures.MappedTest):
 
         if usedata:
 
-            class Data(object):
+            class Data:
                 def __init__(self, data):
                     self.data = data
 
@@ -553,7 +553,7 @@ class RelationshipTest4(fixtures.MappedTest):
         how to alias the primaryjoin to the polymorphic union ?"""
 
         # class definitions
-        class Person(object):
+        class Person:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -572,7 +572,7 @@ class RelationshipTest4(fixtures.MappedTest):
                     self.longer_status,
                 )
 
-        class Car(object):
+        class Car:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -641,7 +641,7 @@ class RelationshipTest4(fixtures.MappedTest):
 
         def go():
             testcar = session.get(
-                Car, car1.car_id, options=[joinedload("employee")]
+                Car, car1.car_id, options=[joinedload(Car.employee)]
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
@@ -662,7 +662,7 @@ class RelationshipTest4(fixtures.MappedTest):
             testcar = session.get(
                 Car,
                 car1.car_id,
-                options=[joinedload("employee")],
+                options=[joinedload(Car.employee)],
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
@@ -670,7 +670,7 @@ class RelationshipTest4(fixtures.MappedTest):
 
         session.expunge_all()
         s = session.query(Car)
-        c = s.join("employee").filter(Person.name == "E4")[0]
+        c = s.join(Car.employee).filter(Person.name == "E4")[0]
         assert c.car_id == car1.car_id
 
 
@@ -731,7 +731,7 @@ class RelationshipTest5(fixtures.MappedTest):
         """test parent object with child relationship to an inheriting mapper,
         using eager loads, works when there are no child objects present"""
 
-        class Person(object):
+        class Person:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -750,7 +750,7 @@ class RelationshipTest5(fixtures.MappedTest):
                     self.longer_status,
                 )
 
-        class Car(object):
+        class Car:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -943,7 +943,7 @@ class RelationshipTest7(fixtures.MappedTest):
         """test that lazy load clause to a polymorphic child mapper generates
         correctly [ticket:493]"""
 
-        class PersistentObject(object):
+        class PersistentObject:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -1449,7 +1449,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         r = (
             session.query(Person)
             .filter(Person.name.like("%2"))
-            .join("status")
+            .join(Person.status)
             .filter_by(name="active")
             .order_by(Person.person_id)
         )
@@ -1472,7 +1472,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         session = fixture_session()
         r = (
             session.query(Engineer)
-            .join("status")
+            .join(Engineer.status)
             .filter(
                 Person.name.in_(["E2", "E3", "E4", "M4", "M2", "M1"])
                 & (Status.name == "active")
@@ -1535,7 +1535,7 @@ class MultiLevelTest(fixtures.MappedTest):
         )
 
     def test_threelevels(self):
-        class Employee(object):
+        class Employee:
             def set(me, **kargs):
                 for k, v in kargs.items():
                     setattr(me, k, v)
@@ -1666,13 +1666,13 @@ class ManyToManyPolyTest(fixtures.MappedTest):
         aren't attempted to be matched to the target polymorphic
         selectable"""
 
-        class BaseItem(object):
+        class BaseItem:
             pass
 
         class Item(BaseItem):
             pass
 
-        class Collection(object):
+        class Collection:
             pass
 
         item_join = polymorphic_union(
@@ -1735,7 +1735,7 @@ class CustomPKTest(fixtures.MappedTest):
         """test that the primary_key attribute is propagated to the
         polymorphic mapper"""
 
-        class T1(object):
+        class T1:
             pass
 
         class T2(T1):
@@ -1783,7 +1783,7 @@ class CustomPKTest(fixtures.MappedTest):
         """test that a composite primary key attribute formed by a join
         is "collapsed" into its minimal columns"""
 
-        class T1(object):
+        class T1:
             pass
 
         class T2(T1):
@@ -2226,7 +2226,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
 
         s.commit()
 
-        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload("es"))
+        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload(B.es))
         q = q.join(C, C.b_id == B.id)
         q = q.limit(5)
         eq_(q.all(), [(b, True)])
@@ -2252,7 +2252,7 @@ class ColSubclassTest(
             id = Column(Integer, primary_key=True)
 
         class MySpecialColumn(Column):
-            pass
+            inherit_cache = True
 
         class B(A):
             __tablename__ = "b"
@@ -2266,7 +2266,7 @@ class ColSubclassTest(
         s = fixture_session()
         with testing.expect_warnings(
             "An alias is being generated automatically "
-            "against joined entity mapped class B->b due to overlapping"
+            r"against joined entity Mapper\[B\(b\)\] due to overlapping"
         ):
             self.assert_compile(
                 s.query(A).join(B).filter(B.x == "test"),

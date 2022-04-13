@@ -84,11 +84,11 @@ New Features and Improvements - ORM
 Relationship to AliasedClass replaces the need for non primary mappers
 -----------------------------------------------------------------------
 
-The "non primary mapper" is a :func:`.mapper` created in the
+The "non primary mapper" is a :class:`_orm.Mapper` created in the
 :ref:`classical_mapping` style, which acts as an additional mapper against an
 already mapped class against a different kind of selectable.  The non primary
 mapper has its roots in the 0.1, 0.2 series of SQLAlchemy where it was
-anticipated that the :func:`.mapper` object was to be the primary query
+anticipated that the :class:`_orm.Mapper` object was to be the primary query
 construction interface, before the :class:`_query.Query` object existed.
 
 With the advent of :class:`_query.Query` and later the :class:`.AliasedClass`

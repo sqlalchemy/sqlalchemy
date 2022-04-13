@@ -1,5 +1,5 @@
 # mysql/asyncmy.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -28,11 +28,12 @@ This dialect should normally be used only with the
 
 """  # noqa
 
+from contextlib import asynccontextmanager
+
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
 from ...engine import AdaptedConnection
-from ...util.concurrency import asynccontextmanager
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
@@ -174,7 +175,7 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
 
 class AsyncAdapt_asyncmy_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection", "_execute_mutex")
+    __slots__ = ("dbapi", "_execute_mutex")
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
@@ -228,10 +229,14 @@ class AsyncAdaptFallback_asyncmy_connection(AsyncAdapt_asyncmy_connection):
     await_ = staticmethod(await_fallback)
 
 
+def _Binary(x):
+    """Return x as a binary type."""
+    return bytes(x)
+
+
 class AsyncAdapt_asyncmy_dbapi:
-    def __init__(self, asyncmy, pymysql):
+    def __init__(self, asyncmy):
         self.asyncmy = asyncmy
-        self.pymysql = pymysql
         self.paramstyle = "format"
         self._init_dbapi_attributes()
 
@@ -251,15 +256,12 @@ class AsyncAdapt_asyncmy_dbapi:
         ):
             setattr(self, name, getattr(self.asyncmy.errors, name))
 
-        for name in (
-            "NUMBER",
-            "STRING",
-            "DATETIME",
-            "BINARY",
-            "TIMESTAMP",
-            "Binary",
-        ):
-            setattr(self, name, getattr(self.pymysql, name))
+    STRING = util.symbol("STRING")
+    NUMBER = util.symbol("NUMBER")
+    BINARY = util.symbol("BINARY")
+    DATETIME = util.symbol("DATETIME")
+    TIMESTAMP = util.symbol("TIMESTAMP")
+    Binary = staticmethod(_Binary)
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
@@ -286,10 +288,8 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
     is_async = True
 
     @classmethod
-    def dbapi(cls):
-        return AsyncAdapt_asyncmy_dbapi(
-            __import__("asyncmy"), __import__("pymysql")
-        )
+    def import_dbapi(cls):
+        return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
 
     @classmethod
     def get_pool_class(cls, url):
@@ -318,7 +318,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
             )
 
     def _found_rows_client_flag(self):
-        from pymysql.constants import CLIENT
+        from asyncmy.constants import CLIENT
 
         return CLIENT.FOUND_ROWS
 

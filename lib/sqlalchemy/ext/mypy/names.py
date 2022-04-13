@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -12,11 +14,14 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+from mypy.nodes import ARG_POS
+from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
 from mypy.nodes import Expression
 from mypy.nodes import FuncDef
 from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
+from mypy.nodes import OverloadedFuncDef
 from mypy.nodes import SymbolNode
 from mypy.nodes import TypeAlias
 from mypy.nodes import TypeInfo
@@ -47,6 +52,12 @@ AS_DECLARATIVE_BASE: int = util.symbol("AS_DECLARATIVE_BASE")  # type: ignore
 DECLARATIVE_MIXIN: int = util.symbol("DECLARATIVE_MIXIN")  # type: ignore
 QUERY_EXPRESSION: int = util.symbol("QUERY_EXPRESSION")  # type: ignore
 
+# names that must succeed with mypy.api.named_type
+NAMED_TYPE_BUILTINS_OBJECT = "builtins.object"
+NAMED_TYPE_BUILTINS_STR = "builtins.str"
+NAMED_TYPE_BUILTINS_LIST = "builtins.list"
+NAMED_TYPE_SQLA_MAPPED = "sqlalchemy.orm.base.Mapped"
+
 _lookup: Dict[str, Tuple[int, Set[str]]] = {
     "Column": (
         COLUMN,
@@ -55,11 +66,11 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
             "sqlalchemy.sql.Column",
         },
     ),
-    "RelationshipProperty": (
+    "Relationship": (
         RELATIONSHIP,
         {
-            "sqlalchemy.orm.relationships.RelationshipProperty",
-            "sqlalchemy.orm.RelationshipProperty",
+            "sqlalchemy.orm.relationships.Relationship",
+            "sqlalchemy.orm.Relationship",
         },
     ),
     "registry": (
@@ -76,18 +87,18 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
             "sqlalchemy.orm.ColumnProperty",
         },
     ),
-    "SynonymProperty": (
+    "Synonym": (
         SYNONYM_PROPERTY,
         {
-            "sqlalchemy.orm.descriptor_props.SynonymProperty",
-            "sqlalchemy.orm.SynonymProperty",
+            "sqlalchemy.orm.descriptor_props.Synonym",
+            "sqlalchemy.orm.Synonym",
         },
     ),
-    "CompositeProperty": (
+    "Composite": (
         COMPOSITE_PROPERTY,
         {
-            "sqlalchemy.orm.descriptor_props.CompositeProperty",
-            "sqlalchemy.orm.CompositeProperty",
+            "sqlalchemy.orm.descriptor_props.Composite",
+            "sqlalchemy.orm.Composite",
         },
     ),
     "MapperProperty": (
@@ -98,7 +109,7 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
         },
     ),
     "TypeEngine": (TYPEENGINE, {"sqlalchemy.sql.type_api.TypeEngine"}),
-    "Mapped": (MAPPED, {"sqlalchemy.orm.attributes.Mapped"}),
+    "Mapped": (MAPPED, {NAMED_TYPE_SQLA_MAPPED}),
     "declarative_base": (
         DECLARATIVE_BASE,
         {
@@ -153,7 +164,10 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
     ),
     "query_expression": (
         QUERY_EXPRESSION,
-        {"sqlalchemy.orm.query_expression"},
+        {
+            "sqlalchemy.orm.query_expression",
+            "sqlalchemy.orm._orm_constructors.query_expression",
+        },
     ),
 }
 
@@ -203,7 +217,19 @@ def type_id_for_unbound_type(
 
 def type_id_for_callee(callee: Expression) -> Optional[int]:
     if isinstance(callee, (MemberExpr, NameExpr)):
-        if isinstance(callee.node, FuncDef):
+        if isinstance(callee.node, OverloadedFuncDef):
+            if (
+                callee.node.impl
+                and callee.node.impl.type
+                and isinstance(callee.node.impl.type, CallableType)
+            ):
+                ret_type = get_proper_type(callee.node.impl.type.ret_type)
+
+                if isinstance(ret_type, Instance):
+                    return type_id_for_fullname(ret_type.type.fullname)
+
+            return None
+        elif isinstance(callee.node, FuncDef):
             if callee.node.type and isinstance(callee.node.type, CallableType):
                 ret_type = get_proper_type(callee.node.type.ret_type)
 
@@ -245,3 +271,15 @@ def type_id_for_fullname(fullname: str) -> Optional[int]:
         return type_id
     else:
         return None
+
+
+def expr_to_mapped_constructor(expr: Expression) -> CallExpr:
+    column_descriptor = NameExpr("__sa_Mapped")
+    column_descriptor.fullname = NAMED_TYPE_SQLA_MAPPED
+    member_expr = MemberExpr(column_descriptor, "_empty_constructor")
+    return CallExpr(
+        member_expr,
+        [expr],
+        [ARG_POS],
+        ["arg1"],
+    )

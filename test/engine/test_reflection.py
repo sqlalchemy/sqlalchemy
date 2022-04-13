@@ -36,7 +36,6 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import ue
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
@@ -51,7 +50,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             Column("user_id", sa.INT, primary_key=True),
             Column("user_name", sa.VARCHAR(20), nullable=False),
             Column("test1", sa.CHAR(5), nullable=False),
-            Column("test2", sa.Float(5), nullable=False),
+            Column("test2", sa.Float(), nullable=False),
             Column("test3", sa.Text),
             Column("test4", sa.Numeric(10, 2), nullable=False),
             Column("test5", sa.Date),
@@ -258,7 +257,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         foo = Table(
             "foo",
             meta,
-            *[Column(n, sa.String(30)) for n in ["a", "b", "c", "d", "e", "f"]]
+            *[
+                Column(n, sa.String(30))
+                for n in ["a", "b", "c", "d", "e", "f"]
+            ],
         )
         meta.create_all(connection)
         meta2 = MetaData()
@@ -1515,33 +1517,33 @@ class UnicodeReflectionTest(fixtures.TablesTest):
         no_has_table = [
             (
                 "no_has_table_1",
-                ue("col_Unit\u00e9ble"),
-                ue("ix_Unit\u00e9ble"),
+                "col_Unit\u00e9ble",
+                "ix_Unit\u00e9ble",
             ),
-            ("no_has_table_2", ue("col_\u6e2c\u8a66"), ue("ix_\u6e2c\u8a66")),
+            ("no_has_table_2", "col_\u6e2c\u8a66", "ix_\u6e2c\u8a66"),
         ]
         no_case_sensitivity = [
             (
-                ue("\u6e2c\u8a66"),
-                ue("col_\u6e2c\u8a66"),
-                ue("ix_\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
+                "col_\u6e2c\u8a66",
+                "ix_\u6e2c\u8a66",
             ),
             (
-                ue("unit\u00e9ble"),
-                ue("col_unit\u00e9ble"),
-                ue("ix_unit\u00e9ble"),
+                "unit\u00e9ble",
+                "col_unit\u00e9ble",
+                "ix_unit\u00e9ble",
             ),
         ]
         full = [
             (
-                ue("Unit\u00e9ble"),
-                ue("col_Unit\u00e9ble"),
-                ue("ix_Unit\u00e9ble"),
+                "Unit\u00e9ble",
+                "col_Unit\u00e9ble",
+                "ix_Unit\u00e9ble",
             ),
             (
-                ue("\u6e2c\u8a66"),
-                ue("col_\u6e2c\u8a66"),
-                ue("ix_\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
+                "col_\u6e2c\u8a66",
+                "ix_\u6e2c\u8a66",
             ),
         ]
 
@@ -1741,7 +1743,6 @@ class SchemaTest(fixtures.TestBase):
         eq_(t.c.keys(), ["q"])
 
     @testing.requires.schemas
-    @testing.fails_on("sybase", "FIXME: unknown")
     def test_explicit_default_schema_metadata(self, connection, metadata):
         schema = connection.dialect.default_schema_name
 
@@ -1829,7 +1830,7 @@ def createTables(meta, schema=None):
         Column("user_id", sa.INT, primary_key=True),
         Column("user_name", sa.VARCHAR(20), nullable=False),
         Column("test1", sa.CHAR(5), nullable=False),
-        Column("test2", sa.Float(5), nullable=False),
+        Column("test2", sa.Float(), nullable=False),
         Column("test3", sa.Text),
         Column("test4", sa.Numeric(10, 2), nullable=False),
         Column("test5", sa.Date),

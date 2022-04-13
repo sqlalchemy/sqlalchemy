@@ -1,3 +1,4 @@
+import collections.abc as collections_abc
 import itertools
 
 from .. import AssertsCompiledSQL
@@ -30,8 +31,8 @@ from ... import testing
 from ... import text
 from ... import true
 from ... import tuple_
+from ... import TupleType
 from ... import union
-from ... import util
 from ... import values
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
@@ -129,7 +130,7 @@ class OrderByLabelTest(fixtures.TablesTest):
         ly = (func.lower(table.c.q) + table.c.p).label("ly")
         self._assert_result(
             select(lx, ly).order_by(lx, ly.desc()),
-            [(3, util.u("q1p3")), (5, util.u("q2p2")), (7, util.u("q3p1"))],
+            [(3, "q1p3"), (5, "q2p2"), (7, "q3p1")],
         )
 
     def test_plain_desc(self):
@@ -206,8 +207,8 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             eq_(connection.execute(select, params).fetchall(), result)
 
     def _assert_result_str(self, select, result, params=()):
-        conn = config.db.connect(close_with_result=True)
-        eq_(conn.exec_driver_sql(select, params).fetchall(), result)
+        with config.db.connect() as conn:
+            eq_(conn.exec_driver_sql(select, params).fetchall(), result)
 
     def test_simple_limit(self, connection):
         table = self.tables.some_table
@@ -623,6 +624,105 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
 
 
+class SameNamedSchemaTableTest(fixtures.TablesTest):
+    """tests for #7471"""
+
+    __backend__ = True
+
+    __requires__ = ("schemas",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            schema=config.test_schema,
+        )
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "some_table_id",
+                Integer,
+                # ForeignKey("%s.some_table.id" % config.test_schema),
+                nullable=False,
+            ),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        some_table, some_table_schema = cls.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+        connection.execute(some_table_schema.insert(), {"id": 1})
+        connection.execute(some_table.insert(), {"id": 1, "some_table_id": 1})
+
+    def test_simple_join_both_tables(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table, some_table_schema).join_from(
+                    some_table,
+                    some_table_schema,
+                    some_table.c.some_table_id == some_table_schema.c.id,
+                )
+            ).first(),
+            (1, 1, 1),
+        )
+
+    def test_simple_join_whereclause_only(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table)
+                .join_from(
+                    some_table,
+                    some_table_schema,
+                    some_table.c.some_table_id == some_table_schema.c.id,
+                )
+                .where(some_table.c.id == 1)
+            ).first(),
+            (1, 1),
+        )
+
+    def test_subquery(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        subq = (
+            select(some_table)
+            .join_from(
+                some_table,
+                some_table_schema,
+                some_table.c.some_table_id == some_table_schema.c.id,
+            )
+            .where(some_table.c.id == 1)
+            .subquery()
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table, subq.c.id)
+                .join_from(
+                    some_table,
+                    subq,
+                    some_table.c.some_table_id == subq.c.id,
+                )
+                .where(some_table.c.id == 1)
+            ).first(),
+            (1, 1, 1),
+        )
+
+
 class JoinTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -882,7 +982,7 @@ class PostCompileParamsTest(
         self.assert_compile(
             stmt,
             "SELECT some_table.id FROM some_table "
-            "WHERE some_table.x = [POSTCOMPILE_q]",
+            "WHERE some_table.x = __[POSTCOMPILE_q]",
             {},
         )
 
@@ -1131,6 +1231,41 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
         self._assert_result(stmt, [])
 
+    def test_typed_str_in(self):
+        """test related to #7292.
+
+        as a type is given to the bound param, there is no ambiguity
+        to the type of element.
+
+        """
+
+        stmt = text(
+            "select id FROM some_table WHERE z IN :q ORDER BY id"
+        ).bindparams(bindparam("q", type_=String, expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={"q": ["z2", "z3", "z4"]},
+        )
+
+    def test_untyped_str_in(self):
+        """test related to #7292.
+
+        for untyped expression, we look at the types of elements.
+        Test for Sequence to detect tuple in.  but not strings or bytes!
+        as always....
+
+        """
+
+        stmt = text(
+            "select id FROM some_table WHERE z IN :q ORDER BY id"
+        ).bindparams(bindparam("q", expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={"q": ["z2", "z3", "z4"]},
+        )
+
     @testing.requires.tuple_in
     def test_bound_in_two_tuple_bindparam(self):
         table = self.tables.some_table
@@ -1195,6 +1330,73 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             stmt,
             [(2,), (3,), (4,)],
             params={"q": [(2, "z2"), (3, "z3"), (4, "z4")]},
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_typed_bindparam_non_tuple(self):
+        class LikeATuple(collections_abc.Sequence):
+            def __init__(self, *data):
+                self._data = data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __getitem__(self, idx):
+                return self._data[idx]
+
+            def __len__(self):
+                return len(self._data)
+
+        stmt = text(
+            "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
+        ).bindparams(
+            bindparam(
+                "q", type_=TupleType(Integer(), String()), expanding=True
+            )
+        )
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={
+                "q": [
+                    LikeATuple(2, "z2"),
+                    LikeATuple(3, "z3"),
+                    LikeATuple(4, "z4"),
+                ]
+            },
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_text_bindparam_non_tuple(self):
+        # note this becomes ARRAY if we dont use expanding
+        # explicitly right now
+
+        class LikeATuple(collections_abc.Sequence):
+            def __init__(self, *data):
+                self._data = data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __getitem__(self, idx):
+                return self._data[idx]
+
+            def __len__(self):
+                return len(self._data)
+
+        stmt = text(
+            "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
+        ).bindparams(bindparam("q", expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={
+                "q": [
+                    LikeATuple(2, "z2"),
+                    LikeATuple(3, "z3"),
+                    LikeATuple(4, "z4"),
+                ]
+            },
         )
 
     def test_empty_set_against_integer_bindparam(self):

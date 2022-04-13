@@ -45,11 +45,19 @@ Session and sessionmaker()
 
             :attr:`_orm.ORMExecuteState.execution_options`
 
-    .. attribute::  execution_options
-        The complete dictionary of current execution options.
+    .. attribute:: execution_options
 
+        The complete dictionary of current execution options.
         This is a merge of the statement level options with the
         locally passed execution options.
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.local_execution_options`
+
+            :meth:`_sql.Executable.execution_options`
+
+            :ref:`orm_queryguide_execution_options`
 
 .. autoclass:: Session
    :members:

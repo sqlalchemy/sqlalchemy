@@ -2,6 +2,10 @@ import collections
 import random
 import threading
 import time
+from unittest.mock import ANY
+from unittest.mock import call
+from unittest.mock import Mock
+from unittest.mock import patch
 import weakref
 
 import sqlalchemy as tsa
@@ -14,7 +18,7 @@ from sqlalchemy.pool.base import _AsyncConnDialect
 from sqlalchemy.pool.base import _ConnDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
@@ -25,10 +29,6 @@ from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import ANY
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import lazy_gc
 
@@ -68,7 +68,6 @@ def MockDBAPI():  # noqa
 
 class PoolTestBase(fixtures.TestBase):
     def setup_test(self):
-        pool.clear_managers()
         self._teardown_conns = []
 
     def teardown_test(self):
@@ -76,10 +75,6 @@ class PoolTestBase(fixtures.TestBase):
             conn = ref()
             if conn:
                 conn.close()
-
-    @classmethod
-    def teardown_test_class(cls):
-        pool.clear_managers()
 
     def _with_teardown(self, connection):
         self._teardown_conns.append(weakref.ref(connection))
@@ -327,7 +322,7 @@ class PoolTest(PoolTestBase):
         is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, rec.dbapi_connection)
 
-        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+        fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
         is_(fairy.connection, fairy.dbapi_connection)
@@ -351,12 +346,13 @@ class PoolTest(PoolTestBase):
 
         rec = pool._ConnectionRecord(p1)
 
+        assert rec.dbapi_connection is not None
         is_not_none(rec.dbapi_connection)
 
         is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, mock_dc)
 
-        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+        fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
         is_(fairy.connection, fairy.dbapi_connection)
@@ -384,7 +380,7 @@ class PoolDialectTest(PoolTestBase):
     def _dialect(self):
         canary = []
 
-        class PoolDialect(object):
+        class PoolDialect:
             is_async = False
 
             def do_rollback(self, dbapi_connection):
@@ -744,7 +740,7 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
-    @testing.combinations((True, testing.requires.python3), (False,))
+    @testing.combinations((True,), (False,))
     def test_checkin_event_gc(self, detach_gced):
         p, canary = self._checkin_event_fixture(_is_asyncio=detach_gced)
 
@@ -1634,7 +1630,7 @@ class QueuePoolTest(PoolTestBase):
 
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
-    @testing.combinations((True, testing.requires.python3), (False,))
+    @testing.combinations((True,), (False,))
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
             pool_size=1, max_overflow=2, _is_asyncio=detach_gced
@@ -1686,7 +1682,7 @@ class QueuePoolTest(PoolTestBase):
 
         dialect = Mock()
         dialect.is_disconnect = lambda *arg, **kw: True
-        dialect.dbapi.Error = Error
+        dialect.dbapi.Error = dialect.loaded_dbapi.Error = Error
 
         pools = []
 
@@ -1821,7 +1817,7 @@ class QueuePoolTest(PoolTestBase):
         c1 = p.connect()
         rec = c1._connection_record
         c1.close()
-        assert_raises_message(
+        assert_warns_message(
             Warning, "Double checkin attempted on %s" % rec, rec.checkin
         )
 

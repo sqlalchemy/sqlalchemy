@@ -1,5 +1,5 @@
 # postgresql/array.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -87,19 +87,19 @@ class array(expression.ClauseList, expression.ColumnElement):
     __visit_name__ = "array"
 
     stringify_dialect = "postgresql"
+    inherit_cache = True
 
     def __init__(self, clauses, **kw):
         clauses = [
             coercions.expect(roles.ExpressionElementRole, c) for c in clauses
         ]
 
-        super(array, self).__init__(*clauses, **kw)
-
         self._type_tuple = [arg.type for arg in clauses]
         main_type = kw.pop(
             "type_",
             self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE,
         )
+        super(array, self).__init__(*clauses, **kw)
 
         if isinstance(main_type, ARRAY):
             self.type = ARRAY(
@@ -330,9 +330,6 @@ class ARRAY(sqltypes.ARRAY):
             and self.item_type.native_enum
         )
 
-    def bind_expression(self, bindvalue):
-        return bindvalue
-
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(
             dialect
@@ -366,21 +363,47 @@ class ARRAY(sqltypes.ARRAY):
 
         if self._against_native_enum:
             super_rp = process
+            pattern = re.compile(r"^{(.*)}$")
 
             def handle_raw_string(value):
-                inner = re.match(r"^{(.*)}$", value).group(1)
-                return inner.split(",") if inner else []
+                inner = pattern.match(value).group(1)
+                return _split_enum_values(inner)
 
             def process(value):
                 if value is None:
                     return value
-                # isinstance(value, util.string_types) is required to handle
-                # the # case where a TypeDecorator for and Array of Enum is
+                # isinstance(value, str) is required to handle
+                # the case where a TypeDecorator for and Array of Enum is
                 # used like was required in sa < 1.3.17
                 return super_rp(
                     handle_raw_string(value)
-                    if isinstance(value, util.string_types)
+                    if isinstance(value, str)
                     else value
                 )
 
         return process
+
+
+def _split_enum_values(array_string):
+
+    if '"' not in array_string:
+        # no escape char is present so it can just split on the comma
+        return array_string.split(",") if array_string else []
+
+    # handles quoted strings from:
+    # r'abc,"quoted","also\\\\quoted", "quoted, comma", "esc \" quot", qpr'
+    # returns
+    # ['abc', 'quoted', 'also\\quoted', 'quoted, comma', 'esc " quot', 'qpr']
+    text = array_string.replace(r"\"", "_$ESC_QUOTE$_")
+    text = text.replace(r"\\", "\\")
+    result = []
+    on_quotes = re.split(r'(")', text)
+    in_quotes = False
+    for tok in on_quotes:
+        if tok == '"':
+            in_quotes = not in_quotes
+        elif in_quotes:
+            result.append(tok.replace("_$ESC_QUOTE$_", '"'))
+        else:
+            result.extend(re.findall(r"([^\s,]+),?", tok))
+    return result

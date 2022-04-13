@@ -151,7 +151,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             if use_indirect_access:
 
                 def query(names):
-                    class Foo(object):
+                    class Foo:
                         def __init__(self):
                             self.u1 = aliased(User)
 
@@ -219,7 +219,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Cacheable Core or ORM object expected, got",
+            "ExecutionOption Core or ORM object expected, got",
             select(lambda: User).options,
             lambda: subqueryload(User.addresses),
         )
@@ -304,26 +304,6 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
                 r"decreasing the efficiency of caching"
             ):
                 self.assert_sql_count(testing.db, fn, 2)
-
-    def test_does_filter_aliasing_work(self, plain_fixture):
-        User, Address = plain_fixture
-
-        s = Session(testing.db, future=True)
-
-        # aliased=True is to be deprecated, other filter lambdas
-        # that go into effect include polymorphic filtering.
-        q = (
-            s.query(lambda: User)
-            .join(lambda: User.addresses, aliased=True)
-            .filter(lambda: Address.email_address == "foo")
-        )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses AS addresses_1 "
-            "ON users.id = addresses_1.user_id "
-            "WHERE addresses_1.email_address = :email_address_1",
-        )
 
     @testing.combinations(
         lambda s, User, Address: s.query(lambda: User).join(lambda: Address),

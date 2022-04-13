@@ -1,6 +1,7 @@
 import itertools
 
 from sqlalchemy import Boolean
+from sqlalchemy import column
 from sqlalchemy import delete
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
@@ -10,13 +11,14 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import type_coerce
 from sqlalchemy import update
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -89,6 +91,113 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             t.c.x,
         )
 
+    def test_named_expressions_selected_columns(self, table_fixture):
+        table = table_fixture
+        stmt = (
+            table.insert()
+            .values(goofy="someOTHERgoofy")
+            .returning(func.lower(table.c.x).label("goof"))
+        )
+        self.assert_compile(
+            select(stmt.exported_columns.goof),
+            "SELECT lower(foo.x) AS goof FROM foo",
+        )
+
+    def test_anon_expressions_selected_columns(self, table_fixture):
+        table = table_fixture
+        stmt = (
+            table.insert()
+            .values(goofy="someOTHERgoofy")
+            .returning(func.lower(table.c.x))
+        )
+        self.assert_compile(
+            select(stmt.exported_columns[0]),
+            "SELECT lower(foo.x) AS lower_1 FROM foo",
+        )
+
+    def test_returning_fromclause(self):
+        t = table("t", column("x"), column("y"), column("z"))
+        stmt = t.update().returning(t)
+
+        self.assert_compile(
+            stmt,
+            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s RETURNING t.x, t.y, t.z",
+        )
+
+        eq_(
+            stmt.returning_column_descriptions,
+            [
+                {
+                    "name": "x",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.x,
+                },
+                {
+                    "name": "y",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.y,
+                },
+                {
+                    "name": "z",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.z,
+                },
+            ],
+        )
+
+        cte = stmt.cte("c")
+
+        stmt = select(cte.c.z)
+        self.assert_compile(
+            stmt,
+            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
+        )
+
+    def test_returning_inspectable(self):
+        t = table("t", column("x"), column("y"), column("z"))
+
+        class HasClauseElement:
+            def __clause_element__(self):
+                return t
+
+        stmt = update(HasClauseElement()).returning(HasClauseElement())
+
+        eq_(
+            stmt.returning_column_descriptions,
+            [
+                {
+                    "name": "x",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.x,
+                },
+                {
+                    "name": "y",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.y,
+                },
+                {
+                    "name": "z",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.z,
+                },
+            ],
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z",
+        )
+        cte = stmt.cte("c")
+
+        stmt = select(cte.c.z)
+        self.assert_compile(
+            stmt,
+            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
+        )
+
 
 class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("returning",)
@@ -150,7 +259,6 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(row[table.c.goofy], row["goofy"])
         eq_(row["goofy"], "FOOsomegoofyBAR")
 
-    @testing.fails_on("firebird", "fb can't handle returning x AS y")
     def test_labeling(self, connection):
         table = self.tables.tables
         result = connection.execute(
@@ -161,9 +269,6 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         row = result.first()._mapping
         assert row["lala"] == 6
 
-    @testing.fails_on(
-        "firebird", "fb/kintersbasdb can't handle the bind params"
-    )
     def test_anon_expressions(self, connection):
         table = self.tables.tables
         GoofyType = self.GoofyType
@@ -350,7 +455,7 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             "inserted_primary_key",
         )
 
-    @testing.fails_on_everything_except("postgresql", "firebird")
+    @testing.fails_on_everything_except("postgresql")
     def test_literal_returning(self, connection):
         if testing.against("postgresql"):
             literal_true = "true"
@@ -465,7 +570,6 @@ class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("data", String(20)),
         )
 
-    @testing.exclude("firebird", "<", (2, 0), "2.0+ feature")
     @testing.exclude("postgresql", "<", (8, 2), "8.2+ feature")
     def test_insert(self, connection):
         table = self.tables.tables
@@ -772,35 +876,3 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             result.inserted_primary_key_rows,
             [(10,), (11,), (12,), (13,), (14,), (15,)],
         )
-
-
-class ImplicitReturningFlag(fixtures.TestBase):
-    __backend__ = True
-
-    def test_flag_turned_off(self):
-        e = engines.testing_engine(options={"implicit_returning": False})
-        assert e.dialect.implicit_returning is False
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is False
-
-    def test_flag_turned_on(self):
-        e = engines.testing_engine(options={"implicit_returning": True})
-        assert e.dialect.implicit_returning is True
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is True
-
-    def test_flag_turned_default(self):
-        supports = [False]
-
-        def go():
-            supports[0] = True
-
-        testing.requires.returning(go)()
-        e = engines.testing_engine()
-
-        # version detection on connect sets it
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is supports[0]

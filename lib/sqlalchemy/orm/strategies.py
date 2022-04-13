@@ -1,5 +1,5 @@
 # orm/strategies.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,7 +7,8 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
-from __future__ import absolute_import
+
+from __future__ import annotations
 
 import collections
 import itertools
@@ -25,15 +26,17 @@ from . import util as orm_util
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
+from .base import PASSIVE_OFF
 from .context import _column_descriptions
 from .context import ORMCompileState
+from .context import ORMSelectCompileState
 from .context import QueryContext
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
 from .util import _none_set
-from .util import aliased
+from .util import AliasedClass
 from .. import event
 from .. import exc as sa_exc
 from .. import inspect
@@ -56,7 +59,7 @@ def _register_attribute(
     proxy_property=None,
     active_history=False,
     impl_class=None,
-    **kw
+    **kw,
 ):
 
     listen_hooks = []
@@ -122,7 +125,7 @@ def _register_attribute(
                 impl_class=impl_class,
                 send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
-                **kw
+                **kw,
             )
 
             for hook in listen_hooks:
@@ -152,7 +155,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
         loadopt,
         adapter,
         column_collection=None,
-        **kwargs
+        **kwargs,
     ):
         for c in self.columns:
             if adapter:
@@ -195,7 +198,7 @@ class ColumnLoader(LoaderStrategy):
         column_collection,
         memoized_populators,
         check_for_adapt=False,
-        **kwargs
+        **kwargs,
     ):
         for c in self.columns:
             if adapter:
@@ -282,7 +285,7 @@ class ExpressionColumnLoader(ColumnLoader):
         adapter,
         column_collection,
         memoized_populators,
-        **kwargs
+        **kwargs,
     ):
         columns = None
         if loadopt and "expression" in loadopt.local_opts:
@@ -382,7 +385,26 @@ class DeferredColumnLoader(LoaderStrategy):
         # dictionary.  Normally, the DeferredColumnLoader.setup_query()
         # sets up that data in the "memoized_populators" dictionary
         # and "create_row_processor()" here is never invoked.
-        if not self.is_class_level:
+
+        if (
+            context.refresh_state
+            and context.query._compile_options._only_load_props
+            and self.key in context.query._compile_options._only_load_props
+        ):
+            self.parent_property._get_strategy(
+                (("deferred", False), ("instrument", True))
+            ).create_row_processor(
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
+            )
+
+        elif not self.is_class_level:
             if self.raiseload:
                 set_deferred_for_local_state = (
                     self.parent_property._raise_column_loader
@@ -417,7 +439,7 @@ class DeferredColumnLoader(LoaderStrategy):
         column_collection,
         memoized_populators,
         only_load_props=None,
-        **kw
+        **kw,
     ):
 
         if (
@@ -451,7 +473,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 adapter,
                 column_collection,
                 memoized_populators,
-                **kw
+                **kw,
             )
         elif self.is_class_level:
             memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
@@ -494,19 +516,9 @@ class DeferredColumnLoader(LoaderStrategy):
         if self.raiseload:
             self._invoke_raise_load(state, passive, "raise")
 
-        if (
-            loading.load_on_ident(
-                session,
-                sql.select(localparent).set_label_style(
-                    LABEL_STYLE_TABLENAME_PLUS_COL
-                ),
-                state.key,
-                only_load_props=group,
-                refresh_state=state,
-            )
-            is None
-        ):
-            raise orm_exc.ObjectDeletedError(state)
+        loading.load_scalar_attributes(
+            state.mapper, state, set(group), PASSIVE_OFF
+        )
 
         return attributes.ATTR_WAS_SET
 
@@ -516,7 +528,7 @@ class DeferredColumnLoader(LoaderStrategy):
         )
 
 
-class LoadDeferredColumns(object):
+class LoadDeferredColumns:
     """serializable loader object used by DeferredColumnLoader"""
 
     def __init__(self, key, raiseload=False):
@@ -554,7 +566,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(do_nothing=True)
+@relationships.Relationship.strategy_for(do_nothing=True)
 class DoNothingLoader(LoaderStrategy):
     """Relationship loader that makes no change to the object's state.
 
@@ -566,10 +578,10 @@ class DoNothingLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="noload")
-@relationships.RelationshipProperty.strategy_for(lazy=None)
+@relationships.Relationship.strategy_for(lazy="noload")
+@relationships.Relationship.strategy_for(lazy=None)
 class NoLoader(AbstractRelationshipLoader):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     with "lazy=None".
 
     """
@@ -607,13 +619,13 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy=True)
-@relationships.RelationshipProperty.strategy_for(lazy="select")
-@relationships.RelationshipProperty.strategy_for(lazy="raise")
-@relationships.RelationshipProperty.strategy_for(lazy="raise_on_sql")
-@relationships.RelationshipProperty.strategy_for(lazy="baked_select")
+@relationships.Relationship.strategy_for(lazy=True)
+@relationships.Relationship.strategy_for(lazy="select")
+@relationships.Relationship.strategy_for(lazy="raise")
+@relationships.Relationship.strategy_for(lazy="raise_on_sql")
+@relationships.Relationship.strategy_for(lazy="baked_select")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     with "lazy=True", that is loads when first accessed.
 
     """
@@ -797,7 +809,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         )
 
     def _load_for_state(self, state, passive, loadopt=None, extra_criteria=()):
-
         if not state.key and (
             (
                 not self.parent_property.load_on_pending
@@ -955,7 +966,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if state.load_options or (loadopt and loadopt._extra_criteria):
             effective_path = state.load_path[self.parent_property]
 
-            opts = list(state.load_options)
+            opts = state.load_options
 
             if loadopt and loadopt._extra_criteria:
                 use_get = False
@@ -991,7 +1002,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                     and rev._use_get
                     and not isinstance(rev.strategy, LazyLoader)
                 ):
-                    strategy_options.Load.for_existing_path(
+                    strategy_options.Load._construct_for_existing_path(
                         compile_context.compile_options._current_path[
                             rev.parent
                         ]
@@ -1101,7 +1112,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             populators["new"].append((self.key, reset_for_lazy_callable))
 
 
-class LoadLazyAttribute(object):
+class LoadLazyAttribute:
     """semi-serializable loader object used by LazyLoader
 
     Historically, this object would be carried along with instances that
@@ -1156,6 +1167,8 @@ class LoadLazyAttribute(object):
 class PostLoader(AbstractRelationshipLoader):
     """A relationship loader that emits a second SELECT statement."""
 
+    __slots__ = ()
+
     def _check_recursive_postload(self, context, path, join_depth=None):
         effective_path = (
             context.compile_state.current_path or orm_util.PathRegistry.root
@@ -1203,7 +1216,7 @@ class PostLoader(AbstractRelationshipLoader):
         )
 
 
-@relationships.RelationshipProperty.strategy_for(lazy="immediate")
+@relationships.Relationship.strategy_for(lazy="immediate")
 class ImmediateLoader(PostLoader):
     __slots__ = ()
 
@@ -1239,7 +1252,7 @@ class ImmediateLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="subquery")
+@relationships.Relationship.strategy_for(lazy="subquery")
 class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
@@ -1341,7 +1354,7 @@ class SubqueryLoader(PostLoader):
                         orig_query, compile_state=orig_compile_state
                     )
                     if ent["entity"] is not None
-                }
+                },
             )
 
         # select from the identity columns of the outer (specifically, these
@@ -1551,7 +1564,7 @@ class SubqueryLoader(PostLoader):
 
         return q
 
-    class _SubqCollections(object):
+    class _SubqCollections:
         """Given a :class:`_query.Query` used to emit the "subquery load",
         provide a load interface that executes the query at the
         first moment a value is needed.
@@ -1783,6 +1796,11 @@ class SubqueryLoader(PostLoader):
         # the other post loaders, however we have this here for consistency
         elif self._check_recursive_postload(context, path, self.join_depth):
             return
+        elif not isinstance(context.compile_state, ORMSelectCompileState):
+            # issue 7505 - subqueryload() in 1.3 and previous would silently
+            # degrade for from_statement() without warning. this behavior
+            # is restored here
+            return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
@@ -1890,10 +1908,10 @@ class SubqueryLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="joined")
-@relationships.RelationshipProperty.strategy_for(lazy=False)
+@relationships.Relationship.strategy_for(lazy="joined")
+@relationships.Relationship.strategy_for(lazy=False)
 class JoinedLoader(AbstractRelationshipLoader):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     using joined eager loading.
 
     """
@@ -1920,7 +1938,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         column_collection=None,
         parentmapper=None,
         chained_from_outerjoin=False,
-        **kwargs
+        **kwargs,
     ):
         """Add a left outer join to the statement that's being constructed."""
 
@@ -2154,7 +2172,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             anonymize_labels=True,
         )
 
-        assert clauses.aliased_class is not None
+        assert clauses.is_aliased_class
 
         innerjoin = (
             loadopt.local_opts.get("innerjoin", self.parent_property.innerjoin)
@@ -2251,12 +2269,12 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         if adapter:
-            if getattr(adapter, "aliased_class", None):
+            if getattr(adapter, "is_aliased_class", False):
                 # joining from an adapted entity.  The adapted entity
                 # might be a "with_polymorphic", so resolve that to our
                 # specific mapper's entity before looking for our attribute
                 # name on it.
-                efm = inspect(adapter.aliased_class)._entity_for_mapper(
+                efm = adapter.aliased_insp._entity_for_mapper(
                     localparent
                     if localparent.isa(self.parent)
                     else self.parent
@@ -2277,7 +2295,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         else:
             onclause = self.parent_property
 
-        assert clauses.aliased_class is not None
+        assert clauses.is_aliased_class
 
         attach_on_outside = (
             not chained_from_outerjoin
@@ -2301,7 +2319,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             # this is the "classic" eager join case.
             eagerjoin = orm_util._ORMJoin(
                 towrap,
-                clauses.aliased_class,
+                clauses.aliased_insp,
                 onclause,
                 isouter=not innerjoin
                 or query_entity.entity_zero.represents_outer_join
@@ -2367,7 +2385,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             if path[-2] is splicing:
                 return orm_util._ORMJoin(
                     join_obj,
-                    clauses.aliased_class,
+                    clauses.aliased_insp,
                     onclause,
                     isouter=False,
                     _left_memo=splicing,
@@ -2612,7 +2630,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="selectin")
+@relationships.Relationship.strategy_for(lazy="selectin")
 class SelectInLoader(PostLoader, util.MemoizedSlots):
     __slots__ = (
         "join_depth",
@@ -2705,7 +2723,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         )
 
     def _init_for_join(self):
-        self._parent_alias = aliased(self.parent.class_)
+        self._parent_alias = AliasedClass(self.parent.class_)
         pa_insp = inspect(self._parent_alias)
         pk_cols = [
             pa_insp._adapt_element(col) for col in self.parent.primary_key

@@ -1,5 +1,5 @@
 # mssql/pymssql.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -43,9 +43,9 @@ import re
 
 from .base import MSDialect
 from .base import MSIdentifierPreparer
-from ... import processors
 from ... import types as sqltypes
 from ... import util
+from ...engine import processors
 
 
 class _MSNumeric_pymssql(sqltypes.Numeric):
@@ -77,7 +77,7 @@ class MSDialect_pymssql(MSDialect):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         module = __import__("pymssql")
         # pymmsql < 2.1.1 doesn't have a Binary method.  we use string
         client_ver = tuple(int(x) for x in module.__version__.split("."))
@@ -106,7 +106,7 @@ class MSDialect_pymssql(MSDialect):
         port = opts.pop("port", None)
         if port and "host" in opts:
             opts["host"] = "%s:%s" % (opts["host"], port)
-        return [[], opts]
+        return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
         for msg in (
@@ -125,13 +125,18 @@ class MSDialect_pymssql(MSDialect):
         else:
             return False
 
-    def set_isolation_level(self, connection, level):
+    def get_isolation_level_values(self, dbapi_connection):
+        return super().get_isolation_level_values(dbapi_connection) + [
+            "AUTOCOMMIT"
+        ]
+
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
-            connection.autocommit(True)
+            dbapi_connection.autocommit(True)
         else:
-            connection.autocommit(False)
+            dbapi_connection.autocommit(False)
             super(MSDialect_pymssql, self).set_isolation_level(
-                connection, level
+                dbapi_connection, level
             )
 
 

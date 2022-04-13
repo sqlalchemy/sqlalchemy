@@ -259,7 +259,7 @@ class EagerTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        q = s.query(Thing).options(sa.orm.joinedload("category"))
+        q = s.query(Thing).options(sa.orm.joinedload(Thing.category))
 
         result = q.select_from(
             tests.outerjoin(
@@ -292,7 +292,7 @@ class EagerTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        q = s.query(Thing).options(sa.orm.joinedload("category"))
+        q = s.query(Thing).options(sa.orm.joinedload(Thing.category))
         result = q.filter(
             sa.and_(
                 tests.c.owner_id == 1,
@@ -301,23 +301,22 @@ class EagerTest(fixtures.MappedTest):
                     options.c.someoption == False,  # noqa
                 ),
             )
-        ).outerjoin("owner_option")
+        ).outerjoin(Thing.owner_option)
 
         result_str = ["%d %s" % (t.id, t.category.name) for t in result]
         eq_(result_str, ["1 Some Category", "3 Some Category"])
 
-    @testing.crashes("sybase", "FIXME: unknown, verify not fails_on")
     def test_without_outerjoin_literal(self):
         Thing, tests = (self.classes.Thing, self.tables.tests)
 
         s = fixture_session()
-        q = s.query(Thing).options(sa.orm.joinedload("category"))
+        q = s.query(Thing).options(sa.orm.joinedload(Thing.category))
         result = q.filter(
             (tests.c.owner_id == 1)
             & text(
                 "options.someoption is null or options.someoption=:opt"
             ).bindparams(opt=False)
-        ).join("owner_option")
+        ).join(Thing.owner_option)
 
         result_str = ["%d %s" % (t.id, t.category.name) for t in result]
         eq_(result_str, ["3 Some Category"])
@@ -330,14 +329,14 @@ class EagerTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        q = s.query(Thing).options(sa.orm.joinedload("category"))
+        q = s.query(Thing).options(sa.orm.joinedload(Thing.category))
         result = q.filter(
             (tests.c.owner_id == 1)
             & (
                 (options.c.someoption == None)
                 | (options.c.someoption == False)
             )  # noqa
-        ).join("owner_option")
+        ).join(Thing.owner_option)
 
         result_str = ["%d %s" % (t.id, t.category.name) for t in result]
         eq_(result_str, ["3 Some Category"])
@@ -552,7 +551,7 @@ class EagerTest3(fixtures.MappedTest):
         # "order by max desc" separately
         q = (
             session.query(Data)
-            .options(sa.orm.joinedload("foo"))
+            .options(sa.orm.joinedload(Data.foo))
             .select_from(
                 datas.join(arb_data, arb_data.c.data_id == datas.c.id)
             )
@@ -639,7 +638,7 @@ class EagerTest4(fixtures.MappedTest):
 
         q = (
             sess.query(Department)
-            .join("employees")
+            .join(Department.employees)
             .filter(Employee.name.startswith("J"))
             .distinct()
             .order_by(sa.desc(Department.name))
@@ -767,7 +766,7 @@ class EagerTest5(fixtures.MappedTest):
         # this eager load sets up an AliasedClauses for the "comment"
         # relationship, then stores it in clauses_by_lead_mapper[mapper for
         # Derived]
-        d = sess.query(Derived).get("uid1")
+        d = sess.get(Derived, "uid1")
         sess.expunge_all()
         assert len([c for c in d.comments]) == 1
 
@@ -775,10 +774,10 @@ class EagerTest5(fixtures.MappedTest):
         # relationship, and should store it in clauses_by_lead_mapper[mapper
         # for DerivedII].  the bug was that the previous AliasedClause create
         # prevented this population from occurring.
-        d2 = sess.query(DerivedII).get("uid2")
+        d2 = sess.get(DerivedII, "uid2")
         sess.expunge_all()
 
-        # object is not in the session; therefore the lazy load cant trigger
+        # object is not in the session; therefore the lazy load can't trigger
         # here, eager load had to succeed
         assert len([c for c in d2.comments]) == 1
 
@@ -918,7 +917,7 @@ class EagerTest6(fixtures.MappedTest):
         sess.add(d)
         sess.flush()
         sess.expunge_all()
-        x = sess.query(Design).get(1)
+        x = sess.get(Design, 1)
         x.inheritedParts
 
 
@@ -1036,10 +1035,10 @@ class EagerTest7(fixtures.MappedTest):
         invoice_id = i1.invoice_id
 
         session.expunge_all()
-        c = session.query(Company).get(company_id)
+        c = session.get(Company, company_id)
 
         session.expunge_all()
-        i = session.query(Invoice).get(invoice_id)
+        i = session.get(Invoice, invoice_id)
 
         def go():
             eq_(c, i.company)
@@ -1317,10 +1316,10 @@ class EagerTest9(fixtures.MappedTest):
             acc = (
                 session.query(Account)
                 .options(
-                    sa.orm.joinedload("entries")
-                    .joinedload("transaction")
-                    .joinedload("entries")
-                    .joinedload("account")
+                    sa.orm.joinedload(Account.entries)
+                    .joinedload(Entry.transaction)
+                    .joinedload(Transaction.entries)
+                    .joinedload(Entry.account)
                 )
                 .order_by(Account.account_id)
             ).first()

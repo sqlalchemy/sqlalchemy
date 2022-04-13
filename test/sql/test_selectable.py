@@ -1,14 +1,18 @@
 """Test various algorithmic properties of selectables."""
+from itertools import zip_longest
+
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal_column
@@ -27,6 +31,7 @@ from sqlalchemy import true
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.sql import Alias
 from sqlalchemy.sql import annotation
@@ -85,6 +90,153 @@ class SelectableTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
     __dialect__ = "default"
+
+    @testing.combinations(
+        (
+            (table1.c.col1, table1.c.col2),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            (table1,),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+                {
+                    "name": "col3",
+                    "type": table1.c.col3.type,
+                    "expr": table1.c.col3,
+                },
+                {
+                    "name": "colx",
+                    "type": table1.c.colx.type,
+                    "expr": table1.c.colx,
+                },
+            ],
+        ),
+        (
+            (func.count(table1.c.col1),),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                }
+            ],
+        ),
+        (
+            (func.count(table1.c.col1), func.count(table1.c.col2)),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+                {
+                    "name": "count_1",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col2)
+                    ),
+                },
+            ],
+        ),
+    )
+    def test_core_column_descriptions(self, cols, expected):
+        stmt = select(*cols)
+        # reverse eq_ is so eq_clause_element works
+        eq_(expected, stmt.column_descriptions)
+
+    @testing.combinations(insert, update, delete, argnames="dml_construct")
+    @testing.combinations(
+        (
+            table1,
+            (table1.c.col1, table1.c.col2),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            table1,
+            (func.count(table1.c.col1),),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": None,
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+            ],
+        ),
+        (
+            table1,
+            None,
+            {"name": "table1", "table": table1},
+            [],
+        ),
+        (
+            table1.alias("some_alias"),
+            None,
+            {
+                "name": "some_alias",
+                "table": testing.eq_clause_element(table1.alias("some_alias")),
+            },
+            [],
+        ),
+        (
+            table1.join(table2),
+            None,
+            {
+                "name": None,
+                "table": testing.eq_clause_element(table1.join(table2)),
+            },
+            [],
+        ),
+        argnames="entity, cols, expected_entity, expected_returning",
+    )
+    def test_dml_descriptions(
+        self, dml_construct, entity, cols, expected_entity, expected_returning
+    ):
+        stmt = dml_construct(entity)
+        if cols:
+            stmt = stmt.returning(*cols)
+
+        eq_(stmt.entity_description, expected_entity)
+        eq_(expected_returning, stmt.returning_column_descriptions)
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
@@ -279,6 +431,24 @@ class SelectableTest(
                 "unique names for explicit labels.",
             ):
                 select(stmt.subquery()).compile()
+
+    def test_correlate_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate",
+        ):
+            stmt.correlate(None, table2)
+
+    def test_correlate_except_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate_except",
+        ):
+            stmt.correlate_except(None, table2)
 
     def test_select_label_grouped_still_corresponds(self):
         label = select(table1.c.col1).label("foo")
@@ -606,6 +776,17 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_with_only_generative_no_list(self):
+        s1 = table1.select().scalar_subquery()
+
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"The \"columns\" argument to "
+            r"Select.with_only_columns\(\), when referring "
+            "to a sequence of items, is now passed",
+        ):
+            s1.with_only_columns([s1])
+
     @testing.combinations(
         (
             [table1.c.col1],
@@ -627,7 +808,7 @@ class SelectableTest(
         """tests for #6808"""
         s1 = select(*cols_expr).select_from(*select_from)
 
-        for ff, efp in util.zip_longest(s1.get_final_froms(), exp_final_froms):
+        for ff, efp in zip_longest(s1.get_final_froms(), exp_final_froms):
             assert ff.compare(efp)
 
         eq_(s1.columns_clause_froms, exp_cc_froms)
@@ -658,8 +839,8 @@ class SelectableTest(
         assert isinstance(subq2.c.foo.type, MyType)
 
     def test_type_coerce_selfgroup(self):
-        no_group = column("a") / type_coerce(column("x"), Integer)
-        group = column("b") / type_coerce(column("y") * column("w"), Integer)
+        no_group = column("a") // type_coerce(column("x"), Integer)
+        group = column("b") // type_coerce(column("y") * column("w"), Integer)
 
         self.assert_compile(no_group, "a / x")
         self.assert_compile(group, "b / (y * w)")
@@ -2948,7 +3129,7 @@ class AnnotationsTest(fixtures.TestBase):
             (table1.c.col1 == 5, "table1.col1 = :col1_1"),
             (
                 table1.c.col1.in_([2, 3, 4]),
-                "table1.col1 IN ([POSTCOMPILE_col1_1])",
+                "table1.col1 IN (__[POSTCOMPILE_col1_1])",
             ),
         ]:
             eq_(str(expr), expected)

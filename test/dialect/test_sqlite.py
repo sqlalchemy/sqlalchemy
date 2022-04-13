@@ -34,7 +34,6 @@ from sqlalchemy import text
 from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import util
 from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.dialects.sqlite import provision
@@ -42,6 +41,7 @@ from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import FetchedValue
+from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -54,15 +54,12 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Date
 from sqlalchemy.types import DateTime
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
 from sqlalchemy.types import Time
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 
 def exec_sql(engine, sql, *args, **kwargs):
@@ -120,7 +117,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         ]:
             assert_raises_message(
                 ValueError,
-                "Couldn't parse %s string." % disp,
+                "Invalid isoformat string:",
                 lambda: connection.execute(
                     text("select 'ASDF' as value").columns(value=typ)
                 ).scalar(),
@@ -161,7 +158,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ),
             )
             r = conn.execute(func.current_date()).scalar()
-            assert isinstance(r, util.string_types)
+            assert isinstance(r, str)
 
     @testing.provide_metadata
     def test_custom_datetime(self, connection):
@@ -169,7 +166,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             # 2004-05-21T00:00:00
             storage_format="%(year)04d-%(month)02d-%(day)02d"
             "T%(hour)02d:%(minute)02d:%(second)02d",
-            regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
+            regexp=r"^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
@@ -198,7 +195,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         sqlite_date = sqlite.DATETIME(
             storage_format="%(year)04d%(month)02d%(day)02d"
             "%(hour)02d%(minute)02d%(second)02d",
-            regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})",
+            regexp=r"^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
@@ -282,9 +279,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             sqltypes.UnicodeText(),
         ):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
-            assert not bindproc or isinstance(
-                bindproc(util.u("some string")), util.text_type
-            )
+            assert not bindproc or isinstance(bindproc("some string"), str)
 
 
 class JSONTest(fixtures.TestBase):
@@ -597,22 +592,6 @@ class DialectTest(
                 )
             )
 
-    @testing.requires.insert_order_dicts
-    @testing.only_on("sqlite+pysqlite")
-    def test_isolation_level_message(self):
-        # needs to test that all three words are present and we also
-        # dont want to default all isolation level messages to use
-        # sorted(), so rely on python 3.7 for ordering of keywords
-        # in the message
-        with expect_raises_message(
-            exc.ArgumentError,
-            "Invalid value 'invalid' for "
-            "isolation_level. Valid isolation levels for "
-            "sqlite are READ UNCOMMITTED, SERIALIZABLE, AUTOCOMMIT",
-        ):
-            with testing.db.connect() as conn:
-                conn.execution_options(isolation_level="invalid")
-
     @testing.only_on("sqlite+pysqlcipher")
     def test_pysqlcipher_connects(self):
         """test #6586"""
@@ -714,20 +693,17 @@ class DialectTest(
 
     @testing.provide_metadata
     def test_description_encoding(self, connection):
-        # amazingly, pysqlite seems to still deliver cursor.description
-        # as encoded bytes in py2k
-
         t = Table(
             "x",
             self.metadata,
-            Column(u("méil"), Integer, primary_key=True),
-            Column(ue("\u6e2c\u8a66"), Integer),
+            Column("méil", Integer, primary_key=True),
+            Column("\u6e2c\u8a66", Integer),
         )
         self.metadata.create_all(testing.db)
 
         result = connection.execute(t.select())
-        assert u("méil") in result.keys()
-        assert ue("\u6e2c\u8a66") in result.keys()
+        assert "méil" in result.keys()
+        assert "\u6e2c\u8a66" in result.keys()
 
     def test_pool_class(self):
         e = create_engine("sqlite+pysqlite://")
@@ -742,18 +718,22 @@ class DialectTest(
         assert e.pool.__class__ is pool.SingletonThreadPool
 
         e = create_engine("sqlite+pysqlite:///foo.db")
-        assert e.pool.__class__ is pool.NullPool
+        # changed as of 2.0 #7490
+        assert e.pool.__class__ is pool.QueuePool
 
     @combinations(
         (
             "sqlite:///foo.db",  # file path is absolute
-            ([os.path.abspath("foo.db")], {}),
+            ([os.path.abspath("foo.db")], {"check_same_thread": False}),
         ),
         (
             "sqlite:////abs/path/to/foo.db",
-            ([os.path.abspath("/abs/path/to/foo.db")], {}),
+            (
+                [os.path.abspath("/abs/path/to/foo.db")],
+                {"check_same_thread": False},
+            ),
         ),
-        ("sqlite://", ([":memory:"], {})),
+        ("sqlite://", ([":memory:"], {"check_same_thread": True})),
         (
             "sqlite:///?check_same_thread=true",
             ([":memory:"], {"check_same_thread": True}),
@@ -768,11 +748,17 @@ class DialectTest(
         ),
         (
             "sqlite:///file:path/to/database?" "mode=ro&uri=true",
-            (["file:path/to/database?mode=ro"], {"uri": True}),
+            (
+                ["file:path/to/database?mode=ro"],
+                {"uri": True, "check_same_thread": False},
+            ),
         ),
         (
             "sqlite:///file:path/to/database?uri=true",
-            (["file:path/to/database"], {"uri": True}),
+            (
+                ["file:path/to/database"],
+                {"uri": True, "check_same_thread": False},
+            ),
         ),
     )
     def test_connect_args(self, url, expected):
@@ -845,6 +831,7 @@ class AttachedDBTest(fixtures.TestBase):
         self.metadata = MetaData()
 
     def teardown_test(self):
+        self.conn.rollback()
         with self.conn.begin():
             self.metadata.drop_all(self.conn)
         self.conn.close()
@@ -1159,7 +1146,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             .in_([(1, 2), (3, 4)])
             .compile(dialect=sqlite.dialect())
         )
-        eq_(str(compiled), "(q, p) IN ([POSTCOMPILE_param_1])")
+        eq_(str(compiled), "(q, p) IN (__[POSTCOMPILE_param_1])")
         eq_(
             compiled._literal_execute_expanding_parameter(
                 "param_1",
@@ -1916,7 +1903,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "REFERENCES implicit_referred_comp)"
             )
 
-            # worst case - FK that refers to nonexistent table so we cant
+            # worst case - FK that refers to nonexistent table so we can't
             # get pks.  requires FK pragma is turned off
             conn.exec_driver_sql(
                 "CREATE TABLE implicit_referrer_comp_fake "
@@ -2302,8 +2289,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [
                 {
                     "unique": 0,
-                    "name": u"ix_main_l_bar",
-                    "column_names": [u"bar"],
+                    "name": "ix_main_l_bar",
+                    "column_names": ["bar"],
                 }
             ],
         )
@@ -2401,6 +2388,55 @@ class ConstraintReflectionTest(fixtures.TestBase):
             ],
         )
 
+    @testing.combinations(
+        ("plain_name", "plain_name"),
+        ("name with spaces", "name with spaces"),
+        ("plainname", "plainname"),
+        ("[Code]", "[Code]"),
+        (quoted_name("[Code]", quote=False), "Code"),
+        argnames="colname,expected",
+    )
+    @testing.combinations(
+        "uq", "uq_inline", "pk", "ix", argnames="constraint_type"
+    )
+    def test_constraint_cols(
+        self, colname, expected, constraint_type, connection, metadata
+    ):
+        if constraint_type == "uq_inline":
+            t = Table("t", metadata, Column(colname, Integer))
+            connection.exec_driver_sql(
+                """
+            CREATE TABLE t (%s INTEGER UNIQUE)
+            """
+                % connection.dialect.identifier_preparer.quote(colname)
+            )
+        else:
+            t = Table("t", metadata, Column(colname, Integer))
+            if constraint_type == "uq":
+                constraint = UniqueConstraint(t.c[colname])
+            elif constraint_type == "pk":
+                constraint = PrimaryKeyConstraint(t.c[colname])
+            elif constraint_type == "ix":
+                constraint = Index("some_index", t.c[colname])
+            else:
+                assert False
+
+            t.append_constraint(constraint)
+
+            t.create(connection)
+
+        if constraint_type in ("uq", "uq_inline"):
+            const = inspect(connection).get_unique_constraints("t")[0]
+            eq_(const["column_names"], [expected])
+        elif constraint_type == "pk":
+            const = inspect(connection).get_pk_constraint("t")
+            eq_(const["constrained_columns"], [expected])
+        elif constraint_type == "ix":
+            const = inspect(connection).get_indexes("t")[0]
+            eq_(const["column_names"], [expected])
+        else:
+            assert False
+
 
 class SavepointTest(fixtures.TablesTest):
 
@@ -2470,10 +2506,6 @@ class SavepointTest(fixtures.TablesTest):
             [(1,), (2,), (3,)],
         )
         connection.close()
-
-
-class FutureSavepointTest(fixtures.FutureEngineMixin, SavepointTest):
-    pass
 
 
 class TypeReflectionTest(fixtures.TestBase):
@@ -2985,7 +3017,7 @@ class OnConflictTest(fixtures.TablesTest):
     def test_on_conflict_do_update_clauseelem_keys(self, connection):
         users = self.tables.users
 
-        class MyElem(object):
+        class MyElem:
             def __init__(self, expr):
                 self.expr = expr
 

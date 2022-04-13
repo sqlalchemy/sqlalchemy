@@ -21,7 +21,7 @@ an attribute::
 
         value = Column(Integer)
 
-    someobject = session.query(SomeClass).get(5)
+    someobject = session.get(SomeClass, 5)
 
     # set 'value' attribute to a SQL expression adding one
     someobject.value = SomeClass.value + 1
@@ -49,7 +49,7 @@ part of the object's primary key::
         pk = Column(Integer, primary_key=True)
         bar = Column(Integer)
 
-    e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    e = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     Base.metadata.create_all(e)
 
     session = Session(e)
@@ -663,8 +663,8 @@ The dictionary is consulted whenever the :class:`.Session` needs to
 emit SQL on behalf of a particular kind of mapped class in order to locate
 the appropriate source of database connectivity::
 
-    engine1 = create_engine('postgresql://db1')
-    engine2 = create_engine('postgresql://db2')
+    engine1 = create_engine('postgresql+psycopg2://db1')
+    engine2 = create_engine('postgresql+psycopg2://db2')
 
     Session = sessionmaker()
 

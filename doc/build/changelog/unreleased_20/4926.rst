@@ -1,0 +1,23 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4926
+
+    Implemented full support for "truediv" and "floordiv" using the
+    "/" and "//" operators.  A "truediv" operation between two expressions
+    using :class:`_types.Integer` now considers the result to be
+    :class:`_types.Numeric`, and the dialect-level compilation will cast
+    the right operand to a numeric type on a dialect-specific basis to ensure
+    truediv is achieved.  For floordiv, conversion is also added for those
+    databases that don't already do floordiv by default (MySQL, Oracle) and
+    the ``FLOOR()`` function is rendered in this case, as well as for
+    cases where the right operand is not an integer (needed for PostgreSQL,
+    others).
+
+    The change resolves issues both with inconsistent behavior of the
+    division operator on different backends and also fixes an issue where
+    integer division on Oracle would fail to be able to fetch a result due
+    to inappropriate outputtypehandlers.
+
+    .. seealso::
+
+        :ref:`change_4926`

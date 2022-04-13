@@ -2526,7 +2526,7 @@
         :tickets: 
 
       Wrote a docstring for Oracle dialect. Apparently that Ohloh
-      "few source code comments" label is starting to sting :).
+      "few source code comments" label is starting to string :).
 
     .. change::
         :tags: oracle

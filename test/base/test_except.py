@@ -10,8 +10,6 @@ from sqlalchemy.engine import default
 from sqlalchemy.testing import combinations_list
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.util import compat
-from sqlalchemy.util import u
 
 
 class Error(Exception):
@@ -157,16 +155,13 @@ class WrapTest(fixtures.TestBase):
     def test_wrap_unicode_arg(self):
         # this is not supported by the API but oslo_db is doing it
         orig = sa_exceptions.DBAPIError(False, False, False)
-        orig.args = [u("méil")]
+        orig.args = ["méil"]
         eq_(
-            compat.text_type(orig),
-            compat.u(
-                "méil\n(Background on this error at: "
-                "https://sqlalche.me/e/%s/dbapi)"
-                % sa_exceptions._version_token
-            ),
+            str(orig),
+            "méil\n(Background on this error at: "
+            "https://sqlalche.me/e/%s/dbapi)" % sa_exceptions._version_token,
         )
-        eq_(orig.args, (u("méil"),))
+        eq_(orig.args, ("méil",))
 
     def test_tostring_large_dict(self):
         try:
@@ -444,6 +439,7 @@ ALL_EXC = [
             sa_exceptions.InvalidatePoolError,
             sa_exceptions.TimeoutError,
             sa_exceptions.InvalidRequestError,
+            sa_exceptions.IllegalStateChangeError,
             sa_exceptions.NoInspectionAvailable,
             sa_exceptions.PendingRollbackError,
             sa_exceptions.ResourceClosedError,
@@ -507,13 +503,15 @@ ALL_EXC = [
     (
         [
             sa_exceptions.SADeprecationWarning,
-            sa_exceptions.RemovedIn20Warning,
+            sa_exceptions.Base20DeprecationWarning,
+            sa_exceptions.LegacyAPIWarning,
             sa_exceptions.MovedIn20Warning,
             sa_exceptions.SAWarning,
         ],
         [lambda cls: cls("foo", code="42")],
     ),
     ([sa_exceptions.SAPendingDeprecationWarning], [lambda cls: cls(1, 2, 3)]),
+    ([sa_exceptions.SATestSuiteWarning], [lambda cls: cls()]),
 ]
 
 
@@ -536,7 +534,6 @@ class PickleException(fixtures.TestBase):
         for cls_list, callable_list in ALL_EXC:
             unroll.extend(product(cls_list, callable_list))
 
-        print(unroll)
         return combinations_list(unroll)
 
     @make_combinations()

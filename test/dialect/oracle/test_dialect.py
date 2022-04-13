@@ -1,6 +1,8 @@
 # coding: utf-8
 
 import re
+from unittest import mock
+from unittest.mock import Mock
 
 from sqlalchemy import bindparam
 from sqlalchemy import Computed
@@ -29,13 +31,10 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 
 class DialectTest(fixtures.TestBase):
@@ -56,22 +55,70 @@ class DialectTest(fixtures.TestBase):
         ):
             assert_raises_message(
                 exc.InvalidRequestError,
-                "cx_Oracle version 5.2 and above are supported",
+                "cx_Oracle version 7 and above are supported",
                 cx_oracle.OracleDialect_cx_oracle,
-                dbapi=Mock(),
+                dbapi=mock.Mock(),
             )
 
         with mock.patch(
             "sqlalchemy.dialects.oracle.cx_oracle.OracleDialect_cx_oracle."
             "_parse_cx_oracle_ver",
-            lambda self, vers: (5, 3, 1),
+            lambda self, vers: (7, 1, 0),
         ):
-            cx_oracle.OracleDialect_cx_oracle(dbapi=Mock())
+            cx_oracle.OracleDialect_cx_oracle(dbapi=mock.Mock())
 
 
 class DialectWBackendTest(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "oracle"
+
+    @testing.combinations(
+        (
+            "db is not connected",
+            None,
+            True,
+        ),
+        (
+            "ORA-1234 fake error",
+            1234,
+            False,
+        ),
+        (
+            "ORA-03114: not connected to ORACLE",
+            3114,
+            True,
+        ),
+        (
+            "DPI-1010: not connected",
+            None,
+            True,
+        ),
+        (
+            "DPI-1010: make sure we read the code",
+            None,
+            True,
+        ),
+        (
+            "DPI-1080: connection was closed by ORA-3113",
+            None,
+            True,
+        ),
+        (
+            "DPI-1234: some other DPI error",
+            None,
+            False,
+        ),
+    )
+    @testing.only_on("oracle+cx_oracle")
+    def test_is_disconnect(self, message, code, expected):
+
+        dialect = testing.db.dialect
+
+        exception_obj = dialect.dbapi.InterfaceError()
+        exception_obj.args = (Exception(message),)
+        exception_obj.args[0].code = code
+
+        eq_(dialect.is_disconnect(exception_obj, None, None), expected)
 
     def test_hypothetical_not_implemented_isolation_level(self):
         engine = engines.testing_engine()
@@ -242,7 +289,7 @@ class EncodingErrorsTest(fixtures.TestBase):
     )
 
     def _assert_errorhandler(self, outconverter, has_errorhandler):
-        data = ue("\uee2c\u9a66")  # this is u"\uee2c\u9a66"
+        data = "\uee2c\u9a66"  # this is u"\uee2c\u9a66"
 
         utf8_w_errors = data.encode("utf-16")
 
@@ -256,67 +303,7 @@ class EncodingErrorsTest(fixtures.TestBase):
             assert_raises(UnicodeDecodeError, outconverter, utf8_w_errors)
 
     @_oracle_char_combinations
-    @testing.requires.python3
-    def test_older_cx_oracle_warning(self, cx_Oracle, cx_oracle_type):
-        cx_Oracle.version = "6.3"
-
-        ignore_dialect = cx_oracle.dialect(
-            dbapi=cx_Oracle, encoding_errors="ignore"
-        )
-        ignore_outputhandler = (
-            ignore_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-
-        with testing.expect_warnings(
-            r"cx_oracle version \(6, 3\) does not support encodingErrors"
-        ):
-            ignore_outputhandler(
-                cursor, "foo", cx_oracle_type, None, None, None
-            )
-
-    @_oracle_char_combinations
-    @testing.requires.python2
-    def test_encoding_errors_sqla_py2k(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
-    ):
-        ignore_dialect = cx_oracle.dialect(
-            dbapi=cx_Oracle, encoding_errors="ignore"
-        )
-
-        ignore_outputhandler = (
-            ignore_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-        ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
-        outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, True)
-
-    @_oracle_char_combinations
-    @testing.requires.python2
-    def test_no_encoding_errors_sqla_py2k(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
-    ):
-        plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
-
-        plain_outputhandler = (
-            plain_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-        plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
-        outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, False)
-
-    @_oracle_char_combinations
-    @testing.requires.python3
-    def test_encoding_errors_cx_oracle_py3k(
+    def test_encoding_errors_cx_oracle(
         self,
         cx_Oracle,
         cx_oracle_type,
@@ -345,8 +332,7 @@ class EncodingErrorsTest(fixtures.TestBase):
         )
 
     @_oracle_char_combinations
-    @testing.requires.python3
-    def test_no_encoding_errors_cx_oracle_py3k(
+    def test_no_encoding_errors_cx_oracle(
         self,
         cx_Oracle,
         cx_oracle_type,
@@ -360,10 +346,18 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
 
-        eq_(
-            cursor.mock_calls,
-            [mock.call.var(mock.ANY, None, cursor.arraysize)],
-        )
+        if cx_oracle_type in (cx_Oracle.FIXED_CHAR, cx_Oracle.STRING):
+            # no calls; without encodingErrors, use cx_Oracle's default unicode
+            # handling
+            eq_(
+                cursor.mock_calls,
+                [],
+            )
+        else:
+            eq_(
+                cursor.mock_calls,
+                [mock.call.var(mock.ANY, None, cursor.arraysize)],
+            )
 
 
 class ComputedReturningTest(fixtures.TablesTest):
@@ -472,6 +466,23 @@ end;
         eq_(result.out_parameters, {"x_out": 10, "y_out": 75, "z_out": None})
         assert isinstance(result.out_parameters["x_out"], int)
 
+    def test_no_out_params_w_returning(self, connection, metadata):
+        t = Table("t", metadata, Column("x", Integer), Column("y", Integer))
+        metadata.create_all(connection)
+        stmt = (
+            t.insert()
+            .values(x=5, y=10)
+            .returning(outparam("my_param", Integer), t.c.x)
+        )
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Using explicit outparam\(\) objects with "
+            r"UpdateBase.returning\(\) in the same Core DML statement "
+            "is not supported in the Oracle dialect.",
+        ):
+            connection.execute(stmt)
+
     @classmethod
     def teardown_test_class(cls):
         with testing.db.begin() as conn:
@@ -532,6 +543,35 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             dict(uid=[1, 2, 3]),
         )
 
+    @testing.combinations(True, False, argnames="executemany")
+    def test_python_side_default(self, metadata, connection, executemany):
+        """test #7676"""
+
+        ids = ["a", "b", "c"]
+
+        def gen_id():
+            return ids.pop(0)
+
+        t = Table(
+            "has_id",
+            metadata,
+            Column("_id", String(50), default=gen_id, primary_key=True),
+            Column("_data", Integer),
+        )
+        metadata.create_all(connection)
+
+        if executemany:
+            result = connection.execute(
+                t.insert(), [{"_data": 27}, {"_data": 28}, {"_data": 29}]
+            )
+            eq_(
+                connection.execute(t.select().order_by(t.c._id)).all(),
+                [("a", 27), ("b", 28), ("c", 29)],
+            )
+        else:
+            result = connection.execute(t.insert(), {"_data": 27})
+            eq_(result.inserted_primary_key, ("a",))
+
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     def _dialect(self, server_version, **kw):
@@ -543,7 +583,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
                 version="0.0.0",
                 paramstyle="named",
             ),
-            **kw
+            **kw,
         )
 
         dialect._get_server_version_info = server_version_info
@@ -565,16 +605,15 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not dialect._use_nchar_for_unicode
 
         dialect.initialize(Mock())
-        assert not dialect.implicit_returning
+
+        # oracle 8 / 8i support returning
+        assert dialect.implicit_returning
+
         assert not dialect._supports_char_length
         assert not dialect.use_ansi
         self.assert_compile(String(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(Unicode(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "CLOB", dialect=dialect)
-
-        dialect = self._dialect((8, 2, 5), implicit_returning=True)
-        dialect.initialize(testing.db.connect())
-        assert dialect.implicit_returning
 
     def test_default_flags(self):
         """test with no initialization or server version info"""
@@ -798,25 +837,25 @@ class UnicodeSchemaTest(fixtures.TestBase):
         )
         metadata.create_all(connection)
 
-        connection.execute(table.insert(), {"_underscorecolumn": u("’é")})
+        connection.execute(table.insert(), {"_underscorecolumn": "’é"})
         result = connection.execute(
-            table.select().where(table.c._underscorecolumn == u("’é"))
+            table.select().where(table.c._underscorecolumn == "’é")
         ).scalar()
-        eq_(result, u("’é"))
+        eq_(result, "’é")
 
     def test_quoted_column_unicode(self, metadata, connection):
         table = Table(
             "atable",
             metadata,
-            Column(u("méil"), Unicode(255), primary_key=True),
+            Column("méil", Unicode(255), primary_key=True),
         )
         metadata.create_all(connection)
 
-        connection.execute(table.insert(), {u("méil"): u("’é")})
+        connection.execute(table.insert(), {"méil": "’é"})
         result = connection.execute(
-            table.select().where(table.c[u("méil")] == u("’é"))
+            table.select().where(table.c["méil"] == "’é")
         ).scalar()
-        eq_(result, u("’é"))
+        eq_(result, "’é")
 
 
 class CXOracleConnectArgsTest(fixtures.TestBase):

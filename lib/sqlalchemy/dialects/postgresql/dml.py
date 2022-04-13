@@ -1,9 +1,10 @@
 # postgresql/on_conflict.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+import typing
 
 from . import ext
 from ... import util
@@ -16,10 +17,32 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table):
+    """Construct a PostgreSQL-specific variant :class:`_postgresql.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.postgresql.insert` function creates
+        a :class:`sqlalchemy.dialects.postgresql.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_postgresql.Insert` construct includes additional methods
+    :meth:`_postgresql.Insert.on_conflict_do_update`,
+    :meth:`_postgresql.Insert.on_conflict_do_nothing`.
+
+    """
+    return Insert(table)
+
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -35,6 +58,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "postgresql"
+    inherit_cache = False
 
     @util.memoized_property
     def excluded(self):
@@ -74,13 +98,13 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self,
+        self: SelfInsert,
         constraint=None,
         index_elements=None,
         index_where=None,
         set_=None,
         where=None,
-    ):
+    ) -> SelfInsert:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -137,12 +161,16 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoUpdate(
             constraint, index_elements, index_where, set_, where
         )
+        return self
 
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
-        self, constraint=None, index_elements=None, index_where=None
-    ):
+        self: SelfInsert,
+        constraint=None,
+        index_elements=None,
+        index_where=None,
+    ) -> SelfInsert:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -172,11 +200,7 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoNothing(
             constraint, index_elements, index_where
         )
-
-
-insert = public_factory(
-    Insert, ".dialects.postgresql.insert", ".dialects.postgresql.Insert"
-)
+        return self
 
 
 class OnConflictClause(ClauseElement):
@@ -185,7 +209,7 @@ class OnConflictClause(ClauseElement):
     def __init__(self, constraint=None, index_elements=None, index_where=None):
 
         if constraint is not None:
-            if not isinstance(constraint, util.string_types) and isinstance(
+            if not isinstance(constraint, str) and isinstance(
                 constraint,
                 (schema.Index, schema.Constraint, ext.ExcludeConstraint),
             ):
@@ -197,7 +221,7 @@ class OnConflictClause(ClauseElement):
                     "'constraint' and 'index_elements' are mutually exclusive"
                 )
 
-            if isinstance(constraint, util.string_types):
+            if isinstance(constraint, str):
                 self.constraint_target = constraint
                 self.inferred_target_elements = None
                 self.inferred_target_whereclause = None

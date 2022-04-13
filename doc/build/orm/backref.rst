@@ -186,55 +186,27 @@ returned ``Address``.   The :func:`.backref` function formatted the arguments we
 it into a form that is interpreted by the receiving :func:`_orm.relationship` as additional
 arguments to be applied to the new relationship it creates.
 
-Setting cascade for backrefs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A key behavior that occurs in the 1.x series of SQLAlchemy regarding backrefs
-is that :ref:`cascades <unitofwork_cascades>` will occur bidirectionally by
-default.   This basically means, if one starts with an ``User`` object
-that's been persisted in the :class:`.Session`::
+Cascade behavior for backrefs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    user = session.query(User).filter(User.id == 1).first()
+It's important to note that even though a bi-directional relationship
+may be manipulated from either direction, having the same end effect on the
+object structure produced, there is a significant difference in how the
+:ref:`save-update cascade <cascade_save_update>` behaves for two objects
+where one is attached and the other is unattached to a :class:`_orm.Session`,
+depending on the direction in which the relationships are manipulated.
 
-The above ``User`` is :term:`persistent` in the :class:`.Session`.  It usually
-is intuitive that if we create an ``Address`` object and append to the
-``User.addresses`` collection, it is automatically added to the
-:class:`.Session` as in the example below::
+The ``save-update`` cascade will only take effect **uni-directionally**
+in the direction from a parent object that is already associated with a
+:class:`_orm.Session`, towards an object that is being associated with that
+parent directly via an attribute or collection on that parent.  It won't
+take effect if the parent object is instead assigned to an attribute or
+collection on the child, in which case the unattached parent object should be
+added to the :class:`_orm.Session` explicitly using :meth:`_orm.Session.add`.
 
-    user = session.query(User).filter(User.id == 1).first()
-    address = Address(email_address='foo')
-    user.addresses.append(address)
-
-The above behavior is known as the "save update cascade" and is described
-in the section :ref:`unitofwork_cascades`.
-
-However, if we instead created a new ``Address`` object, and associated the
-``User`` object with the ``Address`` as follows::
-
-    address = Address(email_address='foo', user=user)
-
-In the above example, it is **not** as intuitive that the ``Address`` would
-automatically be added to the :class:`.Session`.  However, the backref behavior
-of ``Address.user`` indicates that the ``Address`` object is also appended to
-the ``User.addresses`` collection.  This in turn initiates a **cascade**
-operation which indicates that this ``Address`` should be placed into the
-:class:`.Session` as a :term:`pending` object.
-
-Since this behavior has been identified as counter-intuitive to most people,
-it can be disabled by setting :paramref:`_orm.relationship.cascade_backrefs`
-to False, as in::
-
-
-    class User(Base):
-        # ...
-
-        addresses = relationship("Address", back_populates="user", cascade_backrefs=False)
-
-See the example in :ref:`backref_cascade` for further information.
-
-.. seealso::
-
-    :ref:`backref_cascade`.
+For a complete example of how this looks in practice, see the section
+:ref:`backref_cascade`.
 
 
 One Way Backrefs

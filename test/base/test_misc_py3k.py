@@ -1,10 +1,17 @@
+import operator
+from typing import cast
+
 from sqlalchemy import Column
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import requires
 
 
 class TestGenerics(fixtures.TestBase):
-    @requires.generic_classes
     def test_traversible_is_generic(self):
+        """test #6759"""
         col = Column[int]
-        assert col is Column
+
+        # looked in the source for typing._GenericAlias.
+        # col.__origin__ is Column, but it's not public API.
+        # __reduce__ could change too but seems good enough for now
+        eq_(cast(object, col).__reduce__(), (operator.getitem, (Column, int)))

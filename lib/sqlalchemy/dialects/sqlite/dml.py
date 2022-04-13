@@ -1,8 +1,10 @@
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+import typing
 
 from ... import util
 from ...sql import coercions
@@ -13,10 +15,32 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table):
+    """Construct a sqlite-specific variant :class:`_sqlite.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.sqlite.insert` function creates
+        a :class:`sqlalchemy.dialects.sqlite.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_sqlite.Insert` construct includes additional methods
+    :meth:`_sqlite.Insert.on_conflict_do_update`,
+    :meth:`_sqlite.Insert.on_conflict_do_nothing`.
+
+    """
+    return Insert(table)
+
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -36,6 +60,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "sqlite"
+    inherit_cache = False
 
     @util.memoized_property
     def excluded(self):
@@ -70,12 +95,12 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self,
+        self: SelfInsert,
         index_elements=None,
         index_where=None,
         set_=None,
         where=None,
-    ):
+    ) -> SelfInsert:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -119,10 +144,13 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoUpdate(
             index_elements, index_where, set_, where
         )
+        return self
 
     @_generative
     @_on_conflict_exclusive
-    def on_conflict_do_nothing(self, index_elements=None, index_where=None):
+    def on_conflict_do_nothing(
+        self: SelfInsert, index_elements=None, index_where=None
+    ) -> SelfInsert:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -140,11 +168,7 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoNothing(
             index_elements, index_where
         )
-
-
-insert = public_factory(
-    Insert, ".dialects.sqlite.insert", ".dialects.sqlite.Insert"
-)
+        return self
 
 
 class OnConflictClause(ClauseElement):

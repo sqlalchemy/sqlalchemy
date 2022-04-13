@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -15,16 +15,19 @@ to provide specific inclusion/exclusions.
 
 """
 
-import platform
-import sys
+from __future__ import annotations
 
+import platform
+
+from . import config
 from . import exclusions
 from . import only_on
+from .. import create_engine
 from .. import util
 from ..pool import QueuePool
 
 
-class Requirements(object):
+class Requirements:
     pass
 
 
@@ -232,7 +235,7 @@ class SuiteRequirements(Requirements):
         without being in the context of a typed column.
 
         """
-        return exclusions.closed()
+        return exclusions.open()
 
     @property
     def standalone_null_binds_whereclause(self):
@@ -589,7 +592,15 @@ class SuiteRequirements(Requirements):
 
     @property
     def table_reflection(self):
+        """target database has general support for table reflection"""
         return exclusions.open()
+
+    @property
+    def reflect_tables_no_columns(self):
+        """target database supports creation and reflection of tables with no
+        columns, or at least tables that seem to have no columns."""
+
+        return exclusions.closed()
 
     @property
     def comment_reflection(self):
@@ -746,6 +757,29 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def datetime_timezone(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with tzinfo with DateTime(timezone=True)."""
+
+        return exclusions.closed()
+
+    @property
+    def time_timezone(self):
+        """target dialect supports representation of Python
+        datetime.time() with tzinfo with Time(timezone=True)."""
+
+        return exclusions.closed()
+
+    @property
+    def datetime_implicit_bound(self):
+        """target dialect when given a datetime object will bind it such
+        that the database server knows the object is a datetime, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
     def datetime_microseconds(self):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
@@ -758,6 +792,16 @@ class SuiteRequirements(Requirements):
         datetime.datetime() with microsecond objects but only
         if TIMESTAMP is used."""
         return exclusions.closed()
+
+    @property
+    def timestamp_microseconds_implicit_bound(self):
+        """target dialect when given a datetime object which also includes
+        a microseconds portion when using the TIMESTAMP data type
+        will bind it such that the database server knows
+        the object is a datetime with microseconds, and not a plain string.
+
+        """
+        return self.timestamp_microseconds
 
     @property
     def datetime_historic(self):
@@ -865,6 +909,59 @@ class SuiteRequirements(Requirements):
                 ]
             }
         """
+        with config.db.connect() as conn:
+
+            try:
+                supported = conn.dialect.get_isolation_level_values(
+                    conn.connection.dbapi_connection
+                )
+            except NotImplementedError:
+                return None
+            else:
+                return {
+                    "default": conn.dialect.default_isolation_level,
+                    "supported": supported,
+                }
+
+    @property
+    def get_isolation_level_values(self):
+        """target dialect supports the
+        :meth:`_engine.Dialect.get_isolation_level_values`
+        method added in SQLAlchemy 2.0.
+
+        """
+
+        def go(config):
+            with config.db.connect() as conn:
+                try:
+                    conn.dialect.get_isolation_level_values(
+                        conn.connection.dbapi_connection
+                    )
+                except NotImplementedError:
+                    return False
+                else:
+                    return True
+
+        return exclusions.only_if(go)
+
+    @property
+    def dialect_level_isolation_level_param(self):
+        """test that the dialect allows the 'isolation_level' argument
+        to be handled by DefaultDialect"""
+
+        def go(config):
+            try:
+                e = create_engine(
+                    config.db.url, isolation_level="READ COMMITTED"
+                )
+            except:
+                return False
+            else:
+                return (
+                    e.dialect._on_connect_isolation_level == "READ COMMITTED"
+                )
+
+        return exclusions.only_if(go)
 
     @property
     def json_type(self):
@@ -909,7 +1006,7 @@ class SuiteRequirements(Requirements):
     def precision_numerics_enotation_large(self):
         """target backend supports Decimal() objects using E notation
         to represent very large values."""
-        return exclusions.closed()
+        return exclusions.open()
 
     @property
     def precision_numerics_many_significant_digits(self):
@@ -949,6 +1046,21 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def numeric_received_as_decimal_untyped(self):
+        """target backend will return result columns that are explicitly
+        against NUMERIC or similar precision-numeric datatypes (not including
+        FLOAT or INT types) as Python Decimal objects, and not as floats
+        or ints, including when no SQLAlchemy-side typing information is
+        associated with the statement (e.g. such as a raw SQL string).
+
+        This should be enabled if either the DBAPI itself returns Decimal
+        objects, or if the dialect has set up DBAPI-specific return type
+        handlers such that Decimal objects come back automatically.
+
+        """
+        return exclusions.open()
+
+    @property
     def nested_aggregates(self):
         """target database can select an aggregate from a subquery that's
         also using an aggregate
@@ -969,6 +1081,12 @@ class SuiteRequirements(Requirements):
         """A precision numeric type will return empty significant digits,
         i.e. a value such as 10.000 will come back in Decimal form with
         the .000 maintained."""
+
+        return exclusions.closed()
+
+    @property
+    def infinity_floats(self):
+        """The Float type can persist and load float('inf'), float('-inf')."""
 
         return exclusions.closed()
 
@@ -1180,21 +1298,21 @@ class SuiteRequirements(Requirements):
 
     @property
     def timing_intensive(self):
-        return exclusions.requires_tag("timing_intensive")
+        return config.add_to_marker.timing_intensive
 
     @property
     def memory_intensive(self):
-        return exclusions.requires_tag("memory_intensive")
+        return config.add_to_marker.memory_intensive
 
     @property
     def threading_with_mock(self):
         """Mark tests that use threading and mock at the same time - stability
-        issues have been observed with coverage + python 3.3
+        issues have been observed with coverage
 
         """
         return exclusions.skip_if(
-            lambda config: util.py3k and config.options.has_coverage,
-            "Stability issues with coverage + py3k",
+            lambda config: config.options.has_coverage,
+            "Stability issues with coverage",
         )
 
     @property
@@ -1210,43 +1328,22 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(check)
 
     @property
-    def python2(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info >= (3,),
-            "Python version 2.xx is required.",
+    def no_sqlalchemy2_stubs(self):
+        def check(config):
+            try:
+                __import__("sqlalchemy-stubs.ext.mypy")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.skip_if(check)
+
+    @property
+    def python38(self):
+        return exclusions.only_if(
+            lambda: util.py38, "Python 3.8 or above required"
         )
-
-    @property
-    def python3(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3,), "Python version 3.xx is required."
-        )
-
-    @property
-    def pep520(self):
-        return self.python36
-
-    @property
-    def insert_order_dicts(self):
-        return self.python37
-
-    @property
-    def python36(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3, 6),
-            "Python version 3.6 or greater is required.",
-        )
-
-    @property
-    def python37(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3, 7),
-            "Python version 3.7 or greater is required.",
-        )
-
-    @property
-    def dataclasses(self):
-        return self.python37
 
     @property
     def cpython(self):
@@ -1265,17 +1362,6 @@ class SuiteRequirements(Requirements):
                 return True
 
         return exclusions.only_if(check_lib, "patch library needed")
-
-    @property
-    def non_broken_pickle(self):
-        from sqlalchemy.util import pickle
-
-        return exclusions.only_if(
-            lambda: util.cpython
-            and pickle.__name__ == "cPickle"
-            or sys.version_info >= (3, 2),
-            "Needs cPickle+cPython or newer Python 3 pickle",
-        )
 
     @property
     def predictable_gc(self):
@@ -1311,7 +1397,8 @@ class SuiteRequirements(Requirements):
     @property
     def cextensions(self):
         return exclusions.skip_if(
-            lambda: not util.has_compiled_ext(), "C extensions not installed"
+            lambda: not util.has_compiled_ext(),
+            "Cython extensions not installed",
         )
 
     def _has_sqlite(self):
@@ -1333,7 +1420,7 @@ class SuiteRequirements(Requirements):
     def greenlet(self):
         def go(config):
             try:
-                import greenlet  # noqa F401
+                import greenlet  # noqa: F401
             except ImportError:
                 return False
             else:
@@ -1459,4 +1546,9 @@ class SuiteRequirements(Requirements):
     @property
     def generic_classes(self):
         "If X[Y] can be implemented with ``__class_getitem__``. py3.7+"
-        return exclusions.only_if(lambda: util.py37)
+        return exclusions.open()
+
+    @property
+    def json_deserializer_binary(self):
+        "indicates if the json_deserializer function is called with bytes"
+        return exclusions.closed()

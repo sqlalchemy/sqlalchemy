@@ -128,7 +128,7 @@ def _history_mapper(local_mapper):
             local_mapper.local_table.name + "_history",
             local_mapper.local_table.metadata,
             *cols,
-            schema=local_mapper.local_table.schema
+            schema=local_mapper.local_table.schema,
         )
     else:
         # single table inheritance.  take any additional columns that may have
@@ -173,7 +173,7 @@ def _history_mapper(local_mapper):
             local_mapper.version_id_col = local_mapper.local_table.c.version
 
 
-class Versioned(object):
+class Versioned:
     use_mapper_versioning = False
     """if True, also assign the version column to be tracked by the mapper"""
 

@@ -1,5 +1,5 @@
 # ext/declarative/__init__.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,7 +8,6 @@
 from .extensions import AbstractConcreteBase
 from .extensions import ConcreteBase
 from .extensions import DeferredReflection
-from .extensions import instrument_declarative
 from ... import util
 from ...orm.decl_api import as_declarative as _as_declarative
 from ...orm.decl_api import declarative_base as _declarative_base

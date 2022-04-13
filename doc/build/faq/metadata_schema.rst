@@ -90,7 +90,7 @@ metadata creation sequence as a string, using this recipe::
 
     def dump(sql, *multiparams, **params):
         print(sql.compile(dialect=engine.dialect))
-    engine = create_mock_engine('postgresql://', dump)
+    engine = create_mock_engine('postgresql+psycopg2://', dump)
     metadata_obj.create_all(engine, checkfirst=False)
 
 The `Alembic <https://alembic.sqlalchemy.org>`_ tool also supports

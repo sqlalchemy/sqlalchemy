@@ -34,6 +34,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
@@ -166,9 +167,9 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
 
         with testing.expect_warnings(
             "An alias is being generated automatically against joined entity "
-            "mapped class Manager->managers due to overlapping",
+            r"Mapper\[Manager\(managers\)\] due to overlapping",
             "An alias is being generated automatically against joined entity "
-            "mapped class Boss->boss due to overlapping",
+            r"Mapper\[Boss\(boss\)\] due to overlapping",
             raise_on_any_unexpected=True,
         ):
             self.assert_compile(
@@ -226,8 +227,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 [
                     "relationship",
                     "relationship_only",
-                    "string_relationship",
-                    "string_relationship_only",
                     "none",
                     "explicit",
                     "table_none",
@@ -235,11 +234,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 ],
                 [True, False],
             )
-        ).difference(
-            [
-                ("string_relationship", False),
-                ("string_relationship_only", False),
-            ]
         ),
         argnames="onclause_type, use_legacy",
     )
@@ -256,12 +250,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         if onclause_type == "relationship":
             q = q.join(Address, User.addresses)
-        elif onclause_type == "string_relationship":
-            q = q.join(Address, "addresses")
         elif onclause_type == "relationship_only":
             q = q.join(User.addresses)
-        elif onclause_type == "string_relationship_only":
-            q = q.join("addresses")
         elif onclause_type == "none":
             q = q.join(Address)
         elif onclause_type == "explicit":
@@ -421,7 +411,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         assert_raises_message(
             TypeError,
-            "unknown arguments: bar, foob",
+            r".*join\(\) .*unexpected .*keyword",
             sess.query(User).join,
             "address",
             foob="bar",
@@ -429,7 +419,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
         assert_raises_message(
             TypeError,
-            "unknown arguments: bar, foob",
+            r".*outerjoin\(\) .*unexpected .*keyword",
             sess.query(User).outerjoin,
             "address",
             foob="bar",
@@ -616,7 +606,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON users_1.id = orders.user_id",
         )
 
-    def test_overlapping_paths_one(self):
+    def test_overlapping_paths_one_legacy(self):
         User = self.classes.User
         Order = self.classes.Order
 
@@ -639,7 +629,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses.id = orders.address_id",
         )
 
-    def test_overlapping_paths_multilevel(self):
+    def test_overlapping_paths_multilevel_legacy(self):
         User = self.classes.User
         Order = self.classes.Order
         Address = self.classes.Address
@@ -653,6 +643,58 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             .join(Order.items)
             .join(User.addresses)
             .join(Address.dingaling)
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id "
+            "JOIN dingalings ON addresses.id = dingalings.address_id",
+        )
+
+    def test_overlapping_paths_one_modern(self):
+        User = self.classes.User
+        Order = self.classes.Order
+
+        # test overlapping paths.   User->orders is used by both joins, but
+        # rendered once.
+        # label style is for comparison to legacy version.  1.4 version
+        # of select().join() did not behave the same as Query.join()
+        self.assert_compile(
+            select(User)
+            .join(User.orders)
+            .join(Order.items)
+            .join(User.orders)
+            .join(Order.address)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "JOIN orders "
+            "ON users.id = orders.user_id "
+            "JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id JOIN addresses "
+            "ON addresses.id = orders.address_id",
+        )
+
+    def test_overlapping_paths_multilevel_modern(self):
+        User = self.classes.User
+        Order = self.classes.Order
+        Address = self.classes.Address
+
+        # label style is for comparison to legacy version.  1.4 version
+        # of select().join() did not behave the same as Query.join()
+        q = (
+            select(User)
+            .join(User.orders)
+            .join(User.addresses)
+            .join(User.orders)
+            .join(Order.items)
+            .join(User.addresses)
+            .join(Address.dingaling)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
         self.assert_compile(
             q,
@@ -844,7 +886,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
-        # this fails (and we cant quite fix right now).
+        # this fails (and we can't quite fix right now).
         if False:
             self.assert_compile(
                 sess.query(User, ualias)
@@ -1282,10 +1324,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_clause_onclause(self):
-        Item, Order, users, order_items, User = (
+        Item, Order, order_items, User = (
             self.classes.Item,
             self.classes.Order,
-            self.tables.users,
             self.tables.order_items,
             self.classes.User,
         )
@@ -1330,17 +1371,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, subq)
         eq_(
             sess.query(ua).join(Order, ua.id == Order.user_id).all(),
-            [User(name="fred")],
-        )
-
-        # same with an explicit select_from()
-        eq_(
-            sess.query(User)
-            .select_entity_from(
-                select(users).order_by(User.id).offset(2).alias()
-            )
-            .join(Order, User.id == Order.user_id)
-            .all(),
             [User(name="fred")],
         )
 
@@ -1681,11 +1711,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # coercions does not catch this due to the
         # legacy=True flag for JoinTargetRole
-        assert_raises_message(
+
+        with expect_raises_message(
             sa_exc.ArgumentError,
-            "Expected mapped entity or selectable/table as join target",
-            sess.query(User).join(User.id == Address.user_id)._compile_context,
-        )
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got",
+        ):
+            sess.query(User).join(User.id == Address.user_id)
 
     def test_on_clause_no_right_side_one_future(self):
         User = self.classes.User
@@ -1699,6 +1731,46 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             select(User).join,
             User.id == Address.user_id,
         )
+
+    def test_no_legacy_multi_join_two_element(self):
+        User = self.classes.User
+        Order = self.classes.Order
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            "No 'on clause' argument may be passed when joining to a "
+            "relationship path as a target",
+        ):
+            sess.query(User).join(User.orders, Order.items)._compile_context()
+
+    def test_no_modern_multi_join_two_element(self):
+        User = self.classes.User
+        Order = self.classes.Order
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            "No 'on clause' argument may be passed when joining to a "
+            "relationship path as a target",
+        ):
+            sess.execute(select(User).join(User.orders, Order.items))
+
+    def test_kw_only_blocks_legacy_multi_join(self):
+        User = self.classes.User
+        Order = self.classes.Order
+        Item = self.classes.Item
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            TypeError,
+            r".*join\(\) takes from 2 to 3 positional arguments but "
+            "4 were given",
+        ):
+            sess.query(User).join(User.orders, Order.items, Item.keywords)
 
     def test_on_clause_no_right_side_two(self):
         User = self.classes.User
@@ -1722,6 +1794,52 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Join target Address.user_id does not refer to a mapped entity",
             stmt.compile,
         )
+
+    def test_no_strings_for_single_onclause_legacy_query(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            sess.query(User).join("addresses")
+
+    def test_no_strings_for_single_onclause_newstyle(self):
+        User = self.classes.User
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            select(User).join("addresses")
+
+    def test_no_strings_for_dual_onclause_legacy_query(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "ON clause, typically a SQL expression or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            sess.query(User).join(Address, "addresses")
+
+    def test_no_strings_for_dual_onclause_newstyle(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "ON clause, typically a SQL expression or ORM relationship "
+            "attribute expected, got 'addresses'.",
+        ):
+            select(User).join(Address, "addresses")
 
     def test_select_from(self):
         """Test that the left edge of the join can be set reliably with
@@ -2109,7 +2227,7 @@ class CreateJoinsTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("id", Integer, ForeignKey("base.id"), primary_key=True),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class A(Base):
@@ -2446,8 +2564,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         s = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Can't construct a join from mapped class Node->nodes to mapped "
-            "class Node->nodes, they are the same entity",
+            r"Can't construct a join from Mapper\[Node\(nodes\)\] to "
+            r"Mapper\[Node\(nodes\)\], they are the same entity",
             s.query(Node).join(Node.children)._compile_context,
         )
 
@@ -3064,26 +3182,24 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true",
         )
 
-    # sef == select_entity_from
-    def test_select_subquery_sef_implicit_correlate(self):
+    # "aas" == "aliased against select"
+    def test_select_subquery_aas_implicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             s.query(Book.book_id)
-            .filter(Person.people_id == Book.book_owner_id)
+            .filter(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3098,25 +3214,23 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_implicit_correlate_coreonly(self):
+    def test_select_subquery_aas_implicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             select(Book.book_id)
-            .where(Person.people_id == Book.book_owner_id)
+            .where(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3131,26 +3245,24 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_explicit_correlate_coreonly(self):
+    def test_select_subquery_aas_explicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             select(Book.book_id)
-            .correlate(Person)
-            .where(Person.people_id == Book.book_owner_id)
+            .correlate(pa)
+            .where(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3165,26 +3277,23 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_explicit_correlate(self):
+    def test_select_subquery_aas_explicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+        pa = aliased(Person, stmt)
 
         subq = (
             s.query(Book.book_id)
-            .correlate(Person)
-            .filter(Person.people_id == Book.book_owner_id)
+            .correlate(pa)
+            .filter(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3217,17 +3326,19 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "bookcases.bookcase_shelves) AS anon_1 ON true",
         )
 
-    def test_from_function_select_entity_from(self):
+    def test_from_function_aas(self):
         Bookcase = self.classes.Bookcase
 
         s = fixture_session()
 
         subq = s.query(Bookcase).subquery()
 
-        srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
+        ba = aliased(Bookcase, subq)
+
+        srf = lateral(func.generate_series(1, ba.bookcase_shelves))
 
         self.assert_compile(
-            s.query(Bookcase).select_entity_from(subq).join(srf, true()),
+            s.query(ba).join(srf, true()),
             "SELECT anon_1.bookcase_id AS anon_1_bookcase_id, "
             "anon_1.bookcase_owner_id AS anon_1_bookcase_owner_id, "
             "anon_1.bookcase_shelves AS anon_1_bookcase_shelves, "

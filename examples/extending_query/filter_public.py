@@ -50,7 +50,7 @@ def _add_filtering_criteria(execute_state):
         )
 
 
-class HasPrivate(object):
+class HasPrivate:
     """Mixin that identifies a class as having private entities"""
 
     public = Column(Boolean, nullable=False)

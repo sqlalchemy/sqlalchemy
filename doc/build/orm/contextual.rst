@@ -19,6 +19,21 @@ The object is the :class:`.scoped_session` object, and it represents a
 registry pattern, a good introduction can be found in `Patterns of Enterprise
 Architecture <https://martinfowler.com/eaaCatalog/registry.html>`_.
 
+.. warning::
+
+    The :class:`.scoped_session` registry by default uses a Python
+    `threading.local() <https://docs.python.org/3/library/threading.html#thread-local-data>`_
+    in order to track :class:`_orm.Session` instances.   **This is not
+    necessarily compatible with all application servers**, particularly those
+    which make use of greenlets or other alternative forms of concurrency
+    control, which may lead to race conditions (e.g. randomly occurring
+    failures) when used in moderate to high concurrency scenarios.
+    Please read :ref:`unitofwork_contextual_threadlocal` and
+    :ref:`session_lifespan` below to more fully understand the implications
+    of using ``threading.local()`` to track :class:`_orm.Session` objects
+    and consider more explicit means of scoping when using application servers
+    which are not based on traditional threads.
+
 .. note::
 
    The :class:`.scoped_session` object is a very popular and useful object
@@ -96,12 +111,14 @@ underlying :class:`.Session` being maintained by the registry::
     # equivalent to:
     #
     # session = Session()
-    # print(session.query(MyClass).all())
+    # print(session.scalars(select(MyClass)).all())
     #
-    print(Session.query(MyClass).all())
+    print(Session.scalars(select(MyClass)).all())
 
 The above code accomplishes the same task as that of acquiring the current
 :class:`.Session` by calling upon the registry, then using that :class:`.Session`.
+
+.. _unitofwork_contextual_threadlocal:
 
 Thread-Local Scope
 ------------------
@@ -178,7 +195,7 @@ diagram below illustrates this flow::
                                              # be used at any time, creating the
                                              # request-local Session() if not present,
                                              # or returning the existing one
-                                             Session.query(MyClass) # ...
+                                             Session.execute(select(MyClass)) # ...
 
                                              Session.add(some_object) # ...
 

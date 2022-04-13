@@ -17,6 +17,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.sql import operators
 from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -137,7 +138,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         """test :ticket:`6215`"""
         Base = declarative_base()
 
-        class SomeMixin(object):
+        class SomeMixin:
             @hybrid.hybrid_property
             def same_name(self):
                 return self.id
@@ -161,6 +162,27 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
             [ent._label_name for ent in compiled.compile_state._entities],
             ["same_name", "id", "name"],
         )
+
+    def test_custom_op(self, registry):
+        """test #3162"""
+
+        my_op = operators.custom_op(
+            "my_op", python_impl=lambda a, b: a + "_foo_" + b
+        )
+
+        @registry.mapped
+        class SomeClass:
+            __tablename__ = "sc"
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            @hybrid.hybrid_property
+            def foo_data(self):
+                return my_op(self.data, "bar")
+
+        eq_(SomeClass(data="data").foo_data, "data_foo_bar")
+
+        self.assert_compile(SomeClass.foo_data, "sc.data my_op :data_1")
 
 
 class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -244,6 +266,67 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             as_ = relationship("A")
 
         return A, B
+
+    @testing.fixture
+    def _related_polymorphic_attr_fixture(self):
+        """test for #7425"""
+
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+            bs = relationship("B", back_populates="a", lazy="joined")
+
+        class B(Base):
+            __tablename__ = "poly"
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                # if with_polymorphic is removed, issue does not occur
+                "with_polymorphic": "*",
+            }
+            name = Column(String, primary_key=True)
+            type = Column(String)
+            a_id = Column(ForeignKey(A.id))
+
+            a = relationship(A, back_populates="bs")
+
+            @hybrid.hybrid_property
+            def is_foo(self):
+                return self.name == "foo"
+
+        return A, B
+
+    def test_cloning_in_polymorphic_any(
+        self, _related_polymorphic_attr_fixture
+    ):
+        A, B = _related_polymorphic_attr_fixture
+
+        session = fixture_session()
+
+        # in the polymorphic case, A.bs.any() does a traverse() / clone()
+        # on the expression.  so the proxedattribute coming from the hybrid
+        # has to support this.
+
+        self.assert_compile(
+            session.query(A).filter(A.bs.any(B.name == "foo")),
+            "SELECT a.id AS a_id, poly_1.name AS poly_1_name, poly_1.type "
+            "AS poly_1_type, poly_1.a_id AS poly_1_a_id FROM a "
+            "LEFT OUTER JOIN poly AS poly_1 ON a.id = poly_1.a_id "
+            "WHERE EXISTS (SELECT 1 FROM poly WHERE a.id = poly.a_id "
+            "AND poly.name = :name_1)",
+        )
+
+        # SQL should be identical
+        self.assert_compile(
+            session.query(A).filter(A.bs.any(B.is_foo)),
+            "SELECT a.id AS a_id, poly_1.name AS poly_1_name, poly_1.type "
+            "AS poly_1_type, poly_1.a_id AS poly_1_a_id FROM a "
+            "LEFT OUTER JOIN poly AS poly_1 ON a.id = poly_1.a_id "
+            "WHERE EXISTS (SELECT 1 FROM poly WHERE a.id = poly.a_id "
+            "AND poly.name = :name_1)",
+        )
 
     @testing.fixture
     def _unnamed_expr_fixture(self):
@@ -945,82 +1028,192 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             params={"first_name": "Dr.", "last_name": "No"},
         )
 
+    # these tests all run two UPDATES to assert that caching is not
+    # interfering.  this is #7209
+
+    def test_evaluate_non_hybrid_attr(self):
+        # this is a control case
+        Person = self.classes.Person
+
+        s = fixture_session()
+        jill = s.get(Person, 3)
+
+        s.query(Person).update(
+            {Person.first_name: "moonbeam"}, synchronize_session="evaluate"
+        )
+        eq_(jill.first_name, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.first_name: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.first_name, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
+
     def test_evaluate_hybrid_attr_indirect(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="evaluate"
         )
         eq_(jill.fname2, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname2: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname2, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_evaluate_hybrid_attr_plain(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="evaluate"
         )
         eq_(jill.fname, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_fetch_hybrid_attr_indirect(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="fetch"
         )
         eq_(jill.fname2, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname2: "sunshine"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname2, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_fetch_hybrid_attr_plain(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="fetch"
         )
         eq_(jill.fname, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname: "sunshine"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_evaluate_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="evaluate"
         )
         eq_(jill.name, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.name: "first last"}, synchronize_session="evaluate"
+        )
+        eq_(jill.name, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
     def test_fetch_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="fetch"
         )
         eq_(jill.name, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.name: "first last"}, synchronize_session="fetch"
+        )
+        eq_(jill.name, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
     def test_evaluate_hybrid_attr_indirect_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.uname: "moonbeam sunshine"}, synchronize_session="evaluate"
         )
         eq_(jill.uname, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.uname: "first last"}, synchronize_session="evaluate"
+        )
+        eq_(jill.uname, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
 
 class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1053,7 +1246,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             for currency_from, rate in zip(symbols, values)
         )
 
-        class Amount(object):
+        class Amount:
             def __init__(self, amount, currency):
                 self.currency = currency
                 self.amount = amount

@@ -1,5 +1,5 @@
 # ext/mutable.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -113,7 +113,7 @@ mapping against the ``my_data`` table::
 
     from sqlalchemy import mapper
 
-    class MyDataClass(object):
+    class MyDataClass:
         pass
 
     # associates mutation listeners with MyDataClass.data
@@ -219,7 +219,7 @@ from within the mutable extension::
         data = Column(MutableDict.as_mutable(JSONEncodedDict))
 
     @event.listens_for(MyDataClass.data, "modified")
-    def modified_json(instance):
+    def modified_json(instance, initiator):
         print("json value modified:", instance.data)
 
 .. _mutable_composites:
@@ -269,10 +269,10 @@ and to also route attribute set events via ``__setattr__`` to the
         def __ne__(self, other):
             return not self.__eq__(other)
 
-The :class:`.MutableComposite` class uses a Python metaclass to automatically
-establish listeners for any usage of :func:`_orm.composite` that specifies our
-``Point`` type. Below, when ``Point`` is mapped to the ``Vertex`` class,
-listeners are established which will route change events from ``Point``
+The :class:`.MutableComposite` class makes use of class mapping events to
+automatically establish listeners for any usage of :func:`_orm.composite` that
+specifies our ``Point`` type. Below, when ``Point`` is mapped to the ``Vertex``
+class, listeners are established which will route change events from ``Point``
 objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
 
     from sqlalchemy.orm import composite, mapper
@@ -286,7 +286,7 @@ objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
         Column('y2', Integer),
         )
 
-    class Vertex(object):
+    class Vertex:
         pass
 
     mapper(Vertex, vertices, properties={
@@ -360,13 +360,12 @@ from .. import event
 from .. import inspect
 from .. import types
 from ..orm import Mapper
-from ..orm import mapper
 from ..orm.attributes import flag_modified
 from ..sql.base import SchemaEventTarget
 from ..util import memoized_property
 
 
-class MutableBase(object):
+class MutableBase:
     """Common base class to :class:`.Mutable`
     and :class:`.MutableComposite`.
 
@@ -567,7 +566,7 @@ class Mutable(MutableBase):
                 if isinstance(prop.columns[0].type, sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, "mapper_configured", listen_for_type)
+        event.listen(Mapper, "mapper_configured", listen_for_type)
 
     @classmethod
     def as_mutable(cls, sqltype):
@@ -629,7 +628,7 @@ class Mutable(MutableBase):
                 ) or (prop.columns[0].type is sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, "mapper_configured", listen_for_type)
+        event.listen(Mapper, "mapper_configured", listen_for_type)
 
         return sqltype
 

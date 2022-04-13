@@ -88,13 +88,13 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         sess = fixture_session()
         sess2 = fixture_session()
-        p1 = sess.query(Parent).get(1)
+        p1 = sess.get(Parent, 1)
         p1.children
 
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        sess2._legacy_transaction()  # autobegin
+        sess2.connection()  # autobegin
 
         @profiling.function_call_count(variance=0.20)
         def go1():
@@ -104,7 +104,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         # third call, merge object already present. almost no calls.
 
-        sess2._legacy_transaction()  # autobegin
+        sess2.connection()  # autobegin
 
         @profiling.function_call_count(variance=0.10, warmup=1)
         def go2():
@@ -117,14 +117,14 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         sess = fixture_session()
         sess2 = fixture_session()
-        p1 = sess.query(Parent).get(1)
+        p1 = sess.get(Parent, 1)
         p1.children
 
         # preloading of collection took this down from 1728 to 1192
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        sess2._legacy_transaction()  # autobegin
+        sess2.connection()  # autobegin
 
         @profiling.function_call_count(variance=0.10)
         def go():
@@ -375,7 +375,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
                     **dict(
                         (letter, "%s%d" % (letter, i))
                         for letter in ["x", "y", "z", "p", "q", "r"]
-                    )
+                    ),
                 )
                 for i in range(1, 1001)
             ]
@@ -396,7 +396,10 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
         A = self.classes.A
         s = fixture_session()
         s.query(A).options(
-            *[defer(letter) for letter in ["x", "y", "z", "p", "q", "r"]]
+            *[
+                defer(getattr(A, letter))
+                for letter in ["x", "y", "z", "p", "q", "r"]
+            ]
         ).all()
 
 
@@ -719,7 +722,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "b",
@@ -728,7 +731,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "c",
@@ -737,7 +740,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "d",
@@ -746,7 +749,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("c_id", ForeignKey("c.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "e",
@@ -755,7 +758,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "f",
@@ -764,7 +767,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("e_id", ForeignKey("e.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "g",
@@ -773,7 +776,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("e_id", ForeignKey("e.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
 
     @classmethod
@@ -832,27 +835,14 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
         )
         s.commit()
 
-    def test_build_query(self):
+    def test_fetch_results_integrated(self, testing_engine):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
-        sess = fixture_session()
+        # this test has been reworked to use the compiled cache again,
+        # as a real-world scenario.
 
-        @profiling.function_call_count()
-        def go():
-            for i in range(100):
-                q = sess.query(A).options(
-                    joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
-                    joinedload(A.es).joinedload(E.fs),
-                    defaultload(A.es).joinedload(E.gs),
-                )
-                q._compile_context()
-
-        go()
-
-    def test_fetch_results(self):
-        A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
-
-        sess = Session(testing.db)
+        eng = testing_engine(share_pool=True)
+        sess = Session(eng)
 
         q = sess.query(A).options(
             joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
@@ -860,48 +850,27 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
             defaultload(A.es).joinedload(E.gs),
         )
 
-        compile_state = q._compile_state()
+        @profiling.function_call_count()
+        def initial_run():
+            list(q.all())
 
-        from sqlalchemy.orm.context import ORMCompileState
+        initial_run()
+        sess.close()
 
-        @profiling.function_call_count(warmup=1)
-        def go():
+        @profiling.function_call_count()
+        def subsequent_run():
+            list(q.all())
+
+        subsequent_run()
+        sess.close()
+
+        @profiling.function_call_count()
+        def more_runs():
             for i in range(100):
-                # NOTE: this test was broken in
-                # 77f1b7d236dba6b1c859bb428ef32d118ec372e6 because we started
-                # clearing out the attributes after the first iteration.   make
-                # sure the attributes are there every time.
-                assert compile_state.attributes
-                exec_opts = {}
-                bind_arguments = {}
-                ORMCompileState.orm_pre_session_exec(
-                    sess,
-                    compile_state.select_statement,
-                    {},
-                    exec_opts,
-                    bind_arguments,
-                    is_reentrant_invoke=False,
-                )
+                list(q.all())
 
-                r = sess.connection().execute(
-                    compile_state.statement,
-                    execution_options=exec_opts,
-                    bind_arguments=bind_arguments,
-                )
-
-                r.context.compiled.compile_state = compile_state
-                obj = ORMCompileState.orm_setup_cursor_result(
-                    sess,
-                    compile_state.statement,
-                    {},
-                    exec_opts,
-                    {},
-                    r,
-                )
-                list(obj.unique())
-                sess.close()
-
-        go()
+        more_runs()
+        sess.close()
 
 
 class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):
@@ -1022,7 +991,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "b",
@@ -1031,7 +1000,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "c",
@@ -1040,7 +1009,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "d",
@@ -1049,7 +1018,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "e",
@@ -1058,7 +1027,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "f",
@@ -1067,7 +1036,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "g",
@@ -1076,7 +1045,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
 
     @classmethod
@@ -1225,7 +1194,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1239,7 +1210,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1251,7 +1224,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1263,7 +1238,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1276,7 +1253,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1289,7 +1268,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1301,7 +1282,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1314,7 +1297,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1326,6 +1311,8 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa: F841
 
         go()

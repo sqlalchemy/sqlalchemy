@@ -1,5 +1,5 @@
 # oracle/__init__.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,6 +24,7 @@ from .base import NUMBER
 from .base import NVARCHAR
 from .base import NVARCHAR2
 from .base import RAW
+from .base import REAL
 from .base import ROWID
 from .base import TIMESTAMP
 from .base import VARCHAR

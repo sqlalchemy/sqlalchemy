@@ -5,7 +5,7 @@
 Mapping Table Columns
 =====================
 
-The default behavior of :func:`_orm.mapper` is to assemble all the columns in
+The default behavior of :class:`_orm.Mapper` is to assemble all the columns in
 the mapped :class:`_schema.Table` into mapped object attributes, each of which are
 named according to the name of the column itself (specifically, the ``key``
 attribute of :class:`_schema.Column`).  This behavior can be
@@ -43,7 +43,7 @@ can be referenced directly::
         name = user_table.c.user_name
 
 The corresponding technique for an :term:`imperative` mapping is
-to place the desired key in the :paramref:`_orm.mapper.properties`
+to place the desired key in the :paramref:`_orm.Mapper.properties`
 dictionary with the desired key::
 
     mapper_registry.map_imperatively(User, user_table, properties={
@@ -118,8 +118,8 @@ Using column_property for column level options
 Options can be specified when mapping a :class:`_schema.Column` using the
 :func:`.column_property` function.  This function
 explicitly creates the :class:`.ColumnProperty` used by the
-:func:`.mapper` to keep track of the :class:`_schema.Column`; normally, the
-:func:`.mapper` creates this automatically.   Using :func:`.column_property`,
+:class:`_orm.Mapper` to keep track of the :class:`_schema.Column`; normally, the
+:class:`_orm.Mapper` creates this automatically.   Using :func:`.column_property`,
 we can pass additional arguments about how we'd like the :class:`_schema.Column`
 to be mapped.   Below, we pass an option ``active_history``,
 which specifies that a change to this column's value should

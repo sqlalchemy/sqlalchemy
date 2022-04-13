@@ -1,0 +1,13 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 3162
+
+    Added new parameter :paramref:`_sql.Operators.op.python_impl`, available
+    from :meth:`_sql.Operators.op` and also when using the
+    :class:`_sql.Operators.custom_op` constructor directly, which allows an
+    in-Python evaluation function to be provided along with the custom SQL
+    operator. This evaluation function becomes the implementation used when the
+    operator object is used given plain Python objects as operands on both
+    sides, and in particular is compatible with the
+    ``synchronize_session='evaluate'`` option used with
+    :ref:`orm_expression_update_delete`.

@@ -337,7 +337,7 @@ use a declarative hybrid mapping, passing the
 :paramref:`_schema.Table.autoload_with` parameter to the
 :class:`_schema.Table`::
 
-    engine = create_engine("postgresql://user:pass@hostname/my_existing_database")
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
 
     class MyClass(Base):
         __table__ = Table(
@@ -387,7 +387,7 @@ the ``Reflected.prepare`` method is called.   The above mapping is not
 complete until we do so, given an :class:`_engine.Engine`::
 
 
-    engine = create_engine("postgresql://user:pass@hostname/my_existing_database")
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
     Reflected.prepare(engine)
 
 The purpose of the ``Reflected`` class is to define the scope at which

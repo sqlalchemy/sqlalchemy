@@ -1,5 +1,5 @@
 # mysql/reflection.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,7 +17,7 @@ from ... import types as sqltypes
 from ... import util
 
 
-class ReflectedState(object):
+class ReflectedState:
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
     def __init__(self):
@@ -30,7 +30,7 @@ class ReflectedState(object):
 
 
 @log.class_logger
-class MySQLTableDefinitionParser(object):
+class MySQLTableDefinitionParser:
     """Parses the results of a SHOW CREATE TABLE statement."""
 
     def __init__(self, dialect, preparer):

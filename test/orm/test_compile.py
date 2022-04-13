@@ -63,16 +63,16 @@ class CompileTest(fixtures.MappedTest):
             ),
         )
 
-        class Order(object):
+        class Order:
             pass
 
-        class Employee(object):
+        class Employee:
             pass
 
-        class Product(object):
+        class Product:
             pass
 
-        class OrderProduct(object):
+        class OrderProduct:
             pass
 
         order_join = order.select().alias("pjoin")
@@ -148,13 +148,13 @@ class CompileTest(fixtures.MappedTest):
             ),
         )
 
-        class Order(object):
+        class Order:
             pass
 
-        class Product(object):
+        class Product:
             pass
 
-        class OrderProduct(object):
+        class OrderProduct:
             pass
 
         order_join = order.select().alias("pjoin")
@@ -212,13 +212,13 @@ class CompileTest(fixtures.MappedTest):
         metadata.create_all(connection)
         connection.execute(node_table.insert(), dict(node_id=1, node_index=5))
 
-        class Node(object):
+        class Node:
             pass
 
-        class NodeName(object):
+        class NodeName:
             pass
 
-        class Host(object):
+        class Host:
             pass
 
         self.mapper_registry.map_imperatively(Node, node_table)
@@ -232,7 +232,7 @@ class CompileTest(fixtures.MappedTest):
             },
         )
         sess = Session(connection)
-        assert sess.query(Node).get(1).names == []
+        assert sess.get(Node, 1).names == []
 
     def test_conflicting_backref_two(self):
         meta = MetaData()
@@ -245,10 +245,10 @@ class CompileTest(fixtures.MappedTest):
             Column("a_id", Integer, ForeignKey("a.id")),
         )
 
-        class A(object):
+        class A:
             pass
 
-        class B(object):
+        class B:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -273,10 +273,10 @@ class CompileTest(fixtures.MappedTest):
             Column("a_id", Integer, ForeignKey("a.id")),
         )
 
-        class A(object):
+        class A:
             pass
 
-        class B(object):
+        class B:
             pass
 
         class C(B):

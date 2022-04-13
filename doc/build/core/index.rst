@@ -11,10 +11,12 @@ Language provides a schema-centric usage paradigm.
 .. toctree::
     :maxdepth: 2
 
-    tutorial
     expression_api
     schema
     types
     engines_connections
     api_basics
     future
+
+.. toctree::
+   :hidden:

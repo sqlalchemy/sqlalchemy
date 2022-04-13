@@ -1,16 +1,22 @@
+from sqlalchemy import Column
 from sqlalchemy import exc
+from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import testing
 from sqlalchemy.orm import clsregistry
 from sqlalchemy.orm import registry
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.util import gc_collect
 
 
-class MockClass(object):
+class MockClass:
     def __init__(self, base, name):
         self._sa_class_manager = mock.Mock(registry=base)
         tokens = name.split(".")
@@ -19,7 +25,7 @@ class MockClass(object):
         self.metadata = MetaData()
 
 
-class MockProp(object):
+class MockProp:
     parent = "some_parent"
 
 
@@ -34,16 +40,16 @@ class ClsRegistryTest(fixtures.TestBase):
         clsregistry.add_class("Foo", f1, base._class_registry)
         gc_collect()
 
-        assert_raises_message(
-            exc.SAWarning,
+        with expect_warnings(
             "This declarative base already contains a class with the "
             "same class name and module name as foo.bar.Foo, and "
-            "will be replaced in the string-lookup table.",
-            clsregistry.add_class,
-            "Foo",
-            f2,
-            base._class_registry,
-        )
+            "will be replaced in the string-lookup table."
+        ):
+            clsregistry.add_class(
+                "Foo",
+                f2,
+                base._class_registry,
+            )
 
     def test_resolve(self):
         base = registry()
@@ -106,6 +112,36 @@ class ClsRegistryTest(fixtures.TestBase):
             "module-qualified path.",
             name_resolver("alt.Foo"),
         )
+
+    @testing.combinations(
+        ("NonExistentFoo",),
+        ("nonexistent.Foo",),
+        ("existent.nonexistent.Foo",),
+        ("existent.NonExistentFoo",),
+        ("nonexistent.NonExistentFoo",),
+        ("existent.existent.NonExistentFoo",),
+        argnames="name",
+    )
+    def test_name_resolution_failures(self, name, registry):
+
+        Base = registry.generate_base()
+
+        f1 = MockClass(registry, "existent.Foo")
+        f2 = MockClass(registry, "existent.existent.Foo")
+        clsregistry.add_class("Foo", f1, registry._class_registry)
+        clsregistry.add_class("Foo", f2, registry._class_registry)
+
+        class MyClass(Base):
+            __tablename__ = "my_table"
+            id = Column(Integer, primary_key=True)
+            foo = relationship(name)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"When initializing mapper .*MyClass.*, expression '%s' "
+            r"failed to locate a name" % (name,),
+        ):
+            registry.configure()
 
     def test_no_fns_in_name_resolve(self):
         base = registry()
@@ -240,7 +276,7 @@ class ClsRegistryTest(fixtures.TestBase):
         f_resolver = resolver("foo")
         del mod_entry.contents["Foo"]
         assert_raises_message(
-            AttributeError,
+            NameError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Foo'",
             lambda: f_resolver().bar.Foo,
@@ -248,7 +284,7 @@ class ClsRegistryTest(fixtures.TestBase):
 
         f_resolver = name_resolver("foo")
         assert_raises_message(
-            AttributeError,
+            NameError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Foo'",
             lambda: f_resolver().bar.Foo,
@@ -263,7 +299,7 @@ class ClsRegistryTest(fixtures.TestBase):
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
         f_resolver = resolver("foo")
         assert_raises_message(
-            AttributeError,
+            NameError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Bat'",
             lambda: f_resolver().bar.Bat,
@@ -271,7 +307,7 @@ class ClsRegistryTest(fixtures.TestBase):
 
         f_resolver = name_resolver("foo")
         assert_raises_message(
-            AttributeError,
+            NameError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Bat'",
             lambda: f_resolver().bar.Bat,

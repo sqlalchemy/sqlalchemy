@@ -1,5 +1,3 @@
-from .. import config
-from .. import engines
 from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
@@ -19,8 +17,6 @@ class LastrowidTest(fixtures.TablesTest):
 
     __requires__ = "implements_get_lastrowid", "autoincrement_insert"
 
-    __engine_options__ = {"implicit_returning": False}
-
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -30,6 +26,7 @@ class LastrowidTest(fixtures.TablesTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("data", String(50)),
+            implicit_returning=False,
         )
 
         Table(
@@ -37,6 +34,7 @@ class LastrowidTest(fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True, autoincrement=False),
             Column("data", String(50)),
+            implicit_returning=False,
         )
 
     def _assert_round_trip(self, table, conn):
@@ -110,18 +108,10 @@ class InsertBehaviorTest(fixtures.TablesTest):
         )
 
     @requirements.autoincrement_insert
-    def test_autoclose_on_insert(self):
-        if requirements.returning.enabled:
-            engine = engines.testing_engine(
-                options={"implicit_returning": False}
-            )
-        else:
-            engine = config.db
-
-        with engine.begin() as conn:
-            r = conn.execute(
-                self.tables.autoinc_pk.insert(), dict(data="some data")
-            )
+    def test_autoclose_on_insert(self, connection):
+        r = connection.execute(
+            self.tables.autoinc_pk.insert(), dict(data="some data")
+        )
         assert r._soft_closed
         assert not r.closed
         assert r.is_insert
@@ -305,8 +295,6 @@ class ReturningTest(fixtures.TablesTest):
     run_create_tables = "each"
     __requires__ = "returning", "autoincrement_insert"
     __backend__ = True
-
-    __engine_options__ = {"implicit_returning": True}
 
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()

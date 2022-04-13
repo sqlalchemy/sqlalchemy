@@ -4,9 +4,11 @@ import random
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import orm
 from sqlalchemy import select
 from sqlalchemy import sql
@@ -24,8 +26,10 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.util import resolve_lambda
 from test.orm import _fixtures
 
 
@@ -50,6 +54,33 @@ class _Fixtures(_fixtures.FixtureTest):
             },
         )
         return User, Address
+
+    @testing.fixture
+    def user_address_custom_strat_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        def go(strat):
+            self.mapper_registry.map_imperatively(
+                User,
+                users,
+                properties={
+                    "addresses": relationship(
+                        self.mapper_registry.map_imperatively(
+                            Address, addresses
+                        ),
+                        lazy=strat,
+                        order_by=Address.id,
+                    )
+                },
+            )
+            return User, Address
+
+        return go
 
     @testing.fixture
     def order_item_fixture(self):
@@ -102,7 +133,7 @@ class _Fixtures(_fixtures.FixtureTest):
     def mixin_fixture(self):
         users = self.tables.users
 
-        class HasFoob(object):
+        class HasFoob:
             name = Column(String)
 
         class UserWFoob(HasFoob, self.Comparable):
@@ -118,7 +149,7 @@ class _Fixtures(_fixtures.FixtureTest):
     def declattr_mixin_fixture(self):
         users = self.tables.users
 
-        class HasFoob(object):
+        class HasFoob:
             @declared_attr
             def name(cls):
                 return Column(String)
@@ -137,7 +168,7 @@ class _Fixtures(_fixtures.FixtureTest):
         orders, items = self.tables.orders, self.tables.items
         order_items = self.tables.order_items
 
-        class HasFoob(object):
+        class HasFoob:
             description = Column(String)
 
         class HasBat(HasFoob):
@@ -216,6 +247,40 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "WHERE users.name != :name_1",
         )
 
+    @testing.combinations(
+        "select",
+        "joined",
+        "subquery",
+        "selectin",
+        "immediate",
+        argnames="loader_strategy",
+    )
+    def test_loader_strategy_on_refresh(
+        self, loader_strategy, user_address_custom_strat_fixture
+    ):
+        User, Address = user_address_custom_strat_fixture(loader_strategy)
+
+        sess = fixture_session()
+
+        @event.listens_for(sess, "do_orm_execute")
+        def add_criteria(orm_context):
+            orm_context.statement = orm_context.statement.options(
+                with_loader_criteria(
+                    Address,
+                    ~Address.id.in_([5, 3]),
+                )
+            )
+
+        u1 = sess.get(User, 7)
+        u2 = sess.get(User, 8)
+        eq_(u1.addresses, [Address(id=1)])
+        eq_(u2.addresses, [Address(id=2), Address(id=4)])
+
+        for i in range(3):
+            sess.expire_all()
+            eq_(u1.addresses, [Address(id=1)])
+            eq_(u2.addresses, [Address(id=2), Address(id=4)])
+
     def test_criteria_post_replace_legacy(self, user_address_fixture):
         User, Address = user_address_fixture
 
@@ -248,6 +313,50 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "WHERE users.name != :name_1",
         )
 
+    def test_with_loader_criteria_recursion_check_scalar_subq(
+        self, user_address_fixture
+    ):
+        """test #7491"""
+
+        User, Address = user_address_fixture
+        subq = select(Address).where(Address.id == 8).scalar_subquery()
+        stmt = (
+            select(User)
+            .join(Address)
+            .options(with_loader_criteria(Address, Address.id == subq))
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id AND addresses.id = "
+            "(SELECT addresses.id, addresses.user_id, "
+            "addresses.email_address FROM addresses "
+            "WHERE addresses.id = :id_1)",
+        )
+
+    def test_with_loader_criteria_recursion_check_from_subq(
+        self, user_address_fixture
+    ):
+        """test #7491"""
+
+        User, Address = user_address_fixture
+        subq = select(Address).where(Address.id == 8).subquery()
+        stmt = (
+            select(User)
+            .join(Address)
+            .options(with_loader_criteria(Address, Address.id == subq.c.id))
+        )
+        # note this query is incorrect SQL right now.   This is a current
+        # artifact of how with_loader_criteria() is used and may be considered
+        # a bug at some point, in which case if fixed this query can be
+        # changed.  the main thing we are testing at the moment is that
+        # there is not a recursion overflow.
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id AND addresses.id = anon_1.id",
+        )
+
     def test_select_mapper_columns_mapper_criteria(self, user_address_fixture):
         User, Address = user_address_fixture
 
@@ -267,6 +376,26 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         stmt = (
             select(User)
             .join(User.addresses)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "name")
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "AND addresses.email_address != :email_address_1",
+        )
+
+    def test_select_implicit_join_mapper_mapper_criteria(
+        self, user_address_fixture
+    ):
+        User, Address = user_address_fixture
+
+        stmt = (
+            select(User)
+            .join(Address)
             .options(
                 with_loader_criteria(Address, Address.email_address != "name")
             )
@@ -345,7 +474,7 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 "SELECT addresses.user_id AS addresses_user_id, addresses.id "
                 "AS addresses_id, addresses.email_address "
                 "AS addresses_email_address FROM addresses "
-                "WHERE addresses.user_id IN ([POSTCOMPILE_primary_keys]) "
+                "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"primary_keys": [7, 8, 9, 10], "email_address_1": "name"}],
@@ -428,6 +557,40 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT users_1.id, users_1.name "
             "FROM users AS users_1 WHERE users_1.name != :name_1",
+        )
+
+    @testing.combinations(
+        (lambda User: [User.id], "users.id"),
+        (lambda User: [User.id.label("foo")], "users.id AS foo"),
+        (lambda User: [User.name + "bar"], "users.name || :name_1 AS anon_1"),
+        (
+            lambda User: [(User.name + "bar").label("foo")],
+            "users.name || :name_1 AS foo",
+        ),
+        (lambda User: [func.count(User.id)], "count(users.id) AS count_1"),
+        (
+            lambda User: [func.count(User.id).label("foo")],
+            "count(users.id) AS foo",
+        ),
+        argnames="case, expected",
+    )
+    def test_select_expr_with_criteria(
+        self, case, expected, user_address_fixture
+    ):
+        """test #7205"""
+        User, Address = user_address_fixture
+
+        stmt = select(*resolve_lambda(case, User=User)).options(
+            # use non-bound value so that we dont have to accommodate for
+            # the "anon" counter
+            with_loader_criteria(
+                User, User.name != literal_column("some_crit")
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT %s FROM users WHERE users.name != some_crit" % (expected,),
         )
 
     def test_select_from_aliased_inclaliased_criteria(
@@ -838,7 +1001,7 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
     @classmethod
     def setup_classes(cls):
-        class HasTemporal(object):
+        class HasTemporal:
             """Mixin that identifies a class as having a timestamp column"""
 
             timestamp = Column(
@@ -968,7 +1131,7 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
                     datetime.datetime(2009, 10, 16, 12, 00, 00),
                     datetime.datetime(2009, 10, 18, 12, 00, 00),
                 ),
-                *loader_options
+                *loader_options,
             )
         )
         if is_joined:
@@ -988,7 +1151,7 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
                     datetime.datetime(2009, 10, 15, 11, 00, 00),
                     datetime.datetime(2009, 10, 18, 12, 00, 00),
                 ),
-                *loader_options
+                *loader_options,
             )
         )
         if is_joined:
@@ -1171,7 +1334,8 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "SELECT addresses.user_id AS addresses_user_id, "
                     "addresses.id AS addresses_id, addresses.email_address "
                     "AS addresses_email_address FROM addresses "
-                    "WHERE addresses.user_id IN ([POSTCOMPILE_primary_keys]) "
+                    "WHERE addresses.user_id IN "
+                    "(__[POSTCOMPILE_primary_keys]) "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",
                     [
@@ -1182,6 +1346,138 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     ],
                 ),
             )
+
+    def test_selectinload_local_criteria_subquery(self, user_address_fixture):
+        """test #7489"""
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        def go(value):
+            a1 = aliased(Address)
+            subq = select(a1.id).where(a1.email_address != value).subquery()
+            stmt = (
+                select(User)
+                .options(
+                    selectinload(User.addresses.and_(Address.id == subq.c.id)),
+                )
+                .order_by(User.id)
+            )
+            result = s.execute(stmt)
+            return result
+
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
+            s.close()
+            with self.sql_execution_asserter() as asserter:
+                result = go(value)
+
+                eq_(
+                    result.scalars().unique().all(),
+                    self._user_minus_edwood(*user_address_fixture)
+                    if value == "ed@wood.com"
+                    else self._user_minus_edlala(*user_address_fixture),
+                )
+
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id, users.name FROM users ORDER BY users.id"
+                ),
+                CompiledSQL(
+                    "SELECT addresses.user_id AS addresses_user_id, "
+                    "addresses.id AS addresses_id, "
+                    "addresses.email_address AS addresses_email_address "
+                    # note the comma-separated FROM clause
+                    "FROM addresses, (SELECT addresses_1.id AS id FROM "
+                    "addresses AS addresses_1 "
+                    "WHERE addresses_1.email_address != :email_address_1) "
+                    "AS anon_1 WHERE addresses.user_id "
+                    "IN (__[POSTCOMPILE_primary_keys]) "
+                    "AND addresses.id = anon_1.id ORDER BY addresses.id",
+                    [
+                        {
+                            "primary_keys": [7, 8, 9, 10],
+                            "email_address_1": value,
+                        }
+                    ],
+                ),
+            )
+
+    @testing.combinations(
+        (joinedload, False),
+        (lazyload, True),
+        (subqueryload, False),
+        (selectinload, True),
+        argnames="opt,results_supported",
+    )
+    def test_loader_criteria_subquery_w_same_entity(
+        self, user_address_fixture, opt, results_supported
+    ):
+        """test #7491.
+
+        note this test also uses the not-quite-supported form of subquery
+        criteria introduced by #7489. where we also have to clone
+        the subquery linked only from a column criteria.  this required
+        additional changes to the _annotate() method that is also
+        test here, which is why two of the loader strategies still fail;
+        we're just testing that there's no recursion overflow with this
+        very particular form.
+
+        """
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        def go(value):
+            subq = (
+                select(Address.id)
+                .where(Address.email_address != value)
+                .subquery()
+            )
+            stmt = (
+                select(User)
+                .options(
+                    # subquery here would need to be added to the FROM
+                    # clause.  this isn't quite supported and won't work
+                    # right now with joinedoad() or subqueryload().
+                    opt(User.addresses.and_(Address.id == subq.c.id)),
+                )
+                .order_by(User.id)
+            )
+            result = s.execute(stmt)
+            return result
+
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
+            s.close()
+
+            if not results_supported:
+                # for joinedload and subqueryload, the query generated here
+                # is invalid right now; this is because it's already not
+                # quite a supported pattern to refer to a subquery-bound
+                # column in loader criteria.  However, the main thing we want
+                # to prevent here is the recursion overflow, so make sure
+                # we get a DBAPI error at least indicating compilation
+                # succeeded.
+                with expect_raises(sa_exc.DBAPIError):
+                    go(value).scalars().unique().all()
+            else:
+                result = go(value).scalars().unique().all()
+
+                eq_(
+                    result,
+                    self._user_minus_edwood(*user_address_fixture)
+                    if value == "ed@wood.com"
+                    else self._user_minus_edlala(*user_address_fixture),
+                )
 
     @testing.combinations((True,), (False,), argnames="use_compiled_cache")
     def test_selectinload_nested_criteria(
@@ -1248,7 +1544,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "ON items_1.id = order_items_1.item_id "
                     "AND items_1.description = :description_1) "
                     "ON orders.id = order_items_1.order_id "
-                    "WHERE orders.user_id IN ([POSTCOMPILE_primary_keys]) "
+                    "WHERE orders.user_id IN (__[POSTCOMPILE_primary_keys]) "
                     "AND orders.description = :description_2 "
                     "ORDER BY orders.id, items_1.id",
                     [

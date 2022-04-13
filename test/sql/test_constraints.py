@@ -1,41 +1,33 @@
-import pytest
-from sqlalchemy import (
-    CheckConstraint,
-    Column,
-    ForeignKey,
-    ForeignKeyConstraint,
-    Index,
-    Integer,
-    MetaData,
-    PrimaryKeyConstraint,
-    String,
-    Table,
-    UniqueConstraint,
-    exc,
-    func,
-    schema,
-    testing,
-    text,
-)
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.engine import default
-from sqlalchemy.exc import CompileError
 from sqlalchemy.sql.sqltypes import TIMESTAMP
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-    assert_raises,
-    assert_raises_message,
-    engines,
-    eq_,
-    fixtures,
-)
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import expect_warnings
-from sqlalchemy.testing.assertsql import (
-    AllOf,
-    CompiledSQL,
-    DialectSQL,
-    RegexSQL,
-)
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import DialectSQL
+from sqlalchemy.testing.assertsql import RegexSQL
 
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
@@ -1035,7 +1027,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("a", Integer),
             Column("b", Integer),
             Column("c", Integer),
-            *fkcs
+            *fkcs,
         )
         Table("remote", m, Column("id", Integer, primary_key=True))
 
@@ -1396,7 +1388,8 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     #             m,
     #             Column("x", Integer),
     #             Column(
-    #                 "start_timestamp", TIMESTAMP(6), system_versioning="start"
+    #                 "start_timestamp", TIMESTAMP(6),
+    # system_versioning="start"
     #             ),
     #             Column("end_timestamp ", TIMESTAMP(6)),
     #             system_versioning=True,
@@ -1416,7 +1409,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     #             m,
     #             Column("x", Integer),
     #             Column(
-    #                 "start_timestamp", TIMESTAMP(6), system_versioning="start"
+    #                 "start_timestamp", TIMESTAMP(6),system_versioning="start"
     #             ),
     #             Column(
     #                 "end_timestamp ", TIMESTAMP(6), system_versioning="start"

@@ -8,9 +8,6 @@
 """
 
 # PART I - Imports/Configuration
-
-from __future__ import print_function
-
 import os
 import re
 from xml.etree import ElementTree
@@ -80,7 +77,7 @@ mapper_registry.metadata.create_all(e)
 # and the ElementTree root element.
 
 
-class Document(object):
+class Document:
     def __init__(self, name, element):
         self.filename = name
         self.element = element
@@ -94,7 +91,7 @@ class Document(object):
 # may be backed by native implementations. so here we construct an adapter.
 
 
-class _Node(object):
+class _Node:
     pass
 
 
@@ -102,7 +99,7 @@ class _Node(object):
 # stored for a particular Node.
 
 
-class _Attribute(object):
+class _Attribute:
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -147,7 +144,7 @@ mapper(_Attribute, attributes)
 # collection.
 
 
-class ElementTreeMarshal(object):
+class ElementTreeMarshal:
     def __get__(self, document, owner):
         if document is None:
             return self

@@ -1,14 +1,18 @@
 # testing/engines.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-from __future__ import absolute_import
+from __future__ import annotations
 
 import collections
 import re
+import typing
+from typing import Any
+from typing import Dict
+from typing import Optional
 import warnings
 import weakref
 
@@ -17,9 +21,17 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
+from ..util import await_only
+from ..util.typing import Literal
 
 
-class ConnectionKiller(object):
+if typing.TYPE_CHECKING:
+    from ..engine import Engine
+    from ..engine.url import URL
+    from ..ext.asyncio import AsyncEngine
+
+
+class ConnectionKiller:
     def __init__(self):
         self.proxy_refs = weakref.WeakKeyDictionary()
         self.testing_engines = collections.defaultdict(set)
@@ -96,7 +108,10 @@ class ConnectionKiller(object):
                         and proxy_ref._pool is rec.pool
                     ):
                         self._safe(proxy_ref._checkin)
-            rec.dispose()
+            if hasattr(rec, "sync_engine"):
+                await_only(rec.dispose())
+            else:
+                rec.dispose()
         eng.clear()
 
     def after_test(self):
@@ -202,7 +217,7 @@ def all_dialects(exclude=None):
         yield mod.dialect()
 
 
-class ReconnectFixture(object):
+class ReconnectFixture:
     def __init__(self, dbapi):
         self.dbapi = dbapi
         self.connections = []
@@ -266,21 +281,39 @@ def reconnecting_engine(url=None, options=None):
     return engine
 
 
+@typing.overload
+def testing_engine(
+    url: Optional["URL"] = None,
+    options: Optional[Dict[str, Any]] = None,
+    asyncio: Literal[False] = False,
+    transfer_staticpool: bool = False,
+) -> "Engine":
+    ...
+
+
+@typing.overload
+def testing_engine(
+    url: Optional["URL"] = None,
+    options: Optional[Dict[str, Any]] = None,
+    asyncio: Literal[True] = True,
+    transfer_staticpool: bool = False,
+) -> "AsyncEngine":
+    ...
+
+
 def testing_engine(
     url=None,
     options=None,
-    future=None,
     asyncio=False,
     transfer_staticpool=False,
+    share_pool=False,
+    _sqlite_savepoint=False,
 ):
-    """Produce an engine configured by --options with optional overrides."""
-
     if asyncio:
-        from sqlalchemy.ext.asyncio import create_async_engine as create_engine
-    elif future or (
-        config.db and config.db._is_future and future is not False
-    ):
-        from sqlalchemy.future import create_engine
+        assert not _sqlite_savepoint
+        from sqlalchemy.ext.asyncio import (
+            create_async_engine as create_engine,
+        )
     else:
         from sqlalchemy import create_engine
     from sqlalchemy.engine.url import make_url
@@ -288,9 +321,11 @@ def testing_engine(
     if not options:
         use_reaper = True
         scope = "function"
+        sqlite_savepoint = False
     else:
         use_reaper = options.pop("use_reaper", True)
         scope = options.pop("scope", "function")
+        sqlite_savepoint = options.pop("sqlite_savepoint", False)
 
     url = url or config.db.url
 
@@ -306,11 +341,24 @@ def testing_engine(
 
     engine = create_engine(url, **options)
 
+    if sqlite_savepoint and engine.name == "sqlite":
+        # apply SQLite savepoint workaround
+        @event.listens_for(engine, "connect")
+        def do_connect(dbapi_connection, connection_record):
+            dbapi_connection.isolation_level = None
+
+        @event.listens_for(engine, "begin")
+        def do_begin(conn):
+            conn.exec_driver_sql("BEGIN")
+
     if transfer_staticpool:
         from sqlalchemy.pool import StaticPool
 
         if config.db is not None and isinstance(config.db.pool, StaticPool):
+            use_reaper = False
             engine.pool._transfer_from(config.db.pool)
+    elif share_pool:
+        engine.pool = config.db.pool
 
     if scope == "global":
         if asyncio:
@@ -367,7 +415,7 @@ def mock_engine(dialect_name=None):
     return engine
 
 
-class DBAPIProxyCursor(object):
+class DBAPIProxyCursor:
     """Proxy a DBAPI cursor.
 
     Tests can provide subclasses of this to intercept
@@ -396,7 +444,7 @@ class DBAPIProxyCursor(object):
         return getattr(self.cursor, key)
 
 
-class DBAPIProxyConnection(object):
+class DBAPIProxyConnection:
     """Proxy a DBAPI connection.
 
     Tests can provide subclasses of this to intercept
@@ -417,28 +465,3 @@ class DBAPIProxyConnection(object):
 
     def __getattr__(self, key):
         return getattr(self.conn, key)
-
-
-def proxying_engine(
-    conn_cls=DBAPIProxyConnection, cursor_cls=DBAPIProxyCursor
-):
-    """Produce an engine that provides proxy hooks for
-    common methods.
-
-    """
-
-    def mock_conn():
-        return conn_cls(config.db, cursor_cls)
-
-    def _wrap_do_on_connect(do_on_connect):
-        def go(dbapi_conn):
-            return do_on_connect(dbapi_conn.conn)
-
-        return go
-
-    return testing_engine(
-        options={
-            "creator": mock_conn,
-            "_wrap_do_on_connect": _wrap_do_on_connect,
-        }
-    )

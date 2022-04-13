@@ -23,6 +23,8 @@ sys.path.insert(0, os.path.abspath("../.."))  # examples
 sys.path.insert(0, os.path.abspath("."))
 
 
+os.environ["DISABLE_SQLALCHEMY_CEXT_RUNTIME"] = "true"
+
 # -- General configuration --------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -36,6 +38,7 @@ extensions = [
     "zzzeeksphinx",
     "changelog",
     "sphinx_paramlinks",
+    "sphinx_copybutton",
 ]
 needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
@@ -43,6 +46,12 @@ needs_extensions = {"zzzeeksphinx": "1.2.1"}
 # not sure why abspath() is needed here, some users
 # have reported this.
 templates_path = [os.path.abspath("templates")]
+
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = (
+    r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+)
+copybutton_prompt_is_regexp = True
 
 nitpicky = False
 
@@ -63,18 +72,21 @@ changelog_sections = [
     "sql",
     "schema",
     "extensions",
+    "typing",
     "mypy",
     "asyncio",
     "postgresql",
     "mysql",
+    "mariadb",
     "sqlite",
     "mssql",
     "oracle",
-    "firebird",
+    "tests",
 ]
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
     "feature",
+    "improvement",
     "usecase",
     "change",
     "changed",
@@ -145,6 +157,7 @@ zzzeeksphinx_module_prefixes = {
     "_row": "sqlalchemy.engine",
     "_schema": "sqlalchemy.schema",
     "_types": "sqlalchemy.types",
+    "_sqltypes": "sqlalchemy.types",
     "_asyncio": "sqlalchemy.ext.asyncio",
     "_expression": "sqlalchemy.sql.expression",
     "_sql": "sqlalchemy.sql.expression",
@@ -160,6 +173,7 @@ zzzeeksphinx_module_prefixes = {
     # ORM is sqlalchemy.orm.<cls>.
     "_ormevent": "sqlalchemy.orm",
     "_ormevents": "sqlalchemy.orm",
+    "_scoping": "sqlalchemy.orm.scoping",
     "_exc": "sqlalchemy.exc",
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
@@ -192,19 +206,19 @@ zzzeeksphinx_module_prefixes = {
 master_doc = "contents"
 
 # General information about the project.
-project = u"SQLAlchemy"
-copyright = u"2007-2021, the SQLAlchemy authors and contributors"  # noqa
+project = "SQLAlchemy"
+copyright = "2007-2022, the SQLAlchemy authors and contributors"  # noqa
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = "1.4"
+version = "2.0"
 # The full version, including alpha/beta/rc tags.
-release = "1.4.25"
+release = "2.0.0b1"
 
-release_date = "September 22, 2021"
+release_date = None
 
 site_base = os.environ.get("RTD_SITE_BASE", "https://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"
@@ -397,8 +411,8 @@ man_pages = [
     (
         "index",
         "sqlalchemy",
-        u"SQLAlchemy Documentation",
-        [u"SQLAlchemy authors"],
+        "SQLAlchemy Documentation",
+        ["SQLAlchemy authors"],
         1,
     )
 ]
@@ -407,10 +421,10 @@ man_pages = [
 # -- Options for Epub output -------------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u"SQLAlchemy"
-epub_author = u"SQLAlchemy authors"
-epub_publisher = u"SQLAlchemy authors"
-epub_copyright = u"2007-2015, SQLAlchemy authors"
+epub_title = "SQLAlchemy"
+epub_author = "SQLAlchemy authors"
+epub_publisher = "SQLAlchemy authors"
+epub_copyright = "2007-2015, SQLAlchemy authors"
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.

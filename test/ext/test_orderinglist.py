@@ -91,14 +91,14 @@ class OrderingListTest(fixtures.MappedTest):
             Column("text", String(128)),
         )
 
-        class Slide(object):
+        class Slide:
             def __init__(self, name):
                 self.name = name
 
             def __repr__(self):
                 return '<Slide "%s">' % self.name
 
-        class Bullet(object):
+        class Bullet:
             def __init__(self, text):
                 self.text = text
 
@@ -176,7 +176,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 4)
@@ -241,7 +241,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 5)
@@ -255,7 +255,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
         titles = ["s1/b1", "s1/b2", "s1/b100", "s1/b4", "raw", "raw2"]
         found = [b.text for b in srt.bullets]
         eq_(titles, found)
@@ -298,7 +298,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 6)
@@ -347,7 +347,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)
@@ -385,7 +385,7 @@ class OrderingListTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        srt = session.query(Slide).get(id_)
+        srt = session.get(Slide, id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)
@@ -409,7 +409,7 @@ class OrderingListTest(fixtures.MappedTest):
         eq_([b.position for b in s1.bullets], [0, 1, 2])
 
     def test_funky_ordering(self):
-        class Pos(object):
+        class Pos:
             def __init__(self):
                 self.position = None
 
@@ -481,7 +481,7 @@ class OrderingListTest(fixtures.MappedTest):
             self.assert_(copy.__dict__ == olist.__dict__)
 
 
-class DummyItem(object):
+class DummyItem:
     def __init__(self, order=None):
         self.order = order
 

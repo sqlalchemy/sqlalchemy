@@ -1,5 +1,5 @@
 # mssql/pyodbc.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -179,6 +179,33 @@ at both the pyodbc and engine levels::
         isolation_level="AUTOCOMMIT"
     )
 
+Avoiding sending large string parameters as TEXT/NTEXT
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, for historical reasons, Microsoft's ODBC drivers for SQL Server
+send long string parameters (greater than 4000 SBCS characters or 2000 Unicode
+characters) as TEXT/NTEXT values. TEXT and NTEXT have been deprecated for many
+years and are starting to cause compatibility issues with newer versions of
+SQL_Server/Azure. For example, see `this
+issue <https://github.com/mkleehammer/pyodbc/issues/835>`_.
+
+Starting with ODBC Driver 18 for SQL Server we can override the legacy
+behavior and pass long strings as varchar(max)/nvarchar(max) using the
+``LongAsMax=Yes`` connection string parameter::
+
+    connection_url = sa.engine.URL.create(
+        "mssql+pyodbc",
+        username="scott",
+        password="tiger",
+        host="mssqlserver.example.com",
+        database="mydb",
+        query={
+            "driver": "ODBC Driver 18 for SQL Server",
+            "LongAsMax": "Yes",
+        },
+    )
+
+
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
 
@@ -283,6 +310,7 @@ import decimal
 import re
 import struct
 
+from .base import _MSDateTime
 from .base import BINARY
 from .base import DATETIMEOFFSET
 from .base import MSDialect
@@ -294,7 +322,7 @@ from ... import util
 from ...connectors.pyodbc import PyODBCConnector
 
 
-class _ms_numeric_pyodbc(object):
+class _ms_numeric_pyodbc:
 
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
@@ -366,7 +394,7 @@ class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
     pass
 
 
-class _ms_binary_pyodbc(object):
+class _ms_binary_pyodbc:
     """Wraps binary values in dialect-specific Binary wrapper.
     If the value is null, return a pyodbc-specific BinaryNull
     object to prevent pyODBC [and FreeTDS] from defaulting binary
@@ -389,7 +417,7 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTimeBindProcessor(object):
+class _ODBCDateTimeBindProcessor:
     """Add bind processors to handle datetimeoffset behaviors"""
 
     has_tz = False
@@ -398,7 +426,7 @@ class _ODBCDateTimeBindProcessor(object):
         def process(value):
             if value is None:
                 return None
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 # if a string was passed directly, allow it through
                 return value
             elif not value.tzinfo or (not self.timezone and not self.has_tz):
@@ -420,7 +448,7 @@ class _ODBCDateTimeBindProcessor(object):
         return process
 
 
-class _ODBCDateTime(_ODBCDateTimeBindProcessor, sqltypes.DateTime):
+class _ODBCDateTime(_ODBCDateTimeBindProcessor, _MSDateTime):
     pass
 
 
@@ -512,11 +540,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         },
     )
 
-    def __init__(
-        self, description_encoding=None, fast_executemany=False, **params
-    ):
-        if "description_encoding" in params:
-            self.description_encoding = params.pop("description_encoding")
+    def __init__(self, fast_executemany=False, **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.use_scope_identity = (
             self.use_scope_identity
@@ -542,7 +566,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
             return super(MSDialect_pyodbc, self)._get_server_version_info(
-                connection, allow_chars=False
+                connection
             )
         else:
             version = []
@@ -577,7 +601,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 tup[4],
                 tup[5],
                 tup[6] // 1000,
-                util.timezone(
+                datetime.timezone(
                     datetime.timedelta(hours=tup[7], minutes=tup[8])
                 ),
             )

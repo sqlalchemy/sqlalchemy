@@ -8,6 +8,7 @@ from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import create_engine
 from sqlalchemy import DateTime
 from sqlalchemy import DDL
 from sqlalchemy import event
@@ -28,14 +29,16 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
-from sqlalchemy import util
 from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_BATCH
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_PLAIN
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
 from sqlalchemy.engine import cursor as _cursor
-from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import config
@@ -52,9 +55,6 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
-from ...engine import test_deprecations
 
 if True:
     from sqlalchemy.dialects.postgresql.psycopg2 import (
@@ -163,82 +163,46 @@ $$ LANGUAGE plpgsql;"""
             future_connection.dialect.server_version_info,
         )
 
-    @testing.requires.python3
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_no_native_unicode_in_python3(self, testing_engine):
-        with testing.expect_raises_message(
-            exc.ArgumentError,
-            "psycopg2 native_unicode mode is required under Python 3",
-        ):
-            testing_engine(options=dict(use_native_unicode=False))
-
-    @testing.requires.python2
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_no_native_unicode_in_python2(self, testing_engine):
-        e = testing_engine(options=dict(use_native_unicode=False))
-        with e.connect() as conn:
-            eq_(
-                conn.exec_driver_sql(u"SELECT '🐍 voix m’a réveillé'").scalar(),
-                u"🐍 voix m’a réveillé".encode("utf-8"),
-            )
-
-    @testing.requires.python2
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_use_native_unicode_from_config(self):
-        config = {
-            "sqlalchemy.url": testing.db.url,
-            "sqlalchemy.use_native_unicode": "false",
-        }
-
-        e = engine_from_config(config, _initialize=False)
-        eq_(e.dialect.use_native_unicode, False)
-
-        config = {
-            "sqlalchemy.url": testing.db.url,
-            "sqlalchemy.use_native_unicode": "true",
-        }
-
-        e = engine_from_config(config, _initialize=False)
-        eq_(e.dialect.use_native_unicode, True)
-
     def test_psycopg2_empty_connection_string(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://")
+        u = url.make_url("postgresql+psycopg2://")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [""])
         eq_(cparams, {})
 
     def test_psycopg2_nonempty_connection_string(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://host")
+        u = url.make_url("postgresql+psycopg2://host")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"host": "host"})
 
     def test_psycopg2_empty_connection_string_w_query_one(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql:///?service=swh-log")
+        u = url.make_url("postgresql+psycopg2:///?service=swh-log")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"service": "swh-log"})
 
     def test_psycopg2_empty_connection_string_w_query_two(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql:///?any_random_thing=yes")
+        u = url.make_url("postgresql+psycopg2:///?any_random_thing=yes")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"any_random_thing": "yes"})
 
     def test_psycopg2_nonempty_connection_string_w_query(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://somehost/?any_random_thing=yes")
+        u = url.make_url(
+            "postgresql+psycopg2://somehost/?any_random_thing=yes"
+        )
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
     def test_psycopg2_nonempty_connection_string_w_query_two(self):
         dialect = psycopg2_dialect.dialect()
-        url_string = "postgresql://USER:PASS@/DB?host=hostA"
+        url_string = "postgresql+psycopg2://USER:PASS@/DB?host=hostA"
         u = url.make_url(url_string)
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
@@ -247,7 +211,7 @@ $$ LANGUAGE plpgsql;"""
     def test_psycopg2_nonempty_connection_string_w_query_three(self):
         dialect = psycopg2_dialect.dialect()
         url_string = (
-            "postgresql://USER:PASS@/DB"
+            "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA:portA&host=hostB&host=hostC"
         )
         u = url.make_url(url_string)
@@ -272,7 +236,7 @@ $$ LANGUAGE plpgsql;"""
             "connection not open",
             "could not receive data from server",
             "could not send data to server",
-            # psycopg2 client errors, psycopg2/conenction.h,
+            # psycopg2 client errors, psycopg2/connection.h,
             # psycopg2/cursor.h
             "connection already closed",
             "cursor already closed",
@@ -309,14 +273,16 @@ class PGCodeTest(fixtures.TestBase):
         if testing.against("postgresql+pg8000"):
             # TODO: is there another way we're supposed to see this?
             eq_(errmsg.orig.args[0]["C"], "23505")
-        else:
+        elif not testing.against("postgresql+psycopg"):
             eq_(errmsg.orig.pgcode, "23505")
 
-        if testing.against("postgresql+asyncpg"):
+        if testing.against("postgresql+asyncpg") or testing.against(
+            "postgresql+psycopg"
+        ):
             eq_(errmsg.orig.sqlstate, "23505")
 
 
-class ExecuteManyMode(object):
+class ExecuteManyMode:
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
 
@@ -351,13 +317,16 @@ class ExecuteManyMode(object):
         )
 
         Table(
-            u("Unitéble2"),
+            "Unitéble2",
             metadata,
-            Column(u("méil"), Integer, primary_key=True),
-            Column(ue("\u6e2c\u8a66"), Integer),
+            Column("méil", Integer, primary_key=True),
+            Column("\u6e2c\u8a66", Integer),
         )
 
-    def test_insert(self, connection):
+    @testing.combinations(
+        "insert", "pg_insert", "pg_insert_on_conflict", argnames="insert_type"
+    )
+    def test_insert(self, connection, insert_type):
         from psycopg2 import extras
 
         values_page_size = connection.dialect.executemany_values_page_size
@@ -377,11 +346,23 @@ class ExecuteManyMode(object):
         else:
             assert False
 
+        if insert_type == "pg_insert_on_conflict":
+            stmt += " ON CONFLICT DO NOTHING"
+
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
+            if insert_type == "insert":
+                ins_stmt = self.tables.data.insert()
+            elif insert_type == "pg_insert":
+                ins_stmt = pg_insert(self.tables.data)
+            elif insert_type == "pg_insert_on_conflict":
+                ins_stmt = pg_insert(self.tables.data).on_conflict_do_nothing()
+            else:
+                assert False
+
             connection.execute(
-                self.tables.data.insert(),
+                ins_stmt,
                 [
                     {"x": "x1", "y": "y1"},
                     {"x": "x2", "y": "y2"},
@@ -403,12 +384,12 @@ class ExecuteManyMode(object):
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
-                    **expected_kwargs
+                    ],
+                    **expected_kwargs,
                 )
             ],
         )
@@ -452,12 +433,12 @@ class ExecuteManyMode(object):
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
-                    **expected_kwargs
+                    ],
+                    **expected_kwargs,
                 )
             ],
         )
@@ -505,27 +486,27 @@ class ExecuteManyMode(object):
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
-                    **expected_kwargs
+                    ],
+                    **expected_kwargs,
                 )
             ],
         )
 
     def test_insert_unicode_keys(self, connection):
-        table = self.tables[u("Unitéble2")]
+        table = self.tables["Unitéble2"]
 
         stmt = table.insert()
 
         connection.execute(
             stmt,
             [
-                {u("méil"): 1, ue("\u6e2c\u8a66"): 1},
-                {u("méil"): 2, ue("\u6e2c\u8a66"): 2},
-                {u("méil"): 3, ue("\u6e2c\u8a66"): 3},
+                {"méil": 1, "\u6e2c\u8a66": 1},
+                {"méil": 2, "\u6e2c\u8a66": 2},
+                {"méil": 3, "\u6e2c\u8a66": 3},
             ],
         )
 
@@ -559,11 +540,11 @@ class ExecuteManyMode(object):
                     mock.call(
                         mock.ANY,
                         stmt,
-                        (
+                        [
                             {"xval": "x1", "yval": "y5"},
                             {"xval": "x3", "yval": "y6"},
-                        ),
-                        **expected_kwargs
+                        ],
+                        **expected_kwargs,
                     )
                 ],
             )
@@ -649,7 +630,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 "id",
                 Integer,
                 primary_key=True,
-                default=lambda: util.next(counter),
+                default=lambda: next(counter),
             ),
             Column("data", Integer),
         )
@@ -749,11 +730,11 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 mock.call(
                     mock.ANY,
                     "INSERT INTO data (id, x, y, z) VALUES %s",
-                    (
+                    [
                         {"id": 1, "y": "y1", "z": 1},
                         {"id": 2, "y": "y2", "z": 2},
                         {"id": 3, "y": "y3", "z": 3},
-                    ),
+                    ],
                     template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
                     fetch=False,
                     page_size=connection.dialect.executemany_values_page_size,
@@ -898,6 +879,13 @@ class MiscBackendTest(
             ".".join(str(x) for x in v)
         )
 
+    @testing.only_on("postgresql+psycopg")
+    def test_psycopg_version(self):
+        v = testing.db.dialect.psycopg_version
+        assert testing.db.dialect.dbapi.__version__.startswith(
+            ".".join(str(x) for x in v)
+        )
+
     @testing.combinations(
         ((8, 1), False, False),
         ((8, 1), None, False),
@@ -942,6 +930,7 @@ class MiscBackendTest(
         with testing.db.connect().execution_options(
             isolation_level="SERIALIZABLE"
         ) as conn:
+
             dbapi_conn = conn.connection.dbapi_connection
 
             is_false(dbapi_conn.autocommit)
@@ -1109,25 +1098,30 @@ class MiscBackendTest(
                 dbapi_conn.rollback()
             eq_(val, "off")
 
-    @testing.requires.psycopg2_compatibility
-    def test_psycopg2_non_standard_err(self):
+    @testing.requires.psycopg_compatibility
+    def test_psycopg_non_standard_err(self):
         # note that psycopg2 is sometimes called psycopg2cffi
         # depending on platform
-        psycopg2 = testing.db.dialect.dbapi
-        TransactionRollbackError = __import__(
-            "%s.extensions" % psycopg2.__name__
-        ).extensions.TransactionRollbackError
+        psycopg = testing.db.dialect.dbapi
+        if psycopg.__version__.startswith("3"):
+            TransactionRollbackError = __import__(
+                "%s.errors" % psycopg.__name__
+            ).errors.TransactionRollback
+        else:
+            TransactionRollbackError = __import__(
+                "%s.extensions" % psycopg.__name__
+            ).extensions.TransactionRollbackError
 
         exception = exc.DBAPIError.instance(
             "some statement",
             {},
             TransactionRollbackError("foo"),
-            psycopg2.Error,
+            psycopg.Error,
         )
         assert isinstance(exception, exc.OperationalError)
 
     @testing.requires.no_coverage
-    @testing.requires.psycopg2_compatibility
+    @testing.requires.psycopg_compatibility
     def test_notice_logging(self):
         log = logging.getLogger("sqlalchemy.dialects.postgresql")
         buf = logging.handlers.BufferingHandler(100)
@@ -1155,14 +1149,14 @@ $$ LANGUAGE plpgsql;
         finally:
             log.removeHandler(buf)
             log.setLevel(lev)
-        msgs = " ".join(b.msg for b in buf.buffer)
+        msgs = " ".join(b.getMessage() for b in buf.buffer)
         eq_regex(
             msgs,
-            "NOTICE:  notice: hi there(\nCONTEXT: .*?)? "
-            "NOTICE:  notice: another note(\nCONTEXT: .*?)?",
+            "NOTICE: [ ]?notice: hi there(\nCONTEXT: .*?)? "
+            "NOTICE: [ ]?notice: another note(\nCONTEXT: .*?)?",
         )
 
-    @testing.requires.psycopg2_or_pg8000_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     @engines.close_open_connections
     def test_client_encoding(self):
         c = testing.db.connect()
@@ -1183,7 +1177,7 @@ $$ LANGUAGE plpgsql;
         new_encoding = c.exec_driver_sql("show client_encoding").fetchone()[0]
         eq_(new_encoding, test_encoding)
 
-    @testing.requires.psycopg2_or_pg8000_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     @engines.close_open_connections
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(
@@ -1229,6 +1223,26 @@ $$ LANGUAGE plpgsql;
         seq.drop(connection)
         connection.execute(text("CREATE SEQUENCE fooseq"))
         t.create(connection, checkfirst=True)
+
+    @testing.combinations(True, False, argnames="implicit_returning")
+    def test_sequence_detection_tricky_names(
+        self, metadata, connection, implicit_returning
+    ):
+        for tname, cname in [
+            ("tb1" * 30, "abc"),
+            ("tb2", "abc" * 30),
+            ("tb3" * 30, "abc" * 30),
+            ("tb4", "abc"),
+        ]:
+            t = Table(
+                tname[:57],
+                metadata,
+                Column(cname[:57], Integer, primary_key=True),
+                implicit_returning=implicit_returning,
+            )
+            t.create(connection)
+            r = connection.execute(t.insert())
+            eq_(r.inserted_primary_key, (1,))
 
     @testing.provide_metadata
     def test_schema_roundtrips(self, connection):
@@ -1322,7 +1336,7 @@ $$ LANGUAGE plpgsql;
         assert result == [(1, "user", "lala")]
         connection.execute(text("DROP TABLE speedy_users"))
 
-    @testing.requires.psycopg2_or_pg8000_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_numeric_raise(self, connection):
         stmt = text("select cast('hi' as char) as hi").columns(hi=Numeric)
         assert_raises(exc.InvalidRequestError, connection.execute, stmt)
@@ -1384,28 +1398,90 @@ $$ LANGUAGE plpgsql;
             )
 
     @testing.requires.psycopg2_compatibility
-    def test_initial_transaction_state(self):
+    def test_initial_transaction_state_psycopg2(self):
         from psycopg2.extensions import STATUS_IN_TRANSACTION
 
         engine = engines.testing_engine()
         with engine.connect() as conn:
             ne_(conn.connection.status, STATUS_IN_TRANSACTION)
 
+    @testing.only_on("postgresql+psycopg")
+    def test_initial_transaction_state_psycopg(self):
+        from psycopg.pq import TransactionStatus
 
-class AutocommitTextTest(test_deprecations.AutocommitTextTest):
-    __only_on__ = "postgresql"
+        engine = engines.testing_engine()
+        with engine.connect() as conn:
+            ne_(
+                conn.connection.dbapi_connection.info.transaction_status,
+                TransactionStatus.INTRANS,
+            )
 
-    def test_grant(self):
-        self._test_keyword("GRANT USAGE ON SCHEMA fooschema TO foorole")
 
-    def test_import_foreign_schema(self):
-        self._test_keyword("IMPORT FOREIGN SCHEMA foob")
+class Psycopg3Test(fixtures.TestBase):
+    __only_on__ = ("postgresql+psycopg",)
 
-    def test_refresh_view(self):
-        self._test_keyword("REFRESH MATERIALIZED VIEW fooview")
+    def test_json_correctly_registered(self, testing_engine):
+        import json
 
-    def test_revoke(self):
-        self._test_keyword("REVOKE USAGE ON SCHEMA fooschema FROM foorole")
+        def loads(value):
+            value = json.loads(value)
+            value["x"] = value["x"] + "_loads"
+            return value
 
-    def test_truncate(self):
-        self._test_keyword("TRUNCATE footable")
+        def dumps(value):
+            value = dict(value)
+            value["x"] = "dumps_y"
+            return json.dumps(value)
+
+        engine = testing_engine(
+            options=dict(json_serializer=dumps, json_deserializer=loads)
+        )
+        engine2 = testing_engine(
+            options=dict(
+                json_serializer=json.dumps, json_deserializer=json.loads
+            )
+        )
+
+        s = select(cast({"key": "value", "x": "q"}, JSONB))
+        with engine.begin() as conn:
+            eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
+            with engine.begin() as conn:
+                eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
+                with engine2.begin() as conn:
+                    eq_(conn.scalar(s), {"key": "value", "x": "q"})
+                with engine.begin() as conn:
+                    eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
+
+    @testing.requires.hstore
+    def test_hstore_correctly_registered(self, testing_engine):
+        engine = testing_engine(options=dict(use_native_hstore=True))
+        engine2 = testing_engine(options=dict(use_native_hstore=False))
+
+        def rp(self, *a):
+            return lambda a: {"a": "b"}
+
+        with mock.patch.object(HSTORE, "result_processor", side_effect=rp):
+            s = select(cast({"key": "value", "x": "q"}, HSTORE))
+            with engine.begin() as conn:
+                eq_(conn.scalar(s), {"key": "value", "x": "q"})
+                with engine.begin() as conn:
+                    eq_(conn.scalar(s), {"key": "value", "x": "q"})
+                    with engine2.begin() as conn:
+                        eq_(conn.scalar(s), {"a": "b"})
+                    with engine.begin() as conn:
+                        eq_(conn.scalar(s), {"key": "value", "x": "q"})
+
+    def test_get_dialect(self):
+        u = url.URL.create("postgresql://")
+        d = psycopg_dialect.PGDialect_psycopg.get_dialect_cls(u)
+        is_(d, psycopg_dialect.PGDialect_psycopg)
+        d = psycopg_dialect.PGDialect_psycopg.get_async_dialect_cls(u)
+        is_(d, psycopg_dialect.PGDialectAsync_psycopg)
+        d = psycopg_dialect.PGDialectAsync_psycopg.get_dialect_cls(u)
+        is_(d, psycopg_dialect.PGDialectAsync_psycopg)
+        d = psycopg_dialect.PGDialectAsync_psycopg.get_dialect_cls(u)
+        is_(d, psycopg_dialect.PGDialectAsync_psycopg)
+
+    def test_async_version(self):
+        e = create_engine("postgresql+psycopg_async://")
+        is_true(isinstance(e.dialect, psycopg_dialect.PGDialectAsync_psycopg))

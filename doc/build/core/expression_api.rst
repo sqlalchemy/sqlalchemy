@@ -12,6 +12,7 @@ see :ref:`sqlexpression_toplevel`.
 .. toctree::
     :maxdepth: 3
 
+    foundation
     sqlelement
     operators
     selectable

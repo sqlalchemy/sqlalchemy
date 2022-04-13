@@ -204,11 +204,14 @@ When given an instance, it follows these steps:
   key if not located locally.
 * If the given instance has no primary key, or if no instance can be found
   with the primary key given, a new instance is created.
-* The state of the given instance is then copied onto the located/newly
-  created instance.    For attributes which are present on the source
-  instance, the value is transferred to the target instance.  For mapped
-  attributes which aren't present on the source, the attribute is
-  expired on the target instance, discarding its existing value.
+* The state of the given instance is then copied onto the located/newly created
+  instance. For attribute values which are present on the source instance, the
+  value is transferred to the target instance. For attribute values that aren't
+  present on the source instance, the corresponding attribute on the target
+  instance is :term:`expired` from memory, which discards any locally
+  present value from the target instance for that attribute, but no
+  direct modification is made to the database-persisted value for that
+  attribute.
 
   If the ``load=True`` flag is left at its default,
   this copy process emits events and will load the target object's
@@ -411,7 +414,7 @@ When we talk about expiration of data we are usually talking about an object
 that is in the :term:`persistent` state.   For example, if we load an object
 as follows::
 
-    user = session.query(User).filter_by(name='user1').first()
+    user = session.scalars(select(User).filter_by(name='user1').limit(1)).first()
 
 The above ``User`` object is persistent, and has a series of attributes
 present; if we were to look inside its ``__dict__``, we'd see that state

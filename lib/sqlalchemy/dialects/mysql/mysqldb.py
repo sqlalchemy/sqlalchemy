@@ -1,5 +1,5 @@
 # mysql/mysqldb.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -120,10 +120,6 @@ class MySQLCompiler_mysqldb(MySQLCompiler):
     pass
 
 
-class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
-    pass
-
-
 class MySQLDialect_mysqldb(MySQLDialect):
     driver = "mysqldb"
     supports_statement_cache = True
@@ -136,7 +132,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     default_paramstyle = "format"
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
-    preparer = MySQLIdentifierPreparer_mysqldb
+    preparer = MySQLIdentifierPreparer
 
     def __init__(self, **kwargs):
         super(MySQLDialect_mysqldb, self).__init__(**kwargs)
@@ -163,7 +159,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("MySQLdb")
 
     def on_connect(self):
@@ -312,23 +308,22 @@ class MySQLDialect_mysqldb(MySQLDialect):
         else:
             return cset_name()
 
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_connection):
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
             "AUTOCOMMIT",
-        ]
-    )
+        )
 
-    def _set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
-            connection.autocommit(True)
+            dbapi_connection.autocommit(True)
         else:
-            connection.autocommit(False)
-            super(MySQLDialect_mysqldb, self)._set_isolation_level(
-                connection, level
+            dbapi_connection.autocommit(False)
+            super(MySQLDialect_mysqldb, self).set_isolation_level(
+                dbapi_connection, level
             )
 
 

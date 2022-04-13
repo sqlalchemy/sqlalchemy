@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 
-class Versioned(object):
+class Versioned:
     # we have a composite primary key consisting of "id"
     # and "version_id"
     id = Column(Integer, primary_key=True)
@@ -101,17 +101,14 @@ session.commit()
 e1.data = "e2"
 session.commit()
 
-assert (
-    session.query(
-        Example.id,
-        Example.version_id,
-        Example.is_current_version,
-        Example.calc_is_current_version,
-        Example.data,
-    )
-    .order_by(Example.id, Example.version_id)
-    .all()
-    == ([(1, 1, False, False, "e1"), (1, 2, True, True, "e2")])
+assert session.query(
+    Example.id,
+    Example.version_id,
+    Example.is_current_version,
+    Example.calc_is_current_version,
+    Example.data,
+).order_by(Example.id, Example.version_id).all() == (
+    [(1, 1, False, False, "e1"), (1, 2, True, True, "e2")]
 )
 
 # example 2, versioning with a parent
@@ -162,15 +159,12 @@ session.commit()
 assert p1.child_id == 1
 assert p1.child.version_id == 2
 
-assert (
-    session.query(
-        Child.id,
-        Child.version_id,
-        Child.is_current_version,
-        Child.calc_is_current_version,
-        Child.data,
-    )
-    .order_by(Child.id, Child.version_id)
-    .all()
-    == ([(1, 1, False, False, "c1"), (1, 2, True, True, "c2")])
+assert session.query(
+    Child.id,
+    Child.version_id,
+    Child.is_current_version,
+    Child.calc_is_current_version,
+    Child.data,
+).order_by(Child.id, Child.version_id).all() == (
+    [(1, 1, False, False, "c1"), (1, 2, True, True, "c2")]
 )

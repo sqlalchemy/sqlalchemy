@@ -1,4 +1,5 @@
 import copy
+import pickle
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
@@ -10,7 +11,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import state as sa_state
@@ -34,7 +34,6 @@ from sqlalchemy.testing.pickleable import User
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import pickle
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
@@ -139,7 +138,7 @@ class PickleTest(fixtures.MappedTest):
 
         sess.expunge_all()
 
-        eq_(u1, sess.query(User).get(u2.id))
+        eq_(u1, sess.get(User, u2.id))
 
     def test_no_mappers(self):
         users = self.tables.users
@@ -199,7 +198,7 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session() as sess:
-            u1 = sess.query(User).get(u1.id)
+            u1 = sess.get(User, u1.id)
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__
 
@@ -271,7 +270,6 @@ class PickleTest(fixtures.MappedTest):
         sess.add(u1)
         sess.commit()
         sess.close()
-
         u1 = (
             sess.query(User)
             .options(
@@ -324,7 +322,6 @@ class PickleTest(fixtures.MappedTest):
         u2.addresses.append(Address())
         eq_(len(u2.addresses), 2)
 
-    @testing.requires.non_broken_pickle
     def test_instance_deferred_cols(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
@@ -342,13 +339,15 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session(expire_on_commit=False) as sess:
-            u1 = (
-                sess.query(User)
-                .options(
-                    sa.orm.defer("name"),
-                    sa.orm.defer("addresses.email_address"),
-                )
-                .get(u1.id)
+            u1 = sess.get(
+                User,
+                u1.id,
+                options=[
+                    sa.orm.defer(User.name),
+                    sa.orm.defaultload(User.addresses).defer(
+                        Address.email_address
+                    ),
+                ],
             )
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__
@@ -410,73 +409,6 @@ class PickleTest(fixtures.MappedTest):
             u2 = loads(dumps(u1))
             eq_(u1, u2)
 
-    def test_09_pickle(self):
-        users = self.tables.users
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session()
-        sess.add(User(id=1, name="ed"))
-        sess.commit()
-        sess.close()
-
-        inst = User(id=1, name="ed")
-        del inst._sa_instance_state
-
-        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
-        state_09 = {
-            "class_": User,
-            "modified": False,
-            "committed_state": {},
-            "instance": inst,
-            "callables": {"name": state, "id": state},
-            "key": (User, (1,)),
-            "expired": True,
-        }
-        manager = instrumentation._SerializeManager.__new__(
-            instrumentation._SerializeManager
-        )
-        manager.class_ = User
-        state_09["manager"] = manager
-        state.__setstate__(state_09)
-        eq_(state.expired_attributes, {"name", "id"})
-
-        sess = fixture_session()
-        sess.add(inst)
-        eq_(inst.name, "ed")
-        # test identity_token expansion
-        eq_(sa.inspect(inst).key, (User, (1,), None))
-
-    def test_11_pickle(self):
-        users = self.tables.users
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session()
-        u1 = User(id=1, name="ed")
-        sess.add(u1)
-        sess.commit()
-
-        sess.close()
-
-        manager = instrumentation._SerializeManager.__new__(
-            instrumentation._SerializeManager
-        )
-        manager.class_ = User
-
-        state_11 = {
-            "class_": User,
-            "modified": False,
-            "committed_state": {},
-            "instance": u1,
-            "manager": manager,
-            "key": (User, (1,)),
-            "expired_attributes": set(),
-            "expired": True,
-        }
-
-        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
-        state.__setstate__(state_11)
-
-        eq_(state.identity_token, None)
-        eq_(state.identity_key, (User, (1,), None))
-
     def test_state_info_pickle(self):
         users = self.tables.users
         self.mapper_registry.map_imperatively(User, users)
@@ -493,68 +425,47 @@ class PickleTest(fixtures.MappedTest):
         u2 = state.obj()
         eq_(sa.inspect(u2).info["some_key"], "value")
 
-    @testing.requires.non_broken_pickle
-    def test_unbound_options(self):
+    @testing.combinations(
+        lambda User: sa.orm.joinedload(User.addresses),
+        lambda User: sa.orm.defer(User.name),
+        lambda Address: sa.orm.joinedload(User.addresses).joinedload(
+            Address.dingaling
+        ),
+        lambda: sa.orm.joinedload(User.addresses).raiseload("*"),
+        lambda: sa.orm.raiseload("*"),
+    )
+    def test_unbound_options(self, test_case):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
-        for opt in [
-            sa.orm.joinedload(User.addresses),
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
-            sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
-        ]:
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
+        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
 
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
-    @testing.requires.non_broken_pickle
-    def test_bound_options(self):
+    @testing.combinations(
+        lambda User: sa.orm.Load(User).joinedload(User.addresses),
+        lambda User: sa.orm.Load(User)
+        .joinedload(User.addresses)
+        .raiseload("*"),
+        lambda User: sa.orm.Load(User).defer(User.name),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload(User.addresses)
+        .joinedload(Address.dingaling),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload(User.addresses, innerjoin=True)
+        .joinedload(Address.dingaling),
+    )
+    def test_bound_options(self, test_case):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
-        for opt in [
-            sa.orm.Load(User).joinedload(User.addresses),
-            sa.orm.Load(User).joinedload("addresses"),
-            sa.orm.Load(User).defer("name"),
-            sa.orm.Load(User).defer(User.name),
-            sa.orm.Load(User)
-            .joinedload("addresses")
-            .joinedload(Address.dingaling),
-            sa.orm.Load(User)
-            .joinedload("addresses", innerjoin=True)
-            .joinedload(Address.dingaling),
-        ]:
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
-            eq_(opt.context.keys(), opt2.context.keys())
-            eq_(opt.local_opts, opt2.local_opts)
+        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
 
-        u1 = sess.query(User).options(opt).first()
-        pickle.loads(pickle.dumps(u1))
-
-    @testing.requires.non_broken_pickle
-    def test_became_bound_options(self):
-        sess, User, Address, Dingaling = self._option_test_fixture()
-
-        for opt in [
-            sa.orm.joinedload(User.addresses),
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
-            sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
-        ]:
-            context = sess.query(User).options(opt)._compile_context()
-            opt = [
-                v
-                for v in context.attributes.values()
-                if isinstance(v, sa.orm.Load)
-            ][0]
-
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
-            eq_(opt.local_opts, opt2.local_opts)
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
+        for v1, v2 in zip(opt.context, opt2.context):
+            eq_(v1.local_opts, v2.local_opts)
 
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
@@ -594,7 +505,7 @@ class PickleTest(fixtures.MappedTest):
         pickle.loads(pickle.dumps(screen2))
 
     def test_exceptions(self):
-        class Foo(object):
+        class Foo:
             pass
 
         users = self.tables.users
@@ -689,23 +600,28 @@ class PickleTest(fixtures.MappedTest):
 
 
 class OptionsTest(_Polymorphic):
-    @testing.requires.non_broken_pickle
     def test_options_of_type(self):
 
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)
-        for opt, serialized in [
+        for opt, serialized_path, serialized_of_type in [
             (
                 sa.orm.joinedload(Company.employees.of_type(Engineer)),
-                [(Company, "employees", Engineer)],
+                [(Company, "employees"), (Engineer, None)],
+                Engineer,
             ),
             (
                 sa.orm.joinedload(Company.employees.of_type(with_poly)),
-                [(Company, "employees", None)],
+                [(Company, "employees"), (Person, None)],
+                None,
             ),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.__getstate__()["path"], serialized)
-            eq_(opt2.__getstate__()["path"], serialized)
+            eq_(opt.__getstate__()["path"], serialized_path)
+            eq_(opt2.__getstate__()["path"], serialized_path)
+
+            for v1, v2 in zip(opt.context, opt2.context):
+                eq_(v1.__getstate__()["_of_type"], serialized_of_type)
+                eq_(v2.__getstate__()["_of_type"], serialized_of_type)
 
     def test_load(self):
         s = fixture_session()

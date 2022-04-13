@@ -1,5 +1,5 @@
 # sqlalchemy/naming.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,11 +10,13 @@
 
 """
 
+from __future__ import annotations
+
 import re
 
 from . import events  # noqa
 from .elements import _NONE_NAME
-from .elements import conv
+from .elements import conv as conv
 from .schema import CheckConstraint
 from .schema import Column
 from .schema import Constraint
@@ -27,7 +29,7 @@ from .. import event
 from .. import exc
 
 
-class ConventionDict(object):
+class ConventionDict:
     def __init__(self, const, table, convention):
         self.const = const
         self._is_fk = isinstance(const, ForeignKeyConstraint)

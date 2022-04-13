@@ -56,9 +56,9 @@ ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 
 def id_generator(ctx):
     # in reality, might want to use a separate transaction for this.
-    with db1.connect() as conn:
+    with db1.begin() as conn:
         nextid = conn.scalar(ids.select().with_for_update())
-        conn.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
+        conn.execute(ids.update().values({ids.c.nextid: ids.c.nextid + 1}))
     return nextid
 
 
@@ -106,7 +106,7 @@ for db in (db1, db2, db3, db4):
 
 # establish initial "id" in db1
 with db1.begin() as conn:
-    conn.execute(ids.insert(), nextid=1)
+    conn.execute(ids.insert(), {"nextid": 1})
 
 
 # step 5. define sharding functions.
@@ -155,19 +155,19 @@ def id_chooser(query, ident):
         return ["north_america", "asia", "europe", "south_america"]
 
 
-def query_chooser(query):
-    """query chooser.
+def execute_chooser(context):
+    """statement execution chooser.
 
-    this also returns a list of shard ids, which can
-    just be all of them.  but here we'll search into the Query in order
-    to try to narrow down the list of shards to query.
+    this also returns a list of shard ids, which can just be all of them. but
+    here we'll search into the execution context in order to try to narrow down
+    the list of shards to SELECT.
 
     """
     ids = []
 
     # we'll grab continent names as we find them
     # and convert to shard ids
-    for column, operator, value in _get_query_comparisons(query):
+    for column, operator, value in _get_select_comparisons(context.statement):
         # "shares_lineage()" returns True if both columns refer to the same
         # statement column, adjusting for any annotations present.
         # (an annotation is an internal clone of a Column object
@@ -186,8 +186,8 @@ def query_chooser(query):
         return ids
 
 
-def _get_query_comparisons(query):
-    """Search an orm.Query object for binary expressions.
+def _get_select_comparisons(statement):
+    """Search a Select or Query object for binary expressions.
 
     Returns expressions which match a Column against one or more
     literal values as a list of tuples of the form
@@ -222,9 +222,9 @@ def _get_query_comparisons(query):
     # here we will traverse through the query's criterion, searching
     # for SQL constructs.  We will place simple column comparisons
     # into a list.
-    if query.whereclause is not None:
+    if statement.whereclause is not None:
         visitors.traverse(
-            query.whereclause,
+            statement.whereclause,
             {},
             {
                 "bindparam": visit_bindparam,
@@ -239,7 +239,7 @@ def _get_query_comparisons(query):
 Session.configure(
     shard_chooser=shard_chooser,
     id_chooser=id_chooser,
-    query_chooser=query_chooser,
+    execute_chooser=execute_chooser,
 )
 
 # save and load objects!

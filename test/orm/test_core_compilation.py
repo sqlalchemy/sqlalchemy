@@ -1,8 +1,11 @@
 from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
+from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import or_
@@ -10,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
@@ -31,12 +35,14 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
+from sqlalchemy.util.langhelpers import hybridproperty
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
+from ..sql.test_compiler import CorrelateTest as _CoreCorrelateTest
 
 # TODO:
 # composites / unions, etc.
@@ -108,6 +114,18 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
             ],
         ),
         (
+            lambda user_alias: (user_alias,),
+            lambda User, user_alias: [
+                {
+                    "name": None,
+                    "type": User,
+                    "aliased": True,
+                    "expr": user_alias,
+                    "entity": user_alias,
+                }
+            ],
+        ),
+        (
             lambda User: (User.id,),
             lambda User: [
                 {
@@ -157,16 +175,106 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
                 },
             ],
         ),
+        (
+            lambda user_table: (user_table,),
+            lambda user_table: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "expr": user_table.c.id,
+                },
+                {
+                    "name": "name",
+                    "type": testing.eq_type_affinity(sqltypes.String),
+                    "expr": user_table.c.name,
+                },
+            ],
+        ),
+        argnames="cols, expected",
     )
     def test_column_descriptions(self, cols, expected):
         User, Address = self.classes("User", "Address")
+        ua = aliased(User)
 
-        cols = testing.resolve_lambda(cols, User=User, Address=Address)
-        expected = testing.resolve_lambda(expected, User=User, Address=Address)
+        cols = testing.resolve_lambda(
+            cols,
+            User=User,
+            Address=Address,
+            user_alias=ua,
+            user_table=inspect(User).local_table,
+        )
+        expected = testing.resolve_lambda(
+            expected,
+            User=User,
+            Address=Address,
+            user_alias=ua,
+            user_table=inspect(User).local_table,
+        )
 
         stmt = select(*cols)
 
         eq_(stmt.column_descriptions, expected)
+
+        if stmt._propagate_attrs:
+            stmt = select(*cols).from_statement(stmt)
+            eq_(stmt.column_descriptions, expected)
+
+    @testing.combinations(insert, update, delete, argnames="dml_construct")
+    @testing.combinations(
+        (
+            lambda User: User,
+            lambda User: (User.id, User.name),
+            lambda User, user_table: {
+                "name": "User",
+                "type": User,
+                "expr": User,
+                "entity": User,
+                "table": user_table,
+            },
+            lambda User: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
+                },
+                {
+                    "name": "name",
+                    "type": testing.eq_type_affinity(sqltypes.String),
+                    "aliased": False,
+                    "expr": User.name,
+                    "entity": User,
+                },
+            ],
+        ),
+        argnames="entity, cols, expected_entity, expected_returning",
+    )
+    def test_dml_descriptions(
+        self, dml_construct, entity, cols, expected_entity, expected_returning
+    ):
+        User, Address = self.classes("User", "Address")
+
+        lambda_args = dict(
+            User=User,
+            Address=Address,
+            user_table=inspect(User).local_table,
+        )
+        entity = testing.resolve_lambda(entity, **lambda_args)
+        cols = testing.resolve_lambda(cols, **lambda_args)
+        expected_entity = testing.resolve_lambda(
+            expected_entity, **lambda_args
+        )
+        expected_returning = testing.resolve_lambda(
+            expected_returning, **lambda_args
+        )
+
+        stmt = dml_construct(entity)
+        if cols:
+            stmt = stmt.returning(*cols)
+
+        eq_(stmt.entity_description, expected_entity)
+        eq_(stmt.returning_column_descriptions, expected_returning)
 
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
@@ -226,14 +334,6 @@ class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
             },
         )
         eq_(len(froms), 1)
-
-    def test_with_only_columns_unknown_kw(self):
-        User, Address = self.classes("User", "Address")
-
-        stmt = select(User.id)
-
-        with expect_raises_message(TypeError, "unknown parameters: foo"):
-            stmt.with_only_columns(User.id, foo="bar")
 
     @testing.combinations((True,), (False,))
     def test_replace_into_select_from_maintains_existing(self, use_flag):
@@ -347,7 +447,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             # the display of the attribute here is not consistent vs.
             # the straight aliased class, should improve this.
             r"explicit from clause .*User.* does not match left side .*"
-            r"of relationship attribute AliasedClass_User.addresses",
+            r"of relationship attribute aliased\(User\).addresses",
             stmt.compile,
         )
 
@@ -1073,7 +1173,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         # the column properties
         stmt = select(stmt.subquery())
 
-        # TODO: shouldnt we be able to get to stmt.subquery().c.count ?
+        # TODO: shouldn't we be able to get to stmt.subquery().c.count ?
         self.assert_compile(
             stmt,
             "SELECT anon_2.anon_1, anon_2.anon_3, anon_2.id, anon_2.name "
@@ -2290,7 +2390,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_col_prop_builtin_function(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2320,3 +2420,29 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
         self.assert_compile(stmt1, expected)
         self.assert_compile(stmt2, expected)
+
+
+class CorrelateTest(fixtures.DeclarativeMappedTest, _CoreCorrelateTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class T1(Base):
+            __tablename__ = "t1"
+            a = Column(Integer, primary_key=True)
+
+            @hybridproperty
+            def c(self):
+                return self
+
+        class T2(Base):
+            __tablename__ = "t2"
+            a = Column(Integer, primary_key=True)
+
+            @hybridproperty
+            def c(self):
+                return self
+
+    def _fixture(self):
+        t1, t2 = self.classes("T1", "T2")
+        return t1, t2, select(t1).where(t1.c.a == t2.c.a)

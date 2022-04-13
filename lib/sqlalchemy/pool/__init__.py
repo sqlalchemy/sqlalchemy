@@ -1,5 +1,5 @@
 # sqlalchemy/pool/__init__.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -18,39 +18,26 @@ SQLAlchemy connection pool.
 """
 
 from . import events
-from .base import _ConnectionFairy
+from .base import _AdhocProxiedConnection as _AdhocProxiedConnection
+from .base import _ConnectionFairy as _ConnectionFairy
 from .base import _ConnectionRecord
+from .base import _CreatorFnType as _CreatorFnType
+from .base import _CreatorWRecFnType as _CreatorWRecFnType
 from .base import _finalize_fairy
-from .base import Pool
-from .base import reset_commit
-from .base import reset_none
-from .base import reset_rollback
-from .dbapi_proxy import clear_managers
-from .dbapi_proxy import manage
-from .impl import AssertionPool
-from .impl import AsyncAdaptedQueuePool
-from .impl import FallbackAsyncAdaptedQueuePool
-from .impl import NullPool
-from .impl import QueuePool
-from .impl import SingletonThreadPool
-from .impl import StaticPool
-
-
-__all__ = [
-    "Pool",
-    "reset_commit",
-    "reset_none",
-    "reset_rollback",
-    "clear_managers",
-    "manage",
-    "AssertionPool",
-    "NullPool",
-    "QueuePool",
-    "AsyncAdaptedQueuePool",
-    "FallbackAsyncAdaptedQueuePool",
-    "SingletonThreadPool",
-    "StaticPool",
-]
-
-# as these are likely to be used in various test suites, debugging
-# setups, keep them in the sqlalchemy.pool namespace
+from .base import _ResetStyleArgType as _ResetStyleArgType
+from .base import ConnectionPoolEntry as ConnectionPoolEntry
+from .base import ManagesConnection as ManagesConnection
+from .base import Pool as Pool
+from .base import PoolProxiedConnection as PoolProxiedConnection
+from .base import reset_commit as reset_commit
+from .base import reset_none as reset_none
+from .base import reset_rollback as reset_rollback
+from .impl import AssertionPool as AssertionPool
+from .impl import AsyncAdaptedQueuePool as AsyncAdaptedQueuePool
+from .impl import (
+    FallbackAsyncAdaptedQueuePool as FallbackAsyncAdaptedQueuePool,
+)
+from .impl import NullPool as NullPool
+from .impl import QueuePool as QueuePool
+from .impl import SingletonThreadPool as SingletonThreadPool
+from .impl import StaticPool as StaticPool

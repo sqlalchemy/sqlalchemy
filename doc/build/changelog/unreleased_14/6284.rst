@@ -1,6 +1,0 @@
-.. change::
-    :tags: orm
-    :tickets: 6284
-
-    Passing a :class:`.Query` object to :meth:`_orm.Session.execute` is not
-    the intended use of this object, and will now raise a deprecation warning.

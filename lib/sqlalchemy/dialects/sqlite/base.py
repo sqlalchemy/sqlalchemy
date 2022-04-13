@@ -1,5 +1,5 @@
 # sqlite/base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -818,12 +818,12 @@ from .json import JSON
 from .json import JSONIndexType
 from .json import JSONPathType
 from ... import exc
-from ... import processors
 from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
 from ... import util
 from ...engine import default
+from ...engine import processors
 from ...engine import reflection
 from ...sql import coercions
 from ...sql import ColumnElement
@@ -863,7 +863,7 @@ class _SQliteJson(JSON):
         return process
 
 
-class _DateTimeMixin(object):
+class _DateTimeMixin:
     _reg = None
     _storage_format = None
 
@@ -926,6 +926,12 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         2021-03-15 12:05:57.105542
 
+    The incoming storage format is by default parsed using the
+    Python ``datetime.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``datetime.fromisoformat()`` is used for default
+       datetime string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -941,7 +947,8 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
      with keys year, month, day, hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python datetime() constructor as keyword arguments.
      Otherwise, if positional groups are used, the datetime() constructor
      is called with positional arguments via
@@ -1027,6 +1034,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         2011-03-15
 
+    The incoming storage format is by default parsed using the
+    Python ``date.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``date.fromisoformat()`` is used for default
+       date string parsing.
+
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1042,11 +1056,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
      dict with keys year, month, and day.
 
     :param regexp: regular expression which will be applied to
-     incoming result rows. If the regexp contains named groups, the
-     resulting match dict is applied to the Python date() constructor
-     as keyword arguments. Otherwise, if positional groups are used, the
-     date() constructor is called with positional arguments via
+     incoming result rows, replacing the use of ``date.fromisoformat()`` to
+     parse incoming strings. If the regexp contains named groups, the resulting
+     match dict is applied to the Python date() constructor as keyword
+     arguments. Otherwise, if positional groups are used, the date()
+     constructor is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(year)04d-%(month)02d-%(day)02d"
@@ -1092,6 +1108,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
         12:05:57.10558
 
+    The incoming storage format is by default parsed using the
+    Python ``time.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``time.fromisoformat()`` is used for default
+       time string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1107,10 +1129,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
      with keys hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python time() constructor as keyword arguments. Otherwise,
      if positional groups are used, the time() constructor is called with
      positional arguments via ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
@@ -1179,7 +1203,7 @@ ischema_names = {
     "DATE_CHAR": sqltypes.DATE,
     "DATETIME": sqltypes.DATETIME,
     "DATETIME_CHAR": sqltypes.DATETIME,
-    "DOUBLE": sqltypes.FLOAT,
+    "DOUBLE": sqltypes.DOUBLE,
     "DECIMAL": sqltypes.DECIMAL,
     "FLOAT": sqltypes.FLOAT,
     "INT": sqltypes.INTEGER,
@@ -1215,6 +1239,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
         },
     )
 
+    def visit_truediv_binary(self, binary, operator, **kw):
+        return (
+            self.process(binary.left, **kw)
+            + " / "
+            + "(%s + 0.0)" % self.process(binary.right, **kw)
+        )
+
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"
 
@@ -1243,12 +1274,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 self.process(extract.expr, **kw),
             )
         except KeyError as err:
-            util.raise_(
-                exc.CompileError(
-                    "%s is not a valid extract argument." % extract.field
-                ),
-                replace_context=err,
-            )
+            raise exc.CompileError(
+                "%s is not a valid extract argument." % extract.field
+            ) from err
 
     def limit_clause(self, select, **kw):
         text = ""
@@ -1324,7 +1352,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
-                    if isinstance(c, util.string_types)
+                    if isinstance(c, str)
                     else self.process(c, include_table=False, use_schema=False)
                 )
                 for c in clause.inferred_target_elements
@@ -1401,7 +1429,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             for k, v in set_parameters.items():
                 key_text = (
                     self.preparer.quote(k)
-                    if isinstance(k, util.string_types)
+                    if isinstance(k, str)
                     else self.process(k, use_schema=False)
                 )
                 value_text = self.process(
@@ -1422,7 +1450,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
 
-        coltype = self.dialect.type_compiler.process(
+        coltype = self.dialect.type_compiler_instance.process(
             column.type, type_expression=column
         )
         colspec = self.preparer.format_column(column) + " " + coltype
@@ -1795,8 +1823,6 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
 class SQLiteDialect(default.DefaultDialect):
     name = "sqlite"
     supports_alter = False
-    supports_unicode_statements = True
-    supports_unicode_binds = True
 
     # SQlite supports "DEFAULT VALUES" but *does not* support
     # "VALUES (DEFAULT)"
@@ -1813,11 +1839,10 @@ class SQLiteDialect(default.DefaultDialect):
     execution_ctx_cls = SQLiteExecutionContext
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler
-    type_compiler = SQLiteTypeCompiler
+    type_compiler_cls = SQLiteTypeCompiler
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
-    isolation_level = None
 
     construct_arguments = [
         (
@@ -1858,16 +1883,14 @@ class SQLiteDialect(default.DefaultDialect):
     )
     def __init__(
         self,
-        isolation_level=None,
         native_datetime=False,
         json_serializer=None,
         json_deserializer=None,
         _json_serializer=None,
         _json_deserializer=None,
-        **kwargs
+        **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
-        self.isolation_level = isolation_level
 
         if _json_serializer:
             json_serializer = _json_serializer
@@ -1892,6 +1915,8 @@ class SQLiteDialect(default.DefaultDialect):
                     % (self.dbapi.sqlite_version_info,)
                 )
 
+            # NOTE: python 3.7 on fedora for me has SQLite 3.34.1.  These
+            # version checks are getting very stale.
             self._broken_dotted_colnames = self.dbapi.sqlite_version_info < (
                 3,
                 10,
@@ -1920,28 +1945,18 @@ class SQLiteDialect(default.DefaultDialect):
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
     )
 
-    def set_isolation_level(self, connection, level):
-        try:
-            isolation_level = self._isolation_lookup[level.replace("_", " ")]
-        except KeyError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "Invalid value '%s' for isolation_level. "
-                    "Valid isolation levels for %s are %s"
-                    % (
-                        level,
-                        self.name,
-                        ", ".join(self._isolation_lookup),
-                    )
-                ),
-                replace_context=err,
-            )
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
+    def get_isolation_level_values(self, dbapi_connection):
+        return list(self._isolation_lookup)
+
+    def set_isolation_level(self, dbapi_connection, level):
+        isolation_level = self._isolation_lookup[level]
+
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"PRAGMA read_uncommitted = {isolation_level}")
         cursor.close()
 
-    def get_isolation_level(self, connection):
-        cursor = connection.cursor()
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA read_uncommitted")
         res = cursor.fetchone()
         if res:
@@ -1961,16 +1976,6 @@ class SQLiteDialect(default.DefaultDialect):
             return "READ UNCOMMITTED"
         else:
             assert False, "Unknown isolation level %s" % value
-
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
@@ -2135,7 +2140,7 @@ class SQLiteDialect(default.DefaultDialect):
         coltype = self._resolve_type_affinity(type_)
 
         if default is not None:
-            default = util.text_type(default)
+            default = str(default)
 
         colspec = {
             "name": name,
@@ -2396,7 +2401,7 @@ class SQLiteDialect(default.DefaultDialect):
             table_name,
             schema=schema,
             include_auto_indexes=True,
-            **kw
+            **kw,
         ):
             if not idx["name"].startswith("sqlite_autoindex"):
                 continue
@@ -2414,7 +2419,8 @@ class SQLiteDialect(default.DefaultDialect):
         def parse_uqs():
             UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                r'(?:(".+?")|([a-z0-9]+)) ' r"+[a-z0-9_ ]+? +UNIQUE"
+                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?) '
+                r"+[a-z0-9_ ]+? +UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
@@ -2448,17 +2454,21 @@ class SQLiteDialect(default.DefaultDialect):
         if not table_data:
             return []
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (\w+) +)?" r"CHECK *\( *(.+) *\),? *"
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
         check_constraints = []
         # NOTE: we aren't using re.S here because we actually are
         # taking advantage of each CHECK constraint being all on one
         # line in the table definition in order to delineate.  This
         # necessarily makes assumptions as to how the CREATE TABLE
         # was emitted.
+
         for match in re.finditer(CHECK_PATTERN, table_data, re.I):
-            check_constraints.append(
-                {"sqltext": match.group(2), "name": match.group(1)}
-            )
+            name = match.group(1)
+
+            if name:
+                name = re.sub(r'^"|"$', "", name)
+
+            check_constraints.append({"sqltext": match.group(2), "name": name})
 
         return check_constraints
 

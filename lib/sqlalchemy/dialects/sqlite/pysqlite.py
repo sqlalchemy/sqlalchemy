@@ -1,5 +1,5 @@
 # sqlite/pysqlite.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -199,35 +199,53 @@ processing.
 Threading/Pooling Behavior
 ---------------------------
 
-Pysqlite's default behavior is to prohibit the usage of a single connection
-in more than one thread.   This is originally intended to work with older
-versions of SQLite that did not support multithreaded operation under
-various circumstances.  In particular, older SQLite versions
-did not allow a ``:memory:`` database to be used in multiple threads
-under any circumstances.
+The ``sqlite3`` DBAPI by default prohibits the use of a particular connection
+in a thread which is not the one in which it was created.  As SQLite has
+matured, it's behavior under multiple threads has improved, and even includes
+options for memory only databases to be used in multiple threads.
 
-Pysqlite does include a now-undocumented flag known as
-``check_same_thread`` which will disable this check, however note that
-pysqlite connections are still not safe to use in concurrently in multiple
-threads.  In particular, any statement execution calls would need to be
-externally mutexed, as Pysqlite does not provide for thread-safe propagation
-of error messages among other things.   So while even ``:memory:`` databases
-can be shared among threads in modern SQLite, Pysqlite doesn't provide enough
-thread-safety to make this usage worth it.
+The thread prohibition is known as "check same thread" and may be controlled
+using the ``sqlite3`` parameter ``check_same_thread``, which will disable or
+enable this check. SQLAlchemy's default behavior here is to set
+``check_same_thread`` to ``False`` automatically whenever a file-based database
+is in use, to establish compatibility with the default pool class
+:class:`.QueuePool`.
 
-SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
+The SQLAlchemy ``pysqlite`` DBAPI establishes the connection pool differently
+based on the kind of SQLite database that's requested:
 
 * When a ``:memory:`` SQLite database is specified, the dialect by default
   will use :class:`.SingletonThreadPool`. This pool maintains a single
   connection per thread, so that all access to the engine within the current
   thread use the same ``:memory:`` database - other threads would access a
-  different ``:memory:`` database.
+  different ``:memory:`` database.  The ``check_same_thread`` parameter
+  defaults to ``True``.
 * When a file-based database is specified, the dialect will use
-  :class:`.NullPool` as the source of connections. This pool closes and
-  discards connections which are returned to the pool immediately. SQLite
-  file-based connections have extremely low overhead, so pooling is not
-  necessary. The scheme also prevents a connection from being used again in
-  a different thread and works best with SQLite's coarse-grained file locking.
+  :class:`.QueuePool` as the source of connections.   at the same time,
+  the ``check_same_thread`` flag is set to False by default unless overridden.
+
+  .. versionchanged:: 2.0
+
+    SQLite file database engines now use :class:`.QueuePool` by default.
+    Previously, :class:`.NullPool` were used.  The :class:`.NullPool` class
+    may be used by specifying it via the
+    :paramref:`_sa.create_engine.poolclass` parameter.
+
+Disabling Connection Pooling for File Databases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pooling may be disabled for a file based database by specifying the
+:class:`.NullPool` implementation for the :func:`_sa.create_engine.poolclass`
+parameter::
+
+    from sqlalchemy import NullPool
+    engine = create_engine("sqlite:///myfile.db", poolclass=NullPool)
+
+It's been observed that the :class:`.NullPool` implementation incurs an
+extremely small performance overhead for repeated checkouts due to the lack of
+connection re-use implemented by :class:`.QueuePool`.  However, it still
+may be beneficial to use this class if the application is experiencing
+issues with files being locked.
 
 Using a Memory Database in Multiple Threads
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -274,23 +292,12 @@ Note that :class:`.SingletonThreadPool` should be configured for the number
 of threads that are to be used; beyond that number, connections will be
 closed out in a non deterministic way.
 
-Unicode
--------
 
-The pysqlite driver only returns Python ``unicode`` objects in result sets,
-never plain strings, and accommodates ``unicode`` objects within bound
-parameter values in all cases.   Regardless of the SQLAlchemy string type in
-use, string-based result values will by Python ``unicode`` in Python 2.
-The :class:`.Unicode` type should still be used to indicate those columns that
-require unicode, however, so that non-``unicode`` values passed inadvertently
-will emit a warning.  Pysqlite will emit an error if a non-``unicode`` string
-is passed containing non-ASCII characters.
-
-Dealing with Mixed String / Binary Columns in Python 3
+Dealing with Mixed String / Binary Columns
 ------------------------------------------------------
 
 The SQLite database is weakly typed, and as such it is possible when using
-binary values, which in Python 3 are represented as ``b'some string'``, that a
+binary values, which in Python are represented as ``b'some string'``, that a
 particular SQLite database can have data values within different rows where
 some of them will be returned as a ``b''`` value by the Pysqlite driver, and
 others will be returned as Python strings, e.g. ``''`` values.   This situation
@@ -304,8 +311,6 @@ table will not be consistently readable because SQLAlchemy's
 
 To deal with a SQLite table that has mixed string / binary data in the
 same column, use a custom type that will check each row individually::
-
-    # note this is Python 3 only
 
     from sqlalchemy import String
     from sqlalchemy import TypeDecorator
@@ -402,6 +407,7 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
 """  # noqa
 
+import math
 import os
 import re
 
@@ -454,23 +460,14 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         },
     )
 
-    if not util.py2k:
-        description_encoding = None
+    description_encoding = None
 
     driver = "pysqlite"
 
     @classmethod
-    def dbapi(cls):
-        if util.py2k:
-            try:
-                from pysqlite2 import dbapi2 as sqlite
-            except ImportError:
-                try:
-                    from sqlite3 import dbapi2 as sqlite
-                except ImportError as e:
-                    raise e
-        else:
-            from sqlite3 import dbapi2 as sqlite
+    def import_dbapi(cls):
+        from sqlite3 import dbapi2 as sqlite
+
         return sqlite
 
     @classmethod
@@ -485,7 +482,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     @classmethod
     def get_pool_class(cls, url):
         if cls._is_url_file_db(url):
-            return pool.NullPool
+            return pool.QueuePool
         else:
             return pool.SingletonThreadPool
 
@@ -498,47 +495,39 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         }
     )
 
-    def set_isolation_level(self, connection, level):
-        if hasattr(connection, "dbapi_connection"):
-            dbapi_connection = connection.dbapi_connection
-        else:
-            dbapi_connection = connection
+    def set_isolation_level(self, dbapi_connection, level):
 
         if level == "AUTOCOMMIT":
             dbapi_connection.isolation_level = None
         else:
             dbapi_connection.isolation_level = ""
             return super(SQLiteDialect_pysqlite, self).set_isolation_level(
-                connection, level
+                dbapi_connection, level
             )
 
     def on_connect(self):
-        connect = super(SQLiteDialect_pysqlite, self).on_connect()
-
         def regexp(a, b):
             if b is None:
                 return None
             return re.search(a, b) is not None
 
-        def set_regexp(connection):
-            if hasattr(connection, "dbapi_connection"):
-                dbapi_connection = connection.dbapi_connection
-            else:
-                dbapi_connection = connection
+        create_func_kw = {"deterministic": True} if util.py38 else {}
+
+        def set_regexp(dbapi_connection):
             dbapi_connection.create_function(
-                "regexp",
-                2,
-                regexp,
+                "regexp", 2, regexp, **create_func_kw
             )
 
-        fns = [set_regexp]
+        def floor_func(dbapi_connection):
+            # NOTE: floor is optionally present in sqlite 3.35+ , however
+            # as it is normally non-present we deliver floor() unconditionally
+            # for now.
+            # https://www.sqlite.org/lang_mathfunc.html
+            dbapi_connection.create_function(
+                "floor", 1, math.floor, **create_func_kw
+            )
 
-        if self.isolation_level is not None:
-
-            def iso_level(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            fns.append(iso_level)
+        fns = [set_regexp, floor_func]
 
         def connect(conn):
             for fn in fns:
@@ -601,6 +590,10 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             filename = url.database or ":memory:"
             if filename != ":memory:":
                 filename = os.path.abspath(filename)
+
+        pysqlite_opts.setdefault(
+            "check_same_thread", not self._is_url_file_db(url)
+        )
 
         return ([filename], pysqlite_opts)
 

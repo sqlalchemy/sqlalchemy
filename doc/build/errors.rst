@@ -122,87 +122,94 @@ this warning is at :ref:`deprecation_20_mode`.
     :ref:`deprecation_20_mode` - specific guidelines on how to use
     "2.0 deprecations mode" in SQLAlchemy 1.4.
 
-.. _error_c9bf:
+.. _error_cprf:
+.. _caching_caveats:
 
-A bind was located via legacy bound metadata, but since future=True is set on this Session, this bind is ignored.
--------------------------------------------------------------------------------------------------------------------
+Object will not produce a cache key, Performance Implications
+--------------------------------------------------------------
 
-The concept of "bound metadata" is being removed in SQLAlchemy 2.0.  This
-refers to the :paramref:`_schema.MetaData.bind` parameter on the
-:class:`_schema.MetaData` object that in turn allows objects like the ORM
-:class:`_orm.Session` to associate a particular mapped class with an
-:class:`_orm.Engine`.   In SQLAlchemy 2.0, the :class:`_orm.Session` must be
-linked to each :class:`_orm.Engine` directly. That is, instead of instantiating
-the :class:`_orm.Session` or
-:class:`_orm.sessionmaker` without any arguments, and associating the
-:class:`_engine.Engine` with the :class:`_schema.MetaData`::
+SQLAlchemy as of version 1.4 includes a
+:ref:`SQL compilation caching facility <sql_caching>` which will allow
+Core and ORM SQL constructs to cache their stringified form, along with other
+structural information used to fetch results from the statement, allowing the
+relatively expensive string compilation process to be skipped when another
+structurally equivalent construct is next used. This system
+relies upon functionality that is implemented for all SQL constructs, including
+objects such as  :class:`_schema.Column`,
+:func:`_sql.select`, and :class:`_types.TypeEngine` objects, to produce a
+**cache key** which fully represents their state to the degree that it affects
+the SQL compilation process.
 
-    engine = create_engine("sqlite://")
-    Session = sessionmaker()
-    metadata_obj = MetaData(bind=engine)
-    Base = declarative_base(metadata=metadata_obj)
+If the warnings in question refer to widely used objects such as
+:class:`_schema.Column` objects, and are shown to be affecting the majority of
+SQL constructs being emitted (using the estimation techniques described at
+:ref:`sql_caching_logging`) such that caching is generally not enabled for an
+application, this will negatively impact performance and can in some cases
+effectively produce a **performance degradation** compared to prior SQLAlchemy
+versions. The FAQ at :ref:`faq_new_caching` covers this in additional detail.
 
-    class MyClass(Base):
-        # ...
+Caching disables itself if there's any doubt
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Caching relies on being able to generate a cache key that accurately represents
+the **complete structure** of a statement in a **consistent** fashion. If a particular
+SQL construct (or type) does not have the appropriate directives in place which
+allow it to generate a proper cache key, then caching cannot be safely enabled:
 
-    session = Session()
-    session.add(MyClass())
-    session.commit()
+* The cache key must represent the **complete structure**: If the usage of two
+  separate instances of that construct may result in different SQL being
+  rendered, caching the SQL against the first instance of the element using a
+  cache key that does not capture the distinct differences between the first and
+  second elements will result in incorrect SQL being cached and rendered for the
+  second instance.
 
-The :class:`_engine.Engine` must instead be associated directly with the
-:class:`_orm.sessionmaker` or :class:`_orm.Session`.  The
-:class:`_schema.MetaData` object should no longer be associated with any
-engine::
+* The cache key must be **consistent**: If a construct represents state that
+  changes every time, such as a literal value, producing unique SQL for every
+  instance of it, this construct is also not safe to cache, as repeated use of
+  the construct will quickly fill up the statement cache with unique SQL strings
+  that will likely not be used again, defeating the purpose of the cache.
 
+For the above two reasons, SQLAlchemy's caching system is **extremely
+conservative** about deciding to cache the SQL corresponding to an object.
 
-    engine = create_engine("sqlite://")
-    Session = sessionmaker(engine)
-    Base = declarative_base()
+Assertion attributes for caching
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    class MyClass(Base):
-        # ...
+The warning is emitted based on the criteria below.  For further detail on
+each, see the section :ref:`faq_new_caching`.
 
+* The :class:`.Dialect` itself (i.e. the module that is specified by the
+  first part of the URL we pass to :func:`_sa.create_engine`, like
+  ``postgresql+psycopg2://``), must indicate it has been reviewed and tested
+  to support caching correctly, which is indicated by the
+  :attr:`.Dialect.supports_statement_cache` attribute being set to ``True``.
+  When using third party dialects, consult with the maintainers of the dialect
+  so that they may follow the :ref:`steps to ensure caching may be enabled
+  <engine_thirdparty_caching>` in their dialect and publish a new release.
 
-    session = Session()
-    session.add(MyClass())
-    session.commit()
+* Third party or user defined types that inherit from either
+  :class:`.TypeDecorator` or :class:`.UserDefinedType` must include the
+  :attr:`.ExternalType.cache_ok` attribute in their definition, including for
+  all derived subclasses, following the guidelines described in the docstring
+  for :attr:`.ExternalType.cache_ok`. As before, if these datatypes are
+  imported from third party libraries, consult with the maintainers of that
+  library so that they may provide the necessary changes to their library and
+  publish a new release.
 
-In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
-:paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
-or :class:`_orm.Session`.
-
-.. _error_s9r1:
-
-Object is being merged into a Session along the backref cascade
----------------------------------------------------------------
-
-This message refers to the "backref cascade" behavior of SQLAlchemy,
-which is described at :ref:`backref_cascade`.   This refers to the action of
-an object being added into a :class:`_orm.Session` as a result of another
-object that's already present in that session being associated with it.
-As this behavior has been shown to be more confusing than helpful,
-the :paramref:`_orm.relationship.cascade_backrefs` and
-:paramref:`_orm.backref.cascade_backrefs` parameters were added, which can
-be set to ``False`` to disable it, and in SQLAlchemy 2.0 the "cascade backrefs"
-behavior will be disabled completely.
-
-To set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on a
-backref that is currently configured using the
-:paramref:`_orm.relationship.backref` string parameter, the backref must
-be declared using the :func:`_orm.backref` function first so that the
-:paramref:`_orm.backref.cascade_backrefs` parameter may be passed.
-
-Alternatively, the entire "cascade backrefs" behavior can be turned off
-across the board by using the :class:`_orm.Session` in "future" mode,
-by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
+* Third party or user defined SQL constructs that subclass from classes such
+  as :class:`.ClauseElement`, :class:`_schema.Column`, :class:`_dml.Insert`
+  etc, including simple subclasses as well as those which are designed to
+  work with the :ref:`sqlalchemy.ext.compiler_toplevel`, should normally
+  include the :attr:`.HasCacheKey.inherit_cache` attribute set to ``True``
+  or ``False`` based on the design of the construct, following the guidelines
+  described at :ref:`compilerext_caching`.
 
 .. seealso::
 
-    :ref:`backref_cascade` - complete description of the cascade backrefs
-    behavior
+    :ref:`sql_caching_logging` - background on observing cache behavior
+    and efficiency
 
-    :ref:`change_5150` - background on the change for SQLAlchemy 2.0.
+    :ref:`faq_new_caching` - in the :ref:`faq_toplevel` section
 
 .. _error_xaj1:
 
@@ -421,7 +428,7 @@ familiar with.
   **pool size plus the max overflow**.     That means if you have configured
   your engine as::
 
-   engine = create_engine("mysql://u:p@host/db", pool_size=10, max_overflow=20)
+   engine = create_engine("mysql+mysqldb://u:p@host/db", pool_size=10, max_overflow=20)
 
   The above :class:`_engine.Engine` will allow **at most 30 connections** to be in
   play at any time, not including connections that were detached from the
@@ -536,67 +543,17 @@ sooner.
 
 .. _error_8s2b:
 
-Can't reconnect until invalid transaction is rolled back
-----------------------------------------------------------
+Can't reconnect until invalid transaction is rolled back.  Please rollback() fully before proceeding
+-----------------------------------------------------------------------------------------------------
 
 This error condition refers to the case where a :class:`_engine.Connection` was
 invalidated, either due to a database disconnect detection or due to an
 explicit call to :meth:`_engine.Connection.invalidate`, but there is still a
-transaction present that was initiated by the :meth:`_engine.Connection.begin`
-method.  When a connection is invalidated, any :class:`_engine.Transaction`
+transaction present that was initiated either explicitly by the :meth:`_engine.Connection.begin`
+method, or due to the connection automatically beginning a transaction as occurs
+in the 2.x series of SQLAlchemy when any SQL statements are emitted.  When a connection is invalidated, any :class:`_engine.Transaction`
 that was in progress is now in an invalid state, and must be explicitly rolled
 back in order to remove it from the :class:`_engine.Connection`.
-
-.. _error_8s2a:
-
-This connection is on an inactive transaction.  Please rollback() fully before proceeding
-------------------------------------------------------------------------------------------
-
-This error condition was added to SQLAlchemy as of version 1.4.    The error
-refers to the state where a :class:`_engine.Connection` is placed into a
-transaction using a method like :meth:`_engine.Connection.begin`, and then a
-further "marker" transaction is created within that scope; the "marker"
-transaction is then rolled back using :meth:`.Transaction.rollback` or closed
-using :meth:`.Transaction.close`, however the outer transaction is still
-present in an "inactive" state and must be rolled back.
-
-The pattern looks like::
-
-    engine = create_engine(...)
-
-    connection = engine.connect()
-    transaction1 = connection.begin()
-
-    # this is a "sub" or "marker" transaction, a logical nesting
-    # structure based on "real" transaction transaction1
-    transaction2 = connection.begin()
-    transaction2.rollback()
-
-    # transaction1 is still present and needs explicit rollback,
-    # so this will raise
-    connection.execute(text("select 1"))
-
-Above, ``transaction2`` is a "marker" transaction, which indicates a logical
-nesting of transactions within an outer one; while the inner transaction
-can roll back the whole transaction via its rollback() method, its commit()
-method has no effect except to close the scope of the "marker" transaction
-itself.   The call to ``transaction2.rollback()`` has the effect of
-**deactivating** transaction1 which means it is essentially rolled back
-at the database level, however is still present in order to accommodate
-a consistent nesting pattern of transactions.
-
-The correct resolution is to ensure the outer transaction is also
-rolled back::
-
-    transaction1.rollback()
-
-This pattern is not commonly used in Core.  Within the ORM, a similar issue can
-occur which is the product of the ORM's "logical" transaction structure; this
-is described in the FAQ entry at :ref:`faq_session_rollback`.
-
-The "subtransaction" pattern is to be removed in SQLAlchemy 2.0 so that this
-particular programming pattern will no longer be available and this
-error message will no longer occur in Core.
 
 .. _error_dbapi:
 
@@ -1481,7 +1438,7 @@ the :term:`detached` state.
 .. note:: The above reference to a "pre-buffered" vs. "un-buffered"
    :class:`_result.Result` object refers to the process by which the ORM
    converts incoming raw database rows from the :term:`DBAPI` into ORM
-   objects.  It does not imply whether or not the underyling ``cursor``
+   objects.  It does not imply whether or not the underlying ``cursor``
    object itself, which represents pending results from the DBAPI, is itself
    buffered or unbuffered, as this is essentially a lower layer of buffering.
    For background on buffering of the ``cursor`` results itself, see the
@@ -1561,4 +1518,94 @@ ORM Exception Classes
 See :ref:`orm_exceptions_toplevel` for ORM exception classes.
 
 
+
+Legacy Exceptions
+=================
+
+Exceptions in this section are not generated by current SQLAlchemy
+versions, however are provided here to suit exception message hyperlinks.
+
+
+.. _error_c9bf:
+
+A bind was located via legacy bound metadata, but since future=True is set on this Session, this bind is ignored.
+-------------------------------------------------------------------------------------------------------------------
+
+.. note:: This is a legacy error message that is not in the 2.x series of
+   SQLAlchemy.
+
+The concept of "bound metadata" is being removed in SQLAlchemy 2.0.  This
+refers to the :paramref:`_schema.MetaData.bind` parameter on the
+:class:`_schema.MetaData` object that in turn allows objects like the ORM
+:class:`_orm.Session` to associate a particular mapped class with an
+:class:`_orm.Engine`.   In SQLAlchemy 2.0, the :class:`_orm.Session` must be
+linked to each :class:`_orm.Engine` directly. That is, instead of instantiating
+the :class:`_orm.Session` or
+:class:`_orm.sessionmaker` without any arguments, and associating the
+:class:`_engine.Engine` with the :class:`_schema.MetaData`::
+
+    engine = create_engine("sqlite://")
+    Session = sessionmaker()
+    metadata_obj = MetaData(bind=engine)
+    Base = declarative_base(metadata=metadata_obj)
+
+    class MyClass(Base):
+        # ...
+
+
+    session = Session()
+    session.add(MyClass())
+    session.commit()
+
+The :class:`_engine.Engine` must instead be associated directly with the
+:class:`_orm.sessionmaker` or :class:`_orm.Session`.  The
+:class:`_schema.MetaData` object should no longer be associated with any
+engine::
+
+
+    engine = create_engine("sqlite://")
+    Session = sessionmaker(engine)
+    Base = declarative_base()
+
+    class MyClass(Base):
+        # ...
+
+
+    session = Session()
+    session.add(MyClass())
+    session.commit()
+
+In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
+:paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
+or :class:`_orm.Session`.
+
+.. _error_s9r1:
+
+Object is being merged into a Session along the backref cascade
+---------------------------------------------------------------
+
+This message refers to the "backref cascade" behavior of SQLAlchemy,
+removed in version 2.0.  This refers to the action of
+an object being added into a :class:`_orm.Session` as a result of another
+object that's already present in that session being associated with it.
+As this behavior has been shown to be more confusing than helpful,
+the :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` parameters were added, which can
+be set to ``False`` to disable it, and in SQLAlchemy 2.0 the "cascade backrefs"
+behavior has been removed entirely.
+
+For older SQLAlchemy versions, to set
+:paramref:`_orm.relationship.cascade_backrefs` to ``False`` on a backref that
+is currently configured using the :paramref:`_orm.relationship.backref` string
+parameter, the backref must be declared using the :func:`_orm.backref` function
+first so that the :paramref:`_orm.backref.cascade_backrefs` parameter may be
+passed.
+
+Alternatively, the entire "cascade backrefs" behavior can be turned off
+across the board by using the :class:`_orm.Session` in "future" mode,
+by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
+
+.. seealso::
+
+    :ref:`change_5150` - background on the change for SQLAlchemy 2.0.
 

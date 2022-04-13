@@ -1,5 +1,5 @@
 # sqlalchemy/ext/baked.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,24 +13,23 @@ compiled result to be fully cached.
 
 """
 
+import collections.abc as collections_abc
 import logging
 
 from .. import exc as sa_exc
 from .. import util
 from ..orm import exc as orm_exc
-from ..orm import strategy_options
 from ..orm.query import Query
 from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
-from ..util import collections_abc
 
 
 log = logging.getLogger(__name__)
 
 
-class Bakery(object):
+class Bakery:
     """Callable which returns a :class:`.BakedQuery`.
 
     This object is returned by the class method
@@ -52,7 +51,7 @@ class Bakery(object):
         return self.cls(self.cache, initial_fn, args)
 
 
-class BakedQuery(object):
+class BakedQuery:
     """A builder object for :class:`.query.Query` objects."""
 
     __slots__ = "steps", "_bakery", "_cache_key", "_spoiled"
@@ -309,7 +308,7 @@ class BakedQuery(object):
         return query
 
 
-class Result(object):
+class Result:
     """Invokes a :class:`.BakedQuery` against a :class:`.Session`.
 
     The :class:`_baked.Result` object is where the actual :class:`.query.Query`
@@ -433,7 +432,7 @@ class Result(object):
         """
 
         col = func.count(literal_column("*"))
-        bq = self.bq.with_criteria(lambda q: q._from_self(col))
+        bq = self.bq.with_criteria(lambda q: q._legacy_from_self(col))
         return bq.for_session(self.session).params(self._params).scalar()
 
     def scalar(self):
@@ -578,71 +577,5 @@ class Result(object):
         else:
             return None
 
-
-@util.deprecated(
-    "1.2", "Baked lazy loading is now the default implementation."
-)
-def bake_lazy_loaders():
-    """Enable the use of baked queries for all lazyloaders systemwide.
-
-    The "baked" implementation of lazy loading is now the sole implementation
-    for the base lazy loader; this method has no effect except for a warning.
-
-    """
-    pass
-
-
-@util.deprecated(
-    "1.2", "Baked lazy loading is now the default implementation."
-)
-def unbake_lazy_loaders():
-    """Disable the use of baked queries for all lazyloaders systemwide.
-
-    This method now raises NotImplementedError() as the "baked" implementation
-    is the only lazy load implementation.  The
-    :paramref:`_orm.relationship.bake_queries` flag may be used to disable
-    the caching of queries on a per-relationship basis.
-
-    """
-    raise NotImplementedError(
-        "Baked lazy loading is now the default implementation"
-    )
-
-
-@strategy_options.loader_option()
-def baked_lazyload(loadopt, attr):
-    """Indicate that the given attribute should be loaded using "lazy"
-    loading with a "baked" query used in the load.
-
-    """
-    return loadopt.set_relationship_strategy(attr, {"lazy": "baked_select"})
-
-
-@baked_lazyload._add_unbound_fn
-@util.deprecated(
-    "1.2",
-    "Baked lazy loading is now the default "
-    "implementation for lazy loading.",
-)
-def baked_lazyload(*keys):
-    return strategy_options._UnboundLoad._from_keys(
-        strategy_options._UnboundLoad.baked_lazyload, keys, False, {}
-    )
-
-
-@baked_lazyload._add_unbound_all_fn
-@util.deprecated(
-    "1.2",
-    "Baked lazy loading is now the default "
-    "implementation for lazy loading.",
-)
-def baked_lazyload_all(*keys):
-    return strategy_options._UnboundLoad._from_keys(
-        strategy_options._UnboundLoad.baked_lazyload, keys, True, {}
-    )
-
-
-baked_lazyload = baked_lazyload._unbound_fn
-baked_lazyload_all = baked_lazyload_all._unbound_all_fn
 
 bakery = BakedQuery.bakery

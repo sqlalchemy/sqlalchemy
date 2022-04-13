@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2013-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,18 +10,18 @@ from ... import types as sqltypes
 __all__ = ("INT4RANGE", "INT8RANGE", "NUMRANGE")
 
 
-class RangeOperators(object):
+class RangeOperators:
     """
     This mixin provides functionality for the Range Operators
-    listed in Table 9-44 of the `PostgreSQL documentation`__ for Range
-    Functions and Operators. It is used by all the range types
+    listed in the Range Operators table of the `PostgreSQL documentation`__
+    for Range Functions and Operators. It is used by all the range types
     provided in the ``postgres`` dialect and can likely be used for
     any range types you create yourself.
 
     __ https://www.postgresql.org/docs/devel/static/functions-range.html
 
-    No extra support is provided for the Range Functions listed in
-    Table 9-45 of the PostgreSQL documentation. For these, the normal
+    No extra support is provided for the Range Functions listed in the Range
+    Functions table of the PostgreSQL documentation. For these, the normal
     :func:`~sqlalchemy.sql.expression.func` object should be used.
 
     """

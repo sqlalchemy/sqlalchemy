@@ -10,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
@@ -19,14 +20,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -87,6 +89,71 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(self.static.user_address_result, q.order_by(User.id).all())
 
         self.assert_sql_count(testing.db, go, 2)
+
+    @testing.combinations(True, False)
+    def test_from_statement(self, legacy):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
+                )
+            },
+        )
+        sess = fixture_session()
+
+        stmt = select(User).where(User.id == 7)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            if legacy:
+                ret = (
+                    sess.query(User)
+                    # .where(User.id == 7)
+                    .from_statement(stmt)
+                    .options(subqueryload(User.addresses))
+                    .all()
+                )
+            else:
+                ret = sess.scalars(
+                    select(User)
+                    .from_statement(stmt)
+                    .options(subqueryload(User.addresses))
+                ).all()
+
+            eq_(self.static.user_address_result[0:1], ret)
+
+        asserter.assert_(
+            Or(
+                CompiledSQL(
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users WHERE users.id = :id_1",
+                    [{"id_1": 7}],
+                ),
+                CompiledSQL(
+                    "SELECT users.id, users.name "
+                    "FROM users WHERE users.id = :id_1",
+                    [{"id_1": 7}],
+                ),
+            ),
+            # issue 7505
+            # subqueryload degrades for a from_statement.  this is a lazyload
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses "
+                "WHERE :param_1 = addresses.user_id ORDER BY addresses.id",
+                [{"param_1": 7}],
+            ),
+        )
 
     def test_params_arent_cached(self):
         users, Address, addresses, User = (
@@ -312,15 +379,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         sess = fixture_session()
 
-        q = sess.query(User).options(subqueryload(User.addresses))
-
         def go():
             eq_(
                 User(
                     id=7,
                     addresses=[Address(id=1, email_address="jack@bean.com")],
                 ),
-                q.get(7),
+                sess.get(User, 7, options=[subqueryload(User.addresses)]),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -443,7 +508,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -477,7 +542,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (q.join(ka, Item.keywords).filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1362,7 +1427,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             a = q.filter(addresses.c.id == 1).one()
             is_not(a.user, None)
-            u1 = sess.query(User).get(7)
+            u1 = sess.get(User, 7)
             is_(a.user, u1)
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1445,7 +1510,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Order, orders)
         s = fixture_session()
-        assert_raises(
+        assert_warns(
             sa.exc.SAWarning,
             s.query(User).options(subqueryload(User.order)).all,
         )
@@ -1529,7 +1594,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_runs_query_on_refresh(self):
         User, Address, sess = self._eager_config_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -1567,7 +1632,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
     def test_no_query_on_deferred(self):
         User, Address, sess = self._deferred_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1, ["addresses"])
 
@@ -1579,7 +1644,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
     def test_populate_existing_propagate(self):
         User, Address, sess = self._eager_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         u1.addresses[2].email_address = "foofoo"
         del u1.addresses[1]
         u1 = sess.query(User).populate_existing().filter_by(id=8).one()
@@ -1592,13 +1657,13 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         a1 = Address()
         u1.addresses.append(a1)
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            subqueryload("addresses").subqueryload("dingaling")
+            subqueryload(User.addresses).subqueryload(Address.dingaling)
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -1612,12 +1677,12 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_collection(self):
         User, Order, Item, sess = self._collection_to_collection_fixture()
 
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
         sess.query(User).options(
-            subqueryload("orders").subqueryload("items")
+            subqueryload(User.orders).subqueryload(Order.items)
         ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -1631,11 +1696,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=8)
-            .options(subqueryload("addresses"))
+            .options(subqueryload(User.addresses))
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            subqueryload("addresses").subqueryload("dingaling")
+            subqueryload(User.addresses).subqueryload(Address.dingaling)
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -1645,11 +1710,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=7)
-            .options(subqueryload("orders"))
+            .options(subqueryload(User.orders))
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            subqueryload("orders").subqueryload("items")
+            subqueryload(User.orders).subqueryload(Order.items)
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -2536,7 +2601,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"))
+                .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
@@ -2549,7 +2614,10 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"), undefer("children.data"))
+                .options(
+                    undefer(Node.data),
+                    defaultload(Node.children).undefer(Node.data),
+                )
                 .first(),
             )
 
@@ -2584,7 +2652,9 @@ class SelfReferentialTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(subqueryload("children").subqueryload("children"))
+                .options(
+                    subqueryload(Node.children).subqueryload(Node.children)
+                )
                 .first()
             )
             eq_(
@@ -2753,12 +2823,13 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
         )
         s = Session(testing.db)
 
+        fp = with_polymorphic(Foo, [Bar, Baz])
+
         def go():
             eq_(
-                s.query(Foo)
-                .with_polymorphic([Bar, Baz])
-                .order_by(Foo.id)
-                .options(subqueryload(Foo.related))
+                s.query(fp)
+                .order_by(fp.id)
+                .options(subqueryload(fp.related))
                 .all(),
                 [
                     Bar(id=1, related=Related(id=1)),
@@ -2780,12 +2851,13 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
         )
         s = Session(testing.db)
 
+        fp = with_polymorphic(Foo, [Bar, Baz])
+
         def go():
             eq_(
-                s.query(Foo)
-                .with_polymorphic([Bar, Baz])
-                .order_by(Foo.id)
-                .options(joinedload(Foo.related))
+                s.query(fp)
+                .order_by(fp.id)
+                .options(joinedload(fp.related))
                 .all(),
                 [
                     Bar(id=1, related=Related(id=1)),
@@ -2825,13 +2897,13 @@ class CyclicalInheritingEagerTestOne(fixtures.MappedTest):
     def test_basic(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class T(object):
+        class T:
             pass
 
         class SubT(T):
             pass
 
-        class T2(object):
+        class T2:
             pass
 
         class SubT2(T2):
@@ -3189,7 +3261,9 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
         # Parent->subqueryload->Child->joinedload->parent->noload->children.
         # the actual subqueryload has to emit *after* we've started populating
         # Parent->subqueryload->child.
-        parent = s.query(Parent).options([subqueryload("children")]).first()
+        parent = (
+            s.query(Parent).options([subqueryload(Parent.children)]).first()
+        )
         eq_(parent.children, [Child(name="c1")])
 
 

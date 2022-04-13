@@ -434,7 +434,7 @@
         :tags: 
         :tickets: 
 
-      added assertion to tx = session.begin(); tx.rollback(); tx.begin(), i.e. cant
+      added assertion to tx = session.begin(); tx.rollback(); tx.begin(), i.e. can't
       use it after a rollback()
 
     .. change::
@@ -863,7 +863,7 @@
           executed on a primary key col so we know what we just inserted.
         * if you did add a row that has a bunch of database-side defaults on it,
           and the PassiveDefault thing was working the old way, i.e. they just execute on
-          the DB side, the "cant get the row back without an OID" exception that occurred
+          the DB side, the "can't get the row back without an OID" exception that occurred
           also will not happen unless someone (usually the ORM) explicitly asks for it.
 
     .. change::
@@ -928,7 +928,7 @@
         :tickets: 
 
       fix to postgres, where it will explicitly pre-execute a PassiveDefault on a table
-      if it is a primary key column, pursuant to the ongoing "we cant get inserted rows
+      if it is a primary key column, pursuant to the ongoing "we can't get inserted rows
       back from postgres" issue
 
     .. change::

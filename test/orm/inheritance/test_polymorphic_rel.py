@@ -10,10 +10,10 @@ from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from ._poly_fixtures import _Polymorphic
@@ -30,7 +30,7 @@ from ._poly_fixtures import Paperwork
 from ._poly_fixtures import Person
 
 
-class _PolymorphicTestBase(fixtures.NoCache):
+class _PolymorphicTestBase:
     __backend__ = True
     __dialect__ = "default_enhanced"
 
@@ -132,18 +132,25 @@ class _PolymorphicTestBase(fixtures.NoCache):
         count = {"": 14, "Polymorphic": 7}.get(self.select_type, 8)
         self.assert_sql_count(testing.db, go, count)
 
-    def test_primary_eager_aliasing_three(self):
+    def test_primary_eager_aliasing_three_reset_selectable(self):
+        """test now related to #7262
 
+        See test_primary_eager_aliasing_three_dont_reset_selectable for the
+        non-reset selectable version.
+
+        """
         # assert the JOINs don't over JOIN
 
         sess = fixture_session()
 
+        # note selectable=None
+        wp = with_polymorphic(Person, "*", None)
+
         def go():
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .order_by(Person.person_id)
-                .options(joinedload(Engineer.machines))[1:3],
+                sess.query(wp)
+                .order_by(wp.person_id)
+                .options(joinedload(wp.Engineer.machines))[1:3],
                 all_employees[1:3],
             )
 
@@ -152,10 +159,9 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.scalar(
                 select(func.count("*")).select_from(
-                    sess.query(Person)
-                    .with_polymorphic("*")
-                    .options(joinedload(Engineer.machines))
-                    .order_by(Person.person_id)
+                    sess.query(wp)
+                    .options(joinedload(wp.Engineer.machines))
+                    .order_by(wp.person_id)
                     .limit(2)
                     .offset(1)
                     .subquery()
@@ -188,6 +194,34 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.get(Manager, b1.person_id),
             Boss(name="pointy haired boss", golf_swing="fore"),
         )
+
+    def test_lazyload_related_w_cache_check(self):
+        sess = fixture_session()
+
+        c1 = sess.get(Company, 1)
+        c2 = sess.get(Company, 2)
+
+        q1 = (
+            sess.query(Person)
+            .filter(with_parent(c1, Company.employees))
+            .order_by(Person.person_id)
+        )
+        eq_(
+            q1.all(),
+            [
+                Engineer(name="dilbert"),
+                Engineer(name="wally"),
+                Boss(name="pointy haired boss"),
+                Manager(name="dogbert"),
+            ],
+        )
+
+        q2 = (
+            sess.query(Person)
+            .filter(with_parent(c2, Company.employees))
+            .order_by(Person.person_id)
+        )
+        eq_(q2.all(), [Engineer(name="vlad")])
 
     def test_multi_join(self):
         sess = fixture_session()
@@ -332,7 +366,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Person)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -357,7 +391,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -368,7 +402,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1],
@@ -379,25 +413,14 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [m1],
         )
 
-    def test_join_from_polymorphic_flag_aliased_one(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Person)
-            .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
-            .filter(Paperwork.description.like("%review%"))
-            .all(),
-            [b1, m1],
-        )
-
-    def test_join_from_polymorphic_flag_aliased_one_future(self):
+    def test_join_from_polymorphic_aliased_one_future(self):
         sess = fixture_session(future=True)
 
         pa = aliased(Paperwork)
@@ -420,21 +443,10 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%review%"))
             .all(),
             [b1, m1],
-        )
-
-    def test_join_from_polymorphic_flag_aliased_two(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Person)
-            .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
-            .filter(Paperwork.description.like("%#2%"))
-            .all(),
-            [e1, m1],
         )
 
     def test_join_from_polymorphic_explicit_aliased_two(self):
@@ -443,21 +455,10 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1, m1],
-        )
-
-    def test_join_from_polymorphic_flag_aliased_three(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Engineer)
-            .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
-            .filter(Paperwork.description.like("%#2%"))
-            .all(),
-            [e1],
         )
 
     def test_join_from_polymorphic_explicit_aliased_three(self):
@@ -466,7 +467,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1],
@@ -478,23 +479,11 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(pa.description.like("%#2%"))
             .all(),
             [m1],
-        )
-
-    def test_join_from_with_polymorphic_nonaliased_one(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Person)
-            .with_polymorphic(Manager)
-            .order_by(Person.person_id)
-            .join("paperwork")
-            .filter(Paperwork.description.like("%review%"))
-            .all(),
-            [b1, m1],
         )
 
     def test_join_from_with_polymorphic_nonaliased_one_future(self):
@@ -514,89 +503,99 @@ class _PolymorphicTestBase(fixtures.NoCache):
             [b1, m1],
         )
 
-    def test_join_from_with_polymorphic_nonaliased_two(self):
+    def test_join_from_with_polymorphic_nonaliased_two_future(self):
         sess = fixture_session()
+
+        wp = with_polymorphic(Person, [Manager, Engineer])
         eq_(
-            sess.query(Person)
-            .with_polymorphic([Manager, Engineer])
-            .order_by(Person.person_id)
-            .join("paperwork")
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(wp.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
         )
 
-    def test_join_from_with_polymorphic_nonaliased_three(self):
+    def test_join_from_with_polymorphic_nonaliased_three_future(self):
         sess = fixture_session()
+
+        wp = with_polymorphic(Person, [Manager, Engineer])
         eq_(
-            sess.query(Person)
-            .with_polymorphic([Manager, Engineer])
-            .order_by(Person.person_id)
-            .join("paperwork")
-            .filter(Person.name.like("%dog%"))
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(wp.paperwork)
+            .filter(wp.name.like("%dog%"))
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [m1],
         )
 
-    def test_join_from_with_polymorphic_flag_aliased_one(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Person)
-            .with_polymorphic(Manager)
-            .join("paperwork", aliased=True)
-            .filter(Paperwork.description.like("%review%"))
-            .all(),
-            [b1, m1],
-        )
-
-    def test_join_from_with_polymorphic_explicit_aliased_one(self):
+    def test_join_from_with_polymorphic_explicit_aliased_one_future(self):
         sess = fixture_session()
         pa = aliased(Paperwork)
+        wp = with_polymorphic(Person, [Manager])
+
         eq_(
-            sess.query(Person)
-            .with_polymorphic(Manager)
-            .join(pa, "paperwork")
+            sess.query(wp)
+            .join(pa, wp.paperwork)
             .filter(pa.description.like("%review%"))
             .all(),
             [b1, m1],
         )
 
-    def test_join_from_with_polymorphic_flag_aliased_two(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Person)
-            .with_polymorphic([Manager, Engineer])
-            .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
-            .filter(Paperwork.description.like("%#2%"))
-            .all(),
-            [e1, m1],
-        )
-
-    def test_join_from_with_polymorphic_explicit_aliased_two(self):
+    def test_join_from_with_polymorphic_explicit_aliased_two_future(self):
         sess = fixture_session()
         pa = aliased(Paperwork)
+
+        wp = with_polymorphic(Person, [Manager, Engineer])
         eq_(
-            sess.query(Person)
-            .with_polymorphic([Manager, Engineer])
-            .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(pa, wp.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1, m1],
         )
 
-    def test_join_from_with_polymorphic_aliased_three(self):
+    def test_join_from_with_polymorphic_ot_explicit_aliased_two_future(self):
         sess = fixture_session()
         pa = aliased(Paperwork)
 
+        wp = with_polymorphic(Person, [Manager, Engineer])
         eq_(
-            sess.query(Person)
-            .with_polymorphic([Manager, Engineer])
-            .order_by(Person.person_id)
-            .join(pa, "paperwork")
-            .filter(Person.name.like("%dog%"))
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(wp.paperwork.of_type(pa))
+            .filter(pa.description.like("%#2%"))
+            .all(),
+            [e1, m1],
+        )
+
+    def test_join_from_with_polymorphic_aliased_three_future(self):
+        sess = fixture_session()
+        pa = aliased(Paperwork)
+        wp = with_polymorphic(Person, [Manager, Engineer])
+
+        eq_(
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(pa, wp.paperwork)
+            .filter(wp.name.like("%dog%"))
+            .filter(pa.description.like("%#2%"))
+            .all(),
+            [m1],
+        )
+
+    def test_join_from_with_polymorphic_ot_aliased_three_future(self):
+        sess = fixture_session()
+        pa = aliased(Paperwork)
+        wp = with_polymorphic(Person, [Manager, Engineer])
+
+        eq_(
+            sess.query(wp)
+            .order_by(wp.person_id)
+            .join(wp.paperwork.of_type(pa))
+            .filter(wp.name.like("%dog%"))
             .filter(pa.description.like("%#2%"))
             .all(),
             [m1],
@@ -606,17 +605,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
-            .filter(Person.name == "vlad")
-            .one(),
-            c2,
-        )
-
-    def test_join_to_polymorphic_flag_aliased(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Company)
-            .join("employees", aliased=True)
+            .join(Company.employees)
             .filter(Person.name == "vlad")
             .one(),
             c2,
@@ -627,7 +616,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         ea = aliased(Person)
         eq_(
             sess.query(Company)
-            .join(ea, "employees")
+            .join(ea, Company.employees)
             .filter(ea.name == "vlad")
             .one(),
             c2,
@@ -638,20 +627,6 @@ class _PolymorphicTestBase(fixtures.NoCache):
 
         any_ = Company.employees.any(Person.name == "vlad")
         eq_(sess.query(Company).filter(any_).all(), [c2])
-
-    def test_polymorphic_any_flag_alias_two(self):
-        sess = fixture_session()
-        # test that the aliasing on "Person" does not bleed into the
-        # EXISTS clause generated by any()
-        any_ = Company.employees.any(Person.name == "wally")
-        eq_(
-            sess.query(Company)
-            .join("employees", aliased=True)
-            .filter(Person.name == "dilbert")
-            .filter(any_)
-            .all(),
-            [c1],
-        )
 
     def test_polymorphic_any_explicit_alias_two(self):
         sess = fixture_session()
@@ -900,103 +875,109 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess.expire(m2, ["manager_name", "golf_swing"])
         assert m2.golf_swing == "fore"
 
-    def test_with_polymorphic_one(self):
+    def test_with_polymorphic_one_future(self):
         sess = fixture_session()
 
         def go():
+            wp = with_polymorphic(Person, [Engineer])
             eq_(
-                sess.query(Person)
-                .with_polymorphic(Engineer)
-                .filter(Engineer.primary_language == "java")
+                sess.query(wp)
+                .filter(wp.Engineer.primary_language == "java")
                 .all(),
                 self._emps_wo_relationships_fixture()[0:1],
             )
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_with_polymorphic_two(self):
+    def test_with_polymorphic_two_future_adhoc_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_default_wp
+
+        """
+
         sess = fixture_session()
 
         def go():
+
+            wp = with_polymorphic(Person, "*", selectable=None)
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .order_by(Person.person_id)
-                .all(),
+                sess.query(wp).order_by(wp.person_id).all(),
                 self._emps_wo_relationships_fixture(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_with_polymorphic_three(self):
+    def test_with_polymorphic_three_future(self, nocache):
         sess = fixture_session()
 
         def go():
+            wp = with_polymorphic(Person, [Engineer])
+
             eq_(
-                sess.query(Person)
-                .with_polymorphic(Engineer)
-                .order_by(Person.person_id)
-                .all(),
+                sess.query(wp).order_by(wp.person_id).all(),
                 self._emps_wo_relationships_fixture(),
             )
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_with_polymorphic_four(self):
+    def test_with_polymorphic_four_future(self):
         sess = fixture_session()
 
         def go():
+            wp = with_polymorphic(
+                Person, Engineer, selectable=people.outerjoin(engineers)
+            )
             eq_(
-                sess.query(Person)
-                .with_polymorphic(Engineer, people.outerjoin(engineers))
-                .order_by(Person.person_id)
-                .all(),
+                sess.query(wp).order_by(wp.person_id).all(),
                 self._emps_wo_relationships_fixture(),
             )
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_with_polymorphic_five(self):
+    def test_with_polymorphic_five_future_override_selectable(self):
+        """test part of #7262
+
+        this is kind of a hack though, people wouldn't know to do this
+        this way.
+
+        """
         sess = fixture_session()
 
         def go():
+            # needs both [Person] and the selectable=None part
+            # TODO: why do we need [Person] and can't send []? possible
+            # bug
+            wp = with_polymorphic(Person, [Person], selectable=None)
+
             # limit the polymorphic join down to just "Person",
             # overriding select_table
             eq_(
-                sess.query(Person).with_polymorphic(Person).all(),
+                sess.query(wp).all(),
                 self._emps_wo_relationships_fixture(),
             )
 
         self.assert_sql_count(testing.db, go, 6)
 
-    def test_with_polymorphic_six(self):
-        sess = fixture_session()
-
+    def test_with_polymorphic_six_future(self):
         assert_raises(
-            sa_exc.InvalidRequestError,
-            sess.query(Person).with_polymorphic,
-            Paperwork,
+            sa_exc.InvalidRequestError, with_polymorphic, Person, [Paperwork]
         )
         assert_raises(
-            sa_exc.InvalidRequestError,
-            sess.query(Engineer).with_polymorphic,
-            Boss,
+            sa_exc.InvalidRequestError, with_polymorphic, Engineer, [Boss]
         )
         assert_raises(
-            sa_exc.InvalidRequestError,
-            sess.query(Engineer).with_polymorphic,
-            Person,
+            sa_exc.InvalidRequestError, with_polymorphic, Engineer, [Person]
         )
 
-    def test_with_polymorphic_seven(self):
+    def test_with_polymorphic_seven_future(self):
         sess = fixture_session()
         # compare to entities without related collections to prevent
         # additional lazy SQL from firing on loaded entities
+        wp = with_polymorphic(Person, "*")
         eq_(
-            sess.query(Person)
-            .with_polymorphic("*")
-            .order_by(Person.person_id)
-            .all(),
+            sess.query(wp).order_by(wp.person_id).all(),
             self._emps_wo_relationships_fixture(),
         )
 
@@ -1089,11 +1070,11 @@ class _PolymorphicTestBase(fixtures.NoCache):
 
         def go():
             # test load People with joinedload to engineers + machines
+            wp = with_polymorphic(Person, "*")
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .options(joinedload(Engineer.machines))
-                .filter(Person.name == "dilbert")
+                sess.query(wp)
+                .options(joinedload(wp.Engineer.machines))
+                .filter(wp.name == "dilbert")
                 .all(),
                 expected,
             )
@@ -1124,19 +1105,6 @@ class _PolymorphicTestBase(fixtures.NoCache):
                 .all(),
                 expected,
             )
-
-            # the old version of this test has never worked, apparently,
-            # was always spitting out a cartesian product.  Since we
-            # are getting rid of query.with_polymorphic() is it not
-            # worth fixing.
-            # eq_(
-            #    sess.query(Person)
-            #    .with_polymorphic("*")
-            #    .options(subqueryload(Engineer.machines))
-            #    .filter(Person.name == "dilbert")
-            #    .all(),
-            #    expected,
-            # )
 
         self.assert_sql_count(testing.db, go, 2)
 
@@ -1172,7 +1140,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         ealias = aliased(Engineer)
         eq_(
             sess.query(Company)
-            .join(ealias, "employees")
+            .join(ealias, Company.employees)
             .filter(ealias.primary_language == "java")
             .all(),
             [c1],
@@ -1231,7 +1199,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Engineer.primary_language == "java")
             .all(),
             [c1],
@@ -1264,7 +1232,10 @@ class _PolymorphicTestBase(fixtures.NoCache):
     def test_join_to_subclass_fourteen(self):
         sess = fixture_session()
         eq_(
-            sess.query(Company).join("employees", Engineer.machines).all(),
+            sess.query(Company)
+            .join(Company.employees)
+            .join(Engineer.machines)
+            .all(),
             [c1, c2],
         )
 
@@ -1272,7 +1243,8 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees", Engineer.machines)
+            .join(Company.employees)
+            .join(Engineer.machines)
             .filter(Machine.name.ilike("%thinkpad%"))
             .all(),
             [c1],
@@ -1365,7 +1337,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Person.name.in_(["dilbert", "vlad"]))
             .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
@@ -1377,7 +1349,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Person.name.in_(["dilbert", "vlad"]))
             .join(Person.paperwork)
             .filter(Paperwork.description.like("%#%"))
@@ -1445,7 +1417,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         pa = aliased(Paperwork)
         eq_(
             sess.query(Company)
-            .join(ea, "employees")
+            .join(ea, Company.employees)
             .filter(ea.name.in_(["dilbert", "vlad"]))
             .join(pa, ea.paperwork)
             .filter(pa.description.like("%#2%"))
@@ -1536,44 +1508,6 @@ class _PolymorphicTestBase(fixtures.NoCache):
             .all(),
             expected,
         )
-
-    def test_self_referential_two(self):
-
-        sess = fixture_session()
-        palias = aliased(Person)
-        expected = [(m1, e1), (m1, e2), (m1, b1)]
-
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                sess.query(Person, palias)
-                .filter(Person.company_id == palias.company_id)
-                .filter(Person.name == "dogbert")
-                .filter(Person.person_id > palias.person_id)
-                .from_self()
-                .order_by(Person.person_id, palias.person_id)
-                .all(),
-                expected,
-            )
-
-    def test_self_referential_two_point_five(self):
-        """Using two aliases, the above case works."""
-        sess = fixture_session()
-        palias = aliased(Person)
-        palias2 = aliased(Person)
-
-        expected = [(m1, e1), (m1, e2), (m1, b1)]
-
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                sess.query(palias, palias2)
-                .filter(palias.company_id == palias2.company_id)
-                .filter(palias.name == "dogbert")
-                .filter(palias.person_id > palias2.person_id)
-                .from_self()
-                .order_by(palias.person_id, palias2.person_id)
-                .all(),
-                expected,
-            )
 
     def test_self_referential_two_future(self):
         # TODO: this is the SECOND test *EVER* of an aliased class of
@@ -2090,6 +2024,63 @@ class _PolymorphicTestBase(fixtures.NoCache):
 
 
 class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
+    def test_primary_eager_aliasing_three_dont_reset_selectable(self):
+        """test now related to #7262
+
+        See test_primary_eager_aliasing_three_reset_selectable for
+        the reset selectable version.
+
+        """
+        # assert the JOINs don't over JOIN
+
+        sess = fixture_session()
+
+        # selectable default is False
+        wp = with_polymorphic(Person, "*")
+
+        def go():
+            eq_(
+                sess.query(wp)
+                .order_by(wp.person_id)
+                .options(joinedload(wp.Engineer.machines))[1:3],
+                all_employees[1:3],
+            )
+
+        self.assert_sql_count(testing.db, go, 3)
+
+        eq_(
+            sess.scalar(
+                select(func.count("*")).select_from(
+                    sess.query(wp)
+                    .options(joinedload(wp.Engineer.machines))
+                    .order_by(wp.person_id)
+                    .limit(2)
+                    .offset(1)
+                    .subquery()
+                )
+            ),
+            2,
+        )
+
+    def test_with_polymorphic_two_future_default_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_adhoc_wp
+
+        """
+        sess = fixture_session()
+
+        def go():
+
+            wp = with_polymorphic(Person, "*")
+            eq_(
+                sess.query(wp).order_by(wp.person_id).all(),
+                self._emps_wo_relationships_fixture(),
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_join_to_subclass_four(self):
         sess = fixture_session()
         eq_(
@@ -2169,6 +2160,25 @@ class PolymorphicPolymorphicTest(
     _PolymorphicTestBase, _PolymorphicPolymorphic
 ):
     __dialect__ = "default"
+
+    def test_with_polymorphic_two_future_default_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_adhoc_wp
+
+        """
+        sess = fixture_session()
+
+        def go():
+
+            wp = with_polymorphic(Person, "*")
+            eq_(
+                sess.query(wp).order_by(wp.person_id).all(),
+                self._emps_wo_relationships_fixture(),
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_aliased_not_polluted_by_join(self):
         # aliased(polymorphic) will normally do the old-school
@@ -2264,6 +2274,31 @@ class PolymorphicPolymorphicTest(
 
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
+    @testing.skip_if(
+        lambda: True, "join condition doesn't work w/ this mapping"
+    )
+    def test_lazyload_related_w_cache_check(self):
+        pass
+
+    def test_with_polymorphic_two_future_default_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_adhoc_wp
+
+        """
+        sess = fixture_session()
+
+        def go():
+
+            wp = with_polymorphic(Person, "*")
+            eq_(
+                sess.query(wp).order_by(wp.person_id).all(),
+                self._emps_wo_relationships_fixture(),
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
+
     def test_subqueryload_on_subclass_uses_path_correctly(self):
         sess = fixture_session()
         expected = [
@@ -2346,10 +2381,52 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
 class PolymorphicAliasedJoinsTest(
     _PolymorphicTestBase, _PolymorphicAliasedJoins
 ):
-    pass
+    @testing.skip_if(
+        lambda: True, "join condition doesn't work w/ this mapping"
+    )
+    def test_lazyload_related_w_cache_check(self):
+        pass
+
+    def test_with_polymorphic_two_future_default_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_adhoc_wp
+
+        """
+        sess = fixture_session()
+
+        def go():
+
+            wp = with_polymorphic(Person, "*")
+            eq_(
+                sess.query(wp).order_by(wp.person_id).all(),
+                self._emps_wo_relationships_fixture(),
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
 
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
+    def test_with_polymorphic_two_future_default_wp(self):
+        """test #7262
+
+        compare to
+        test_with_polymorphic_two_future_adhoc_wp
+
+        """
+        sess = fixture_session()
+
+        def go():
+
+            wp = with_polymorphic(Person, "*")
+            eq_(
+                sess.query(wp).order_by(wp.person_id).all(),
+                self._emps_wo_relationships_fixture(),
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
+
     def test_having_group_by(self):
         sess = fixture_session()
         eq_(

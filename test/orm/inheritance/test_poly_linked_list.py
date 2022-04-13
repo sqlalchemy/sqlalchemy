@@ -1,9 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import testing
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
@@ -54,24 +52,13 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        global Table1, Table1B, Table2, Table3, Data
         table1, table2, table3, data = cls.tables(
             "table1", "table2", "table3", "data"
         )
-        # join = polymorphic_union(
-        #   {
-        #   'table3' : table1.join(table3),
-        #   'table2' : table1.join(table2),
-        #   'table1' : table1.select(table1.c.type.in_(['table1', 'table1b'])),
-        #   }, None, 'pjoin')
 
-        with testing.expect_deprecated_20(
-            r"The Join.alias\(\) method is considered legacy"
-        ):
-            join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
-            # join = None
+        Base = cls.Basic
 
-        class Table1(object):
+        class Table1(Base):
             def __init__(self, name, data=None):
                 self.name = name
                 if data is not None:
@@ -94,7 +81,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         class Table3(Table1):
             pass
 
-        class Data(object):
+        class Data(Base):
             def __init__(self, data):
                 self.data = data
 
@@ -104,35 +91,6 @@ class PolymorphicCircularTest(fixtures.MappedTest):
                     self.id,
                     repr(str(self.data)),
                 )
-
-        try:
-            # this is how the mapping used to work.  ensure that this raises an
-            # error now
-            table1_mapper = cls.mapper_registry.map_imperatively(
-                Table1,
-                table1,
-                select_table=join,
-                polymorphic_on=table1.c.type,
-                polymorphic_identity="table1",
-                properties={
-                    "nxt": relationship(
-                        Table1,
-                        backref=backref(
-                            "prev", foreignkey=join.c.id, uselist=False
-                        ),
-                        uselist=False,
-                        primaryjoin=join.c.id == join.c.related_id,
-                    ),
-                    "data": relationship(
-                        cls.mapper_registry.map_imperatively(Data, data)
-                    ),
-                },
-            )
-            configure_mappers()
-            assert False
-        except Exception:
-            assert True
-            clear_mappers()
 
         # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
@@ -190,12 +148,17 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         ), table1_mapper.primary_key
 
     def test_one(self):
+        Table1, Table2 = self.classes("Table1", "Table2")
         self._testlist([Table1, Table2, Table1, Table2])
 
     def test_two(self):
+        Table3 = self.classes.Table3
         self._testlist([Table3])
 
     def test_three(self):
+        Table1, Table1B, Table2, Table3 = self.classes(
+            "Table1", "Table1B", "Table2", "Table3"
+        )
         self._testlist(
             [
                 Table2,
@@ -211,6 +174,9 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         )
 
     def test_four(self):
+        Table1, Table1B, Table2, Table3, Data = self.classes(
+            "Table1", "Table1B", "Table2", "Table3", "Data"
+        )
         self._testlist(
             [
                 Table2("t2", [Data("data1"), Data("data2")]),
@@ -221,6 +187,8 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         )
 
     def _testlist(self, classes):
+        Table1 = self.classes.Table1
+
         sess = fixture_session()
 
         # create objects in a linked list

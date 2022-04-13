@@ -1,19 +1,22 @@
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -101,7 +104,7 @@ class ScopedSessionTest(fixtures.MappedTest):
             bind=testing.db,
         )
 
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "At least one scoped session is already present. ",
             Session.configure,
@@ -114,22 +117,22 @@ class ScopedSessionTest(fixtures.MappedTest):
         Session = scoped_session(sa.orm.sessionmaker(), mock_scope_func)
 
         s0 = SessionMaker()
-        assert s0.autocommit == False
+        assert s0.autoflush == True
 
         mock_scope_func.return_value = 0
         s1 = Session()
-        assert s1.autocommit == False
+        assert s1.autoflush == True
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Scoped session is already present",
             Session,
-            autocommit=True,
+            autoflush=False,
         )
 
         mock_scope_func.return_value = 1
-        s2 = Session(autocommit=True)
-        assert s2.autocommit == True
+        s2 = Session(autoflush=False)
+        assert s2.autoflush == False
 
     def test_methods_etc(self):
         mock_session = Mock()
@@ -156,6 +159,7 @@ class ScopedSessionTest(fixtures.MappedTest):
                     populate_existing=False,
                     with_for_update=None,
                     identity_token=None,
+                    execution_options=util.EMPTY_DICT,
                 ),
             ],
         )
@@ -168,8 +172,8 @@ class ScopedSessionTest(fixtures.MappedTest):
         eq_(mock_object_session.mock_calls, [mock.call("foo")])
 
     @testing.combinations(
-        ("style1", testing.requires.python3),
-        ("style2", testing.requires.python3),
+        "style1",
+        "style2",
         "style3",
         "style4",
     )

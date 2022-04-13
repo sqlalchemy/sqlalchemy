@@ -1,0 +1,7 @@
+.. change::
+    :tags: postgresql, psycopg2
+    :tickets: 7238
+
+    Update psycopg2 dialect to use the DBAPI interface to execute
+    two phase transactions. Previously SQL commands were execute
+    to handle this kind of transactions.

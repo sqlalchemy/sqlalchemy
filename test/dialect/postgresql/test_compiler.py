@@ -3,6 +3,7 @@ from sqlalchemy import and_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
 from sqlalchemy import cast
+from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import Computed
 from sqlalchemy import Date
@@ -10,6 +11,8 @@ from sqlalchemy import delete
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
@@ -48,8 +51,6 @@ from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -57,11 +58,10 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.util import OrderedDict
-from sqlalchemy.util import u
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
-    __prefer__ = "postgresql"
+    __dialect__ = "postgresql"
 
     def test_format(self):
         seq = Sequence("my_seq_no_schema")
@@ -80,27 +80,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect.identifier_preparer.format_sequence(seq)
             == '"Some_Schema"."My_Seq"'
         )
-
-    @testing.only_on("postgresql", "foo")
-    @testing.provide_metadata
-    def test_reverse_eng_name(self):
-        metadata = self.metadata
-        engine = engines.testing_engine(options=dict(implicit_returning=False))
-        for tname, cname in [
-            ("tb1" * 30, "abc"),
-            ("tb2", "abc" * 30),
-            ("tb3" * 30, "abc" * 30),
-            ("tb4", "abc"),
-        ]:
-            t = Table(
-                tname[:57],
-                metadata,
-                Column(cname[:57], Integer, primary_key=True),
-            )
-            t.create(engine)
-            with engine.begin() as conn:
-                r = conn.execute(t.insert())
-                eq_(r.inserted_primary_key, (1,))
 
     @testing.combinations(
         (None, ""),
@@ -204,15 +183,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_drop_enum(self):
         # test escaping and unicode within CREATE TYPE for ENUM
-        typ = postgresql.ENUM(
-            "val1", "val2", "val's 3", u("méil"), name="myname"
-        )
+        typ = postgresql.ENUM("val1", "val2", "val's 3", "méil", name="myname")
         self.assert_compile(
             postgresql.CreateEnumType(typ),
-            u(
-                "CREATE TYPE myname AS "
-                "ENUM ('val1', 'val2', 'val''s 3', 'méil')"
-            ),
+            "CREATE TYPE myname AS ENUM ('val1', 'val2', 'val''s 3', 'méil')",
         )
 
         typ = postgresql.ENUM("val1", "val2", "val's 3", name="PleaseQuoteMe")
@@ -267,6 +241,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT CAST(foo AS somename) AS foo, "
             "CAST(bar AS someschema.somename) AS bar",
+        )
+
+    def test_cast_double_pg_double(self):
+        """test #5465:
+
+        test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
+        """
+        d1 = sqltypes.Double
+
+        stmt = select(cast(column("foo"), d1))
+        self.assert_compile(
+            stmt, "SELECT CAST(foo AS DOUBLE PRECISION) AS foo"
         )
 
     def test_cast_enum_schema_translate(self):
@@ -808,7 +794,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table("testtbl", m, Column("x", Integer), Column("y", Integer))
 
-        idx1 = Index("test_idx1", 5 / (tbl.c.x + tbl.c.y))
+        idx1 = Index("test_idx1", 5 // (tbl.c.x + tbl.c.y))
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl ((5 / (x + y)))",
@@ -855,6 +841,62 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect_9_1._supports_drop_index_concurrently = False
         self.assert_compile(
             schema.DropIndex(idx1), "DROP INDEX test_idx1", dialect=dialect_9_1
+        )
+
+    def test_create_check_constraint_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("data", Integer),
+            CheckConstraint("data = 0", postgresql_not_valid=True),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data INTEGER, CHECK (data = 0) NOT VALID)",
+        )
+
+    def test_create_foreign_key_constraint_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("a", Integer),
+            Column("b", Integer),
+            ForeignKeyConstraint(
+                "b", ["testtbl.a"], postgresql_not_valid=True
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
+            ")",
+        )
+
+    def test_create_foreign_key_column_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("a", Integer),
+            Column("b", ForeignKey("testtbl.a", postgresql_not_valid=True)),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
+            ")",
         )
 
     def test_exclude_constraint_min(self):
@@ -2279,6 +2321,28 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
                 ):
                     meth()
 
+    def test_on_conflict_cte_plus_textual(self):
+        """test #7798"""
+
+        bar = table("bar", column("id"), column("attr"), column("foo_id"))
+        s1 = text("SELECT bar.id, bar.attr FROM bar").columns(
+            bar.c.id, bar.c.attr
+        )
+        s2 = (
+            insert(bar)
+            .from_select(list(s1.selected_columns), s1)
+            .on_conflict_do_update(
+                index_elements=[s1.selected_columns.id],
+                set_={"attr": s1.selected_columns.attr},
+            )
+        )
+
+        self.assert_compile(
+            s2,
+            "INSERT INTO bar (id, attr) SELECT bar.id, bar.attr "
+            "FROM bar ON CONFLICT (id) DO UPDATE SET attr = bar.attr",
+        )
+
     def test_do_nothing_no_target(self):
 
         i = (
@@ -2822,7 +2886,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_query_on_columns_subquery(self):
         sess = Session()
 
-        class Foo(object):
+        class Foo:
             pass
 
         clear_mappers()
@@ -2840,7 +2904,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_query_distinct_on_aliased(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(Foo, self.table)

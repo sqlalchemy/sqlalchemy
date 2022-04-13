@@ -168,7 +168,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     @testing.fixture
     def tricky_types_parameter_fixture(self):
-        class SomeEnum(object):
+        class SomeEnum:
             # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
             __members__ = OrderedDict()
 
@@ -292,6 +292,31 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(VALUES (1, 'textA', 'one'), (2, 'textB', 'two')"
             ") AS myvalues (mykey, mytext, myenum)",
             checkparams={},
+        )
+
+    def test_anon_alias(self):
+        people = self.tables.people
+        values = (
+            Values(
+                column("bookcase_id", Integer),
+                column("bookcase_owner_id", Integer),
+            )
+            .data([(1, 1), (2, 1), (3, 2), (3, 3)])
+            .alias()
+        )
+        stmt = select(people, values).select_from(
+            people.join(
+                values, values.c.bookcase_owner_id == people.c.people_id
+            )
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id, people.age, people.name, "
+            "anon_1.bookcase_id, anon_1.bookcase_owner_id FROM people "
+            "JOIN (VALUES (:param_1, :param_2), (:param_3, :param_4), "
+            "(:param_5, :param_6), (:param_7, :param_8)) AS anon_1 "
+            "(bookcase_id, bookcase_owner_id) "
+            "ON people.people_id = anon_1.bookcase_owner_id",
         )
 
     def test_with_join_unnamed(self):

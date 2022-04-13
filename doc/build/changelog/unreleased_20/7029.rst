@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, sqlite, performance
+    :tickets: 7029
+
+    SQLite datetime, date, and time datatypes now use Python standard lib
+    ``fromisoformat()`` methods in order to parse incoming datetime, date, and
+    time string values. This improves performance vs. the previous regular
+    expression-based approach, and also automatically accommodates for datetime
+    and time formats that contain either a six-digit "microseconds" format or a
+    three-digit "milliseconds" format.

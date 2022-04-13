@@ -1,12 +1,12 @@
 # postgresql/ext.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from itertools import zip_longest
 
 from .array import ARRAY
-from ... import util
 from ...sql import coercions
 from ...sql import elements
 from ...sql import expression
@@ -54,6 +54,7 @@ class aggregate_order_by(expression.ColumnElement):
     __visit_name__ = "aggregate_order_by"
 
     stringify_dialect = "postgresql"
+    inherit_cache = False
 
     def __init__(self, target, *order_by):
         self.target = coercions.expect(roles.ExpressionElementRole, target)
@@ -99,6 +100,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     __visit_name__ = "exclude_constraint"
 
     where = None
+    inherit_cache = False
 
     create_drop_stringify_dialect = "postgresql"
 
@@ -219,7 +221,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             *columns,
             name=kw.get("name"),
             deferrable=kw.get("deferrable"),
-            initially=kw.get("initially")
+            initially=kw.get("initially"),
         )
         self.using = kw.get("using", "gist")
         where = kw.get("where")
@@ -237,7 +239,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 name,
                 operator,
             )
-            for (expr, name, operator), colexpr in util.zip_longest(
+            for (expr, name, operator), colexpr in zip_longest(
                 self._render_exprs, self.columns
             )
         ]
@@ -256,7 +258,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             deferrable=self.deferrable,
             initially=self.initially,
             where=self.where,
-            using=self.using
+            using=self.using,
         )
         c.dispatch._update(self.dispatch)
         return c

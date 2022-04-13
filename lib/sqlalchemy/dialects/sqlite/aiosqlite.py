@@ -1,5 +1,5 @@
 # sqlite/aiosqlite.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -165,7 +165,7 @@ class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
 
 class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection")
+    __slots__ = ("dbapi",)
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
@@ -221,10 +221,9 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
             isinstance(error, ValueError)
             and error.args[0] == "no active connection"
         ):
-            util.raise_(
-                self.dbapi.sqlite.OperationalError("no active connection"),
-                from_=error,
-            )
+            raise self.dbapi.sqlite.OperationalError(
+                "no active connection"
+            ) from error
         else:
             raise error
 
@@ -309,7 +308,7 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     execution_ctx_cls = SQLiteExecutionContext_aiosqlite
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_aiosqlite_dbapi(
             __import__("aiosqlite"), __import__("sqlite3")
         )

@@ -13,14 +13,12 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Unicode
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -29,8 +27,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.types import TypeEngine
-from sqlalchemy.util import b
-from sqlalchemy.util import u
 
 
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -144,11 +140,11 @@ class DefaultObjectTest(fixtures.TestBase):
         def fn2(x, y, z=3):
             pass
 
-        class fn3(object):
+        class fn3:
             def __init__(self, x, y):
                 pass
 
-        class FN4(object):
+        class FN4:
             def __call__(self, x, y):
                 pass
 
@@ -174,21 +170,21 @@ class DefaultObjectTest(fixtures.TestBase):
 
         fn5 = list
 
-        class fn6a(object):
+        class fn6a:
             def __init__(self, x):
                 eq_(x, "context")
 
-        class fn6b(object):
+        class fn6b:
             def __init__(self, x, y=3):
                 eq_(x, "context")
 
-        class FN7(object):
+        class FN7:
             def __call__(self, x):
                 eq_(x, "context")
 
         fn7 = FN7()
 
-        class FN8(object):
+        class FN8:
             def __call__(self, x, y=3):
                 eq_(x, "context")
 
@@ -358,7 +354,8 @@ class DefaultObjectTest(fixtures.TestBase):
             assert_raises_message(
                 sa.exc.ArgumentError,
                 r"SQL expression for WHERE/HAVING role expected, "
-                r"got (?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)",
+                r"got (?:Sequence|(?:ScalarElement)ColumnDefault|"
+                r"DefaultClause)\('y'.*\)",
                 t.select().where,
                 const,
             )
@@ -400,7 +397,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         use_function_defaults = testing.against("postgresql", "mssql")
         is_oracle = testing.against("oracle")
 
-        class MyClass(object):
+        class MyClass:
             @classmethod
             def gen_default(cls, ctx):
                 return "hi"
@@ -841,13 +838,6 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         eq_(55, row._mapping["col3"])
 
 
-class FutureDefaultRoundTripTest(
-    fixtures.FutureEngineMixin, DefaultRoundTripTest
-):
-
-    __backend__ = True
-
-
 class CTEDefaultTest(fixtures.TablesTest):
     __requires__ = ("ctes", "returning", "ctes_on_dml")
     __backend__ = True
@@ -928,68 +918,70 @@ class CTEDefaultTest(fixtures.TablesTest):
         eq_(conn.execute(select(q.c.x, q.c.y)).first(), expected)
 
 
-class PKDefaultTest(fixtures.TablesTest):
+class PKDefaultTest(fixtures.TestBase):
     __requires__ = ("subqueries",)
     __backend__ = True
 
-    @classmethod
-    def define_tables(cls, metadata):
-        t2 = Table("t2", metadata, Column("nextid", Integer))
-
-        Table(
-            "t1",
-            metadata,
-            Column(
-                "id",
-                Integer,
-                primary_key=True,
-                default=sa.select(func.max(t2.c.nextid)).scalar_subquery(),
-            ),
-            Column("data", String(30)),
-        )
-
-        Table(
-            "date_table",
-            metadata,
-            Column(
-                "date_id",
-                DateTime(timezone=True),
-                default=text("current_timestamp"),
-                primary_key=True,
-            ),
-        )
-
-    @testing.requires.returning
-    def test_with_implicit_returning(self):
-        self._test(True)
-
-    def test_regular(self):
-        self._test(False)
-
-    def _test(self, returning):
-        t2, t1, date_table = (
-            self.tables.t2,
-            self.tables.t1,
-            self.tables.date_table,
-        )
-
-        if not returning and not testing.db.dialect.implicit_returning:
-            engine = testing.db
-        else:
-            engine = engines.testing_engine(
-                options={"implicit_returning": returning}
+    @testing.fixture
+    def table_fixture(self, metadata, connection):
+        def go(implicit_returning):
+            t2 = Table(
+                "t2",
+                metadata,
+                Column("nextid", Integer),
+                implicit_returning=implicit_returning,
             )
-        with engine.begin() as conn:
-            conn.execute(t2.insert(), dict(nextid=1))
-            r = conn.execute(t1.insert(), dict(data="hi"))
-            eq_((1,), r.inserted_primary_key)
 
-            conn.execute(t2.insert(), dict(nextid=2))
-            r = conn.execute(t1.insert(), dict(data="there"))
-            eq_((2,), r.inserted_primary_key)
+            t1 = Table(
+                "t1",
+                metadata,
+                Column(
+                    "id",
+                    Integer,
+                    primary_key=True,
+                    default=sa.select(func.max(t2.c.nextid)).scalar_subquery(),
+                ),
+                Column("data", String(30)),
+                implicit_returning=implicit_returning,
+            )
 
-            r = conn.execute(date_table.insert())
-            assert isinstance(r.inserted_primary_key[0], datetime.datetime)
+            date_table = Table(
+                "date_table",
+                metadata,
+                Column(
+                    "date_id",
+                    DateTime(timezone=True),
+                    default=text("current_timestamp"),
+                    primary_key=True,
+                ),
+                implicit_returning=implicit_returning,
+            )
+
+            metadata.create_all(connection)
+            return t1, t2, date_table
+
+        return go
+
+    @testing.combinations(
+        (True, testing.requires.returning),
+        (False,),
+        argnames="implicit_returning",
+    )
+    def test_pk_default(self, connection, table_fixture, implicit_returning):
+        t1, t2, date_table = table_fixture(implicit_returning)
+
+        conn = connection
+
+        conn.execute(t2.insert(), dict(nextid=1))
+        r = conn.execute(t1.insert(), dict(data="hi"))
+        eq_((1,), r.inserted_primary_key)
+
+        conn.execute(t2.insert(), dict(nextid=2))
+        r = conn.execute(t1.insert(), dict(data="there"))
+        eq_((2,), r.inserted_primary_key)
+
+        r = conn.execute(date_table.insert())
+        assert isinstance(r.inserted_primary_key[0], datetime.datetime)
 
 
 class PKIncrementTest(fixtures.TablesTest):
@@ -1433,29 +1425,6 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         r = connection.execute(t.insert(), dict(data="data"))
         eq_(r.inserted_primary_key, (5,))
         eq_(list(connection.execute(t.select())), [(5, "data")])
-
-
-class UnicodeDefaultsTest(fixtures.TestBase):
-    __backend__ = True
-
-    def test_no_default(self):
-        Column(Unicode(32))
-
-    def test_unicode_default(self):
-        default = u("foo")
-        Column(Unicode(32), default=default)
-
-    def test_nonunicode_default(self):
-        default = b("foo")
-        assert_raises_message(
-            sa.exc.SAWarning,
-            "Unicode column 'foobar' has non-unicode "
-            "default value b?'foo' specified.",
-            Column,
-            "foobar",
-            Unicode(32),
-            default=default,
-        )
 
 
 class InsertFromSelectTest(fixtures.TablesTest):

@@ -35,15 +35,8 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
 
-  engine = create_engine('postgresql://me@localhost/mydb',
+  engine = create_engine('postgresql+psycopg2://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
-
-In the case of SQLite, the :class:`.SingletonThreadPool` or
-:class:`.NullPool` are selected by the dialect to provide
-greater compatibility with SQLite's threading and locking
-model, as well as to provide a reasonable default behavior
-to SQLite "memory" databases, which maintain their entire
-dataset within the scope of a single connection.
 
 All SQLAlchemy pool implementations have in common
 that none of them "pre create" connections - all implementations wait
@@ -64,13 +57,9 @@ Switching Pool Implementations
 The usual way to use a different kind of pool with :func:`_sa.create_engine`
 is to use the ``poolclass`` argument.   This argument accepts a class
 imported from the ``sqlalchemy.pool`` module, and handles the details
-of building the pool for you.   Common options include specifying
-:class:`.QueuePool` with SQLite::
-
-    from sqlalchemy.pool import QueuePool
-    engine = create_engine('sqlite:///file.db', poolclass=QueuePool)
-
-Disabling pooling using :class:`.NullPool`::
+of building the pool for you.   A common use case here is when
+connection pooling is to be disabled, which can be achieved by using
+the :class:`.NullPool` implementation::
 
     from sqlalchemy.pool import NullPool
     engine = create_engine(
@@ -266,14 +255,10 @@ behaviors are needed::
     @event.listens_for(some_engine, "engine_connect")
     def ping_connection(connection, branch):
         if branch:
-            # "branch" refers to a sub-connection of a connection,
-            # we don't want to bother pinging on these.
+            # this parameter is always False as of SQLAlchemy 2.0,
+            # but is still accepted by the event hook.  In 1.x versions
+            # of SQLAlchemy, "branched" connections should be skipped.
             return
-
-        # turn off "close with result".  This flag is only used with
-        # "connectionless" execution, otherwise will be False in any case
-        save_should_close_with_result = connection.should_close_with_result
-        connection.should_close_with_result = False
 
         try:
             # run a SELECT 1.   use a core select() so that
@@ -294,9 +279,6 @@ behaviors are needed::
                 connection.scalar(select(1))
             else:
                 raise
-        finally:
-            # restore "close with result"
-            connection.should_close_with_result = save_should_close_with_result
 
 The above recipe has the advantage that we are making use of SQLAlchemy's
 facilities for detecting those DBAPI exceptions that are known to indicate
@@ -365,7 +347,7 @@ such as MySQL that automatically close connections that have been stale after a 
 period of time::
 
     from sqlalchemy import create_engine
-    e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test", pool_recycle=3600)
 
 Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
 upon next checkout.   Note that the invalidation **only** occurs during checkout - not on
@@ -476,34 +458,56 @@ are three general approaches to this:
    more than once::
 
     from sqlalchemy.pool import NullPool
-    engine = create_engine("mysql://user:pass@host/dbname", poolclass=NullPool)
+    engine = create_engine("mysql+mysqldb://user:pass@host/dbname", poolclass=NullPool)
 
 
-2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine` as
-   soon one is within the new process.  In Python multiprocessing, constructs
-   such as ``multiprocessing.Pool`` include "initializer" hooks which are a
-   place that this can be performed; otherwise at the top of where
-   ``os.fork()`` or where the ``Process`` object begins the child fork, a
-   single call to :meth:`_engine.Engine.dispose` will ensure any remaining
-   connections are flushed. **This is the recommended approach**::
+2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`,
+   passing the :paramref:`.Engine.dispose.close` parameter with a value of
+   ``False``, within the initialize phase of the child process.  This is
+   so that the new process will not touch any of the parent process' connections
+   and will instead start with new connections.
+   **This is the recommended approach**::
 
-    engine = create_engine("mysql://user:pass@host/dbname")
+        from multiprocessing import Pool
 
-    def run_in_process():
-        # process starts.  ensure engine.dispose() is called just once
-        # at the beginning
+        engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
+
+        def run_in_process(some_data_record):
+            with engine.connect() as conn:
+                conn.execute(text("..."))
+
+        def initializer():
+            """ensure the parent proc's database connections are not touched
+               in the new connection pool"""
+            engine.dispose(close=False)
+
+        with Pool(10, initializer=initializer) as p:
+            p.map(run_in_process, data)
+
+
+   .. versionadded:: 1.4.33  Added the :paramref:`.Engine.dispose.close`
+      parameter to allow the replacement of a connection pool in a child
+      process without interfering with the connections used by the parent
+      process.
+
+3. Call :meth:`.Engine.dispose` **directly before** the child process is
+   created.  This will also cause the child process to start with a new
+   connection pool, while ensuring the parent connections are not transferred
+   to the child process::
+
+        engine = create_engine("mysql://user:pass@host/dbname")
+
+        def run_in_process():
+            with engine.connect() as conn:
+                conn.execute(text("..."))
+
+        # before process starts, ensure engine.dispose() is called
         engine.dispose()
+        p = Process(target=run_in_process)
+        p.start()
 
-        with engine.connect() as conn:
-            conn.execute(text("..."))
-
-    p = Process(target=run_in_process)
-    p.start()
-
-3. An event handler can be applied to the connection pool that tests for
-   connections being shared across process boundaries, and invalidates them.
-   This approach, **when combined with an explicit call to dispose() as
-   mentioned above**, should cover all cases::
+4. An event handler can be applied to the connection pool that tests for
+   connections being shared across process boundaries, and invalidates them::
 
     from sqlalchemy import event
     from sqlalchemy import exc
@@ -531,22 +535,15 @@ are three general approaches to this:
    originated in a different parent process as an "invalid" connection,
    coercing the pool to recycle the connection record to make a new connection.
 
-   When using the above recipe, **ensure the dispose approach from #2 is also
-   used**, as if the connection pool is exhausted in the parent process
-   when the fork occurs, an empty pool will be copied into
-   the child process which will then hang because it has no connections.
-
 The above strategies will accommodate the case of an :class:`_engine.Engine`
-being shared among processes.  However, for the case of a transaction-active
-:class:`.Session` or :class:`_engine.Connection` being shared, there's no automatic
-fix for this; an application needs to ensure a new child process only
-initiate new :class:`_engine.Connection` objects and transactions, as well as ORM
-:class:`.Session` objects.  For a :class:`.Session` object, technically
-this is only needed if the session is currently transaction-bound, however
-the scope of a single :class:`.Session` is in any case intended to be
-kept within a single call stack in any case (e.g. not a global object, not
-shared between processes or threads).
-
+being shared among processes. The above steps alone are not sufficient for the
+case of sharing a specific :class:`_engine.Connection` over a process boundary;
+prefer to keep the scope of a particular :class:`_engine.Connection` local to a
+single process (and thread). It's additionally not supported to share any kind
+of ongoing transactional state directly across a process boundary, such as an
+ORM :class:`_orm.Session` object that's begun a transaction and references
+active :class:`_orm.Connection` instances; again prefer to create new
+:class:`_orm.Session` objects in new processes.
 
 
 API Documentation - Available Pool Implementations
@@ -576,11 +573,18 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: StaticPool
 
-.. autoclass:: _ConnectionFairy
+.. autoclass:: ManagesConnection
     :members:
 
-    .. autoattribute:: _connection_record
+.. autoclass:: ConnectionPoolEntry
+    :members:
+    :inherited-members:
+
+.. autoclass:: PoolProxiedConnection
+    :members:
+    :inherited-members:
+
+.. autoclass:: _ConnectionFairy
 
 .. autoclass:: _ConnectionRecord
-    :members:
 

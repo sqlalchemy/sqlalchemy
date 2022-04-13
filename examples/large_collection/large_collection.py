@@ -34,12 +34,12 @@ member_table = Table(
 )
 
 
-class Organization(object):
+class Organization:
     def __init__(self, name):
         self.name = name
 
 
-class Member(object):
+class Member:
     def __init__(self, name):
         self.name = name
 
@@ -69,7 +69,7 @@ mapper(Member, member_table)
 
 if __name__ == "__main__":
     engine = create_engine(
-        "postgresql://scott:tiger@localhost/test", echo=True
+        "postgresql+psycopg2://scott:tiger@localhost/test", echo=True
     )
     meta.create_all(engine)
 

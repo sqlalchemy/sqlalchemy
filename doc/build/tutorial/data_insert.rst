@@ -127,7 +127,7 @@ illustrate this:
     ...     conn.commit()
     {opensql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?)
-    [...] (('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star'))
+    [...] [('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star')]
     COMMIT{stop}
 
 The execution above features "executemany" form first illustrated at
@@ -185,8 +185,8 @@ construct automatically.
         INSERT INTO address (user_id, email_address) VALUES ((SELECT user_account.id
         FROM user_account
         WHERE user_account.name = ?), ?)
-        [...] (('spongebob', 'spongebob@sqlalchemy.org'), ('sandy', 'sandy@sqlalchemy.org'),
-        ('sandy', 'sandy@squirrelpower.org'))
+        [...] [('spongebob', 'spongebob@sqlalchemy.org'), ('sandy', 'sandy@sqlalchemy.org'),
+        ('sandy', 'sandy@squirrelpower.org')]
         COMMIT{stop}
 
 .. _tutorial_insert_from_select:
@@ -245,7 +245,7 @@ as in the example below that builds upon the example stated in
     which will be introduced later in this tutorial.
     The RETURNING feature is generally [1]_ only
     supported for statement executions that use a single set of bound
-    parameters; that is, it wont work with the "executemany" form introduced
+    parameters; that is, it won't work with the "executemany" form introduced
     at :ref:`tutorial_multiple_parameters`.    Additionally, some dialects
     such as the Oracle dialect only allow RETURNING to return a single row
     overall, meaning it won't work with "INSERT..FROM SELECT" nor will it

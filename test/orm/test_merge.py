@@ -31,7 +31,6 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import OrderedSet
 from test.orm import _fixtures
 
 
@@ -157,7 +156,7 @@ class MergeTest(_fixtures.FixtureTest):
             users,
             properties={
                 "addresses": relationship(
-                    Address, backref="user", collection_class=OrderedSet
+                    Address, backref="user", collection_class=set
                 )
             },
         )
@@ -168,12 +167,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=1, email_address="fred1"),
-                    Address(id=2, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=1, email_address="fred1"),
+                Address(id=2, email_address="fred2"),
+            },
         )
         eq_(load.called, 0)
 
@@ -193,12 +190,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=1, email_address="fred1"),
-                        Address(id=2, email_address="fred2"),
-                    ]
-                ),
+                addresses={
+                    Address(id=1, email_address="fred1"),
+                    Address(id=2, email_address="fred2"),
+                },
             ),
         )
 
@@ -248,7 +243,7 @@ class MergeTest(_fixtures.FixtureTest):
             users,
             properties={
                 "addresses": relationship(
-                    Address, backref="user", collection_class=OrderedSet
+                    Address, backref="user", collection_class=set
                 )
             },
         )
@@ -259,12 +254,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=None,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=None, email_address="fred1"),
-                    Address(id=None, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=None, email_address="fred1"),
+                Address(id=None, email_address="fred2"),
+            },
         )
         eq_(load.called, 0)
 
@@ -283,12 +276,10 @@ class MergeTest(_fixtures.FixtureTest):
             sess.query(User).one(),
             User(
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(email_address="fred1"),
-                        Address(email_address="fred2"),
-                    ]
-                ),
+                addresses={
+                    Address(email_address="fred1"),
+                    Address(email_address="fred2"),
+                },
             ),
         )
 
@@ -331,8 +322,7 @@ class MergeTest(_fixtures.FixtureTest):
                 "addresses": relationship(
                     Address,
                     backref="user",
-                    collection_class=OrderedSet,
-                    order_by=addresses.c.id,
+                    collection_class=set,
                     cascade="all, delete-orphan",
                 )
             },
@@ -345,12 +335,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=1, email_address="fred1"),
-                    Address(id=2, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=1, email_address="fred1"),
+                Address(id=2, email_address="fred2"),
+            },
         )
         sess = fixture_session()
         sess.add(u)
@@ -362,12 +350,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=3, email_address="fred3"),
-                    Address(id=4, email_address="fred4"),
-                ]
-            ),
+            addresses={
+                Address(id=3, email_address="fred3"),
+                Address(id=4, email_address="fred4"),
+            },
         )
 
         u = sess.merge(u)
@@ -383,12 +369,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=3, email_address="fred3"),
-                        Address(id=4, email_address="fred4"),
-                    ]
-                ),
+                addresses={
+                    Address(id=3, email_address="fred3"),
+                    Address(id=4, email_address="fred4"),
+                },
             ),
         )
         sess.flush()
@@ -398,12 +382,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=3, email_address="fred3"),
-                        Address(id=4, email_address="fred4"),
-                    ]
-                ),
+                addresses={
+                    Address(id=3, email_address="fred3"),
+                    Address(id=4, email_address="fred4"),
+                },
             ),
         )
 
@@ -423,7 +405,7 @@ class MergeTest(_fixtures.FixtureTest):
                     Address,
                     backref="user",
                     order_by=addresses.c.id,
-                    collection_class=OrderedSet,
+                    collection_class=set,
                 )
             },
         )
@@ -435,7 +417,7 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet([a, Address(id=2, email_address="fred2")]),
+            addresses={a, Address(id=2, email_address="fred2")},
         )
         sess = fixture_session()
         sess.add(u)
@@ -457,12 +439,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred jones",
-                addresses=OrderedSet(
-                    [
-                        Address(id=2, email_address="fred2"),
-                        Address(id=3, email_address="fred3"),
-                    ]
-                ),
+                addresses={
+                    Address(id=2, email_address="fred2"),
+                    Address(id=3, email_address="fred3"),
+                },
             ),
         )
 
@@ -526,7 +506,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         sess.flush()
         sess.expunge_all()
-        u2 = sess.query(User).get(7)
+        u2 = sess.get(User, 7)
 
         eq_(
             u2,
@@ -672,7 +652,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         # assert data was saved
         sess2 = fixture_session()
-        u2 = sess2.query(User).get(7)
+        u2 = sess2.get(User, 7)
         eq_(
             u2,
             User(
@@ -714,7 +694,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         # assert modified/merged data was saved
         with fixture_session() as sess:
-            u = sess.query(User).get(7)
+            u = sess.get(User, 7)
             eq_(
                 u,
                 User(
@@ -774,7 +754,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 18)
 
         with fixture_session(expire_on_commit=False) as sess5:
-            u2 = sess5.query(User).get(u.id)
+            u2 = sess5.get(User, u.id)
             eq_(u2.name, "fred2")
             eq_(u2.addresses[1].email_address, "afafds")
         eq_(load.called, 21)
@@ -908,7 +888,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 0)
 
         sess2 = fixture_session()
-        u2 = sess2.query(User).get(u.id)
+        u2 = sess2.get(User, u.id)
         eq_(load.called, 1)
 
         u.addresses[1].email_address = "addr 2 modified"
@@ -917,7 +897,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 3)
 
         sess3 = fixture_session()
-        u3 = sess3.query(User).get(u.id)
+        u3 = sess3.get(User, u.id)
         eq_(load.called, 4)
 
         u.name = "also fred"
@@ -1002,7 +982,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 0)
 
         with fixture_session(expire_on_commit=False) as sess2:
-            o2 = sess2.query(Order).get(o.id)
+            o2 = sess2.get(Order, o.id)
             eq_(load.called, 1)
 
             o.items[1].description = "item 2 modified"
@@ -1011,7 +991,7 @@ class MergeTest(_fixtures.FixtureTest):
             eq_(load.called, 3)
 
         with fixture_session(expire_on_commit=False) as sess3:
-            o3 = sess3.query(Order).get(o.id)
+            o3 = sess3.get(Order, o.id)
             eq_(load.called, 4)
 
             o.description = "desc modified"
@@ -1054,7 +1034,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 0)
 
         sess2 = fixture_session()
-        u2 = sess2.query(User).get(7)
+        u2 = sess2.get(User, 7)
         eq_(load.called, 1)
         u2.name = "fred2"
         u2.address.email_address = "hoho@lalala.com"
@@ -1211,7 +1191,7 @@ class MergeTest(_fixtures.FixtureTest):
             sess.commit()
 
         sess2 = fixture_session()
-        u2 = sess2.query(User).options(sa.orm.joinedload("addresses")).get(7)
+        u2 = sess2.get(User, 7, options=[sa.orm.joinedload(User.addresses)])
 
         sess3 = fixture_session()
         u3 = sess3.merge(u2, load=False)  # noqa
@@ -1250,7 +1230,7 @@ class MergeTest(_fixtures.FixtureTest):
                 "mapped instances before merging with load=False." in str(e)
             )
 
-        u2 = sess2.query(User).get(7)
+        u2 = sess2.get(User, 7)
 
         sess3 = fixture_session()
         u3 = sess3.merge(u2, load=False)  # noqa
@@ -1359,7 +1339,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         with fixture_session() as sess2:
             eq_(
-                sess2.query(User).get(u2.id).addresses[0].email_address,
+                sess2.get(User, u2.id).addresses[0].email_address,
                 "somenewaddress",
             )
 
@@ -1373,7 +1353,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         sess2 = fixture_session()
         sess = fixture_session()
-        u = sess.query(User).get(7)
+        u = sess.get(User, 7)
         u.addresses.append(Address())
         sess2 = fixture_session()
         try:
@@ -1390,7 +1370,7 @@ class MergeTest(_fixtures.FixtureTest):
             sess2.flush()
             sess2.expunge_all()
             eq_(
-                sess2.query(User).get(u2.id).addresses[0].email_address,
+                sess2.get(User, u2.id).addresses[0].email_address,
                 "somenewaddress",
             )
         except sa.exc.InvalidRequestError as e:
@@ -1399,7 +1379,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_synonym(self):
         users = self.tables.users
 
-        class User(object):
+        class User:
             def _getValue(self):
                 return self._value
 
@@ -1430,7 +1410,7 @@ class MergeTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        s = fixture_session(autoflush=True, autocommit=False)
+        s = fixture_session(autoflush=True, future=True)
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1443,8 +1423,10 @@ class MergeTest(_fixtures.FixtureTest):
         )
 
         a1 = Address(user=s.merge(User(id=1, name="ed")), email_address="x")
+        s.add(a1)
         before_id = id(a1.user)
         a2 = Address(user=s.merge(User(id=1, name="jack")), email_address="x")
+        s.add(a2)
         after_id = id(a1.user)
         other_id = id(a2.user)
         eq_(before_id, other_id)
@@ -1460,7 +1442,9 @@ class MergeTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1501,7 +1485,9 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7, name="fred", addresses=[Address(id=1, email_address="fred1")]
         )
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         sess.add(u)
         sess.commit()
 
@@ -1526,7 +1512,9 @@ class MergeTest(_fixtures.FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         u = User(id=7)
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = sess.merge(u)
         assert not bool(attributes.instance_state(u).expired_attributes)
 
@@ -1565,7 +1553,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set())
+            eq_(ustate.load_options, ())
 
         for u in s2_users:
             sess.merge(u)
@@ -1573,7 +1561,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt2]))
+            eq_(ustate.load_options, (opt2,))
 
         # test 2.  present options are replaced by merge options
         sess = fixture_session()
@@ -1581,7 +1569,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt1]))
+            eq_(ustate.load_options, (opt1,))
 
         for u in s2_users:
             sess.merge(u)
@@ -1589,7 +1577,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt2]))
+            eq_(ustate.load_options, (opt2,))
 
     def test_resolve_conflicts_pending_doesnt_interfere_no_ident(self):
         User, Address, Order = (

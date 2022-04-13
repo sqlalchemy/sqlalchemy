@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, asyncio
+    :tickets: 7703
+
+    Removed the unused ``**kw`` arguments from
+    :class:`_asyncio.AsyncSession.begin` and
+    :class:`_asyncio.AsyncSession.begin_nested`. These kw aren't used and
+    appear to have been added to the API in error.

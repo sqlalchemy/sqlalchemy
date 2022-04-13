@@ -1,7 +1,6 @@
 from sqlalchemy import exc
 from sqlalchemy import testing
 from sqlalchemy.engine import result
-from sqlalchemy.engine.row import Row
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -194,6 +193,37 @@ class ResultTupleTest(fixtures.TestBase):
             eq_(list(kt._mapping.keys()), ["a", "b"])
             eq_(kt._fields, ("a", "b"))
             eq_(kt._asdict(), {"a": 1, "b": 3})
+
+    @testing.requires.cextensions
+    def test_serialize_cy_py_cy(self):
+        from sqlalchemy.engine._py_row import BaseRow as _PyRow
+        from sqlalchemy.cyextension.resultproxy import BaseRow as _CyRow
+
+        global Row
+
+        p = result.SimpleResultMetaData(["a", None, "b"])
+
+        for loads, dumps in picklers():
+
+            class Row(_CyRow):
+                pass
+
+            row = Row(p, p._processors, p._keymap, 0, (1, 2, 3))
+
+            state = dumps(row)
+
+            class Row(_PyRow):
+                pass
+
+            row2 = loads(state)
+            is_true(isinstance(row2, _PyRow))
+            state2 = dumps(row2)
+
+            class Row(_CyRow):
+                pass
+
+            row3 = loads(state2)
+            is_true(isinstance(row3, _CyRow))
 
 
 class ResultTest(fixtures.TestBase):
@@ -484,11 +514,16 @@ class ResultTest(fixtures.TestBase):
         row = result.first()
         eq_(row, (1, 1, 1))
 
-        eq_(result.all(), [])
+        # note this is a behavior change in 1.4.27 due to
+        # adding a real result.close() to Result, previously this would
+        # return an empty list.  this is already the
+        # behavior with CursorResult, but was mis-implemented for
+        # other non-cursor result sets.
+        assert_raises(exc.ResourceClosedError, result.all)
 
     def test_one_unique(self):
         # assert that one() counts rows after uniqueness has been applied.
-        # this would raise if we didnt have unique
+        # this would raise if we didn't have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 
         row = result.unique().one()
@@ -505,7 +540,7 @@ class ResultTest(fixtures.TestBase):
 
     def test_one_unique_mapping(self):
         # assert that one() counts rows after uniqueness has been applied.
-        # this would raise if we didnt have unique
+        # this would raise if we didn't have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 
         row = result.mappings().unique().one()
@@ -597,7 +632,12 @@ class ResultTest(fixtures.TestBase):
 
         eq_(result.scalar(), 1)
 
-        eq_(result.all(), [])
+        # note this is a behavior change in 1.4.27 due to
+        # adding a real result.close() to Result, previously this would
+        # return an empty list.  this is already the
+        # behavior with CursorResult, but was mis-implemented for
+        # other non-cursor result sets.
+        assert_raises(exc.ResourceClosedError, result.all)
 
     def test_partition(self):
         result = self._fixture()
@@ -686,27 +726,6 @@ class ResultTest(fixtures.TestBase):
 
         # still slices
         eq_(m1.fetchone(), {"b": 1, "c": 2})
-
-    def test_alt_row_fetch(self):
-        class AppleRow(Row):
-            def apple(self):
-                return "apple"
-
-        result = self._fixture(alt_row=AppleRow)
-
-        row = result.all()[0]
-        eq_(row.apple(), "apple")
-
-    def test_alt_row_transform(self):
-        class AppleRow(Row):
-            def apple(self):
-                return "apple"
-
-        result = self._fixture(alt_row=AppleRow)
-
-        row = result.columns("c", "a").all()[2]
-        eq_(row.apple(), "apple")
-        eq_(row, (2, 1))
 
     def test_scalar_none_iterate(self):
         result = self._fixture(

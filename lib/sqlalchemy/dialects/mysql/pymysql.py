@@ -1,5 +1,5 @@
 # mysql/pymysql.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -39,7 +39,6 @@ to the pymysql driver as well.
 
 from .mysqldb import MySQLDialect_mysqldb
 from ...util import langhelpers
-from ...util import py3k
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
@@ -47,12 +46,6 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     supports_statement_cache = True
 
     description_encoding = None
-
-    # generally, these two values should be both True
-    # or both False.   PyMySQL unicode tests pass all the way back
-    # to 0.4 either way.  See [ticket:3337]
-    supports_unicode_statements = True
-    supports_unicode_binds = True
 
     @langhelpers.memoized_property
     def supports_server_side_cursors(self):
@@ -64,7 +57,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pymysql")
 
     def create_connect_args(self, url, _translate_args=None):
@@ -87,12 +80,10 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         else:
             return False
 
-    if py3k:
-
-        def _extract_error_code(self, exception):
-            if isinstance(exception.args[0], Exception):
-                exception = exception.args[0]
-            return exception.args[0]
+    def _extract_error_code(self, exception):
+        if isinstance(exception.args[0], Exception):
+            exception = exception.args[0]
+        return exception.args[0]
 
 
 dialect = MySQLDialect_pymysql

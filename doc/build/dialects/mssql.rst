@@ -108,6 +108,9 @@ construction arguments, are as follows:
    :members: __init__
 
 
+.. autoclass:: VARBINARY
+   :members: __init__
+
 .. autoclass:: VARCHAR
    :members: __init__
 
@@ -119,10 +122,6 @@ construction arguments, are as follows:
 PyODBC
 ------
 .. automodule:: sqlalchemy.dialects.mssql.pyodbc
-
-mxODBC
-------
-.. automodule:: sqlalchemy.dialects.mssql.mxodbc
 
 pymssql
 -------

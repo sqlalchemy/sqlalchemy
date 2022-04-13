@@ -41,7 +41,7 @@ m = MetaData()
 t = Table("t", m, Column("q", Integer))
 
 
-class NotAThing1(object):
+class NotAThing1:
     pass
 
 
@@ -55,7 +55,7 @@ class NotAThing2(ClauseElement):
 not_a_thing2 = NotAThing2()
 
 
-class NotAThing3(object):
+class NotAThing3:
     def __clause_element__(self):
         return not_a_thing2
 
@@ -215,7 +215,7 @@ class RoleTest(fixtures.TestBase):
         def some_function():
             pass
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return some_function
 
@@ -226,15 +226,13 @@ class RoleTest(fixtures.TestBase):
         ):
             expect(roles.ExpressionElementRole, Thing())
 
-    def test_statement_text_coercion(self):
-        with testing.expect_deprecated_20(
-            "Using plain strings to indicate SQL statements"
+    def test_no_statement_text_coercion(self):
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"Textual SQL expression 'select \* from table' should be "
+            "explicitly declared",
         ):
-            is_true(
-                expect(roles.StatementRole, "select * from table").compare(
-                    text("select * from table")
-                )
-            )
+            expect(roles.StatementRole, "select * from table")
 
     def test_select_statement_no_text_coercion(self):
         assert_raises_message(

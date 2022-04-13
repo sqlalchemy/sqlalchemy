@@ -14,7 +14,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class AssertsUOW(object):
+class AssertsUOW:
     def _get_test_uow(self, session):
         uow = unitofwork.UOWTransaction(session)
         deleted = set(session._deleted)
@@ -101,7 +101,7 @@ class SyncTest(
         assert_raises_message(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
-            r"mapper 'mapped class A->t1' does not map this column.",
+            r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
             sync.populate,
             a1,
             a_mapper,
@@ -119,7 +119,7 @@ class SyncTest(
             orm_exc.UnmappedColumnError,
             r"Can't execute sync rule for destination "
             r"column 't1.id'; "
-            r"mapper 'mapped class B->t2' does not map this column.",
+            r"mapper 'Mapper\[B\(t2\)\]' does not map this column.",
             sync.populate,
             a1,
             a_mapper,
@@ -159,7 +159,7 @@ class SyncTest(
         assert_raises_message(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for destination "
-            r"column 't1.foo'; mapper 'mapped class B->t2' does not "
+            r"column 't1.foo'; mapper 'Mapper\[B\(t2\)\]' does not "
             "map this column.",
             sync.clear,
             b1,
@@ -184,7 +184,7 @@ class SyncTest(
         assert_raises_message(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
-            r"mapper 'mapped class A->t1' does not map this column.",
+            r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
             sync.update,
             a1,
             a_mapper,
@@ -209,7 +209,7 @@ class SyncTest(
         assert_raises_message(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
-            r"mapper 'mapped class A->t1' does not map this column.",
+            r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
             sync.populate_dict,
             a1,
             a_mapper,
@@ -262,7 +262,7 @@ class SyncTest(
         assert_raises_message(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
-            r"mapper 'mapped class A->t1' does not map this column.",
+            r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
             sync.source_modified,
             uowcommit,
             a1,

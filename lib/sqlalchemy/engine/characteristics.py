@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import abc
+import typing
+from typing import Any
+from typing import ClassVar
 
-from ..util import ABC
+if typing.TYPE_CHECKING:
+    from .interfaces import DBAPIConnection
+    from .interfaces import Dialect
 
 
-class ConnectionCharacteristic(ABC):
+class ConnectionCharacteristic(abc.ABC):
     """An abstract base for an object that can set, get and reset a
     per-connection characteristic, typically one that gets reset when the
     connection is returned to the connection pool.
@@ -25,18 +32,24 @@ class ConnectionCharacteristic(ABC):
 
     __slots__ = ()
 
-    transactional = False
+    transactional: ClassVar[bool] = False
 
     @abc.abstractmethod
-    def reset_characteristic(self, dialect, dbapi_conn):
+    def reset_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection
+    ) -> None:
         """Reset the characteristic on the connection to its default value."""
 
     @abc.abstractmethod
-    def set_characteristic(self, dialect, dbapi_conn, value):
+    def set_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection, value: Any
+    ) -> None:
         """set characteristic on the connection to a given value."""
 
     @abc.abstractmethod
-    def get_characteristic(self, dialect, dbapi_conn):
+    def get_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection
+    ) -> Any:
         """Given a DBAPI connection, get the current value of the
         characteristic.
 
@@ -44,13 +57,19 @@ class ConnectionCharacteristic(ABC):
 
 
 class IsolationLevelCharacteristic(ConnectionCharacteristic):
-    transactional = True
+    transactional: ClassVar[bool] = True
 
-    def reset_characteristic(self, dialect, dbapi_conn):
+    def reset_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection
+    ) -> None:
         dialect.reset_isolation_level(dbapi_conn)
 
-    def set_characteristic(self, dialect, dbapi_conn, value):
-        dialect.set_isolation_level(dbapi_conn, value)
+    def set_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection, value: Any
+    ) -> None:
+        dialect._assert_and_set_isolation_level(dbapi_conn, value)
 
-    def get_characteristic(self, dialect, dbapi_conn):
+    def get_characteristic(
+        self, dialect: Dialect, dbapi_conn: DBAPIConnection
+    ) -> Any:
         return dialect.get_isolation_level(dbapi_conn)

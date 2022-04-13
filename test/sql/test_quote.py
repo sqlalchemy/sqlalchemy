@@ -13,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -249,12 +248,53 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_repr_unicode(self):
-        name = quoted_name(u"姓名", None)
+        name = quoted_name("姓名", None)
 
-        if util.py2k:
-            eq_(repr(name), "'\u59d3\u540d'")
-        else:
-            eq_(repr(name), repr(u"姓名"))
+        eq_(repr(name), repr("姓名"))
+
+    def test_literal_column_label_embedded_select_samename_explicit_quote(
+        self,
+    ):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES", True)
+        )
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname_explicit_quote(
+        self,
+    ):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES_", True)
+        )
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_samename(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES") AS anon_1',
+        )
 
     def test_lower_case_names(self):
         # Create table with quote defaults
@@ -958,7 +998,7 @@ class QuotedIdentTest(fixtures.TestBase):
         eq_(q2.quote, False)
 
     def test_coerce_none(self):
-        q1 = quoted_name(None, False)
+        q1 = quoted_name.construct(None, False)
         eq_(q1, None)
 
     def test_apply_map_quoted(self):
@@ -1003,7 +1043,7 @@ class NameNormalizeTest(fixtures.TestBase):
         ("NAME", "name", False),
         ("NA ME", "NA ME", False),
         ("NaMe", "NaMe", False),
-        (u"姓名", u"姓名", False),
+        ("姓名", "姓名", False),
         ("name", "name", True),  # an all-lower case name needs quote forced
     )
     def test_name_normalize(self, original, normalized, is_quote):
@@ -1019,7 +1059,7 @@ class NameNormalizeTest(fixtures.TestBase):
         ("name", "NAME", False),
         ("NA ME", "NA ME", False),
         ("NaMe", "NaMe", False),
-        (u"姓名", u"姓名", False),
+        ("姓名", "姓名", False),
         (quoted_name("name", quote=True), "name", True),
     )
     def test_name_denormalize(self, original, denormalized, is_quote):

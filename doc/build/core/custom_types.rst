@@ -67,6 +67,7 @@ to and/or from the database is required.
 .. autoclass:: TypeDecorator
    :members:
 
+   .. autoattribute:: cache_ok
 
 TypeDecorator Recipes
 ---------------------
@@ -446,7 +447,7 @@ transparently::
                         PGPString("this is my passphrase")),
                 )
 
-    engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     with engine.begin() as conn:
         metadata_obj.create_all(conn)
 
@@ -491,13 +492,35 @@ explicit methods on column expressions, such as
 :meth:`.ColumnOperators.in_` (``table.c.value.in_(['x', 'y'])``) and :meth:`.ColumnOperators.like`
 (``table.c.value.like('%ed%')``).
 
-The Core expression constructs in all cases consult the type of the expression in order to determine
-the behavior of existing operators, as well as to locate additional operators that aren't part of
-the built-in set.   The :class:`.TypeEngine` base class defines a root "comparison" implementation
-:class:`.TypeEngine.Comparator`, and many specific types provide their own sub-implementations of this
-class.   User-defined :class:`.TypeEngine.Comparator` implementations can be built directly into a
-simple subclass of a particular type in order to override or define new operations.  Below,
-we create a :class:`.Integer` subclass which overrides the :meth:`.ColumnOperators.__add__` operator::
+When the need arises for a SQL operator that isn't directly supported by the
+already supplied methods above, the most expedient way to produce this operator is
+to use the :meth:`_sql.Operators.op` method on any SQL expression object; this method
+is given a string representing the SQL operator to render, and the return value
+is a Python callable that accepts any arbitrary right-hand side expression::
+
+    >>> from sqlalchemy import column
+    >>> expr = column('x').op('>>')(column('y'))
+    >>> print(expr)
+    x >> y
+
+When making use of custom SQL types, there is also a means of implementing
+custom operators as above that are automatically present upon any column
+expression that makes use of that column type, without the need to directly
+call :meth:`_sql.Operators.op` each time the operator is to be used.
+
+To achieve this, a SQL
+expression construct consults the :class:`_types.TypeEngine` object associated
+with the construct in order to determine the behavior of the built-in
+operators as well as to look for new methods that may have been invoked.
+:class:`.TypeEngine` defines a
+"comparison" object implemented by the :class:`.TypeEngine.Comparator` class to provide the base
+behavior for SQL operators, and many specific types provide their own
+sub-implementations of this class. User-defined :class:`.TypeEngine.Comparator`
+implementations can be built directly into a simple subclass of a particular
+type in order to override or define new operations. Below, we create a
+:class:`.Integer` subclass which overrides the :meth:`.ColumnOperators.__add__`
+operator, which in turn uses :meth:`_sql.Operators.op` to produce the custom
+SQL itself::
 
     from sqlalchemy import Integer
 
@@ -519,26 +542,21 @@ Usage::
 
 The implementation for :meth:`.ColumnOperators.__add__` is consulted
 by an owning SQL expression, by instantiating the :class:`.TypeEngine.Comparator` with
-itself as the ``expr`` attribute.   The mechanics of the expression
-system are such that operations continue recursively until an
-expression object produces a new SQL expression construct. Above, we
-could just as well have said ``self.expr.op("goofy")(other)`` instead
-of ``self.op("goofy")(other)``.
+itself as the ``expr`` attribute.  This attribute may be used when the
+implementation needs to refer to the originating :class:`_sql.ColumnElement`
+object directly::
 
-When using :meth:`.Operators.op` for comparison operations that return a
-boolean result, the :paramref:`.Operators.op.is_comparison` flag should be
-set to ``True``::
+    from sqlalchemy import Integer
 
     class MyInt(Integer):
         class comparator_factory(Integer.Comparator):
-            def is_frobnozzled(self, other):
-                return self.op("--is_frobnozzled->", is_comparison=True)(other)
+            def __add__(self, other):
+                return func.special_addition(self.expr, other)
 
 New methods added to a :class:`.TypeEngine.Comparator` are exposed on an
-owning SQL expression
-using a ``__getattr__`` scheme, which exposes methods added to
-:class:`.TypeEngine.Comparator` onto the owning :class:`_expression.ColumnElement`.
-For example, to add a ``log()`` function
+owning SQL expression object using a dynamic lookup scheme, which exposes methods added to
+:class:`.TypeEngine.Comparator` onto the owning :class:`_expression.ColumnElement`
+expression construct.  For example, to add a ``log()`` function
 to integers::
 
     from sqlalchemy import Integer, func
@@ -552,6 +570,15 @@ Using the above type::
 
     >>> print(sometable.c.data.log(5))
     log(:log_1, :log_2)
+
+When using :meth:`.Operators.op` for comparison operations that return a
+boolean result, the :paramref:`.Operators.op.is_comparison` flag should be
+set to ``True``::
+
+    class MyInt(Integer):
+        class comparator_factory(Integer.Comparator):
+            def is_frobnozzled(self, other):
+                return self.op("--is_frobnozzled->", is_comparison=True)(other)
 
 Unary operations
 are also possible.  For example, to add an implementation of the
@@ -594,6 +621,7 @@ is needed, use :class:`.TypeDecorator` instead.
 .. autoclass:: UserDefinedType
    :members:
 
+   .. autoattribute:: cache_ok
 
 .. _custom_and_decorated_types_reflection:
 

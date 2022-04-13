@@ -1,5 +1,5 @@
 # ext/hybrid.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -137,7 +137,7 @@ usage of the absolute value function::
 
     from sqlalchemy import func
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -166,7 +166,7 @@ object for class-level expressions::
    the new hybrid with the additional state will be attached to the class
    with the non-matching name. To use the example above::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -189,7 +189,7 @@ Defining Setters
 Hybrid properties can also define setter methods.  If we wanted
 ``length`` above, when set, to modify the endpoint value::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -231,7 +231,7 @@ accommodate a value passed to :meth:`_query.Query.update` which can affect
 this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -267,7 +267,7 @@ above.
    of the hybrid must match that of how it is accessed.    Something
    like this wouldn't work::
 
-        class Interval(object):
+        class Interval:
             # ...
 
             def _get(self):
@@ -802,55 +802,130 @@ advanced and/or patient developers, there's probably a whole lot of amazing
 things it can be used for.
 
 """  # noqa
+
+from __future__ import annotations
+
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import Generic
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
 from .. import util
 from ..orm import attributes
+from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
-from ..sql import elements
+from ..orm import ORMDescriptor
+from ..sql._typing import is_has_clause_element
+from ..sql.elements import ColumnElement
+from ..sql.elements import SQLCoreOperations
+from ..util.typing import Literal
+from ..util.typing import Protocol
 
-HYBRID_METHOD = util.symbol("HYBRID_METHOD")
-"""Symbol indicating an :class:`InspectionAttr` that's
-   of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attribute.
+if TYPE_CHECKING:
+    from ..orm.util import AliasedInsp
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _DMLColumnArgument
+    from ..sql._typing import _HasClauseElement
+    from ..sql.operators import OperatorType
+    from ..sql.roles import ColumnsClauseRole
 
-   .. seealso::
+_T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
+_T_con = TypeVar("_T_con", bound=Any, contravariant=True)
 
-    :attr:`_orm.Mapper.all_orm_attributes`
 
-"""
+class HybridExtensionType(InspectionAttrExtensionType):
 
-HYBRID_PROPERTY = util.symbol("HYBRID_PROPERTY")
-"""Symbol indicating an :class:`InspectionAttr` that's
+    HYBRID_METHOD = "HYBRID_METHOD"
+    """Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attribute.
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
+    attribute.
 
-   .. seealso::
+    .. seealso::
 
-    :attr:`_orm.Mapper.all_orm_attributes`
+        :attr:`_orm.Mapper.all_orm_attributes`
 
-"""
+    """
+
+    HYBRID_PROPERTY = "HYBRID_PROPERTY"
+    """Symbol indicating an :class:`InspectionAttr` that's
+        of type :class:`.hybrid_method`.
+
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
+    attribute.
+
+    .. seealso::
+
+        :attr:`_orm.Mapper.all_orm_attributes`
+
+    """
 
 
-class hybrid_method(interfaces.InspectionAttrInfo):
+class _HybridGetterType(Protocol[_T_co]):
+    def __call__(s, self: Any) -> _T_co:
+        ...
+
+
+class _HybridSetterType(Protocol[_T_con]):
+    def __call__(self, instance: Any, value: _T_con) -> None:
+        ...
+
+
+class _HybridUpdaterType(Protocol[_T_con]):
+    def __call__(
+        self,
+        cls: Type[Any],
+        value: Union[_T_con, _ColumnExpressionArgument[_T_con]],
+    ) -> List[Tuple[_DMLColumnArgument, Any]]:
+        ...
+
+
+class _HybridDeleterType(Protocol[_T_co]):
+    def __call__(self, instance: Any) -> None:
+        ...
+
+
+class _HybridExprCallableType(Protocol[_T_co]):
+    def __call__(
+        self, cls: Any
+    ) -> Union[_HasClauseElement, ColumnElement[_T_co]]:
+        ...
+
+
+class hybrid_method(interfaces.InspectionAttrInfo, Generic[_T]):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
     """
 
     is_attribute = True
-    extension_type = HYBRID_METHOD
+    extension_type = HybridExtensionType.HYBRID_METHOD
 
-    def __init__(self, func, expr=None):
+    def __init__(
+        self,
+        func: Callable[..., _T],
+        expr: Optional[Callable[..., SQLCoreOperations[_T]]] = None,
+    ):
         """Create a new :class:`.hybrid_method`.
 
         Usage is typically via decorator::
 
             from sqlalchemy.ext.hybrid import hybrid_method
 
-            class SomeClass(object):
+            class SomeClass:
                 @hybrid_method
                 def value(self, x, y):
                     return self._value + x + y
@@ -863,13 +938,29 @@ class hybrid_method(interfaces.InspectionAttrInfo):
         self.func = func
         self.expression(expr or func)
 
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self.expr.__get__(owner, owner.__class__)
-        else:
-            return self.func.__get__(instance, owner)
+    @overload
+    def __get__(
+        self, instance: Literal[None], owner: Type[object]
+    ) -> Callable[[Any], SQLCoreOperations[_T]]:
+        ...
 
-    def expression(self, expr):
+    @overload
+    def __get__(
+        self, instance: object, owner: Type[object]
+    ) -> Callable[[Any], _T]:
+        ...
+
+    def __get__(
+        self, instance: Optional[object], owner: Type[object]
+    ) -> Union[Callable[[Any], _T], Callable[[Any], SQLCoreOperations[_T]]]:
+        if instance is None:
+            return self.expr.__get__(owner, owner)  # type: ignore
+        else:
+            return self.func.__get__(instance, owner)  # type: ignore
+
+    def expression(
+        self, expr: Callable[..., SQLCoreOperations[_T]]
+    ) -> hybrid_method[_T]:
         """Provide a modifying decorator that defines a
         SQL-expression producing method."""
 
@@ -879,23 +970,30 @@ class hybrid_method(interfaces.InspectionAttrInfo):
         return self
 
 
-class hybrid_property(interfaces.InspectionAttrInfo):
+Selfhybrid_property = TypeVar(
+    "Selfhybrid_property", bound="hybrid_property[Any]"
+)
+
+
+class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
 
     """
 
     is_attribute = True
-    extension_type = HYBRID_PROPERTY
+    extension_type = HybridExtensionType.HYBRID_PROPERTY
+
+    __name__: str
 
     def __init__(
         self,
-        fget,
-        fset=None,
-        fdel=None,
-        expr=None,
-        custom_comparator=None,
-        update_expr=None,
+        fget: _HybridGetterType[_T],
+        fset: Optional[_HybridSetterType[_T]] = None,
+        fdel: Optional[_HybridDeleterType[_T]] = None,
+        expr: Optional[_HybridExprCallableType[_T]] = None,
+        custom_comparator: Optional[Comparator[_T]] = None,
+        update_expr: Optional[_HybridUpdaterType[_T]] = None,
     ):
         """Create a new :class:`.hybrid_property`.
 
@@ -903,7 +1001,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
             from sqlalchemy.ext.hybrid import hybrid_property
 
-            class SomeClass(object):
+            class SomeClass:
                 @hybrid_property
                 def value(self):
                     return self._value
@@ -921,23 +1019,43 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         self.update_expr = update_expr
         util.update_wrapper(self, fget)
 
-    def __get__(self, instance, owner):
-        if instance is None:
+    @overload
+    def __get__(
+        self: Selfhybrid_property, instance: Any, owner: Literal[None]
+    ) -> Selfhybrid_property:
+        ...
+
+    @overload
+    def __get__(
+        self, instance: Literal[None], owner: Type[object]
+    ) -> SQLCoreOperations[_T]:
+        ...
+
+    @overload
+    def __get__(self, instance: object, owner: Type[object]) -> _T:
+        ...
+
+    def __get__(
+        self, instance: Optional[object], owner: Optional[Type[object]]
+    ) -> Union[hybrid_property[_T], SQLCoreOperations[_T], _T]:
+        if owner is None:
+            return self
+        elif instance is None:
             return self._expr_comparator(owner)
         else:
             return self.fget(instance)
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: object, value: Any) -> None:
         if self.fset is None:
             raise AttributeError("can't set attribute")
         self.fset(instance, value)
 
-    def __delete__(self, instance):
+    def __delete__(self, instance: object) -> None:
         if self.fdel is None:
             raise AttributeError("can't delete attribute")
         self.fdel(instance)
 
-    def _copy(self, **kw):
+    def _copy(self, **kw: Any) -> hybrid_property[_T]:
         defaults = {
             key: value
             for key, value in self.__dict__.items()
@@ -947,7 +1065,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         return type(self)(**defaults)
 
     @property
-    def overrides(self):
+    def overrides(self: Selfhybrid_property) -> Selfhybrid_property:
         """Prefix for a method that is overriding an existing attribute.
 
         The :attr:`.hybrid_property.overrides` accessor just returns
@@ -959,7 +1077,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         to be used without conflicting with the same-named attributes
         normally present on the :class:`.QueryableAttribute`::
 
-            class SuperClass(object):
+            class SuperClass:
                 # ...
 
                 @hybrid_property
@@ -982,7 +1100,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         """
         return self
 
-    def getter(self, fget):
+    def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines a getter method.
 
         .. versionadded:: 1.2
@@ -991,17 +1109,19 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
         return self._copy(fget=fget)
 
-    def setter(self, fset):
+    def setter(self, fset: _HybridSetterType[_T]) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines a setter method."""
 
         return self._copy(fset=fset)
 
-    def deleter(self, fdel):
+    def deleter(self, fdel: _HybridDeleterType[_T]) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines a deletion method."""
 
         return self._copy(fdel=fdel)
 
-    def expression(self, expr):
+    def expression(
+        self, expr: _HybridExprCallableType[_T]
+    ) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines a SQL-expression
         producing method.
 
@@ -1033,7 +1153,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
         return self._copy(expr=expr)
 
-    def comparator(self, comparator):
+    def comparator(self, comparator: Comparator[_T]) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines a custom
         comparator producing method.
 
@@ -1068,7 +1188,9 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         """
         return self._copy(custom_comparator=comparator)
 
-    def update_expression(self, meth):
+    def update_expression(
+        self, meth: _HybridUpdaterType[_T]
+    ) -> hybrid_property[_T]:
         """Provide a modifying decorator that defines an UPDATE tuple
         producing method.
 
@@ -1105,27 +1227,35 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         return self._copy(update_expr=meth)
 
     @util.memoized_property
-    def _expr_comparator(self):
+    def _expr_comparator(
+        self,
+    ) -> Callable[[Any], interfaces.PropComparator[_T]]:
         if self.custom_comparator is not None:
             return self._get_comparator(self.custom_comparator)
         elif self.expr is not None:
             return self._get_expr(self.expr)
         else:
-            return self._get_expr(self.fget)
+            return self._get_expr(cast(_HybridExprCallableType[_T], self.fget))
 
-    def _get_expr(self, expr):
-        def _expr(cls):
+    def _get_expr(
+        self, expr: _HybridExprCallableType[_T]
+    ) -> Callable[[Any], interfaces.PropComparator[_T]]:
+        def _expr(cls: Any) -> ExprComparator[_T]:
             return ExprComparator(cls, expr(cls), self)
 
         util.update_wrapper(_expr, expr)
 
         return self._get_comparator(_expr)
 
-    def _get_comparator(self, comparator):
+    def _get_comparator(
+        self, comparator: Any
+    ) -> Callable[[Any], interfaces.PropComparator[_T]]:
 
         proxy_attr = attributes.create_proxied_attribute(self)
 
-        def expr_comparator(owner):
+        def expr_comparator(
+            owner: Type[object],
+        ) -> interfaces.PropComparator[_T]:
             # because this is the descriptor protocol, we don't really know
             # what our attribute name is.  so search for it through the
             # MRO.
@@ -1148,44 +1278,59 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         return expr_comparator
 
 
-class Comparator(interfaces.PropComparator):
+class Comparator(interfaces.PropComparator[_T]):
     """A helper class that allows easy construction of custom
     :class:`~.orm.interfaces.PropComparator`
     classes for usage with hybrids."""
 
-    property = None
-
-    def __init__(self, expression):
+    def __init__(
+        self, expression: Union[_HasClauseElement, ColumnElement[_T]]
+    ):
         self.expression = expression
 
-    def __clause_element__(self):
+    def __clause_element__(self) -> ColumnsClauseRole:
         expr = self.expression
-        if hasattr(expr, "__clause_element__"):
-            expr = expr.__clause_element__()
-        return expr
+        if is_has_clause_element(expr):
+            ret_expr = expr.__clause_element__()
+        else:
+            if TYPE_CHECKING:
+                assert isinstance(expr, ColumnElement)
+            ret_expr = expr
 
-    def adapt_to_entity(self, adapt_to_entity):
+        return ret_expr
+
+    @util.non_memoized_property
+    def property(self) -> Any:
+        return None
+
+    def adapt_to_entity(
+        self, adapt_to_entity: AliasedInsp[Any]
+    ) -> Comparator[_T]:
         # interesting....
         return self
 
 
-class ExprComparator(Comparator):
-    def __init__(self, cls, expression, hybrid):
+class ExprComparator(Comparator[_T]):
+    def __init__(
+        self,
+        cls: Type[Any],
+        expression: Union[_HasClauseElement, ColumnElement[_T]],
+        hybrid: hybrid_property[_T],
+    ):
         self.cls = cls
         self.expression = expression
         self.hybrid = hybrid
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return getattr(self.expression, key)
 
-    @property
-    def info(self):
+    @util.non_memoized_property
+    def info(self) -> Dict[Any, Any]:
         return self.hybrid.info
 
-    def _bulk_update_tuples(self, value):
-        if isinstance(value, elements.BindParameter):
-            value = value.value
-
+    def _bulk_update_tuples(
+        self, value: Any
+    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
         if isinstance(self.expression, attributes.QueryableAttribute):
             return self.expression._bulk_update_tuples(value)
         elif self.hybrid.update_expr is not None:
@@ -1193,12 +1338,16 @@ class ExprComparator(Comparator):
         else:
             return [(self.expression, value)]
 
-    @property
-    def property(self):
-        return self.expression.property
+    @util.non_memoized_property
+    def property(self) -> Any:
+        return self.expression.property  # type: ignore
 
-    def operate(self, op, *other, **kwargs):
-        return op(self.expression, *other, **kwargs)
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[Any]:
+        return op(self.expression, *other, **kwargs)  # type: ignore
 
-    def reverse_operate(self, op, other, **kwargs):
-        return op(other, self.expression, **kwargs)
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> ColumnElement[Any]:
+        return op(other, self.expression, **kwargs)  # type: ignore

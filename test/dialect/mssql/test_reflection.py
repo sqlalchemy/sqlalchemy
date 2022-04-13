@@ -7,6 +7,7 @@ from sqlalchemy import DDL
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -18,10 +19,8 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
-from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 from sqlalchemy.dialects.mssql.information_schema import tables
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -217,6 +216,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     "referred_schema": "test_schema",
                     "referred_table": "subject",
                     "referred_columns": ["id"],
+                    "options": {},
                 }
             ],
         )
@@ -260,12 +260,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 [
                     {
                         "id": 1,
-                        "txt": u"foo",
+                        "txt": "foo",
                         "dt2": datetime.datetime(2020, 1, 1, 1, 1, 1),
                     },
                     {
                         "id": 2,
-                        "txt": u"bar",
+                        "txt": "bar",
                         "dt2": datetime.datetime(2020, 2, 2, 2, 2, 2),
                     },
                 ],
@@ -309,6 +309,54 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         found_it = testing.db.dialect.has_table(connection, table_name)
         eq_(found_it, exists)
 
+    def test_has_table_temp_not_present_but_another_session(self):
+        """test #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+                assert not c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
+    def test_has_table_temp_temp_present_both_sessions(self):
+        """test #7168, continues from #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                assert c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+                c2.rollback()
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(
@@ -337,6 +385,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     "referred_schema": referred_schema,
                     "name": "fkfoo",
                     "constrained_columns": ["foo_id"],
+                    "options": {},
                 }
             ],
         )
@@ -351,6 +400,56 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             autoload_with=connection,
         )
         eq_(m2.tables["%s.foo" % referred_schema].schema, referred_schema)
+
+    def test_fk_on_unique_index(self, metadata, connection):
+        # test for issue #7160
+        Table(
+            "uidx_parent",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("uidx_col1", Integer, nullable=False),
+            Column("uidx_col2", Integer, nullable=False),
+            Index(
+                "UIDX_composite",
+                "uidx_col1",
+                "uidx_col2",
+                unique=True,
+            ),
+        )
+
+        Table(
+            "uidx_child",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("parent_uidx_col1", Integer, nullable=False),
+            Column("parent_uidx_col2", Integer, nullable=False),
+            ForeignKeyConstraint(
+                ["parent_uidx_col1", "parent_uidx_col2"],
+                ["uidx_parent.uidx_col1", "uidx_parent.uidx_col2"],
+                name="FK_uidx_parent",
+            ),
+        )
+
+        metadata.create_all(connection)
+
+        inspector = inspect(connection)
+        fk_info = inspector.get_foreign_keys("uidx_child")
+        eq_(
+            fk_info,
+            [
+                {
+                    "referred_table": "uidx_parent",
+                    "referred_columns": ["uidx_col1", "uidx_col2"],
+                    "referred_schema": None,
+                    "name": "FK_uidx_parent",
+                    "constrained_columns": [
+                        "parent_uidx_col1",
+                        "parent_uidx_col2",
+                    ],
+                    "options": {},
+                }
+            ],
+        )
 
     def test_indexes_cols(self, metadata, connection):
 
@@ -449,12 +548,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
-    def test_info_unicode_coercion(self):
-
-        dialect = mssql.dialect()
-        value = CoerceUnicode().bind_processor(dialect)("a string")
-        assert isinstance(value, util.text_type)
-
     def test_info_unicode_cast_no_2000(self):
         dialect = mssql.dialect()
         dialect.server_version_info = base.MS_2000_VERSION
@@ -494,7 +587,7 @@ class ReflectHugeViewTest(fixtures.TablesTest):
             *[
                 Column("long_named_column_number_%d" % i, Integer)
                 for i in range(col_num)
-            ]
+            ],
         )
         cls.view_str = (
             view_str
@@ -688,8 +781,8 @@ class IdentityReflectionTest(fixtures.TablesTest):
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id3":
                 eq_(col["identity"], {"start": 1, "increment": 1})
-                eq_(type(col["identity"]["start"]), util.compat.long_type)
-                eq_(type(col["identity"]["increment"]), util.compat.long_type)
+                eq_(type(col["identity"]["start"]), int)
+                eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id4":
                 eq_(col["identity"], {"start": 1, "increment": 1})
                 eq_(type(col["identity"]["start"]), int)

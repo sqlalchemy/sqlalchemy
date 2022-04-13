@@ -1,5 +1,5 @@
 # mysql/enumerated.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,7 +12,6 @@ from ... import exc
 from ... import sql
 from ... import util
 from ...sql import sqltypes
-from ...sql.base import NO_ARG
 
 
 class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
@@ -59,15 +58,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
           BINARY in schema.  This does not affect the type of data stored,
           only the collation of character data.
 
-        :param quoting: Not used. A warning will be raised if provided.
-
         """
-        if kw.pop("quoting", NO_ARG) is not NO_ARG:
-            util.warn_deprecated_20(
-                "The 'quoting' parameter to :class:`.mysql.ENUM` is deprecated"
-                " and will be removed in a future release. "
-                "This parameter now has no effect."
-            )
         kw.pop("strict", None)
         self._enum_init(enums, kw)
         _StringType.__init__(self, length=self.length, **kw)
@@ -151,15 +142,7 @@ class SET(_StringType):
 
           .. versionadded:: 1.0.0
 
-        :param quoting: Not used. A warning will be raised if passed.
-
         """
-        if kw.pop("quoting", NO_ARG) is not NO_ARG:
-            util.warn_deprecated_20(
-                "The 'quoting' parameter to :class:`.mysql.SET` is deprecated"
-                " and will be removed in a future release. "
-                "This parameter now has no effect."
-            )
         self.retrieve_as_bitwise = kw.pop("retrieve_as_bitwise", False)
         self.values = tuple(values)
         if not self.retrieve_as_bitwise and "" in values:
@@ -169,10 +152,10 @@ class SET(_StringType):
             )
         if self.retrieve_as_bitwise:
             self._bitmap = dict(
-                (value, 2 ** idx) for idx, value in enumerate(self.values)
+                (value, 2**idx) for idx, value in enumerate(self.values)
             )
             self._bitmap.update(
-                (2 ** idx, value) for idx, value in enumerate(self.values)
+                (2**idx, value) for idx, value in enumerate(self.values)
             )
         length = max([len(v) for v in values] + [0])
         kw.setdefault("length", length)
@@ -201,7 +184,7 @@ class SET(_StringType):
             super_convert = super(SET, self).result_processor(dialect, coltype)
 
             def process(value):
-                if isinstance(value, util.string_types):
+                if isinstance(value, str):
                     # MySQLdb returns a string, let's parse
                     if super_convert:
                         value = super_convert(value)
@@ -222,7 +205,7 @@ class SET(_StringType):
             def process(value):
                 if value is None:
                     return None
-                elif isinstance(value, util.int_types + util.string_types):
+                elif isinstance(value, (int, str)):
                     if super_convert:
                         return super_convert(value)
                     else:
@@ -237,9 +220,7 @@ class SET(_StringType):
 
             def process(value):
                 # accept strings and int (actually bitflag) values directly
-                if value is not None and not isinstance(
-                    value, util.int_types + util.string_types
-                ):
+                if value is not None and not isinstance(value, (int, str)):
                     value = ",".join(value)
 
                 if super_convert:
@@ -252,3 +233,12 @@ class SET(_StringType):
     def adapt(self, impltype, **kw):
         kw["retrieve_as_bitwise"] = self.retrieve_as_bitwise
         return util.constructor_copy(self, impltype, *self.values, **kw)
+
+    def __repr__(self):
+        return util.generic_repr(
+            self,
+            to_inspect=[SET, _StringType],
+            additional_kw=[
+                ("retrieve_as_bitwise", False),
+            ],
+        )

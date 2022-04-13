@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 7130
-
-    Fixed issue where the deprecation warning for the :class:`.URL` constructor
-    which indicates that the :meth:`.URL.create` method should be used would
-    not emit if a full positional argument list of seven arguments were passed;
-    additionally, validation of URL arguments will now occur if the constructor
-    is called in this way, which was being skipped previously.

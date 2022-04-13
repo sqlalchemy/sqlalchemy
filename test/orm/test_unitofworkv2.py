@@ -1,3 +1,6 @@
+from unittest.mock import Mock
+from unittest.mock import patch
+
 from sqlalchemy import cast
 from sqlalchemy import DateTime
 from sqlalchemy import event
@@ -25,6 +28,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import unitofwork
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -34,14 +38,12 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 
-class AssertsUOW(object):
+class AssertsUOW:
     def _get_test_uow(self, session):
         uow = unitofwork.UOWTransaction(session)
         deleted = set(session._deleted)
@@ -1596,7 +1598,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
     def test_switch_on_update(self):
         Parent, Child = self._fixture()
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         p1 = Parent(id=1, child=Child())
         sess.add(p1)
@@ -1919,7 +1921,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
 
         sess.delete(p1)
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"DELETE statement on table 'parent' expected to "
             r"delete 1 row\(s\); 0 were matched.",
@@ -1939,7 +1941,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         sess.delete(p1)
         sess.delete(p2)
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"DELETE statement on table 'parent' expected to "
             r"delete 2 row\(s\); 0 were matched.",
@@ -2004,7 +2006,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
-            assert_raises_message(
+            assert_warns_message(
                 exc.SAWarning,
                 r"DELETE statement on table 'parent' expected to "
                 r"delete 1 row\(s\); 0 were matched.",
@@ -2201,7 +2203,7 @@ class LoadersUsingCommittedTest(UOWTest):
 
         sess.expunge_all()
         # lookup an address and move it to the other user
-        a1 = sess.query(Address).get(a1.id)
+        a1 = sess.get(Address, a1.id)
 
         # move address to another user's fk
         assert a1.user_id == u1.id
@@ -2270,7 +2272,7 @@ class LoadersUsingCommittedTest(UOWTest):
         sess.commit()
 
         sess.expunge_all()
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         u1.id = 2
         try:
             sess.flush()
@@ -2833,11 +2835,11 @@ class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     def define_tables(cls, metadata):
         from sqlalchemy import TypeDecorator
 
-        class NoBool(object):
+        class NoBool:
             def __nonzero__(self):
                 raise NotImplementedError("not supported")
 
-        class MyWidget(object):
+        class MyWidget:
             def __init__(self, text):
                 self.text = text
 
@@ -3174,7 +3176,7 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         eq_(s.query(cast(JSONThing.data_null, String)).scalar(), None)
 
 
-class EnsureCacheTest(fixtures.FutureEngineMixin, UOWTest):
+class EnsureCacheTest(UOWTest):
     def test_ensure_cache(self):
         users, User = self.tables.users, self.classes.User
 

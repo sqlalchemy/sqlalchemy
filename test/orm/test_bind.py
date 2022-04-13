@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import delete
 from sqlalchemy import ForeignKey
@@ -23,7 +25,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -285,7 +286,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.bind_mapper(Address, e2)
 
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected]
-        conn = sess.connection(**testcase)
+        conn = sess.connection(bind_arguments=testcase)
         is_(conn.engine, engine)
 
         sess.close()
@@ -354,7 +355,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
                 canary.get_bind(**kw)
                 return Session.get_bind(self, **kw)
 
-        sess = GetBindSession(e3, future=True)
+        sess = GetBindSession(e3)
         sess.bind_mapper(User, e1)
         sess.bind_mapper(Address, e2)
 
@@ -421,7 +422,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         c = testing.db.connect()
         sess = Session(bind=c)
         sess.begin()
-        transaction = sess._legacy_transaction()
+        transaction = sess.get_transaction()
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -448,43 +449,50 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(User, users)
         with testing.db.connect() as c:
 
-            sess = Session(bind=c, autocommit=False)
+            sess = Session(bind=c)
+
             u = User(name="u1")
             sess.add(u)
             sess.flush()
+
+            # new in 2.0:
+            # autobegin occurred, so c is in a transaction.
+
+            assert c.in_transaction()
             sess.close()
+
+            # .close() does a rollback, so that will end the
+            # transaction on the connection.  This is how it was
+            # working before also even if transaction was started.
+            # is this what we really want?
             assert not c.in_transaction()
+
             assert (
                 c.exec_driver_sql("select count(1) from users").scalar() == 0
             )
 
-            sess = Session(bind=c, autocommit=False)
+            sess = Session(bind=c)
             u = User(name="u2")
             sess.add(u)
             sess.flush()
             sess.commit()
-            assert not c.in_transaction()
-            assert (
-                c.exec_driver_sql("select count(1) from users").scalar() == 1
-            )
 
-            with c.begin():
-                c.exec_driver_sql("delete from users")
-            assert (
-                c.exec_driver_sql("select count(1) from users").scalar() == 0
-            )
+            # new in 2.0:
+            # commit OTOH doesn't actually do a commit.
+            # so still in transaction due to autobegin
+            assert c.in_transaction()
 
-        with testing.db.connect() as c:
-            trans = c.begin()
-            sess = Session(bind=c, autocommit=True)
+            sess = Session(bind=c)
             u = User(name="u3")
             sess.add(u)
             sess.flush()
-            assert c.in_transaction()
-            trans.commit()
+            sess.rollback()
+
+            # like .close(), rollback() also ends the transaction
             assert not c.in_transaction()
+
             assert (
-                c.exec_driver_sql("select count(1) from users").scalar() == 1
+                c.exec_driver_sql("select count(1) from users").scalar() == 0
             )
 
 
@@ -512,7 +520,6 @@ class SessionBindTest(fixtures.MappedTest):
         meta = MetaData()
         test_table.to_metadata(meta)
 
-        assert meta.tables["test_table"].bind is None
         cls.mapper_registry.map_imperatively(Foo, meta.tables["test_table"])
 
     def test_session_bind(self):
@@ -527,7 +534,7 @@ class SessionBindTest(fixtures.MappedTest):
                 f = Foo()
                 sess.add(f)
                 sess.flush()
-                assert sess.query(Foo).get(f.id) is f
+                assert sess.get(Foo, f.id) is f
             finally:
                 if hasattr(bind, "close"):
                     bind.close()
@@ -638,7 +645,7 @@ class GetBindTest(fixtures.MappedTest):
         session = self._fixture({})
         assert_raises_message(
             sa.exc.UnboundExecutionError,
-            "Could not locate a bind configured on mapper mapped class",
+            "Could not locate a bind configured on mapper ",
             session.get_bind,
             self.classes.BaseClass,
         )
@@ -649,7 +656,7 @@ class GetBindTest(fixtures.MappedTest):
 
         assert_raises_message(
             sa.exc.UnboundExecutionError,
-            "Could not locate a bind configured on mapper mapped class",
+            "Could not locate a bind configured on mapper ",
             session.get_bind,
             self.classes.ConcreteSubClass,
         )

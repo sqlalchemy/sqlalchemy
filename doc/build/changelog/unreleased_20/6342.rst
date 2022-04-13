@@ -1,0 +1,18 @@
+.. change::
+    :tags: engine, usecase
+    :tickets: 6342
+
+    Generalized the :paramref:`_sa.create_engine.isolation_level` parameter to
+    the base dialect so that it is no longer dependent on individual dialects
+    to be present. This parameter sets up the "isolation level" setting to
+    occur for all new database connections as soon as they are created by the
+    connection pool, where the value then stays set without being reset on
+    every checkin.
+
+    The :paramref:`_sa.create_engine.isolation_level` parameter is essentially
+    equivalent in functionality to using the
+    :paramref:`_engine.Engine.execution_options.isolation_level` parameter via
+    :meth:`_engine.Engine.execution_options` for an engine-wide setting. The
+    difference is in that the former setting assigns the isolation level just
+    once when a connection is created, the latter sets and resets the given
+    level on each connection checkout.

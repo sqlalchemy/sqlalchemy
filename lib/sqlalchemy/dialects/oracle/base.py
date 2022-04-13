@@ -1,5 +1,5 @@
 # oracle/base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,7 @@ r"""
     :name: Oracle
     :full_support: 11.2, 18c
     :normal_support: 11+
-    :best_effort: 8+
+    :best_effort: 9+
 
 
 Auto Increment Behavior
@@ -306,7 +306,7 @@ an INSERT in order to increment a sequence within an INSERT statement and get
 the value back at the same time. To disable this feature across the board,
 specify ``implicit_returning=False`` to :func:`_sa.create_engine`::
 
-    engine = create_engine("oracle://scott:tiger@dsn",
+    engine = create_engine("oracle+cx_oracle://scott:tiger@dsn",
                            implicit_returning=False)
 
 Implicit returning can also be disabled on a table-by-table basis as a table
@@ -341,6 +341,9 @@ and specify "passive_updates=False" on each relationship().
 Oracle 8 Compatibility
 ----------------------
 
+.. warning:: The status of Oracle 8 compatibility is not known for SQLAlchemy
+   2.0.
+
 When Oracle 8 is detected, the dialect internally configures itself to the
 following behaviors:
 
@@ -349,16 +352,12 @@ following behaviors:
   makes use of Oracle's (+) operator.
 
 * the NVARCHAR2 and NCLOB datatypes are no longer generated as DDL when
-  the :class:`~sqlalchemy.types.Unicode` is used - VARCHAR2 and CLOB are
-  issued instead.   This because these types don't seem to work correctly on
-  Oracle 8 even though they are available.  The
-  :class:`~sqlalchemy.types.NVARCHAR` and
+  the :class:`~sqlalchemy.types.Unicode` is used - VARCHAR2 and CLOB are issued
+  instead. This because these types don't seem to work correctly on Oracle 8
+  even though they are available. The :class:`~sqlalchemy.types.NVARCHAR` and
   :class:`~sqlalchemy.dialects.oracle.NCLOB` types will always generate
   NVARCHAR2 and NCLOB.
 
-* the "native unicode" mode is disabled when using cx_oracle, i.e. SQLAlchemy
-  encodes all Python unicode objects to "string" before passing in as bind
-  parameters.
 
 Synonym/DBLINK Reflection
 -------------------------
@@ -450,7 +449,7 @@ the ``exclude_tablespaces`` parameter::
 
     # exclude SYSAUX and SOME_TABLESPACE, but not SYSTEM
     e = create_engine(
-      "oracle://scott:tiger@xe",
+      "oracle+cx_oracle://scott:tiger@xe",
       exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
 
 .. versionadded:: 1.1
@@ -559,13 +558,14 @@ from ...sql import visitors
 from ...types import BLOB
 from ...types import CHAR
 from ...types import CLOB
+from ...types import DOUBLE_PRECISION
 from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NCHAR
 from ...types import NVARCHAR
+from ...types import REAL
 from ...types import TIMESTAMP
 from ...types import VARCHAR
-from ...util import compat
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -627,8 +627,49 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
             return sqltypes.Integer
 
 
-class DOUBLE_PRECISION(sqltypes.Float):
-    __visit_name__ = "DOUBLE_PRECISION"
+class FLOAT(sqltypes.FLOAT):
+    """Oracle FLOAT.
+
+    This is the same as :class:`_sqltypes.FLOAT` except that
+    an Oracle-specific :paramref:`_oracle.FLOAT.binary_precision`
+    parameter is accepted, and
+    the :paramref:`_sqltypes.Float.precision` parameter is not accepted.
+
+    Oracle FLOAT types indicate precision in terms of "binary precision", which
+    defaults to 126. For a REAL type, the value is 63. This parameter does not
+    cleanly map to a specific number of decimal places but is roughly
+    equivalent to the desired number of decimal places divided by 0.3103.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __visit_name__ = "FLOAT"
+
+    def __init__(
+        self,
+        binary_precision=None,
+        asdecimal=False,
+        decimal_return_scale=None,
+    ):
+        r"""
+        Construct a FLOAT
+
+        :param binary_precision: Oracle binary precision value to be rendered
+         in DDL. This may be approximated to the number of decimal characters
+         using the formula "decimal precision = 0.30103 * binary precision".
+         The default value used by Oracle for FLOAT / DOUBLE PRECISION is 126.
+
+        :param asdecimal: See :paramref:`_sqltypes.Float.asdecimal`
+
+        :param decimal_return_scale: See
+         :paramref:`_sqltypes.Float.decimal_return_scale`
+
+        """
+        super().__init__(
+            asdecimal=asdecimal, decimal_return_scale=decimal_return_scale
+        )
+        self.binary_precision = binary_precision
 
 
 class BINARY_DOUBLE(sqltypes.Float):
@@ -647,7 +688,28 @@ class LONG(sqltypes.Text):
     __visit_name__ = "LONG"
 
 
-class DATE(sqltypes.DateTime):
+class _OracleDateLiteralRender:
+    def literal_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if getattr(value, "microsecond", None):
+                    value = (
+                        f"""TO_TIMESTAMP"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS.FF')"""
+                    )
+                else:
+                    value = (
+                        f"""TO_DATE"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS')"""
+                    )
+            return value
+
+        return process
+
+
+class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
     """Provide the oracle DATE type.
 
     This type has no special Python behavior, except that it subclasses
@@ -662,6 +724,10 @@ class DATE(sqltypes.DateTime):
 
     def _compare_type_affinity(self, other):
         return other._type_affinity in (sqltypes.DateTime, sqltypes.Date)
+
+
+class _OracleDate(_OracleDateLiteralRender, sqltypes.Date):
+    pass
 
 
 class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
@@ -702,9 +768,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             day_precision=self.day_precision,
         )
 
-    def coerce_compared_value(self, op, value):
-        return self
-
 
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.
@@ -725,6 +788,7 @@ colspecs = {
     sqltypes.Boolean: _OracleBoolean,
     sqltypes.Interval: INTERVAL,
     sqltypes.DateTime: DATE,
+    sqltypes.Date: _OracleDate,
 }
 
 ischema_names = {
@@ -744,6 +808,7 @@ ischema_names = {
     "RAW": RAW,
     "FLOAT": FLOAT,
     "DOUBLE PRECISION": DOUBLE_PRECISION,
+    "REAL": REAL,
     "LONG": LONG,
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
@@ -761,6 +826,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_float(self, type_, **kw):
         return self.visit_FLOAT(type_, **kw)
+
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type_, **kw)
 
     def visit_unicode(self, type_, **kw):
         if self.dialect._use_nchar_for_unicode:
@@ -797,24 +865,50 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self._generate_numeric(type_, "BINARY_FLOAT", **kw)
 
     def visit_FLOAT(self, type_, **kw):
-        # don't support conversion between decimal/binary
-        # precision yet
-        kw["no_precision"] = True
+        kw["_requires_binary_precision"] = True
         return self._generate_numeric(type_, "FLOAT", **kw)
 
     def visit_NUMBER(self, type_, **kw):
         return self._generate_numeric(type_, "NUMBER", **kw)
 
     def _generate_numeric(
-        self, type_, name, precision=None, scale=None, no_precision=False, **kw
+        self,
+        type_,
+        name,
+        precision=None,
+        scale=None,
+        _requires_binary_precision=False,
+        **kw,
     ):
         if precision is None:
-            precision = type_.precision
+
+            precision = getattr(type_, "precision", None)
+
+        if _requires_binary_precision:
+            binary_precision = getattr(type_, "binary_precision", None)
+
+            if precision and binary_precision is None:
+                # https://www.oracletutorial.com/oracle-basics/oracle-float/
+                estimated_binary_precision = int(precision / 0.30103)
+                raise exc.ArgumentError(
+                    "Oracle FLOAT types use 'binary precision', which does "
+                    "not convert cleanly from decimal 'precision'.  Please "
+                    "specify "
+                    f"this type with a separate Oracle variant, such as "
+                    f"{type_.__class__.__name__}(precision={precision})."
+                    f"with_variant(oracle.FLOAT"
+                    f"(binary_precision="
+                    f"{estimated_binary_precision}), 'oracle'), so that the "
+                    "Oracle specific 'binary_precision' may be specified "
+                    "accurately."
+                )
+            else:
+                precision = binary_precision
 
         if scale is None:
             scale = getattr(type_, "scale", None)
 
-        if no_precision or precision is None:
+        if precision is None:
             return name
         elif scale is None:
             n = "%(name)s(%(precision)s)"
@@ -1021,7 +1115,9 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return " " + alias_name_text
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = []
         binds = []
 
@@ -1054,23 +1150,34 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam))
             )
 
-            # ensure the ExecutionContext.get_out_parameters() method is
-            # *not* called; the cx_Oracle dialect wants to handle these
-            # parameters separately
-            self.has_out_parameters = False
+            # has_out_parameters would in a normal case be set to True
+            # as a result of the compiler visiting an outparam() object.
+            # in this case, the above outparam() objects are not being
+            # visited.   Ensure the statement itself didn't have other
+            # outparam() objects independently.
+            # technically, this could be supported, but as it would be
+            # a very strange use case without a clear rationale, disallow it
+            if self.has_out_parameters:
+                raise exc.InvalidRequestError(
+                    "Using explicit outparam() objects with "
+                    "UpdateBase.returning() in the same Core DML statement "
+                    "is not supported in the Oracle dialect."
+                )
+
+            self._oracle_returning = True
 
             columns.append(self.process(col_expr, within_columns_clause=False))
-
-            self._add_to_result_map(
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                (
-                    column,
-                    getattr(column, "name", None),
-                    getattr(column, "key", None),
-                ),
-                column.type,
-            )
+            if populate_result_map:
+                self._add_to_result_map(
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    (
+                        column,
+                        getattr(column, "name", None),
+                        getattr(column, "key", None),
+                    ),
+                    column.type,
+                )
 
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
@@ -1415,7 +1522,7 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         return (
             lc_value in self.reserved_words
             or value[0] in self.illegal_initial_characters
-            or not self.legal_characters.match(util.text_type(value))
+            or not self.legal_characters.match(str(value))
         )
 
     def format_savepoint(self, savepoint):
@@ -1439,9 +1546,12 @@ class OracleDialect(default.DefaultDialect):
     name = "oracle"
     supports_statement_cache = True
     supports_alter = True
-    supports_unicode_statements = False
-    supports_unicode_binds = False
     max_identifier_length = 128
+
+    implicit_returning = True
+    full_returning = True
+
+    div_is_floordiv = False
 
     supports_simple_order_by_label = False
     cte_follows_insert = True
@@ -1464,7 +1574,7 @@ class OracleDialect(default.DefaultDialect):
 
     statement_compiler = OracleCompiler
     ddl_compiler = OracleDDLCompiler
-    type_compiler = OracleTypeCompiler
+    type_compiler_cls = OracleTypeCompiler
     preparer = OracleIdentifierPreparer
     execution_ctx_cls = OracleExecutionContext
 
@@ -1497,7 +1607,7 @@ class OracleDialect(default.DefaultDialect):
         use_binds_for_limits=None,
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
-        **kwargs
+        **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
         self._use_nchar_for_unicode = use_nchar_for_unicode
@@ -1508,9 +1618,11 @@ class OracleDialect(default.DefaultDialect):
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
 
-        self.implicit_returning = self.__dict__.get(
-            "implicit_returning", self.server_version_info > (10,)
-        )
+        # Oracle 8i has RETURNING:
+        # https://docs.oracle.com/cd/A87860_01/doc/index.htm
+
+        # so does Oracle8:
+        # https://docs.oracle.com/cd/A64702_01/doc/index.htm
 
         if self._is_oracle_8:
             self.colspecs = self.colspecs.copy()
@@ -1576,21 +1688,8 @@ class OracleDialect(default.DefaultDialect):
             # use the default
             return None
 
-    def _check_unicode_returns(self, connection):
-        additional_tests = [
-            expression.cast(
-                expression.literal_column("'test nvarchar2 returns'"),
-                sqltypes.NVARCHAR(60),
-            )
-        ]
-        return super(OracleDialect, self)._check_unicode_returns(
-            connection, additional_tests
-        )
-
-    _isolation_lookup = ["READ COMMITTED", "SERIALIZABLE"]
-
-    def get_isolation_level(self, connection):
-        raise NotImplementedError("implemented by cx_Oracle dialect")
+    def get_isolation_level_values(self, dbapi_connection):
+        return ["READ COMMITTED", "SERIALIZABLE"]
 
     def get_default_isolation_level(self, dbapi_conn):
         try:
@@ -1600,9 +1699,6 @@ class OracleDialect(default.DefaultDialect):
         except:
             return "READ COMMITTED"
 
-    def set_isolation_level(self, connection, level):
-        raise NotImplementedError("implemented by cx_Oracle dialect")
-
     def has_table(self, connection, table_name, schema=None):
         self._ensure_has_table_connection(connection)
 
@@ -1611,9 +1707,14 @@ class OracleDialect(default.DefaultDialect):
 
         cursor = connection.execute(
             sql.text(
-                "SELECT table_name FROM all_tables "
-                "WHERE table_name = CAST(:name AS VARCHAR2(128)) "
-                "AND owner = CAST(:schema_name AS VARCHAR2(128))"
+                """SELECT table_name FROM all_tables
+                WHERE table_name = CAST(:name AS VARCHAR2(128))
+                AND owner = CAST(:schema_name AS VARCHAR2(128))
+                UNION ALL
+                SELECT view_name FROM all_views
+                WHERE view_name = CAST(:name AS VARCHAR2(128))
+                AND owner = CAST(:schema_name AS VARCHAR2(128))
+                """
             ),
             dict(
                 name=self.denormalize_name(table_name),
@@ -1720,7 +1821,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         if resolve_synonyms:
@@ -1973,8 +2074,19 @@ class OracleDialect(default.DefaultDialect):
                 else:
                     coltype = NUMBER(precision, scale)
             elif coltype == "FLOAT":
-                # TODO: support "precision" here as "binary_precision"
-                coltype = FLOAT()
+                # https://docs.oracle.com/cd/B14117_01/server.101/b10758/sqlqr06.htm
+                if precision == 126:
+                    # The DOUBLE PRECISION datatype is a floating-point
+                    # number with binary precision 126.
+                    coltype = DOUBLE_PRECISION()
+                elif precision == 63:
+                    # The REAL datatype is a floating-point number with a
+                    # binary precision of 63, or 18 decimal.
+                    coltype = REAL()
+                else:
+                    # non standard precision
+                    coltype = FLOAT(binary_precision=precision)
+
             elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
                 coltype = self.ischema_names.get(coltype)(length)
             elif "WITH TIME ZONE" in coltype:
@@ -2039,17 +2151,17 @@ class OracleDialect(default.DefaultDialect):
             value = value.strip()
 
             if "START WITH" in option:
-                identity["start"] = compat.long_type(value)
+                identity["start"] = int(value)
             elif "INCREMENT BY" in option:
-                identity["increment"] = compat.long_type(value)
+                identity["increment"] = int(value)
             elif "MAX_VALUE" in option:
-                identity["maxvalue"] = compat.long_type(value)
+                identity["maxvalue"] = int(value)
             elif "MIN_VALUE" in option:
-                identity["minvalue"] = compat.long_type(value)
+                identity["minvalue"] = int(value)
             elif "CYCLE_FLAG" in option:
                 identity["cycle"] = value == "Y"
             elif "CACHE_SIZE" in option:
-                identity["cache"] = compat.long_type(value)
+                identity["cache"] = int(value)
             elif "ORDER_FLAG" in option:
                 identity["order"] = value == "Y"
         return identity
@@ -2062,7 +2174,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         info_cache = kw.get("info_cache")
@@ -2099,7 +2211,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         info_cache = kw.get("info_cache")
@@ -2442,7 +2554,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
         info_cache = kw.get("info_cache")
         (view_name, schema, dblink, synonym) = self._prepare_reflection_args(
@@ -2463,8 +2575,6 @@ class OracleDialect(default.DefaultDialect):
 
         rp = connection.execute(sql.text(text), params).scalar()
         if rp:
-            if util.py2k:
-                rp = rp.decode(self.encoding)
             return rp
         else:
             return None

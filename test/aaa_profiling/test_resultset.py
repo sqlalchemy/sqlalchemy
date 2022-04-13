@@ -7,13 +7,11 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Unicode
-from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.engine.row import Row
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
-from sqlalchemy.util import u
 
 
 NUM_FIELDS = 10
@@ -31,7 +29,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             *[
                 Column("field%d" % fnum, String(50))
                 for fnum in range(NUM_FIELDS)
-            ]
+            ],
         )
         Table(
             "table2",
@@ -39,7 +37,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             *[
                 Column("field%d" % fnum, Unicode(50))
                 for fnum in range(NUM_FIELDS)
-            ]
+            ],
         )
 
     @classmethod
@@ -50,7 +48,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             t.insert(),
             [
                 dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
+                    ("field%d" % fnum, "value%d" % fnum)
                     for fnum in range(NUM_FIELDS)
                 )
                 for r_num in range(NUM_RECORDS)
@@ -60,7 +58,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             t2.insert(),
             [
                 dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
+                    ("field%d" % fnum, "value%d" % fnum)
                     for fnum in range(NUM_FIELDS)
                 )
                 for r_num in range(NUM_RECORDS)
@@ -111,15 +109,6 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
         )
         with testing.db.connect() as conn:
             [tuple(row) for row in conn.exec_driver_sql(stmt).fetchall()]
-
-    @profiling.function_call_count()
-    def test_fetch_by_key_legacy(self):
-        t, t2 = self.tables("table1", "table2")
-        with testing.db.connect().execution_options(
-            compiled_cache=None
-        ) as conn:
-            for row in conn.execute(t.select()).fetchall():
-                [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
 
     @profiling.function_call_count()
     def test_fetch_by_key_mappings(self):
@@ -176,7 +165,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
 
         @profiling.function_call_count(variance=0.10)
         def go():
-            c1 in row
+            c1 in row._mapping
 
         go()
 
@@ -221,7 +210,7 @@ class RowTest(fixtures.TestBase):
     __backend__ = True
 
     def _rowproxy_fixture(self, keys, processors, row, row_cls):
-        class MockMeta(object):
+        class MockMeta:
             def __init__(self):
                 pass
 
@@ -238,33 +227,6 @@ class RowTest(fixtures.TestBase):
         return row_cls(
             metadata, processors, keymap, row_cls._default_key_style, row
         )
-
-    def _test_getitem_value_refcounts_legacy(self, seq_factory):
-        col1, col2 = object(), object()
-
-        def proc1(value):
-            return value
-
-        value1, value2 = "x", "y"
-        row = self._rowproxy_fixture(
-            [(col1, "a"), (col2, "b")],
-            [proc1, None],
-            seq_factory([value1, value2]),
-            LegacyRow,
-        )
-
-        v1_refcount = sys.getrefcount(value1)
-        v2_refcount = sys.getrefcount(value2)
-        for i in range(10):
-            row[col1]
-            row["a"]
-            row[col2]
-            row["b"]
-            row[0]
-            row[1]
-            row[0:2]
-        eq_(sys.getrefcount(value1), v1_refcount)
-        eq_(sys.getrefcount(value2), v2_refcount)
 
     def _test_getitem_value_refcounts_new(self, seq_factory):
         col1, col2 = object(), object()
@@ -294,11 +256,10 @@ class RowTest(fixtures.TestBase):
         eq_(sys.getrefcount(value2), v2_refcount)
 
     def test_value_refcounts_pure_tuple(self):
-        self._test_getitem_value_refcounts_legacy(tuple)
         self._test_getitem_value_refcounts_new(tuple)
 
     def test_value_refcounts_custom_seq(self):
-        class CustomSeq(object):
+        class CustomSeq:
             def __init__(self, data):
                 self.data = data
 
@@ -308,5 +269,4 @@ class RowTest(fixtures.TestBase):
             def __iter__(self):
                 return iter(self.data)
 
-        self._test_getitem_value_refcounts_legacy(CustomSeq)
         self._test_getitem_value_refcounts_new(CustomSeq)

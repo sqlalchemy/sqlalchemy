@@ -1,5 +1,5 @@
 # testing/profiling.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,6 +11,8 @@ These are special purpose profiling methods which operate
 in a more fine-grained way than nose's profiling plugin.
 
 """
+
+from __future__ import annotations
 
 import collections
 import contextlib
@@ -55,7 +57,7 @@ def _start_current_test(id_):
         _profile_stats.reset_count()
 
 
-class ProfileStatsFile(object):
+class ProfileStatsFile:
     """Store per-platform/fn profiling results in a file.
 
     There was no json module available when this was written, but now
@@ -105,11 +107,7 @@ class ProfileStatsFile(object):
             dbapi_key,
         ]
 
-        platform_tokens.append(
-            "nativeunicode"
-            if config.db.dialect.convert_unicode
-            else "dbapiunicode"
-        )
+        platform_tokens.append("dbapiunicode")
         _has_cext = has_compiled_ext()
         platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
         return "_".join(platform_tokens)
@@ -242,26 +240,18 @@ def function_call_count(variance=0.05, times=1, warmup=0):
     # likely due to the introduction of __signature__.
 
     from sqlalchemy.util import decorator
-    from sqlalchemy.util import deprecations
-    from sqlalchemy.engine import row
-    from sqlalchemy.testing import mock
 
     @decorator
     def wrap(fn, *args, **kw):
 
-        with mock.patch.object(
-            deprecations, "SQLALCHEMY_WARN_20", False
-        ), mock.patch.object(
-            row.LegacyRow, "_default_key_style", row.KEY_OBJECTS_NO_WARN
-        ):
-            for warm in range(warmup):
-                fn(*args, **kw)
+        for warm in range(warmup):
+            fn(*args, **kw)
 
-            timerange = range(times)
-            with count_functions(variance=variance):
-                for time in timerange:
-                    rv = fn(*args, **kw)
-                return rv
+        timerange = range(times)
+        with count_functions(variance=variance):
+            for time in timerange:
+                rv = fn(*args, **kw)
+            return rv
 
     return wrap
 
@@ -288,7 +278,7 @@ def count_functions(variance=0.05):
     # ended = time.time()
     pr.disable()
 
-    # s = compat.StringIO()
+    # s = StringIO()
     stats = pstats.Stats(pr, stream=sys.stdout)
 
     # timespent = ended - began

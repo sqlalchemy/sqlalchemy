@@ -1,7 +1,11 @@
+from unittest import mock
+from unittest.mock import Mock
+
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import create_mock_engine
 from sqlalchemy import event
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
@@ -373,7 +377,7 @@ class DDLEventTest(fixtures.TestBase):
         eq_(metadata_canary.mock_calls, [])
 
 
-class DDLExecutionTest(fixtures.TestBase):
+class DDLExecutionTest(AssertsCompiledSQL, fixtures.TestBase):
     def setup_test(self):
         self.engine = engines.mock_engine()
         self.metadata = MetaData()
@@ -485,6 +489,121 @@ class DDLExecutionTest(fixtures.TestBase):
         strings = " ".join(str(x) for x in pg_mock.mock)
         assert "my_test_constraint" in strings
 
+    @testing.combinations(("dialect",), ("callable",), ("callable_w_state",))
+    def test_inline_ddl_if_dialect_name(self, ddl_if_type):
+        nonpg_mock = engines.mock_engine(dialect_name="sqlite")
+        pg_mock = engines.mock_engine(dialect_name="postgresql")
+
+        metadata = MetaData()
+
+        capture_mock = Mock()
+        state = object()
+
+        if ddl_if_type == "dialect":
+            ddl_kwargs = dict(dialect="postgresql")
+        elif ddl_if_type == "callable":
+
+            def is_pg(ddl, target, bind, **kw):
+                capture_mock.is_pg(ddl, target, bind, **kw)
+                return kw["dialect"].name == "postgresql"
+
+            ddl_kwargs = dict(callable_=is_pg)
+        elif ddl_if_type == "callable_w_state":
+
+            def is_pg(ddl, target, bind, **kw):
+                capture_mock.is_pg(ddl, target, bind, **kw)
+                return kw["dialect"].name == "postgresql"
+
+            ddl_kwargs = dict(callable_=is_pg, state=state)
+        else:
+            assert False
+
+        data_col = Column("data", String)
+        t = Table(
+            "a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("num", Integer),
+            data_col,
+            Index("my_pg_index", data_col).ddl_if(**ddl_kwargs),
+            CheckConstraint("num > 5").ddl_if(**ddl_kwargs),
+        )
+
+        metadata.create_all(nonpg_mock)
+        eq_(len(nonpg_mock.mock), 1)
+        self.assert_compile(
+            nonpg_mock.mock[0],
+            "CREATE TABLE a (id INTEGER NOT NULL, num INTEGER, "
+            "data VARCHAR, PRIMARY KEY (id))",
+            dialect=nonpg_mock.dialect,
+        )
+
+        metadata.create_all(pg_mock)
+
+        eq_(len(pg_mock.mock), 2)
+
+        self.assert_compile(
+            pg_mock.mock[0],
+            "CREATE TABLE a (id SERIAL NOT NULL, num INTEGER, "
+            "data VARCHAR, PRIMARY KEY (id), CHECK (num > 5))",
+            dialect=pg_mock.dialect,
+        )
+        self.assert_compile(
+            pg_mock.mock[1],
+            "CREATE INDEX my_pg_index ON a (data)",
+            dialect="postgresql",
+        )
+
+        the_index = list(t.indexes)[0]
+        the_constraint = list(
+            c for c in t.constraints if isinstance(c, CheckConstraint)
+        )[0]
+
+        if ddl_if_type in ("callable", "callable_w_state"):
+
+            if ddl_if_type == "callable":
+                check_state = None
+            else:
+                check_state = state
+
+            eq_(
+                capture_mock.mock_calls,
+                [
+                    mock.call.is_pg(
+                        mock.ANY,
+                        the_index,
+                        mock.ANY,
+                        state=check_state,
+                        dialect=nonpg_mock.dialect,
+                        compiler=None,
+                    ),
+                    mock.call.is_pg(
+                        mock.ANY,
+                        the_constraint,
+                        None,
+                        state=check_state,
+                        dialect=nonpg_mock.dialect,
+                        compiler=mock.ANY,
+                    ),
+                    mock.call.is_pg(
+                        mock.ANY,
+                        the_index,
+                        mock.ANY,
+                        state=check_state,
+                        dialect=pg_mock.dialect,
+                        compiler=None,
+                    ),
+                    mock.call.is_pg(
+                        mock.ANY,
+                        the_constraint,
+                        None,
+                        state=check_state,
+                        dialect=pg_mock.dialect,
+                        compiler=mock.ANY,
+                    ),
+                ],
+            )
+
     @testing.requires.sqlite
     def test_ddl_execute(self):
         engine = create_engine("sqlite:///")
@@ -538,8 +657,9 @@ class DDLTransactionTest(fixtures.TestBase):
         finally:
             m.drop_all(testing.db)
 
-    def _listening_engine_fixture(self, future=False):
-        eng = engines.testing_engine(future=future)
+    @testing.fixture
+    def listening_engine_fixture(self):
+        eng = engines.testing_engine()
 
         m1 = mock.Mock()
 
@@ -558,17 +678,7 @@ class DDLTransactionTest(fixtures.TestBase):
 
         return eng, m1
 
-    @testing.fixture
-    def listening_engine_fixture(self):
-        return self._listening_engine_fixture(future=False)
-
-    @testing.fixture
-    def future_listening_engine_fixture(self):
-        return self._listening_engine_fixture(future=True)
-
-    def test_ddl_legacy_engine(
-        self, metadata_fixture, listening_engine_fixture
-    ):
+    def test_ddl_engine(self, metadata_fixture, listening_engine_fixture):
         eng, m1 = listening_engine_fixture
 
         metadata_fixture.create_all(eng)
@@ -583,68 +693,10 @@ class DDLTransactionTest(fixtures.TestBase):
             ],
         )
 
-    def test_ddl_future_engine(
-        self, metadata_fixture, future_listening_engine_fixture
-    ):
-        eng, m1 = future_listening_engine_fixture
-
-        metadata_fixture.create_all(eng)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.begin(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_legacy_connection_no_transaction(
+    def test_ddl_connection_autobegin_transaction(
         self, metadata_fixture, listening_engine_fixture
     ):
         eng, m1 = listening_engine_fixture
-
-        with eng.connect() as conn:
-            with testing.expect_deprecated(
-                "The current statement is being autocommitted using "
-                "implicit autocommit"
-            ):
-                metadata_fixture.create_all(conn)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_legacy_connection_transaction(
-        self, metadata_fixture, listening_engine_fixture
-    ):
-        eng, m1 = listening_engine_fixture
-
-        with eng.connect() as conn:
-            with conn.begin():
-                metadata_fixture.create_all(conn)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.begin(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_future_connection_autobegin_transaction(
-        self, metadata_fixture, future_listening_engine_fixture
-    ):
-        eng, m1 = future_listening_engine_fixture
 
         with eng.connect() as conn:
             metadata_fixture.create_all(conn)
@@ -661,10 +713,10 @@ class DDLTransactionTest(fixtures.TestBase):
             ],
         )
 
-    def test_ddl_future_connection_explicit_begin_transaction(
-        self, metadata_fixture, future_listening_engine_fixture
+    def test_ddl_connection_explicit_begin_transaction(
+        self, metadata_fixture, listening_engine_fixture
     ):
-        eng, m1 = future_listening_engine_fixture
+        eng, m1 = listening_engine_fixture
 
         with eng.connect() as conn:
             with conn.begin():

@@ -1,5 +1,5 @@
 # orm/path_registry.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,15 +8,22 @@
 
 """
 
+from __future__ import annotations
+
+from functools import reduce
 from itertools import chain
 import logging
+from typing import Any
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
-from .base import class_mapper
+from . import base as orm_base
 from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import visitors
-from ..sql.traversals import HasCacheKey
+from ..sql.cache_key import HasCacheKey
 
 log = logging.getLogger(__name__)
 
@@ -59,14 +66,20 @@ class PathRegistry(HasCacheKey):
 
     is_token = False
     is_root = False
+    has_entity = False
 
+    path: Tuple
+    natural_path: Tuple
+    parent: Union["PathRegistry", None]
+
+    root: "PathRegistry"
     _cache_key_traversal = [
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key_list)
     ]
 
     def __eq__(self, other):
         try:
-            return other is not None and self.path == other.path
+            return other is not None and self.path == other._path_for_compare
         except AttributeError:
             util.warn(
                 "Comparison of PathRegistry to %r is not supported"
@@ -76,13 +89,17 @@ class PathRegistry(HasCacheKey):
 
     def __ne__(self, other):
         try:
-            return other is None or self.path != other.path
+            return other is None or self.path != other._path_for_compare
         except AttributeError:
             util.warn(
                 "Comparison of PathRegistry to %r is not supported"
                 % (type(other))
             )
             return True
+
+    @property
+    def _path_for_compare(self):
+        return self.path
 
     def set(self, attributes, key, value):
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
@@ -104,6 +121,9 @@ class PathRegistry(HasCacheKey):
 
     def __hash__(self):
         return id(self)
+
+    def __getitem__(self, key: Any) -> "PathRegistry":
+        raise NotImplementedError()
 
     @property
     def length(self):
@@ -131,21 +151,45 @@ class PathRegistry(HasCacheKey):
     def _serialize_path(cls, path):
         return list(
             zip(
-                [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
-                [path[i].key for i in range(1, len(path), 2)] + [None],
+                [
+                    m.class_ if (m.is_mapper or m.is_aliased_class) else str(m)
+                    for m in [path[i] for i in range(0, len(path), 2)]
+                ],
+                [
+                    path[i].key if (path[i].is_property) else str(path[i])
+                    for i in range(1, len(path), 2)
+                ]
+                + [None],
             )
         )
 
     @classmethod
     def _deserialize_path(cls, path):
+        def _deserialize_mapper_token(mcls):
+            return (
+                # note: we likely dont want configure=True here however
+                # this is maintained at the moment for backwards compatibility
+                orm_base._inspect_mapped_class(mcls, configure=True)
+                if mcls not in PathToken._intern
+                else PathToken._intern[mcls]
+            )
+
+        def _deserialize_key_token(mcls, key):
+            if key is None:
+                return None
+            elif key in PathToken._intern:
+                return PathToken._intern[key]
+            else:
+                return orm_base._inspect_mapped_class(
+                    mcls, configure=True
+                ).attrs[key]
+
         p = tuple(
             chain(
                 *[
                     (
-                        class_mapper(mcls),
-                        class_mapper(mcls).attrs[key]
-                        if key is not None
-                        else None,
+                        _deserialize_mapper_token(mcls),
+                        _deserialize_key_token(mcls, key),
                     )
                     for mcls, key in path
                 ]
@@ -155,32 +199,13 @@ class PathRegistry(HasCacheKey):
             p = p[0:-1]
         return p
 
-    @classmethod
-    def serialize_context_dict(cls, dict_, tokens):
-        return [
-            ((key, cls._serialize_path(path)), value)
-            for (key, path), value in [
-                (k, v)
-                for k, v in dict_.items()
-                if isinstance(k, tuple) and k[0] in tokens
-            ]
-        ]
-
-    @classmethod
-    def deserialize_context_dict(cls, serialized):
-        return util.OrderedDict(
-            ((key, tuple(cls._deserialize_path(path))), value)
-            for (key, path), value in serialized
-        )
-
-    def serialize(self):
+    def serialize(self) -> Sequence[Any]:
         path = self.path
         return self._serialize_path(path)
 
     @classmethod
-    def deserialize(cls, path):
-        if path is None:
-            return None
+    def deserialize(cls, path: Sequence[Any]) -> PathRegistry:
+        assert path is not None
         p = cls._deserialize_path(path)
         return cls.coerce(p)
 
@@ -193,21 +218,24 @@ class PathRegistry(HasCacheKey):
 
     @classmethod
     def coerce(cls, raw):
-        return util.reduce(lambda prev, next: prev[next], raw, cls.root)
+        return reduce(lambda prev, next: prev[next], raw, cls.root)
 
     def token(self, token):
-        if token.endswith(":" + _WILDCARD_TOKEN):
+        if token.endswith(f":{_WILDCARD_TOKEN}"):
             return TokenRegistry(self, token)
-        elif token.endswith(":" + _DEFAULT_TOKEN):
+        elif token.endswith(f":{_DEFAULT_TOKEN}"):
             return TokenRegistry(self.root, token)
         else:
-            raise exc.ArgumentError("invalid token: %s" % token)
+            raise exc.ArgumentError(f"invalid token: {token}")
 
     def __add__(self, other):
-        return util.reduce(lambda prev, next: prev[next], other.path, self)
+        return reduce(lambda prev, next: prev[next], other.path, self)
+
+    def __str__(self):
+        return f"ORM Path[{' -> '.join(str(elem) for elem in self.path)}]"
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
 
 class RootRegistry(PathRegistry):
@@ -224,19 +252,26 @@ class RootRegistry(PathRegistry):
     is_root = True
 
     def __getitem__(self, entity):
-        return entity._path_registry
+        if entity in PathToken._intern:
+            return TokenRegistry(self, PathToken._intern[entity])
+        else:
+            return inspection.inspect(entity)._path_registry
 
 
 PathRegistry.root = RootRegistry()
 
 
-class PathToken(HasCacheKey, str):
+class PathToken(orm_base.InspectionAttr, HasCacheKey, str):
     """cacheable string token"""
 
     _intern = {}
 
     def _gen_cache_key(self, anon_map, bindparams):
         return (str(self),)
+
+    @property
+    def _path_for_compare(self):
+        return None
 
     @classmethod
     def intern(cls, strvalue):
@@ -279,7 +314,10 @@ class TokenRegistry(PathRegistry):
             yield self
 
     def __getitem__(self, entity):
-        raise NotImplementedError()
+        try:
+            return self.path[entity]
+        except TypeError as err:
+            raise IndexError(f"{entity}") from err
 
 
 class PropRegistry(PathRegistry):
@@ -358,20 +396,17 @@ class PropRegistry(PathRegistry):
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.natural_path)
 
-    def __str__(self):
-        return " -> ".join(str(elem) for elem in self.path)
-
     @util.memoized_property
     def has_entity(self):
-        return hasattr(self.prop, "mapper")
+        return self.prop._links_to_entity
 
     @util.memoized_property
     def entity(self):
-        return self.prop.mapper
+        return self.prop.entity
 
     @property
     def mapper(self):
-        return self.entity
+        return self.prop.mapper
 
     @property
     def entity_path(self):
@@ -445,6 +480,8 @@ class AbstractEntityRegistry(PathRegistry):
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
+        elif entity in PathToken._intern:
+            return TokenRegistry(self, PathToken._intern[entity])
         else:
             return PropRegistry(self, entity)
 
@@ -473,6 +510,8 @@ class CachingEntityRegistry(AbstractEntityRegistry, dict):
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
+        elif isinstance(entity, PathToken):
+            return TokenRegistry(self, entity)
         else:
             return dict.__getitem__(self, entity)
 

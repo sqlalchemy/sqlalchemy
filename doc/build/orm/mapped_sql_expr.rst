@@ -34,12 +34,13 @@ will provide for us the ``fullname``, which is the string concatenation of the t
 Above, the ``fullname`` attribute is interpreted at both the instance and
 class level, so that it is available from an instance::
 
-    some_user = session.query(User).first()
+    some_user = session.scalars(select(User).limit(1)).first()
     print(some_user.fullname)
 
 as well as usable within queries::
 
-    some_user = session.query(User).filter(User.fullname == "John Smith").first()
+    some_user = session.scalars(select(User).where(User.fullname == "John Smith").limit(1)).first()
+
 
 The string concatenation example is a simple one, where the Python expression
 can be dual purposed at the instance and class level.  Often, the SQL expression
@@ -251,7 +252,7 @@ assigned to ``filename`` and ``path`` are usable directly.  The use of the
 :attr:`.ColumnProperty.expression` attribute is only necessary when using
 the :class:`.ColumnProperty` directly within the mapping definition::
 
-    q = session.query(File.path).filter(File.filename == 'foo.txt')
+    stmt = select(File.path).where(File.filename == 'foo.txt')
 
 
 Using a plain descriptor
@@ -356,7 +357,7 @@ The :func:`.query_expression` mapping has these caveats:
   query, such as the WHERE clause, the ORDER BY clause, and make use of the
   ad-hoc expression; that is, this won't work::
 
-    # wont work
+    # won't work
     q = session.query(A).options(
         with_expression(A.expr, A.x + A.y)
     ).filter(A.expr > 5).order_by(A.expr)

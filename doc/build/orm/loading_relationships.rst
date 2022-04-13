@@ -13,7 +13,7 @@ This behavior can be configured at mapper construction time using the
 function, as well as by using options with the :class:`_query.Query` object.
 
 The loading of relationships falls into three categories; **lazy** loading,
-**eager** loading, and **no** loading. Lazy loading refers to objects are returned
+**eager** loading, and **no** loading. Lazy loading refers to objects that are returned
 from a query without the related
 objects loaded at first.  When the given collection or reference is
 first accessed on a particular object, an additional SELECT statement
@@ -443,6 +443,16 @@ an OUTER JOIN:
 On older versions of SQLite, the above nested right JOIN may be re-rendered
 as a nested subquery.  Older versions of SQLAlchemy would convert right-nested
 joins into subqueries in all cases.
+
+    .. warning::
+
+        Using ``with_for_update`` in the context of eager loading
+        relationships is not officially supported or recommended by
+        SQLAlchemy and may not work with certain queries on various
+        database backends.  When ``with_for_update`` is successfully used
+        with a query that involves :func:`_orm.joinedload`, SQLAlchemy will
+        attempt to emit SQL that locks all involved tables.
+
 
 Joined eager loading and result set batching
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1251,16 +1261,15 @@ Relationship Loader API
 
 .. autofunction:: defaultload
 
-.. autofunction:: eagerload
-
 .. autofunction:: immediateload
 
 .. autofunction:: joinedload
 
 .. autofunction:: lazyload
 
-.. autoclass:: Load
+.. autoclass:: sqlalchemy.orm.Load
     :members:
+    :inherited-members: Generative
 
 .. autofunction:: noload
 

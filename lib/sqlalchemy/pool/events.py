@@ -1,16 +1,29 @@
 # sqlalchemy/pool/events.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
+import typing
+from typing import Any
+from typing import Optional
+from typing import Type
+from typing import Union
+
+from .base import ConnectionPoolEntry
 from .base import Pool
+from .base import PoolProxiedConnection
 from .. import event
-from ..engine.base import Engine
+from .. import util
+
+if typing.TYPE_CHECKING:
+    from ..engine import Engine
+    from ..engine.interfaces import DBAPIConnection
 
 
-class PoolEvents(event.Events):
+class PoolEvents(event.Events[Pool]):
     """Available events for :class:`_pool.Pool`.
 
     The methods here define the name of an event as well
@@ -32,37 +45,56 @@ class PoolEvents(event.Events):
     targets, which will be resolved to the ``.pool`` attribute of the
     given engine or the :class:`_pool.Pool` class::
 
-        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
         # will associate with engine.pool
         event.listen(engine, 'checkout', my_on_checkout)
 
-    """
+    """  # noqa: E501
 
     _target_class_doc = "SomeEngineOrPool"
     _dispatch_target = Pool
 
+    @util.preload_module("sqlalchemy.engine")
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(
+        cls, target: Union[Pool, Type[Pool], Engine, Type[Engine]]
+    ) -> Optional[Union[Pool, Type[Pool]]]:
+        if not typing.TYPE_CHECKING:
+            Engine = util.preloaded.engine.Engine
+
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Pool
-            elif issubclass(target, Pool):
+            else:
+                assert issubclass(target, Pool)
                 return target
         elif isinstance(target, Engine):
             return target.pool
-        else:
+        elif isinstance(target, Pool):
             return target
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
+        else:
+            return None
 
     @classmethod
-    def _listen(cls, event_key, **kw):
+    def _listen(  # type: ignore[override]   # would rather keep **kw
+        cls,
+        event_key: event._EventKey[Pool],
+        **kw: Any,
+    ) -> None:
         target = event_key.dispatch_target
 
         kw.setdefault("asyncio", target._is_asyncio)
 
         event_key.base_listen(**kw)
 
-    def connect(self, dbapi_connection, connection_record):
+    def connect(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called at the moment a particular DBAPI connection is first
         created for a given :class:`_pool.Pool`.
 
@@ -71,14 +103,18 @@ class PoolEvents(event.Events):
         to produce a new DBAPI connection.
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         """
 
-    def first_connect(self, dbapi_connection, connection_record):
+    def first_connect(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called exactly once for the first time a DBAPI connection is
         checked out from a particular :class:`_pool.Pool`.
 
@@ -96,24 +132,29 @@ class PoolEvents(event.Events):
         encoding settings, collation settings, and many others.
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         """
 
-    def checkout(self, dbapi_connection, connection_record, connection_proxy):
+    def checkout(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+        connection_proxy: PoolProxiedConnection,
+    ) -> None:
         """Called when a connection is retrieved from the Pool.
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
-        :param connection_proxy: the :class:`._ConnectionFairy` object which
-          will proxy the public interface of the DBAPI connection for the
+        :param connection_proxy: the :class:`.PoolProxiedConnection` object
+          which will proxy the public interface of the DBAPI connection for the
           lifespan of the checkout.
 
         If you raise a :class:`~sqlalchemy.exc.DisconnectionError`, the current
@@ -127,7 +168,11 @@ class PoolEvents(event.Events):
 
         """
 
-    def checkin(self, dbapi_connection, connection_record):
+    def checkin(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called when a connection returns to the pool.
 
         Note that the connection may be closed, and may be None if the
@@ -135,14 +180,18 @@ class PoolEvents(event.Events):
         for detached connections.  (They do not return to the pool.)
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         """
 
-    def reset(self, dbapi_connection, connection_record):
+    def reset(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called before the "reset" action occurs for a pooled connection.
 
         This event represents
@@ -157,10 +206,10 @@ class PoolEvents(event.Events):
         cases where the connection is discarded immediately after reset.
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         .. seealso::
 
@@ -170,21 +219,26 @@ class PoolEvents(event.Events):
 
         """
 
-    def invalidate(self, dbapi_connection, connection_record, exception):
+    def invalidate(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+        exception: Optional[BaseException],
+    ) -> None:
         """Called when a DBAPI connection is to be "invalidated".
 
-        This event is called any time the :meth:`._ConnectionRecord.invalidate`
-        method is invoked, either from API usage or via "auto-invalidation",
-        without the ``soft`` flag.
+        This event is called any time the
+        :meth:`.ConnectionPoolEntry.invalidate` method is invoked, either from
+        API usage or via "auto-invalidation", without the ``soft`` flag.
 
         The event occurs before a final attempt to call ``.close()`` on the
         connection occurs.
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         :param exception: the exception object corresponding to the reason
          for this invalidation, if any.  May be ``None``.
@@ -198,10 +252,16 @@ class PoolEvents(event.Events):
 
         """
 
-    def soft_invalidate(self, dbapi_connection, connection_record, exception):
+    def soft_invalidate(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+        exception: Optional[BaseException],
+    ) -> None:
         """Called when a DBAPI connection is to be "soft invalidated".
 
-        This event is called any time the :meth:`._ConnectionRecord.invalidate`
+        This event is called any time the
+        :meth:`.ConnectionPoolEntry.invalidate`
         method is invoked with the ``soft`` flag.
 
         Soft invalidation refers to when the connection record that tracks
@@ -212,17 +272,21 @@ class PoolEvents(event.Events):
         .. versionadded:: 1.0.3
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         :param exception: the exception object corresponding to the reason
          for this invalidation, if any.  May be ``None``.
 
         """
 
-    def close(self, dbapi_connection, connection_record):
+    def close(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called when a DBAPI connection is closed.
 
         The event is emitted before the close occurs.
@@ -238,14 +302,18 @@ class PoolEvents(event.Events):
         .. versionadded:: 1.1
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         """
 
-    def detach(self, dbapi_connection, connection_record):
+    def detach(
+        self,
+        dbapi_connection: DBAPIConnection,
+        connection_record: ConnectionPoolEntry,
+    ) -> None:
         """Called when a DBAPI connection is "detached" from a pool.
 
         This event is emitted after the detach occurs.  The connection
@@ -254,14 +322,14 @@ class PoolEvents(event.Events):
         .. versionadded:: 1.1
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
-        :param connection_record: the :class:`._ConnectionRecord` managing the
-         DBAPI connection.
+        :param connection_record: the :class:`.ConnectionPoolEntry` managing
+         the DBAPI connection.
 
         """
 
-    def close_detached(self, dbapi_connection):
+    def close_detached(self, dbapi_connection: DBAPIConnection) -> None:
         """Called when a detached DBAPI connection is closed.
 
         The event is emitted before the close occurs.
@@ -273,6 +341,6 @@ class PoolEvents(event.Events):
         .. versionadded:: 1.1
 
         :param dbapi_connection: a DBAPI connection.
-         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+         The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
         """

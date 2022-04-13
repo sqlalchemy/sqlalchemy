@@ -1,13 +1,14 @@
 # testing/assertions.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-from __future__ import absolute_import
+from __future__ import annotations
 
 import contextlib
+from itertools import filterfalse
 import re
 import sys
 import warnings
@@ -26,14 +27,13 @@ from .. import util
 from ..engine import default
 from ..engine import url
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..util import compat
 from ..util import decorator
 
 
 def expect_warnings(*messages, **kw):
     """Context manager which expects one or more warnings.
 
-    With no arguments, squelches all SAWarning and RemovedIn20Warning emitted via
+    With no arguments, squelches all SAWarning emitted via
     sqlalchemy.util.warn and sqlalchemy.util.warn_limited.   Otherwise
     pass string expressions that will match selected warnings via regex;
     all non-matching warnings are sent through.
@@ -43,9 +43,7 @@ def expect_warnings(*messages, **kw):
     Note that the test suite sets SAWarning warnings to raise exceptions.
 
     """  # noqa
-    return _expect_warnings(
-        (sa_exc.RemovedIn20Warning, sa_exc.SAWarning), messages, **kw
-    )
+    return _expect_warnings(sa_exc.SAWarning, messages, **kw)
 
 
 @contextlib.contextmanager
@@ -58,7 +56,7 @@ def expect_warnings_on(db, *messages, **kw):
     """
     spec = db_spec(db)
 
-    if isinstance(db, util.string_types) and not spec(config._current):
+    if isinstance(db, str) and not spec(config._current):
         yield
     else:
         with expect_warnings(*messages, **kw):
@@ -86,7 +84,7 @@ def expect_deprecated(*messages, **kw):
 
 
 def expect_deprecated_20(*messages, **kw):
-    return _expect_warnings(sa_exc.RemovedIn20Warning, messages, **kw)
+    return _expect_warnings(sa_exc.Base20DeprecationWarning, messages, **kw)
 
 
 def emits_warning_on(db, *messages):
@@ -143,14 +141,15 @@ def _expect_warnings(
     exc_cls,
     messages,
     regex=True,
+    search_msg=False,
     assert_=True,
-    py2konly=False,
     raise_on_any_unexpected=False,
+    squelch_other_warnings=False,
 ):
 
     global _FILTERS, _SEEN, _EXC_CLS
 
-    if regex:
+    if regex or search_msg:
         filters = [re.compile(msg, re.I | re.S) for msg in messages]
     else:
         filters = list(messages)
@@ -188,33 +187,33 @@ def _expect_warnings(
                 exception = None
 
             if not exception or not issubclass(exception, _EXC_CLS):
-                return real_warn(msg, *arg, **kw)
+                if not squelch_other_warnings:
+                    return real_warn(msg, *arg, **kw)
+                else:
+                    return
 
             if not filters and not raise_on_any_unexpected:
                 return
 
             for filter_ in filters:
-                if (regex and filter_.match(msg)) or (
-                    not regex and filter_ == msg
+                if (
+                    (search_msg and filter_.search(msg))
+                    or (regex and filter_.match(msg))
+                    or (not regex and filter_ == msg)
                 ):
                     seen.discard(filter_)
                     break
             else:
-                real_warn(msg, *arg, **kw)
+                if not squelch_other_warnings:
+                    real_warn(msg, *arg, **kw)
 
-        with mock.patch("warnings.warn", our_warn), mock.patch(
-            "sqlalchemy.util.SQLALCHEMY_WARN_20", True
-        ), mock.patch(
-            "sqlalchemy.util.deprecations.SQLALCHEMY_WARN_20", True
-        ), mock.patch(
-            "sqlalchemy.engine.row.LegacyRow._default_key_style", 2
-        ):
+        with mock.patch("warnings.warn", our_warn):
             try:
                 yield
             finally:
                 _SEEN = _FILTERS = _EXC_CLS = None
 
-                if assert_ and (not py2konly or not compat.py3k):
+                if assert_:
                     assert not seen, "Warnings were not seen: %s" % ", ".join(
                         "%r" % (s.pattern if regex else s) for s in seen
                     )
@@ -329,9 +328,6 @@ def _assert_proper_exception_context(exception):
 
     """
 
-    if not util.py3k:
-        return
-
     if (
         exception.__context__ is not exception.__cause__
         and not exception.__suppress_context__
@@ -357,6 +353,40 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     )
 
 
+def assert_warns(except_cls, callable_, *args, **kwargs):
+    """legacy adapter function for functions that were previously using
+    assert_raises with SAWarning or similar.
+
+    has some workarounds to accommodate the fact that the callable completes
+    with this approach rather than stopping at the exception raise.
+
+
+    """
+    with _expect_warnings(except_cls, [".*"], squelch_other_warnings=True):
+        return callable_(*args, **kwargs)
+
+
+def assert_warns_message(except_cls, msg, callable_, *args, **kwargs):
+    """legacy adapter function for functions that were previously using
+    assert_raises with SAWarning or similar.
+
+    has some workarounds to accommodate the fact that the callable completes
+    with this approach rather than stopping at the exception raise.
+
+    Also uses regex.search() to match the given message to the error string
+    rather than regex.match().
+
+    """
+    with _expect_warnings(
+        except_cls,
+        [msg],
+        search_msg=True,
+        regex=False,
+        squelch_other_warnings=True,
+    ):
+        return callable_(*args, **kwargs)
+
+
 def assert_raises_message_context_ok(
     except_cls, msg, callable_, *args, **kwargs
 ):
@@ -372,12 +402,21 @@ def _assert_raises(
     return ec.error
 
 
-class _ErrorContainer(object):
+class _ErrorContainer:
     error = None
 
 
 @contextlib.contextmanager
 def _expect_raises(except_cls, msg=None, check_context=False):
+    if (
+        isinstance(except_cls, type)
+        and issubclass(except_cls, Warning)
+        or isinstance(except_cls, Warning)
+    ):
+        raise TypeError(
+            "Use expect_warnings for warnings, not "
+            "expect_raises / assert_raises"
+        )
     ec = _ErrorContainer()
     if check_context:
         are_we_already_in_a_traceback = sys.exc_info()[0]
@@ -388,12 +427,16 @@ def _expect_raises(except_cls, msg=None, check_context=False):
         ec.error = err
         success = True
         if msg is not None:
-            assert re.search(
-                msg, util.text_type(err), re.UNICODE
-            ), "%r !~ %s" % (msg, err)
+            # I'm often pdbing here, and "err" above isn't
+            # in scope, so assign the string explicitly
+            error_as_string = str(err)
+            assert re.search(msg, error_as_string, re.UNICODE), "%r !~ %s" % (
+                msg,
+                error_as_string,
+            )
         if check_context and not are_we_already_in_a_traceback:
             _assert_proper_exception_context(err)
-        print(util.text_type(err).encode("utf-8"))
+        print(str(err).encode("utf-8"))
 
     # it's generally a good idea to not carry traceback objects outside
     # of the except: block, but in this case especially we seem to have
@@ -414,7 +457,7 @@ def expect_raises_message(except_cls, msg, check_context=True):
     return _expect_raises(except_cls, msg=msg, check_context=check_context)
 
 
-class AssertsCompiledSQL(object):
+class AssertsCompiledSQL:
     def assert_compile(
         self,
         clause,
@@ -456,7 +499,7 @@ class AssertsCompiledSQL(object):
                 dialect.supports_default_metavalue = supports_default_metavalue
             elif dialect == "default_enhanced":
                 dialect = default.StrCompileDialect()
-            elif isinstance(dialect, util.string_types):
+            elif isinstance(dialect, str):
                 dialect = url.URL.create(dialect).get_dialect()()
 
         if default_schema_name:
@@ -496,14 +539,14 @@ class AssertsCompiledSQL(object):
         if compile_kwargs:
             kw["compile_kwargs"] = compile_kwargs
 
-        class DontAccess(object):
+        class DontAccess:
             def __getattribute__(self, key):
                 raise NotImplementedError(
                     "compiler accessed .statement; use "
                     "compiler.current_executable"
                 )
 
-        class CheckCompilerAccess(object):
+        class CheckCompilerAccess:
             def __init__(self, test_statement):
                 self.test_statement = test_statement
                 self._annotations = {}
@@ -520,6 +563,10 @@ class AssertsCompiledSQL(object):
                         self._inline = test_statement._inline
                     if hasattr(test_statement, "_return_defaults"):
                         self._return_defaults = test_statement._return_defaults
+
+            @property
+            def _variant_mapping(self):
+                return self.test_statement._variant_mapping
 
             def _default_dialect(self):
                 return self.test_statement._default_dialect()
@@ -552,22 +599,20 @@ class AssertsCompiledSQL(object):
         # are the "self.statement" element
         c = CheckCompilerAccess(clause).compile(dialect=dialect, **kw)
 
-        param_str = repr(getattr(c, "params", {}))
-        if util.py3k:
-            param_str = param_str.encode("utf-8").decode("ascii", "ignore")
-            print(
-                ("\nSQL String:\n" + util.text_type(c) + param_str).encode(
-                    "utf-8"
-                )
-            )
+        if isinstance(clause, sqltypes.TypeEngine):
+            cache_key_no_warnings = clause._static_cache_key
+            if cache_key_no_warnings:
+                hash(cache_key_no_warnings)
         else:
-            print(
-                "\nSQL String:\n"
-                + util.text_type(c).encode("utf-8")
-                + param_str
-            )
+            cache_key_no_warnings = clause._generate_cache_key()
+            if cache_key_no_warnings:
+                hash(cache_key_no_warnings[0])
 
-        cc = re.sub(r"[\n\t]", "", util.text_type(c))
+        param_str = repr(getattr(c, "params", {}))
+        param_str = param_str.encode("utf-8").decode("ascii", "ignore")
+        print(("\nSQL String:\n" + str(c) + param_str).encode("utf-8"))
+
+        cc = re.sub(r"[\n\t]", "", str(c))
 
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
@@ -596,7 +641,7 @@ class AssertsCompiledSQL(object):
             )
 
 
-class ComparesTables(object):
+class ComparesTables:
     def assert_tables_equal(self, table, reflected_table, strict_types=False):
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
@@ -640,7 +685,7 @@ class ComparesTables(object):
         )
 
 
-class AssertsExecutionResults(object):
+class AssertsExecutionResults:
     def assert_result(self, result, class_, *objects):
         result = list(result)
         print(repr(result))
@@ -687,9 +732,7 @@ class AssertsExecutionResults(object):
         found = util.IdentitySet(result)
         expected = {immutabledict(e) for e in expected}
 
-        for wrong in util.itertools_filterfalse(
-            lambda o: isinstance(o, cls), found
-        ):
+        for wrong in filterfalse(lambda o: isinstance(o, cls), found):
             fail(
                 'Unexpected type "%s", expected "%s"'
                 % (type(wrong).__name__, cls.__name__)

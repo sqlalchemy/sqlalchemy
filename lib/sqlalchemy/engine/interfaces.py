@@ -1,5 +1,5 @@
 # engine/interfaces.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,12 +7,548 @@
 
 """Define core interfaces used by the engine system."""
 
+from __future__ import annotations
+
+from enum import Enum
+from types import ModuleType
+from typing import Any
+from typing import Awaitable
+from typing import Callable
+from typing import ClassVar
+from typing import Dict
+from typing import List
+from typing import Mapping
+from typing import MutableMapping
+from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
 from .. import util
+from ..event import EventTarget
+from ..pool import Pool
+from ..pool import PoolProxiedConnection
+from ..sql.compiler import Compiled as Compiled
 from ..sql.compiler import Compiled  # noqa
+from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
+from ..util import immutabledict
+from ..util.concurrency import await_only
+from ..util.typing import Literal
+from ..util.typing import NotRequired
+from ..util.typing import Protocol
+from ..util.typing import TypedDict
+
+if TYPE_CHECKING:
+    from .base import Connection
+    from .base import Engine
+    from .cursor import CursorResult
+    from .url import URL
+    from ..event import _ListenerFnType
+    from ..event import dispatcher
+    from ..exc import StatementError
+    from ..sql import Executable
+    from ..sql.compiler import DDLCompiler
+    from ..sql.compiler import IdentifierPreparer
+    from ..sql.compiler import Linting
+    from ..sql.compiler import SQLCompiler
+    from ..sql.elements import BindParameter
+    from ..sql.elements import ClauseElement
+    from ..sql.schema import Column
+    from ..sql.schema import DefaultGenerator
+    from ..sql.schema import Sequence as Sequence_SchemaItem
+    from ..sql.sqltypes import Integer
+    from ..sql.type_api import _TypeMemoDict
+    from ..sql.type_api import TypeEngine
+
+ConnectArgsType = Tuple[Tuple[str], MutableMapping[str, Any]]
+
+_T = TypeVar("_T", bound="Any")
 
 
-class Dialect(object):
+class CacheStats(Enum):
+    CACHE_HIT = 0
+    CACHE_MISS = 1
+    CACHING_DISABLED = 2
+    NO_CACHE_KEY = 3
+    NO_DIALECT_SUPPORT = 4
+
+
+class DBAPIConnection(Protocol):
+    """protocol representing a :pep:`249` database connection.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        `Connection Objects <https://www.python.org/dev/peps/pep-0249/#connection-objects>`_
+        - in :pep:`249`
+
+    """  # noqa: E501
+
+    def close(self) -> None:
+        ...
+
+    def commit(self) -> None:
+        ...
+
+    def cursor(self) -> DBAPICursor:
+        ...
+
+    def rollback(self) -> None:
+        ...
+
+    autocommit: bool
+
+
+class DBAPIType(Protocol):
+    """protocol representing a :pep:`249` database type.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        `Type Objects <https://www.python.org/dev/peps/pep-0249/#type-objects>`_
+        - in :pep:`249`
+
+    """  # noqa: E501
+
+
+class DBAPICursor(Protocol):
+    """protocol representing a :pep:`249` database cursor.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        `Cursor Objects <https://www.python.org/dev/peps/pep-0249/#cursor-objects>`_
+        - in :pep:`249`
+
+    """  # noqa: E501
+
+    @property
+    def description(
+        self,
+    ) -> Sequence[
+        Tuple[
+            str,
+            "DBAPIType",
+            Optional[int],
+            Optional[int],
+            Optional[int],
+            Optional[int],
+            Optional[bool],
+        ]
+    ]:
+        """The description attribute of the Cursor.
+
+        .. seealso::
+
+            `cursor.description <https://www.python.org/dev/peps/pep-0249/#description>`_
+            - in :pep:`249`
+
+
+        """  # noqa: E501
+        ...
+
+    @property
+    def rowcount(self) -> int:
+        ...
+
+    arraysize: int
+
+    lastrowid: int
+
+    def close(self) -> None:
+        ...
+
+    def execute(
+        self,
+        operation: Any,
+        parameters: Optional[_DBAPISingleExecuteParams] = None,
+    ) -> Any:
+        ...
+
+    def executemany(
+        self,
+        operation: Any,
+        parameters: Sequence[_DBAPIMultiExecuteParams],
+    ) -> Any:
+        ...
+
+    def fetchone(self) -> Optional[Any]:
+        ...
+
+    def fetchmany(self, size: int = ...) -> Sequence[Any]:
+        ...
+
+    def fetchall(self) -> Sequence[Any]:
+        ...
+
+    def setinputsizes(self, sizes: Sequence[Any]) -> None:
+        ...
+
+    def setoutputsize(self, size: Any, column: Any) -> None:
+        ...
+
+    def callproc(self, procname: str, parameters: Sequence[Any] = ...) -> Any:
+        ...
+
+    def nextset(self) -> Optional[bool]:
+        ...
+
+
+_CoreSingleExecuteParams = Mapping[str, Any]
+_MutableCoreSingleExecuteParams = MutableMapping[str, Any]
+_CoreMultiExecuteParams = Sequence[_CoreSingleExecuteParams]
+_CoreAnyExecuteParams = Union[
+    _CoreMultiExecuteParams, _CoreSingleExecuteParams
+]
+
+_DBAPISingleExecuteParams = Union[Sequence[Any], _CoreSingleExecuteParams]
+
+_DBAPIMultiExecuteParams = Union[
+    Sequence[Sequence[Any]], _CoreMultiExecuteParams
+]
+_DBAPIAnyExecuteParams = Union[
+    _DBAPIMultiExecuteParams, _DBAPISingleExecuteParams
+]
+_DBAPICursorDescription = Tuple[str, Any, Any, Any, Any, Any, Any]
+
+_AnySingleExecuteParams = _DBAPISingleExecuteParams
+_AnyMultiExecuteParams = _DBAPIMultiExecuteParams
+_AnyExecuteParams = _DBAPIAnyExecuteParams
+
+
+_ExecuteOptions = immutabledict[str, Any]
+_ExecuteOptionsParameter = Mapping[str, Any]
+_SchemaTranslateMapType = Mapping[str, str]
+
+_ImmutableExecuteOptions = immutabledict[str, Any]
+
+_ParamStyle = Literal["qmark", "numeric", "named", "format", "pyformat"]
+
+_IsolationLevel = Literal[
+    "SERIALIZABLE",
+    "REPEATABLE READ",
+    "READ COMMITTED",
+    "READ UNCOMMITTED",
+    "AUTOCOMMIT",
+]
+
+
+class ReflectedIdentity(TypedDict):
+    """represent the reflected IDENTITY structure of a column, corresponding
+    to the :class:`_schema.Identity` construct.
+
+    The :class:`.ReflectedIdentity` structure is part of the
+    :class:`.ReflectedColumn` structure, which is returned by the
+    :meth:`.Inspector.get_columns` method.
+
+    """
+
+    always: bool
+    """type of identity column"""
+
+    on_null: bool
+    """indicates ON NULL"""
+
+    start: int
+    """starting index of the sequence"""
+
+    increment: int
+    """increment value of the sequence"""
+
+    minvalue: int
+    """the minimum value of the sequence."""
+
+    maxvalue: int
+    """the maximum value of the sequence."""
+
+    nominvalue: bool
+    """no minimum value of the sequence."""
+
+    nomaxvalue: bool
+    """no maximum value of the sequence."""
+
+    cycle: bool
+    """allows the sequence to wrap around when the maxvalue
+    or minvalue has been reached."""
+
+    cache: Optional[int]
+    """number of future values in the
+    sequence which are calculated in advance."""
+
+    order: bool
+    """if true, renders the ORDER keyword."""
+
+
+class ReflectedComputed(TypedDict):
+    """Represent the reflected elements of a computed column, corresponding
+    to the :class:`_schema.Computed` construct.
+
+    The :class:`.ReflectedComputed` structure is part of the
+    :class:`.ReflectedColumn` structure, which is returned by the
+    :meth:`.Inspector.get_columns` method.
+
+    """
+
+    sqltext: str
+    """the expression used to generate this column returned
+    as a string SQL expression"""
+
+    persisted: bool
+    """indicates if the value is stored or computed on demand"""
+
+
+class ReflectedColumn(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    a :class:`_schema.Column` object.
+
+    The :class:`.ReflectedColumn` structure is returned by the
+    :class:`.Inspector.get_columns` method.
+
+    """
+
+    name: str
+    """column name"""
+
+    type: TypeEngine[Any]
+    """column type represented as a :class:`.TypeEngine` instance."""
+
+    nullable: bool
+    """column nullability"""
+
+    default: str
+    """column default expression as a SQL string"""
+
+    autoincrement: NotRequired[bool]
+    """database-dependent autoincrement flag.
+
+    This flag indicates if the column has a database-side "autoincrement"
+    flag of some kind.   Within SQLAlchemy, other kinds of columns may
+    also act as an "autoincrement" column without necessarily having
+    such a flag on them.
+
+    See :paramref:`_schema.Column.autoincrement` for more background on
+    "autoincrement".
+
+    """
+
+    comment: NotRequired[Optional[str]]
+    """comment for the column, if present"""
+
+    computed: NotRequired[Optional[ReflectedComputed]]
+    """indicates this column is computed at insert (possibly update) time by
+    the database."""
+
+    identity: NotRequired[Optional[ReflectedIdentity]]
+    """indicates this column is an IDENTITY column"""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedCheckConstraint(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.CheckConstraint`.
+
+    The :class:`.ReflectedCheckConstraint` structure is returned by the
+    :meth:`.Inspector.get_check_constraints` method.
+
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    sqltext: str
+    """the check constraint's SQL expression"""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedUniqueConstraint(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.UniqueConstraint`.
+
+    The :class:`.ReflectedUniqueConstraint` structure is returned by the
+    :meth:`.Inspector.get_unique_constraints` method.
+
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    column_names: List[str]
+    """column names which comprise the constraint"""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedPrimaryKeyConstraint(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.PrimaryKeyConstraint`.
+
+    The :class:`.ReflectedPrimaryKeyConstraint` structure is returned by the
+    :meth:`.Inspector.get_pk_constraint` method.
+
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    constrained_columns: List[str]
+    """column names which comprise the constraint"""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedForeignKeyConstraint(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.ForeignKeyConstraint`.
+
+    The :class:`.ReflectedForeignKeyConstraint` structure is returned by
+    the :meth:`.Inspector.get_foreign_keys` method.
+
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    constrained_columns: List[str]
+    """local column names which comprise the constraint"""
+
+    referred_schema: Optional[str]
+    """schema name of the table being referenced"""
+
+    referred_table: str
+    """name of the table being referenced"""
+
+    referred_columns: List[str]
+    """referenced column names"""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedIndex(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.Index`.
+
+    The :class:`.ReflectedIndex` structure is returned by the
+    :meth:`.Inspector.get_indexes` method.
+
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    column_names: List[str]
+    """column names which the index refers towards"""
+
+    unique: bool
+    """whether or not the index has a unique flag"""
+
+    duplicates_constraint: NotRequired[bool]
+    """boolean indicating this index mirrors a unique constraint of the same
+    name"""
+
+    include_columns: NotRequired[List[str]]
+    """columns to include in the INCLUDE clause for supporting databases.
+
+    .. deprecated:: 2.0
+
+        Legacy value, will be replaced with
+        ``d["dialect_options"][<dialect name>]["include"]``
+
+    """
+
+    column_sorting: NotRequired[Dict[str, Tuple[str]]]
+    """optional dict mapping column names to tuple of sort keywords,
+    which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``."""
+
+    dialect_options: NotRequired[Dict[str, Any]]
+    """Additional dialect-specific options detected for this reflected
+    object"""
+
+
+class ReflectedTableComment(TypedDict):
+    """Dictionary representing the reflected comment corresponding to
+    the :attr:`_schema.Table.comment` attribute.
+
+    The :class:`.ReflectedTableComment` structure is returned by the
+    :meth:`.Inspector.get_table_comment` method.
+
+    """
+
+    text: str
+    """text of the comment"""
+
+
+class BindTyping(Enum):
+    """Define different methods of passing typing information for
+    bound parameters in a statement to the database driver.
+
+    .. versionadded:: 2.0
+
+    """
+
+    NONE = 1
+    """No steps are taken to pass typing information to the database driver.
+
+    This is the default behavior for databases such as SQLite, MySQL / MariaDB,
+    SQL Server.
+
+    """
+
+    SETINPUTSIZES = 2
+    """Use the pep-249 setinputsizes method.
+
+    This is only implemented for DBAPIs that support this method and for which
+    the SQLAlchemy dialect has the appropriate infrastructure for that
+    dialect set up.   Current dialects include cx_Oracle as well as
+    optional support for SQL Server using pyodbc.
+
+    When using setinputsizes, dialects also have a means of only using the
+    method for certain datatypes using include/exclude lists.
+
+    When SETINPUTSIZES is used, the :meth:`.Dialect.do_set_input_sizes` method
+    is called for each statement executed which has bound parameters.
+
+    """
+
+    RENDER_CASTS = 3
+    """Render casts or other directives in the SQL string.
+
+    This method is used for all PostgreSQL dialects, including asyncpg,
+    pg8000, psycopg, psycopg2.   Dialects which implement this can choose
+    which kinds of datatypes are explicitly cast in SQL statements and which
+    aren't.
+
+    When RENDER_CASTS is used, the compiler will invoke the
+    :meth:`.SQLCompiler.render_bind_cast` method for each
+    :class:`.BindParameter` object whose dialect-level type sets the
+    :attr:`.TypeEngine.render_bind_cast` attribute.
+
+    """
+
+
+VersionInfoType = Tuple[Union[int, str], ...]
+
+
+class Dialect(EventTarget):
     """Define the behavior of a specific database and DB-API combination.
 
     Any aspect of metadata definition, SQL query generation,
@@ -26,128 +562,303 @@ class Dialect(object):
        directly.  Instead, subclass :class:`.default.DefaultDialect` or
        descendant class.
 
-    All dialects include the following attributes.   There are many other
-    attributes that may be supported as well:
+    """
 
-    ``name``
-      identifying name for the dialect from a DBAPI-neutral point of view
+    CACHE_HIT = CacheStats.CACHE_HIT
+    CACHE_MISS = CacheStats.CACHE_MISS
+    CACHING_DISABLED = CacheStats.CACHING_DISABLED
+    NO_CACHE_KEY = CacheStats.NO_CACHE_KEY
+    NO_DIALECT_SUPPORT = CacheStats.NO_DIALECT_SUPPORT
+
+    dispatch: dispatcher[Dialect]
+
+    name: str
+    """identifying name for the dialect from a DBAPI-neutral point of view
       (i.e. 'sqlite')
+    """
 
-    ``driver``
-      identifying name for the dialect's DBAPI
+    driver: str
+    """identifying name for the dialect's DBAPI"""
 
-    ``positional``
-      True if the paramstyle for this Dialect is positional.
+    dbapi: Optional[ModuleType]
+    """A reference to the DBAPI module object itself.
 
-    ``paramstyle``
-      the paramstyle to be used (some DB-APIs support multiple
+    SQLAlchemy dialects import DBAPI modules using the classmethod
+    :meth:`.Dialect.import_dbapi`. The rationale is so that any dialect
+    module can be imported and used to generate SQL statements without the
+    need for the actual DBAPI driver to be installed.  Only when an
+    :class:`.Engine` is constructed using :func:`.create_engine` does the
+    DBAPI get imported; at that point, the creation process will assign
+    the DBAPI module to this attribute.
+
+    Dialects should therefore implement :meth:`.Dialect.import_dbapi`
+    which will import the necessary module and return it, and then refer
+    to ``self.dbapi`` in dialect code in order to refer to the DBAPI module
+    contents.
+
+    .. versionchanged:: The :attr:`.Dialect.dbapi` attribute is exclusively
+       used as the per-:class:`.Dialect`-instance reference to the DBAPI
+       module.   The previous not-fully-documented ``.Dialect.dbapi()``
+       classmethod is deprecated and replaced by :meth:`.Dialect.import_dbapi`.
+
+    """
+
+    @util.non_memoized_property
+    def loaded_dbapi(self) -> ModuleType:
+        """same as .dbapi, but is never None; will raise an error if no
+        DBAPI was set up.
+
+        .. versionadded:: 2.0
+
+        """
+        raise NotImplementedError()
+
+    positional: bool
+    """True if the paramstyle for this Dialect is positional."""
+
+    paramstyle: str
+    """the paramstyle to be used (some DB-APIs support multiple
       paramstyles).
+    """
 
-    ``encoding``
-      type of encoding to use for unicode, usually defaults to
-      'utf-8'.
+    compiler_linting: Linting
 
-    ``statement_compiler``
-      a :class:`.Compiled` class used to compile SQL statements
+    statement_compiler: Type[SQLCompiler]
+    """a :class:`.Compiled` class used to compile SQL statements"""
 
-    ``ddl_compiler``
-      a :class:`.Compiled` class used to compile DDL statements
+    ddl_compiler: Type[DDLCompiler]
+    """a :class:`.Compiled` class used to compile DDL statements"""
 
-    ``server_version_info``
-      a tuple containing a version number for the DB backend in use.
-      This value is only available for supporting dialects, and is
-      typically populated during the initial connection to the database.
+    type_compiler_cls: ClassVar[Type[TypeCompiler]]
+    """a :class:`.Compiled` class used to compile SQL type objects
 
-    ``default_schema_name``
-     the name of the default schema.  This value is only available for
-     supporting dialects, and is typically populated during the
-     initial connection to the database.
+    .. versionadded:: 2.0
 
-    ``execution_ctx_cls``
-      a :class:`.ExecutionContext` class used to handle statement execution
+    """
 
-    ``execute_sequence_format``
-      either the 'tuple' or 'list' type, depending on what cursor.execute()
-      accepts for the second argument (they vary).
+    type_compiler_instance: TypeCompiler
+    """instance of a :class:`.Compiled` class used to compile SQL type
+    objects
 
-    ``preparer``
-      a :class:`~sqlalchemy.sql.compiler.IdentifierPreparer` class used to
-      quote identifiers.
+    .. versionadded:: 2.0
 
-    ``supports_alter``
-      ``True`` if the database supports ``ALTER TABLE`` - used only for
-      generating foreign key constraints in certain circumstances
+    """
 
-    ``max_identifier_length``
-      The maximum length of identifier names.
+    type_compiler: Any
+    """legacy; this is a TypeCompiler class at the class level, a
+    TypeCompiler instance at the instance level.
 
-    ``supports_sane_rowcount``
-      Indicate whether the dialect properly implements rowcount for
+    Refer to type_compiler_instance instead.
+
+    """
+
+    preparer: Type[IdentifierPreparer]
+    """a :class:`.IdentifierPreparer` class used to
+    quote identifiers.
+    """
+
+    identifier_preparer: IdentifierPreparer
+    """This element will refer to an instance of :class:`.IdentifierPreparer`
+    once a :class:`.DefaultDialect` has been constructed.
+
+    """
+
+    server_version_info: Optional[Tuple[Any, ...]]
+    """a tuple containing a version number for the DB backend in use.
+
+    This value is only available for supporting dialects, and is
+    typically populated during the initial connection to the database.
+    """
+
+    default_schema_name: Optional[str]
+    """the name of the default schema.  This value is only available for
+    supporting dialects, and is typically populated during the
+    initial connection to the database.
+
+    """
+
+    # NOTE: this does not take into effect engine-level isolation level.
+    # not clear if this should be changed, seems like it should
+    default_isolation_level: Optional[_IsolationLevel]
+    """the isolation that is implicitly present on new connections"""
+
+    # create_engine()  -> isolation_level  currently goes here
+    _on_connect_isolation_level: Optional[_IsolationLevel]
+
+    execution_ctx_cls: Type["ExecutionContext"]
+    """a :class:`.ExecutionContext` class used to handle statement execution"""
+
+    execute_sequence_format: Union[
+        Type[Tuple[Any, ...]], Type[Tuple[List[Any]]]
+    ]
+    """either the 'tuple' or 'list' type, depending on what cursor.execute()
+    accepts for the second argument (they vary)."""
+
+    supports_alter: bool
+    """``True`` if the database supports ``ALTER TABLE`` - used only for
+    generating foreign key constraints in certain circumstances
+    """
+
+    max_identifier_length: int
+    """The maximum length of identifier names."""
+
+    supports_server_side_cursors: bool
+    """indicates if the dialect supports server side cursors"""
+
+    server_side_cursors: bool
+    """deprecated; indicates if the dialect should attempt to use server
+    side cursors by default"""
+
+    supports_sane_rowcount: bool
+    """Indicate whether the dialect properly implements rowcount for
       ``UPDATE`` and ``DELETE`` statements.
+    """
 
-    ``supports_sane_multi_rowcount``
-      Indicate whether the dialect properly implements rowcount for
+    supports_sane_multi_rowcount: bool
+    """Indicate whether the dialect properly implements rowcount for
       ``UPDATE`` and ``DELETE`` statements when executed via
       executemany.
+    """
 
-    ``preexecute_autoincrement_sequences``
-      True if 'implicit' primary key functions must be executed separately
+    supports_default_values: bool
+    """dialect supports INSERT... DEFAULT VALUES syntax"""
+
+    supports_default_metavalue: bool
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    supports_empty_insert: bool
+    """dialect supports INSERT () VALUES ()"""
+
+    supports_multivalues_insert: bool
+    """Target database supports INSERT...VALUES with multiple value
+    sets"""
+
+    preexecute_autoincrement_sequences: bool
+    """True if 'implicit' primary key functions must be executed separately
       in order to get their value.   This is currently oriented towards
       PostgreSQL.
+    """
 
-    ``implicit_returning``
-      use RETURNING or equivalent during INSERT execution in order to load
-      newly generated primary keys and other column defaults in one execution,
-      which are then available via inserted_primary_key.
-      If an insert statement has returning() specified explicitly,
-      the "implicit" functionality is not used and inserted_primary_key
-      will not be available.
+    implicit_returning: bool
+    """For dialects that support RETURNING, indicate RETURNING may be used
+    to fetch newly generated primary key values and other defaults from
+    an INSERT statement automatically.
 
-    ``colspecs``
-      A dictionary of TypeEngine classes from sqlalchemy.types mapped
+    .. seealso::
+
+        :paramref:`_schema.Table.implicit_returning`
+
+    """
+
+    colspecs: MutableMapping[Type["TypeEngine[Any]"], Type["TypeEngine[Any]"]]
+    """A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This
       dictionary is class-level only and is not accessed from the
       dialect instance itself.
+    """
 
-    ``supports_default_values``
-      Indicates if the construct ``INSERT INTO tablename DEFAULT
-      VALUES`` is supported
+    supports_sequences: bool
+    """Indicates if the dialect supports CREATE SEQUENCE or similar."""
 
-    ``supports_sequences``
-      Indicates if the dialect supports CREATE SEQUENCE or similar.
-
-    ``sequences_optional``
-      If True, indicates if the "optional" flag on the Sequence() construct
+    sequences_optional: bool
+    """If True, indicates if the :paramref:`_schema.Sequence.optional`
+      parameter on the :class:`_schema.Sequence` construct
       should signal to not generate a CREATE SEQUENCE. Applies only to
       dialects that support sequences. Currently used only to allow PostgreSQL
       SERIAL to be used on a column that specifies Sequence() for usage on
       other backends.
+    """
 
-    ``supports_native_enum``
-      Indicates if the dialect supports a native ENUM construct.
-      This will prevent types.Enum from generating a CHECK
+    default_sequence_base: int
+    """the default value that will be rendered as the "START WITH" portion of
+    a CREATE SEQUENCE DDL statement.
+
+    """
+
+    supports_native_enum: bool
+    """Indicates if the dialect supports a native ENUM construct.
+      This will prevent :class:`_types.Enum` from generating a CHECK
+      constraint when that type is used in "native" mode.
+    """
+
+    supports_native_boolean: bool
+    """Indicates if the dialect supports a native boolean construct.
+      This will prevent :class:`_types.Boolean` from generating a CHECK
       constraint when that type is used.
+    """
 
-    ``supports_native_boolean``
-      Indicates if the dialect supports a native boolean construct.
-      This will prevent types.Boolean from generating a CHECK
-      constraint when that type is used.
+    supports_native_decimal: bool
+    """indicates if Decimal objects are handled and returned for precision
+    numeric types, or if floats are returned"""
 
-    ``dbapi_exception_translation_map``
-       A dictionary of names that will contain as values the names of
+    construct_arguments: Optional[
+        List[Tuple[Type[ClauseElement], Mapping[str, Any]]]
+    ] = None
+    """Optional set of argument specifiers for various SQLAlchemy
+    constructs, typically schema items.
+
+    To implement, establish as a series of tuples, as in::
+
+        construct_arguments = [
+            (schema.Index, {
+                "using": False,
+                "where": None,
+                "ops": None
+            })
+        ]
+
+    If the above construct is established on the PostgreSQL dialect,
+    the :class:`.Index` construct will now accept the keyword arguments
+    ``postgresql_using``, ``postgresql_where``, nad ``postgresql_ops``.
+    Any other argument specified to the constructor of :class:`.Index`
+    which is prefixed with ``postgresql_`` will raise :class:`.ArgumentError`.
+
+    A dialect which does not include a ``construct_arguments`` member will
+    not participate in the argument validation system.  For such a dialect,
+    any argument name is accepted by all participating constructs, within
+    the namespace of arguments prefixed with that dialect name.  The rationale
+    here is so that third-party dialects that haven't yet implemented this
+    feature continue to function in the old way.
+
+    .. versionadded:: 0.9.2
+
+    .. seealso::
+
+        :class:`.DialectKWArgs` - implementing base class which consumes
+        :attr:`.DefaultDialect.construct_arguments`
+
+
+    """
+
+    reflection_options: Sequence[str] = ()
+    """Sequence of string names indicating keyword arguments that can be
+    established on a :class:`.Table` object which will be passed as
+    "reflection options" when using :paramref:`.Table.autoload_with`.
+
+    Current example is "oracle_resolve_synonyms" in the Oracle dialect.
+
+    """
+
+    dbapi_exception_translation_map: Mapping[str, str] = util.EMPTY_DICT
+    """A dictionary of names that will contain as values the names of
        pep-249 exceptions ("IntegrityError", "OperationalError", etc)
        keyed to alternate class names, to support the case where a
        DBAPI has exception classes that aren't named as they are
        referred to (e.g. IntegrityError = MyException).   In the vast
        majority of cases this dictionary is empty.
-
-       .. versionadded:: 1.0.5
-
     """
+
+    supports_comments: bool
+    """Indicates the dialect supports comment DDL on tables and columns."""
+
+    inline_comments: bool
+    """Indicates the dialect supports comment DDL that's inline with the
+    definition of a Table or Column.  If False, this implies that ALTER must
+    be used to set table and column comments."""
 
     _has_events = False
 
-    supports_statement_cache = True
+    supports_statement_cache: bool = True
     """indicates if this dialect supports caching.
 
     All dialects that are compatible with statement caching should set this
@@ -165,7 +876,78 @@ class Dialect(object):
 
     """
 
-    def create_connect_args(self, url):
+    _supports_statement_cache: bool
+    """internal evaluation for supports_statement_cache"""
+
+    bind_typing = BindTyping.NONE
+    """define a means of passing typing information to the database and/or
+    driver for bound parameters.
+
+    See :class:`.BindTyping` for values.
+
+    .. versionadded:: 2.0
+
+    """
+
+    is_async: bool
+    """Whether or not this dialect is intended for asyncio use."""
+
+    engine_config_types: Mapping[str, Any]
+    """a mapping of string keys that can be in an engine config linked to
+    type conversion functions.
+
+    """
+
+    label_length: Optional[int]
+    """optional user-defined max length for SQL labels"""
+
+    include_set_input_sizes: Optional[Set[Any]]
+    """set of DBAPI type objects that should be included in
+    automatic cursor.setinputsizes() calls.
+
+    This is only used if bind_typing is BindTyping.SET_INPUT_SIZES
+
+    """
+
+    exclude_set_input_sizes: Optional[Set[Any]]
+    """set of DBAPI type objects that should be excluded in
+    automatic cursor.setinputsizes() calls.
+
+    This is only used if bind_typing is BindTyping.SET_INPUT_SIZES
+
+    """
+
+    supports_simple_order_by_label: bool
+    """target database supports ORDER BY <labelname>, where <labelname>
+    refers to a label in the columns clause of the SELECT"""
+
+    div_is_floordiv: bool
+    """target database treats the / division operator as "floor division" """
+
+    tuple_in_values: bool
+    """target database supports tuple IN, i.e. (x, y) IN ((q, p), (r, z))"""
+
+    _bind_typing_render_casts: bool
+
+    supports_identity_columns: bool
+    """target database supports IDENTITY"""
+
+    cte_follows_insert: bool
+    """target database, when given a CTE with an INSERT statement, needs
+    the CTE to be below the INSERT"""
+
+    insert_executemany_returning: bool
+    """dialect / driver / database supports some means of providing RETURNING
+    support when dialect.do_executemany() is used.
+
+    """
+
+    _type_memos: MutableMapping[TypeEngine[Any], "_TypeMemoDict"]
+
+    def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
+        raise NotImplementedError()
+
+    def create_connect_args(self, url: "URL") -> ConnectArgsType:
         """Build DB-API compatible connection arguments.
 
         Given a :class:`.URL` object, returns a tuple
@@ -199,7 +981,25 @@ class Dialect(object):
         raise NotImplementedError()
 
     @classmethod
-    def type_descriptor(cls, typeobj):
+    def import_dbapi(cls) -> ModuleType:
+        """Import the DBAPI module that is used by this dialect.
+
+        The Python module object returned here will be assigned as an
+        instance variable to a constructed dialect under the name
+        ``.dbapi``.
+
+        .. versionchanged:: 2.0  The :meth:`.Dialect.import_dbapi` class
+           method is renamed from the previous method ``.Dialect.dbapi()``,
+           which would be replaced at dialect instantiation time by the
+           DBAPI module itself, thus using the same name in two different ways.
+           If a ``.Dialect.dbapi()`` classmethod is present on a third-party
+           dialect, it will be used and a deprecation warning will be emitted.
+
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def type_descriptor(cls, typeobj: "TypeEngine[_T]") -> "TypeEngine[_T]":
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
@@ -213,7 +1013,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def initialize(self, connection):
+    def initialize(self, connection: "Connection") -> None:
         """Called during strategized creation of the dialect with a
         connection.
 
@@ -233,88 +1033,71 @@ class Dialect(object):
 
         pass
 
-    def get_columns(self, connection, table_name, schema=None, **kw):
-        """Return information about columns in `table_name`.
+    def get_columns(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> List[ReflectedColumn]:
+        """Return information about columns in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
-        `table_name`, and an optional string `schema`, return column
-        information as a list of dictionaries with these keys:
+        ``table_name``, and an optional string ``schema``, return column
+        information as a list of dictionaries
+        corresponding to the :class:`.ReflectedColumn` dictionary.
 
-        name
-          the column's name
-
-        type
-          [sqlalchemy.types#TypeEngine]
-
-        nullable
-          boolean
-
-        default
-          the column's default value
-
-        autoincrement
-          boolean
-
-        sequence
-          a dictionary of the form
-              {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
-               'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
-               'cycle': bool, 'cache': int, 'order': bool}
-
-        Additional column attributes may be present.
         """
 
         raise NotImplementedError()
 
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> ReflectedPrimaryKeyConstraint:
         """Return information about the primary key constraint on
         table_name`.
 
         Given a :class:`_engine.Connection`, a string
-        `table_name`, and an optional string `schema`, return primary
-        key information as a dictionary with these keys:
+        ``table_name``, and an optional string ``schema``, return primary
+        key information as a dictionary corresponding to the
+        :class:`.ReflectedPrimaryKeyConstraint` dictionary.
 
-        constrained_columns
-          a list of column names that make up the primary key
-
-        name
-          optional name of the primary key constraint.
 
         """
         raise NotImplementedError()
 
-    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-        """Return information about foreign_keys in `table_name`.
+    def get_foreign_keys(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> List[ReflectedForeignKeyConstraint]:
+        """Return information about foreign_keys in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
-        `table_name`, and an optional string `schema`, return foreign
-        key information as a list of dicts with these keys:
+        ``table_name``, and an optional string ``schema``, return foreign
+        key information as a list of dicts corresponding to the
+        :class:`.ReflectedForeignKeyConstraint` dictionary.
 
-        name
-          the constraint's name
-
-        constrained_columns
-          a list of column names that make up the foreign key
-
-        referred_schema
-          the name of the referred schema
-
-        referred_table
-          the name of the referred table
-
-        referred_columns
-          a list of column names in the referred table that correspond to
-          constrained_columns
         """
 
         raise NotImplementedError()
 
-    def get_table_names(self, connection, schema=None, **kw):
-        """Return a list of table names for `schema`."""
+    def get_table_names(
+        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
+        """Return a list of table names for ``schema``."""
 
         raise NotImplementedError()
 
-    def get_temp_table_names(self, connection, schema=None, **kw):
+    def get_temp_table_names(
+        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
         """Return a list of temporary table names on the given connection,
         if supported by the underlying backend.
 
@@ -322,7 +1105,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_view_names(self, connection, schema=None, **kw):
+    def get_view_names(
+        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
         """Return a list of all view names available in the database.
 
         :param schema: schema name to query, if not the default schema.
@@ -330,7 +1115,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_sequence_names(self, connection, schema=None, **kw):
+    def get_sequence_names(
+        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
         """Return a list of all sequence names available in the database.
 
         :param schema: schema name to query, if not the default schema.
@@ -340,7 +1127,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_temp_view_names(self, connection, schema=None, **kw):
+    def get_temp_view_names(
+        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
         """Return a list of temporary view names on the given connection,
         if supported by the underlying backend.
 
@@ -348,92 +1137,103 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_view_definition(self, connection, view_name, schema=None, **kw):
+    def get_view_definition(
+        self,
+        connection: "Connection",
+        view_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> str:
         """Return view definition.
 
         Given a :class:`_engine.Connection`, a string
-        `view_name`, and an optional string `schema`, return the view
+        `view_name`, and an optional string ``schema``, return the view
         definition.
         """
 
         raise NotImplementedError()
 
-    def get_indexes(self, connection, table_name, schema=None, **kw):
-        """Return information about indexes in `table_name`.
+    def get_indexes(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> List[ReflectedIndex]:
+        """Return information about indexes in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
-        `table_name` and an optional string `schema`, return index
-        information as a list of dictionaries with these keys:
+        ``table_name`` and an optional string ``schema``, return index
+        information as a list of dictionaries corresponding to the
+        :class:`.ReflectedIndex` dictionary.
 
-        name
-          the index's name
-
-        column_names
-          list of column names in order
-
-        unique
-          boolean
         """
 
         raise NotImplementedError()
 
     def get_unique_constraints(
-        self, connection, table_name, schema=None, **kw
-    ):
-        r"""Return information about unique constraints in `table_name`.
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> List[ReflectedUniqueConstraint]:
+        r"""Return information about unique constraints in ``table_name``.
 
-        Given a string `table_name` and an optional string `schema`, return
-        unique constraint information as a list of dicts with these keys:
-
-        name
-          the unique constraint's name
-
-        column_names
-          list of column names in order
-
-        \**kw
-          other options passed to the dialect's get_unique_constraints()
-          method.
-
-        .. versionadded:: 0.9.0
+        Given a string ``table_name`` and an optional string ``schema``, return
+        unique constraint information as a list of dicts corresponding
+        to the :class:`.ReflectedUniqueConstraint` dictionary.
 
         """
 
         raise NotImplementedError()
 
-    def get_check_constraints(self, connection, table_name, schema=None, **kw):
-        r"""Return information about check constraints in `table_name`.
+    def get_check_constraints(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> List[ReflectedCheckConstraint]:
+        r"""Return information about check constraints in ``table_name``.
 
-        Given a string `table_name` and an optional string `schema`, return
-        check constraint information as a list of dicts with these keys:
-
-        * ``name`` -
-          the check constraint's name
-
-        * ``sqltext`` -
-          the check constraint's SQL expression
-
-        * ``**kw`` -
-          other options passed to the dialect's get_check_constraints()
-          method.
-
-        .. versionadded:: 1.1.0
+        Given a string ``table_name`` and an optional string ``schema``, return
+        check constraint information as a list of dicts corresponding
+        to the :class:`.ReflectedCheckConstraint` dictionary.
 
         """
 
         raise NotImplementedError()
 
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
-        r"""Return the "comment" for the table identified by `table_name`.
+    def get_table_options(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> Optional[Dict[str, Any]]:
+        r"""Return the "options" for the table identified by ``table_name``
+        as a dictionary.
 
-        Given a string `table_name` and an optional string `schema`, return
-        table comment information as a dictionary with this key:
+        """
+        return None
 
-        text
-           text of the comment
+    def get_table_comment(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> ReflectedTableComment:
+        r"""Return the "comment" for the table identified by ``table_name``.
 
-        Raises ``NotImplementedError`` for dialects that don't support
-        comments.
+        Given a string ``table_name`` and an optional string ``schema``, return
+        table comment information as a dictionary corresponding to the
+        :class:`.ReflectedTableComment` dictionary.
+
+
+        :raise: ``NotImplementedError`` for dialects that don't support
+         comments.
 
         .. versionadded:: 1.2
 
@@ -441,7 +1241,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def normalize_name(self, name):
+    def normalize_name(self, name: str) -> str:
         """convert the given name to lowercase if it is detected as
         case insensitive.
 
@@ -451,7 +1251,7 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
-    def denormalize_name(self, name):
+    def denormalize_name(self, name: str) -> str:
         """convert the given name to a case insensitive identifier
         for the backend if it is an all-lowercase name.
 
@@ -461,9 +1261,15 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
-    def has_table(self, connection, table_name, schema=None, **kw):
+    def has_table(
+        self,
+        connection: "Connection",
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> bool:
         """For internal dialect use, check the existence of a particular table
-        in the database.
+        or view in the database.
 
         Given a :class:`_engine.Connection` object, a string table_name and
         optional schema name, return True if the given table exists in the
@@ -481,15 +1287,28 @@ class Dialect(object):
            Alternatively, for legacy cross-compatibility, the
            :meth:`_engine.Engine.has_table` method may be used.
 
+        .. versionchanged:: 2.0
+
+            The :meth:`_engine.Dialect.has_table` method should also check
+            for the presence of views.  In previous versions this
+            behavior was dialect specific. New dialect suite tests were added
+            to ensure that dialects conform with this behavior consistently.
+
         """
 
         raise NotImplementedError()
 
-    def has_index(self, connection, table_name, index_name, schema=None):
+    def has_index(
+        self,
+        connection: "Connection",
+        table_name: str,
+        index_name: str,
+        schema: Optional[str] = None,
+    ) -> bool:
         """Check the existence of a particular index name in the database.
 
         Given a :class:`_engine.Connection` object, a string
-        `table_name` and string index name, return True if an index of the
+        ``table_name`` and string index name, return True if an index of the
         given name on the given table exists, false otherwise.
 
         The :class:`.DefaultDialect` implements this in terms of the
@@ -503,7 +1322,13 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def has_sequence(self, connection, sequence_name, schema=None, **kw):
+    def has_sequence(
+        self,
+        connection: "Connection",
+        sequence_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> bool:
         """Check the existence of a particular sequence in the database.
 
         Given a :class:`_engine.Connection` object and a string
@@ -513,7 +1338,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def _get_server_version_info(self, connection):
+    def _get_server_version_info(self, connection: "Connection") -> Any:
         """Retrieve the server version info from the given connection.
 
         This is used by the default implementation to populate the
@@ -524,7 +1349,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def _get_default_schema_name(self, connection):
+    def _get_default_schema_name(self, connection: "Connection") -> str:
         """Return the string name of the currently selected schema from
         the given connection.
 
@@ -536,22 +1361,13 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_begin(self, dbapi_connection):
+    def do_begin(self, dbapi_connection: PoolProxiedConnection) -> None:
         """Provide an implementation of ``connection.begin()``, given a
         DB-API connection.
 
         The DBAPI has no dedicated "begin" method and it is expected
         that transactions are implicit.  This hook is provided for those
         DBAPIs that might need additional help in this area.
-
-        Note that :meth:`.Dialect.do_begin` is not called unless a
-        :class:`.Transaction` object is in use.  The
-        :meth:`.Dialect.do_autocommit`
-        hook is provided for DBAPIs that need some extra commands emitted
-        after a commit in order to enter the next transaction, when the
-        SQLAlchemy :class:`_engine.Connection`
-        is used in its default "autocommit"
-        mode.
 
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
@@ -560,7 +1376,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_rollback(self, dbapi_connection):
+    def do_rollback(self, dbapi_connection: PoolProxiedConnection) -> None:
         """Provide an implementation of ``connection.rollback()``, given
         a DB-API connection.
 
@@ -571,7 +1387,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_commit(self, dbapi_connection):
+    def do_commit(self, dbapi_connection: PoolProxiedConnection) -> None:
         """Provide an implementation of ``connection.commit()``, given a
         DB-API connection.
 
@@ -582,7 +1398,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_close(self, dbapi_connection):
+    def do_close(self, dbapi_connection: DBAPIConnection) -> None:
         """Provide an implementation of ``connection.close()``, given a DBAPI
         connection.
 
@@ -595,10 +1411,22 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
+        """ping the DBAPI connection and return True if the connection is
+        usable."""
+        raise NotImplementedError()
+
+    def do_set_input_sizes(
+        self,
+        cursor: DBAPICursor,
+        list_of_tuples: List[Tuple[str, Any, TypeEngine[Any]]],
+        context: "ExecutionContext",
+    ) -> Any:
         """invoke the cursor.setinputsizes() method with appropriate arguments
 
-        This hook is called if the dialect.use_inputsizes flag is set to True.
+        This hook is called if the :attr:`.Dialect.bind_typing` attribute is
+        set to the
+        :attr:`.BindTyping.SETINPUTSIZES` value.
         Parameter data is passed in a list of tuples (paramname, dbtype,
         sqltype), where ``paramname`` is the key of the parameter in the
         statement, ``dbtype`` is the DBAPI datatype and ``sqltype`` is the
@@ -606,11 +1434,17 @@ class Dialect(object):
 
         .. versionadded:: 1.4
 
+        .. versionchanged:: 2.0  - setinputsizes mode is now enabled by
+           setting :attr:`.Dialect.bind_typing` to
+           :attr:`.BindTyping.SETINPUTSIZES`.  Dialects which accept
+           a ``use_setinputsizes`` parameter should set this value
+           appropriately.
+
 
         """
         raise NotImplementedError()
 
-    def create_xid(self):
+    def create_xid(self) -> Any:
         """Create a two-phase transaction ID.
 
         This id will be passed to do_begin_twophase(),
@@ -620,7 +1454,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_savepoint(self, connection, name):
+    def do_savepoint(self, connection: "Connection", name: str) -> None:
         """Create a savepoint with the given name.
 
         :param connection: a :class:`_engine.Connection`.
@@ -630,7 +1464,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_rollback_to_savepoint(self, connection, name):
+    def do_rollback_to_savepoint(
+        self, connection: "Connection", name: str
+    ) -> None:
         """Rollback a connection to the named savepoint.
 
         :param connection: a :class:`_engine.Connection`.
@@ -640,7 +1476,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_release_savepoint(self, connection, name):
+    def do_release_savepoint(
+        self, connection: "Connection", name: str
+    ) -> None:
         """Release the named savepoint on a connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -649,7 +1487,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_begin_twophase(self, connection, xid):
+    def do_begin_twophase(self, connection: "Connection", xid: Any) -> None:
         """Begin a two phase transaction on the given connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -659,7 +1497,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_prepare_twophase(self, connection, xid):
+    def do_prepare_twophase(self, connection: "Connection", xid: Any) -> None:
         """Prepare a two phase transaction on the given connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -670,8 +1508,12 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_rollback_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
+        self,
+        connection: "Connection",
+        xid: Any,
+        is_prepared: bool = True,
+        recover: bool = False,
+    ) -> None:
         """Rollback a two phase transaction on the given connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -685,8 +1527,12 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_commit_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
+        self,
+        connection: "Connection",
+        xid: Any,
+        is_prepared: bool = True,
+        recover: bool = False,
+    ) -> None:
         """Commit a two phase transaction on the given connection.
 
 
@@ -700,7 +1546,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_recover_twophase(self, connection):
+    def do_recover_twophase(self, connection: "Connection") -> List[Any]:
         """Recover list of uncommitted prepared two phase transaction
         identifiers on the given connection.
 
@@ -710,21 +1556,36 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_executemany(self, cursor, statement, parameters, context=None):
+    def do_executemany(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        context: Optional["ExecutionContext"] = None,
+    ) -> None:
         """Provide an implementation of ``cursor.executemany(statement,
         parameters)``."""
 
         raise NotImplementedError()
 
-    def do_execute(self, cursor, statement, parameters, context=None):
+    def do_execute(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: Optional[_DBAPISingleExecuteParams],
+        context: Optional[ExecutionContext] = None,
+    ) -> None:
         """Provide an implementation of ``cursor.execute(statement,
         parameters)``."""
 
         raise NotImplementedError()
 
     def do_execute_no_params(
-        self, cursor, statement, parameters, context=None
-    ):
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        context: Optional["ExecutionContext"] = None,
+    ) -> None:
         """Provide an implementation of ``cursor.execute(statement)``.
 
         The parameter collection should not be sent.
@@ -733,13 +1594,18 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: Exception,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
         """Return True if the given DB-API error indicates an invalid
         connection"""
 
         raise NotImplementedError()
 
-    def connect(self, *cargs, **cparams):
+    def connect(self, *cargs: Any, **cparams: Any) -> DBAPIConnection:
         r"""Establish a connection using this dialect's DBAPI.
 
         The default implementation of this method is::
@@ -771,8 +1637,9 @@ class Dialect(object):
             :meth:`.Dialect.on_connect`
 
         """
+        raise NotImplementedError()
 
-    def on_connect_url(self, url):
+    def on_connect_url(self, url: "URL") -> Optional[Callable[[Any], Any]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         This method is a new hook that supersedes the
@@ -833,7 +1700,7 @@ class Dialect(object):
         """
         return self.on_connect()
 
-    def on_connect(self):
+    def on_connect(self) -> Optional[Callable[[Any], Any]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
@@ -886,7 +1753,7 @@ class Dialect(object):
         """
         return None
 
-    def reset_isolation_level(self, dbapi_conn):
+    def reset_isolation_level(self, dbapi_connection: DBAPIConnection) -> None:
         """Given a DBAPI connection, revert its isolation to the default.
 
         Note that this is a dialect-level method which is used as part
@@ -913,7 +1780,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def set_isolation_level(self, dbapi_conn, level):
+    def set_isolation_level(
+        self, dbapi_connection: DBAPIConnection, level: _IsolationLevel
+    ) -> None:
         """Given a DBAPI connection, set its isolation level.
 
         Note that this is a dialect-level method which is used as part
@@ -921,6 +1790,11 @@ class Dialect(object):
         :class:`_engine.Engine`
         isolation level facilities; these APIs should be preferred for
         most typical use cases.
+
+        If the dialect also implements the
+        :meth:`.Dialect.get_isolation_level_values` method, then the given
+        level is guaranteed to be one of the string names within that sequence,
+        and the method will not need to anticipate a lookup failure.
 
         .. seealso::
 
@@ -940,7 +1814,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_isolation_level(self, dbapi_conn):
+    def get_isolation_level(
+        self, dbapi_connection: DBAPIConnection
+    ) -> _IsolationLevel:
         """Given a DBAPI connection, return its isolation level.
 
         When working with a :class:`_engine.Connection` object,
@@ -973,7 +1849,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_default_isolation_level(self, dbapi_conn):
+    def get_default_isolation_level(
+        self, dbapi_conn: DBAPIConnection
+    ) -> _IsolationLevel:
         """Given a DBAPI connection, return its isolation level, or
         a default isolation level if one cannot be retrieved.
 
@@ -993,8 +1871,57 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
+    def get_isolation_level_values(
+        self, dbapi_conn: DBAPIConnection
+    ) -> List[_IsolationLevel]:
+        """return a sequence of string isolation level names that are accepted
+        by this dialect.
+
+        The available names should use the following conventions:
+
+        * use UPPERCASE names.   isolation level methods will accept lowercase
+          names but these are normalized into UPPERCASE before being passed
+          along to the dialect.
+        * separate words should be separated by spaces, not underscores, e.g.
+          ``REPEATABLE READ``.  isolation level names will have underscores
+          converted to spaces before being passed along to the dialect.
+        * The names for the four standard isolation names to the extent that
+          they are supported by the backend should be ``READ UNCOMMITTED``
+          ``READ COMMITTED``, ``REPEATABLE READ``, ``SERIALIZABLE``
+        * if the dialect supports an autocommit option it should be provided
+          using the isolation level name ``AUTOCOMMIT``.
+        * Other isolation modes may also be present, provided that they
+          are named in UPPERCASE and use spaces not underscores.
+
+        This function is used so that the default dialect can check that
+        a given isolation level parameter is valid, else raises an
+        :class:`_exc.ArgumentError`.
+
+        A DBAPI connection is passed to the method, in the unlikely event that
+        the dialect needs to interrogate the connection itself to determine
+        this list, however it is expected that most backends will return
+        a hardcoded list of values.  If the dialect supports "AUTOCOMMIT",
+        that value should also be present in the sequence returned.
+
+        The method raises ``NotImplementedError`` by default.  If a dialect
+        does not implement this method, then the default dialect will not
+        perform any checking on a given isolation level value before passing
+        it onto the :meth:`.Dialect.set_isolation_level` method.  This is
+        to allow backwards-compatibility with third party dialects that may
+        not yet be implementing this method.
+
+        .. versionadded:: 2.0
+
+        """
+        raise NotImplementedError()
+
+    def _assert_and_set_isolation_level(
+        self, dbapi_conn: DBAPIConnection, level: _IsolationLevel
+    ) -> None:
+        raise NotImplementedError()
+
     @classmethod
-    def get_dialect_cls(cls, url):
+    def get_dialect_cls(cls, url: URL) -> Type[Dialect]:
         """Given a URL, return the :class:`.Dialect` that will be used.
 
         This is a hook that allows an external plugin to provide functionality
@@ -1010,7 +1937,26 @@ class Dialect(object):
         return cls
 
     @classmethod
-    def load_provisioning(cls):
+    def get_async_dialect_cls(cls, url: URL) -> Type[Dialect]:
+        """Given a URL, return the :class:`.Dialect` that will be used by
+        an async engine.
+
+        By default this is an alias of :meth:`.Dialect.get_dialect_cls` and
+        just returns the cls. It may be used if a dialect provides
+        both a sync and async version under the same name, like the
+        ``psycopg`` driver.
+
+        .. versionadded:: 2
+
+        .. seealso::
+
+            :meth:`.Dialect.get_dialect_cls`
+
+        """
+        return cls.get_dialect_cls(url)
+
+    @classmethod
+    def load_provisioning(cls) -> None:
         """set up the provision.py module for this dialect.
 
         For dialects that include a provision.py module that sets up
@@ -1039,7 +1985,7 @@ class Dialect(object):
         """
 
     @classmethod
-    def engine_created(cls, engine):
+    def engine_created(cls, engine: "Engine") -> None:
         """A convenience hook called before returning the final
         :class:`_engine.Engine`.
 
@@ -1057,7 +2003,7 @@ class Dialect(object):
 
         """
 
-    def get_driver_connection(self, connection):
+    def get_driver_connection(self, connection: DBAPIConnection) -> Any:
         """Returns the connection object as returned by the external driver
         package.
 
@@ -1072,8 +2018,41 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
+    def set_engine_execution_options(
+        self, engine: Engine, opt: _ExecuteOptionsParameter
+    ) -> None:
+        """Establish execution options for a given engine.
 
-class CreateEnginePlugin(object):
+        This is implemented by :class:`.DefaultDialect` to establish
+        event hooks for new :class:`.Connection` instances created
+        by the given :class:`.Engine` which will then invoke the
+        :meth:`.Dialect.set_connection_execution_options` method for that
+        connection.
+
+        """
+        raise NotImplementedError()
+
+    def set_connection_execution_options(
+        self, connection: Connection, opt: _ExecuteOptionsParameter
+    ) -> None:
+        """Establish execution options for a given connection.
+
+        This is implemented by :class:`.DefaultDialect` in order to implement
+        the :paramref:`_engine.Connection.execution_options.isolation_level`
+        execution option.  Dialects can intercept various execution options
+        which may need to modify state on a particular DBAPI connection.
+
+        .. versionadded:: 1.4
+
+        """
+        raise NotImplementedError()
+
+    def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
+        """return a Pool class to use for a given URL"""
+        raise NotImplementedError()
+
+
+class CreateEnginePlugin:
     """A set of hooks intended to augment the construction of an
     :class:`_engine.Engine` object based on entrypoint names in a URL.
 
@@ -1248,7 +2227,7 @@ class CreateEnginePlugin(object):
 
     """  # noqa: E501
 
-    def __init__(self, url, kwargs):
+    def __init__(self, url: URL, kwargs: Dict[str, Any]):
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
@@ -1275,7 +2254,7 @@ class CreateEnginePlugin(object):
         """
         self.url = url
 
-    def update_url(self, url):
+    def update_url(self, url: URL) -> URL:
         """Update the :class:`_engine.URL`.
 
         A new :class:`_engine.URL` should be returned.   This method is
@@ -1290,14 +2269,19 @@ class CreateEnginePlugin(object):
         .. versionadded:: 1.4
 
         """
+        raise NotImplementedError()
 
-    def handle_dialect_kwargs(self, dialect_cls, dialect_args):
+    def handle_dialect_kwargs(
+        self, dialect_cls: Type[Dialect], dialect_args: Dict[str, Any]
+    ) -> None:
         """parse and modify dialect kwargs"""
 
-    def handle_pool_kwargs(self, pool_cls, pool_args):
+    def handle_pool_kwargs(
+        self, pool_cls: Type[Pool], pool_args: Dict[str, Any]
+    ) -> None:
         """parse and modify pool kwargs"""
 
-    def engine_created(self, engine):
+    def engine_created(self, engine: Engine) -> None:
         """Receive the :class:`_engine.Engine`
         object when it is fully constructed.
 
@@ -1307,65 +2291,146 @@ class CreateEnginePlugin(object):
         """
 
 
-class ExecutionContext(object):
+class ExecutionContext:
     """A messenger object for a Dialect that corresponds to a single
     execution.
 
-    ExecutionContext should have these data members:
-
-    connection
-      Connection object which can be freely used by default value
-      generators to execute SQL.  This Connection should reference the
-      same underlying connection/transactional resources of
-      root_connection.
-
-    root_connection
-      Connection object which is the source of this ExecutionContext.  This
-      Connection may have close_with_result=True set, in which case it can
-      only be used once.
-
-    dialect
-      dialect which created this ExecutionContext.
-
-    cursor
-      DB-API cursor procured from the connection,
-
-    compiled
-      if passed to constructor, sqlalchemy.engine.base.Compiled object
-      being executed,
-
-    statement
-      string version of the statement to be executed.  Is either
-      passed to the constructor, or must be created from the
-      sql.Compiled object by the time pre_exec() has completed.
-
-    parameters
-      bind parameters passed to the execute() method.  For compiled
-      statements, this is a dictionary or list of dictionaries.  For
-      textual statements, it should be in a format suitable for the
-      dialect's paramstyle (i.e. dict or list of dicts for non
-      positional, list or list of lists/tuples for positional).
-
-    isinsert
-      True if the statement is an INSERT.
-
-    isupdate
-      True if the statement is an UPDATE.
-
-    should_autocommit
-      True if the statement is a "committable" statement.
-
-    prefetch_cols
-      a list of Column objects for which a client-side default
-      was fired off.  Applies to inserts and updates.
-
-    postfetch_cols
-      a list of Column objects for which a server-side default or
-      inline SQL expression value was fired off.  Applies to inserts
-      and updates.
     """
 
-    def create_cursor(self):
+    connection: Connection
+    """Connection object which can be freely used by default value
+      generators to execute SQL.  This Connection should reference the
+      same underlying connection/transactional resources of
+      root_connection."""
+
+    root_connection: Connection
+    """Connection object which is the source of this ExecutionContext."""
+
+    dialect: Dialect
+    """dialect which created this ExecutionContext."""
+
+    cursor: DBAPICursor
+    """DB-API cursor procured from the connection"""
+
+    compiled: Optional[Compiled]
+    """if passed to constructor, sqlalchemy.engine.base.Compiled object
+      being executed"""
+
+    statement: str
+    """string version of the statement to be executed.  Is either
+      passed to the constructor, or must be created from the
+      sql.Compiled object by the time pre_exec() has completed."""
+
+    invoked_statement: Optional[Executable]
+    """The Executable statement object that was given in the first place.
+
+    This should be structurally equivalent to compiled.statement, but not
+    necessarily the same object as in a caching scenario the compiled form
+    will have been extracted from the cache.
+
+    """
+
+    parameters: _AnyMultiExecuteParams
+    """bind parameters passed to the execute() or exec_driver_sql() methods.
+
+    These are always stored as a list of parameter entries.  A single-element
+    list corresponds to a ``cursor.execute()`` call and a multiple-element
+    list corresponds to ``cursor.executemany()``.
+
+    """
+
+    no_parameters: bool
+    """True if the execution style does not use parameters"""
+
+    isinsert: bool
+    """True if the statement is an INSERT."""
+
+    isupdate: bool
+    """True if the statement is an UPDATE."""
+
+    executemany: bool
+    """True if the parameters have determined this to be an executemany"""
+
+    prefetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
+    """a list of Column objects for which a client-side default
+      was fired off.  Applies to inserts and updates."""
+
+    postfetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
+    """a list of Column objects for which a server-side default or
+      inline SQL expression value was fired off.  Applies to inserts
+      and updates."""
+
+    @classmethod
+    def _init_ddl(
+        cls,
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        compiled_ddl: DDLCompiler,
+    ) -> ExecutionContext:
+        raise NotImplementedError()
+
+    @classmethod
+    def _init_compiled(
+        cls,
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        compiled: SQLCompiler,
+        parameters: _CoreMultiExecuteParams,
+        invoked_statement: Executable,
+        extracted_parameters: Optional[Sequence[BindParameter[Any]]],
+        cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
+    ) -> ExecutionContext:
+        raise NotImplementedError()
+
+    @classmethod
+    def _init_statement(
+        cls,
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+    ) -> ExecutionContext:
+        raise NotImplementedError()
+
+    @classmethod
+    def _init_default(
+        cls,
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+    ) -> ExecutionContext:
+        raise NotImplementedError()
+
+    def _exec_default(
+        self,
+        column: Optional[Column[Any]],
+        default: DefaultGenerator,
+        type_: Optional[TypeEngine[Any]],
+    ) -> Any:
+        raise NotImplementedError()
+
+    def _set_input_sizes(self) -> None:
+        raise NotImplementedError()
+
+    def _get_cache_stats(self) -> str:
+        raise NotImplementedError()
+
+    def _setup_result_proxy(self) -> CursorResult:
+        raise NotImplementedError()
+
+    def fire_sequence(self, seq: Sequence_SchemaItem, type_: Integer) -> int:
+        """given a :class:`.Sequence`, invoke it and return the next int
+        value"""
+        raise NotImplementedError()
+
+    def create_cursor(self) -> DBAPICursor:
         """Return a new cursor generated from this ExecutionContext's
         connection.
 
@@ -1376,7 +2441,7 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def pre_exec(self):
+    def pre_exec(self) -> None:
         """Called before an execution of a compiled statement.
 
         If a compiled statement was passed to this ExecutionContext,
@@ -1386,7 +2451,9 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def get_out_parameter_values(self, out_param_names):
+    def get_out_parameter_values(
+        self, out_param_names: Sequence[str]
+    ) -> Sequence[Any]:
         """Return a sequence of OUT parameter values from a cursor.
 
         For dialects that support OUT parameters, this method will be called
@@ -1417,14 +2484,10 @@ class ExecutionContext(object):
            set.  This replaces the practice of setting out parameters within
            the now-removed ``get_result_proxy()`` method.
 
-        .. seealso::
-
-            :meth:`.ExecutionContext.get_result_cursor_strategy`
-
         """
         raise NotImplementedError()
 
-    def post_exec(self):
+    def post_exec(self) -> None:
         """Called after the execution of a compiled statement.
 
         If a compiled statement was passed to this ExecutionContext,
@@ -1434,89 +2497,20 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def get_result_cursor_strategy(self, result):
-        """Return a result cursor strategy for a given result object.
-
-        This method is implemented by the :class:`.DefaultDialect` and is
-        only needed by implementing dialects in the case where some special
-        steps regarding the cursor must be taken, such as manufacturing
-        fake results from some other element of the cursor, or pre-buffering
-        the cursor's results.
-
-        A simplified version of the default implementation is::
-
-            from sqlalchemy.engine.result import DefaultCursorFetchStrategy
-
-            class MyExecutionContext(DefaultExecutionContext):
-                def get_result_cursor_strategy(self, result):
-                    return DefaultCursorFetchStrategy.create(result)
-
-        Above, the :class:`.DefaultCursorFetchStrategy` will be applied
-        to the result object.   For results that are pre-buffered from a
-        cursor that might be closed, an implementation might be::
-
-
-            from sqlalchemy.engine.result import (
-                FullyBufferedCursorFetchStrategy
-            )
-
-            class MyExecutionContext(DefaultExecutionContext):
-                _pre_buffered_result = None
-
-                def pre_exec(self):
-                    if self.special_condition_prebuffer_cursor():
-                        self._pre_buffered_result = (
-                            self.cursor.description,
-                            self.cursor.fetchall()
-                        )
-
-                def get_result_cursor_strategy(self, result):
-                    if self._pre_buffered_result:
-                        description, cursor_buffer = self._pre_buffered_result
-                        return (
-                            FullyBufferedCursorFetchStrategy.
-                                create_from_buffer(
-                                    result, description, cursor_buffer
-                            )
-                        )
-                    else:
-                        return DefaultCursorFetchStrategy.create(result)
-
-        This method replaces the previous not-quite-documented
-        ``get_result_proxy()`` method.
-
-        .. versionadded:: 1.4  - result objects now interpret cursor results
-           based on a pluggable "strategy" object, which is delivered
-           by the :class:`.ExecutionContext` via the
-           :meth:`.ExecutionContext.get_result_cursor_strategy` method.
-
-        .. seealso::
-
-            :meth:`.ExecutionContext.get_out_parameter_values`
-
-        """
-        raise NotImplementedError()
-
-    def handle_dbapi_exception(self, e):
+    def handle_dbapi_exception(self, e: BaseException) -> None:
         """Receive a DBAPI exception which occurred upon execute, result
         fetch, etc."""
 
         raise NotImplementedError()
 
-    def should_autocommit_text(self, statement):
-        """Parse the given textual statement and return True if it refers to
-        a "committable" statement"""
-
-        raise NotImplementedError()
-
-    def lastrow_has_defaults(self):
+    def lastrow_has_defaults(self) -> bool:
         """Return True if the last INSERT or UPDATE row contained
         inlined or database-side defaults.
         """
 
         raise NotImplementedError()
 
-    def get_rowcount(self):
+    def get_rowcount(self) -> Optional[int]:
         """Return the DBAPI ``cursor.rowcount`` value, or in some
         cases an interpreted value.
 
@@ -1527,66 +2521,22 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
 
-@util.deprecated_20_cls(
-    ":class:`.Connectable`",
-    alternative=(
-        "The :class:`_engine.Engine` will be the only Core "
-        "object that features a .connect() method, and the "
-        ":class:`_engine.Connection` will be the only object that features "
-        "an .execute() method."
-    ),
-    constructor=None,
-)
-class Connectable(object):
-    """Interface for an object which supports execution of SQL constructs.
+class ConnectionEventsTarget(EventTarget):
+    """An object which can accept events from :class:`.ConnectionEvents`.
 
-    The two implementations of :class:`.Connectable` are
-    :class:`_engine.Connection` and :class:`_engine.Engine`.
+    Includes :class:`_engine.Connection` and :class:`_engine.Engine`.
 
-    Connectable must also implement the 'dialect' member which references a
-    :class:`.Dialect` instance.
+    .. versionadded:: 2.0
 
     """
 
-    def connect(self, **kwargs):
-        """Return a :class:`_engine.Connection` object.
-
-        Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`_engine.Connection`, or a newly
-        procured :class:`_engine.Connection` if this object is an instance
-        of :class:`_engine.Engine`.
-
-        """
-
-    engine = None
-    """The :class:`_engine.Engine` instance referred to by this
-    :class:`.Connectable`.
-
-    May be ``self`` if this is already an :class:`_engine.Engine`.
-
-    """
-
-    def execute(self, object_, *multiparams, **params):
-        """Executes the given construct and returns a
-        :class:`_engine.CursorResult`.
-        """
-        raise NotImplementedError()
-
-    def scalar(self, object_, *multiparams, **params):
-        """Executes and returns the first column of the first row.
-
-        The underlying cursor is closed after execution.
-        """
-        raise NotImplementedError()
-
-    def _run_visitor(self, visitorcallable, element, **kwargs):
-        raise NotImplementedError()
-
-    def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        raise NotImplementedError()
+    dispatch: dispatcher[ConnectionEventsTarget]
 
 
-class ExceptionContext(object):
+Connectable = ConnectionEventsTarget
+
+
+class ExceptionContext:
     """Encapsulate information about an error condition in progress.
 
     This object exists solely to be passed to the
@@ -1598,7 +2548,7 @@ class ExceptionContext(object):
 
     """
 
-    connection = None
+    connection: Optional[Connection]
     """The :class:`_engine.Connection` in use during the exception.
 
     This member is present, except in the case of a failure when
@@ -1611,7 +2561,7 @@ class ExceptionContext(object):
 
     """
 
-    engine = None
+    engine: Optional[Engine]
     """The :class:`_engine.Engine` in use during the exception.
 
     This member should always be present, even in the case of a failure
@@ -1621,35 +2571,35 @@ class ExceptionContext(object):
 
     """
 
-    cursor = None
+    cursor: Optional[DBAPICursor]
     """The DBAPI cursor object.
 
     May be None.
 
     """
 
-    statement = None
+    statement: Optional[str]
     """String SQL statement that was emitted directly to the DBAPI.
 
     May be None.
 
     """
 
-    parameters = None
+    parameters: Optional[_DBAPIAnyExecuteParams]
     """Parameter collection that was emitted directly to the DBAPI.
 
     May be None.
 
     """
 
-    original_exception = None
+    original_exception: BaseException
     """The exception object which was caught.
 
     This member is always present.
 
     """
 
-    sqlalchemy_exception = None
+    sqlalchemy_exception: Optional[StatementError]
     """The :class:`sqlalchemy.exc.StatementError` which wraps the original,
     and will be raised if exception handling is not circumvented by the event.
 
@@ -1659,7 +2609,7 @@ class ExceptionContext(object):
 
     """
 
-    chained_exception = None
+    chained_exception: Optional[BaseException]
     """The exception that was returned by the previous handler in the
     exception chain, if any.
 
@@ -1670,7 +2620,7 @@ class ExceptionContext(object):
 
     """
 
-    execution_context = None
+    execution_context: Optional[ExecutionContext]
     """The :class:`.ExecutionContext` corresponding to the execution
     operation in progress.
 
@@ -1690,7 +2640,7 @@ class ExceptionContext(object):
 
     """
 
-    is_disconnect = None
+    is_disconnect: bool
     """Represent whether the exception as occurred represents a "disconnect"
     condition.
 
@@ -1715,7 +2665,7 @@ class ExceptionContext(object):
 
     """
 
-    invalidate_pool_on_disconnect = True
+    invalidate_pool_on_disconnect: bool
     """Represent whether all connections in the pool should be invalidated
     when a "disconnect" condition is in effect.
 
@@ -1735,7 +2685,7 @@ class ExceptionContext(object):
     """
 
 
-class AdaptedConnection(object):
+class AdaptedConnection:
     """Interface of an adapted connection object to support the DBAPI protocol.
 
     Used by asyncio dialects to provide a sync-style pep-249 facade on top
@@ -1747,10 +2697,41 @@ class AdaptedConnection(object):
 
     __slots__ = ("_connection",)
 
+    _connection: Any
+
     @property
-    def driver_connection(self):
+    def driver_connection(self) -> Any:
         """The connection object as returned by the driver after a connect."""
         return self._connection
 
-    def __repr__(self):
+    def run_async(self, fn: Callable[[Any], Awaitable[_T]]) -> _T:
+        """Run the awaitable returned by the given function, which is passed
+        the raw asyncio driver connection.
+
+        This is used to invoke awaitable-only methods on the driver connection
+        within the context of a "synchronous" method, like a connection
+        pool event handler.
+
+        E.g.::
+
+            engine = create_async_engine(...)
+
+            @event.listens_for(engine.sync_engine, "connect")
+            def register_custom_types(dbapi_connection, ...):
+                dbapi_connection.run_async(
+                    lambda connection: connection.set_type_codec(
+                        'MyCustomType', encoder, decoder, ...
+                    )
+                )
+
+        .. versionadded:: 1.4.30
+
+        .. seealso::
+
+            :ref:`asyncio_events_run_async`
+
+        """
+        return await_only(fn(self._connection))
+
+    def __repr__(self) -> str:
         return "<AdaptedConnection %s>" % self._connection

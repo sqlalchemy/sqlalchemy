@@ -1,5 +1,5 @@
 # orm/instrumentation.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,33 +30,69 @@ alternate instrumentation forms.
 """
 
 
+from __future__ import annotations
+
+from typing import Any
+from typing import Dict
+from typing import Generic
+from typing import Optional
+from typing import Set
+from typing import TYPE_CHECKING
+from typing import TypeVar
+
 from . import base
 from . import collections
 from . import exc
 from . import interfaces
 from . import state
+from ._typing import _O
 from .. import util
+from ..event import EventTarget
 from ..util import HasMemoized
+from ..util.typing import Protocol
 
+if TYPE_CHECKING:
+    from .attributes import InstrumentedAttribute
+    from .mapper import Mapper
+    from .state import InstanceState
+    from ..event import dispatcher
 
+_T = TypeVar("_T", bound=Any)
 DEL_ATTR = util.symbol("DEL_ATTR")
 
 
-class ClassManager(HasMemoized, dict):
+class _ExpiredAttributeLoaderProto(Protocol):
+    def __call__(
+        self,
+        state: state.InstanceState[Any],
+        toload: Set[str],
+        passive: base.PassiveFlag,
+    ):
+        ...
+
+
+class ClassManager(
+    HasMemoized,
+    Dict[str, "InstrumentedAttribute[Any]"],
+    Generic[_O],
+    EventTarget,
+):
     """Tracks state information at the class level."""
+
+    dispatch: dispatcher[ClassManager]
 
     MANAGER_ATTR = base.DEFAULT_MANAGER_ATTR
     STATE_ATTR = base.DEFAULT_STATE_ATTR
 
     _state_setter = staticmethod(util.attrsetter(STATE_ATTR))
 
-    expired_attribute_loader = None
+    expired_attribute_loader: _ExpiredAttributeLoaderProto
     "previously known as deferred_scalar_loader"
 
     init_method = None
 
     factory = None
-    mapper = None
+
     declarative_scan = None
     registry = None
 
@@ -197,7 +233,7 @@ class ClassManager(HasMemoized, dict):
         return frozenset([attr.impl for attr in self.values()])
 
     @util.memoized_property
-    def mapper(self):
+    def mapper(self) -> Mapper[_O]:
         # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
 
@@ -409,7 +445,7 @@ class ClassManager(HasMemoized, dict):
 
     # InstanceState management
 
-    def new_instance(self, state=None):
+    def new_instance(self, state: Optional[InstanceState[_O]] = None) -> _O:
         instance = self.class_.__new__(self.class_)
         if state is None:
             state = self._state_constructor(instance, self)
@@ -424,7 +460,9 @@ class ClassManager(HasMemoized, dict):
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)
 
-    def _serialize(self, state, state_dict):
+    def _serialize(
+        self, state: state.InstanceState, state_dict: Dict[str, Any]
+    ) -> _SerializeManager:
         return _SerializeManager(state, state_dict)
 
     def _new_state_if_none(self, instance):
@@ -470,7 +508,7 @@ class ClassManager(HasMemoized, dict):
         )
 
 
-class _SerializeManager(object):
+class _SerializeManager:
     """Provide serialization of a :class:`.ClassManager`.
 
     The :class:`.InstanceState` uses ``__init__()`` on serialize
@@ -478,7 +516,7 @@ class _SerializeManager(object):
 
     """
 
-    def __init__(self, state, d):
+    def __init__(self, state: state.InstanceState[Any], d: Dict[str, Any]):
         self.class_ = state.class_
         manager = state.manager
         manager.dispatch.pickle(state, d)
@@ -504,7 +542,7 @@ class _SerializeManager(object):
         manager.dispatch.unpickle(state, state_dict)
 
 
-class InstrumentationFactory(object):
+class InstrumentationFactory:
     """Factory for new ClassManager instances."""
 
     def create_manager_for_cls(self, class_):
@@ -628,12 +666,8 @@ def __init__(%(apply_pos)s):
     func_vars = util.format_argspec_init(original_init, grouped=False)
     func_text = func_body % func_vars
 
-    if util.py2k:
-        func = getattr(original_init, "im_func", original_init)
-        func_defaults = getattr(func, "func_defaults", None)
-    else:
-        func_defaults = getattr(original_init, "__defaults__", None)
-        func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
+    func_defaults = getattr(original_init, "__defaults__", None)
+    func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
 
     env = locals().copy()
     env["__name__"] = __name__
@@ -644,7 +678,7 @@ def __init__(%(apply_pos)s):
 
     if func_defaults:
         __init__.__defaults__ = func_defaults
-    if not util.py2k and func_kw_defaults:
+    if func_kw_defaults:
         __init__.__kwdefaults__ = func_kw_defaults
 
     return __init__

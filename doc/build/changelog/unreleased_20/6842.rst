@@ -1,0 +1,16 @@
+.. change::
+    :tags: postgresql, dialect
+    :tickets: 6842
+
+    Added support for ``psycopg`` dialect supporting both sync and async
+    execution. This dialect is available under the ``postgresql+psycopg`` name
+    for both the :func:`_sa.create_engine` and
+    :func:`_asyncio.create_async_engine` engine-creation functions.
+
+    .. seealso::
+
+        :ref:`ticket_6842`
+
+        :ref:`postgresql_psycopg`
+
+

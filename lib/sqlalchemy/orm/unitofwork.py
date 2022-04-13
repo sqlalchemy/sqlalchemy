@@ -1,5 +1,5 @@
 # orm/unitofwork.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,6 +13,14 @@ organizes them in order of dependency, and executes.
 
 """
 
+from __future__ import annotations
+
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Set
+from typing import TYPE_CHECKING
+
 from . import attributes
 from . import exc as orm_exc
 from . import util as orm_util
@@ -21,16 +29,13 @@ from .. import util
 from ..util import topological
 
 
-def _warn_for_cascade_backrefs(state, prop):
-    util.warn_deprecated_20(
-        '"%s" object is being merged into a Session along the backref '
-        'cascade path for relationship "%s"; in SQLAlchemy 2.0, this '
-        "reverse cascade will not take place.  Set cascade_backrefs to "
-        "False in either the relationship() or backref() function for "
-        "the 2.0 behavior; or to set globally for the whole "
-        "Session, set the future=True flag" % (state.class_.__name__, prop),
-        code="s9r1",
-    )
+if TYPE_CHECKING:
+    from .dependency import DependencyProcessor
+    from .interfaces import MapperProperty
+    from .mapper import Mapper
+    from .session import Session
+    from .session import SessionTransaction
+    from .state import InstanceState
 
 
 def track_cascade_events(descriptor, prop):
@@ -57,14 +62,9 @@ def track_cascade_events(descriptor, prop):
 
             if (
                 prop._cascade.save_update
-                and (
-                    (prop.cascade_backrefs and not sess.future)
-                    or key == initiator.key
-                )
+                and (key == initiator.key)
                 and not sess._contains_state(item_state)
             ):
-                if key != initiator.key:
-                    _warn_for_cascade_backrefs(item_state, prop)
                 sess._save_or_update_state(item_state)
         return item
 
@@ -119,14 +119,9 @@ def track_cascade_events(descriptor, prop):
                 newvalue_state = attributes.instance_state(newvalue)
                 if (
                     prop._cascade.save_update
-                    and (
-                        (prop.cascade_backrefs and not sess.future)
-                        or key == initiator.key
-                    )
+                    and (key == initiator.key)
                     and not sess._contains_state(newvalue_state)
                 ):
-                    if key != initiator.key:
-                        _warn_for_cascade_backrefs(newvalue_state, prop)
                     sess._save_or_update_state(newvalue_state)
 
             if (
@@ -150,8 +145,14 @@ def track_cascade_events(descriptor, prop):
     event.listen(descriptor, "set", set_, raw=True, retval=True)
 
 
-class UOWTransaction(object):
-    def __init__(self, session):
+class UOWTransaction:
+    session: Session
+    transaction: SessionTransaction
+    attributes: Dict[str, Any]
+    deps: util.defaultdict[Mapper[Any], Set[DependencyProcessor]]
+    mappers: util.defaultdict[Mapper[Any], Set[InstanceState[Any]]]
+
+    def __init__(self, session: Session):
         self.session = session
 
         # dictionary used by external actors to
@@ -295,13 +296,13 @@ class UOWTransaction(object):
 
     def register_object(
         self,
-        state,
-        isdelete=False,
-        listonly=False,
-        cancel_delete=False,
-        operation=None,
-        prop=None,
-    ):
+        state: InstanceState[Any],
+        isdelete: bool = False,
+        listonly: bool = False,
+        cancel_delete: bool = False,
+        operation: Optional[str] = None,
+        prop: Optional[MapperProperty] = None,
+    ) -> bool:
         if not self.session._contains_state(state):
             # this condition is normal when objects are registered
             # as part of a relationship cascade operation.  it should
@@ -428,7 +429,7 @@ class UOWTransaction(object):
             [a for a in self.postsort_actions.values() if not a.disabled]
         ).difference(cycles)
 
-    def execute(self):
+    def execute(self) -> None:
         postsort_actions = self._generate_actions()
 
         postsort_actions = sorted(
@@ -455,7 +456,7 @@ class UOWTransaction(object):
             for rec in topological.sort(self.dependencies, postsort_actions):
                 rec.execute(self)
 
-    def finalize_flush_changes(self):
+    def finalize_flush_changes(self) -> None:
         """Mark processed objects as clean / deleted after a successful
         flush().
 
@@ -477,7 +478,10 @@ class UOWTransaction(object):
             self.session._register_persistent(other)
 
 
-class IterateMappersMixin(object):
+class IterateMappersMixin:
+
+    __slots__ = ()
+
     def _mappers(self, uow):
         if self.fromparent:
             return iter(
@@ -539,7 +543,7 @@ class Preprocess(IterateMappersMixin):
             return False
 
 
-class PostSortRec(object):
+class PostSortRec:
     __slots__ = ("disabled",)
 
     def __new__(cls, uow, *args):

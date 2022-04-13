@@ -1,5 +1,5 @@
 # orm/relationships.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,24 +13,36 @@ SQL annotation and aliasing behavior focused on the `primaryjoin`
 and `secondaryjoin` aspects of :func:`_orm.relationship`.
 
 """
-from __future__ import absolute_import
+from __future__ import annotations
 
 import collections
+from collections import abc
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import Type
+from typing import TypeVar
+from typing import Union
 import weakref
 
 from . import attributes
+from . import strategy_options
 from .base import _is_mapped_class
 from .base import state_str
+from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
 from .interfaces import ONETOMANY
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
+from .util import _extract_mapped_subtype
 from .util import _orm_annotate
 from .util import _orm_deannotate
 from .util import CascadeOptions
 from .. import exc as sa_exc
+from .. import Exists
 from .. import log
 from .. import schema
 from .. import sql
@@ -41,6 +53,7 @@ from ..sql import expression
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
+from ..sql.elements import SQLCoreOperations
 from ..sql.util import _deep_deannotate
 from ..sql.util import _shallow_annotate
 from ..sql.util import adapt_criterion_to_null
@@ -48,6 +61,25 @@ from ..sql.util import ClauseAdapter
 from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
+
+if typing.TYPE_CHECKING:
+    from .mapper import Mapper
+    from .util import AliasedClass
+    from .util import AliasedInsp
+
+_T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
+
+
+_RelationshipArgumentType = Union[
+    str,
+    Type[_T],
+    Callable[[], Type[_T]],
+    "Mapper[_T]",
+    "AliasedClass[_T]",
+    Callable[[], "Mapper[_T]"],
+    Callable[[], "AliasedClass[_T]"],
+]
 
 
 def remote(expr):
@@ -90,7 +122,9 @@ def foreign(expr):
 
 
 @log.class_logger
-class RelationshipProperty(StrategizedProperty):
+class Relationship(
+    _IntrospectsAnnotations, StrategizedProperty[_T], log.Identified
+):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
 
@@ -100,24 +134,30 @@ class RelationshipProperty(StrategizedProperty):
 
         :ref:`relationship_config_toplevel`
 
+    .. versionchanged:: 2.0 Renamed :class:`_orm.RelationshipProperty`
+       to :class:`_orm.Relationship`.  The old name
+       :class:`_orm.RelationshipProperty` remains as an alias.
+
     """
 
-    strategy_wildcard_key = "relationship"
+    strategy_wildcard_key = strategy_options._RELATIONSHIP_TOKEN
     inherit_cache = True
+
+    _links_to_entity = True
 
     _persistence_only = dict(
         passive_deletes=False,
         passive_updates=True,
         enable_typechecks=True,
         active_history=False,
-        cascade_backrefs=True,
+        cascade_backrefs=False,
     )
 
     _dependency_processor = None
 
     def __init__(
         self,
-        argument,
+        argument: Optional[_RelationshipArgumentType[_T]] = None,
         secondary=None,
         primaryjoin=None,
         secondaryjoin=None,
@@ -153,832 +193,7 @@ class RelationshipProperty(StrategizedProperty):
         sync_backref=None,
         _legacy_inactive_history_style=False,
     ):
-        """Provide a relationship between two mapped classes.
-
-        This corresponds to a parent-child or associative table relationship.
-        The constructed class is an instance of
-        :class:`.RelationshipProperty`.
-
-        A typical :func:`_orm.relationship`, used in a classical mapping::
-
-           mapper(Parent, properties={
-             'children': relationship(Child)
-           })
-
-        Some arguments accepted by :func:`_orm.relationship`
-        optionally accept a
-        callable function, which when called produces the desired value.
-        The callable is invoked by the parent :class:`_orm.Mapper` at "mapper
-        initialization" time, which happens only when mappers are first used,
-        and is assumed to be after all mappings have been constructed.  This
-        can be used to resolve order-of-declaration and other dependency
-        issues, such as if ``Child`` is declared below ``Parent`` in the same
-        file::
-
-            mapper(Parent, properties={
-                "children":relationship(lambda: Child,
-                                    order_by=lambda: Child.id)
-            })
-
-        When using the :ref:`declarative_toplevel` extension, the Declarative
-        initializer allows string arguments to be passed to
-        :func:`_orm.relationship`.  These string arguments are converted into
-        callables that evaluate the string as Python code, using the
-        Declarative class-registry as a namespace.  This allows the lookup of
-        related classes to be automatic via their string name, and removes the
-        need for related classes to be imported into the local module space
-        before the dependent classes have been declared.  It is still required
-        that the modules in which these related classes appear are imported
-        anywhere in the application at some point before the related mappings
-        are actually used, else a lookup error will be raised when the
-        :func:`_orm.relationship`
-        attempts to resolve the string reference to the
-        related class.    An example of a string- resolved class is as
-        follows::
-
-            from sqlalchemy.ext.declarative import declarative_base
-
-            Base = declarative_base()
-
-            class Parent(Base):
-                __tablename__ = 'parent'
-                id = Column(Integer, primary_key=True)
-                children = relationship("Child", order_by="Child.id")
-
-        .. seealso::
-
-          :ref:`relationship_config_toplevel` - Full introductory and
-          reference documentation for :func:`_orm.relationship`.
-
-          :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
-
-        :param argument:
-          A mapped class, or actual :class:`_orm.Mapper` instance,
-          representing
-          the target of the relationship.
-
-          :paramref:`_orm.relationship.argument`
-          may also be passed as a callable
-          function which is evaluated at mapper initialization time, and may
-          be passed as a string name when using Declarative.
-
-          .. warning:: Prior to SQLAlchemy 1.3.16, this value is interpreted
-             using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          .. versionchanged 1.3.16::
-
-             The string evaluation of the main "argument" no longer accepts an
-             open ended Python expression, instead only accepting a string
-             class name or dotted package-qualified name.
-
-          .. seealso::
-
-            :ref:`declarative_configuring_relationships` - further detail
-            on relationship configuration when using Declarative.
-
-        :param secondary:
-          For a many-to-many relationship, specifies the intermediary
-          table, and is typically an instance of :class:`_schema.Table`.
-          In less common circumstances, the argument may also be specified
-          as an :class:`_expression.Alias` construct, or even a
-          :class:`_expression.Join` construct.
-
-          :paramref:`_orm.relationship.secondary` may
-          also be passed as a callable function which is evaluated at
-          mapper initialization time.  When using Declarative, it may also
-          be a string argument noting the name of a :class:`_schema.Table`
-          that is
-          present in the :class:`_schema.MetaData`
-          collection associated with the
-          parent-mapped :class:`_schema.Table`.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          The :paramref:`_orm.relationship.secondary` keyword argument is
-          typically applied in the case where the intermediary
-          :class:`_schema.Table`
-          is not otherwise expressed in any direct class mapping. If the
-          "secondary" table is also explicitly mapped elsewhere (e.g. as in
-          :ref:`association_pattern`), one should consider applying the
-          :paramref:`_orm.relationship.viewonly` flag so that this
-          :func:`_orm.relationship`
-          is not used for persistence operations which
-          may conflict with those of the association object pattern.
-
-          .. seealso::
-
-              :ref:`relationships_many_to_many` - Reference example of "many
-              to many".
-
-              :ref:`orm_tutorial_many_to_many` - ORM tutorial introduction to
-              many-to-many relationships.
-
-              :ref:`self_referential_many_to_many` - Specifics on using
-              many-to-many in a self-referential case.
-
-              :ref:`declarative_many_to_many` - Additional options when using
-              Declarative.
-
-              :ref:`association_pattern` - an alternative to
-              :paramref:`_orm.relationship.secondary`
-              when composing association
-              table relationships, allowing additional attributes to be
-              specified on the association table.
-
-              :ref:`composite_secondary_join` - a lesser-used pattern which
-              in some cases can enable complex :func:`_orm.relationship` SQL
-              conditions to be used.
-
-          .. versionadded:: 0.9.2 :paramref:`_orm.relationship.secondary`
-             works
-             more effectively when referring to a :class:`_expression.Join`
-             instance.
-
-        :param active_history=False:
-          When ``True``, indicates that the "previous" value for a
-          many-to-one reference should be loaded when replaced, if
-          not already loaded. Normally, history tracking logic for
-          simple many-to-ones only needs to be aware of the "new"
-          value in order to perform a flush. This flag is available
-          for applications that make use of
-          :func:`.attributes.get_history` which also need to know
-          the "previous" value of the attribute.
-
-        :param backref:
-          Indicates the string name of a property to be placed on the related
-          mapper's class that will handle this relationship in the other
-          direction. The other property will be created automatically
-          when the mappers are configured.  Can also be passed as a
-          :func:`.backref` object to control the configuration of the
-          new relationship.
-
-          .. seealso::
-
-            :ref:`relationships_backref` - Introductory documentation and
-            examples.
-
-            :paramref:`_orm.relationship.back_populates` - alternative form
-            of backref specification.
-
-            :func:`.backref` - allows control over :func:`_orm.relationship`
-            configuration when using :paramref:`_orm.relationship.backref`.
-
-
-        :param back_populates:
-          Takes a string name and has the same meaning as
-          :paramref:`_orm.relationship.backref`, except the complementing
-          property is **not** created automatically, and instead must be
-          configured explicitly on the other mapper.  The complementing
-          property should also indicate
-          :paramref:`_orm.relationship.back_populates` to this relationship to
-          ensure proper functioning.
-
-          .. seealso::
-
-            :ref:`relationships_backref` - Introductory documentation and
-            examples.
-
-            :paramref:`_orm.relationship.backref` - alternative form
-            of backref specification.
-
-        :param overlaps:
-           A string name or comma-delimited set of names of other relationships
-           on either this mapper, a descendant mapper, or a target mapper with
-           which this relationship may write to the same foreign keys upon
-           persistence.   The only effect this has is to eliminate the
-           warning that this relationship will conflict with another upon
-           persistence.   This is used for such relationships that are truly
-           capable of conflicting with each other on write, but the application
-           will ensure that no such conflicts occur.
-
-           .. versionadded:: 1.4
-
-           .. seealso::
-
-                :ref:`error_qzyx` - usage example
-
-        :param bake_queries=True:
-          Enable :ref:`lambda caching <engine_lambda_caching>` for loader
-          strategies, if applicable, which adds a performance gain to the
-          construction of SQL constructs used by loader strategies, in addition
-          to the usual SQL statement caching used throughout SQLAlchemy. This
-          parameter currently applies only to the "lazy" and "selectin" loader
-          strategies. There is generally no reason to set this parameter to
-          False.
-
-          .. versionchanged:: 1.4  Relationship loaders no longer use the
-             previous "baked query" system of query caching.   The "lazy"
-             and "selectin" loaders make use of the "lambda cache" system
-             for the construction of SQL constructs,
-             as well as the usual SQL caching system that is throughout
-             SQLAlchemy as of the 1.4 series.
-
-        :param cascade:
-          A comma-separated list of cascade rules which determines how
-          Session operations should be "cascaded" from parent to child.
-          This defaults to ``False``, which means the default cascade
-          should be used - this default cascade is ``"save-update, merge"``.
-
-          The available cascades are ``save-update``, ``merge``,
-          ``expunge``, ``delete``, ``delete-orphan``, and ``refresh-expire``.
-          An additional option, ``all`` indicates shorthand for
-          ``"save-update, merge, refresh-expire,
-          expunge, delete"``, and is often used as in ``"all, delete-orphan"``
-          to indicate that related objects should follow along with the
-          parent object in all cases, and be deleted when de-associated.
-
-          .. seealso::
-
-            :ref:`unitofwork_cascades` - Full detail on each of the available
-            cascade options.
-
-            :ref:`tutorial_delete_cascade` - Tutorial example describing
-            a delete cascade.
-
-        :param cascade_backrefs=True:
-          A boolean value indicating if the ``save-update`` cascade should
-          operate along an assignment event intercepted by a backref.
-          When set to ``False``, the attribute managed by this relationship
-          will not cascade an incoming transient object into the session of a
-          persistent parent, if the event is received via backref.
-
-          .. deprecated:: 1.4 The
-             :paramref:`_orm.relationship.cascade_backrefs`
-             flag will default to False in all cases in SQLAlchemy 2.0.
-
-          .. seealso::
-
-            :ref:`backref_cascade` - Full discussion and examples on how
-            the :paramref:`_orm.relationship.cascade_backrefs` option is used.
-
-        :param collection_class:
-          A class or callable that returns a new list-holding object. will
-          be used in place of a plain list for storing elements.
-
-          .. seealso::
-
-            :ref:`custom_collections` - Introductory documentation and
-            examples.
-
-        :param comparator_factory:
-          A class which extends :class:`.RelationshipProperty.Comparator`
-          which provides custom SQL clause generation for comparison
-          operations.
-
-          .. seealso::
-
-            :class:`.PropComparator` - some detail on redefining comparators
-            at this level.
-
-            :ref:`custom_comparators` - Brief intro to this feature.
-
-
-        :param distinct_target_key=None:
-          Indicate if a "subquery" eager load should apply the DISTINCT
-          keyword to the innermost SELECT statement.  When left as ``None``,
-          the DISTINCT keyword will be applied in those cases when the target
-          columns do not comprise the full primary key of the target table.
-          When set to ``True``, the DISTINCT keyword is applied to the
-          innermost SELECT unconditionally.
-
-          It may be desirable to set this flag to False when the DISTINCT is
-          reducing performance of the innermost subquery beyond that of what
-          duplicate innermost rows may be causing.
-
-          .. versionchanged:: 0.9.0 -
-             :paramref:`_orm.relationship.distinct_target_key` now defaults to
-             ``None``, so that the feature enables itself automatically for
-             those cases where the innermost query targets a non-unique
-             key.
-
-          .. seealso::
-
-            :ref:`loading_toplevel` - includes an introduction to subquery
-            eager loading.
-
-        :param doc:
-          Docstring which will be applied to the resulting descriptor.
-
-        :param foreign_keys:
-
-          A list of columns which are to be used as "foreign key"
-          columns, or columns which refer to the value in a remote
-          column, within the context of this :func:`_orm.relationship`
-          object's :paramref:`_orm.relationship.primaryjoin` condition.
-          That is, if the :paramref:`_orm.relationship.primaryjoin`
-          condition of this :func:`_orm.relationship` is ``a.id ==
-          b.a_id``, and the values in ``b.a_id`` are required to be
-          present in ``a.id``, then the "foreign key" column of this
-          :func:`_orm.relationship` is ``b.a_id``.
-
-          In normal cases, the :paramref:`_orm.relationship.foreign_keys`
-          parameter is **not required.** :func:`_orm.relationship` will
-          automatically determine which columns in the
-          :paramref:`_orm.relationship.primaryjoin` condition are to be
-          considered "foreign key" columns based on those
-          :class:`_schema.Column` objects that specify
-          :class:`_schema.ForeignKey`,
-          or are otherwise listed as referencing columns in a
-          :class:`_schema.ForeignKeyConstraint` construct.
-          :paramref:`_orm.relationship.foreign_keys` is only needed when:
-
-            1. There is more than one way to construct a join from the local
-               table to the remote table, as there are multiple foreign key
-               references present.  Setting ``foreign_keys`` will limit the
-               :func:`_orm.relationship`
-               to consider just those columns specified
-               here as "foreign".
-
-            2. The :class:`_schema.Table` being mapped does not actually have
-               :class:`_schema.ForeignKey` or
-               :class:`_schema.ForeignKeyConstraint`
-               constructs present, often because the table
-               was reflected from a database that does not support foreign key
-               reflection (MySQL MyISAM).
-
-            3. The :paramref:`_orm.relationship.primaryjoin`
-               argument is used to
-               construct a non-standard join condition, which makes use of
-               columns or expressions that do not normally refer to their
-               "parent" column, such as a join condition expressed by a
-               complex comparison using a SQL function.
-
-          The :func:`_orm.relationship` construct will raise informative
-          error messages that suggest the use of the
-          :paramref:`_orm.relationship.foreign_keys` parameter when
-          presented with an ambiguous condition.   In typical cases,
-          if :func:`_orm.relationship` doesn't raise any exceptions, the
-          :paramref:`_orm.relationship.foreign_keys` parameter is usually
-          not needed.
-
-          :paramref:`_orm.relationship.foreign_keys` may also be passed as a
-          callable function which is evaluated at mapper initialization time,
-          and may be passed as a Python-evaluable string when using
-          Declarative.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          .. seealso::
-
-            :ref:`relationship_foreign_keys`
-
-            :ref:`relationship_custom_foreign`
-
-            :func:`.foreign` - allows direct annotation of the "foreign"
-            columns within a :paramref:`_orm.relationship.primaryjoin`
-            condition.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.MapperProperty.info` attribute of this object.
-
-        :param innerjoin=False:
-          When ``True``, joined eager loads will use an inner join to join
-          against related tables instead of an outer join.  The purpose
-          of this option is generally one of performance, as inner joins
-          generally perform better than outer joins.
-
-          This flag can be set to ``True`` when the relationship references an
-          object via many-to-one using local foreign keys that are not
-          nullable, or when the reference is one-to-one or a collection that
-          is guaranteed to have one or at least one entry.
-
-          The option supports the same "nested" and "unnested" options as
-          that of :paramref:`_orm.joinedload.innerjoin`.  See that flag
-          for details on nested / unnested behaviors.
-
-          .. seealso::
-
-            :paramref:`_orm.joinedload.innerjoin` - the option as specified by
-            loader option, including detail on nesting behavior.
-
-            :ref:`what_kind_of_loading` - Discussion of some details of
-            various loader options.
-
-
-        :param join_depth:
-          When non-``None``, an integer value indicating how many levels
-          deep "eager" loaders should join on a self-referring or cyclical
-          relationship.  The number counts how many times the same Mapper
-          shall be present in the loading condition along a particular join
-          branch.  When left at its default of ``None``, eager loaders
-          will stop chaining when they encounter a the same target mapper
-          which is already higher up in the chain.  This option applies
-          both to joined- and subquery- eager loaders.
-
-          .. seealso::
-
-            :ref:`self_referential_eager_loading` - Introductory documentation
-            and examples.
-
-        :param lazy='select': specifies
-          How the related items should be loaded.  Default value is
-          ``select``.  Values include:
-
-          * ``select`` - items should be loaded lazily when the property is
-            first accessed, using a separate SELECT statement, or identity map
-            fetch for simple many-to-one references.
-
-          * ``immediate`` - items should be loaded as the parents are loaded,
-            using a separate SELECT statement, or identity map fetch for
-            simple many-to-one references.
-
-          * ``joined`` - items should be loaded "eagerly" in the same query as
-            that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
-            the join is "outer" or not is determined by the
-            :paramref:`_orm.relationship.innerjoin` parameter.
-
-          * ``subquery`` - items should be loaded "eagerly" as the parents are
-            loaded, using one additional SQL statement, which issues a JOIN to
-            a subquery of the original statement, for each collection
-            requested.
-
-          * ``selectin`` - items should be loaded "eagerly" as the parents
-            are loaded, using one or more additional SQL statements, which
-            issues a JOIN to the immediate parent object, specifying primary
-            key identifiers using an IN clause.
-
-            .. versionadded:: 1.2
-
-          * ``noload`` - no loading should occur at any time.  This is to
-            support "write-only" attributes, or attributes which are
-            populated in some manner specific to the application.
-
-          * ``raise`` - lazy loading is disallowed; accessing
-            the attribute, if its value were not already loaded via eager
-            loading, will raise an :exc:`~sqlalchemy.exc.InvalidRequestError`.
-            This strategy can be used when objects are to be detached from
-            their attached :class:`.Session` after they are loaded.
-
-            .. versionadded:: 1.1
-
-          * ``raise_on_sql`` - lazy loading that emits SQL is disallowed;
-            accessing the attribute, if its value were not already loaded via
-            eager loading, will raise an
-            :exc:`~sqlalchemy.exc.InvalidRequestError`, **if the lazy load
-            needs to emit SQL**.  If the lazy load can pull the related value
-            from the identity map or determine that it should be None, the
-            value is loaded.  This strategy can be used when objects will
-            remain associated with the attached :class:`.Session`, however
-            additional SELECT statements should be blocked.
-
-            .. versionadded:: 1.1
-
-          * ``dynamic`` - the attribute will return a pre-configured
-            :class:`_query.Query` object for all read
-            operations, onto which further filtering operations can be
-            applied before iterating the results.  See
-            the section :ref:`dynamic_relationship` for more details.
-
-          * True - a synonym for 'select'
-
-          * False - a synonym for 'joined'
-
-          * None - a synonym for 'noload'
-
-          .. seealso::
-
-            :doc:`/orm/loading_relationships` - Full documentation on
-            relationship loader configuration.
-
-            :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
-
-            :ref:`collections_noload_raiseload` - notes on "noload" and "raise"
-
-        :param load_on_pending=False:
-          Indicates loading behavior for transient or pending parent objects.
-
-          When set to ``True``, causes the lazy-loader to
-          issue a query for a parent object that is not persistent, meaning it
-          has never been flushed.  This may take effect for a pending object
-          when autoflush is disabled, or for a transient object that has been
-          "attached" to a :class:`.Session` but is not part of its pending
-          collection.
-
-          The :paramref:`_orm.relationship.load_on_pending`
-          flag does not improve
-          behavior when the ORM is used normally - object references should be
-          constructed at the object level, not at the foreign key level, so
-          that they are present in an ordinary way before a flush proceeds.
-          This flag is not not intended for general use.
-
-          .. seealso::
-
-              :meth:`.Session.enable_relationship_loading` - this method
-              establishes "load on pending" behavior for the whole object, and
-              also allows loading on objects that remain transient or
-              detached.
-
-        :param order_by:
-          Indicates the ordering that should be applied when loading these
-          items.  :paramref:`_orm.relationship.order_by`
-          is expected to refer to
-          one of the :class:`_schema.Column`
-          objects to which the target class is
-          mapped, or the attribute itself bound to the target class which
-          refers to the column.
-
-          :paramref:`_orm.relationship.order_by`
-          may also be passed as a callable
-          function which is evaluated at mapper initialization time, and may
-          be passed as a Python-evaluable string when using Declarative.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-        :param passive_deletes=False:
-           Indicates loading behavior during delete operations.
-
-           A value of True indicates that unloaded child items should not
-           be loaded during a delete operation on the parent.  Normally,
-           when a parent item is deleted, all child items are loaded so
-           that they can either be marked as deleted, or have their
-           foreign key to the parent set to NULL.  Marking this flag as
-           True usually implies an ON DELETE <CASCADE|SET NULL> rule is in
-           place which will handle updating/deleting child rows on the
-           database side.
-
-           Additionally, setting the flag to the string value 'all' will
-           disable the "nulling out" of the child foreign keys, when the parent
-           object is deleted and there is no delete or delete-orphan cascade
-           enabled.  This is typically used when a triggering or error raise
-           scenario is in place on the database side.  Note that the foreign
-           key attributes on in-session child objects will not be changed after
-           a flush occurs so this is a very special use-case setting.
-           Additionally, the "nulling out" will still occur if the child
-           object is de-associated with the parent.
-
-           .. seealso::
-
-                :ref:`passive_deletes` - Introductory documentation
-                and examples.
-
-        :param passive_updates=True:
-          Indicates the persistence behavior to take when a referenced
-          primary key value changes in place, indicating that the referencing
-          foreign key columns will also need their value changed.
-
-          When True, it is assumed that ``ON UPDATE CASCADE`` is configured on
-          the foreign key in the database, and that the database will
-          handle propagation of an UPDATE from a source column to
-          dependent rows.  When False, the SQLAlchemy
-          :func:`_orm.relationship`
-          construct will attempt to emit its own UPDATE statements to
-          modify related targets.  However note that SQLAlchemy **cannot**
-          emit an UPDATE for more than one level of cascade.  Also,
-          setting this flag to False is not compatible in the case where
-          the database is in fact enforcing referential integrity, unless
-          those constraints are explicitly "deferred", if the target backend
-          supports it.
-
-          It is highly advised that an application which is employing
-          mutable primary keys keeps ``passive_updates`` set to True,
-          and instead uses the referential integrity features of the database
-          itself in order to handle the change efficiently and fully.
-
-          .. seealso::
-
-              :ref:`passive_updates` - Introductory documentation and
-              examples.
-
-              :paramref:`.mapper.passive_updates` - a similar flag which
-              takes effect for joined-table inheritance mappings.
-
-        :param post_update:
-          This indicates that the relationship should be handled by a
-          second UPDATE statement after an INSERT or before a
-          DELETE. Currently, it also will issue an UPDATE after the
-          instance was UPDATEd as well, although this technically should
-          be improved. This flag is used to handle saving bi-directional
-          dependencies between two individual rows (i.e. each row
-          references the other), where it would otherwise be impossible to
-          INSERT or DELETE both rows fully since one row exists before the
-          other. Use this flag when a particular mapping arrangement will
-          incur two rows that are dependent on each other, such as a table
-          that has a one-to-many relationship to a set of child rows, and
-          also has a column that references a single child row within that
-          list (i.e. both tables contain a foreign key to each other). If
-          a flush operation returns an error that a "cyclical
-          dependency" was detected, this is a cue that you might want to
-          use :paramref:`_orm.relationship.post_update` to "break" the cycle.
-
-          .. seealso::
-
-              :ref:`post_update` - Introductory documentation and examples.
-
-        :param primaryjoin:
-          A SQL expression that will be used as the primary
-          join of the child object against the parent object, or in a
-          many-to-many relationship the join of the parent object to the
-          association table. By default, this value is computed based on the
-          foreign key relationships of the parent and child tables (or
-          association table).
-
-          :paramref:`_orm.relationship.primaryjoin` may also be passed as a
-          callable function which is evaluated at mapper initialization time,
-          and may be passed as a Python-evaluable string when using
-          Declarative.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          .. seealso::
-
-              :ref:`relationship_primaryjoin`
-
-        :param remote_side:
-          Used for self-referential relationships, indicates the column or
-          list of columns that form the "remote side" of the relationship.
-
-          :paramref:`_orm.relationship.remote_side` may also be passed as a
-          callable function which is evaluated at mapper initialization time,
-          and may be passed as a Python-evaluable string when using
-          Declarative.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          .. seealso::
-
-            :ref:`self_referential` - in-depth explanation of how
-            :paramref:`_orm.relationship.remote_side`
-            is used to configure self-referential relationships.
-
-            :func:`.remote` - an annotation function that accomplishes the
-            same purpose as :paramref:`_orm.relationship.remote_side`,
-            typically
-            when a custom :paramref:`_orm.relationship.primaryjoin` condition
-            is used.
-
-        :param query_class:
-          A :class:`_query.Query`
-          subclass that will be used internally by the
-          ``AppenderQuery`` returned by a "dynamic" relationship, that
-          is, a relationship that specifies ``lazy="dynamic"`` or was
-          otherwise constructed using the :func:`_orm.dynamic_loader`
-          function.
-
-          .. seealso::
-
-            :ref:`dynamic_relationship` - Introduction to "dynamic"
-            relationship loaders.
-
-        :param secondaryjoin:
-          A SQL expression that will be used as the join of
-          an association table to the child object. By default, this value is
-          computed based on the foreign key relationships of the association
-          and child tables.
-
-          :paramref:`_orm.relationship.secondaryjoin` may also be passed as a
-          callable function which is evaluated at mapper initialization time,
-          and may be passed as a Python-evaluable string when using
-          Declarative.
-
-          .. warning:: When passed as a Python-evaluable string, the
-             argument is interpreted using Python's ``eval()`` function.
-             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-             See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`_orm.relationship` arguments.
-
-          .. seealso::
-
-              :ref:`relationship_primaryjoin`
-
-        :param single_parent:
-          When True, installs a validator which will prevent objects
-          from being associated with more than one parent at a time.
-          This is used for many-to-one or many-to-many relationships that
-          should be treated either as one-to-one or one-to-many.  Its usage
-          is optional, except for :func:`_orm.relationship` constructs which
-          are many-to-one or many-to-many and also
-          specify the ``delete-orphan`` cascade option.  The
-          :func:`_orm.relationship` construct itself will raise an error
-          instructing when this option is required.
-
-          .. seealso::
-
-            :ref:`unitofwork_cascades` - includes detail on when the
-            :paramref:`_orm.relationship.single_parent`
-            flag may be appropriate.
-
-        :param uselist:
-          A boolean that indicates if this property should be loaded as a
-          list or a scalar. In most cases, this value is determined
-          automatically by :func:`_orm.relationship` at mapper configuration
-          time, based on the type and direction
-          of the relationship - one to many forms a list, many to one
-          forms a scalar, many to many is a list. If a scalar is desired
-          where normally a list would be present, such as a bi-directional
-          one-to-one relationship, set :paramref:`_orm.relationship.uselist`
-          to
-          False.
-
-          The :paramref:`_orm.relationship.uselist`
-          flag is also available on an
-          existing :func:`_orm.relationship`
-          construct as a read-only attribute,
-          which can be used to determine if this :func:`_orm.relationship`
-          deals
-          with collections or scalar attributes::
-
-              >>> User.addresses.property.uselist
-              True
-
-          .. seealso::
-
-              :ref:`relationships_one_to_one` - Introduction to the "one to
-              one" relationship pattern, which is typically when the
-              :paramref:`_orm.relationship.uselist` flag is needed.
-
-        :param viewonly=False:
-          When set to ``True``, the relationship is used only for loading
-          objects, and not for any persistence operation.  A
-          :func:`_orm.relationship` which specifies
-          :paramref:`_orm.relationship.viewonly` can work
-          with a wider range of SQL operations within the
-          :paramref:`_orm.relationship.primaryjoin` condition, including
-          operations that feature the use of a variety of comparison operators
-          as well as SQL functions such as :func:`_expression.cast`.  The
-          :paramref:`_orm.relationship.viewonly`
-          flag is also of general use when defining any kind of
-          :func:`_orm.relationship` that doesn't represent
-          the full set of related objects, to prevent modifications of the
-          collection from resulting in persistence operations.
-
-          When using the :paramref:`_orm.relationship.viewonly` flag in
-          conjunction with backrefs, the originating relationship for a
-          particular state change will not produce state changes within the
-          viewonly relationship.   This is the behavior implied by
-          :paramref:`_orm.relationship.sync_backref` being set to False.
-
-          .. versionchanged:: 1.3.17 - the
-             :paramref:`_orm.relationship.sync_backref` flag is set to False
-                 when using viewonly in conjunction with backrefs.
-
-          .. seealso::
-
-            :paramref:`_orm.relationship.sync_backref`
-
-        :param sync_backref:
-          A boolean that enables the events used to synchronize the in-Python
-          attributes when this relationship is target of either
-          :paramref:`_orm.relationship.backref` or
-          :paramref:`_orm.relationship.back_populates`.
-
-          Defaults to ``None``, which indicates that an automatic value should
-          be selected based on the value of the
-          :paramref:`_orm.relationship.viewonly` flag.  When left at its
-          default, changes in state will be back-populated only if neither
-          sides of a relationship is viewonly.
-
-          .. versionadded:: 1.3.17
-
-          .. versionchanged:: 1.4 - A relationship that specifies
-             :paramref:`_orm.relationship.viewonly` automatically implies
-             that :paramref:`_orm.relationship.sync_backref` is ``False``.
-
-          .. seealso::
-
-            :paramref:`_orm.relationship.viewonly`
-
-        :param omit_join:
-          Allows manual control over the "selectin" automatic join
-          optimization.  Set to ``False`` to disable the "omit join" feature
-          added in SQLAlchemy 1.3; or leave as ``None`` to leave automatic
-          optimization in place.
-
-          .. note:: This flag may only be set to ``False``.   It is not
-             necessary to set it to ``True`` as the "omit_join" optimization is
-             automatically detected; if it is not detected, then the
-             optimization is not supported.
-
-             .. versionchanged:: 1.3.11  setting ``omit_join`` to True will now
-                emit a warning as this was not the intended use of this flag.
-
-          .. versionadded:: 1.3
-
-
-        """
-        super(RelationshipProperty, self).__init__()
+        super(Relationship, self).__init__()
 
         self.uselist = uselist
         self.argument = argument
@@ -1006,7 +221,13 @@ class RelationshipProperty(StrategizedProperty):
         self._user_defined_foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
-        self.cascade_backrefs = cascade_backrefs
+
+        if cascade_backrefs:
+            raise sa_exc.ArgumentError(
+                "The 'cascade_backrefs' parameter passed to "
+                "relationship() may only be set to False."
+            )
+
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
@@ -1031,9 +252,7 @@ class RelationshipProperty(StrategizedProperty):
         self.local_remote_pairs = _local_remote_pairs
         self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
-        self.comparator_factory = (
-            comparator_factory or RelationshipProperty.Comparator
-        )
+        self.comparator_factory = comparator_factory or Relationship.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
 
@@ -1096,9 +315,9 @@ class RelationshipProperty(StrategizedProperty):
             doc=self.doc,
         )
 
-    class Comparator(PropComparator):
+    class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
-        :class:`.RelationshipProperty` attributes.
+        :class:`.Relationship` attributes.
 
         See the documentation for :class:`.PropComparator` for a brief
         overview of ORM level operator definition.
@@ -1128,7 +347,7 @@ class RelationshipProperty(StrategizedProperty):
             of_type=None,
             extra_criteria=(),
         ):
-            """Construction of :class:`.RelationshipProperty.Comparator`
+            """Construction of :class:`.Relationship.Comparator`
             is internal to the ORM's attribute mechanics.
 
             """
@@ -1150,7 +369,7 @@ class RelationshipProperty(StrategizedProperty):
         @util.memoized_property
         def entity(self):
             """The target entity referred to by this
-            :class:`.RelationshipProperty.Comparator`.
+            :class:`.Relationship.Comparator`.
 
             This is either a :class:`_orm.Mapper` or :class:`.AliasedInsp`
             object.
@@ -1159,12 +378,18 @@ class RelationshipProperty(StrategizedProperty):
             :func:`_orm.relationship`.
 
             """
-            return self.property.entity
+            # this is a relatively recent change made for
+            # 1.4.27 as part of #7244.
+            # TODO: shouldn't _of_type be inspected up front when received?
+            if self._of_type is not None:
+                return inspect(self._of_type)
+            else:
+                return self.property.entity
 
         @util.memoized_property
         def mapper(self):
             """The target :class:`_orm.Mapper` referred to by this
-            :class:`.RelationshipProperty.Comparator`.
+            :class:`.Relationship.Comparator`.
 
             This is the "target" or "remote" side of the
             :func:`_orm.relationship`.
@@ -1215,7 +440,7 @@ class RelationshipProperty(StrategizedProperty):
 
 
             """
-            return RelationshipProperty.Comparator(
+            return Relationship.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -1231,7 +456,7 @@ class RelationshipProperty(StrategizedProperty):
             .. versionadded:: 1.4
 
             """
-            return RelationshipProperty.Comparator(
+            return Relationship.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -1251,7 +476,8 @@ class RelationshipProperty(StrategizedProperty):
                 "the set of foreign key values."
             )
 
-        __hash__ = None
+        # https://github.com/python/mypy/issues/4266
+        __hash__ = None  # type: ignore
 
         def __eq__(self, other):
             """Implement the ``==`` operator.
@@ -1272,7 +498,7 @@ class RelationshipProperty(StrategizedProperty):
             many-to-one comparisons:
 
             * Comparisons against collections are not supported.
-              Use :meth:`~.RelationshipProperty.Comparator.contains`.
+              Use :meth:`~.Relationship.Comparator.contains`.
             * Compared to a scalar one-to-many, will produce a
               clause that compares the target columns in the parent to
               the given target.
@@ -1283,7 +509,7 @@ class RelationshipProperty(StrategizedProperty):
               queries that go beyond simple AND conjunctions of
               comparisons, such as those which use OR. Use
               explicit joins, outerjoins, or
-              :meth:`~.RelationshipProperty.Comparator.has` for
+              :meth:`~.Relationship.Comparator.has` for
               more comprehensive non-many-to-one scalar
               membership tests.
             * Comparisons against ``None`` given in a one-to-many
@@ -1311,7 +537,11 @@ class RelationshipProperty(StrategizedProperty):
                     )
                 )
 
-        def _criterion_exists(self, criterion=None, **kwargs):
+        def _criterion_exists(
+            self,
+            criterion: Optional[SQLCoreOperations[Any]] = None,
+            **kwargs: Any,
+        ) -> Exists[bool]:
             if getattr(self, "_of_type", None):
                 info = inspect(self._of_type)
                 target_mapper, to_selectable, is_aliased_class = (
@@ -1417,12 +647,12 @@ class RelationshipProperty(StrategizedProperty):
                 EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id
                 AND related.x=2)
 
-            Because :meth:`~.RelationshipProperty.Comparator.any` uses
+            Because :meth:`~.Relationship.Comparator.any` uses
             a correlated subquery, its performance is not nearly as
             good when compared against large target tables as that of
             using a join.
 
-            :meth:`~.RelationshipProperty.Comparator.any` is particularly
+            :meth:`~.Relationship.Comparator.any` is particularly
             useful for testing for empty collections::
 
                 session.query(MyClass).filter(
@@ -1435,10 +665,10 @@ class RelationshipProperty(StrategizedProperty):
                 NOT (EXISTS (SELECT 1 FROM related WHERE
                 related.my_id=my_table.id))
 
-            :meth:`~.RelationshipProperty.Comparator.any` is only
+            :meth:`~.Relationship.Comparator.any` is only
             valid for collections, i.e. a :func:`_orm.relationship`
             that has ``uselist=True``.  For scalar references,
-            use :meth:`~.RelationshipProperty.Comparator.has`.
+            use :meth:`~.Relationship.Comparator.has`.
 
             """
             if not self.property.uselist:
@@ -1466,15 +696,15 @@ class RelationshipProperty(StrategizedProperty):
                 EXISTS (SELECT 1 FROM related WHERE
                 related.id==my_table.related_id AND related.x=2)
 
-            Because :meth:`~.RelationshipProperty.Comparator.has` uses
+            Because :meth:`~.Relationship.Comparator.has` uses
             a correlated subquery, its performance is not nearly as
             good when compared against large target tables as that of
             using a join.
 
-            :meth:`~.RelationshipProperty.Comparator.has` is only
+            :meth:`~.Relationship.Comparator.has` is only
             valid for scalar references, i.e. a :func:`_orm.relationship`
             that has ``uselist=False``.  For collection references,
-            use :meth:`~.RelationshipProperty.Comparator.any`.
+            use :meth:`~.Relationship.Comparator.any`.
 
             """
             if self.property.uselist:
@@ -1487,7 +717,7 @@ class RelationshipProperty(StrategizedProperty):
             """Return a simple expression that tests a collection for
             containment of a particular item.
 
-            :meth:`~.RelationshipProperty.Comparator.contains` is
+            :meth:`~.Relationship.Comparator.contains` is
             only valid for a collection, i.e. a
             :func:`_orm.relationship` that implements
             one-to-many or many-to-many with ``uselist=True``.
@@ -1504,12 +734,12 @@ class RelationshipProperty(StrategizedProperty):
             Where ``<some id>`` is the value of the foreign key
             attribute on ``other`` which refers to the primary
             key of its parent object. From this it follows that
-            :meth:`~.RelationshipProperty.Comparator.contains` is
+            :meth:`~.Relationship.Comparator.contains` is
             very useful when used with simple one-to-many
             operations.
 
             For many-to-many operations, the behavior of
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             has more caveats. The association table will be
             rendered in the statement, producing an "implicit"
             join, that is, includes multiple tables in the FROM
@@ -1526,14 +756,14 @@ class RelationshipProperty(StrategizedProperty):
 
             Where ``<some id>`` would be the primary key of
             ``other``. From the above, it is clear that
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             will **not** work with many-to-many collections when
             used in queries that move beyond simple AND
             conjunctions, such as multiple
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             expressions joined by OR. In such cases subqueries or
             explicit "outer joins" will need to be used instead.
-            See :meth:`~.RelationshipProperty.Comparator.any` for
+            See :meth:`~.Relationship.Comparator.any` for
             a less-performant alternative using EXISTS, or refer
             to :meth:`_query.Query.outerjoin`
             as well as :ref:`ormtutorial_joins`
@@ -1622,7 +852,7 @@ class RelationshipProperty(StrategizedProperty):
 
             * Comparisons against collections are not supported.
               Use
-              :meth:`~.RelationshipProperty.Comparator.contains`
+              :meth:`~.Relationship.Comparator.contains`
               in conjunction with :func:`_expression.not_`.
             * Compared to a scalar one-to-many, will produce a
               clause that compares the target columns in the parent to
@@ -1634,7 +864,7 @@ class RelationshipProperty(StrategizedProperty):
               queries that go beyond simple AND conjunctions of
               comparisons, such as those which use OR. Use
               explicit joins, outerjoins, or
-              :meth:`~.RelationshipProperty.Comparator.has` in
+              :meth:`~.Relationship.Comparator.has` in
               conjunction with :func:`_expression.not_` for
               more comprehensive non-many-to-one scalar
               membership tests.
@@ -1665,6 +895,8 @@ class RelationshipProperty(StrategizedProperty):
         def property(self):
             self.prop.parent._check_configure()
             return self.prop
+
+    comparator: Comparator[_T]
 
     def _with_parent(self, instance, alias_secondary=True, from_entity=None):
         assert instance is not None
@@ -2051,7 +1283,7 @@ class RelationshipProperty(StrategizedProperty):
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
-        if not isinstance(other, RelationshipProperty):
+        if not isinstance(other, Relationship):
             raise sa_exc.InvalidRequestError(
                 "back_populates on relationship '%s' refers to attribute '%s' "
                 "that is not a relationship.  The back_populates parameter "
@@ -2070,6 +1302,8 @@ class RelationshipProperty(StrategizedProperty):
 
         self._reverse_property.add(other)
         other._reverse_property.add(self)
+
+        other._setup_entity()
 
         if not other.mapper.common_parent(self.parent):
             raise sa_exc.ArgumentError(
@@ -2091,48 +1325,18 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     @util.memoized_property
-    @util.preload_module("sqlalchemy.orm.mapper")
-    def entity(self):
+    def entity(self) -> Union["Mapper", "AliasedInsp"]:
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
         """
-
-        mapperlib = util.preloaded.orm_mapper
-
-        if isinstance(self.argument, util.string_types):
-            argument = self._clsregistry_resolve_name(self.argument)()
-
-        elif callable(self.argument) and not isinstance(
-            self.argument, (type, mapperlib.Mapper)
-        ):
-            argument = self.argument()
-        else:
-            argument = self.argument
-
-        if isinstance(argument, type):
-            return mapperlib.class_mapper(argument, configure=False)
-
-        try:
-            entity = inspect(argument)
-        except sa_exc.NoInspectionAvailable:
-            pass
-        else:
-            if hasattr(entity, "mapper"):
-                return entity
-
-        raise sa_exc.ArgumentError(
-            "relationship '%s' expects "
-            "a class or a mapper argument (received: %s)"
-            % (self.key, type(argument))
-        )
+        self.parent._check_configure()
+        return self.entity
 
     @util.memoized_property
-    def mapper(self):
+    def mapper(self) -> Mapper[_T]:
         """Return the targeted :class:`_orm.Mapper` for this
-        :class:`.RelationshipProperty`.
-
-        This is a lazy-initializing static attribute.
+        :class:`.Relationship`.
 
         """
         return self.entity.mapper
@@ -2140,13 +1344,14 @@ class RelationshipProperty(StrategizedProperty):
     def do_init(self):
         self._check_conflicts()
         self._process_dependent_arguments()
+        self._setup_entity()
         self._setup_registry_dependencies()
         self._setup_join_conditions()
         self._check_cascade_settings(self._cascade)
         self._post_init()
         self._generate_backref()
         self._join_condition._warn_for_conflicting_sync_targets()
-        super(RelationshipProperty, self).do_init()
+        super(Relationship, self).do_init()
         self._lazy_strategy = self._get_strategy((("lazy", "select"),))
 
     def _setup_registry_dependencies(self):
@@ -2175,7 +1380,7 @@ class RelationshipProperty(StrategizedProperty):
         ):
             attr_value = getattr(self, attr)
 
-            if isinstance(attr_value, util.string_types):
+            if isinstance(attr_value, str):
                 setattr(
                     self,
                     attr,
@@ -2234,6 +1439,84 @@ class RelationshipProperty(StrategizedProperty):
             for x in util.to_column_set(self.remote_side)
         )
 
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            Relationship,
+            self.argument is None,
+            is_dataclass_field,
+        )
+        if argument is None:
+            return
+
+        if hasattr(argument, "__origin__"):
+
+            collection_class = argument.__origin__
+            if issubclass(collection_class, abc.Collection):
+                if self.collection_class is None:
+                    self.collection_class = collection_class
+            else:
+                self.uselist = False
+            if argument.__args__:
+                if issubclass(argument.__origin__, typing.Mapping):
+                    type_arg = argument.__args__[1]
+                else:
+                    type_arg = argument.__args__[0]
+                if hasattr(type_arg, "__forward_arg__"):
+                    str_argument = type_arg.__forward_arg__
+                    argument = str_argument
+                else:
+                    argument = type_arg
+            else:
+                raise sa_exc.ArgumentError(
+                    f"Generic alias {argument} requires an argument"
+                )
+        elif hasattr(argument, "__forward_arg__"):
+            argument = argument.__forward_arg__
+
+        self.argument = argument
+
+    @util.preload_module("sqlalchemy.orm.mapper")
+    def _setup_entity(self, __argument=None):
+        if "entity" in self.__dict__:
+            return
+
+        mapperlib = util.preloaded.orm_mapper
+
+        if __argument:
+            argument = __argument
+        else:
+            argument = self.argument
+
+        if isinstance(argument, str):
+            argument = self._clsregistry_resolve_name(argument)()
+        elif callable(argument) and not isinstance(
+            argument, (type, mapperlib.Mapper)
+        ):
+            argument = argument()
+        else:
+            argument = argument
+
+        if isinstance(argument, type):
+            entity = mapperlib.class_mapper(argument, configure=False)
+        else:
+            try:
+                entity = inspect(argument)
+            except sa_exc.NoInspectionAvailable:
+                entity = None
+
+            if not hasattr(entity, "mapper"):
+                raise sa_exc.ArgumentError(
+                    "relationship '%s' expects "
+                    "a class or a mapper argument (received: %s)"
+                    % (self.key, type(argument))
+                )
+
+        self.entity = entity  # type: ignore
         self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self):
@@ -2304,7 +1587,7 @@ class RelationshipProperty(StrategizedProperty):
     @property
     def cascade(self):
         """Return the current cascade setting for this
-        :class:`.RelationshipProperty`.
+        :class:`.Relationship`.
         """
         return self._cascade
 
@@ -2412,7 +1695,7 @@ class RelationshipProperty(StrategizedProperty):
         if self.parent.non_primary:
             return
         if self.backref is not None and not self.back_populates:
-            if isinstance(self.backref, util.string_types):
+            if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref
@@ -2468,14 +1751,14 @@ class RelationshipProperty(StrategizedProperty):
             kwargs.setdefault("passive_updates", self.passive_updates)
             kwargs.setdefault("sync_backref", self.sync_backref)
             self.back_populates = backref_key
-            relationship = RelationshipProperty(
+            relationship = Relationship(
                 parent,
                 self.secondary,
                 pj,
                 sj,
                 foreign_keys=foreign_keys,
                 back_populates=self.key,
-                **kwargs
+                **kwargs,
             )
             mapper._configure_property(backref_key, relationship)
 
@@ -2596,7 +1879,7 @@ def _annotate_columns(element, annotations):
     return element
 
 
-class JoinCondition(object):
+class JoinCondition:
     def __init__(
         self,
         parent_persist_selectable,
@@ -2751,63 +2034,49 @@ class JoinCondition(object):
                     )
         except sa_exc.NoForeignKeysError as nfe:
             if self.secondary is not None:
-                util.raise_(
-                    sa_exc.NoForeignKeysError(
-                        "Could not determine join "
-                        "condition between parent/child tables on "
-                        "relationship %s - there are no foreign keys "
-                        "linking these tables via secondary table '%s'.  "
-                        "Ensure that referencing columns are associated "
-                        "with a ForeignKey or ForeignKeyConstraint, or "
-                        "specify 'primaryjoin' and 'secondaryjoin' "
-                        "expressions." % (self.prop, self.secondary)
-                    ),
-                    from_=nfe,
-                )
+                raise sa_exc.NoForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are no foreign keys "
+                    "linking these tables via secondary table '%s'.  "
+                    "Ensure that referencing columns are associated "
+                    "with a ForeignKey or ForeignKeyConstraint, or "
+                    "specify 'primaryjoin' and 'secondaryjoin' "
+                    "expressions." % (self.prop, self.secondary)
+                ) from nfe
             else:
-                util.raise_(
-                    sa_exc.NoForeignKeysError(
-                        "Could not determine join "
-                        "condition between parent/child tables on "
-                        "relationship %s - there are no foreign keys "
-                        "linking these tables.  "
-                        "Ensure that referencing columns are associated "
-                        "with a ForeignKey or ForeignKeyConstraint, or "
-                        "specify a 'primaryjoin' expression." % self.prop
-                    ),
-                    from_=nfe,
-                )
+                raise sa_exc.NoForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are no foreign keys "
+                    "linking these tables.  "
+                    "Ensure that referencing columns are associated "
+                    "with a ForeignKey or ForeignKeyConstraint, or "
+                    "specify a 'primaryjoin' expression." % self.prop
+                ) from nfe
         except sa_exc.AmbiguousForeignKeysError as afe:
             if self.secondary is not None:
-                util.raise_(
-                    sa_exc.AmbiguousForeignKeysError(
-                        "Could not determine join "
-                        "condition between parent/child tables on "
-                        "relationship %s - there are multiple foreign key "
-                        "paths linking the tables via secondary table '%s'.  "
-                        "Specify the 'foreign_keys' "
-                        "argument, providing a list of those columns which "
-                        "should be counted as containing a foreign key "
-                        "reference from the secondary table to each of the "
-                        "parent and child tables."
-                        % (self.prop, self.secondary)
-                    ),
-                    from_=afe,
-                )
+                raise sa_exc.AmbiguousForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are multiple foreign key "
+                    "paths linking the tables via secondary table '%s'.  "
+                    "Specify the 'foreign_keys' "
+                    "argument, providing a list of those columns which "
+                    "should be counted as containing a foreign key "
+                    "reference from the secondary table to each of the "
+                    "parent and child tables." % (self.prop, self.secondary)
+                ) from afe
             else:
-                util.raise_(
-                    sa_exc.AmbiguousForeignKeysError(
-                        "Could not determine join "
-                        "condition between parent/child tables on "
-                        "relationship %s - there are multiple foreign key "
-                        "paths linking the tables.  Specify the "
-                        "'foreign_keys' argument, providing a list of those "
-                        "columns which should be counted as containing a "
-                        "foreign key reference to the parent table."
-                        % self.prop
-                    ),
-                    from_=afe,
-                )
+                raise sa_exc.AmbiguousForeignKeysError(
+                    "Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s - there are multiple foreign key "
+                    "paths linking the tables.  Specify the "
+                    "'foreign_keys' argument, providing a list of those "
+                    "columns which should be counted as containing a "
+                    "foreign key reference to the parent table." % self.prop
+                ) from afe
 
     @property
     def primaryjoin_minus_local(self):
@@ -3669,7 +2938,7 @@ class JoinCondition(object):
         return lazywhere, bind_to_col, equated_columns
 
 
-class _ColInAnnotations(object):
+class _ColInAnnotations:
     """Serializable object that tests for a name in c._annotations."""
 
     __slots__ = ("name",)

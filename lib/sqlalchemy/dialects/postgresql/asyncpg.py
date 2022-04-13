@@ -1,5 +1,5 @@
 # postgresql/asyncpg.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -96,9 +96,29 @@ To disable the prepared statement cache, use a value of zero::
    stale, nor can it retry the statement as the PostgreSQL transaction is
    invalidated when these errors occur.
 
+Disabling the PostgreSQL JIT to improve ENUM datatype handling
+---------------------------------------------------------------
+
+Asyncpg has an `issue <https://github.com/MagicStack/asyncpg/issues/727>`_ when
+using PostgreSQL ENUM datatypes, where upon the creation of new database
+connections, an expensive query may be emitted in order to retrieve metadata
+regarding custom types which has been shown to negatively affect performance.
+To mitigate this issue, the PostgreSQL "jit" setting may be disabled from the
+client using this setting passed to :func:`_asyncio.create_async_engine`::
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:password@localhost/tmp",
+        connect_args={"server_settings": {"jit": "off"}},
+    )
+
+.. seealso::
+
+    https://github.com/MagicStack/asyncpg/issues/727
+
 """  # noqa
 
 import collections
+import collections.abc as collections_abc
 import decimal
 import json as _py_json
 import re
@@ -119,9 +139,9 @@ from .base import REGCLASS
 from .base import UUID
 from ... import exc
 from ... import pool
-from ... import processors
 from ... import util
 from ...engine import AdaptedConnection
+from ...engine import processors
 from ...sql import sqltypes
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
@@ -134,32 +154,28 @@ except ImportError:
     _python_UUID = None
 
 
+class AsyncpgString(sqltypes.String):
+    render_bind_cast = True
+
+
 class AsyncpgTime(sqltypes.Time):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.TIME
+    render_bind_cast = True
 
 
 class AsyncpgDate(sqltypes.Date):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.DATE
+    render_bind_cast = True
 
 
 class AsyncpgDateTime(sqltypes.DateTime):
-    def get_dbapi_type(self, dbapi):
-        if self.timezone:
-            return dbapi.TIMESTAMP_W_TZ
-        else:
-            return dbapi.TIMESTAMP
+    render_bind_cast = True
 
 
 class AsyncpgBoolean(sqltypes.Boolean):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BOOLEAN
+    render_bind_cast = True
 
 
 class AsyncPgInterval(INTERVAL):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTERVAL
+    render_bind_cast = True
 
     @classmethod
     def adapt_emulated_to_native(cls, interval, **kw):
@@ -168,64 +184,59 @@ class AsyncPgInterval(INTERVAL):
 
 
 class AsyncPgEnum(ENUM):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.ENUM
+    render_bind_cast = True
 
 
 class AsyncpgInteger(sqltypes.Integer):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class AsyncpgBigInteger(sqltypes.BigInteger):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BIGINTEGER
+    render_bind_cast = True
 
 
 class AsyncpgJSON(json.JSON):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSON
+    render_bind_cast = True
 
     def result_processor(self, dialect, coltype):
         return None
 
 
 class AsyncpgJSONB(json.JSONB):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSONB
+    render_bind_cast = True
 
     def result_processor(self, dialect, coltype):
         return None
 
 
 class AsyncpgJSONIndexType(sqltypes.JSON.JSONIndexType):
-    def get_dbapi_type(self, dbapi):
-        raise NotImplementedError("should not be here")
+    pass
 
 
 class AsyncpgJSONIntIndexType(sqltypes.JSON.JSONIntIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    __visit_name__ = "json_int_index"
+
+    render_bind_cast = True
 
 
 class AsyncpgJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.STRING
+    __visit_name__ = "json_str_index"
+
+    render_bind_cast = True
 
 
 class AsyncpgJSONPathType(json.JSONPathType):
     def bind_processor(self, dialect):
         def process(value):
-            assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem) for elem in value]
+            assert isinstance(value, collections_abc.Sequence)
+            tokens = [str(elem) for elem in value]
             return tokens
 
         return process
 
 
 class AsyncpgUUID(UUID):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.UUID
+    render_bind_cast = True
 
     def bind_processor(self, dialect):
         if not self.as_uuid and dialect.use_native_uuid:
@@ -249,6 +260,8 @@ class AsyncpgUUID(UUID):
 
 
 class AsyncpgNumeric(sqltypes.Numeric):
+    render_bind_cast = True
+
     def bind_processor(self, dialect):
         return None
 
@@ -277,14 +290,17 @@ class AsyncpgNumeric(sqltypes.Numeric):
                 )
 
 
+class AsyncpgFloat(AsyncpgNumeric):
+    __visit_name__ = "float"
+    render_bind_cast = True
+
+
 class AsyncpgREGCLASS(REGCLASS):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.STRING
+    render_bind_cast = True
 
 
 class AsyncpgOID(OID):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class PGExecutionContext_asyncpg(PGExecutionContext):
@@ -308,11 +324,6 @@ class PGExecutionContext_asyncpg(PGExecutionContext):
 
         if not self.compiled:
             return
-
-        # we have to exclude ENUM because "enum" not really a "type"
-        # we can cast to, it has to be the name of the type itself.
-        # for now we just omit it from casting
-        self.exclude_set_input_sizes = {AsyncAdapt_asyncpg_dbapi.ENUM}
 
     def create_server_side_cursor(self):
         return self._dbapi_connection.cursor(server_side=True)
@@ -359,16 +370,7 @@ class AsyncAdapt_asyncpg_cursor:
         self._adapt_connection._handle_exception(error)
 
     def _parameter_placeholders(self, params):
-        if not self._inputsizes:
-            return tuple("$%d" % idx for idx, _ in enumerate(params, 1))
-        else:
-
-            return tuple(
-                "$%d::%s" % (idx, typ) if typ else "$%d" % idx
-                for idx, typ in enumerate(
-                    (_pg_types.get(typ) for typ in self._inputsizes), 1
-                )
-            )
+        return tuple(f"${idx:d}" for idx, _ in enumerate(params, 1))
 
     async def _prepare_and_execute(self, operation, parameters):
         adapt_connection = self._adapt_connection
@@ -457,7 +459,7 @@ class AsyncAdapt_asyncpg_cursor:
         )
 
     def setinputsizes(self, *inputsizes):
-        self._inputsizes = inputsizes
+        raise NotImplementedError()
 
     def __iter__(self):
         while self._rows:
@@ -570,7 +572,6 @@ class AsyncAdapt_asyncpg_ss_cursor(AsyncAdapt_asyncpg_cursor):
 class AsyncAdapt_asyncpg_connection(AdaptedConnection):
     __slots__ = (
         "dbapi",
-        "_connection",
         "isolation_level",
         "_isolation_setting",
         "readonly",
@@ -791,6 +792,12 @@ class AsyncAdapt_asyncpg_dbapi:
                 "all prepared caches in response to this exception)",
             )
 
+    # pep-249 datatype placeholders.  As of SQLAlchemy 2.0 these aren't
+    # used, however the test suite looks for these in a few cases.
+    STRING = util.symbol("STRING")
+    NUMBER = util.symbol("NUMBER")
+    DATETIME = util.symbol("DATETIME")
+
     @util.memoized_property
     def _asyncpg_error_translate(self):
         import asyncpg
@@ -807,59 +814,14 @@ class AsyncAdapt_asyncpg_dbapi:
     def Binary(self, value):
         return value
 
-    STRING = util.symbol("STRING")
-    TIMESTAMP = util.symbol("TIMESTAMP")
-    TIMESTAMP_W_TZ = util.symbol("TIMESTAMP_W_TZ")
-    TIME = util.symbol("TIME")
-    DATE = util.symbol("DATE")
-    INTERVAL = util.symbol("INTERVAL")
-    NUMBER = util.symbol("NUMBER")
-    FLOAT = util.symbol("FLOAT")
-    BOOLEAN = util.symbol("BOOLEAN")
-    INTEGER = util.symbol("INTEGER")
-    BIGINTEGER = util.symbol("BIGINTEGER")
-    BYTES = util.symbol("BYTES")
-    DECIMAL = util.symbol("DECIMAL")
-    JSON = util.symbol("JSON")
-    JSONB = util.symbol("JSONB")
-    ENUM = util.symbol("ENUM")
-    UUID = util.symbol("UUID")
-    BYTEA = util.symbol("BYTEA")
-
-    DATETIME = TIMESTAMP
-    BINARY = BYTEA
-
-
-_pg_types = {
-    AsyncAdapt_asyncpg_dbapi.STRING: "varchar",
-    AsyncAdapt_asyncpg_dbapi.TIMESTAMP: "timestamp",
-    AsyncAdapt_asyncpg_dbapi.TIMESTAMP_W_TZ: "timestamp with time zone",
-    AsyncAdapt_asyncpg_dbapi.DATE: "date",
-    AsyncAdapt_asyncpg_dbapi.TIME: "time",
-    AsyncAdapt_asyncpg_dbapi.INTERVAL: "interval",
-    AsyncAdapt_asyncpg_dbapi.NUMBER: "numeric",
-    AsyncAdapt_asyncpg_dbapi.FLOAT: "float",
-    AsyncAdapt_asyncpg_dbapi.BOOLEAN: "bool",
-    AsyncAdapt_asyncpg_dbapi.INTEGER: "integer",
-    AsyncAdapt_asyncpg_dbapi.BIGINTEGER: "bigint",
-    AsyncAdapt_asyncpg_dbapi.BYTES: "bytes",
-    AsyncAdapt_asyncpg_dbapi.DECIMAL: "decimal",
-    AsyncAdapt_asyncpg_dbapi.JSON: "json",
-    AsyncAdapt_asyncpg_dbapi.JSONB: "jsonb",
-    AsyncAdapt_asyncpg_dbapi.ENUM: "enum",
-    AsyncAdapt_asyncpg_dbapi.UUID: "uuid",
-    AsyncAdapt_asyncpg_dbapi.BYTEA: "bytea",
-}
-
 
 class PGDialect_asyncpg(PGDialect):
     driver = "asyncpg"
     supports_statement_cache = True
 
-    supports_unicode_statements = True
     supports_server_side_cursors = True
 
-    supports_unicode_binds = True
+    render_bind_cast = True
 
     default_paramstyle = "format"
     supports_sane_multi_rowcount = False
@@ -867,13 +829,12 @@ class PGDialect_asyncpg(PGDialect):
     statement_compiler = PGCompiler_asyncpg
     preparer = PGIdentifierPreparer_asyncpg
 
-    use_setinputsizes = True
-
     use_native_uuid = True
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
+            sqltypes.String: AsyncpgString,
             sqltypes.Time: AsyncpgTime,
             sqltypes.Date: AsyncpgDate,
             sqltypes.DateTime: AsyncpgDateTime,
@@ -884,6 +845,7 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.Integer: AsyncpgInteger,
             sqltypes.BigInteger: AsyncpgBigInteger,
             sqltypes.Numeric: AsyncpgNumeric,
+            sqltypes.Float: AsyncpgFloat,
             sqltypes.JSON: AsyncpgJSON,
             json.JSONB: AsyncpgJSONB,
             sqltypes.JSON.JSONPathType: AsyncpgJSONPathType,
@@ -916,7 +878,7 @@ class PGDialect_asyncpg(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_asyncpg_dbapi(__import__("asyncpg"))
 
     @util.memoized_property
@@ -928,20 +890,11 @@ class PGDialect_asyncpg(PGDialect):
             "SERIALIZABLE": "serializable",
         }
 
-    def set_isolation_level(self, connection, level):
-        try:
-            level = self._isolation_lookup[level.replace("_", " ")]
-        except KeyError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "Invalid value '%s' for isolation_level. "
-                    "Valid isolation levels for %s are %s"
-                    % (level, self.name, ", ".join(self._isolation_lookup))
-                ),
-                replace_context=err,
-            )
+    def get_isolation_level_values(self, dbapi_connection):
+        return list(self._isolation_lookup)
 
-        connection.set_isolation_level(level)
+    def set_isolation_level(self, dbapi_connection, level):
+        dbapi_connection.set_isolation_level(self._isolation_lookup[level])
 
     def set_readonly(self, connection, value):
         connection.readonly = value
@@ -981,22 +934,42 @@ class PGDialect_asyncpg(PGDialect):
                 e, self.dbapi.InterfaceError
             ) and "connection is closed" in str(e)
 
-    def do_set_input_sizes(self, cursor, list_of_tuples, context):
-        if self.positional:
-            cursor.setinputsizes(
-                *[dbtype for key, dbtype, sqltype in list_of_tuples]
-            )
-        else:
-            cursor.setinputsizes(
-                **{
-                    key: dbtype
-                    for key, dbtype, sqltype in list_of_tuples
-                    if dbtype
-                }
-            )
+    async def setup_asyncpg_json_codec(self, conn):
+        """set up JSON codec for asyncpg.
 
-    def on_connect(self):
-        super_connect = super(PGDialect_asyncpg, self).on_connect()
+        This occurs for all new connections and
+        can be overridden by third party dialects.
+
+        .. versionadded:: 1.4.27
+
+        """
+
+        asyncpg_connection = conn._connection
+        deserializer = self._json_deserializer or _py_json.loads
+
+        def _json_decoder(bin_value):
+            return deserializer(bin_value.decode())
+
+        await asyncpg_connection.set_type_codec(
+            "json",
+            encoder=str.encode,
+            decoder=_json_decoder,
+            schema="pg_catalog",
+            format="binary",
+        )
+
+    async def setup_asyncpg_jsonb_codec(self, conn):
+        """set up JSONB codec for asyncpg.
+
+        This occurs for all new connections and
+        can be overridden by third party dialects.
+
+        .. versionadded:: 1.4.27
+
+        """
+
+        asyncpg_connection = conn._connection
+        deserializer = self._json_deserializer or _py_json.loads
 
         def _jsonb_encoder(str_value):
             # \x01 is the prefix for jsonb used by PostgreSQL.
@@ -1005,42 +978,35 @@ class PGDialect_asyncpg(PGDialect):
 
         deserializer = self._json_deserializer or _py_json.loads
 
-        def _json_decoder(bin_value):
-            return deserializer(bin_value.decode())
-
         def _jsonb_decoder(bin_value):
             # the byte is the \x01 prefix for jsonb used by PostgreSQL.
             # asyncpg returns it when format='binary'
             return deserializer(bin_value[1:].decode())
 
-        async def _setup_type_codecs(conn):
-            """set up type decoders at the asyncpg level.
+        await asyncpg_connection.set_type_codec(
+            "jsonb",
+            encoder=_jsonb_encoder,
+            decoder=_jsonb_decoder,
+            schema="pg_catalog",
+            format="binary",
+        )
 
-            these are set_type_codec() calls to normalize
-            There was a tentative decoder for the "char" datatype here
-            to have it return strings however this type is actually a binary
-            type that other drivers are likely mis-interpreting.
+    def on_connect(self):
+        """on_connect for asyncpg
 
-            See https://github.com/MagicStack/asyncpg/issues/623 for reference
-            on why it's set up this way.
-            """
-            await conn._connection.set_type_codec(
-                "json",
-                encoder=str.encode,
-                decoder=_json_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
-            await conn._connection.set_type_codec(
-                "jsonb",
-                encoder=_jsonb_encoder,
-                decoder=_jsonb_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
+        A major component of this for asyncpg is to set up type decoders at the
+        asyncpg level.
+
+        See https://github.com/MagicStack/asyncpg/issues/623 for
+        notes on JSON/JSONB implementation.
+
+        """
+
+        super_connect = super(PGDialect_asyncpg, self).on_connect()
 
         def connect(conn):
-            conn.await_(_setup_type_codecs(conn))
+            conn.await_(self.setup_asyncpg_json_codec(conn))
+            conn.await_(self.setup_asyncpg_jsonb_codec(conn))
             if super_connect is not None:
                 super_connect(conn)
 

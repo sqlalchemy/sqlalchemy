@@ -1,10 +1,10 @@
 name: Run tests on a pr
 
 on:
-  # run on pull request to master excluding changes that are only on doc or example folders
+  # run on pull request to main excluding changes that are only on doc or example folders
   pull_request:
     branches:
-      - master
+      - main
     paths-ignore:
       - "examples/**"
 
@@ -22,8 +22,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "2.7"
-          - "3.9"
+          - "3.10"
         build-type:
           - "cext"
           - "nocext"
@@ -61,7 +60,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.9"
+          - "3.10"
 
       fail-fast: false
 
@@ -85,8 +84,8 @@ jobs:
       - name: Run tests
         run: tox -e mypy ${{ matrix.pytest-args }}
 
-  run-pep8:
-    name: pep8-${{ matrix.python-version }}
+  run-lint:
+    name: lint-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -94,7 +93,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.9"
+          - "3.10"
 
       fail-fast: false
 
@@ -116,9 +115,9 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e pep8
+        run: tox -e lint
 
-  # Arm emulation is quite slow (~20min) so for now just run it when merging to master
+  # Arm emulation is quite slow (~20min) so for now just run it when merging to main
   # run-test-arm64:
   #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
   #   runs-on: ubuntu-latest

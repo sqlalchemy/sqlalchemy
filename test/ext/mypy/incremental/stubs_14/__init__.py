@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @as_declarative()
-class Base(object):
+class Base:
     @declared_attr
     def __tablename__(self) -> Mapped[str]:
         return self.__name__.lower()

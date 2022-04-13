@@ -1,5 +1,5 @@
 # orm/persistence.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -13,16 +13,25 @@ The functions here are called only by the unit of work functions
 in unitofwork.py.
 
 """
+from __future__ import annotations
 
 from itertools import chain
 from itertools import groupby
+from itertools import zip_longest
 import operator
+from typing import Any
+from typing import Dict
+from typing import Iterable
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
 from . import attributes
 from . import evaluator
 from . import exc as orm_exc
 from . import loading
 from . import sync
+from .base import NO_VALUE
 from .base import state_str
 from .. import exc as sa_exc
 from .. import future
@@ -34,23 +43,32 @@ from ..sql import expression
 from ..sql import operators
 from ..sql import roles
 from ..sql import select
+from ..sql import sqltypes
 from ..sql.base import _entity_namespace_key
 from ..sql.base import CompileState
 from ..sql.base import Options
 from ..sql.dml import DeleteDMLState
+from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
+if TYPE_CHECKING:
+    from .mapper import Mapper
+    from .session import SessionTransaction
+    from .state import InstanceState
+
+_O = TypeVar("_O", bound=object)
+
 
 def _bulk_insert(
-    mapper,
-    mappings,
-    session_transaction,
-    isstates,
-    return_defaults,
-    render_nulls,
-):
+    mapper: Mapper[_O],
+    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    session_transaction: SessionTransaction,
+    isstates: bool,
+    return_defaults: bool,
+    render_nulls: bool,
+) -> None:
     base_mapper = mapper.base_mapper
 
     if session_transaction.session.connection_callable:
@@ -121,8 +139,12 @@ def _bulk_insert(
 
 
 def _bulk_update(
-    mapper, mappings, session_transaction, isstates, update_changed_only
-):
+    mapper: Mapper[Any],
+    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    session_transaction: SessionTransaction,
+    isstates: bool,
+    update_changed_only: bool,
+) -> None:
     base_mapper = mapper.base_mapper
 
     search_keys = mapper._primary_key_propkeys
@@ -936,7 +958,7 @@ def _emit_update_statements(
                 has_all_defaults,
                 has_all_pks,
             ) in records:
-                c = connection._execute_20(
+                c = connection.execute(
                     statement.values(value_params),
                     params,
                     execution_options=execution_options,
@@ -969,7 +991,7 @@ def _emit_update_statements(
                     has_all_defaults,
                     has_all_pks,
                 ) in records:
-                    c = connection._execute_20(
+                    c = connection.execute(
                         statement, params, execution_options=execution_options
                     )
 
@@ -995,7 +1017,7 @@ def _emit_update_statements(
                     assert_singlerow and len(multiparams) == 1
                 )
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, multiparams, execution_options=execution_options
                 )
 
@@ -1091,7 +1113,7 @@ def _emit_insert_statements(
             records = list(records)
             multiparams = [rec[2] for rec in records]
 
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, multiparams, execution_options=execution_options
             )
 
@@ -1150,7 +1172,7 @@ def _emit_insert_statements(
             if do_executemany:
                 multiparams = [rec[2] for rec in records]
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, multiparams, execution_options=execution_options
                 )
 
@@ -1169,12 +1191,28 @@ def _emit_insert_statements(
                         last_inserted_params,
                         inserted_primary_key,
                         returned_defaults,
-                    ) in util.zip_longest(
+                    ) in zip_longest(
                         records,
                         c.context.compiled_parameters,
                         c.inserted_primary_key_rows,
                         c.returned_defaults_rows or (),
                     ):
+                        if inserted_primary_key is None:
+                            # this is a real problem and means that we didn't
+                            # get back as many PK rows.  we can't continue
+                            # since this indicates PK rows were missing, which
+                            # means we likely mis-populated records starting
+                            # at that point with incorrectly matched PK
+                            # values.
+                            raise orm_exc.FlushError(
+                                "Multi-row INSERT statement for %s did not "
+                                "produce "
+                                "the correct number of INSERTed rows for "
+                                "RETURNING.  Ensure there are no triggers or "
+                                "special driver issues preventing INSERT from "
+                                "functioning properly." % mapper_rec
+                            )
+
                         for pk, col in zip(
                             inserted_primary_key,
                             mapper._pks_by_table[table],
@@ -1210,19 +1248,28 @@ def _emit_insert_statements(
                     has_all_defaults,
                 ) in records:
                     if value_params:
-                        result = connection._execute_20(
+                        result = connection.execute(
                             statement.values(value_params),
                             params,
                             execution_options=execution_options,
                         )
                     else:
-                        result = connection._execute_20(
+                        result = connection.execute(
                             statement,
                             params,
                             execution_options=execution_options,
                         )
 
                     primary_key = result.inserted_primary_key
+                    if primary_key is None:
+                        raise orm_exc.FlushError(
+                            "Single-row INSERT statement for %s "
+                            "did not produce a "
+                            "new primary key result "
+                            "being invoked.  Ensure there are no triggers or "
+                            "special driver issues preventing INSERT from "
+                            "functioning properly." % (mapper_rec,)
+                        )
                     for pk, col in zip(
                         primary_key, mapper._pks_by_table[table]
                     ):
@@ -1319,7 +1366,7 @@ def _emit_post_update_statements(
             check_rowcount = assert_singlerow
             for state, state_dict, mapper_rec, connection, params in records:
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, params, execution_options=execution_options
                 )
 
@@ -1343,7 +1390,7 @@ def _emit_post_update_statements(
                 assert_singlerow and len(multiparams) == 1
             )
 
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, multiparams, execution_options=execution_options
             )
 
@@ -1423,7 +1470,7 @@ def _emit_delete_statements(
                 # rows can be verified
                 for params in del_objects:
 
-                    c = connection._execute_20(
+                    c = connection.execute(
                         statement, params, execution_options=execution_options
                     )
                     rows_matched += c.rowcount
@@ -1433,11 +1480,11 @@ def _emit_delete_statements(
                     "- versioning cannot be verified."
                     % connection.dialect.dialect_description
                 )
-                connection._execute_20(
+                connection.execute(
                     statement, del_objects, execution_options=execution_options
                 )
         else:
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, del_objects, execution_options=execution_options
             )
 
@@ -1728,13 +1775,10 @@ def _sort_states(mapper, states):
             persistent, key=mapper._persistent_sortkey_fn
         )
     except TypeError as err:
-        util.raise_(
-            sa_exc.InvalidRequestError(
-                "Could not sort objects by primary key; primary key "
-                "values must be sortable in Python (was: %s)" % err
-            ),
-            replace_context=err,
-        )
+        raise sa_exc.InvalidRequestError(
+            "Could not sort objects by primary key; primary key "
+            "values must be sortable in Python (was: %s)" % err
+        ) from err
     return (
         sorted(pending, key=operator.attrgetter("insert_order"))
         + persistent_sorted
@@ -1940,14 +1984,11 @@ class BulkUDCompileState(CompileState):
                     return True
 
         except evaluator.UnevaluatableError as err:
-            util.raise_(
-                sa_exc.InvalidRequestError(
-                    'Could not evaluate current criteria in Python: "%s". '
-                    "Specify 'fetch' or False for the "
-                    "synchronize_session execution option." % err
-                ),
-                from_=err,
-            )
+            raise sa_exc.InvalidRequestError(
+                'Could not evaluate current criteria in Python: "%s". '
+                "Specify 'fetch' or False for the "
+                "synchronize_session execution option." % err
+            ) from err
 
         if statement.__visit_name__ == "lambda_element":
             # ._resolved is called on every LambdaElement in order to
@@ -2002,30 +2043,11 @@ class BulkUDCompileState(CompileState):
         if statement._multi_values:
             return []
         elif statement._ordered_values:
-            iterator = statement._ordered_values
+            return list(statement._ordered_values)
         elif statement._values:
-            iterator = statement._values.items()
+            return list(statement._values.items())
         else:
             return []
-
-        values = []
-        if iterator:
-            for k, v in iterator:
-                if mapper:
-                    if isinstance(k, util.string_types):
-                        desc = _entity_namespace_key(mapper, k)
-                        values.extend(desc._bulk_update_tuples(v))
-                    elif "entity_namespace" in k._annotations:
-                        k_anno = k._annotations
-                        attr = _entity_namespace_key(
-                            k_anno["entity_namespace"], k_anno["proxy_key"]
-                        )
-                        values.extend(attr._bulk_update_tuples(v))
-                    else:
-                        values.append((k, v))
-                else:
-                    values.append((k, v))
-        return values
 
     @classmethod
     def _resolved_keys_as_propnames(cls, mapper, resolved_values):
@@ -2129,8 +2151,84 @@ class BulkUDCompileState(CompileState):
         }
 
 
+class ORMDMLState:
+    @classmethod
+    def get_entity_description(cls, statement):
+        ext_info = statement.table._annotations["parententity"]
+        mapper = ext_info.mapper
+        if ext_info.is_aliased_class:
+            _label_name = ext_info.name
+        else:
+            _label_name = mapper.class_.__name__
+
+        return {
+            "name": _label_name,
+            "type": mapper.class_,
+            "expr": ext_info.entity,
+            "entity": ext_info.entity,
+            "table": mapper.local_table,
+        }
+
+    @classmethod
+    def get_returning_column_descriptions(cls, statement):
+        def _ent_for_col(c):
+            return c._annotations.get("parententity", None)
+
+        def _attr_for_col(c, ent):
+            if ent is None:
+                return c
+            proxy_key = c._annotations.get("proxy_key", None)
+            if not proxy_key:
+                return c
+            else:
+                return getattr(ent.entity, proxy_key, c)
+
+        return [
+            {
+                "name": c.key,
+                "type": c.type,
+                "expr": _attr_for_col(c, ent),
+                "aliased": ent.is_aliased_class,
+                "entity": ent.entity,
+            }
+            for c, ent in [
+                (c, _ent_for_col(c)) for c in statement._all_selected_columns
+            ]
+        ]
+
+
+@CompileState.plugin_for("orm", "insert")
+class ORMInsert(ORMDMLState, InsertDMLState):
+    @classmethod
+    def orm_pre_session_exec(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        is_reentrant_invoke,
+    ):
+        return (
+            statement,
+            util.immutabledict(execution_options),
+        )
+
+    @classmethod
+    def orm_setup_cursor_result(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
+    ):
+        return result
+
+
 @CompileState.plugin_for("orm", "update")
-class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
+class BulkORMUpdate(ORMDMLState, UpdateDMLState, BulkUDCompileState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
 
@@ -2150,7 +2248,7 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             if opt._is_criteria_option:
                 opt.get_global_criteria(extra_criteria_attributes)
 
-        if not statement._preserve_parameter_order and statement._values:
+        if statement._values:
             self._resolved_values = dict(self._resolved_values)
 
         new_stmt = sql.Update.__new__(sql.Update)
@@ -2189,6 +2287,66 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
         UpdateDMLState.__init__(self, new_stmt, compiler, **kw)
 
         return self
+
+    @classmethod
+    def _get_crud_kv_pairs(cls, statement, kv_iterator):
+        plugin_subject = statement._propagate_attrs["plugin_subject"]
+
+        core_get_crud_kv_pairs = UpdateDMLState._get_crud_kv_pairs
+
+        if not plugin_subject or not plugin_subject.mapper:
+            return core_get_crud_kv_pairs(statement, kv_iterator)
+
+        mapper = plugin_subject.mapper
+
+        values = []
+
+        for k, v in kv_iterator:
+            k = coercions.expect(roles.DMLColumnRole, k)
+
+            if isinstance(k, str):
+                desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
+                if desc is NO_VALUE:
+                    values.append(
+                        (
+                            k,
+                            coercions.expect(
+                                roles.ExpressionElementRole,
+                                v,
+                                type_=sqltypes.NullType(),
+                                is_crud=True,
+                            ),
+                        )
+                    )
+                else:
+                    values.extend(
+                        core_get_crud_kv_pairs(
+                            statement, desc._bulk_update_tuples(v)
+                        )
+                    )
+            elif "entity_namespace" in k._annotations:
+                k_anno = k._annotations
+                attr = _entity_namespace_key(
+                    k_anno["entity_namespace"], k_anno["proxy_key"]
+                )
+                values.extend(
+                    core_get_crud_kv_pairs(
+                        statement, attr._bulk_update_tuples(v)
+                    )
+                )
+            else:
+                values.append(
+                    (
+                        k,
+                        coercions.expect(
+                            roles.ExpressionElementRole,
+                            v,
+                            type_=sqltypes.NullType(),
+                            is_crud=True,
+                        ),
+                    )
+                )
+        return values
 
     @classmethod
     def _do_post_synchronize_evaluate(cls, session, result, update_options):
@@ -2288,7 +2446,7 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
 
 
 @CompileState.plugin_for("orm", "delete")
-class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
+class BulkORMDelete(ORMDMLState, DeleteDMLState, BulkUDCompileState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)

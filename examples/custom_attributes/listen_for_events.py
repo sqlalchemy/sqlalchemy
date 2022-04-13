@@ -27,7 +27,7 @@ if __name__ == "__main__":
     from sqlalchemy.orm import relationship
     from sqlalchemy.ext.declarative import declarative_base
 
-    class Base(object):
+    class Base:
         def receive_change_event(self, verb, key, value, oldvalue):
             s = "Value '%s' %s on attribute '%s', " % (value, verb, key)
             if oldvalue:

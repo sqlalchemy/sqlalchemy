@@ -1,3 +1,5 @@
+from itertools import zip_longest
+
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -5,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.sql import base as sql_base
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
@@ -146,5 +147,5 @@ class MiscTest(fixtures.TestBase):
 
         unwrapped = sql_util.unwrap_order_by(expr)
 
-        for a, b in util.zip_longest(unwrapped, expected):
+        for a, b in zip_longest(unwrapped, expected):
             assert a is not None and a.compare(b)

@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 from typing import List
 from typing import Optional
 from typing import Union
@@ -241,7 +243,20 @@ def _scan_declarative_decorator_stmt(
 
     left_hand_explicit_type: Optional[ProperType] = None
 
-    if isinstance(stmt.func.type, CallableType):
+    if util.name_is_dunder(stmt.name):
+        # for dunder names like __table_args__, __tablename__,
+        # __mapper_args__ etc., rewrite these as simple assignment
+        # statements; otherwise mypy doesn't like if the decorated
+        # function has an annotation like ``cls: Type[Foo]`` because
+        # it isn't @classmethod
+        any_ = AnyType(TypeOfAny.special_form)
+        left_node = NameExpr(stmt.var.name)
+        left_node.node = stmt.var
+        new_stmt = AssignmentStmt([left_node], TempNode(any_))
+        new_stmt.type = left_node.node.type
+        cls.defs.body[dec_index] = new_stmt
+        return
+    elif isinstance(stmt.func.type, CallableType):
         func_type = stmt.func.type.ret_type
         if isinstance(func_type, UnboundType):
             type_id = names.type_id_for_unbound_type(func_type, cls, api)
@@ -314,7 +329,7 @@ def _scan_declarative_decorator_stmt(
         )
 
     left_node.node.type = api.named_type(
-        "__sa_Mapped", [left_hand_explicit_type]
+        names.NAMED_TYPE_SQLA_MAPPED, [left_hand_explicit_type]
     )
 
     # this will ignore the rvalue entirely
@@ -324,7 +339,7 @@ def _scan_declarative_decorator_stmt(
     # <attr> : Mapped[<typ>] =
     # _sa_Mapped._empty_constructor(lambda: <function body>)
     # the function body is maintained so it gets type checked internally
-    rvalue = util.expr_to_mapped_constructor(
+    rvalue = names.expr_to_mapped_constructor(
         LambdaExpr(stmt.func.arguments, stmt.func.body)
     )
 

@@ -5,10 +5,12 @@ import datetime
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
@@ -21,20 +23,72 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from ...engine import test_deprecations
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from .test_compiler import ReservedWordFixture
 
 
-class BackendDialectTest(fixtures.TestBase):
+class BackendDialectTest(
+    ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL
+):
     __backend__ = True
     __only_on__ = "mysql", "mariadb"
 
+    @testing.fixture
+    def mysql_version_dialect(self, testing_engine):
+        """yield a MySQL engine that will simulate a specific version.
+
+        patches out various methods to not fail
+
+        """
+        engine = testing_engine()
+        _server_version = [None]
+        with mock.patch.object(
+            engine.dialect,
+            "_get_server_version_info",
+            lambda conn: engine.dialect._parse_server_version(
+                _server_version[0]
+            ),
+        ), mock.patch.object(
+            engine.dialect, "_set_mariadb", lambda *arg: None
+        ), mock.patch.object(
+            engine.dialect,
+            "get_isolation_level",
+            lambda *arg: "REPEATABLE READ",
+        ):
+
+            def go(server_version):
+                _server_version[0] = server_version
+                return engine
+
+            yield go
+
+    def test_reserved_words_mysql_vs_mariadb(
+        self, mysql_mariadb_reserved_words
+    ):
+        """test #7167 - real backend level
+
+        We want to make sure that the "is mariadb" flag as well as the
+        correct identifier preparer are set up for dialects no matter how they
+        determine their "is_mariadb" flag.
+
+        """
+
+        dialect = testing.db.dialect
+        expect_mariadb = testing.only_on("mariadb").enabled
+
+        table, expected_mysql, expected_mdb = mysql_mariadb_reserved_words
+        self.assert_compile(
+            select(table),
+            expected_mdb if expect_mariadb else expected_mysql,
+            dialect=dialect,
+        )
+
     def test_no_show_variables(self):
-        from sqlalchemy.testing import mock
 
         engine = engines.testing_engine()
 
         def my_execute(self, statement, *args, **kw):
-            if statement.startswith("SHOW VARIABLES"):
+            if statement.startswith("SELECT @@"):
                 statement = "SELECT 1 FROM DUAL WHERE 1=0"
             return real_exec(self, statement, *args, **kw)
 
@@ -49,7 +103,6 @@ class BackendDialectTest(fixtures.TestBase):
                 engine.connect()
 
     def test_no_default_isolation_level(self):
-        from sqlalchemy.testing import mock
 
         engine = engines.testing_engine()
 
@@ -74,11 +127,49 @@ class BackendDialectTest(fixtures.TestBase):
             ):
                 engine.connect()
 
+    @testing.combinations(
+        "10.5.12-MariaDB", "5.6.49", "5.0.2", argnames="server_version"
+    )
+    def test_variable_fetch(self, mysql_version_dialect, server_version):
+        """test #7518"""
+        engine = mysql_version_dialect(server_version)
+
+        fetches = []
+
+        # the initialize() connection does not seem to use engine-level events.
+        # not changing that here
+
+        @event.listens_for(engine, "do_execute_no_params")
+        @event.listens_for(engine, "do_execute")
+        def do_execute_no_params(cursor, statement, *arg):
+            if statement.startswith("SHOW VARIABLES") or statement.startswith(
+                "SELECT @@"
+            ):
+                fetches.append(statement)
+            return None
+
+        engine.connect()
+
+        if server_version == "5.0.2":
+            eq_(
+                fetches,
+                [
+                    "SHOW VARIABLES LIKE 'sql_mode'",
+                    "SHOW VARIABLES LIKE 'lower_case_table_names'",
+                ],
+            )
+        else:
+            eq_(
+                fetches,
+                ["SELECT @@sql_mode", "SELECT @@lower_case_table_names"],
+            )
+
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(
             isolation_level="AUTOCOMMIT"
         )
         assert c.exec_driver_sql("SELECT @@autocommit;").scalar()
+        c.rollback()
 
         c = c.execution_options(isolation_level="READ COMMITTED")
         assert not c.exec_driver_sql("SELECT @@autocommit;").scalar()
@@ -128,11 +219,7 @@ class DialectTest(fixtures.TestBase):
         eq_(dialect.is_disconnect(error, None, None), is_disconnect)
 
     @testing.combinations(
-        ("mysqldb"),
-        ("pymysql"),
-        ("oursql"),
-        id_="s",
-        argnames="driver_name",
+        ("mysqldb"), ("pymysql"), id_="s", argnames="driver_name"
     )
     def test_ssl_arguments(self, driver_name):
         url = (
@@ -160,7 +247,6 @@ class DialectTest(fixtures.TestBase):
             expected["ssl"]["check_hostname"] = False
 
         kwarg = dialect.create_connect_args(make_url(url))[1]
-        # args that differ between oursql and others
         for k in ("use_unicode", "found_rows", "client_flag"):
             kwarg.pop(k, None)
         eq_(kwarg, expected)
@@ -181,7 +267,7 @@ class DialectTest(fixtures.TestBase):
         dialect = mysqldb.dialect()
         connect_args = dialect.create_connect_args(
             make_url(
-                "mysql://scott:tiger@localhost:3306/test"
+                "mysql+mysqldb://scott:tiger@localhost:3306/test"
                 "?%s=%s" % (kwarg, value)
             )
         )
@@ -241,7 +327,7 @@ class DialectTest(fixtures.TestBase):
     def test_random_arg(self):
         dialect = testing.db.dialect
         kw = dialect.create_connect_args(
-            make_url("mysql://u:p@host/db?foo=true")
+            make_url("mysql+mysqldb://u:p@host/db?foo=true")
         )[1]
         eq_(kw["foo"], "true")
 
@@ -282,7 +368,7 @@ class DialectTest(fixtures.TestBase):
 
 class ParseVersionTest(fixtures.TestBase):
     def test_mariadb_madness(self):
-        mysql_dialect = make_url("mysql://").get_dialect()()
+        mysql_dialect = make_url("mysql+mysqldb://").get_dialect()()
 
         is_(mysql_dialect.is_mariadb, False)
 
@@ -522,15 +608,3 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self, connection):
         d = connection.execute(func.sysdate()).scalar()
         assert isinstance(d, datetime.datetime)
-
-
-class AutocommitTextTest(
-    test_deprecations.AutocommitKeywordFixture, fixtures.TestBase
-):
-    __only_on__ = "mysql", "mariadb"
-
-    def test_load_data(self):
-        self._test_keyword("LOAD DATA STUFF")
-
-    def test_replace(self):
-        self._test_keyword("REPLACE THING")

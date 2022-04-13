@@ -52,6 +52,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: Enum
   :members: __init__, create, drop
 
+.. autoclass:: Double
+   :members:
+
 .. autoclass:: Float
   :members:
 
@@ -137,6 +140,9 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 .. autoclass:: DECIMAL
 
+.. autoclass:: DOUBLE
+
+.. autoclass:: DOUBLE_PRECISION
 
 .. autoclass:: FLOAT
 
@@ -232,7 +238,7 @@ such as `collation` and `charset`::
 
     from sqlalchemy.dialects.mysql import VARCHAR, TEXT
 
-    table = Table('foo', meta,
+    table = Table('foo', metadata_obj,
         Column('col1', VARCHAR(200, collation='binary')),
         Column('col2', TEXT(charset='latin1'))
     )

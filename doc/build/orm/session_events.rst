@@ -114,7 +114,7 @@ Given a series of classes based on a mixin called ``HasTimestamp``::
 
     import datetime
 
-    class HasTimestamp(object):
+    class HasTimestamp:
         timestamp = Column(DateTime, default=datetime.datetime.now)
 
 

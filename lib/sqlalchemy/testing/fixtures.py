@@ -1,11 +1,12 @@
 # testing/fixtures.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-import contextlib
+from __future__ import annotations
+
 import re
 import sys
 
@@ -21,13 +22,13 @@ from .util import drop_all_tables_from_metadata
 from .. import event
 from .. import util
 from ..orm import declarative_base
+from ..orm import DeclarativeBase
 from ..orm import registry
-from ..orm.decl_api import DeclarativeMeta
 from ..schema import sort_tables_and_constraints
 
 
 @config.mark_base_test_class()
-class TestBase(object):
+class TestBase:
     # A sequence of requirement names matching testing.requires decorators
     __requires__ = ()
 
@@ -49,6 +50,13 @@ class TestBase(object):
 
     def assert_(self, val, msg=None):
         assert val, msg
+
+    @config.fixture()
+    def nocache(self):
+        _cache = config.db._compiled_cache
+        config.db._compiled_cache = None
+        yield
+        config.db._compiled_cache = _cache
 
     @config.fixture()
     def connection_no_trans(self):
@@ -84,6 +92,21 @@ class TestBase(object):
         yield reg
         reg.dispose()
 
+    @config.fixture
+    def decl_base(self, metadata):
+        _md = metadata
+
+        class Base(DeclarativeBase):
+            metadata = _md
+            type_annotation_map = {
+                str: sa.String().with_variant(
+                    sa.String(50), "mysql", "mariadb"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
     @config.fixture()
     def future_connection(self, future_engine, connection):
         # integrate the future_engine and connection fixtures so
@@ -93,9 +116,7 @@ class TestBase(object):
 
     @config.fixture()
     def future_engine(self):
-        eng = getattr(self, "bind", None) or config.db
-        with _push_future_engine(eng):
-            yield
+        yield
 
     @config.fixture()
     def testing_engine(self):
@@ -107,6 +128,7 @@ class TestBase(object):
             future=None,
             asyncio=False,
             transfer_staticpool=False,
+            share_pool=False,
         ):
             if options is None:
                 options = {}
@@ -114,9 +136,9 @@ class TestBase(object):
             return engines.testing_engine(
                 url=url,
                 options=options,
-                future=future,
                 asyncio=asyncio,
                 transfer_staticpool=transfer_staticpool,
+                share_pool=share_pool,
             )
 
         yield gen_testing_engine
@@ -303,26 +325,8 @@ class TestBase(object):
 _connection_fixture_connection = None
 
 
-@contextlib.contextmanager
-def _push_future_engine(engine):
-
-    from ..future.engine import Engine
-    from sqlalchemy import testing
-
-    facade = Engine._future_facade(engine)
-    config._current.push_engine(facade, testing)
-
-    yield facade
-
-    config._current.pop(testing)
-
-
-class FutureEngineMixin(object):
-    @config.fixture(autouse=True, scope="class")
-    def _push_future_engine(self):
-        eng = getattr(self, "bind", None) or config.db
-        with _push_future_engine(eng):
-            yield
+class FutureEngineMixin:
+    """alembic's suite still using this"""
 
 
 class TablesTest(TestBase):
@@ -451,7 +455,7 @@ class TablesTest(TestBase):
                     try:
                         conn.execute(table.delete())
                     except sa.exc.DBAPIError as ex:
-                        util.print_(
+                        print(
                             ("Error emptying table %s: %r" % (table, ex)),
                             file=sys.stderr,
                         )
@@ -505,7 +509,7 @@ class TablesTest(TestBase):
         for table, data in cls.fixtures().items():
             if len(data) < 2:
                 continue
-            if isinstance(table, util.string_types):
+            if isinstance(table, str):
                 table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
@@ -526,7 +530,7 @@ class TablesTest(TestBase):
                 )
 
 
-class NoCache(object):
+class NoCache:
     @config.fixture(autouse=True, scope="function")
     def _disable_cache(self):
         _cache = config.db._compiled_cache
@@ -535,7 +539,7 @@ class NoCache(object):
         config.db._compiled_cache = _cache
 
 
-class RemovesEvents(object):
+class RemovesEvents:
     @util.memoized_property
     def _event_fns(self):
         return set()
@@ -669,15 +673,11 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
         """
         cls_registry = cls.classes
 
-        assert cls_registry is not None
-
-        class FindFixture(type):
-            def __init__(cls, classname, bases, dict_):
-                cls_registry[classname] = cls
-                type.__init__(cls, classname, bases, dict_)
-
-        class _Base(util.with_metaclass(FindFixture, object)):
-            pass
+        class _Base:
+            def __init_subclass__(cls) -> None:
+                assert cls_registry is not None
+                cls_registry[cls.__name__] = cls
+                super().__init_subclass__()
 
         class Basic(BasicEntity, _Base):
             pass
@@ -721,17 +721,16 @@ class DeclarativeMappedTest(MappedTest):
     def _with_register_classes(cls, fn):
         cls_registry = cls.classes
 
-        class FindFixtureDeclarative(DeclarativeMeta):
-            def __init__(cls, classname, bases, dict_):
-                cls_registry[classname] = cls
-                DeclarativeMeta.__init__(cls, classname, bases, dict_)
-
-        class DeclarativeBasic(object):
+        class DeclarativeBasic:
             __table_cls__ = schema.Table
+
+            def __init_subclass__(cls) -> None:
+                assert cls_registry is not None
+                cls_registry[cls.__name__] = cls
+                super().__init_subclass__()
 
         _DeclBase = declarative_base(
             metadata=cls._tables_metadata,
-            metaclass=FindFixtureDeclarative,
             cls=DeclarativeBasic,
         )
 

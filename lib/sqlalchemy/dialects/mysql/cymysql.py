@@ -1,5 +1,5 @@
 # mysql/cymysql.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -33,7 +33,7 @@ class _cymysqlBIT(BIT):
         def process(value):
             if value is not None:
                 v = 0
-                for i in util.iterbytes(value):
+                for i in iter(value):
                     v = v << 8 | i
                 return v
             return value
@@ -53,7 +53,7 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _cymysqlBIT})
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("cymysql")
 
     def _detect_charset(self, connection):

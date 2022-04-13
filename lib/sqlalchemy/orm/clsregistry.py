@@ -1,5 +1,5 @@
 # ext/declarative/clsregistry.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,17 +10,25 @@ This system allows specification of classes and expressions used in
 :func:`_orm.relationship` using strings.
 
 """
+
+from __future__ import annotations
+
+import re
+from typing import MutableMapping
+from typing import Union
 import weakref
 
 from . import attributes
 from . import interfaces
-from .descriptor_props import SynonymProperty
+from .descriptor_props import Synonym
 from .properties import ColumnProperty
 from .util import class_mapper
 from .. import exc
 from .. import inspection
 from .. import util
 from ..sql.schema import _get_table_key
+
+_ClsRegistryType = MutableMapping[str, Union[type, "ClsRegistryToken"]]
 
 # strong references to registries which we place in
 # the _decl_class_registry, which is usually weak referencing.
@@ -118,7 +126,13 @@ def _key_is_empty(key, decl_class_registry, test):
         return not test(thing)
 
 
-class _MultipleClassMarker(object):
+class ClsRegistryToken:
+    """an object that can be in the registry._class_registry as a value."""
+
+    __slots__ = ()
+
+
+class _MultipleClassMarker(ClsRegistryToken):
     """refers to multiple classes of the same name
     within _decl_class_registry.
 
@@ -182,7 +196,7 @@ class _MultipleClassMarker(object):
         self.contents.add(weakref.ref(item, self._remove_item))
 
 
-class _ModuleMarker(object):
+class _ModuleMarker(ClsRegistryToken):
     """Refers to a module name within
     _decl_class_registry.
 
@@ -239,7 +253,7 @@ class _ModuleMarker(object):
             existing.remove_item(cls)
 
 
-class _ModNS(object):
+class _ModNS:
     __slots__ = ("__parent",)
 
     def __init__(self, parent):
@@ -257,13 +271,13 @@ class _ModNS(object):
                 else:
                     assert isinstance(value, _MultipleClassMarker)
                     return value.attempt_get(self.__parent.path, key)
-        raise AttributeError(
+        raise NameError(
             "Module %r has no mapped classes "
             "registered under the name %r" % (self.__parent.name, key)
         )
 
 
-class _GetColumns(object):
+class _GetColumns:
     __slots__ = ("cls",)
 
     def __init__(self, cls):
@@ -279,9 +293,9 @@ class _GetColumns(object):
                 )
 
             desc = mp.all_orm_descriptors[key]
-            if desc.extension_type is interfaces.NOT_EXTENSION:
+            if desc.extension_type is interfaces.NotExtension.NOT_EXTENSION:
                 prop = desc.property
-                if isinstance(prop, SynonymProperty):
+                if isinstance(prop, Synonym):
                     key = prop.name
                 elif not isinstance(prop, ColumnProperty):
                     raise exc.InvalidRequestError(
@@ -297,7 +311,7 @@ inspection._inspects(_GetColumns)(
 )
 
 
-class _GetTable(object):
+class _GetTable:
     __slots__ = "key", "metadata"
 
     def __init__(self, key, metadata):
@@ -314,7 +328,7 @@ def _determine_container(key, value):
     return _GetColumns(value)
 
 
-class _class_resolver(object):
+class _class_resolver:
     __slots__ = (
         "cls",
         "prop",
@@ -372,16 +386,26 @@ class _class_resolver(object):
         return self.fallback[key]
 
     def _raise_for_name(self, name, err):
-        util.raise_(
-            exc.InvalidRequestError(
+        generic_match = re.match(r"(.+)\[(.+)\]", name)
+
+        if generic_match:
+            raise exc.InvalidRequestError(
+                f"When initializing mapper {self.prop.parent}, "
+                f'expression "relationship({self.arg!r})" seems to be '
+                "using a generic class as the argument to relationship(); "
+                "please state the generic argument "
+                "using an annotation, e.g. "
+                f'"{self.prop.key}: Mapped[{generic_match.group(1)}'
+                f'[{generic_match.group(2)}]] = relationship()"'
+            ) from err
+        else:
+            raise exc.InvalidRequestError(
                 "When initializing mapper %s, expression %r failed to "
                 "locate a name (%r). If this is a class name, consider "
                 "adding this relationship() to the %r class after "
                 "both dependent classes have been defined."
                 % (self.prop.parent, self.arg, name, self.cls)
-            ),
-            from_=err,
-        )
+            ) from err
 
     def _resolve_name(self):
         name = self.arg

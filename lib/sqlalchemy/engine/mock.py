@@ -1,64 +1,77 @@
 # engine/mock.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-from operator import attrgetter
+from __future__ import annotations
 
-from . import base
+from operator import attrgetter
+import typing
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Optional
+from typing import Type
+from typing import Union
+
 from . import url as _url
 from .. import util
-from ..sql import ddl
 
 
-class MockConnection(base.Connectable):
-    def __init__(self, dialect, execute):
+if typing.TYPE_CHECKING:
+    from .base import Connection
+    from .base import Engine
+    from .interfaces import _CoreAnyExecuteParams
+    from .interfaces import _ExecuteOptionsParameter
+    from .interfaces import Dialect
+    from .url import URL
+    from ..sql.base import Executable
+    from ..sql.ddl import DDLElement
+    from ..sql.ddl import SchemaDropper
+    from ..sql.ddl import SchemaGenerator
+    from ..sql.schema import HasSchemaAttr
+    from ..sql.schema import SchemaItem
+
+
+class MockConnection:
+    def __init__(self, dialect: Dialect, execute: Callable[..., Any]):
         self._dialect = dialect
-        self.execute = execute
+        self._execute_impl = execute
 
-    engine = property(lambda s: s)
-    dialect = property(attrgetter("_dialect"))
-    name = property(lambda s: s._dialect.name)
+    engine: Engine = cast(Any, property(lambda s: s))
+    dialect: Dialect = cast(Any, property(attrgetter("_dialect")))
+    name: str = cast(Any, property(lambda s: s._dialect.name))
 
-    def schema_for_object(self, obj):
+    def connect(self, **kwargs: Any) -> MockConnection:
+        return self
+
+    def schema_for_object(self, obj: HasSchemaAttr) -> Optional[str]:
         return obj.schema
 
-    def connect(self, **kwargs):
+    def execution_options(self, **kw: Any) -> MockConnection:
         return self
-
-    def execution_options(self, **kw):
-        return self
-
-    def compiler(self, statement, parameters, **kwargs):
-        return self._dialect.compiler(
-            statement, parameters, engine=self, **kwargs
-        )
-
-    def create(self, entity, **kwargs):
-        kwargs["checkfirst"] = False
-
-        ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse_single(
-            entity
-        )
-
-    def drop(self, entity, **kwargs):
-        kwargs["checkfirst"] = False
-
-        ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
 
     def _run_ddl_visitor(
-        self, visitorcallable, element, connection=None, **kwargs
-    ):
+        self,
+        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
+        element: SchemaItem,
+        **kwargs: Any,
+    ) -> None:
         kwargs["checkfirst"] = False
         visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
 
-    def execute(self, object_, *multiparams, **params):
-        raise NotImplementedError()
+    def execute(
+        self,
+        obj: Executable,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> Any:
+        return self._execute_impl(obj, parameters)
 
 
-def create_mock_engine(url, executor, **kw):
+def create_mock_engine(url: URL, executor: Any, **kw: Any) -> MockConnection:
     """Create a "mock" engine used for echoing DDL.
 
     This is a utility function used for debugging or storing the output of DDL
@@ -80,7 +93,7 @@ def create_mock_engine(url, executor, **kw):
         def dump(sql, *multiparams, **params):
             print(sql.compile(dialect=engine.dialect))
 
-        engine = create_mock_engine('postgresql://', dump)
+        engine = create_mock_engine('postgresql+psycopg2://', dump)
         metadata.create_all(engine, checkfirst=False)
 
     :param url: A string URL which typically needs to contain only the
@@ -113,6 +126,6 @@ def create_mock_engine(url, executor, **kw):
             dialect_args[k] = kw.pop(k)
 
     # create dialect
-    dialect = dialect_cls(**dialect_args)
+    dialect = dialect_cls(**dialect_args)  # type: ignore
 
     return MockConnection(dialect, executor)

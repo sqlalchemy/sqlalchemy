@@ -1,6 +1,7 @@
 # -*- encoding: utf-8
 
 from decimal import Decimal
+from unittest.mock import Mock
 
 from sqlalchemy import Column
 from sqlalchemy import event
@@ -26,32 +27,32 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
 
 
 class ParseConnectTest(fixtures.TestBase):
     def test_pyodbc_connect_dsn_trusted(self):
         dialect = pyodbc.dialect()
-        u = url.make_url("mssql://mydsn")
+        u = url.make_url("mssql+pyodbc://mydsn")
         connection = dialect.create_connect_args(u)
-        eq_([["dsn=mydsn;Trusted_Connection=Yes"], {}], connection)
+        eq_((("dsn=mydsn;Trusted_Connection=Yes",), {}), connection)
 
     def test_pyodbc_connect_old_style_dsn_trusted(self):
         dialect = pyodbc.dialect()
-        u = url.make_url("mssql:///?dsn=mydsn")
+        u = url.make_url("mssql+pyodbc:///?dsn=mydsn")
         connection = dialect.create_connect_args(u)
-        eq_([["dsn=mydsn;Trusted_Connection=Yes"], {}], connection)
+        eq_((("dsn=mydsn;Trusted_Connection=Yes",), {}), connection)
 
     def test_pyodbc_connect_dsn_non_trusted(self):
         dialect = pyodbc.dialect()
-        u = url.make_url("mssql://username:password@mydsn")
+        u = url.make_url("mssql+pyodbc://username:password@mydsn")
         connection = dialect.create_connect_args(u)
-        eq_([["dsn=mydsn;UID=username;PWD=password"], {}], connection)
+        eq_((("dsn=mydsn;UID=username;PWD=password",), {}), connection)
 
     def test_pyodbc_connect_dsn_extra(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://username:password@mydsn/?LANGUAGE=us_" "english&foo=bar"
+            "mssql+pyodbc://username:password@mydsn/?LANGUAGE=us_"
+            "english&foo=bar"
         )
         connection = dialect.create_connect_args(u)
         dsn_string = connection[0][0]
@@ -61,17 +62,17 @@ class ParseConnectTest(fixtures.TestBase):
     def test_pyodbc_hostname(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://username:password@hostspec/database?driver=SQL+Server"
+            "mssql+pyodbc://username:password@hostspec/database?driver=SQL+Server"  # noqa
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={SQL Server};Server=hostspec;Database=database;UI"
-                    "D=username;PWD=password"
-                ],
+                    "D=username;PWD=password",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
@@ -84,7 +85,7 @@ class ParseConnectTest(fixtures.TestBase):
 
     def test_pyodbc_host_no_driver(self):
         dialect = pyodbc.dialect()
-        u = url.make_url("mssql://username:password@hostspec/database")
+        u = url.make_url("mssql+pyodbc://username:password@hostspec/database")
 
         def go():
             return dialect.create_connect_args(u)
@@ -98,56 +99,56 @@ class ParseConnectTest(fixtures.TestBase):
         )
 
         eq_(
-            [
-                [
+            (
+                (
                     "Server=hostspec;Database=database;UI"
-                    "D=username;PWD=password"
-                ],
+                    "D=username;PWD=password",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
     def test_pyodbc_connect_comma_port(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://username:password@hostspec:12345/data"
+            "mssql+pyodbc://username:password@hostspec:12345/data"
             "base?driver=SQL Server"
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={SQL Server};Server=hostspec,12345;Database=datab"
-                    "ase;UID=username;PWD=password"
-                ],
+                    "ase;UID=username;PWD=password",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
     def test_pyodbc_connect_config_port(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://username:password@hostspec/database?p"
+            "mssql+pyodbc://username:password@hostspec/database?p"
             "ort=12345&driver=SQL+Server"
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={SQL Server};Server=hostspec;Database=database;UI"
-                    "D=username;PWD=password;port=12345"
-                ],
+                    "D=username;PWD=password;port=12345",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
     def test_pyodbc_extra_connect(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://username:password@hostspec/database?L"
+            "mssql+pyodbc://username:password@hostspec/database?L"
             "ANGUAGE=us_english&foo=bar&driver=SQL+Server"
         )
         connection = dialect.create_connect_args(u)
@@ -186,51 +187,51 @@ class ParseConnectTest(fixtures.TestBase):
     def test_pyodbc_odbc_connect(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql:///?odbc_connect=DRIVER%3D%7BSQL+Server"
+            "mssql+pyodbc:///?odbc_connect=DRIVER%3D%7BSQL+Server"
             "%7D%3BServer%3Dhostspec%3BDatabase%3Ddatabase"
             "%3BUID%3Dusername%3BPWD%3Dpassword"
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={SQL Server};Server=hostspec;Database=database;UI"
-                    "D=username;PWD=password"
-                ],
+                    "D=username;PWD=password",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
     def test_pyodbc_odbc_connect_with_dsn(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql:///?odbc_connect=dsn%3Dmydsn%3BDatabase"
+            "mssql+pyodbc:///?odbc_connect=dsn%3Dmydsn%3BDatabase"
             "%3Ddatabase%3BUID%3Dusername%3BPWD%3Dpassword"
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [["dsn=mydsn;Database=database;UID=username;PWD=password"], {}],
+            (("dsn=mydsn;Database=database;UID=username;PWD=password",), {}),
             connection,
         )
 
     def test_pyodbc_odbc_connect_ignores_other_values(self):
         dialect = pyodbc.dialect()
         u = url.make_url(
-            "mssql://userdiff:passdiff@localhost/dbdiff?od"
+            "mssql+pyodbc://userdiff:passdiff@localhost/dbdiff?od"
             "bc_connect=DRIVER%3D%7BSQL+Server%7D%3BServer"
             "%3Dhostspec%3BDatabase%3Ddatabase%3BUID%3Duse"
             "rname%3BPWD%3Dpassword"
         )
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={SQL Server};Server=hostspec;Database=database;UI"
-                    "D=username;PWD=password"
-                ],
+                    "D=username;PWD=password",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
@@ -247,14 +248,14 @@ class ParseConnectTest(fixtures.TestBase):
         dialect = pyodbc.dialect()
         connection = dialect.create_connect_args(u)
         eq_(
-            [
-                [
+            (
+                (
                     "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
                     "Database=somedb%3BPORT%3D50001;UID={someuser;PORT=50001};"
-                    "PWD={some{strange}}pw;PORT=50001}"
-                ],
+                    "PWD={some{strange}}pw;PORT=50001}",
+                ),
                 {},
-            ],
+            ),
             connection,
         )
 
@@ -264,7 +265,7 @@ class ParseConnectTest(fixtures.TestBase):
         u = url.make_url("mssql+pymssql://scott:tiger@somehost/test")
         connection = dialect.create_connect_args(u)
         eq_(
-            [
+            (
                 [],
                 {
                     "host": "somehost",
@@ -272,14 +273,14 @@ class ParseConnectTest(fixtures.TestBase):
                     "user": "scott",
                     "database": "test",
                 },
-            ],
+            ),
             connection,
         )
 
         u = url.make_url("mssql+pymssql://scott:tiger@somehost:5000/test")
         connection = dialect.create_connect_args(u)
         eq_(
-            [
+            (
                 [],
                 {
                     "host": "somehost:5000",
@@ -287,7 +288,7 @@ class ParseConnectTest(fixtures.TestBase):
                     "user": "scott",
                     "database": "test",
                 },
-            ],
+            ),
             connection,
         )
 
@@ -583,7 +584,9 @@ class VersionDetectionTest(fixtures.TestBase):
                         )
                     )
                 ),
-                connection=Mock(getinfo=Mock(return_value=vers)),
+                connection=Mock(
+                    dbapi_connection=Mock(getinfo=Mock(return_value=vers)),
+                ),
             )
 
             eq_(dialect._get_server_version_info(conn), expected)

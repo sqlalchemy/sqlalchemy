@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 
-class Versioned(object):
+class Versioned:
     def new_version(self, session):
         # make us transient (removes persistent
         # identity).

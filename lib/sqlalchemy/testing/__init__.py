@@ -1,17 +1,19 @@
 # testing/__init__.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from unittest import mock
 
 from . import config
-from . import mock
 from .assertions import assert_raises
 from .assertions import assert_raises_context_ok
 from .assertions import assert_raises_message
 from .assertions import assert_raises_message_context_ok
+from .assertions import assert_warns
+from .assertions import assert_warns_message
 from .assertions import AssertsCompiledSQL
 from .assertions import AssertsExecutionResults
 from .assertions import ComparesTables
@@ -40,12 +42,14 @@ from .assertions import not_in
 from .assertions import not_in_
 from .assertions import startswith_
 from .assertions import uses_deprecated
+from .config import add_to_marker
 from .config import async_test
 from .config import combinations
 from .config import combinations_list
 from .config import db
 from .config import fixture
 from .config import requirements as requires
+from .config import skip_test
 from .exclusions import _is_excluded
 from .exclusions import _server_version
 from .exclusions import against as _against

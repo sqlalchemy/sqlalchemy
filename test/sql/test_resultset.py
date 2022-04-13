@@ -1,7 +1,12 @@
 import collections
+import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
+from io import StringIO
 import operator
+import pickle
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from sqlalchemy import CHAR
 from sqlalchemy import column
@@ -21,17 +26,15 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
-from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
 from sqlalchemy.engine.result import SimpleResultMetaData
 from sqlalchemy.engine.row import KEY_INTEGER_ONLY
-from sqlalchemy.engine.row import KEY_OBJECTS_BUT_WARN
-from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
@@ -45,6 +48,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -54,11 +58,8 @@ from sqlalchemy.testing import le_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import collections_abc
 
 
 class CursorResultTest(fixtures.TablesTest):
@@ -96,6 +97,47 @@ class CursorResultTest(fixtures.TablesTest):
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
+
+    def test_keys_no_rows(self, connection):
+
+        for i in range(2):
+            r = connection.execute(
+                text("update users set user_name='new' where user_id=10")
+            )
+
+            with expect_raises_message(
+                exc.ResourceClosedError,
+                "This result object does not return rows",
+            ):
+                r.keys()
+
+    def test_row_keys_removed(self, connection):
+        r = connection.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        with expect_raises(AttributeError):
+            r.keys()
+
+    def test_row_contains_key_no_strings(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
+        )
+
+        r = connection.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        not_in("user_name", r)
+        in_("user_name", r._mapping)
+        not_in("foobar", r)
+        not_in("foobar", r._mapping)
 
     def test_row_iteration(self, connection):
         users = self.tables.users
@@ -220,6 +262,9 @@ class CursorResultTest(fixtures.TablesTest):
         in_(content.c.type, row._mapping)
         not_in(bar.c.content_type, row._mapping)
 
+        # in 1.x, would warn for string match, but return a result
+        not_in(sql.column("content_type"), row)
+
         not_in(bar.c.content_type, row._mapping)
 
         row = connection.execute(
@@ -230,8 +275,12 @@ class CursorResultTest(fixtures.TablesTest):
 
         not_in(bar.c.content_type, row._mapping)
 
+        # in 1.x, would warn for string match, but return a result
+        not_in(sql.column("content_type"), row._mapping)
+
     def test_pickled_rows(self, connection):
         users = self.tables.users
+        addresses = self.tables.addresses
 
         connection.execute(
             users.insert(),
@@ -242,7 +291,7 @@ class CursorResultTest(fixtures.TablesTest):
             ],
         )
 
-        for pickle in False, True:
+        for use_pickle in False, True:
             for use_labels in False, True:
                 result = connection.execute(
                     users.select()
@@ -254,8 +303,8 @@ class CursorResultTest(fixtures.TablesTest):
                     )
                 ).fetchall()
 
-                if pickle:
-                    result = util.pickle.loads(util.pickle.dumps(result))
+                if use_pickle:
+                    result = pickle.loads(pickle.dumps(result))
 
                 eq_(result, [(7, "jack"), (8, "ed"), (9, "fred")])
                 if use_labels:
@@ -271,19 +320,47 @@ class CursorResultTest(fixtures.TablesTest):
                 eq_(result[0][0], 7)
 
                 assert_raises(
-                    exc.NoSuchColumnError, lambda: result[0]["fake key"]
+                    exc.NoSuchColumnError,
+                    lambda: result[0]._mapping["fake key"],
+                )
+
+                # previously would warn
+
+                if use_pickle:
+                    with expect_raises_message(
+                        exc.NoSuchColumnError,
+                        "Row was unpickled; lookup by ColumnElement is "
+                        "unsupported",
+                    ):
+                        result[0]._mapping[users.c.user_id]
+                else:
+                    eq_(result[0]._mapping[users.c.user_id], 7)
+
+                if use_pickle:
+                    with expect_raises_message(
+                        exc.NoSuchColumnError,
+                        "Row was unpickled; lookup by ColumnElement is "
+                        "unsupported",
+                    ):
+                        result[0]._mapping[users.c.user_name]
+                else:
+                    eq_(result[0]._mapping[users.c.user_name], "jack")
+
+                assert_raises(
+                    exc.NoSuchColumnError,
+                    lambda: result[0]._mapping[addresses.c.user_id],
                 )
 
                 assert_raises(
                     exc.NoSuchColumnError,
-                    lambda: result[0]._mapping["fake key"],
+                    lambda: result[0]._mapping[addresses.c.address_id],
                 )
 
     def test_column_error_printing(self, connection):
         result = connection.execute(select(1))
         row = result.first()
 
-        class unprintable(object):
+        class unprintable:
             def __str__(self):
                 raise ValueError("nope")
 
@@ -460,7 +537,20 @@ class CursorResultTest(fixtures.TablesTest):
             text("select * from users where user_id=2")
         ).first()
 
+        with expect_raises_message(TypeError, "tuple indices must be"):
+            r["foo"]
+
         eq_(r._mapping["user_name"], "jack")
+
+    def test_row_getitem_column(self, connection):
+        col = literal_column("1").label("foo")
+
+        row = connection.execute(select(col)).first()
+
+        with expect_raises_message(TypeError, "tuple indices must be"):
+            row[col]
+
+        eq_(row._mapping[col], 1)
 
     def test_column_accessor_basic_text(self, connection):
         users = self.tables.users
@@ -484,6 +574,16 @@ class CursorResultTest(fixtures.TablesTest):
 
         eq_(r.user_name, "jack")
         eq_(r._mapping["user_name"], "jack")
+
+        # cases which used to succeed w warning
+        with expect_raises_message(
+            exc.NoSuchColumnError, "Could not locate column in row"
+        ):
+            r._mapping[users.c.user_id]
+        with expect_raises_message(
+            exc.NoSuchColumnError, "Could not locate column in row"
+        ):
+            r._mapping[users.c.user_name]
 
     def test_column_accessor_text_colexplicit(self, connection):
         users = self.tables.users
@@ -533,6 +633,16 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r._mapping["user_id"], 2)
         eq_(r.user_name, "jack")
         eq_(r._mapping["user_name"], "jack")
+
+        # error cases that previously would warn
+        with expect_raises_message(
+            exc.NoSuchColumnError, "Could not locate column in row"
+        ):
+            r._mapping[users.c.user_id]
+        with expect_raises_message(
+            exc.NoSuchColumnError, "Could not locate column in row"
+        ):
+            r._mapping[users.c.user_name]
 
     def test_column_accessor_dotted_union(self, connection):
         users = self.tables.users
@@ -636,6 +746,80 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r._mapping[users.c.user_name], "john")
         eq_(r.user_name, "john")
 
+    @testing.fixture
+    def _ab_row_fixture(self, connection):
+        r = connection.execute(
+            select(literal(1).label("a"), literal(2).label("b"))
+        ).first()
+        return r
+
+    def test_named_tuple_access(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        eq_(r.a, 1)
+        eq_(r.b, 2)
+
+    def test_named_tuple_missing_attr(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(
+            AttributeError, "Could not locate column in row for column 'c'"
+        ):
+            r.c
+
+    def test_named_tuple_no_delete_present(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(AttributeError, "can't delete attribute"):
+            del r.a
+
+    def test_named_tuple_no_delete_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        # including for non-existent attributes
+        with expect_raises_message(AttributeError, "can't delete attribute"):
+            del r.c
+
+    def test_named_tuple_no_assign_present(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.a = 5
+
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.a += 5
+
+    def test_named_tuple_no_assign_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        # including for non-existent attributes
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.c = 5
+
+    def test_named_tuple_no_self_assign_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(
+            AttributeError, "Could not locate column in row for column 'c'"
+        ):
+            r.c += 5
+
+    def test_mapping_tuple_readonly_errors(self, connection):
+        r = connection.execute(
+            select(literal(1).label("a"), literal(2).label("b"))
+        ).first()
+        r = r._mapping
+        eq_(r["a"], 1)
+        eq_(r["b"], 2)
+
+        with expect_raises_message(
+            KeyError, "Could not locate column in row for column 'c'"
+        ):
+            r["c"]
+
+        with expect_raises_message(
+            TypeError, "'RowMapping' object does not support item assignment"
+        ):
+            r["a"] = 5
+
+        with expect_raises_message(
+            TypeError, "'RowMapping' object does not support item assignment"
+        ):
+            r["a"] += 5
+
     def test_column_accessor_err(self, connection):
         r = connection.execute(select(1)).first()
         assert_raises_message(
@@ -651,12 +835,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping["foo"],
         )
 
-    @testing.combinations(
-        (True,),
-        (False,),
-        argnames="future",
-    )
-    def test_graceful_fetch_on_non_rows(self, future):
+    def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
 
@@ -670,32 +849,23 @@ class CursorResultTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        conn = testing.db.connect()
-        if future:
-            conn = conn.execution_options(future_result=True)
-        keys_lambda = lambda r: r.keys()  # noqa: E731
+        with testing.db.connect() as conn:
+            keys_lambda = lambda r: r.keys()  # noqa: E731
 
-        for meth in [
-            lambda r: r.fetchone(),
-            lambda r: r.fetchall(),
-            lambda r: r.first(),
-            lambda r: r.scalar(),
-            lambda r: r.fetchmany(),
-            lambda r: r._getter("user"),
-            keys_lambda,
-            lambda r: r.columns("user"),
-            lambda r: r.cursor_strategy.fetchone(r, r.cursor),
-        ]:
-            trans = conn.begin()
-            result = conn.execute(users.insert(), dict(user_id=1))
+            for meth in [
+                lambda r: r.fetchone(),
+                lambda r: r.fetchall(),
+                lambda r: r.first(),
+                lambda r: r.scalar(),
+                lambda r: r.fetchmany(),
+                lambda r: r._getter("user"),
+                keys_lambda,
+                lambda r: r.columns("user"),
+                lambda r: r.cursor_strategy.fetchone(r, r.cursor),
+            ]:
+                trans = conn.begin()
+                result = conn.execute(users.insert(), dict(user_id=1))
 
-            if not future and meth is keys_lambda:
-                with testing.expect_deprecated(
-                    r"Calling the .keys\(\) method on a result set that does "
-                    r"not return rows is deprecated"
-                ):
-                    eq_(meth(result), [])
-            else:
                 assert_raises_message(
                     exc.ResourceClosedError,
                     "This result object does not return rows. "
@@ -703,7 +873,7 @@ class CursorResultTest(fixtures.TablesTest):
                     meth,
                     result,
                 )
-            trans.rollback()
+                trans.rollback()
 
     def test_fetchone_til_end(self, connection):
         result = connection.exec_driver_sql("select * from users")
@@ -774,6 +944,37 @@ class CursorResultTest(fixtures.TablesTest):
         connection.execute(users.delete())
         connection.execute(users.insert(), r._mapping)
         eq_(connection.execute(users.select()).fetchall(), [(1, "john")])
+
+    @testing.requires.tuple_in
+    def test_row_tuple_interpretation(self, connection):
+        """test #7292"""
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                dict(user_id=1, user_name="u1"),
+                dict(user_id=2, user_name="u2"),
+                dict(user_id=3, user_name="u3"),
+            ],
+        )
+        rows = connection.execute(
+            select(users.c.user_id, users.c.user_name)
+        ).all()
+
+        # was previously needed
+        # rows = [(x, y) for x, y in rows]
+
+        new_stmt = (
+            select(users)
+            .where(tuple_(users.c.user_id, users.c.user_name).in_(rows))
+            .order_by(users.c.user_id)
+        )
+
+        eq_(
+            connection.execute(new_stmt).all(),
+            [(1, "u1"), (2, "u2"), (3, "u3")],
+        )
 
     def test_result_as_args(self, connection):
         users = self.tables.users
@@ -846,7 +1047,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping[fake_table.c.user_id],
         )
 
-        r = util.pickle.loads(util.pickle.dumps(r))
+        r = pickle.loads(pickle.dumps(r))
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",
@@ -1045,7 +1246,6 @@ class CursorResultTest(fixtures.TablesTest):
             eq_(row._mapping[s.c.user_id], 7)
             eq_(row._mapping[s.c.user_name], "ed")
 
-    @testing.requires.python3
     def test_ro_mapping_py3k(self, connection):
         users = self.tables.users
 
@@ -1068,56 +1268,23 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(odict_row.values(), mapping_row.values())
         eq_(odict_row.items(), mapping_row.items())
 
-    @testing.requires.python2
-    def test_ro_mapping_py2k(self, connection):
-        users = self.tables.users
-
-        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
-        result = connection.execute(users.select())
-
-        row = result.first()
-        dict_row = row._asdict()
-
-        odict_row = collections.OrderedDict(
-            [("user_id", 1), ("user_name", "foo")]
-        )
-        eq_(dict_row, odict_row)
-        mapping_row = row._mapping
-
-        eq_(list(mapping_row), list(mapping_row.keys()))
-        eq_(odict_row.keys(), list(mapping_row.keys()))
-        eq_(odict_row.values(), list(mapping_row.values()))
-        eq_(odict_row.items(), list(mapping_row.items()))
-
     @testing.combinations(
         (lambda result: result),
         (lambda result: result.first(),),
         (lambda result: result.first()._mapping),
         argnames="get_object",
     )
-    @testing.combinations(
-        (True,),
-        (False,),
-        argnames="future",
-    )
-    def test_keys(self, connection, get_object, future):
+    def test_keys(self, connection, get_object):
         users = self.tables.users
         addresses = self.tables.addresses
-
-        if future:
-            connection = connection.execution_options(future_result=True)
 
         connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
 
         obj = get_object(result)
 
-        # Row still has a .keys() method as well as LegacyRow
-        # as in 1.3.x, the KeyedTuple object also had a keys() method.
-        # it emits a 2.0 deprecation warning.
         if isinstance(obj, Row):
-            with assertions.expect_deprecated_20("The Row.keys()"):
-                keys = obj.keys()
+            keys = obj._mapping.keys()
         else:
             keys = obj.keys()
 
@@ -1147,12 +1314,9 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(row._mapping.keys()), ["user_id", "user_name"])
         eq_(row._fields, ("user_id", "user_name"))
 
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            in_("user_id", row.keys())
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            not_in("foo", row.keys())
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            in_(users.c.user_id, row.keys())
+        in_("user_id", row._fields)
+        not_in("foo", row._fields)
+        in_(users.c.user_id, row._mapping.keys())
 
     def test_row_keys_legacy_dont_warn(self, connection):
         users = self.tables.users
@@ -1160,13 +1324,10 @@ class CursorResultTest(fixtures.TablesTest):
         connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
         row = result.first()
-        # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
 
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            eq_(dict(row), {"user_id": 1, "user_name": "foo"})
+        eq_(dict(row._mapping), {"user_id": 1, "user_name": "foo"})
 
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            eq_(row.keys(), ["user_id", "user_name"])
+        eq_(row._fields, ("user_id", "user_name"))
 
     def test_row_namedtuple_legacy_ok(self, connection):
         users = self.tables.users
@@ -1268,7 +1429,6 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(r._mapping.values()), ["foo", 1])
 
     @testing.crashes("oracle", "FIXME: unknown, verify not fails_on()")
-    @testing.crashes("firebird", "An identifier must begin with a letter")
     @testing.provide_metadata
     def test_column_accessor_shadow(self, connection):
         shadowed = Table(
@@ -1325,7 +1485,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         """
 
-        class MyList(object):
+        class MyList:
             def __init__(self, data):
                 self.internal_list = data
 
@@ -1396,14 +1556,13 @@ class CursorResultTest(fixtures.TablesTest):
         )
         is_true(isinstance(row, collections_abc.Sequence))
 
-    @testing.combinations((Row,), (LegacyRow,))
-    def test_row_special_names(self, row_cls):
+    def test_row_special_names(self):
         metadata = SimpleResultMetaData(["key", "count", "index", "foo"])
-        row = row_cls(
+        row = Row(
             metadata,
             [None, None, None, None],
             metadata._keymap,
-            row_cls._default_key_style,
+            Row._default_key_style,
             ["kv", "cv", "iv", "f"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
@@ -1412,21 +1571,13 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.count, "cv")
         eq_(row.index, "iv")
 
-        with assertions.expect_deprecated_20(
-            "Retrieving row members using strings or other non-integers "
-            "is deprecated; use row._mapping for a dictionary interface "
-            "to the row"
-        ):
-            eq_(row["foo"], "f")
-            eq_(row["count"], "cv")
-            eq_(row["index"], "iv")
-
+        eq_(row._mapping["foo"], "f")
         eq_(row._mapping["count"], "cv")
         eq_(row._mapping["index"], "iv")
 
         metadata = SimpleResultMetaData(["key", "q", "p"])
 
-        row = row_cls(
+        row = Row(
             metadata,
             [None, None, None],
             metadata._keymap,
@@ -1441,45 +1592,6 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.index("cv"), 1)
         eq_(row.count("cv"), 1)
         eq_(row.count("x"), 0)
-
-    @testing.combinations((Row,), (LegacyRow,))
-    def test_row_dict_behaviors_warn_mode(self, row_cls):
-        metadata = SimpleResultMetaData(
-            [
-                "a",
-                "b",
-                "count",
-            ]
-        )
-        row = row_cls(
-            metadata,
-            [None, None, None],
-            metadata._keymap,
-            KEY_OBJECTS_BUT_WARN,
-            ["av", "bv", "cv"],
-        )
-
-        # as of #6218, dict(row) and row["x"] work for
-        # both LegacyRow and Row, with 2.0 deprecation warnings
-        # for both
-        with assertions.expect_deprecated_20(
-            "Retrieving row members using strings or other non-integers "
-            "is deprecated; use row._mapping for a dictionary interface "
-            "to the row"
-        ):
-            eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
-
-        with assertions.expect_deprecated_20(
-            "Retrieving row members using strings or other non-integers "
-            "is deprecated; use row._mapping for a dictionary interface "
-            "to the row"
-        ):
-            eq_(row["a"], "av")
-            eq_(row["count"], "cv")
-
-        # keys is keys
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            eq_(list(row.keys()), ["a", "b", "count"])
 
     def test_new_row_no_dict_behaviors(self):
         """This mode is not used currently but will be once we are in 2.0."""
@@ -1498,28 +1610,21 @@ class CursorResultTest(fixtures.TablesTest):
             ["av", "bv", "cv"],
         )
 
-        with assertions.expect_raises_message(
-            TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
-        ):
-            with assertions.expect_deprecated_20("The Row.keys()"):
-                eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
+        eq_(dict(row._mapping), {"a": "av", "b": "bv", "count": "cv"})
 
-        with assertions.expect_raises_message(
+        with assertions.expect_raises(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["a"], "av")
 
         with assertions.expect_raises_message(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["count"], "cv")
 
-        # keys is keys
-        with assertions.expect_deprecated_20("The Row.keys()"):
-            eq_(list(row.keys()), ["a", "b", "count"])
+        eq_(list(row._mapping), ["a", "b", "count"])
 
     def test_row_is_hashable(self):
 
@@ -1575,7 +1680,7 @@ class CursorResultTest(fixtures.TablesTest):
             users.select().where(users.c.user_id == 1)
         ).fetchone()
 
-        s = util.StringIO()
+        s = StringIO()
         writer = csv.writer(s)
         # csv performs PySequenceCheck call
         writer.writerow(row)
@@ -1766,6 +1871,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_keyed_targeting_no_label_at_all_one(self, connection):
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
+            inherit_cache = True
 
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):
@@ -1783,6 +1889,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_keyed_targeting_no_label_at_all_two(self, connection):
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
+            inherit_cache = True
 
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):
@@ -1914,8 +2021,6 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row.keyed2_a, "a2")
         eq_(row.keyed2_b, "b2")
 
-        assert_raises(KeyError, lambda: row["keyed2_c"])
-        assert_raises(KeyError, lambda: row["keyed2_q"])
         assert_raises(KeyError, lambda: row._mapping["keyed2_c"])
         assert_raises(KeyError, lambda: row._mapping["keyed2_q"])
 
@@ -1993,6 +2098,11 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(a, row._mapping)
         in_(b, row._mapping)
 
+        keyed2 = self.tables.keyed2
+
+        not_in(keyed2.c.a, row._mapping)
+        not_in(keyed2.c.b, row._mapping)
+
     def test_columnclause_schema_column_two(self, connection):
         keyed2 = self.tables.keyed2
 
@@ -2002,6 +2112,11 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(keyed2.c.a, row._mapping)
         in_(keyed2.c.b, row._mapping)
 
+        # in 1.x, would warn for string match, but return a result
+        a, b = sql.column("a"), sql.column("b")
+        not_in(a, row._mapping)
+        not_in(b, row._mapping)
+
     def test_columnclause_schema_column_three(self, connection):
         # this is also addressed by [ticket:2932]
         stmt = text("select a, b from keyed2").columns(a=CHAR, b=CHAR)
@@ -2009,6 +2124,17 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         in_(stmt.selected_columns.a, row._mapping)
         in_(stmt.selected_columns.b, row._mapping)
+
+        keyed2 = self.tables.keyed2
+        a, b = sql.column("a"), sql.column("b")
+
+        # in 1.x, would warn for string match, but return a result
+        not_in(keyed2.c.a, row._mapping)
+        not_in(keyed2.c.b, row._mapping)
+        not_in(a, row._mapping)
+        not_in(b, row._mapping)
+        not_in(stmt.subquery().c.a, row._mapping)
+        not_in(stmt.subquery().c.b, row._mapping)
 
     def test_columnclause_schema_column_four(self, connection):
         # originally addressed by [ticket:2932], however liberalized
@@ -2026,6 +2152,14 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(stmt.selected_columns.keyed2_a, row._mapping)
         in_(stmt.selected_columns.keyed2_b, row._mapping)
 
+        keyed2 = self.tables.keyed2
+
+        # in 1.x, would warn for string match, but return a result
+        not_in(keyed2.c.a, row._mapping)
+        not_in(keyed2.c.b, row._mapping)
+        not_in(stmt.subquery().c.keyed2_a, row._mapping)
+        not_in(stmt.subquery().c.keyed2_b, row._mapping)
+
     def test_columnclause_schema_column_five(self, connection):
         # this is also addressed by [ticket:2932]
 
@@ -2036,6 +2170,14 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         in_(stmt.selected_columns.keyed2_a, row._mapping)
         in_(stmt.selected_columns.keyed2_b, row._mapping)
+
+        keyed2 = self.tables.keyed2
+
+        # in 1.x, would warn for string match, but return a result
+        not_in(keyed2.c.a, row._mapping)
+        not_in(keyed2.c.b, row._mapping)
+        not_in(stmt.subquery().c.keyed2_a, row._mapping)
+        not_in(stmt.subquery().c.keyed2_b, row._mapping)
 
     def _adapt_result_columns_fixture_one(self):
         keyed1 = self.tables.keyed1
@@ -2163,16 +2305,16 @@ class KeyTargetingTest(fixtures.TablesTest):
         stmt2 = stmt_fn(self)
 
         cache = {}
-        result = connection._execute_20(
+        result = connection.execute(
             stmt1,
-            execution_options={"compiled_cache": cache, "future_result": True},
+            execution_options={"compiled_cache": cache},
         )
         result.close()
         assert cache
 
-        result = connection._execute_20(
+        result = connection.execute(
             stmt2,
-            execution_options={"compiled_cache": cache, "future_result": True},
+            execution_options={"compiled_cache": cache},
         )
 
         row = result.first()
@@ -2344,6 +2486,20 @@ class PositionalTextTest(fixtures.TablesTest):
         eq_(row._mapping[c3], "c1")
         eq_(row._mapping[c4], "d1")
 
+        # in 1.x, would warn for string match, but return a result
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.a'",
+            lambda: row._mapping[text1.c.a],
+        )
+
+        # in 1.x, would warn for string match, but return a result
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.d'",
+            lambda: row._mapping[text1.c.d],
+        )
+
         # text1.c.b goes nowhere....because we hit key fallback
         # but the text1.c.b doesn't derive from text1.c.c
         assert_raises_message(
@@ -2368,6 +2524,13 @@ class PositionalTextTest(fixtures.TablesTest):
         eq_(row._mapping[c2], "b1")
         eq_(row._mapping[c3], "c1")
         eq_(row._mapping[c4], "d1")
+
+        # in 1.x, would warn for string match, but return a result
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.a'",
+            lambda: row._mapping[text1.c.a],
+        )
 
     def test_anon_aliased_name_conflict(self, connection):
         text1 = self.tables.text1
@@ -2682,6 +2845,68 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         # buffer of 98, plus buffer of 99 - 89, 10 rows
         eq_(len(result.cursor_strategy._rowbuffer), 10)
 
+    @testing.combinations(True, False, argnames="close_on_init")
+    @testing.combinations(
+        "fetchone", "fetchmany", "fetchall", argnames="fetch_style"
+    )
+    def test_buffered_fetch_auto_soft_close(
+        self, connection, close_on_init, fetch_style
+    ):
+        """test #7274"""
+
+        table = self.tables.test
+
+        connection.execute(
+            table.insert(),
+            [{"x": i, "y": "t_%d" % i} for i in range(15, 30)],
+        )
+
+        result = connection.execute(table.select().limit(15))
+        assert isinstance(result.cursor_strategy, _cursor.CursorFetchStrategy)
+
+        if close_on_init:
+            # close_on_init - the initial buffering will exhaust the cursor,
+            # should soft close immediately
+            result = result.yield_per(30)
+        else:
+            # not close_on_init - soft close will occur after fetching an
+            # empty buffer
+            result = result.yield_per(5)
+        assert isinstance(
+            result.cursor_strategy, _cursor.BufferedRowCursorFetchStrategy
+        )
+
+        with mock.patch.object(result, "_soft_close") as soft_close:
+            if fetch_style == "fetchone":
+                while True:
+                    row = result.fetchone()
+
+                    if row:
+                        eq_(soft_close.mock_calls, [])
+                    else:
+                        # fetchone() is also used by first(), scalar()
+                        # and one() which want to embed a hard close in one
+                        # step
+                        eq_(soft_close.mock_calls, [mock.call(hard=False)])
+                        break
+            elif fetch_style == "fetchmany":
+                while True:
+                    rows = result.fetchmany(5)
+
+                    if rows:
+                        eq_(soft_close.mock_calls, [])
+                    else:
+                        eq_(soft_close.mock_calls, [mock.call()])
+                        break
+            elif fetch_style == "fetchall":
+                rows = result.fetchall()
+
+                eq_(soft_close.mock_calls, [mock.call()])
+            else:
+                assert False
+
+        result.close()
+
     def test_buffered_fetchmany_yield_per_all(self, connection):
         table = self.tables.test
 
@@ -2737,7 +2962,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         argnames="method_name",
     )
     def test_handle_error_in_fetch(self, strategy_cls, method_name):
-        class cursor(object):
+        class cursor:
             def raise_(self):
                 raise IOError("random non-DBAPI error during cursor operation")
 
@@ -2972,8 +3197,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         all_ = result.columns(*columns).all()
         eq_(all_, expected)
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_twice(self, connection):
         users = self.tables.users
@@ -2991,8 +3215,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         )
         eq_(all_, [("jack", 1)])
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_plus_getter(self, connection):
         users = self.tables.users

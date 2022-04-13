@@ -1606,7 +1606,7 @@
         the full "instrumentation manager" for a class before it was mapped
         for the purpose of the new ``@declared_attr`` features
         described in :ref:`feature_3150`, but the change was also made
-        against the classical use of :func:`.mapper` for consistency.
+        against the classical use of :class:`_orm.Mapper` for consistency.
         However, SQLSoup relies upon the instrumentation event happening
         before any instrumentation under classical mapping.
         The behavior is reverted in the case of classical and declarative

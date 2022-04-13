@@ -8,6 +8,7 @@ from .. import eq_
 from .. import fixtures
 from .. import ne_
 from .. import provide_metadata
+from ..assertions import expect_raises_message
 from ..config import requirements
 from ..provision import set_default_schema_on_connection
 from ..schema import Column
@@ -19,7 +20,6 @@ from ... import Integer
 from ... import literal_column
 from ... import select
 from ... import String
-from ...util import compat
 
 
 class ExceptionTest(fixtures.TablesTest):
@@ -70,19 +70,14 @@ class ExceptionTest(fixtures.TablesTest):
                 # there's no way to make this happen with some drivers like
                 # mysqlclient, pymysql.  this at least does produce a non-
                 # ascii error message for cx_oracle, psycopg2
-                conn.execute(select(literal_column(u"méil")))
+                conn.execute(select(literal_column("méil")))
                 assert False
             except exc.DBAPIError as err:
                 err_str = str(err)
 
                 assert str(err.orig) in str(err)
 
-            # test that we are actually getting string on Py2k, unicode
-            # on Py3k.
-            if compat.py2k:
-                assert isinstance(err_str, str)
-            else:
-                assert isinstance(err_str, str)
+            assert isinstance(err_str, str)
 
 
 class IsolationLevelTest(fixtures.TestBase):
@@ -120,7 +115,9 @@ class IsolationLevelTest(fixtures.TestBase):
 
             eq_(conn.get_isolation_level(), non_default)
 
-            conn.dialect.reset_isolation_level(conn.connection)
+            conn.dialect.reset_isolation_level(
+                conn.connection.dbapi_connection
+            )
 
             eq_(conn.get_isolation_level(), existing)
 
@@ -145,6 +142,48 @@ class IsolationLevelTest(fixtures.TestBase):
                     conn.get_isolation_level(),
                     levels["default"],
                 )
+
+    @testing.requires.get_isolation_level_values
+    def test_invalid_level_execution_option(self, connection_no_trans):
+        """test for the new get_isolation_level_values() method"""
+
+        connection = connection_no_trans
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for '%s' are %s"
+            % (
+                "FOO",
+                connection.dialect.name,
+                ", ".join(
+                    requirements.get_isolation_levels(config)["supported"]
+                ),
+            ),
+        ):
+            connection.execution_options(isolation_level="FOO")
+
+    @testing.requires.get_isolation_level_values
+    @testing.requires.dialect_level_isolation_level_param
+    def test_invalid_level_engine_param(self, testing_engine):
+        """test for the new get_isolation_level_values() method
+        and support for the dialect-level 'isolation_level' parameter.
+
+        """
+
+        eng = testing_engine(options=dict(isolation_level="FOO"))
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for '%s' are %s"
+            % (
+                "FOO",
+                eng.dialect.name,
+                ", ".join(
+                    requirements.get_isolation_levels(config)["supported"]
+                ),
+            ),
+        ):
+            eng.connect()
 
 
 class AutocommitIsolationTest(fixtures.TablesTest):
@@ -176,6 +215,7 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             conn.scalar(select(self.tables.some_table.c.id)),
             1 if autocommit else None,
         )
+        conn.rollback()
 
         with conn.begin():
             conn.execute(self.tables.some_table.delete())
@@ -185,7 +225,7 @@ class AutocommitIsolationTest(fixtures.TablesTest):
         c2 = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(c2, True)
 
-        c2.dialect.reset_isolation_level(c2.connection)
+        c2.dialect.reset_isolation_level(c2.connection.dbapi_connection)
 
         self._test_conn_autocommits(conn, False)
 

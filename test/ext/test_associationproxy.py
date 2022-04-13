@@ -1,5 +1,8 @@
+from collections import abc
 import copy
 import pickle
+from unittest.mock import call
+from unittest.mock import Mock
 
 from sqlalchemy import cast
 from sqlalchemy import exc
@@ -34,9 +37,8 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -60,7 +62,7 @@ class ListCollection(list):
     pass
 
 
-class ObjectCollection(object):
+class ObjectCollection:
     def __init__(self):
         self.values = list()
 
@@ -103,14 +105,14 @@ class AutoFlushTest(fixtures.MappedTest):
         )
 
     def _fixture(self, collection_class, is_dict=False):
-        class Parent(object):
+        class Parent:
             collection = association_proxy("_collection", "child")
 
-        class Child(object):
+        class Child:
             def __init__(self, name):
                 self.name = name
 
-        class Association(object):
+        class Association:
             if is_dict:
 
                 def __init__(self, key, child):
@@ -146,7 +148,9 @@ class AutoFlushTest(fixtures.MappedTest):
             collection_class, is_dict=is_dict
         )
 
-        session = Session(testing.db, autoflush=True, expire_on_commit=True)
+        session = Session(
+            testing.db, autoflush=True, expire_on_commit=True, future=True
+        )
 
         p1 = Parent()
         c1 = Child("c1")
@@ -254,13 +258,30 @@ class _CollectionOperations(fixtures.MappedTest):
         )
         cls.mapper_registry.map_imperatively(Child, children_table)
 
+    def test_abc(self):
+        Parent = self.classes.Parent
+
+        p1 = Parent("x")
+
+        collection_class = self.collection_class or list
+
+        for abc_ in (abc.Set, abc.MutableMapping, abc.MutableSequence):
+            if issubclass(collection_class, abc_):
+                break
+        else:
+            abc_ = None
+
+        if abc_:
+            p1 = Parent("x")
+            assert isinstance(p1.children, abc_)
+
     def roundtrip(self, obj):
         if obj not in self.session:
             self.session.add(obj)
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def _test_sequence_ops(self):
         Parent, Child = self.classes("Parent", "Child")
@@ -510,6 +531,10 @@ class CustomDictTest(_CollectionOperations):
 
         p1.children["b"] = "proxied"
 
+        eq_(list(p1.children.keys()), ["a", "b"])
+        eq_(list(p1.children.items()), [("a", "regular"), ("b", "proxied")])
+        eq_(list(p1.children.values()), ["regular", "proxied"])
+
         self.assert_("proxied" in list(p1.children.values()))
         self.assert_("b" in p1.children)
         self.assert_("proxied" not in p1._children)
@@ -732,7 +757,6 @@ class SetTest(_CollectionOperations):
             self.assert_((p1.children > other) == (control > other))
             self.assert_((p1.children >= other) == (control >= other))
 
-    @testing.requires.python_fixed_issue_8743
     def test_set_comparison_empty_to_empty(self):
         # test issue #3265 which was fixed in Python version 2.7.8
         Parent = self.classes.Parent
@@ -972,7 +996,7 @@ class ScalarTest(fixtures.MappedTest):
             Column("baz", String(128)),
         )
 
-        class Parent(object):
+        class Parent:
             foo = association_proxy("child", "foo")
             bar = association_proxy(
                 "child", "bar", creator=lambda v: Child(bar=v)
@@ -984,7 +1008,7 @@ class ScalarTest(fixtures.MappedTest):
             def __init__(self, name):
                 self.name = name
 
-        class Child(object):
+        class Child:
             def __init__(self, **kw):
                 for attr in kw:
                     setattr(self, attr, kw[attr])
@@ -1009,7 +1033,7 @@ class ScalarTest(fixtures.MappedTest):
             session.flush()
             id_, type_ = obj.id, type(obj)
             session.expunge_all()
-            return session.query(type_).get(id_)
+            return session.get(type_, id_)
 
         p = Parent("p")
 
@@ -1093,14 +1117,14 @@ class ScalarTest(fixtures.MappedTest):
             Column("name", String(50)),
         )
 
-        class A(object):
+        class A:
             a2b_name = association_proxy("a2b_single", "name")
             b_single = association_proxy("a2b_single", "b")
 
-        class A2B(object):
+        class A2B:
             pass
 
-        class B(object):
+        class B:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1134,12 +1158,12 @@ class ScalarTest(fixtures.MappedTest):
         get = Mock()
         set_ = Mock()
 
-        class Parent(object):
+        class Parent:
             foo = association_proxy(
                 "child", "foo", getset_factory=lambda cc, parent: (get, set_)
             )
 
-        class Child(object):
+        class Child:
             def __init__(self, foo):
                 self.foo = foo
 
@@ -1199,7 +1223,7 @@ class LazyLoadTest(fixtures.MappedTest):
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def test_lazy_list(self):
         Parent, Child = self.classes("Parent", "Child")
@@ -1317,17 +1341,17 @@ class LazyLoadTest(fixtures.MappedTest):
         self.assert_(p._children is not None)
 
 
-class Parent(object):
+class Parent:
     def __init__(self, name):
         self.name = name
 
 
-class Child(object):
+class Child:
     def __init__(self, name):
         self.name = name
 
 
-class KVChild(object):
+class KVChild:
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -1459,7 +1483,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         # assert r2 == {'c1': 'c1', 'c2': 'c2'}
 
 
-class PickleKeyFunc(object):
+class PickleKeyFunc:
     def __init__(self, name):
         self.name = name
 
@@ -2277,9 +2301,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_separate_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(
-                User.keywords.local_attr, User.keywords.remote_attr
-            ),
+            self.session.query(User)
+            .join(User.keywords.local_attr)
+            .join(User.keywords.remote_attr),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "
@@ -2290,7 +2314,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_single_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(*User.keywords.attr),
+            self.session.query(User)
+            .join(User.keywords.attr[0])
+            .join(User.keywords.attr[1]),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "
@@ -2361,7 +2387,8 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             ValueError,
-            "dictionary update sequence requires " "2-element tuples",
+            "dictionary update sequence element #1 has length 5; "
+            "2 is required",
             a1.elements.update,
             (("B", 3), "elem2"),
         )
@@ -2370,7 +2397,7 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             TypeError,
-            "update expected at most 1 arguments, got 2",
+            "update expected at most 1 arguments?, got 2",
             a1.elements.update,
             (("B", 3), "elem2"),
             (("C", 4), "elem3"),
@@ -2479,7 +2506,7 @@ class AttributeAccessTest(fixtures.TestBase):
 
         Base = declarative_base()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def children(cls):
                 return association_proxy("_children", "value")
@@ -2616,7 +2643,7 @@ class AttributeAccessTest(fixtures.TestBase):
     def test_resolved_to_correct_class_five(self):
         Base = declarative_base()
 
-        class Mixin(object):
+        class Mixin:
             children = association_proxy("_children", "value")
 
         class Parent(Mixin, Base):
@@ -2646,7 +2673,7 @@ class AttributeAccessTest(fixtures.TestBase):
         foo._calc_owner(None, None)
         is_(foo.owning_class, None)
 
-        class Bat(object):
+        class Bat:
             foo = association_proxy("x", "y")
 
         Bat.foo
@@ -2673,7 +2700,7 @@ class AttributeAccessTest(fixtures.TestBase):
         is_(Bat.foo.owning_class, Bat)
 
 
-class ScalarRemoveTest(object):
+class ScalarRemoveTest:
     useobject = None
     cascade_scalar_deletes = None
     uselist = None
@@ -2934,7 +2961,7 @@ class InfoTest(fixtures.TestBase):
         eq_(assoc.info, {})
 
     def test_via_cls(self):
-        class Foob(object):
+        class Foob:
             assoc = association_proxy("a", "b")
 
         eq_(Foob.assoc.info, {})
@@ -3091,7 +3118,7 @@ class MultiOwnerTest(
             "Association proxy D.c refers to an attribute 'csub_only_data'",
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_attribute(self, message, fn, *arg, **kw):
@@ -3339,6 +3366,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             b_data = association_proxy("bs", "value")
             well_behaved_b_data = association_proxy("bs", "well_behaved_value")
 
+            fails_on_class_access = association_proxy(
+                "bs", "fails_on_class_access"
+            )
+
         class B(Base):
             __tablename__ = "b"
 
@@ -3382,6 +3413,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             def well_behaved_w_expr(cls):
                 return cast(cls.data, Integer)
 
+            @hybrid_property
+            def fails_on_class_access(self):
+                return len(self.data)
+
         class C(Base):
             __tablename__ = "c"
 
@@ -3389,6 +3424,19 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             b_id = Column(ForeignKey("b.id"))
             _b = relationship("B")
             attr = association_proxy("_b", "well_behaved_w_expr")
+
+    def test_msg_fails_on_cls_access(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Association proxy received an unexpected error when trying to "
+            'retreive attribute "B.fails_on_class_access" from '
+            r'class "B": .* no len\(\)',
+        ):
+            a1.fails_on_class_access
 
     def test_get_ambiguous(self):
         A, B = self.classes("A", "B")

@@ -26,7 +26,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base as mssql_base
-from sqlalchemy.dialects.mssql import mxodbc
 from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
@@ -181,7 +180,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update()
             .where(t.c.somecolumn == "q")
             .values(somecolumn="x")
-            .with_hint("XYZ", "mysql"),
+            .with_hint("XYZ", dialect_name="mysql"),
             "UPDATE sometable SET somecolumn=:somecolumn "
             "WHERE sometable.somecolumn = :somecolumn_1",
         )
@@ -334,8 +333,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             lambda: select(literal("x"), literal("y")),
-            "SELECT [POSTCOMPILE_param_1] AS anon_1, "
-            "[POSTCOMPILE_param_2] AS anon_2",
+            "SELECT __[POSTCOMPILE_param_1] AS anon_1, "
+            "__[POSTCOMPILE_param_2] AS anon_2",
             {
                 "check_literal_execute": {"param_1": "x", "param_2": "y"},
                 "check_post_param": {},
@@ -344,7 +343,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         (
             lambda t: select(t).where(t.c.foo.in_(["x", "y", "z"])),
             "SELECT sometable.foo FROM sometable WHERE sometable.foo "
-            "IN ([POSTCOMPILE_foo_1])",
+            "IN (__[POSTCOMPILE_foo_1])",
             {
                 "check_literal_execute": {"foo_1": ["x", "y", "z"]},
                 "check_post_param": {},
@@ -357,13 +356,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         from sqlalchemy.dialects.mssql.base import MSSQLStrictCompiler
 
-        mxodbc_dialect = mxodbc.dialect()
-        mxodbc_dialect.statement_compiler = MSSQLStrictCompiler
+        mssql_dialect = mssql.dialect()
+        mssql_dialect.statement_compiler = MSSQLStrictCompiler
 
         t = table("sometable", column("foo"))
 
         expr = testing.resolve_lambda(expr, t=t)
-        self.assert_compile(expr, compiled, dialect=mxodbc_dialect, **kw)
+        self.assert_compile(expr, compiled, dialect=mssql_dialect, **kw)
 
     def test_in_with_subqueries(self):
         """Test removal of legacy behavior that converted "x==subquery"
@@ -436,7 +435,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         crit = q.c.myid == table1.c.myid
         self.assert_compile(
             select("*").where(crit),
-            "SELECT * FROM (SELECT TOP [POSTCOMPILE_param_1] mytable.myid AS "
+            "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] "
+            "mytable.myid AS "
             "myid FROM mytable ORDER BY mytable.myid) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
         )
@@ -810,10 +810,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             u,
             "SELECT t1.col3 AS col3, t1.col4 AS col4 "
-            "FROM t1 WHERE t1.col2 IN ([POSTCOMPILE_col2_1]) "
+            "FROM t1 WHERE t1.col2 IN (__[POSTCOMPILE_col2_1]) "
             "UNION SELECT t2.col3 AS col3, "
             "t2.col4 AS col4 FROM t2 WHERE t2.col2 IN "
-            "([POSTCOMPILE_col2_2]) ORDER BY col3, col4",
+            "(__[POSTCOMPILE_col2_2]) ORDER BY col3, col4",
             checkparams={
                 "col2_1": ["t1col2r1", "t1col2r2"],
                 "col2_2": ["t2col2r2", "t2col2r3"],
@@ -823,9 +823,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             u.alias("bar").select(),
             "SELECT bar.col3, bar.col4 FROM (SELECT "
             "t1.col3 AS col3, t1.col4 AS col4 FROM t1 "
-            "WHERE t1.col2 IN ([POSTCOMPILE_col2_1]) UNION "
+            "WHERE t1.col2 IN (__[POSTCOMPILE_col2_1]) UNION "
             "SELECT t2.col3 AS col3, t2.col4 AS col4 "
-            "FROM t2 WHERE t2.col2 IN ([POSTCOMPILE_col2_2])) AS bar",
+            "FROM t2 WHERE t2.col2 IN (__[POSTCOMPILE_col2_2])) AS bar",
             checkparams={
                 "col2_1": ["t1col2r1", "t1col2r2"],
                 "col2_2": ["t2col2r2", "t2col2r3"],
@@ -972,7 +972,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s,
-            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "SELECT TOP __[POSTCOMPILE_param_1] t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={"x_1": 5, "param_1": 10},
         )
@@ -1000,7 +1000,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s,
-            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "SELECT TOP __[POSTCOMPILE_param_1] t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={"x_1": 5, "param_1": 0},
         )
@@ -1201,7 +1201,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # of zero, so produces TOP 0
         self.assert_compile(
             s,
-            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "SELECT TOP __[POSTCOMPILE_param_1] t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={"x_1": 5, "param_1": 0},
         )
@@ -1445,21 +1445,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             5,
             0,
             {"percent": True},
-            "TOP [POSTCOMPILE_param_1] PERCENT",
+            "TOP __[POSTCOMPILE_param_1] PERCENT",
             {"param_1": 5},
         ),
         (
             5,
             None,
             {"percent": True, "with_ties": True},
-            "TOP [POSTCOMPILE_param_1] PERCENT WITH TIES",
+            "TOP __[POSTCOMPILE_param_1] PERCENT WITH TIES",
             {"param_1": 5},
         ),
         (
             5,
             0,
             {"with_ties": True},
-            "TOP [POSTCOMPILE_param_1] WITH TIES",
+            "TOP __[POSTCOMPILE_param_1] WITH TIES",
             {"param_1": 5},
         ),
         (
@@ -1537,21 +1537,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             5,
             0,
             {"percent": True},
-            "TOP [POSTCOMPILE_param_1] PERCENT",
+            "TOP __[POSTCOMPILE_param_1] PERCENT",
             {"param_1": 5},
         ),
         (
             5,
             None,
             {"percent": True, "with_ties": True},
-            "TOP [POSTCOMPILE_param_1] PERCENT WITH TIES",
+            "TOP __[POSTCOMPILE_param_1] PERCENT WITH TIES",
             {"param_1": 5},
         ),
         (
             5,
             0,
             {"with_ties": True},
-            "TOP [POSTCOMPILE_param_1] WITH TIES",
+            "TOP __[POSTCOMPILE_param_1] WITH TIES",
             {"param_1": 5},
         ),
         (

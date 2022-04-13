@@ -26,7 +26,7 @@ from sqlalchemy.orm import loading
 from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
-class ORMCache(object):
+class ORMCache:
 
     """An add-on for an ORM :class:`.Session` optionally loads full results
     from a dogpile cache region.
@@ -130,10 +130,19 @@ class FromCache(UserDefinedOption):
         self.expiration_time = expiration_time
         self.ignore_expiration = ignore_expiration
 
+    # this is not needed as of SQLAlchemy 1.4.28;
+    # UserDefinedOption classes no longer participate in the SQL
+    # compilation cache key
     def _gen_cache_key(self, anon_map, bindparams):
         return None
 
     def _generate_cache_key(self, statement, parameters, orm_cache):
+        """generate a cache key with which to key the results of a statement.
+
+        This leverages the use of the SQL compilation cache key which is
+        repurposed as a SQL results key.
+
+        """
         statement_cache_key = statement._generate_cache_key()
 
         key = statement_cache_key.to_offline_string(

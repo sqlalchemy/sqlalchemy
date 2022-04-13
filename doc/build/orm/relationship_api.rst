@@ -7,8 +7,6 @@ Relationships API
 
 .. autofunction:: backref
 
-.. autofunction:: relation
-
 .. autofunction:: dynamic_loader
 
 .. autofunction:: foreign

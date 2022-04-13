@@ -4,14 +4,16 @@
 recursive-include doc *.html *.css *.txt *.js *.png *.py Makefile *.rst *.sty
 recursive-include examples *.py *.xml
 recursive-include test *.py *.dat *.testpatch
+recursive-include tools *.py
 
-# include the c extensions, which otherwise
+# for some reason in some environments stale Cython .c files
+# are being pulled in, these should never be in a dist
+exclude lib/sqlalchemy/cyextension/*.c
+exclude lib/sqlalchemy/cyextension/*.so
+
+# include the pyx and pxd extensions, which otherwise
 # don't come in if --with-cextensions isn't specified.
-recursive-include lib *.c *.txt
+recursive-include lib *.pyx *.pxd *.txt *.typed
 
 include README* AUTHORS LICENSE CHANGES* tox.ini
 prune doc/build/output
-
-# don't include pyproject.toml until we
-# have explicitly built a pep-517 backend
-exclude pyproject.toml

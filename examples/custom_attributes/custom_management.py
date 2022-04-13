@@ -43,7 +43,7 @@ class MyClassState(InstrumentationManager):
         return find
 
 
-class MyClass(object):
+class MyClass:
     __sa_instrumentation_manager__ = MyClassState
 
     def __init__(self, **kwargs):

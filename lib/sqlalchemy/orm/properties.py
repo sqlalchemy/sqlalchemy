@@ -1,5 +1,5 @@
 # orm/properties.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,41 +11,72 @@ This is a private module which defines the behavior of individual ORM-
 mapped attributes.
 
 """
-from __future__ import absolute_import
+
+from __future__ import annotations
+
+from typing import Any
+from typing import cast
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import TypeVar
 
 from . import attributes
-from .descriptor_props import CompositeProperty
+from . import strategy_options
+from .base import SQLCoreOperations
+from .descriptor_props import Composite
 from .descriptor_props import ConcreteInheritedProperty
-from .descriptor_props import SynonymProperty
+from .descriptor_props import Synonym
+from .interfaces import _IntrospectsAnnotations
+from .interfaces import _MapsColumns
+from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
-from .relationships import RelationshipProperty
+from .relationships import Relationship
+from .util import _extract_mapped_subtype
 from .util import _orm_full_deannotate
+from .. import exc as sa_exc
+from .. import ForeignKey
 from .. import log
+from .. import sql
 from .. import util
 from ..sql import coercions
 from ..sql import roles
+from ..sql import sqltypes
+from ..sql.schema import Column
+from ..util.typing import de_optionalize_union_types
+from ..util.typing import de_stringify_annotation
+from ..util.typing import is_fwd_ref
+from ..util.typing import NoneType
 
+_T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
 
 __all__ = [
     "ColumnProperty",
-    "CompositeProperty",
+    "Composite",
     "ConcreteInheritedProperty",
-    "RelationshipProperty",
-    "SynonymProperty",
+    "Relationship",
+    "Synonym",
 ]
 
 
 @log.class_logger
-class ColumnProperty(StrategizedProperty):
+class ColumnProperty(
+    _MapsColumns[_T],
+    StrategizedProperty[_T],
+    _IntrospectsAnnotations,
+    log.Identified,
+):
     """Describes an object attribute that corresponds to a table column.
 
     Public constructor is the :func:`_orm.column_property` function.
 
     """
 
-    strategy_wildcard_key = "column"
+    strategy_wildcard_key = strategy_options._COLUMN_TOKEN
     inherit_cache = True
+    _links_to_entity = False
 
     __slots__ = (
         "_orig_columns",
@@ -57,9 +88,7 @@ class ColumnProperty(StrategizedProperty):
         "descriptor",
         "active_history",
         "expire_on_flush",
-        "info",
         "doc",
-        "strategy_key",
         "_creation_order",
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
@@ -69,100 +98,21 @@ class ColumnProperty(StrategizedProperty):
         "raiseload",
     )
 
-    def __init__(self, *columns, **kwargs):
-        r"""Provide a column-level property for use with a mapping.
-
-        Column-based properties can normally be applied to the mapper's
-        ``properties`` dictionary using the :class:`_schema.Column`
-        element directly.
-        Use this function when the given column is not directly present within
-        the mapper's selectable; examples include SQL expressions, functions,
-        and scalar SELECT queries.
-
-        The :func:`_orm.column_property` function returns an instance of
-        :class:`.ColumnProperty`.
-
-        Columns that aren't present in the mapper's selectable won't be
-        persisted by the mapper and are effectively "read-only" attributes.
-
-        :param \*cols:
-              list of Column objects to be mapped.
-
-        :param active_history=False:
-          When ``True``, indicates that the "previous" value for a
-          scalar attribute should be loaded when replaced, if not
-          already loaded. Normally, history tracking logic for
-          simple non-primary-key scalar values only needs to be
-          aware of the "new" value in order to perform a flush. This
-          flag is available for applications that make use of
-          :func:`.attributes.get_history` or :meth:`.Session.is_modified`
-          which also need to know
-          the "previous" value of the attribute.
-
-        :param comparator_factory: a class which extends
-           :class:`.ColumnProperty.Comparator` which provides custom SQL
-           clause generation for comparison operations.
-
-        :param group:
-            a group name for this property when marked as deferred.
-
-        :param deferred:
-              when True, the column property is "deferred", meaning that
-              it does not load immediately, and is instead loaded when the
-              attribute is first accessed on an instance.  See also
-              :func:`~sqlalchemy.orm.deferred`.
-
-        :param doc:
-              optional string that will be applied as the doc on the
-              class-bound descriptor.
-
-        :param expire_on_flush=True:
-            Disable expiry on flush.   A column_property() which refers
-            to a SQL expression (and not a single table-bound column)
-            is considered to be a "read only" property; populating it
-            has no effect on the state of data, and it can only return
-            database state.   For this reason a column_property()'s value
-            is expired whenever the parent object is involved in a
-            flush, that is, has any kind of "dirty" state within a flush.
-            Setting this parameter to ``False`` will have the effect of
-            leaving any existing value present after the flush proceeds.
-            Note however that the :class:`.Session` with default expiration
-            settings still expires
-            all attributes after a :meth:`.Session.commit` call, however.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.MapperProperty.info` attribute of this object.
-
-        :param raiseload: if True, indicates the column should raise an error
-            when undeferred, rather than loading the value.  This can be
-            altered at query time by using the :func:`.deferred` option with
-            raiseload=False.
-
-            .. versionadded:: 1.4
-
-            .. seealso::
-
-                :ref:`deferred_raiseload`
-
-        .. seealso::
-
-            :ref:`column_property_options` - to map columns while including
-            mapping options
-
-            :ref:`mapper_column_property_sql_expressions` - to map SQL
-            expressions
-
-        """
+    def __init__(
+        self, column: sql.ColumnElement[_T], *additional_columns, **kwargs
+    ):
         super(ColumnProperty, self).__init__()
+        columns = (column,) + additional_columns
         self._orig_columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
         ]
         self.columns = [
-            coercions.expect(
-                roles.LabeledColumnExprRole, _orm_full_deannotate(c)
+            _orm_full_deannotate(
+                coercions.expect(roles.LabeledColumnExprRole, c)
             )
             for c in columns
         ]
+        self.parent = self.key = None
         self.group = kwargs.pop("group", None)
         self.deferred = kwargs.pop("deferred", False)
         self.raiseload = kwargs.pop("raiseload", False)
@@ -202,6 +152,27 @@ class ColumnProperty(StrategizedProperty):
         )
         if self.raiseload:
             self.strategy_key += (("raiseload", True),)
+
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        column = self.columns[0]
+        if column.key is None:
+            column.key = key
+        if column.name is None:
+            column.name = key
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        return self
+
+    @property
+    def columns_to_assign(self) -> List[Column]:
+        return [
+            c
+            for c in self.columns
+            if isinstance(c, Column) and c.table is None
+        ]
 
     def _memoized_attr__renders_in_subqueries(self):
         return ("deferred", True) not in self.strategy_key or (
@@ -270,7 +241,7 @@ class ColumnProperty(StrategizedProperty):
         )
 
     def do_init(self):
-        super(ColumnProperty, self).do_init()
+        super().do_init()
 
         if len(self.columns) > 1 and set(self.parent.primary_key).issuperset(
             self.columns
@@ -290,7 +261,7 @@ class ColumnProperty(StrategizedProperty):
             deferred=self.deferred,
             group=self.group,
             active_history=self.active_history,
-            *self.columns
+            *self.columns,
         )
 
     def _getcommitted(
@@ -326,7 +297,7 @@ class ColumnProperty(StrategizedProperty):
                 dest_dict, [self.key], no_loader=True
             )
 
-    class Comparator(util.MemoizedSlots, PropComparator):
+    class Comparator(util.MemoizedSlots, PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
         :class:`.ColumnProperty` attributes.
 
@@ -434,4 +405,137 @@ class ColumnProperty(StrategizedProperty):
             return op(col._bind_param(op, other), col, **kwargs)
 
     def __str__(self):
+        if not self.parent or not self.key:
+            return object.__repr__(self)
         return str(self.parent.class_.__name__) + "." + self.key
+
+
+class MappedColumn(
+    SQLCoreOperations[_T],
+    _IntrospectsAnnotations,
+    _MapsColumns[_T],
+):
+    """Maps a single :class:`_schema.Column` on a class.
+
+    :class:`_orm.MappedColumn` is a specialization of the
+    :class:`_orm.ColumnProperty` class and is oriented towards declarative
+    configuration.
+
+    To construct :class:`_orm.MappedColumn` objects, use the
+    :func:`_orm.mapped_column` constructor function.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    __slots__ = (
+        "column",
+        "_creation_order",
+        "foreign_keys",
+        "_has_nullable",
+        "deferred",
+    )
+
+    deferred: bool
+    column: Column[_T]
+    foreign_keys: Optional[Set[ForeignKey]]
+
+    def __init__(self, *arg, **kw):
+        self.deferred = kw.pop("deferred", False)
+        self.column = cast("Column[_T]", Column(*arg, **kw))
+        self.foreign_keys = self.column.foreign_keys
+        self._has_nullable = "nullable" in kw
+        util.set_creation_order(self)
+
+    def _copy(self, **kw):
+        new = self.__class__.__new__(self.__class__)
+        new.column = self.column._copy(**kw)
+        new.deferred = self.deferred
+        new.foreign_keys = new.column.foreign_keys
+        new._has_nullable = self._has_nullable
+        util.set_creation_order(new)
+        return new
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        if self.deferred:
+            return ColumnProperty(self.column, deferred=True)
+        else:
+            return None
+
+    @property
+    def columns_to_assign(self) -> List[Column]:
+        return [self.column]
+
+    def __clause_element__(self):
+        return self.column
+
+    def operate(self, op, *other, **kwargs):
+        return op(self.__clause_element__(), *other, **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        col = self.__clause_element__()
+        return op(col._bind_param(op, other), col, **kwargs)
+
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        column = self.column
+        if column.key is None:
+            column.key = key
+        if column.name is None:
+            column.name = key
+
+        sqltype = column.type
+
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            MappedColumn,
+            sqltype._isnull and not self.column.foreign_keys,
+            is_dataclass_field,
+        )
+        if argument is None:
+            return
+
+        self._init_column_for_annotation(cls, registry, argument)
+
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def declarative_scan_for_composite(
+        self, registry, cls, key, param_name, param_annotation
+    ):
+        decl_base = util.preloaded.orm_decl_base
+        decl_base._undefer_column_name(param_name, self.column)
+        self._init_column_for_annotation(cls, registry, param_annotation)
+
+    def _init_column_for_annotation(self, cls, registry, argument):
+        sqltype = self.column.type
+
+        nullable = False
+
+        if hasattr(argument, "__origin__"):
+            nullable = NoneType in argument.__args__
+
+        if not self._has_nullable:
+            self.column.nullable = nullable
+
+        if sqltype._isnull and not self.column.foreign_keys:
+            sqltype = None
+            our_type = de_optionalize_union_types(argument)
+
+            if is_fwd_ref(our_type):
+                our_type = de_stringify_annotation(cls, our_type)
+
+            if registry.type_annotation_map:
+                sqltype = registry.type_annotation_map.get(our_type)
+            if sqltype is None:
+                sqltype = sqltypes._type_map_get(our_type)
+
+            if sqltype is None:
+                raise sa_exc.ArgumentError(
+                    f"Could not locate SQLAlchemy Core "
+                    f"type for Python type: {our_type}"
+                )
+            self.column.type = sqltype

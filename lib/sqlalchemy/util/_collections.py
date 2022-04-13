@@ -1,109 +1,130 @@
 # util/_collections.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Collection classes and helpers."""
+from __future__ import annotations
 
-from __future__ import absolute_import
-
+import collections.abc as collections_abc
 import operator
+import threading
 import types
+import typing
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Mapping
+from typing import Optional
+from typing import overload
+from typing import Set
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
+from typing import ValuesView
 import weakref
 
-from .compat import binary_types
-from .compat import collections_abc
-from .compat import itertools_filterfalse
-from .compat import py2k
-from .compat import py37
-from .compat import string_types
-from .compat import threading
+from ._has_cy import HAS_CYEXTENSION
+from .typing import Literal
+from .typing import Protocol
+
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
+    from ._py_collections import immutabledict as immutabledict
+    from ._py_collections import IdentitySet as IdentitySet
+    from ._py_collections import ReadOnlyContainer as ReadOnlyContainer
+    from ._py_collections import ImmutableDictBase as ImmutableDictBase
+    from ._py_collections import OrderedSet as OrderedSet
+    from ._py_collections import unique_list as unique_list
+else:
+    from sqlalchemy.cyextension.immutabledict import (
+        ReadOnlyContainer as ReadOnlyContainer,
+    )
+    from sqlalchemy.cyextension.immutabledict import (
+        ImmutableDictBase as ImmutableDictBase,
+    )
+    from sqlalchemy.cyextension.immutabledict import (
+        immutabledict as immutabledict,
+    )
+    from sqlalchemy.cyextension.collections import IdentitySet as IdentitySet
+    from sqlalchemy.cyextension.collections import OrderedSet as OrderedSet
+    from sqlalchemy.cyextension.collections import (  # noqa
+        unique_list as unique_list,
+    )
 
 
-EMPTY_SET = frozenset()
+_T = TypeVar("_T", bound=Any)
+_KT = TypeVar("_KT", bound=Any)
+_VT = TypeVar("_VT", bound=Any)
+_T_co = TypeVar("_T_co", covariant=True)
+
+EMPTY_SET: FrozenSet[Any] = frozenset()
 
 
-class ImmutableContainer(object):
-    def _immutable(self, *arg, **kw):
-        raise TypeError("%s object is immutable" % self.__class__.__name__)
+def merge_lists_w_ordering(a, b):
+    """merge two lists, maintaining ordering as much as possible.
 
-    __delitem__ = __setitem__ = __setattr__ = _immutable
+    this is to reconcile vars(cls) with cls.__annotations__.
 
+    Example::
 
-def _immutabledict_py_fallback():
-    class immutabledict(ImmutableContainer, dict):
+        >>> a = ['__tablename__', 'id', 'x', 'created_at']
+        >>> b = ['id', 'name', 'data', 'y', 'created_at']
+        >>> merge_lists_w_ordering(a, b)
+        ['__tablename__', 'id', 'name', 'data', 'y', 'x', 'created_at']
 
-        clear = (
-            pop
-        ) = popitem = setdefault = update = ImmutableContainer._immutable
+    This is not necessarily the ordering that things had on the class,
+    in this case the class is::
 
-        def __new__(cls, *args):
-            new = dict.__new__(cls)
-            dict.__init__(new, *args)
-            return new
+        class User(Base):
+            __tablename__ = "users"
 
-        def __init__(self, *args):
-            pass
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            data: Mapped[Optional[str]]
+            x = Column(Integer)
+            y: Mapped[int]
+            created_at: Mapped[datetime.datetime] = mapped_column()
 
-        def __reduce__(self):
-            return _immutabledict_reconstructor, (dict(self),)
+    But things are *mostly* ordered.
 
-        def union(self, __d=None):
-            if not __d:
-                return self
+    The algorithm could also be done by creating a partial ordering for
+    all items in both lists and then using topological_sort(), but that
+    is too much overhead.
 
-            new = dict.__new__(self.__class__)
-            dict.__init__(new, self)
-            dict.update(new, __d)
-            return new
+    Background on how I came up with this is at:
+    https://gist.github.com/zzzeek/89de958cf0803d148e74861bd682ebae
 
-        def _union_w_kw(self, __d=None, **kw):
-            # not sure if C version works correctly w/ this yet
-            if not __d and not kw:
-                return self
+    """
+    overlap = set(a).intersection(b)
 
-            new = dict.__new__(self.__class__)
-            dict.__init__(new, self)
-            if __d:
-                dict.update(new, __d)
-            dict.update(new, kw)
-            return new
+    result = []
 
-        def merge_with(self, *dicts):
-            new = None
-            for d in dicts:
-                if d:
-                    if new is None:
-                        new = dict.__new__(self.__class__)
-                        dict.__init__(new, self)
-                    dict.update(new, d)
-            if new is None:
-                return self
+    current, other = iter(a), iter(b)
 
-            return new
+    while True:
+        for element in current:
+            if element in overlap:
+                overlap.discard(element)
+                other, current = current, other
+                break
 
-        def __repr__(self):
-            return "immutabledict(%s)" % dict.__repr__(self)
+            result.append(element)
+        else:
+            result.extend(other)
+            break
 
-    return immutabledict
+    return result
 
 
-try:
-    from sqlalchemy.cimmutabledict import immutabledict
-
-    collections_abc.Mapping.register(immutabledict)
-
-except ImportError:
-    immutabledict = _immutabledict_py_fallback()
-
-    def _immutabledict_reconstructor(*arg):
-        """do the pickle dance"""
-        return immutabledict(*arg)
-
-
-def coerce_to_immutabledict(d):
+def coerce_to_immutabledict(d: Mapping[_KT, _VT]) -> immutabledict[_KT, _VT]:
     if not d:
         return EMPTY_DICT
     elif isinstance(d, immutabledict):
@@ -112,13 +133,11 @@ def coerce_to_immutabledict(d):
         return immutabledict(d)
 
 
-EMPTY_DICT = immutabledict()
+EMPTY_DICT: immutabledict[Any, Any] = immutabledict()
 
 
-class FacadeDict(ImmutableContainer, dict):
+class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
-
-    clear = pop = popitem = setdefault = update = ImmutableContainer._immutable
 
     def __new__(cls, *args):
         new = dict.__new__(cls)
@@ -141,86 +160,103 @@ class FacadeDict(ImmutableContainer, dict):
         return "FacadeDict(%s)" % dict.__repr__(self)
 
 
-class Properties(object):
+_DT = TypeVar("_DT", bound=Any)
+
+_F = TypeVar("_F", bound=Any)
+
+
+class Properties(Generic[_T]):
     """Provide a __getattr__/__setattr__ interface over a dict."""
 
     __slots__ = ("_data",)
 
-    def __init__(self, data):
+    _data: Dict[str, _T]
+
+    def __init__(self, data: Dict[str, _T]):
         object.__setattr__(self, "_data", data)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         return iter(list(self._data.values()))
 
-    def __dir__(self):
+    def __dir__(self) -> List[str]:
         return dir(super(Properties, self)) + [
             str(k) for k in self._data.keys()
         ]
 
-    def __add__(self, other):
-        return list(self) + list(other)
+    def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
+        return list(self) + list(other)  # type: ignore
 
-    def __setitem__(self, key, obj):
+    def __setitem__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> _T:
         return self._data[key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._data[key]
 
-    def __setattr__(self, key, obj):
+    def __setattr__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         return {"_data": self._data}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         object.__setattr__(self, "_data", state["_data"])
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> _T:
         try:
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_immutable(self):
+    def as_readonly(self) -> ReadOnlyProperties[_T]:
         """Return an immutable proxy for this :class:`.Properties`."""
 
-        return ImmutableProperties(self._data)
+        return ReadOnlyProperties(self._data)
 
-    def update(self, value):
+    def update(self, value: Dict[str, _T]) -> None:
         self._data.update(value)
 
-    def get(self, key, default=None):
+    @overload
+    def get(self, key: str) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]:
+        ...
+
+    def get(
+        self, key: str, default: Optional[Union[_DT, _T]] = None
+    ) -> Optional[Union[_T, _DT]]:
         if key in self:
             return self[key]
         else:
             return default
 
-    def keys(self):
+    def keys(self) -> List[str]:
         return list(self._data)
 
-    def values(self):
+    def values(self) -> List[_T]:
         return list(self._data.values())
 
-    def items(self):
+    def items(self) -> List[Tuple[str, _T]]:
         return list(self._data.items())
 
-    def has_key(self, key):
+    def has_key(self, key: str) -> bool:
         return key in self._data
 
-    def clear(self):
+    def clear(self) -> None:
         self._data.clear()
 
 
-class OrderedProperties(Properties):
+class OrderedProperties(Properties[_T]):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
     as backing store."""
 
@@ -230,7 +266,7 @@ class OrderedProperties(Properties):
         Properties.__init__(self, OrderedDict())
 
 
-class ImmutableProperties(ImmutableContainer, Properties):
+class ReadOnlyProperties(ReadOnlyContainer, Properties[_T]):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
     __slots__ = ()
@@ -246,449 +282,11 @@ def _ordered_dictionary_sort(d, key=None):
     d.update(items)
 
 
-if py37:
-    OrderedDict = dict
-    sort_dictionary = _ordered_dictionary_sort
+OrderedDict = dict
+sort_dictionary = _ordered_dictionary_sort
 
-else:
-    # prevent sort_dictionary from being used against a plain dictionary
-    # for Python < 3.7
 
-    def sort_dictionary(d, key=None):
-        """Sort an OrderedDict in place."""
-
-        d._ordered_dictionary_sort(key=key)
-
-    class OrderedDict(dict):
-        """Dictionary that maintains insertion order.
-
-        Superseded by Python dict as of Python 3.7
-
-        """
-
-        __slots__ = ("_list",)
-
-        def _ordered_dictionary_sort(self, key=None):
-            _ordered_dictionary_sort(self, key=key)
-
-        def __reduce__(self):
-            return OrderedDict, (self.items(),)
-
-        def __init__(self, ____sequence=None, **kwargs):
-            self._list = []
-            if ____sequence is None:
-                if kwargs:
-                    self.update(**kwargs)
-            else:
-                self.update(____sequence, **kwargs)
-
-        def clear(self):
-            self._list = []
-            dict.clear(self)
-
-        def copy(self):
-            return self.__copy__()
-
-        def __copy__(self):
-            return OrderedDict(self)
-
-        def update(self, ____sequence=None, **kwargs):
-            if ____sequence is not None:
-                if hasattr(____sequence, "keys"):
-                    for key in ____sequence.keys():
-                        self.__setitem__(key, ____sequence[key])
-                else:
-                    for key, value in ____sequence:
-                        self[key] = value
-            if kwargs:
-                self.update(kwargs)
-
-        def setdefault(self, key, value):
-            if key not in self:
-                self.__setitem__(key, value)
-                return value
-            else:
-                return self.__getitem__(key)
-
-        def __iter__(self):
-            return iter(self._list)
-
-        def keys(self):
-            return list(self)
-
-        def values(self):
-            return [self[key] for key in self._list]
-
-        def items(self):
-            return [(key, self[key]) for key in self._list]
-
-        if py2k:
-
-            def itervalues(self):
-                return iter(self.values())
-
-            def iterkeys(self):
-                return iter(self)
-
-            def iteritems(self):
-                return iter(self.items())
-
-        def __setitem__(self, key, obj):
-            if key not in self:
-                try:
-                    self._list.append(key)
-                except AttributeError:
-                    # work around Python pickle loads() with
-                    # dict subclass (seems to ignore __setstate__?)
-                    self._list = [key]
-            dict.__setitem__(self, key, obj)
-
-        def __delitem__(self, key):
-            dict.__delitem__(self, key)
-            self._list.remove(key)
-
-        def pop(self, key, *default):
-            present = key in self
-            value = dict.pop(self, key, *default)
-            if present:
-                self._list.remove(key)
-            return value
-
-        def popitem(self):
-            item = dict.popitem(self)
-            self._list.remove(item[0])
-            return item
-
-
-class OrderedSet(set):
-    def __init__(self, d=None):
-        set.__init__(self)
-        if d is not None:
-            self._list = unique_list(d)
-            set.update(self, self._list)
-        else:
-            self._list = []
-
-    def add(self, element):
-        if element not in self:
-            self._list.append(element)
-        set.add(self, element)
-
-    def remove(self, element):
-        set.remove(self, element)
-        self._list.remove(element)
-
-    def insert(self, pos, element):
-        if element not in self:
-            self._list.insert(pos, element)
-        set.add(self, element)
-
-    def discard(self, element):
-        if element in self:
-            self._list.remove(element)
-            set.remove(self, element)
-
-    def clear(self):
-        set.clear(self)
-        self._list = []
-
-    def __getitem__(self, key):
-        return self._list[key]
-
-    def __iter__(self):
-        return iter(self._list)
-
-    def __add__(self, other):
-        return self.union(other)
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._list)
-
-    __str__ = __repr__
-
-    def update(self, iterable):
-        for e in iterable:
-            if e not in self:
-                self._list.append(e)
-                set.add(self, e)
-        return self
-
-    __ior__ = update
-
-    def union(self, other):
-        result = self.__class__(self)
-        result.update(other)
-        return result
-
-    __or__ = union
-
-    def intersection(self, other):
-        other = set(other)
-        return self.__class__(a for a in self if a in other)
-
-    __and__ = intersection
-
-    def symmetric_difference(self, other):
-        other = set(other)
-        result = self.__class__(a for a in self if a not in other)
-        result.update(a for a in other if a not in self)
-        return result
-
-    __xor__ = symmetric_difference
-
-    def difference(self, other):
-        other = set(other)
-        return self.__class__(a for a in self if a not in other)
-
-    __sub__ = difference
-
-    def intersection_update(self, other):
-        other = set(other)
-        set.intersection_update(self, other)
-        self._list = [a for a in self._list if a in other]
-        return self
-
-    __iand__ = intersection_update
-
-    def symmetric_difference_update(self, other):
-        set.symmetric_difference_update(self, other)
-        self._list = [a for a in self._list if a in self]
-        self._list += [a for a in other._list if a in self]
-        return self
-
-    __ixor__ = symmetric_difference_update
-
-    def difference_update(self, other):
-        set.difference_update(self, other)
-        self._list = [a for a in self._list if a in self]
-        return self
-
-    __isub__ = difference_update
-
-
-class IdentitySet(object):
-    """A set that considers only object id() for uniqueness.
-
-    This strategy has edge cases for builtin types- it's possible to have
-    two 'foo' strings in one of these sets, for example.  Use sparingly.
-
-    """
-
-    def __init__(self, iterable=None):
-        self._members = dict()
-        if iterable:
-            self.update(iterable)
-
-    def add(self, value):
-        self._members[id(value)] = value
-
-    def __contains__(self, value):
-        return id(value) in self._members
-
-    def remove(self, value):
-        del self._members[id(value)]
-
-    def discard(self, value):
-        try:
-            self.remove(value)
-        except KeyError:
-            pass
-
-    def pop(self):
-        try:
-            pair = self._members.popitem()
-            return pair[1]
-        except KeyError:
-            raise KeyError("pop from an empty set")
-
-    def clear(self):
-        self._members.clear()
-
-    def __cmp__(self, other):
-        raise TypeError("cannot compare sets using cmp()")
-
-    def __eq__(self, other):
-        if isinstance(other, IdentitySet):
-            return self._members == other._members
-        else:
-            return False
-
-    def __ne__(self, other):
-        if isinstance(other, IdentitySet):
-            return self._members != other._members
-        else:
-            return True
-
-    def issubset(self, iterable):
-        if isinstance(iterable, self.__class__):
-            other = iterable
-        else:
-            other = self.__class__(iterable)
-
-        if len(self) > len(other):
-            return False
-        for m in itertools_filterfalse(
-            other._members.__contains__, iter(self._members.keys())
-        ):
-            return False
-        return True
-
-    def __le__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.issubset(other)
-
-    def __lt__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return len(self) < len(other) and self.issubset(other)
-
-    def issuperset(self, iterable):
-        if isinstance(iterable, self.__class__):
-            other = iterable
-        else:
-            other = self.__class__(iterable)
-
-        if len(self) < len(other):
-            return False
-
-        for m in itertools_filterfalse(
-            self._members.__contains__, iter(other._members.keys())
-        ):
-            return False
-        return True
-
-    def __ge__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.issuperset(other)
-
-    def __gt__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return len(self) > len(other) and self.issuperset(other)
-
-    def union(self, iterable):
-        result = self.__class__()
-        members = self._members
-        result._members.update(members)
-        result._members.update((id(obj), obj) for obj in iterable)
-        return result
-
-    def __or__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.union(other)
-
-    def update(self, iterable):
-        self._members.update((id(obj), obj) for obj in iterable)
-
-    def __ior__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        self.update(other)
-        return self
-
-    def difference(self, iterable):
-        result = self.__class__()
-        members = self._members
-        if isinstance(iterable, self.__class__):
-            other = set(iterable._members.keys())
-        else:
-            other = {id(obj) for obj in iterable}
-        result._members.update(
-            ((k, v) for k, v in members.items() if k not in other)
-        )
-        return result
-
-    def __sub__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.difference(other)
-
-    def difference_update(self, iterable):
-        self._members = self.difference(iterable)._members
-
-    def __isub__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        self.difference_update(other)
-        return self
-
-    def intersection(self, iterable):
-        result = self.__class__()
-        members = self._members
-        if isinstance(iterable, self.__class__):
-            other = set(iterable._members.keys())
-        else:
-            other = {id(obj) for obj in iterable}
-        result._members.update(
-            (k, v) for k, v in members.items() if k in other
-        )
-        return result
-
-    def __and__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.intersection(other)
-
-    def intersection_update(self, iterable):
-        self._members = self.intersection(iterable)._members
-
-    def __iand__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        self.intersection_update(other)
-        return self
-
-    def symmetric_difference(self, iterable):
-        result = self.__class__()
-        members = self._members
-        if isinstance(iterable, self.__class__):
-            other = iterable._members
-        else:
-            other = {id(obj): obj for obj in iterable}
-        result._members.update(
-            ((k, v) for k, v in members.items() if k not in other)
-        )
-        result._members.update(
-            ((k, v) for k, v in other.items() if k not in members)
-        )
-        return result
-
-    def __xor__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        return self.symmetric_difference(other)
-
-    def symmetric_difference_update(self, iterable):
-        self._members = self.symmetric_difference(iterable)._members
-
-    def __ixor__(self, other):
-        if not isinstance(other, IdentitySet):
-            return NotImplemented
-        self.symmetric_difference(other)
-        return self
-
-    def copy(self):
-        return type(self)(iter(self._members.values()))
-
-    __copy__ = copy
-
-    def __len__(self):
-        return len(self._members)
-
-    def __iter__(self):
-        return iter(self._members.values())
-
-    def __hash__(self):
-        raise TypeError("set objects are unhashable")
-
-    def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, list(self._members.values()))
-
-
-class WeakSequence(object):
+class WeakSequence:
     def __init__(self, __elements=()):
         # adapted from weakref.WeakKeyDictionary, prevent reference
         # cycles in the collection itself
@@ -723,7 +321,7 @@ class WeakSequence(object):
 
 
 class OrderedIdentitySet(IdentitySet):
-    def __init__(self, iterable=None):
+    def __init__(self, iterable: Optional[Iterable[Any]] = None):
         IdentitySet.__init__(self)
         self._members = OrderedDict()
         if iterable:
@@ -731,7 +329,7 @@ class OrderedIdentitySet(IdentitySet):
                 self.add(o)
 
 
-class PopulateDict(dict):
+class PopulateDict(Dict[_KT, _VT]):
     """A dict which populates missing values via a creation function.
 
     Note the creation function takes a key, unlike
@@ -739,26 +337,26 @@ class PopulateDict(dict):
 
     """
 
-    def __init__(self, creator):
+    def __init__(self, creator: Callable[[_KT], _VT]):
         self.creator = creator
 
-    def __missing__(self, key):
+    def __missing__(self, key: Any) -> Any:
         self[key] = val = self.creator(key)
         return val
 
 
-class WeakPopulateDict(dict):
+class WeakPopulateDict(Dict[_KT, _VT]):
     """Like PopulateDict, but assumes a self + a method and does not create
     a reference cycle.
 
     """
 
-    def __init__(self, creator_method):
+    def __init__(self, creator_method: types.MethodType):
         self.creator = creator_method.__func__
         weakself = creator_method.__self__
         self.weakself = weakref.ref(weakself)
 
-    def __missing__(self, key):
+    def __missing__(self, key: Any) -> Any:
         self[key] = val = self.creator(self.weakself(), key)
         return val
 
@@ -772,50 +370,40 @@ column_dict = dict
 ordered_column_set = OrderedSet
 
 
-_getters = PopulateDict(operator.itemgetter)
-
-_property_getters = PopulateDict(
-    lambda idx: property(operator.itemgetter(idx))
-)
-
-
-def unique_list(seq, hashfunc=None):
-    seen = set()
-    seen_add = seen.add
-    if not hashfunc:
-        return [x for x in seq if x not in seen and not seen_add(x)]
-    else:
-        return [
-            x
-            for x in seq
-            if hashfunc(x) not in seen and not seen_add(hashfunc(x))
-        ]
-
-
-class UniqueAppender(object):
+class UniqueAppender(Generic[_T]):
     """Appends items to a collection ensuring uniqueness.
 
     Additional appends() of the same object are ignored.  Membership is
     determined by identity (``is a``) not equality (``==``).
     """
 
-    def __init__(self, data, via=None):
+    __slots__ = "data", "_data_appender", "_unique"
+
+    data: Union[Iterable[_T], Set[_T], List[_T]]
+    _data_appender: Callable[[_T], None]
+    _unique: Dict[int, Literal[True]]
+
+    def __init__(
+        self,
+        data: Union[Iterable[_T], Set[_T], List[_T]],
+        via: Optional[str] = None,
+    ):
         self.data = data
         self._unique = {}
         if via:
-            self._data_appender = getattr(data, via)
+            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "append"):
-            self._data_appender = data.append
+            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "add"):
-            self._data_appender = data.add
+            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa: E501
 
-    def append(self, item):
+    def append(self, item: _T) -> None:
         id_ = id(item)
         if id_ not in self._unique:
-            self._data_appender(item)
+            self._data_appender(item)  # type: ignore[call-arg]
             self._unique[id_] = True
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         return iter(self.data)
 
 
@@ -826,11 +414,11 @@ def coerce_generator_arg(arg):
         return arg
 
 
-def to_list(x, default=None):
+def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
-        return default
+        return default  # type: ignore
     if not isinstance(x, collections_abc.Iterable) or isinstance(
-        x, string_types + binary_types
+        x, (str, bytes)
     ):
         return [x]
     elif isinstance(x, list):
@@ -878,11 +466,12 @@ def update_copy(d, _new=None, **kw):
     return d
 
 
-def flatten_iterator(x):
+def flatten_iterator(x: Iterable[_T]) -> Iterator[_T]:
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
 
     """
+    elem: _T
     for elem in x:
         if not isinstance(elem, str) and hasattr(elem, "__iter__"):
             for y in flatten_iterator(elem):
@@ -891,7 +480,7 @@ def flatten_iterator(x):
             yield elem
 
 
-class LRUCache(dict):
+class LRUCache(typing.MutableMapping[_KT, _VT]):
     """Dictionary with 'squishy' removal of least
     recently used items.
 
@@ -901,56 +490,80 @@ class LRUCache(dict):
 
     """
 
-    __slots__ = "capacity", "threshold", "size_alert", "_counter", "_mutex"
+    __slots__ = (
+        "capacity",
+        "threshold",
+        "size_alert",
+        "_data",
+        "_counter",
+        "_mutex",
+    )
 
-    def __init__(self, capacity=100, threshold=0.5, size_alert=None):
+    capacity: int
+    threshold: float
+    size_alert: Optional[Callable[["LRUCache[_KT, _VT]"], None]]
+
+    def __init__(
+        self,
+        capacity: int = 100,
+        threshold: float = 0.5,
+        size_alert: Optional[Callable[..., None]] = None,
+    ):
         self.capacity = capacity
         self.threshold = threshold
         self.size_alert = size_alert
         self._counter = 0
         self._mutex = threading.Lock()
+        self._data: Dict[_KT, Tuple[_KT, _VT, List[int]]] = {}
 
     def _inc_counter(self):
         self._counter += 1
         return self._counter
 
-    def get(self, key, default=None):
-        item = dict.get(self, key, default)
-        if item is not default:
-            item[2] = self._inc_counter()
+    @overload
+    def get(self, key: _KT) -> Optional[_VT]:
+        ...
+
+    @overload
+    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]:
+        ...
+
+    def get(
+        self, key: _KT, default: Optional[Union[_VT, _T]] = None
+    ) -> Optional[Union[_VT, _T]]:
+        item = self._data.get(key, default)
+        if item is not default and item is not None:
+            item[2][0] = self._inc_counter()
             return item[1]
         else:
             return default
 
-    def __getitem__(self, key):
-        item = dict.__getitem__(self, key)
-        item[2] = self._inc_counter()
+    def __getitem__(self, key: _KT) -> _VT:
+        item = self._data[key]
+        item[2][0] = self._inc_counter()
         return item[1]
 
-    def values(self):
-        return [i[1] for i in dict.values(self)]
+    def __iter__(self) -> Iterator[_KT]:
+        return iter(self._data)
 
-    def setdefault(self, key, value):
-        if key in self:
-            return self[key]
-        else:
-            self[key] = value
-            return value
+    def __len__(self) -> int:
+        return len(self._data)
 
-    def __setitem__(self, key, value):
-        item = dict.get(self, key)
-        if item is None:
-            item = [key, value, self._inc_counter()]
-            dict.__setitem__(self, key, item)
-        else:
-            item[1] = value
+    def values(self) -> ValuesView[_VT]:
+        return typing.ValuesView({k: i[1] for k, i in self._data.items()})
+
+    def __setitem__(self, key: _KT, value: _VT) -> None:
+        self._data[key] = (key, value, [self._inc_counter()])
         self._manage_size()
 
+    def __delitem__(self, __v: _KT) -> None:
+        del self._data[__v]
+
     @property
-    def size_threshold(self):
+    def size_threshold(self) -> float:
         return self.capacity + self.capacity * self.threshold
 
-    def _manage_size(self):
+    def _manage_size(self) -> None:
         if not self._mutex.acquire(False):
             return
         try:
@@ -958,13 +571,15 @@ class LRUCache(dict):
             while len(self) > self.capacity + self.capacity * self.threshold:
                 if size_alert:
                     size_alert = False
-                    self.size_alert(self)
+                    self.size_alert(self)  # type: ignore
                 by_counter = sorted(
-                    dict.values(self), key=operator.itemgetter(2), reverse=True
+                    self._data.values(),
+                    key=operator.itemgetter(2),
+                    reverse=True,
                 )
                 for item in by_counter[self.capacity :]:
                     try:
-                        del self[item[0]]
+                        del self._data[item[0]]
                     except KeyError:
                         # deleted elsewhere; skip
                         continue
@@ -972,7 +587,17 @@ class LRUCache(dict):
             self._mutex.release()
 
 
-class ScopedRegistry(object):
+class _CreateFuncType(Protocol[_T_co]):
+    def __call__(self) -> _T_co:
+        ...
+
+
+class _ScopeFuncType(Protocol):
+    def __call__(self) -> Any:
+        ...
+
+
+class ScopedRegistry(Generic[_T]):
     """A Registry that can store one or multiple instances of a single
     class on the basis of a "scope" function.
 
@@ -987,7 +612,15 @@ class ScopedRegistry(object):
       a callable that will return a key to store/retrieve an object.
     """
 
-    def __init__(self, createfunc, scopefunc):
+    __slots__ = "createfunc", "scopefunc", "registry"
+
+    createfunc: _CreateFuncType[_T]
+    scopefunc: _ScopeFuncType
+    registry: Any
+
+    def __init__(
+        self, createfunc: Callable[[], _T], scopefunc: Callable[[], Any]
+    ):
         """Construct a new :class:`.ScopedRegistry`.
 
         :param createfunc:  A creation function that will generate
@@ -1002,24 +635,24 @@ class ScopedRegistry(object):
         self.scopefunc = scopefunc
         self.registry = {}
 
-    def __call__(self):
+    def __call__(self) -> _T:
         key = self.scopefunc()
         try:
-            return self.registry[key]
+            return self.registry[key]  # type: ignore[no-any-return]
         except KeyError:
-            return self.registry.setdefault(key, self.createfunc())
+            return self.registry.setdefault(key, self.createfunc())  # type: ignore[no-any-return] # noqa: E501
 
-    def has(self):
+    def has(self) -> bool:
         """Return True if an object is present in the current scope."""
 
         return self.scopefunc() in self.registry
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         """Set the value for the current scope."""
 
         self.registry[self.scopefunc()] = obj
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the current scope, if any."""
 
         try:
@@ -1028,30 +661,30 @@ class ScopedRegistry(object):
             pass
 
 
-class ThreadLocalRegistry(ScopedRegistry):
+class ThreadLocalRegistry(ScopedRegistry[_T]):
     """A :class:`.ScopedRegistry` that uses a ``threading.local()``
     variable for storage.
 
     """
 
-    def __init__(self, createfunc):
+    def __init__(self, createfunc: Callable[[], _T]):
         self.createfunc = createfunc
         self.registry = threading.local()
 
-    def __call__(self):
+    def __call__(self) -> _T:
         try:
-            return self.registry.value
+            return self.registry.value  # type: ignore[no-any-return]
         except AttributeError:
             val = self.registry.value = self.createfunc()
-            return val
+            return val  # type: ignore[no-any-return]
 
-    def has(self):
+    def has(self) -> bool:
         return hasattr(self.registry, "value")
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         self.registry.value = obj
 
-    def clear(self):
+    def clear(self) -> None:
         try:
             del self.registry.value
         except AttributeError:

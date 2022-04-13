@@ -17,14 +17,16 @@ from sqlalchemy.orm import remote
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_raises_message
 
 
-class _JoinFixtures(object):
+class _JoinFixtures:
     @classmethod
     def setup_test_class(cls):
         m = MetaData()
@@ -213,7 +215,7 @@ class _JoinFixtures(object):
             self.m2mleft,
             self.m2mright,
             secondary=self.m2msecondary,
-            **kw
+            **kw,
         )
 
     def _join_fixture_m2m_backref(self, **kw):
@@ -257,7 +259,7 @@ class _JoinFixtures(object):
             self.selfref,
             self.selfref,
             remote_side=set([self.selfref.c.id]),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref(self, **kw):
@@ -266,7 +268,7 @@ class _JoinFixtures(object):
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
-            **kw
+            **kw,
         )
 
     def _join_fixture_m2o_composite_selfref(self, **kw):
@@ -281,7 +283,7 @@ class _JoinFixtures(object):
                     self.composite_selfref.c.group_id,
                 ]
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func(self, **kw):
@@ -296,7 +298,7 @@ class _JoinFixtures(object):
                 self.composite_selfref.c.parent_id
                 == self.composite_selfref.c.id,
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func_remote_side(self, **kw):
@@ -312,7 +314,7 @@ class _JoinFixtures(object):
                 == self.composite_selfref.c.id,
             ),
             remote_side=set([self.composite_selfref.c.parent_id]),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func_annotated(self, **kw):
@@ -327,7 +329,7 @@ class _JoinFixtures(object):
                 remote(self.composite_selfref.c.parent_id)
                 == self.composite_selfref.c.id,
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_1(self, **kw):
@@ -340,7 +342,7 @@ class _JoinFixtures(object):
             == relationships.remote(
                 relationships.foreign(self.right.c.x * self.right.c.y)
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_2(self, **kw):
@@ -351,7 +353,7 @@ class _JoinFixtures(object):
             self.right,
             primaryjoin=(self.left.c.x + self.left.c.y)
             == relationships.foreign(self.right.c.x * self.right.c.y),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_1_non_annotated(self, **kw):
@@ -362,7 +364,7 @@ class _JoinFixtures(object):
             self.right,
             primaryjoin=(self.left.c.x + self.left.c.y)
             == (self.right.c.x * self.right.c.y),
-            **kw
+            **kw,
         )
 
     def _join_fixture_base_to_joined_sub(self, **kw):
@@ -377,7 +379,7 @@ class _JoinFixtures(object):
             self.base_w_sub_rel,
             self.rel_sub,
             primaryjoin=self.base_w_sub_rel.c.sub_id == self.rel_sub.c.id,
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_joined_sub_to_base(self, **kw):
@@ -460,7 +462,7 @@ class _JoinFixtures(object):
             self.left,
             self.right,
             primaryjoin=self.left.c.id == foreign(func.foo(self.right.c.lid)),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_to_oldstyle_func(self, **kw):
@@ -471,7 +473,7 @@ class _JoinFixtures(object):
             self.right,
             primaryjoin=self.left.c.id == func.foo(self.right.c.lid),
             consider_as_foreign_keys={self.right.c.lid},
-            **kw
+            **kw,
         )
 
     def _join_fixture_overlapping_composite_fks(self, **kw):
@@ -484,7 +486,7 @@ class _JoinFixtures(object):
                 self.composite_multi_ref.c.uid2,
                 self.composite_multi_ref.c.oid,
             },
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_o_side_none(self, **kw):
@@ -496,7 +498,7 @@ class _JoinFixtures(object):
             primaryjoin=and_(
                 self.left.c.id == self.right.c.lid, self.left.c.x == 5
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_purely_single_o2m(self, **kw):
@@ -573,7 +575,7 @@ class _JoinFixtures(object):
         )
 
     def _assert_non_simple_warning(self, fn):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             "Non-simple column elements in "
             "primary join condition for property "
@@ -595,7 +597,7 @@ class _JoinFixtures(object):
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_no_equality(
@@ -614,7 +616,7 @@ class _JoinFixtures(object):
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_ambig_join(
@@ -634,7 +636,7 @@ class _JoinFixtures(object):
                 % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -645,7 +647,7 @@ class _JoinFixtures(object):
                 % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
     def _assert_raises_no_join(self, fn, relname, secondary_arg, *arg, **kw):
@@ -662,7 +664,7 @@ class _JoinFixtures(object):
                 "'secondaryjoin' expressions" % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -676,7 +678,7 @@ class _JoinFixtures(object):
                 "expression." % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
 
@@ -818,9 +820,12 @@ class ColumnCollectionsTest(
         self._join_fixture_o2m_composite_selfref_func_remote_side()
 
     def test_determine_local_remote_pairs_o2m_overlap_func_warning(self):
-        self._assert_non_simple_warning(
-            self._join_fixture_m2o_sub_to_joined_sub_func
-        )
+        with expect_raises_message(
+            exc.ArgumentError, "Could not locate any relevant"
+        ):
+            self._assert_non_simple_warning(
+                self._join_fixture_m2o_sub_to_joined_sub_func
+            )
 
     def test_determine_local_remote_pairs_o2m_composite_selfref_func_annotated(
         self,

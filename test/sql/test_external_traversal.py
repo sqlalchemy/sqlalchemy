@@ -1,4 +1,6 @@
+import pickle
 import re
+from unittest import mock
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -44,7 +46,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing.schema import eq_clause_element
-from sqlalchemy.util import pickle
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -188,7 +189,10 @@ class TraversalTest(
         ("clone",), ("pickle",), ("conv_to_unique"), ("none"), argnames="meth"
     )
     @testing.combinations(
-        ("name with space",), ("name with [brackets]",), argnames="name"
+        ("name with space",),
+        ("name with [brackets]",),
+        ("name with~~tildes~~",),
+        argnames="name",
     )
     def test_bindparam_key_proc_for_copies(self, meth, name):
         r"""test :ticket:`6249`.
@@ -199,11 +203,11 @@ class TraversalTest(
 
         Currently, the bind key reg is::
 
-            re.sub(r"[%\(\) \$]+", "_", body).strip("_")
+            re.sub(r"[%\(\) \$\[\]]", "_", name)
 
         and the compiler postcompile reg is::
 
-            re.sub(r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
+            re.sub(r"\__[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
 
         Interestingly, brackets in the name seems to work out.
 
@@ -218,7 +222,8 @@ class TraversalTest(
             expr.right.unique = False
             expr.right._convert_to_unique()
 
-        token = re.sub(r"[%\(\) \$]+", "_", name).strip("_")
+        token = re.sub(r"[%\(\) \$\[\]]", "_", name)
+
         self.assert_compile(
             expr,
             '"%(name)s" IN (:%(token)s_1_1, '
@@ -237,7 +242,7 @@ class TraversalTest(
 
         stmt = and_(expr, expr2)
         self.assert_compile(
-            stmt, "x IN ([POSTCOMPILE_x_1]) AND x IN ([POSTCOMPILE_x_1])"
+            stmt, "x IN (__[POSTCOMPILE_x_1]) AND x IN (__[POSTCOMPILE_x_1])"
         )
         self.assert_compile(
             stmt, "x IN (1, 2, 3) AND x IN (1, 2, 3)", literal_binds=True
@@ -821,6 +826,76 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
                 eq_clause_element(bindparam("xb", value=42)),
             ],
             sel._generate_cache_key()[1],
+        )
+
+    def test_dont_traverse_immutables(self):
+        meta = MetaData()
+
+        b = Table("b", meta, Column("id", Integer), Column("data", String))
+
+        subq = select(b.c.id).where(b.c.data == "some data").subquery()
+
+        check = mock.Mock()
+
+        class Vis(dict):
+            def get(self, key, default=None):
+                return getattr(check, key)
+
+            def __missing__(self, key):
+                return getattr(check, key)
+
+        visitors.cloned_traverse(subq, {}, Vis())
+
+        eq_(
+            check.mock_calls,
+            [
+                mock.call.bindparam(mock.ANY),
+                mock.call.binary(mock.ANY),
+                mock.call.select(mock.ANY),
+                mock.call.subquery(mock.ANY),
+            ],
+        )
+
+    def test_params_on_expr_against_subquery(self):
+        """test #7489"""
+
+        meta = MetaData()
+
+        b = Table("b", meta, Column("id", Integer), Column("data", String))
+
+        subq = select(b.c.id).where(b.c.data == "some data").subquery()
+        criteria = b.c.id == subq.c.id
+
+        stmt = select(b).where(criteria)
+        param_key = stmt._generate_cache_key()[1][0].key
+
+        self.assert_compile(
+            stmt,
+            "SELECT b.id, b.data FROM b, (SELECT b.id AS id "
+            "FROM b WHERE b.data = :data_1) AS anon_1 WHERE b.id = anon_1.id",
+            checkparams={"data_1": "some data"},
+        )
+        eq_(
+            [
+                eq_clause_element(bindparam(param_key, value="some data")),
+            ],
+            stmt._generate_cache_key()[1],
+        )
+
+        stmt = select(b).where(criteria.params({param_key: "some other data"}))
+        self.assert_compile(
+            stmt,
+            "SELECT b.id, b.data FROM b, (SELECT b.id AS id "
+            "FROM b WHERE b.data = :data_1) AS anon_1 WHERE b.id = anon_1.id",
+            checkparams={"data_1": "some other data"},
+        )
+        eq_(
+            [
+                eq_clause_element(
+                    bindparam(param_key, value="some other data")
+                ),
+            ],
+            stmt._generate_cache_key()[1],
         )
 
     def test_params_subqueries_in_joins_one(self):

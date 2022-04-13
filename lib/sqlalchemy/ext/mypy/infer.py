@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 from typing import Optional
 from typing import Sequence
 
@@ -42,11 +44,13 @@ def infer_type_from_right_hand_nameexpr(
     left_hand_explicit_type: Optional[ProperType],
     infer_from_right_side: RefExpr,
 ) -> Optional[ProperType]:
-
     type_id = names.type_id_for_callee(infer_from_right_side)
-
     if type_id is None:
         return None
+    elif type_id is names.MAPPED:
+        python_type_for_type = _infer_type_from_mapped(
+            api, stmt, node, left_hand_explicit_type, infer_from_right_side
+        )
     elif type_id is names.COLUMN:
         python_type_for_type = _infer_type_from_decl_column(
             api, stmt, node, left_hand_explicit_type
@@ -147,7 +151,7 @@ def _infer_type_from_relationship(
         type_is_a_collection = True
         if python_type_for_type is not None:
             python_type_for_type = api.named_type(
-                "__builtins__.list", [python_type_for_type]
+                names.NAMED_TYPE_BUILTINS_LIST, [python_type_for_type]
             )
     elif (
         uselist_arg is None or api.parse_bool(uselist_arg) is True
@@ -245,7 +249,7 @@ def _infer_type_from_decl_composite_property(
     node: Var,
     left_hand_explicit_type: Optional[ProperType],
 ) -> Optional[ProperType]:
-    """Infer the type of mapping from a CompositeProperty."""
+    """Infer the type of mapping from a Composite."""
 
     assert isinstance(stmt.rvalue, CallExpr)
     target_cls_arg = stmt.rvalue.args[0]
@@ -269,6 +273,38 @@ def _infer_type_from_decl_composite_property(
         )
     else:
         return python_type_for_type
+
+
+def _infer_type_from_mapped(
+    api: SemanticAnalyzerPluginInterface,
+    stmt: AssignmentStmt,
+    node: Var,
+    left_hand_explicit_type: Optional[ProperType],
+    infer_from_right_side: RefExpr,
+) -> Optional[ProperType]:
+    """Infer the type of mapping from a right side expression
+    that returns Mapped.
+
+
+    """
+    assert isinstance(stmt.rvalue, CallExpr)
+
+    # (Pdb) print(stmt.rvalue.callee)
+    # NameExpr(query_expression [sqlalchemy.orm._orm_constructors.query_expression])  # noqa: E501
+    # (Pdb) stmt.rvalue.callee.node
+    # <mypy.nodes.FuncDef object at 0x7f8d92fb5940>
+    # (Pdb) stmt.rvalue.callee.node.type
+    # def [_T] (default_expr: sqlalchemy.sql.elements.ColumnElement[_T`-1] =) -> sqlalchemy.orm.base.Mapped[_T`-1]  # noqa: E501
+    # sqlalchemy.orm.base.Mapped[_T`-1]
+    # the_mapped_type = stmt.rvalue.callee.node.type.ret_type
+
+    # TODO: look at generic ref and either use that,
+    # or reconcile w/ what's present, etc.
+    the_mapped_type = util.type_for_callee(infer_from_right_side)  # noqa
+
+    return infer_type_from_left_hand_type_only(
+        api, node, left_hand_explicit_type
+    )
 
 
 def _infer_type_from_decl_column_property(
@@ -438,7 +474,7 @@ def _infer_type_from_left_and_inferred_right(
 
     if not is_subtype(left_hand_explicit_type, python_type_for_type):
         effective_type = api.named_type(
-            "__sa_Mapped", [orig_python_type_for_type]
+            names.NAMED_TYPE_SQLA_MAPPED, [orig_python_type_for_type]
         )
 
         msg = (
@@ -507,7 +543,9 @@ def infer_type_from_left_hand_type_only(
         )
         util.fail(api, msg.format(node.name), node)
 
-        return api.named_type("__sa_Mapped", [AnyType(TypeOfAny.special_form)])
+        return api.named_type(
+            names.NAMED_TYPE_SQLA_MAPPED, [AnyType(TypeOfAny.special_form)]
+        )
 
     else:
         # use type from the left hand side
@@ -529,7 +567,7 @@ def extract_python_type_from_typeengine(
                     return Instance(first_arg.node, [])
             # TODO: support other pep-435 types here
         else:
-            return api.named_type("__builtins__.str", [])
+            return api.named_type(names.NAMED_TYPE_BUILTINS_STR, [])
 
     assert node.has_base("sqlalchemy.sql.type_api.TypeEngine"), (
         "could not extract Python type from node: %s" % node

@@ -16,11 +16,8 @@ os.environ["SQLALCHEMY_WARN_20"] = "true"
 
 collect_ignore_glob = []
 
-# minimum version for a py3k only test is at
-# 3.6 because these are asyncio tests anyway
-if sys.version_info[0:2] < (3, 6):
-    collect_ignore_glob.append("*_py3k.py")
-
+# this requires that sqlalchemy.testing was not already
+# imported in order to work
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
 
@@ -32,7 +29,11 @@ if not sys.flags.no_user_site:
     # We check no_user_site to honor the use of this flag.
     sys.path.insert(
         0,
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"),
+        os.path.abspath(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "lib"
+            )
+        ),
     )
 
 # use bootstrapping so that test plugins are loaded
@@ -51,4 +52,4 @@ with open(bootstrap_file) as f:
     code = compile(f.read(), "bootstrap.py", "exec")
     to_bootstrap = "pytest"
     exec(code, globals(), locals())
-    from pytestplugin import *  # noqa
+    from sqla_pytestplugin import *  # noqa

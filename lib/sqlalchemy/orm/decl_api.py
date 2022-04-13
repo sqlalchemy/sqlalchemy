@@ -1,14 +1,24 @@
 # ext/declarative/api.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Public API functions and helpers for declarative."""
-from __future__ import absolute_import
+
+from __future__ import annotations
 
 import itertools
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import ClassVar
+from typing import Mapping
+from typing import Optional
+from typing import Type
+from typing import TypeVar
+from typing import Union
 import weakref
 
 from . import attributes
@@ -16,21 +26,35 @@ from . import clsregistry
 from . import exc as orm_exc
 from . import instrumentation
 from . import interfaces
-from . import mapper as mapperlib
+from . import mapperlib
+from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
+from .base import Mapped
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
 from .decl_base import _declarative_constructor
 from .decl_base import _DeferredMapperConfig
 from .decl_base import _del_attribute
 from .decl_base import _mapper
-from .descriptor_props import SynonymProperty as _orm_synonym
+from .descriptor_props import Synonym as _orm_synonym
+from .mapper import Mapper
 from .. import exc
 from .. import inspection
 from .. import util
+from ..sql.elements import SQLCoreOperations
 from ..sql.schema import MetaData
+from ..sql.selectable import FromClause
+from ..sql.type_api import TypeEngine
 from ..util import hybridmethod
 from ..util import hybridproperty
+from ..util import typing as compat_typing
+
+if typing.TYPE_CHECKING:
+    from .state import InstanceState  # noqa
+
+_T = TypeVar("_T", bound=Any)
+
+_TypeAnnotationMapType = Mapping[Type, Union[Type[TypeEngine], TypeEngine]]
 
 
 def has_inherited_table(cls):
@@ -52,8 +76,39 @@ def has_inherited_table(cls):
     return False
 
 
-class DeclarativeMeta(type):
-    def __init__(cls, classname, bases, dict_, **kw):
+class _DynamicAttributesType(type):
+    def __setattr__(cls, key, value):
+        if "__mapper__" in cls.__dict__:
+            _add_attribute(cls, key, value)
+        else:
+            type.__setattr__(cls, key, value)
+
+    def __delattr__(cls, key):
+        if "__mapper__" in cls.__dict__:
+            _del_attribute(cls, key)
+        else:
+            type.__delattr__(cls, key)
+
+
+class DeclarativeAttributeIntercept(
+    _DynamicAttributesType, inspection.Inspectable["Mapper[Any]"]
+):
+    """Metaclass that may be used in conjunction with the
+    :class:`_orm.DeclarativeBase` class to support addition of class
+    attributes dynamically.
+
+    """
+
+
+class DeclarativeMeta(
+    _DynamicAttributesType, inspection.Inspectable["Mapper[Any]"]
+):
+    metadata: MetaData
+    registry: "RegistryType"
+
+    def __init__(
+        cls, classname: Any, bases: Any, dict_: Any, **kw: Any
+    ) -> None:
         # early-consume registry from the initial declarative base,
         # assign privately to not conflict with subclass attributes named
         # "registry"
@@ -71,12 +126,6 @@ class DeclarativeMeta(type):
         if not cls.__dict__.get("__abstract__", False):
             _as_declarative(reg, cls, dict_)
         type.__init__(cls, classname, bases, dict_)
-
-    def __setattr__(cls, key, value):
-        _add_attribute(cls, key, value)
-
-    def __delattr__(cls, key):
-        _del_attribute(cls, key)
 
 
 def synonym_for(name, map_column=False):
@@ -119,7 +168,7 @@ def synonym_for(name, map_column=False):
     return decorate
 
 
-class declared_attr(interfaces._MappedAttribute, property):
+class declared_attr(interfaces._MappedAttribute[_T]):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 
@@ -138,7 +187,7 @@ class declared_attr(interfaces._MappedAttribute, property):
     easily reused across different mappings.  The example below illustrates
     both::
 
-        class ProvidesUser(object):
+        class ProvidesUser:
             "A mixin that adds a 'user' relationship to classes."
 
             @declared_attr
@@ -200,41 +249,57 @@ class declared_attr(interfaces._MappedAttribute, property):
         :ref:`orm_declarative_dataclasses_mixin` - illustrates special forms
         for use with Python dataclasses
 
-    """  # noqa E501
+    """  # noqa: E501
 
-    def __init__(self, fget, cascading=False):
-        super(declared_attr, self).__init__(fget)
-        self.__doc__ = fget.__doc__
+    if typing.TYPE_CHECKING:
+
+        def __set__(self, instance, value):
+            ...
+
+        def __delete__(self, instance: Any):
+            ...
+
+    def __init__(
+        self,
+        fn: Callable[..., Union[Mapped[_T], SQLCoreOperations[_T]]],
+        cascading=False,
+    ):
+        self.fget = fn
         self._cascading = cascading
+        self.__doc__ = fn.__doc__
 
-    def __get__(desc, self, cls):
+    def _collect_return_annotation(self) -> Optional[Type[Any]]:
+        return util.get_annotations(self.fget).get("return")
+
+    def __get__(self, instance, owner) -> InstrumentedAttribute[_T]:
         # the declared_attr needs to make use of a cache that exists
         # for the span of the declarative scan_attributes() phase.
         # to achieve this we look at the class manager that's configured.
+        cls = owner
         manager = attributes.manager_of_class(cls)
         if manager is None:
-            if not re.match(r"^__.+__$", desc.fget.__name__):
+            if not re.match(r"^__.+__$", self.fget.__name__):
                 # if there is no manager at all, then this class hasn't been
                 # run through declarative or mapper() at all, emit a warning.
                 util.warn(
                     "Unmanaged access of declarative attribute %s from "
-                    "non-mapped class %s" % (desc.fget.__name__, cls.__name__)
+                    "non-mapped class %s" % (self.fget.__name__, cls.__name__)
                 )
-            return desc.fget(cls)
+            return self.fget(cls)
         elif manager.is_mapped:
             # the class is mapped, which means we're outside of the declarative
             # scan setup, just run the function.
-            return desc.fget(cls)
+            return self.fget(cls)
 
         # here, we are inside of the declarative scan.  use the registry
         # that is tracking the values of these attributes.
         declarative_scan = manager.declarative_scan
         reg = declarative_scan.declared_attr_reg
 
-        if desc in reg:
-            return reg[desc]
+        if self in reg:
+            return reg[self]
         else:
-            reg[desc] = obj = desc.fget(cls)
+            reg[self] = obj = self.fget(cls)
             return obj
 
     @hybridmethod
@@ -271,7 +336,7 @@ class declared_attr(interfaces._MappedAttribute, property):
         Below, both MyClass as well as MySubClass will have a distinct
         ``id`` Column object established::
 
-            class HasIdMixin(object):
+            class HasIdMixin:
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
@@ -359,21 +424,186 @@ def declarative_mixin(cls):
     return cls
 
 
+def _setup_declarative_base(cls):
+    if "metadata" in cls.__dict__:
+        metadata = cls.metadata
+    else:
+        metadata = None
+
+    if "type_annotation_map" in cls.__dict__:
+        type_annotation_map = cls.__dict__["type_annotation_map"]
+    else:
+        type_annotation_map = None
+
+    reg = cls.__dict__.get("registry", None)
+    if reg is not None:
+        if not isinstance(reg, registry):
+            raise exc.InvalidRequestError(
+                "Declarative base class has a 'registry' attribute that is "
+                "not an instance of sqlalchemy.orm.registry()"
+            )
+        elif type_annotation_map is not None:
+            raise exc.InvalidRequestError(
+                "Declarative base class has both a 'registry' attribute and a "
+                "type_annotation_map entry.  Per-base type_annotation_maps "
+                "are not supported.  Please apply the type_annotation_map "
+                "to this registry directly."
+            )
+
+    else:
+        reg = registry(
+            metadata=metadata, type_annotation_map=type_annotation_map
+        )
+        cls.registry = reg
+
+    cls._sa_registry = reg
+
+    if "metadata" not in cls.__dict__:
+        cls.metadata = cls.registry.metadata
+
+
+class DeclarativeBaseNoMeta(inspection.Inspectable["Mapper"]):
+    """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
+    to intercept new attributes.
+
+    The :class:`_orm.DeclarativeBaseNoMeta` base may be used when use of
+    custom metaclasses is desirable.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    registry: ClassVar["registry"]
+    _sa_registry: ClassVar["registry"]
+    metadata: ClassVar[MetaData]
+    __mapper__: ClassVar[Mapper]
+    __table__: Optional[FromClause]
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(self, **kw: Any):
+            ...
+
+    def __init_subclass__(cls) -> None:
+        if DeclarativeBaseNoMeta in cls.__bases__:
+            _setup_declarative_base(cls)
+        else:
+            cls._sa_registry.map_declaratively(cls)
+
+
+class DeclarativeBase(
+    inspection.Inspectable["InstanceState"],
+    metaclass=DeclarativeAttributeIntercept,
+):
+    """Base class used for declarative class definitions.
+
+    The :class:`_orm.DeclarativeBase` allows for the creation of new
+    declarative bases in such a way that is compatible with type checkers::
+
+
+        from sqlalchemy.orm import DeclarativeBase
+
+        class Base(DeclarativeBase):
+            pass
+
+
+    The above ``Base`` class is now usable as the base for new declarative
+    mappings.  The superclass makes use of the ``__init_subclass__()``
+    method to set up new classes and metaclasses aren't used.
+
+    When first used, the :class:`_orm.DeclarativeBase` class instantiates a new
+    :class:`_orm.registry` to be used with the base, assuming one was not
+    provided explicitly. The :class:`_orm.DeclarativeBase` class supports
+    class-level attributes which act as parameters for the construction of this
+    registry; such as to indicate a specific :class:`_schema.MetaData`
+    collection as well as a specific value for
+    :paramref:`_orm.registry.type_annotation_map`::
+
+        from typing import Annotation
+
+        from sqlalchemy import BigInteger
+        from sqlalchemy import MetaData
+        from sqlalchemy import String
+        from sqlalchemy.orm import DeclarativeBase
+
+        bigint = Annotation(int, "bigint")
+        my_metadata = MetaData()
+
+        class Base(DeclarativeBase):
+            metadata = my_metadata
+            type_annotation_map = {
+                str: String().with_variant(String(255), "mysql", "mariadb"),
+                bigint: BigInteger()
+            }
+
+    Class-level attributes which may be specified include:
+
+    :param metadata: optional :class:`_schema.MetaData` collection.
+     If a :class:`_orm.registry` is constructed automatically, this
+     :class:`_schema.MetaData` collection will be used to construct it.
+     Otherwise, the local :class:`_schema.MetaData` collection will supercede
+     that used by an existing :class:`_orm.registry` passed using the
+     :paramref:`_orm.DeclarativeBase.registry` parameter.
+    :param type_annotation_map: optional type annotation map that will be
+     passed to the :class:`_orm.registry` as
+     :paramref:`_orm.registry.type_annotation_map`.
+    :param registry: supply a pre-existing :class:`_orm.registry` directly.
+
+    .. versionadded:: 2.0
+
+    """
+
+    registry: ClassVar["registry"]
+    _sa_registry: ClassVar["registry"]
+    metadata: ClassVar[MetaData]
+    __mapper__: ClassVar[Mapper]
+    __table__: Optional[FromClause]
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(self, **kw: Any):
+            ...
+
+    def __init_subclass__(cls) -> None:
+        if DeclarativeBase in cls.__bases__:
+            _setup_declarative_base(cls)
+        else:
+            cls._sa_registry.map_declaratively(cls)
+
+
+def add_mapped_attribute(target, key, attr):
+    """Add a new mapped attribute to an ORM mapped class.
+
+    E.g.::
+
+        add_mapped_attribute(User, "addresses", relationship(Address))
+
+    This may be used for ORM mappings that aren't using a declarative
+    metaclass that intercepts attribute set operations.
+
+    .. versionadded:: 2.0
+
+
+    """
+    _add_attribute(target, key, attr)
+
+
 def declarative_base(
-    bind=None,
-    metadata=None,
+    metadata: Optional[MetaData] = None,
     mapper=None,
     cls=object,
     name="Base",
-    constructor=_declarative_constructor,
-    class_registry=None,
+    class_registry: Optional[clsregistry._ClsRegistryType] = None,
+    type_annotation_map: Optional[_TypeAnnotationMapType] = None,
+    constructor: Callable[..., None] = _declarative_constructor,
     metaclass=DeclarativeMeta,
-):
+) -> Any:
     r"""Construct a base class for declarative class definitions.
 
     The new base class will be given a metaclass that produces
     appropriate :class:`~sqlalchemy.schema.Table` objects and makes
-    the appropriate :func:`~sqlalchemy.orm.mapper` calls based on the
+    the appropriate :class:`_orm.Mapper` calls based on the
     information provided declaratively in the class and any subclasses
     of the class.
 
@@ -402,14 +632,6 @@ def declarative_base(
        ``sqlalchemy.orm`` package from the ``declarative.ext`` package.
 
 
-    :param bind: An optional
-      :class:`~sqlalchemy.engine.Connectable`, will be assigned
-      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
-      instance.
-
-      .. deprecated:: 1.4  The "bind" argument to declarative_base is
-         deprecated and will be removed in SQLAlchemy 2.0.
-
     :param metadata:
       An optional :class:`~sqlalchemy.schema.MetaData` instance.  All
       :class:`~sqlalchemy.schema.Table` objects implicitly declared by
@@ -419,7 +641,7 @@ def declarative_base(
       ``metadata`` attribute of the generated declarative base class.
 
     :param mapper:
-      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`. Will
+      An optional callable, defaults to :class:`_orm.Mapper`. Will
       be used to map subclasses to their Tables.
 
     :param cls:
@@ -446,6 +668,14 @@ def declarative_base(
       to share the same registry of class names for simplified
       inter-base relationships.
 
+    :param type_annotation_map: optional dictionary of Python types to
+        SQLAlchemy :class:`_types.TypeEngine` classes or instances.  This
+        is used exclusively by the :class:`_orm.MappedColumn` construct
+        to produce column types based on annotations within the
+        :class:`_orm.Mapped` type.
+
+        .. versionadded:: 2.0
+
     :param metaclass:
       Defaults to :class:`.DeclarativeMeta`.  A metaclass or __metaclass__
       compatible callable to use as the meta type of the generated
@@ -457,18 +687,11 @@ def declarative_base(
 
     """
 
-    if bind is not None:
-        # util.deprecated_params does not work
-        util.warn_deprecated_20(
-            "The ``bind`` argument to declarative_base is "
-            "deprecated and will be removed in SQLAlchemy 2.0.",
-        )
-
     return registry(
-        _bind=bind,
         metadata=metadata,
         class_registry=class_registry,
         constructor=constructor,
+        type_annotation_map=type_annotation_map,
     ).generate_base(
         mapper=mapper,
         cls=cls,
@@ -477,7 +700,7 @@ def declarative_base(
     )
 
 
-class registry(object):
+class registry:
     """Generalized registry for mapping classes.
 
     The :class:`_orm.registry` serves as the basis for maintaining a collection
@@ -498,8 +721,8 @@ class registry(object):
     * :meth:`_orm.registry.map_imperatively` will produce a
       :class:`_orm.Mapper` for a class without scanning the class for
       declarative class attributes. This method suits the use case historically
-      provided by the
-      :func:`_orm.mapper` classical mapping function.
+      provided by the ``sqlalchemy.orm.mapper()`` classical mapping function,
+      which is removed as of SQLAlchemy 2.0.
 
     .. versionadded:: 1.4
 
@@ -512,10 +735,10 @@ class registry(object):
 
     def __init__(
         self,
-        metadata=None,
-        class_registry=None,
-        constructor=_declarative_constructor,
-        _bind=None,
+        metadata: Optional[MetaData] = None,
+        class_registry: Optional[clsregistry._ClsRegistryType] = None,
+        type_annotation_map: Optional[_TypeAnnotationMapType] = None,
+        constructor: Callable[..., None] = _declarative_constructor,
     ):
         r"""Construct a new :class:`_orm.registry`
 
@@ -541,10 +764,16 @@ class registry(object):
           to share the same registry of class names for simplified
           inter-base relationships.
 
+        :param type_annotation_map: optional dictionary of Python types to
+          SQLAlchemy :class:`_types.TypeEngine` classes or instances.  This
+          is used exclusively by the :class:`_orm.MappedColumn` construct
+          to produce column types based on annotations within the
+          :class:`_orm.Mapped` type.
+
+          .. versionadded:: 2.0
+
         """
         lcl_metadata = metadata or MetaData()
-        if _bind:
-            lcl_metadata.bind = _bind
 
         if class_registry is None:
             class_registry = weakref.WeakValueDictionary()
@@ -554,7 +783,9 @@ class registry(object):
         self._non_primary_mappers = weakref.WeakKeyDictionary()
         self.metadata = lcl_metadata
         self.constructor = constructor
-
+        self.type_annotation_map = {}
+        if type_annotation_map is not None:
+            self.update_type_annotation_map(type_annotation_map)
         self._dependents = set()
         self._dependencies = set()
 
@@ -562,6 +793,25 @@ class registry(object):
 
         with mapperlib._CONFIGURE_MUTEX:
             mapperlib._mapper_registries[self] = True
+
+    def update_type_annotation_map(
+        self,
+        type_annotation_map: Mapping[
+            Type, Union[Type[TypeEngine], TypeEngine]
+        ],
+    ) -> None:
+        """update the :paramref:`_orm.registry.type_annotation_map` with new
+        values."""
+
+        self.type_annotation_map.update(
+            {
+                sub_type: sqltype
+                for typ, sqltype in type_annotation_map.items()
+                for sub_type in compat_typing.expand_unions(
+                    typ, include_union=True, discard_none=True
+                )
+            }
+        )
 
     @property
     def mappers(self):
@@ -644,6 +894,11 @@ class registry(object):
 
     def _add_manager(self, manager):
         self._managers[manager] = True
+        if manager.is_mapped:
+            raise exc.ArgumentError(
+                "Class '%s' already has a primary mapper defined. "
+                % manager.class_
+            )
         assert manager.registry is None
         manager.registry = self
 
@@ -771,7 +1026,7 @@ class registry(object):
         examples.
 
         :param mapper:
-          An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`.
+          An optional callable, defaults to :class:`_orm.Mapper`.
           This function is used to generate new :class:`_orm.Mapper` objects.
 
         :param cls:
@@ -809,6 +1064,14 @@ class registry(object):
         class_dict["__abstract__"] = True
         if mapper:
             class_dict["__mapper_cls__"] = mapper
+
+        if hasattr(cls, "__class_getitem__"):
+
+            def __class_getitem__(cls, key):
+                # allow generic classes in py3.9+
+                return cls
+
+            class_dict["__class_getitem__"] = __class_getitem__
 
         return metaclass(name, bases, class_dict)
 
@@ -861,7 +1124,7 @@ class registry(object):
             mapper_registry = registry()
 
             @mapper_registry.as_declarative_base()
-            class Base(object):
+            class Base:
                 @declared_attr
                 def __tablename__(cls):
                     return cls.__name__.lower()
@@ -937,8 +1200,8 @@ class registry(object):
         information.  Instead, all mapping constructs are passed as
         arguments.
 
-        This method is intended to be fully equivalent to the classic
-        SQLAlchemy :func:`_orm.mapper` function, except that it's in terms of
+        This method is intended to be fully equivalent to the now-removed
+        SQLAlchemy ``mapper()`` function, except that it's in terms of
         a particular registry.
 
         E.g.::
@@ -962,15 +1225,15 @@ class registry(object):
         and usage examples.
 
         :param class\_: The class to be mapped.  Corresponds to the
-         :paramref:`_orm.mapper.class_` parameter.
+         :paramref:`_orm.Mapper.class_` parameter.
 
         :param local_table: the :class:`_schema.Table` or other
          :class:`_sql.FromClause` object that is the subject of the mapping.
          Corresponds to the
-         :paramref:`_orm.mapper.local_table` parameter.
+         :paramref:`_orm.Mapper.local_table` parameter.
 
         :param \**kw: all other keyword arguments are passed to the
-         :func:`_orm.mapper` function directly.
+         :class:`_orm.Mapper` constructor directly.
 
         .. seealso::
 
@@ -982,16 +1245,9 @@ class registry(object):
         return _mapper(self, class_, local_table, kw)
 
 
-mapperlib._legacy_registry = registry()
+RegistryType = registry
 
 
-@util.deprecated_params(
-    bind=(
-        "2.0",
-        "The ``bind`` argument to as_declarative is "
-        "deprecated and will be removed in SQLAlchemy 2.0.",
-    )
-)
 def as_declarative(**kw):
     """
     Class decorator which will adapt a given class into a
@@ -1006,7 +1262,7 @@ def as_declarative(**kw):
         from sqlalchemy.orm import as_declarative
 
         @as_declarative()
-        class Base(object):
+        class Base:
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
@@ -1020,18 +1276,19 @@ def as_declarative(**kw):
         :meth:`_orm.registry.as_declarative_base`
 
     """
-    bind, metadata, class_registry = (
-        kw.pop("bind", None),
+    metadata, class_registry = (
         kw.pop("metadata", None),
         kw.pop("class_registry", None),
     )
 
     return registry(
-        _bind=bind, metadata=metadata, class_registry=class_registry
+        metadata=metadata, class_registry=class_registry
     ).as_declarative_base(**kw)
 
 
-@inspection._inspects(DeclarativeMeta)
+@inspection._inspects(
+    DeclarativeMeta, DeclarativeBase, DeclarativeAttributeIntercept
+)
 def _inspect_decl_meta(cls):
     mp = _inspect_mapped_class(cls)
     if mp is None:

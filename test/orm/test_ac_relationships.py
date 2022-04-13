@@ -1,5 +1,6 @@
 from sqlalchemy import and_
 from sqlalchemy import Column
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -14,6 +15,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -47,7 +49,7 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
             .label("index"),
         ).alias()
 
-        partitioned_b = aliased(B, alias=partition)
+        cls.partitioned_b = partitioned_b = aliased(B, alias=partition)
 
         A.partitioned_bs = relationship(
             partitioned_b,
@@ -139,19 +141,60 @@ class AliasedClassRelationshipTest(
 
         self.assert_sql_count(testing.db, go, 2)
 
-    def test_selectinload_w_joinedload_after(self):
+    @testing.combinations("ac_attribute", "ac_attr_w_of_type")
+    def test_selectinload_w_joinedload_after(self, calling_style):
+        """test has been enhanced to also test #7224"""
+
         A, B, C = self.classes("A", "B", "C")
 
         s = Session(testing.db)
 
+        partitioned_b = self.partitioned_b
+
+        if calling_style == "ac_attribute":
+            opt = selectinload(A.partitioned_bs).joinedload(partitioned_b.cs)
+        elif calling_style == "ac_attr_w_of_type":
+            # this would have been a workaround for people who encountered
+            # #7224. The exception that was raised for "ac_attribute" actually
+            # suggested to use of_type() so we can assume this pattern is
+            # probably being used
+            opt = selectinload(
+                A.partitioned_bs.of_type(partitioned_b)
+            ).joinedload(partitioned_b.cs)
+        else:
+            assert False
+
         def go():
-            for a1 in s.query(A).options(
-                selectinload(A.partitioned_bs).joinedload("cs")
-            ):
+            for a1 in s.query(A).options(opt):
                 for b in a1.partitioned_bs:
                     eq_(len(b.cs), 2)
 
         self.assert_sql_count(testing.db, go, 2)
+
+    @testing.combinations(True, False)
+    def test_selectinload_w_joinedload_after_base_target_fails(
+        self, use_of_type
+    ):
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session(testing.db)
+        partitioned_b = self.partitioned_b
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r'ORM mapped attribute "B.cs" does not link from '
+            r'relationship "A.partitioned_bs.of_type\(aliased\(B\)\)"',
+        ):
+            if use_of_type:
+                opt = selectinload(
+                    A.partitioned_bs.of_type(partitioned_b)
+                ).joinedload(B.cs)
+            else:
+                opt = selectinload(A.partitioned_bs).joinedload(B.cs)
+
+            q = s.query(A).options(opt)
+
+            q._compile_context()
 
 
 class AltSelectableTest(
@@ -273,7 +316,7 @@ class AltSelectableTest(
                 "SELECT a_1.id AS a_1_id, b.id AS b_id FROM a AS a_1 "
                 "JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) "
                 "ON a_1.b_id = b.id WHERE a_1.id "
-                "IN ([POSTCOMPILE_primary_keys])",
+                "IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1]}],
             ),
         )

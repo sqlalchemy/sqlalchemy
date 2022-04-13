@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 7919
+
+    For third party dialects, repaired a missing requirement for the
+    ``SimpleUpdateDeleteTest`` suite test which was not checking for a working
+    "rowcount" function on the target dialect.
+

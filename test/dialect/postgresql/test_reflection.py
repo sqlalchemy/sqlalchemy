@@ -34,13 +34,14 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
 
 
-class ReflectionFixtures(object):
+class ReflectionFixtures:
     @testing.fixture(
         params=[
             ("engine", True),
@@ -183,6 +184,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
                     "unique": False,
                     "column_names": ["q"],
                     "include_columns": [],
+                    "dialect_options": {"postgresql_include": []},
                 }
             ],
         )
@@ -198,6 +200,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
                 {
                     "column_names": ["q"],
                     "include_columns": [],
+                    "dialect_options": {"postgresql_include": []},
                     "name": mock.ANY,
                     "unique": False,
                 }
@@ -484,7 +487,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         base.PGDialect.ischema_names = {}
         try:
             m2 = MetaData()
-            assert_raises(
+            assert_warns(
                 exc.SAWarning, Table, "testtable", m2, autoload_with=connection
             )
 
@@ -1131,6 +1134,7 @@ class ReflectionTest(
         expected = [{"name": "idx1", "unique": False, "column_names": ["y"]}]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"] = {"postgresql_include": []}
 
         eq_(ind, expected)
 
@@ -1163,6 +1167,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
 
         m = MetaData()
@@ -1195,6 +1200,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
         m = MetaData()
         t1 = Table("t", m, autoload_with=connection)
@@ -1229,6 +1235,7 @@ class ReflectionTest(
                     "unique": False,
                     "column_names": ["x"],
                     "include_columns": ["name"],
+                    "dialect_options": {"postgresql_include": ["name"]},
                     "name": "idx1",
                 }
             ],
@@ -1604,6 +1611,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
 
         eq_(insp.get_indexes("t"), expected)
 
@@ -1691,10 +1699,10 @@ class ReflectionTest(
         eq_(
             check_constraints,
             {
-                u"cc1": u"(a > 1) AND (a < 5)",
-                u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
-                u"cc3": u"is_positive(a)",
-                u"cc4": u"(b)::text <> 'hi\nim a name   \nyup\n'::text",
+                "cc1": "(a > 1) AND (a < 5)",
+                "cc2": "(a = 1) OR ((a > 2) AND (a < 5))",
+                "cc3": "is_positive(a)",
+                "cc4": "(b)::text <> 'hi\nim a name   \nyup\n'::text",
             },
         )
 
@@ -1773,7 +1781,7 @@ class ReflectionTest(
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
-    class CustomType(object):
+    class CustomType:
         def __init__(self, arg1=None, arg2=None):
             self.arg1 = arg1
             self.arg2 = arg2
@@ -1931,15 +1939,15 @@ class IdentityReflectionTest(fixtures.TablesTest):
             elif col["name"] == "id2":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 31 - 1)
+                exp.update(maxvalue=2**31 - 1)
                 eq_(col["identity"], exp)
             elif col["name"] == "id3":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 63 - 1)
+                exp.update(maxvalue=2**63 - 1)
                 eq_(col["identity"], exp)
             elif col["name"] == "id4":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 15 - 1)
+                exp.update(maxvalue=2**15 - 1)
                 eq_(col["identity"], exp)

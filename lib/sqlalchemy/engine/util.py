@@ -1,17 +1,38 @@
 # engine/util.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
+import typing
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import TypeVar
+
 from .. import exc
 from .. import util
-from ..util import collections_abc
-from ..util import immutabledict
+from ..util._has_cy import HAS_CYEXTENSION
+from ..util.typing import Protocol
+
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
+    from ._py_util import _distill_params_20 as _distill_params_20
+    from ._py_util import _distill_raw_params as _distill_raw_params
+else:
+    from sqlalchemy.cyextension.util import (
+        _distill_params_20 as _distill_params_20,
+    )
+    from sqlalchemy.cyextension.util import (
+        _distill_raw_params as _distill_raw_params,
+    )
+
+_C = TypeVar("_C", bound=Callable[[], Any])
 
 
-def connection_memoize(key):
+def connection_memoize(key: str) -> Callable[[_C], _C]:
     """Decorator, memoize a function in a connection.info stash.
 
     Only applicable to functions which take no arguments other than a
@@ -19,7 +40,7 @@ def connection_memoize(key):
     """
 
     @util.decorator
-    def decorated(fn, self, connection):
+    def decorated(fn, self, connection):  # type: ignore
         connection = connection.connect()
         try:
             return connection.info[key]
@@ -27,135 +48,14 @@ def connection_memoize(key):
             connection.info[key] = val = fn(self, connection)
             return val
 
-    return decorated
+    return decorated  # type: ignore[return-value]
 
 
-_no_tuple = ()
-_no_kw = util.immutabledict()
+class _TConsSubject(Protocol):
+    _trans_context_manager: Optional[TransactionalContext]
 
 
-def _distill_params(connection, multiparams, params):
-    r"""Given arguments from the calling form \*multiparams, \**params,
-    return a list of bind parameter structures, usually a list of
-    dictionaries.
-
-    In the case of 'raw' execution which accepts positional parameters,
-    it may be a list of tuples or lists.
-
-    """
-
-    if not multiparams:
-        if params:
-            connection._warn_for_legacy_exec_format()
-            return [params]
-        else:
-            return []
-    elif len(multiparams) == 1:
-        zero = multiparams[0]
-        if isinstance(zero, (list, tuple)):
-            if (
-                not zero
-                or hasattr(zero[0], "__iter__")
-                and not hasattr(zero[0], "strip")
-            ):
-                # execute(stmt, [{}, {}, {}, ...])
-                # execute(stmt, [(), (), (), ...])
-                return zero
-            else:
-                # this is used by exec_driver_sql only, so a deprecation
-                # warning would already be coming from passing a plain
-                # textual statement with positional parameters to
-                # execute().
-                # execute(stmt, ("value", "value"))
-                return [zero]
-        elif hasattr(zero, "keys"):
-            # execute(stmt, {"key":"value"})
-            return [zero]
-        else:
-            connection._warn_for_legacy_exec_format()
-            # execute(stmt, "value")
-            return [[zero]]
-    else:
-        connection._warn_for_legacy_exec_format()
-        if hasattr(multiparams[0], "__iter__") and not hasattr(
-            multiparams[0], "strip"
-        ):
-            return multiparams
-        else:
-            return [multiparams]
-
-
-def _distill_cursor_params(connection, multiparams, params):
-    """_distill_params without any warnings.  more appropriate for
-    "cursor" params that can include tuple arguments, lists of tuples,
-    etc.
-
-    """
-
-    if not multiparams:
-        if params:
-            return [params]
-        else:
-            return []
-    elif len(multiparams) == 1:
-        zero = multiparams[0]
-        if isinstance(zero, (list, tuple)):
-            if (
-                not zero
-                or hasattr(zero[0], "__iter__")
-                and not hasattr(zero[0], "strip")
-            ):
-                # execute(stmt, [{}, {}, {}, ...])
-                # execute(stmt, [(), (), (), ...])
-                return zero
-            else:
-                # this is used by exec_driver_sql only, so a deprecation
-                # warning would already be coming from passing a plain
-                # textual statement with positional parameters to
-                # execute().
-                # execute(stmt, ("value", "value"))
-
-                return [zero]
-        elif hasattr(zero, "keys"):
-            # execute(stmt, {"key":"value"})
-            return [zero]
-        else:
-            # execute(stmt, "value")
-            return [[zero]]
-    else:
-        if hasattr(multiparams[0], "__iter__") and not hasattr(
-            multiparams[0], "strip"
-        ):
-            return multiparams
-        else:
-            return [multiparams]
-
-
-def _distill_params_20(params):
-    if params is None:
-        return _no_tuple, _no_kw
-    elif isinstance(params, list):
-        # collections_abc.MutableSequence): # avoid abc.__instancecheck__
-        if params and not isinstance(
-            params[0], (collections_abc.Mapping, tuple)
-        ):
-            raise exc.ArgumentError(
-                "List argument must consist only of tuples or dictionaries"
-            )
-
-        return (params,), _no_kw
-    elif isinstance(
-        params,
-        (tuple, dict, immutabledict),
-        # avoid abc.__instancecheck__
-        # (collections_abc.Sequence, collections_abc.Mapping),
-    ):
-        return (params,), _no_kw
-    else:
-        raise exc.ArgumentError("mapping or sequence expected for parameters")
-
-
-class TransactionalContext(object):
+class TransactionalContext:
     """Apply Python context manager behavior to transaction objects.
 
     Performs validation to ensure the subject of the transaction is not
@@ -163,19 +63,47 @@ class TransactionalContext(object):
 
     """
 
-    _trans_subject = None
+    __slots__ = ("_outer_trans_ctx", "_trans_subject", "__weakref__")
 
-    def _transaction_is_active(self):
+    _trans_subject: Optional[_TConsSubject]
+
+    def _transaction_is_active(self) -> bool:
         raise NotImplementedError()
 
-    def _transaction_is_closed(self):
+    def _transaction_is_closed(self) -> bool:
         raise NotImplementedError()
 
-    def _get_subject(self):
+    def _rollback_can_be_called(self) -> bool:
+        """indicates the object is in a state that is known to be acceptable
+        for rollback() to be called.
+
+        This does not necessarily mean rollback() will succeed or not raise
+        an error, just that there is currently no state detected that indicates
+        rollback() would fail or emit warnings.
+
+        It also does not mean that there's a transaction in progress, as
+        it is usually safe to call rollback() even if no transaction is
+        present.
+
+        .. versionadded:: 1.4.28
+
+        """
+        raise NotImplementedError()
+
+    def _get_subject(self) -> _TConsSubject:
+        raise NotImplementedError()
+
+    def commit(self) -> None:
+        raise NotImplementedError()
+
+    def rollback(self) -> None:
+        raise NotImplementedError()
+
+    def close(self) -> None:
         raise NotImplementedError()
 
     @classmethod
-    def _trans_ctx_check(cls, subject):
+    def _trans_ctx_check(cls, subject: _TConsSubject) -> None:
         trans_context = subject._trans_context_manager
         if trans_context:
             if not trans_context._transaction_is_active():
@@ -185,7 +113,7 @@ class TransactionalContext(object):
                     "before emitting further commands."
                 )
 
-    def __enter__(self):
+    def __enter__(self) -> TransactionalContext:
         subject = self._get_subject()
 
         # none for outer transaction, may be non-None for nested
@@ -197,8 +125,8 @@ class TransactionalContext(object):
         subject._trans_context_manager = self
         return self
 
-    def __exit__(self, type_, value, traceback):
-        subject = self._trans_subject
+    def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
+        subject = getattr(self, "_trans_subject", None)
 
         # simplistically we could assume that
         # "subject._trans_context_manager is self".  However, any calling
@@ -216,9 +144,11 @@ class TransactionalContext(object):
                 self.commit()
             except:
                 with util.safe_reraise():
-                    self.rollback()
+                    if self._rollback_can_be_called():
+                        self.rollback()
             finally:
                 if not out_of_band_exit:
+                    assert subject is not None
                     subject._trans_context_manager = self._outer_trans_ctx
                 self._trans_subject = self._outer_trans_ctx = None
         else:
@@ -227,8 +157,10 @@ class TransactionalContext(object):
                     if not self._transaction_is_closed():
                         self.close()
                 else:
-                    self.rollback()
+                    if self._rollback_can_be_called():
+                        self.rollback()
             finally:
                 if not out_of_band_exit:
+                    assert subject is not None
                     subject._trans_context_manager = self._outer_trans_ctx
                 self._trans_subject = self._outer_trans_ctx = None

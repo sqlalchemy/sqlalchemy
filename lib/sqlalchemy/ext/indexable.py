@@ -1,5 +1,5 @@
 # ext/index.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -221,10 +221,7 @@ The above query will render::
     WHERE CAST(person.data ->> %(data_1)s AS INTEGER) < %(param_1)s
 
 """  # noqa
-from __future__ import absolute_import
-
 from .. import inspect
-from .. import util
 from ..ext.hybrid import hybrid_property
 from ..orm.attributes import flag_modified
 
@@ -304,7 +301,7 @@ class index_property(hybrid_property):  # noqa
 
     def _fget_default(self, err=None):
         if self.default == self._NO_DEFAULT_ARGUMENT:
-            util.raise_(AttributeError(self.attr_name), replace_context=err)
+            raise AttributeError(self.attr_name) from err
         else:
             return self.default
 
@@ -339,7 +336,7 @@ class index_property(hybrid_property):  # noqa
         try:
             del column_value[self.index]
         except KeyError as err:
-            util.raise_(AttributeError(self.attr_name), replace_context=err)
+            raise AttributeError(self.attr_name) from err
         else:
             setattr(instance, attr_name, column_value)
             flag_modified(instance, attr_name)

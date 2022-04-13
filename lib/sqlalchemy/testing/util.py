@@ -1,9 +1,11 @@
 # testing/util.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+from __future__ import annotations
 
 import decimal
 import gc
@@ -27,7 +29,6 @@ from ..util import decorator
 from ..util import defaultdict
 from ..util import has_refcount_gc
 from ..util import inspect_getfullargspec
-from ..util import py2k
 
 
 if not has_refcount_gc:
@@ -47,14 +48,6 @@ else:
 
 def picklers():
     picklers = set()
-    if py2k:
-        try:
-            import cPickle
-
-            picklers.add(cPickle)
-        except ImportError:
-            pass
-
     import pickle
 
     picklers.add(pickle)
@@ -65,19 +58,8 @@ def picklers():
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
-if py2k:
-
-    def random_choices(population, k=1):
-        pop = list(population)
-        # lame but works :)
-        random.shuffle(pop)
-        return pop[0:k]
-
-
-else:
-
-    def random_choices(population, k=1):
-        return random.choices(population, k=k)
+def random_choices(population, k=1):
+    return random.choices(population, k=k)
 
 
 def round_decimal(value, prec):
@@ -295,7 +277,7 @@ def flag_combinations(*combinations):
             for d in combinations
         ],
         id_="i" + ("a" * len(keys)),
-        argnames=",".join(keys)
+        argnames=",".join(keys),
     )
 
 

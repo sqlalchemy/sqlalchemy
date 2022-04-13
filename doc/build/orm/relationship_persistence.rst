@@ -213,7 +213,7 @@ should be enabled, using the configuration described at
 
     :ref:`passive_deletes` - supporting ON DELETE CASCADE with relationships
 
-    :paramref:`.orm.mapper.passive_updates` - similar feature on :func:`.mapper`
+    :paramref:`.orm.mapper.passive_updates` - similar feature on :class:`_orm.Mapper`
 
 
 Simulating limited ON UPDATE CASCADE without foreign key support

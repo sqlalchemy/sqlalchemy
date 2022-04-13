@@ -1,23 +1,18 @@
-from __future__ import print_function
-
 import doctest
 import logging
 import os
 import re
 import sys
 
-from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 
 
 class DocTest(fixtures.TestBase):
-    __requires__ = ("python3",)
-
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
 
-        class MyStream(object):
+        class MyStream:
             def write(self, string):
                 sys.stdout.write(string)
                 sys.stdout.flush()
@@ -72,7 +67,7 @@ class DocTest(fixtures.TestBase):
             checker=_get_unicode_checker(),
         )
         parser = doctest.DocTestParser()
-        globs = {"print_function": print_function}
+        globs = {"print_function": print}
 
         for fname in fnames:
             path = os.path.join(sqla_base, "doc/build", fname)
@@ -102,18 +97,14 @@ class DocTest(fixtures.TestBase):
             "tutorial/orm_related_objects.rst",
         )
 
-    def test_orm(self):
-        self._run_doctest("orm/tutorial.rst")
-
-    @testing.emits_warning()
-    def test_core(self):
-        self._run_doctest("core/tutorial.rst")
-
     def test_core_operators(self):
         self._run_doctest("core/operators.rst")
 
     def test_orm_queryguide(self):
         self._run_doctest("orm/queryguide.rst")
+
+    def test_orm_quickstart(self):
+        self._run_doctest("orm/quickstart.rst")
 
 
 # unicode checker courtesy pytest

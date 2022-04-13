@@ -1,16 +1,17 @@
 # mysql/__init__.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from . import aiomysql  # noqa
+from . import asyncmy  # noqa
 from . import base  # noqa
 from . import cymysql  # noqa
 from . import mariadbconnector  # noqa
 from . import mysqlconnector  # noqa
 from . import mysqldb  # noqa
-from . import oursql  # noqa
 from . import pymysql  # noqa
 from . import pyodbc  # noqa
 from .base import BIGINT
@@ -52,10 +53,6 @@ from .dml import insert
 from .expression import match
 from ...util import compat
 
-if compat.py3k:
-    from . import aiomysql  # noqa
-    from . import asyncmy  # noqa
-
 # default dialect
 base.dialect = dialect = mysqldb.dialect
 
@@ -71,7 +68,6 @@ __all__ = (
     "DECIMAL",
     "DOUBLE",
     "ENUM",
-    "DECIMAL",
     "FLOAT",
     "INTEGER",
     "INTEGER",

@@ -1,5 +1,5 @@
 # sqlite/pysqlcipher.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -94,11 +94,8 @@ time, at the expense of slower startup time for new connections.
 
 """  # noqa
 
-from __future__ import absolute_import
-
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
-from ... import util
 
 
 class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
@@ -108,19 +105,15 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
     pragmas = ("kdf_iter", "cipher", "cipher_page_size", "cipher_use_hmac")
 
     @classmethod
-    def dbapi(cls):
-        if util.py3k:
-            try:
-                import sqlcipher3 as sqlcipher
-            except ImportError:
-                pass
-            else:
-                return sqlcipher
-
-            from pysqlcipher3 import dbapi2 as sqlcipher
-
+    def import_dbapi(cls):
+        try:
+            import sqlcipher3 as sqlcipher
+        except ImportError:
+            pass
         else:
-            from pysqlcipher import dbapi2 as sqlcipher
+            return sqlcipher
+
+        from pysqlcipher3 import dbapi2 as sqlcipher
 
         return sqlcipher
 

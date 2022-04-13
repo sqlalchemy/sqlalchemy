@@ -8,14 +8,16 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import column
+from sqlalchemy.sql import literal
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
-
 
 table1 = table(
     "mytable",
@@ -53,8 +55,16 @@ grandchild = Table(
 )
 
 
-class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
+class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    def test_old_bracket_style_fail(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Column expression or FROM clause expected, "
+            r".*Did you mean to say",
+        ):
+            select([table1.c.myid])
 
     def test_new_calling_style(self):
         stmt = select(table1.c.myid).where(table1.c.myid == table2.c.otherid)
@@ -66,7 +76,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_new_calling_style_clauseelement_thing_that_has_iter(self):
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return table1
 
@@ -81,11 +91,11 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_new_calling_style_inspectable_ce_thing_that_has_iter(self):
-        class Thing(object):
+        class Thing:
             def __iter__(self):
                 return iter(["a", "b", "c"])
 
-        class InspectedThing(object):
+        class InspectedThing:
             def __clause_element__(self):
                 return table1
 
@@ -411,4 +421,24 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT anon_1.name FROM (SELECT mytable.name AS name, "
             "(mytable.myid, mytable.name) AS anon_2 FROM mytable) AS anon_1",
+        )
+
+    @testing.combinations(
+        ("union_all", "UNION ALL"),
+        ("union", "UNION"),
+        ("intersect_all", "INTERSECT ALL"),
+        ("intersect", "INTERSECT"),
+        ("except_all", "EXCEPT ALL"),
+        ("except_", "EXCEPT"),
+    )
+    def test_select_multiple_compound_elements(self, methname, joiner):
+        stmt = select(literal(1))
+        meth = getattr(stmt, methname)
+        stmt = meth(select(literal(2)), select(literal(3)))
+
+        self.assert_compile(
+            stmt,
+            "SELECT :param_1 AS anon_1"
+            " %(joiner)s SELECT :param_2 AS anon_2"
+            " %(joiner)s SELECT :param_3 AS anon_3" % {"joiner": joiner},
         )

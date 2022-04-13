@@ -1,5 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7061
-
-    Account for ``schema`` in :func:`_sql.table` ``fullname`` attribute.

@@ -6,6 +6,7 @@ import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -15,10 +16,10 @@ from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.engine import result
+from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
@@ -29,8 +30,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
-from sqlalchemy.processors import to_decimal_processor_factory
-from sqlalchemy.processors import to_unicode_processor_factory
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.visitors import cloned_traverse
@@ -254,8 +253,8 @@ class EnsureZeroed(fixtures.ORMTest):
         )
 
 
+@testing.add_to_marker.memory_intensive
 class MemUsageTest(EnsureZeroed):
-    __tags__ = ("memory_intensive",)
     __requires__ = ("cpython", "no_windows")
 
     def test_type_compile(self):
@@ -283,14 +282,6 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory()
         def go():
             to_decimal_processor_factory(decimal.Decimal, 10)(1.2)
-
-        go()
-
-    @testing.requires.cextensions
-    def test_UnicodeResultProcessor_init(self):
-        @profile_memory()
-        def go():
-            to_unicode_processor_factory("utf8")
 
         go()
 
@@ -345,7 +336,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.fails()
     def test_fixture_failure(self):
-        class Foo(object):
+        class Foo:
             pass
 
         stuff = []
@@ -356,17 +347,48 @@ class MemUsageTest(EnsureZeroed):
 
         go()
 
+    def test_clone_expression(self):
+        # this test is for the memory issue "fixed" in #7823, where clones
+        # no longer carry along all past elements.
+        # However, due to #7903, we can't at the moment use a
+        # BindParameter here - these have to continue to carry along all
+        # the previous clones for now.  So the test here only works with
+        # expressions that dont have BindParameter objects in them.
 
+        root_expr = column("x", Integer) == column("y", Integer)
+
+        expr = root_expr
+
+        @profile_memory()
+        def go():
+            nonlocal expr
+
+            expr = cloned_traverse(expr, {}, {})
+
+        go()
+
+    def test_tv_render_derived(self):
+        root_expr = func.some_fn().table_valued()
+        expr = root_expr
+
+        @profile_memory()
+        def go():
+            nonlocal expr
+
+            expr = expr.render_derived()
+
+        go()
+
+
+@testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
-
-    __tags__ = ("memory_intensive",)
     __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda: True)
     def test_fixture(self):
-        class Foo(object):
+        class Foo:
             pass
 
         x = []
@@ -468,7 +490,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
     @testing.emits_warning("Compiled statement cache for lazy loader.*")
     @testing.crashes("sqlite", ":memory: connection not suitable here")
     def test_orm_many_engines(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -495,7 +517,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("col3", Integer, ForeignKey("mytable.col1")),
         )
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
 
         m1 = self.mapper_registry.map_imperatively(
             A,
@@ -549,7 +571,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         go()
 
-        metadata.drop_all()
+        metadata.drop_all(self.engine)
         del m1, m2
         assert_no_mappers()
 
@@ -563,10 +585,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *[Column("col%d" % i, Integer) for i in range(10)]
+            *[Column("col%d" % i, Integer) for i in range(10)],
         )
 
-        class Wide(object):
+        class Wide:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -614,7 +636,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             ),
         )
 
-        class SomeClass(object):
+        class SomeClass:
             pass
 
         self.mapper_registry.map_imperatively(SomeClass, some_table)
@@ -732,7 +754,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             )
             self.mapper_registry.map_imperatively(B, table2)
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             a3 = A(col2="a3")
@@ -905,7 +927,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
                 B, table2, inherits=A, polymorphic_identity="b"
             )
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A()
             a2 = A()
             b1 = B(col3="b1")
@@ -986,7 +1008,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             )
             self.mapper_registry.map_imperatively(B, table2)
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             b1 = B(col2="b1")
@@ -1018,25 +1040,6 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
         assert_no_mappers()
 
-    @testing.uses_deprecated()
-    def test_key_fallback_result(self):
-        m = MetaData()
-        e = self.engine
-        t = Table("t", m, Column("x", Integer), Column("y", Integer))
-        m.create_all(e)
-        e.execute(t.insert(), {"x": 1, "y": 1})
-
-        @profile_memory()
-        def go():
-            r = e.execute(t.alias().select())
-            for row in r:
-                row[t.c.x]
-
-        try:
-            go()
-        finally:
-            m.drop_all(e)
-
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can
         guard against memleaks here so why not"""
@@ -1050,7 +1053,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", ForeignKey("t1.id")),
         )
 
-        class T1(object):
+        class T1:
             pass
 
         t1_mapper = self.mapper_registry.map_imperatively(T1, t1)
@@ -1058,7 +1061,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
         @testing.emits_warning()
         @profile_memory()
         def go():
-            class T2(object):
+            class T2:
                 pass
 
             t2_mapper = self.mapper_registry.map_imperatively(T2, t2)
@@ -1094,10 +1097,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", Integer, ForeignKey("table1.id")),
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1148,10 +1151,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", Integer, ForeignKey("table1.id")),
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1179,8 +1182,8 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
 
 
+@testing.add_to_marker.memory_intensive
 class CycleTest(_fixtures.FixtureTest):
-    __tags__ = ("memory_intensive",)
     __requires__ = ("cpython", "no_windows")
 
     run_setup_mappers = "once"
@@ -1232,7 +1235,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         users = self.tables.users
 
-        class Foo(object):
+        class Foo:
             @hybrid.hybrid_property
             def user_name(self):
                 return self.name
@@ -1246,20 +1249,6 @@ class CycleTest(_fixtures.FixtureTest):
         def go():
             a1 = aliased(Foo)
             a1.user_name.__clause_element__()
-
-        go()
-
-    def test_raise_from(self):
-        @assert_cycles()
-        def go():
-            try:
-                try:
-                    raise KeyError("foo")
-                except KeyError as ke:
-
-                    util.raise_(Exception("oops"), from_=ke)
-            except Exception as err:  # noqa
-                pass
 
         go()
 
@@ -1492,7 +1481,9 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles(4)
         def go():
-            result = s.connection(mapper=User).execute(stmt)
+            result = s.connection(bind_arguments=dict(mapper=User)).execute(
+                stmt
+            )
             while True:
                 row = result.fetchone()
                 if row is None:
@@ -1622,7 +1613,7 @@ class CycleTest(_fixtures.FixtureTest):
         go()
 
     def test_weak_sequence(self):
-        class Foo(object):
+        class Foo:
             pass
 
         f = Foo()

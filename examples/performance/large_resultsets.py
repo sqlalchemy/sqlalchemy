@@ -168,7 +168,7 @@ def _test_dbapi_raw(n, make_objects):
         # because if you're going to roll your own, you're probably
         # going to do this, so see how this pushes you right back into
         # ORM land anyway :)
-        class SimpleCustomer(object):
+        class SimpleCustomer:
             def __init__(self, id_, name, description):
                 self.id_ = id_
                 self.name = name

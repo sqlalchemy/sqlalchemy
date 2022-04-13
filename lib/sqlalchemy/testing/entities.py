@@ -1,18 +1,19 @@
 # testing/entities.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import sqlalchemy as sa
 from .. import exc as sa_exc
-from ..util import compat
 
 _repr_stack = set()
 
 
-class BasicEntity(object):
+class BasicEntity:
     def __init__(self, **kw):
         for key, value in kw.items():
             setattr(self, key, value)
@@ -39,7 +40,7 @@ class BasicEntity(object):
 _recursion_stack = set()
 
 
-class ComparableMixin(object):
+class ComparableMixin:
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -87,9 +88,7 @@ class ComparableMixin(object):
                 except (AttributeError, sa_exc.UnboundExecutionError):
                     return False
 
-                if hasattr(value, "__iter__") and not isinstance(
-                    value, compat.string_types
-                ):
+                if hasattr(value, "__iter__") and not isinstance(value, str):
                     if hasattr(value, "__getitem__") and not hasattr(
                         value, "keys"
                     ):

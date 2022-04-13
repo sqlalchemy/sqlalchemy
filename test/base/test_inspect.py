@@ -8,7 +8,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
-class TestFixture(object):
+class TestFixture:
     pass
 
 
@@ -45,7 +45,7 @@ class TestInspection(fixtures.TestBase):
         class SomeFoo(TestFixture):
             pass
 
-        class SomeFooInspect(object):
+        class SomeFooInspect:
             def __init__(self, target):
                 self.target = target
 

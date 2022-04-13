@@ -1,53 +1,92 @@
 # sql/lambdas.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
+import collections.abc as collections_abc
+import inspect
 import itertools
 import operator
-import sys
 import types
+from types import CodeType
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Iterable
+from typing import List
+from typing import MutableMapping
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import Union
 import weakref
 
+from . import cache_key as _cache_key
 from . import coercions
 from . import elements
 from . import roles
 from . import schema
-from . import traversals
 from . import type_api
 from . import visitors
 from .base import _clone
+from .base import Executable
 from .base import Options
+from .cache_key import CacheConst
 from .operators import ColumnOperators
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util import collections_abc
-from ..util import compat
+from ..util.typing import Literal
+from ..util.typing import Protocol
+from ..util.typing import Self
 
-_closure_per_cache_key = util.LRUCache(1000)
+if TYPE_CHECKING:
+    from .cache_key import CacheConst
+    from .cache_key import NO_CACHE
+    from .elements import BindParameter
+    from .elements import ClauseElement
+    from .roles import SQLRole
+    from .visitors import _CloneCallableType
+
+_LambdaCacheType = MutableMapping[
+    Tuple[Any, ...], Union["NonAnalyzedFunction", "AnalyzedFunction"]
+]
+_BoundParameterGetter = Callable[..., Any]
+
+_closure_per_cache_key: _LambdaCacheType = util.LRUCache(1000)
+
+
+class _LambdaType(Protocol):
+    __code__: CodeType
+    __closure__: Iterable[Tuple[Any, Any]]
+
+    def __call__(self, *arg: Any, **kw: Any) -> ClauseElement:
+        ...
 
 
 class LambdaOptions(Options):
     enable_tracking = True
     track_closure_variables = True
-    track_on = None
+    track_on: Optional[object] = None
     global_track_bound_values = True
     track_bound_values = True
-    lambda_cache = None
+    lambda_cache: Optional[_LambdaCacheType] = None
 
 
 def lambda_stmt(
-    lmb,
-    enable_tracking=True,
-    track_closure_variables=True,
-    track_on=None,
-    global_track_bound_values=True,
-    track_bound_values=True,
-    lambda_cache=None,
-):
+    lmb: _LambdaType,
+    enable_tracking: bool = True,
+    track_closure_variables: bool = True,
+    track_on: Optional[object] = None,
+    global_track_bound_values: bool = True,
+    track_bound_values: bool = True,
+    lambda_cache: Optional[_LambdaCacheType] = None,
+) -> StatementLambdaElement:
     """Produce a SQL statement that is cached as a lambda.
 
     The Python code object within the lambda is scanned for both Python
@@ -140,15 +179,28 @@ class LambdaElement(elements.ClauseElement):
         ("_resolved", visitors.InternalTraversal.dp_clauseelement)
     ]
 
-    _transforms = ()
+    _transforms: Tuple[_CloneCallableType, ...] = ()
 
-    parent_lambda = None
+    _resolved_bindparams: List[BindParameter[Any]]
+    parent_lambda: Optional[StatementLambdaElement] = None
+    closure_cache_key: Union[Tuple[Any, ...], Literal[CacheConst.NO_CACHE]]
+    role: Type[SQLRole]
+    _rec: Union[AnalyzedFunction, NonAnalyzedFunction]
+    fn: _LambdaType
+    tracker_key: Tuple[CodeType, ...]
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.fn.__code__)
+        return "%s(%r)" % (
+            self.__class__.__name__,
+            self.fn.__code__,
+        )
 
     def __init__(
-        self, fn, role, opts=LambdaOptions, apply_propagate_attrs=None
+        self,
+        fn: _LambdaType,
+        role: Type[SQLRole],
+        opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
+        apply_propagate_attrs: Optional[ClauseElement] = None,
     ):
         self.fn = fn
         self.role = role
@@ -180,6 +232,7 @@ class LambdaElement(elements.ClauseElement):
             opts,
         )
 
+        bindparams: List[BindParameter[Any]]
         self._resolved_bindparams = bindparams = []
 
         if self.parent_lambda is not None:
@@ -187,8 +240,10 @@ class LambdaElement(elements.ClauseElement):
         else:
             parent_closure_cache_key = ()
 
-        if parent_closure_cache_key is not traversals.NO_CACHE:
-            anon_map = traversals.anon_map()
+        cache_key: Union[Tuple[Any, ...], Literal[CacheConst.NO_CACHE]]
+
+        if parent_closure_cache_key is not _cache_key.NO_CACHE:
+            anon_map = visitors.anon_map()
             cache_key = tuple(
                 [
                     getter(closure, opts, anon_map, bindparams)
@@ -196,7 +251,7 @@ class LambdaElement(elements.ClauseElement):
                 ]
             )
 
-            if traversals.NO_CACHE not in anon_map:
+            if _cache_key.NO_CACHE not in anon_map:
                 cache_key = parent_closure_cache_key + cache_key
 
                 self.closure_cache_key = cache_key
@@ -206,17 +261,17 @@ class LambdaElement(elements.ClauseElement):
                 except KeyError:
                     rec = None
             else:
-                cache_key = traversals.NO_CACHE
+                cache_key = _cache_key.NO_CACHE
                 rec = None
 
         else:
-            cache_key = traversals.NO_CACHE
+            cache_key = _cache_key.NO_CACHE
             rec = None
 
         self.closure_cache_key = cache_key
 
         if rec is None:
-            if cache_key is not traversals.NO_CACHE:
+            if cache_key is not _cache_key.NO_CACHE:
                 rec = AnalyzedFunction(
                     tracker, self, apply_propagate_attrs, fn
                 )
@@ -235,11 +290,11 @@ class LambdaElement(elements.ClauseElement):
 
         self._rec = rec
 
-        if cache_key is not traversals.NO_CACHE:
+        if cache_key is not _cache_key.NO_CACHE:
             if self.parent_lambda is not None:
                 bindparams[:0] = self.parent_lambda._resolved_bindparams
 
-            lambda_element = self
+            lambda_element: Optional[LambdaElement] = self
             while lambda_element is not None:
                 rec = lambda_element._rec
                 if rec.bindparam_trackers:
@@ -287,16 +342,20 @@ class LambdaElement(elements.ClauseElement):
     def _setup_binds_for_tracked_expr(self, expr):
         bindparam_lookup = {b.key: b for b in self._resolved_bindparams}
 
-        def replace(thing):
-            if isinstance(thing, elements.BindParameter):
+        def replace(
+            element: Optional[visitors.ExternallyTraversible], **kw: Any
+        ) -> Optional[visitors.ExternallyTraversible]:
+            if isinstance(element, elements.BindParameter):
 
-                if thing.key in bindparam_lookup:
-                    bind = bindparam_lookup[thing.key]
-                    if thing.expanding:
+                if element.key in bindparam_lookup:
+                    bind = bindparam_lookup[element.key]
+                    if element.expanding:
                         bind.expanding = True
-                        bind.expand_op = thing.expand_op
-                        bind.type = thing.type
+                        bind.expand_op = element.expand_op
+                        bind.type = element.type
                     return bind
+
+            return None
 
         if self._rec.is_sequence:
             expr = [
@@ -309,13 +368,16 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _copy_internals(
-        self, clone=_clone, deferred_copy_internals=None, **kw
-    ):
+        self: Self,
+        clone: _CloneCallableType = _clone,
+        deferred_copy_internals: Optional[_CloneCallableType] = None,
+        **kw: Any,
+    ) -> None:
         # TODO: this needs A LOT of tests
         self._resolved = clone(
             self._resolved,
             deferred_copy_internals=deferred_copy_internals,
-            **kw
+            **kw,
         )
 
     @util.memoized_property
@@ -328,8 +390,8 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _gen_cache_key(self, anon_map, bindparams):
-        if self.closure_cache_key is traversals.NO_CACHE:
-            anon_map[traversals.NO_CACHE] = True
+        if self.closure_cache_key is _cache_key.NO_CACHE:
+            anon_map[_cache_key.NO_CACHE] = True
             return None
 
         cache_key = (
@@ -338,9 +400,15 @@ class LambdaElement(elements.ClauseElement):
         ) + self.closure_cache_key
 
         parent = self.parent_lambda
+
         while parent is not None:
+            assert parent.closure_cache_key is not CacheConst.NO_CACHE
+            parent_closure_cache_key: Tuple[
+                Any, ...
+            ] = parent.closure_cache_key
+
             cache_key = (
-                (parent.fn.__code__,) + parent.closure_cache_key + cache_key
+                (parent.fn.__code__,) + parent_closure_cache_key + cache_key
             )
 
             parent = parent.parent_lambda
@@ -349,7 +417,7 @@ class LambdaElement(elements.ClauseElement):
             bindparams.extend(self._resolved_bindparams)
         return cache_key
 
-    def _invoke_user_fn(self, fn, *arg):
+    def _invoke_user_fn(self, fn: _LambdaType, *arg: Any) -> ClauseElement:
         return fn()
 
 
@@ -363,7 +431,13 @@ class DeferredLambdaElement(LambdaElement):
 
     """
 
-    def __init__(self, fn, role, opts=LambdaOptions, lambda_args=()):
+    def __init__(
+        self,
+        fn: _LambdaType,
+        role: Type[roles.SQLRole],
+        opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
+        lambda_args: Tuple[Any, ...] = (),
+    ):
         self.lambda_args = lambda_args
         super(DeferredLambdaElement, self).__init__(fn, role, opts)
 
@@ -371,6 +445,7 @@ class DeferredLambdaElement(LambdaElement):
         return fn(*self.lambda_args)
 
     def _resolve_with_args(self, *lambda_args):
+        assert isinstance(self._rec, AnalyzedFunction)
         tracker_fn = self._rec.tracker_instrumented_fn
         expr = tracker_fn(*lambda_args)
 
@@ -502,25 +577,33 @@ class StatementLambdaElement(roles.AllowsLambdaRole, LambdaElement):
         return LinkedLambdaElement(other, parent_lambda=self, opts=opts)
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
+        if TYPE_CHECKING:
+            assert isinstance(self._rec.expected_expr, ClauseElement)
         if self._rec.expected_expr.supports_execution:
             return connection._execute_clauseelement(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self)
 
     @property
     def _with_options(self):
+        if TYPE_CHECKING:
+            assert isinstance(self._rec.expected_expr, Executable)
         return self._rec.expected_expr._with_options
 
     @property
     def _effective_plugin_target(self):
+        if TYPE_CHECKING:
+            assert isinstance(self._rec.expected_expr, Executable)
         return self._rec.expected_expr._effective_plugin_target
 
     @property
     def _execution_options(self):
+        if TYPE_CHECKING:
+            assert isinstance(self._rec.expected_expr, Executable)
         return self._rec.expected_expr._execution_options
 
     def spoil(self):
@@ -568,11 +651,11 @@ class NullLambdaStatement(roles.AllowsLambdaRole, elements.ClauseElement):
         return NullLambdaStatement(statement)
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         if self._resolved.supports_execution:
             return connection._execute_clauseelement(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self)
@@ -581,9 +664,14 @@ class NullLambdaStatement(roles.AllowsLambdaRole, elements.ClauseElement):
 class LinkedLambdaElement(StatementLambdaElement):
     """Represent subsequent links of a :class:`.StatementLambdaElement`."""
 
-    role = None
+    parent_lambda: StatementLambdaElement
 
-    def __init__(self, fn, parent_lambda, opts):
+    def __init__(
+        self,
+        fn: _LambdaType,
+        parent_lambda: StatementLambdaElement,
+        opts: Union[Type[LambdaOptions], LambdaOptions],
+    ):
         self.opts = opts
         self.fn = fn
         self.parent_lambda = parent_lambda
@@ -596,7 +684,7 @@ class LinkedLambdaElement(StatementLambdaElement):
         return fn(self.parent_lambda._resolved)
 
 
-class AnalyzedCode(object):
+class AnalyzedCode:
     __slots__ = (
         "track_closure_variables",
         "track_bound_values",
@@ -604,7 +692,9 @@ class AnalyzedCode(object):
         "closure_trackers",
         "build_py_wrappers",
     )
-    _fns = weakref.WeakKeyDictionary()
+    _fns: weakref.WeakKeyDictionary[
+        CodeType, AnalyzedCode
+    ] = weakref.WeakKeyDictionary()
 
     @classmethod
     def get(cls, fn, lambda_element, lambda_kw, **kw):
@@ -613,12 +703,18 @@ class AnalyzedCode(object):
             return cls._fns[fn.__code__]
         except KeyError:
             pass
+
+        analyzed: AnalyzedCode
         cls._fns[fn.__code__] = analyzed = AnalyzedCode(
             fn, lambda_element, lambda_kw, **kw
         )
         return analyzed
 
     def __init__(self, fn, lambda_element, opts):
+        if inspect.ismethod(fn):
+            raise exc.ArgumentError(
+                "Method %s may not be passed as a SQL expression" % fn
+            )
         closure = fn.__closure__
 
         self.track_bound_values = (
@@ -810,7 +906,7 @@ class AnalyzedCode(object):
                     for tup_elem in opts.track_on[idx]
                 )
 
-        elif isinstance(elem, traversals.HasCacheKey):
+        elif isinstance(elem, _cache_key.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
                 return opts.track_on[idx]._gen_cache_key(anon_map, bindparams)
@@ -836,7 +932,7 @@ class AnalyzedCode(object):
 
         """
 
-        if isinstance(cell_contents, traversals.HasCacheKey):
+        if isinstance(cell_contents, _cache_key.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
 
@@ -902,24 +998,21 @@ class AnalyzedCode(object):
     def _raise_for_uncacheable_closure_variable(
         self, variable_name, fn, from_=None
     ):
-        util.raise_(
-            exc.InvalidRequestError(
-                "Closure variable named '%s' inside of lambda callable %s "
-                "does not refer to a cacheable SQL element, and also does not "
-                "appear to be serving as a SQL literal bound value based on "
-                "the default "
-                "SQL expression returned by the function.   This variable "
-                "needs to remain outside the scope of a SQL-generating lambda "
-                "so that a proper cache key may be generated from the "
-                "lambda's state.  Evaluate this variable outside of the "
-                "lambda, set track_on=[<elements>] to explicitly select "
-                "closure elements to track, or set "
-                "track_closure_variables=False to exclude "
-                "closure variables from being part of the cache key."
-                % (variable_name, fn.__code__),
-            ),
-            from_=from_,
-        )
+        raise exc.InvalidRequestError(
+            "Closure variable named '%s' inside of lambda callable %s "
+            "does not refer to a cacheable SQL element, and also does not "
+            "appear to be serving as a SQL literal bound value based on "
+            "the default "
+            "SQL expression returned by the function.   This variable "
+            "needs to remain outside the scope of a SQL-generating lambda "
+            "so that a proper cache key may be generated from the "
+            "lambda's state.  Evaluate this variable outside of the "
+            "lambda, set track_on=[<elements>] to explicitly select "
+            "closure elements to track, or set "
+            "track_closure_variables=False to exclude "
+            "closure variables from being part of the cache key."
+            % (variable_name, fn.__code__),
+        ) from from_
 
     def _cache_key_getter_tracked_literal(self, fn, pytracker):
         """Return a getter that will extend a cache key with new entries
@@ -941,21 +1034,25 @@ class AnalyzedCode(object):
         )
 
 
-class NonAnalyzedFunction(object):
+class NonAnalyzedFunction:
     __slots__ = ("expr",)
 
-    closure_bindparams = None
-    bindparam_trackers = None
+    closure_bindparams: Optional[List[BindParameter[Any]]] = None
+    bindparam_trackers: Optional[List[_BoundParameterGetter]] = None
 
-    def __init__(self, expr):
+    is_sequence = False
+
+    expr: ClauseElement
+
+    def __init__(self, expr: ClauseElement):
         self.expr = expr
 
     @property
-    def expected_expr(self):
+    def expected_expr(self) -> ClauseElement:
         return self.expr
 
 
-class AnalyzedFunction(object):
+class AnalyzedFunction:
     __slots__ = (
         "analyzed_code",
         "fn",
@@ -968,6 +1065,10 @@ class AnalyzedFunction(object):
         "propagate_attrs",
         "closure_bindparams",
     )
+
+    closure_bindparams: Optional[List[BindParameter[Any]]]
+    expected_expr: Union[ClauseElement, List[ClauseElement]]
+    bindparam_trackers: Optional[List[_BoundParameterGetter]]
 
     def __init__(
         self,
@@ -1068,19 +1169,25 @@ class AnalyzedFunction(object):
         if parent_lambda is None:
             if isinstance(expr, collections_abc.Sequence):
                 self.expected_expr = [
-                    coercions.expect(
-                        lambda_element.role,
-                        sub_expr,
-                        apply_propagate_attrs=apply_propagate_attrs,
+                    cast(
+                        "ClauseElement",
+                        coercions.expect(
+                            lambda_element.role,
+                            sub_expr,
+                            apply_propagate_attrs=apply_propagate_attrs,
+                        ),
                     )
                     for sub_expr in expr
                 ]
                 self.is_sequence = True
             else:
-                self.expected_expr = coercions.expect(
-                    lambda_element.role,
-                    expr,
-                    apply_propagate_attrs=apply_propagate_attrs,
+                self.expected_expr = cast(
+                    "ClauseElement",
+                    coercions.expect(
+                        lambda_element.role,
+                        expr,
+                        apply_propagate_attrs=apply_propagate_attrs,
+                    ),
                 )
                 self.is_sequence = False
         else:
@@ -1111,15 +1218,14 @@ class AnalyzedFunction(object):
         code += "        return %s\n" % ", ".join("i%d" % i for i in argrange)
         code += "    return closure.__closure__"
         vars_ = {"o%d" % i: cell_values[i] for i in argrange}
-        compat.exec_(code, vars_, vars_)
+        exec(code, vars_, vars_)
         closure = vars_["make_cells"]()
 
         func = type(f)(
             f.__code__, globals_, f.__name__, f.__defaults__, closure
         )
-        if sys.version_info >= (3,):
-            func.__annotations__ = f.__annotations__
-            func.__kwdefaults__ = f.__kwdefaults__
+        func.__annotations__ = f.__annotations__
+        func.__kwdefaults__ = f.__kwdefaults__
         func.__doc__ = f.__doc__
         func.__module__ = f.__module__
 
@@ -1172,7 +1278,7 @@ class PyWrapper(ColumnOperators):
             and not isinstance(
                 # TODO: coverage where an ORM option or similar is here
                 value,
-                traversals.HasCacheKey,
+                _cache_key.HasCacheKey,
             )
         ):
             name = object.__getattribute__(self, "_name")

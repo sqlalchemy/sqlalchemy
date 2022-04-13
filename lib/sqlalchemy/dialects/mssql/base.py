@@ -1,5 +1,5 @@
 # mssql/base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -31,11 +31,9 @@ SQL Server provides so-called "auto incrementing" behavior using the
 table. SQLAlchemy considers ``IDENTITY`` within its default "autoincrement"
 behavior for an integer primary key column, described at
 :paramref:`_schema.Column.autoincrement`.  This means that by default,
-the first
-integer primary key column in a :class:`_schema.Table`
-will be considered to be the
-identity column - unless it is associated with a :class:`.Sequence` - and will
-generate DDL as such::
+the first integer primary key column in a :class:`_schema.Table` will be
+considered to be the identity column - unless it is associated with a
+:class:`.Sequence` - and will generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
 
@@ -169,6 +167,70 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
    supports real sequences as a separate construct, :class:`.Sequence` will be
    functional in the normal way starting from SQLAlchemy version 1.4.
 
+
+Using IDENTITY with Non-Integer numeric types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQL Server also allows ``IDENTITY`` to be used with ``NUMERIC`` columns.  To
+implement this pattern smoothly in SQLAlchemy, the primary datatype of the
+column should remain as ``Integer``, however the underlying implementation
+type deployed to the SQL Server database can be specified as ``Numeric`` using
+:meth:`.TypeEngine.with_variant`::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import Numeric
+    from sqlalchemy import String
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(Numeric(10, 0), "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+In the above example, ``Integer().with_variant()`` provides clear usage
+information that accurately describes the intent of the code. The general
+restriction that ``autoincrement`` only applies to ``Integer`` is established
+at the metadata level and not at the per-dialect level.
+
+When using the above pattern, the primary key identifier that comes back from
+the insertion of a row, which is also the value that would be assigned to an
+ORM object such as ``TestTable`` above, will be an instance of ``Decimal()``
+and not ``int`` when using SQL Server. The numeric return type of the
+:class:`_types.Numeric` type can be changed to return floats by passing False
+to :paramref:`_types.Numeric.asdecimal`. To normalize the return type of the
+above ``Numeric(10, 0)`` to return Python ints (which also support "long"
+integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
+
+    from sqlalchemy import TypeDecorator
+
+    class NumericAsInteger(TypeDecorator):
+        '''normalize floating point return values into ints'''
+
+        impl = Numeric(10, 0, asdecimal=False)
+        cache_ok = True
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = int(value)
+            return value
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(NumericAsInteger, "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+
 INSERT behavior
 ^^^^^^^^^^^^^^^^
 
@@ -249,8 +311,7 @@ how SQLAlchemy handles this:
 
 
 
-This
-is an auxiliary use case suitable for testing and bulk insert scenarios.
+This is an auxiliary use case suitable for testing and bulk insert scenarios.
 
 SEQUENCE support
 ----------------
@@ -744,10 +805,13 @@ https://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
 """  # noqa
 
+from __future__ import annotations
+
 import codecs
 import datetime
 import operator
 import re
+from typing import TYPE_CHECKING
 
 from . import information_schema as ischema
 from .json import JSON
@@ -759,7 +823,6 @@ from ... import schema as sa_schema
 from ... import Sequence
 from ... import sql
 from ... import text
-from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 from ...engine import default
@@ -771,7 +834,9 @@ from ...sql import expression
 from ...sql import func
 from ...sql import quoted_name
 from ...sql import roles
+from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql._typing import is_sql_compiler
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -786,10 +851,12 @@ from ...types import NVARCHAR
 from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
-from ...util import compat
 from ...util import update_wrapper
-from ...util.langhelpers import public_factory
 
+if TYPE_CHECKING:
+    from ...sql.compiler import SQLCompiler
+    from ...sql.dml import DMLState
+    from ...sql.selectable import TableClause
 
 # https://sqlserverbuilds.blogspot.com/
 MS_2017_VERSION = (14,)
@@ -1023,7 +1090,7 @@ class _MSDate(sqltypes.Date):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.date()
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
@@ -1065,7 +1132,7 @@ class TIME(sqltypes.TIME):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
@@ -1085,7 +1152,7 @@ class _BASETIMEIMPL(TIME):
     __visit_name__ = "_BASETIMEIMPL"
 
 
-class _DateTimeBase(object):
+class _DateTimeBase:
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -1120,7 +1187,7 @@ class DATETIMEOFFSET(_DateTimeBase, sqltypes.DateTime):
         self.precision = precision
 
 
-class _UnicodeLiteral(object):
+class _UnicodeLiteral:
     def literal_processor(self, dialect):
         def process(value):
 
@@ -1224,9 +1291,10 @@ class NTEXT(sqltypes.UnicodeText):
 class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
     """The MSSQL VARBINARY type.
 
-    This type is present to support "deprecate_large_types" mode where
-    either ``VARBINARY(max)`` or IMAGE is rendered.   Otherwise, this type
-    object is redundant vs. :class:`_types.VARBINARY`.
+    This type adds additional features to the core :class:`_types.VARBINARY`
+    type, including "deprecate_large_types" mode where
+    either ``VARBINARY(max)`` or IMAGE is rendered, as well as the SQL
+    Server ``FILESTREAM`` option.
 
     .. versionadded:: 1.0.0
 
@@ -1234,11 +1302,32 @@ class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
 
         :ref:`mssql_large_type_deprecation`
 
-
-
     """
 
     __visit_name__ = "VARBINARY"
+
+    def __init__(self, length=None, filestream=False):
+        """
+        Construct a VARBINARY type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements, for those binary types that accept a length,
+          such as the MySQL BLOB type.
+
+        :param filestream=False: if True, renders the ``FILESTREAM`` keyword
+          in the table definition. In this case ``length`` must be ``None``
+          or ``'max'``.
+
+          .. versionadded:: 1.4.31
+
+        """
+
+        self.filestream = filestream
+        if self.filestream and length not in (None, "max"):
+            raise ValueError(
+                "length must be None or 'max' when setting filestream"
+            )
+        super(VARBINARY, self).__init__(length=length)
 
 
 class IMAGE(sqltypes.LargeBinary):
@@ -1287,40 +1376,40 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
+def try_cast(*arg, **kw):
+    """Create a TRY_CAST expression.
+
+    :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
+    construct, and works in the same way, except that the SQL expression
+    rendered is "TRY_CAST" rather than "CAST"::
+
+        from sqlalchemy import select
+        from sqlalchemy import Numeric
+        from sqlalchemy.dialects.mssql import try_cast
+
+        stmt = select(
+            try_cast(product_table.c.unit_price, Numeric(10, 4))
+        )
+
+    The above would render::
+
+        SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
+        FROM product_table
+
+    .. versionadded:: 1.3.7
+
+    """
+    return TryCast(*arg, **kw)
+
+
 class TryCast(sql.elements.Cast):
     """Represent a SQL Server TRY_CAST expression."""
 
     __visit_name__ = "try_cast"
 
     stringify_dialect = "mssql"
+    inherit_cache = True
 
-    def __init__(self, *arg, **kw):
-        """Create a TRY_CAST expression.
-
-        :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
-        construct, and works in the same way, except that the SQL expression
-        rendered is "TRY_CAST" rather than "CAST"::
-
-            from sqlalchemy import select
-            from sqlalchemy import Numeric
-            from sqlalchemy.dialects.mssql import try_cast
-
-            stmt = select(
-                try_cast(product_table.c.unit_price, Numeric(10, 4))
-            )
-
-        The above would render::
-
-            SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
-            FROM product_table
-
-        .. versionadded:: 1.3.7
-
-        """
-        super(TryCast, self).__init__(*arg, **kw)
-
-
-try_cast = public_factory(TryCast, ".dialects.mssql.try_cast")
 
 # old names.
 MSDateTime = _MSDateTime
@@ -1507,7 +1596,10 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return "XML"
 
     def visit_VARBINARY(self, type_, **kw):
-        return self._extend("VARBINARY", type_, length=type_.length or "max")
+        text = self._extend("VARBINARY", type_, length=type_.length or "max")
+        if getattr(type_, "filestream", False):
+            text += " FILESTREAM"
+        return text
 
     def visit_boolean(self, type_, **kw):
         return self.visit_BIT(type_)
@@ -1538,33 +1630,36 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _select_lastrowid = False
     _lastrowid = None
     _rowcount = None
-    _result_strategy = None
+
+    dialect: MSDialect
 
     def _opt_encode(self, statement):
-
-        if not self.dialect.supports_unicode_statements:
-            encoded = self.dialect._encoder(statement)[0]
-        else:
-            encoded = statement
 
         if self.compiled and self.compiled.schema_translate_map:
 
             rst = self.compiled.preparer._render_schema_translates
-            encoded = rst(encoded, self.compiled.schema_translate_map)
+            statement = rst(statement, self.compiled.schema_translate_map)
 
-        return encoded
+        return statement
 
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
 
         if self.isinsert:
+            if TYPE_CHECKING:
+                assert is_sql_compiler(self.compiled)
+                assert isinstance(self.compiled.compile_state, DMLState)
+                assert isinstance(
+                    self.compiled.compile_state.dml_table, TableClause
+                )
+
             tbl = self.compiled.compile_state.dml_table
             id_column = tbl._autoincrement_column
-            insert_has_identity = (id_column is not None) and (
-                not isinstance(id_column.default, Sequence)
-            )
 
-            if insert_has_identity:
+            if id_column is not None and (
+                not isinstance(id_column.default, Sequence)
+            ):
+                insert_has_identity = True
                 compile_state = self.compiled.compile_state
                 self._enable_identity_insert = (
                     id_column.key in self.compiled_parameters[0]
@@ -1577,12 +1672,13 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
 
             else:
+                insert_has_identity = False
                 self._enable_identity_insert = False
 
             self._select_lastrowid = (
                 not self.compiled.inline
                 and insert_has_identity
-                and not self.compiled.returning
+                and not self.compiled.effective_returning
                 and not self._enable_identity_insert
                 and not self.executemany
             )
@@ -1623,8 +1719,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
             self._lastrowid = int(row[0])
 
         elif (
-            self.isinsert or self.isupdate or self.isdelete
-        ) and self.compiled.returning:
+            self.compiled is not None
+            and is_sql_compiler(self.compiled)
+            and self.compiled.effective_returning
+        ):
             self.cursor_fetch_strategy = (
                 _cursor.FullyBufferedCursorFetchStrategy(
                     self.cursor,
@@ -1634,6 +1732,12 @@ class MSExecutionContext(default.DefaultExecutionContext):
             )
 
         if self._enable_identity_insert:
+            if TYPE_CHECKING:
+                assert is_sql_compiler(self.compiled)
+                assert isinstance(self.compiled.compile_state, DMLState)
+                assert isinstance(
+                    self.compiled.compile_state.dml_table, TableClause
+                )
             conn._cursor_execute(
                 self.cursor,
                 self._opt_encode(
@@ -1669,14 +1773,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
             except Exception:
                 pass
-
-    def get_result_cursor_strategy(self, result):
-        if self._result_strategy:
-            return self._result_strategy
-        else:
-            return super(MSExecutionContext, self).get_result_cursor_strategy(
-                result
-            )
 
     def fire_sequence(self, seq, type_):
         return self._execute_scalar(
@@ -1991,21 +2087,25 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 expression.BinaryExpression(
                     binary.right, binary.left, binary.operator
                 ),
-                **kwargs
+                **kwargs,
             )
         return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         # SQL server returning clause requires that the columns refer to
         # the virtual table names "inserted" or "deleted".   Here, we make
         # a simple alias of our table with that name, and then adapt the
         # columns we have from the list of RETURNING columns to that new name
         # so that they render as "inserted.<colname>" / "deleted.<colname>".
 
-        if self.isinsert or self.isupdate:
+        if stmt.is_insert or stmt.is_update:
             target = stmt.table.alias("inserted")
-        else:
+        elif stmt.is_delete:
             target = stmt.table.alias("deleted")
+        else:
+            assert False, "expected Insert, Update or Delete statement"
 
         adapter = sql_util.ClauseAdapter(target)
 
@@ -2021,6 +2121,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self._label_returning_column(
                 stmt,
                 adapter.traverse(c),
+                populate_result_map,
                 {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)
@@ -2241,7 +2342,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
         else:
-            colspec += " " + self.dialect.type_compiler.process(
+            colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type, type_expression=column
             )
 
@@ -2327,9 +2428,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         # handle other included columns
         if index.dialect_options["mssql"]["include"]:
             inclusions = [
-                index.table.c[col]
-                if isinstance(col, util.string_types)
-                else col
+                index.table.c[col] if isinstance(col, str) else col
                 for col in index.dialect_options["mssql"]["include"]
             ]
 
@@ -2486,7 +2585,7 @@ def _db_plus_owner_listing(fn):
             dbname,
             owner,
             schema,
-            **kw
+            **kw,
         )
 
     return update_wrapper(wrap, fn)
@@ -2505,7 +2604,7 @@ def _db_plus_owner(fn):
             dbname,
             owner,
             schema,
-            **kw
+            **kw,
         )
 
     return update_wrapper(wrap, fn)
@@ -2553,6 +2652,9 @@ def _schema_elements(schema):
     # test/dialect/mssql/test_compiler.py -> test_force_schema_*
     # test/dialect/mssql/test_compiler.py -> test_schema_many_tokens_*
     #
+
+    if schema.startswith("__[SCHEMA_"):
+        return None, schema
 
     push = []
     symbol = ""
@@ -2648,7 +2750,7 @@ class MSDialect(default.DefaultDialect):
 
     statement_compiler = MSSQLCompiler
     ddl_compiler = MSDDLCompiler
-    type_compiler = MSTypeCompiler
+    type_compiler_cls = MSTypeCompiler
     preparer = MSIdentifierPreparer
 
     construct_arguments = [
@@ -2666,12 +2768,11 @@ class MSDialect(default.DefaultDialect):
         query_timeout=None,
         use_scope_identity=True,
         schema_name="dbo",
-        isolation_level=None,
         deprecate_large_types=None,
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
-        **opts
+        **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
@@ -2689,7 +2790,6 @@ class MSDialect(default.DefaultDialect):
 
         super(MSDialect, self).__init__(**opts)
 
-        self.isolation_level = isolation_level
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
 
@@ -2712,29 +2812,25 @@ class MSDialect(default.DefaultDialect):
         ]
     )
 
-    def set_isolation_level(self, connection, level):
-        level = level.replace("_", " ")
-        if level not in self._isolation_lookup:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
-        cursor = connection.cursor()
-        cursor.execute("SET TRANSACTION ISOLATION LEVEL %s" % level)
+    def get_isolation_level_values(self, dbapi_connection):
+        return list(self._isolation_lookup)
+
+    def set_isolation_level(self, dbapi_connection, level):
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
         cursor.close()
         if level == "SNAPSHOT":
-            connection.commit()
+            dbapi_connection.commit()
 
-    def get_isolation_level(self, connection):
+    def get_isolation_level(self, dbapi_connection):
         last_error = None
 
         views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
         for view in views:
-            cursor = connection.cursor()
+            cursor = dbapi_connection.cursor()
             try:
                 cursor.execute(
-                    """
+                    f"""
                   SELECT CASE transaction_isolation_level
                     WHEN 0 THEN NULL
                     WHEN 1 THEN 'READ UNCOMMITTED'
@@ -2742,10 +2838,9 @@ class MSDialect(default.DefaultDialect):
                     WHEN 3 THEN 'REPEATABLE READ'
                     WHEN 4 THEN 'SERIALIZABLE'
                     WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM %s
+                    FROM {view}
                     where session_id = @@SPID
                   """
-                    % view
                 )
                 val = cursor.fetchone()[0]
             except self.dbapi.Error as err:
@@ -2761,28 +2856,18 @@ class MSDialect(default.DefaultDialect):
             # DefaultDialect, so the warning here is all that displays
             util.warn(
                 "Could not fetch transaction isolation level, "
-                "tried views: %s; final error was: %s" % (views, last_error)
+                f"tried views: {views}; final error was: {last_error}"
             )
             raise NotImplementedError(
                 "Can't fetch isolation level on this particular "
-                "SQL Server version. tried views: %s; final error was: %s"
-                % (views, last_error)
+                f"SQL Server version. tried views: {views}; final "
+                f"error was: {last_error}"
             )
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
         self._setup_version_attributes()
         self._setup_supports_nvarchar_max(connection)
-
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
 
     def _setup_version_attributes(self):
         if self.server_version_info[0] not in list(range(8, 17)):
@@ -2827,6 +2912,8 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, dbname, owner, schema):
         self._ensure_has_table_connection(connection)
         if tablename.startswith("#"):  # temporary table
+            # mssql does not support temporary views
+            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
             tables = ischema.mssql_temp_table_columns
 
             s = sql.select(tables.c.table_name).where(
@@ -2835,14 +2922,18 @@ class MSDialect(default.DefaultDialect):
                 )
             )
 
-            table_name = connection.execute(s.limit(1)).scalar()
-            if table_name:
-                # #6910: verify it's not a temp table from another session
-                obj_id = connection.execute(
-                    text("SELECT object_id(:table_name)"),
-                    {"table_name": "tempdb.dbo.[{}]".format(table_name)},
-                ).scalar()
-                return bool(obj_id)
+            # #7168: fetch all (not just first match) in case some other #temp
+            #        table with the same name happens to appear first
+            table_names = connection.execute(s).scalars().fetchall()
+            # #6910: verify it's not a temp table from another session
+            for table_name in table_names:
+                if bool(
+                    connection.scalar(
+                        text("SELECT object_id(:table_name)"),
+                        {"table_name": "tempdb.dbo.[{}]".format(table_name)},
+                    )
+                ):
+                    return True
             else:
                 return False
         else:
@@ -2850,7 +2941,10 @@ class MSDialect(default.DefaultDialect):
 
             s = sql.select(tables.c.table_name).where(
                 sql.and_(
-                    tables.c.table_type == "BASE TABLE",
+                    sql.or_(
+                        tables.c.table_type == "BASE TABLE",
+                        tables.c.table_type == "VIEW",
+                    ),
                     tables.c.table_name == tablename,
                 )
             )
@@ -3001,6 +3095,12 @@ class MSDialect(default.DefaultDialect):
                     indexes[row["index_id"]]["column_names"].append(
                         row["name"]
                     )
+        for index_info in indexes.values():
+            # NOTE: "root level" include_columns is legacy, now part of
+            #       dialect_options (issue #7382)
+            index_info.setdefault("dialect_options", {})[
+                "mssql_include"
+            ] = index_info["include_columns"]
 
         return list(indexes.values())
 
@@ -3052,22 +3152,16 @@ class MSDialect(default.DefaultDialect):
                 {"p1": self._temp_table_name_like_pattern(tablename)},
             ).one()
         except exc.MultipleResultsFound as me:
-            util.raise_(
-                exc.UnreflectableTableError(
-                    "Found more than one temporary table named '%s' in tempdb "
-                    "at this time. Cannot reliably resolve that name to its "
-                    "internal table name." % tablename
-                ),
-                replace_context=me,
-            )
+            raise exc.UnreflectableTableError(
+                "Found more than one temporary table named '%s' in tempdb "
+                "at this time. Cannot reliably resolve that name to its "
+                "internal table name." % tablename
+            ) from me
         except exc.NoResultFound as ne:
-            util.raise_(
-                exc.NoSuchTableError(
-                    "Unable to find a temporary table named '%s' in tempdb."
-                    % tablename
-                ),
-                replace_context=ne,
-            )
+            raise exc.NoSuchTableError(
+                "Unable to find a temporary table named '%s' in tempdb."
+                % tablename
+            ) from ne
 
     @reflection.cache
     @_db_plus_owner
@@ -3204,8 +3298,8 @@ class MSDialect(default.DefaultDialect):
                     cdict["identity"] = {}
                 else:
                     if isinstance(coltype, sqltypes.BigInteger):
-                        start = compat.long_type(identity_start)
-                        increment = compat.long_type(identity_increment)
+                        start = int(identity_start)
+                        increment = int(identity_increment)
                     elif isinstance(coltype, sqltypes.Integer):
                         start = int(identity_start)
                         increment = int(identity_increment)
@@ -3260,33 +3354,123 @@ class MSDialect(default.DefaultDialect):
     def get_foreign_keys(
         self, connection, tablename, dbname, owner, schema, **kw
     ):
-        RR = ischema.ref_constraints
-        C = ischema.key_constraints.alias("C")
-        R = ischema.key_constraints.alias("R")
         # Foreign key constraints
         s = (
-            sql.select(
-                C.c.column_name,
-                R.c.table_schema,
-                R.c.table_name,
-                R.c.column_name,
-                RR.c.constraint_name,
-                RR.c.match_option,
-                RR.c.update_rule,
-                RR.c.delete_rule,
+            text(
+                """\
+WITH fk_info AS (
+    SELECT
+        ischema_ref_con.constraint_schema,
+        ischema_ref_con.constraint_name,
+        ischema_key_col.ordinal_position,
+        ischema_key_col.table_schema,
+        ischema_key_col.table_name,
+        ischema_ref_con.unique_constraint_schema,
+        ischema_ref_con.unique_constraint_name,
+        ischema_ref_con.match_option,
+        ischema_ref_con.update_rule,
+        ischema_ref_con.delete_rule,
+        ischema_key_col.column_name AS constrained_column
+    FROM
+        INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS ischema_ref_con
+        INNER JOIN
+        INFORMATION_SCHEMA.KEY_COLUMN_USAGE ischema_key_col ON
+            ischema_key_col.table_schema = ischema_ref_con.constraint_schema
+            AND ischema_key_col.constraint_name =
+            ischema_ref_con.constraint_name
+    WHERE ischema_key_col.table_name = :tablename
+        AND ischema_key_col.table_schema = :owner
+),
+constraint_info AS (
+    SELECT
+        ischema_key_col.constraint_schema,
+        ischema_key_col.constraint_name,
+        ischema_key_col.ordinal_position,
+        ischema_key_col.table_schema,
+        ischema_key_col.table_name,
+        ischema_key_col.column_name
+    FROM
+        INFORMATION_SCHEMA.KEY_COLUMN_USAGE ischema_key_col
+),
+index_info AS (
+    SELECT
+        sys.schemas.name AS index_schema,
+        sys.indexes.name AS index_name,
+        sys.index_columns.key_ordinal AS ordinal_position,
+        sys.schemas.name AS table_schema,
+        sys.objects.name AS table_name,
+        sys.columns.name AS column_name
+    FROM
+        sys.indexes
+        INNER JOIN
+        sys.objects ON
+            sys.objects.object_id = sys.indexes.object_id
+        INNER JOIN
+        sys.schemas ON
+            sys.schemas.schema_id = sys.objects.schema_id
+        INNER JOIN
+        sys.index_columns ON
+            sys.index_columns.object_id = sys.objects.object_id
+            AND sys.index_columns.index_id = sys.indexes.index_id
+        INNER JOIN
+        sys.columns ON
+            sys.columns.object_id = sys.indexes.object_id
+            AND sys.columns.column_id = sys.index_columns.column_id
+)
+    SELECT
+        fk_info.constraint_schema,
+        fk_info.constraint_name,
+        fk_info.ordinal_position,
+        fk_info.constrained_column,
+        constraint_info.table_schema AS referred_table_schema,
+        constraint_info.table_name AS referred_table_name,
+        constraint_info.column_name AS referred_column,
+        fk_info.match_option,
+        fk_info.update_rule,
+        fk_info.delete_rule
+    FROM
+        fk_info INNER JOIN constraint_info ON
+            constraint_info.constraint_schema =
+                fk_info.unique_constraint_schema
+            AND constraint_info.constraint_name =
+                fk_info.unique_constraint_name
+            AND constraint_info.ordinal_position = fk_info.ordinal_position
+    UNION
+    SELECT
+        fk_info.constraint_schema,
+        fk_info.constraint_name,
+        fk_info.ordinal_position,
+        fk_info.constrained_column,
+        index_info.table_schema AS referred_table_schema,
+        index_info.table_name AS referred_table_name,
+        index_info.column_name AS referred_column,
+        fk_info.match_option,
+        fk_info.update_rule,
+        fk_info.delete_rule
+    FROM
+        fk_info INNER JOIN index_info ON
+            index_info.index_schema = fk_info.unique_constraint_schema
+            AND index_info.index_name = fk_info.unique_constraint_name
+            AND index_info.ordinal_position = fk_info.ordinal_position
+
+    ORDER BY fk_info.constraint_schema, fk_info.constraint_name,
+        fk_info.ordinal_position
+"""
             )
-            .where(
-                sql.and_(
-                    C.c.table_name == tablename,
-                    C.c.table_schema == owner,
-                    RR.c.constraint_schema == C.c.table_schema,
-                    C.c.constraint_name == RR.c.constraint_name,
-                    R.c.constraint_name == RR.c.unique_constraint_name,
-                    R.c.constraint_schema == RR.c.unique_constraint_schema,
-                    C.c.ordinal_position == R.c.ordinal_position,
-                )
+            .bindparams(
+                sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
             )
-            .order_by(RR.c.constraint_name, R.c.ordinal_position)
+            .columns(
+                constraint_schema=sqltypes.Unicode(),
+                constraint_name=sqltypes.Unicode(),
+                table_schema=sqltypes.Unicode(),
+                table_name=sqltypes.Unicode(),
+                constrained_column=sqltypes.Unicode(),
+                referred_table_schema=sqltypes.Unicode(),
+                referred_table_name=sqltypes.Unicode(),
+                referred_column=sqltypes.Unicode(),
+            )
         )
 
         # group rows by constraint ID, to handle multi-column FKs
@@ -3299,15 +3483,37 @@ class MSDialect(default.DefaultDialect):
                 "referred_schema": None,
                 "referred_table": None,
                 "referred_columns": [],
+                "options": {},
             }
 
         fkeys = util.defaultdict(fkey_rec)
 
         for r in connection.execute(s).fetchall():
-            scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
+            (
+                _,  # constraint schema
+                rfknm,
+                _,  # ordinal position
+                scol,
+                rschema,
+                rtbl,
+                rcol,
+                # TODO: we support match=<keyword> for foreign keys so
+                # we can support this also, PG has match=FULL for example
+                # but this seems to not be a valid value for SQL Server
+                _,  # match rule
+                fkuprule,
+                fkdelrule,
+            ) = r
 
             rec = fkeys[rfknm]
             rec["name"] = rfknm
+
+            if fkuprule != "NO ACTION":
+                rec["options"]["onupdate"] = fkuprule
+
+            if fkdelrule != "NO ACTION":
+                rec["options"]["ondelete"] = fkdelrule
+
             if not rec["referred_table"]:
                 rec["referred_table"] = rtbl
                 if schema is not None or owner != rschema:

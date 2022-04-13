@@ -254,7 +254,7 @@ class ConcreteInhTest(
                 "concrete": True,
             }
 
-        # didnt call configure_mappers() again
+        # didn't call configure_mappers() again
         assert_raises_message(
             orm_exc.UnmappedClassError,
             ".*and has a mapping pending",
@@ -547,9 +547,9 @@ class ConcreteInhTest(
         configure_mappers()
         self.assert_compile(
             select(Employee),
-            "SELECT pjoin.name, pjoin.employee_id, pjoin.type, pjoin._type "
-            "FROM (SELECT manager.name AS name, manager.employee_id AS "
-            "employee_id, manager.type AS type, 'manager' AS _type "
+            "SELECT pjoin.employee_id, pjoin.type, pjoin.name, pjoin._type "
+            "FROM (SELECT manager.employee_id AS employee_id, "
+            "manager.type AS type, manager.name AS name, 'manager' AS _type "
             "FROM manager) AS pjoin",
         )
 
@@ -859,13 +859,13 @@ class ConcreteExtensionConfigTest(
         session = Session()
         self.assert_compile(
             session.query(Document),
-            "SELECT pjoin.doctype AS pjoin_doctype, "
-            "pjoin.send_method AS pjoin_send_method, "
-            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type "
-            "FROM (SELECT actual_documents.doctype AS doctype, "
+            "SELECT pjoin.id AS pjoin_id, pjoin.send_method AS "
+            "pjoin_send_method, pjoin.doctype AS pjoin_doctype, "
+            "pjoin.type AS pjoin_type FROM "
+            "(SELECT actual_documents.id AS id, "
             "actual_documents.send_method AS send_method, "
-            "actual_documents.id AS id, 'actual' AS type "
-            "FROM actual_documents) AS pjoin",
+            "actual_documents.doctype AS doctype, "
+            "'actual' AS type FROM actual_documents) AS pjoin",
         )
 
     def test_column_attr_names(self):
@@ -886,14 +886,14 @@ class ConcreteExtensionConfigTest(
             session.query(Document),
             "SELECT pjoin.documenttype AS pjoin_documenttype, "
             "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type FROM "
-            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "(SELECT offers.id AS id, offers.documenttype AS documenttype, "
             "'offer' AS type FROM offers) AS pjoin",
         )
 
         self.assert_compile(
             session.query(Document.documentType),
             "SELECT pjoin.documenttype AS pjoin_documenttype FROM "
-            "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
+            "(SELECT offers.id AS id, offers.documenttype AS documenttype, "
             "'offer' AS type FROM offers) AS pjoin",
         )
 

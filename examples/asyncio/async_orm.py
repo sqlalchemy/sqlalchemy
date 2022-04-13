@@ -11,13 +11,12 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -53,13 +52,12 @@ async def async_main():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     # expire_on_commit=False will prevent attributes from being expired
     # after commit.
-    async_session = sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
         async with session.begin():

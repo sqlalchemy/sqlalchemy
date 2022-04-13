@@ -1,5 +1,5 @@
 # engine/reflection.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,12 +24,15 @@ methods such as get_table_names, get_columns, etc.
    use the key 'name'. So for most return values, each record will have a
    'name' attribute..
 """
+from __future__ import annotations
 
 import contextlib
+from typing import List
+from typing import Optional
 
-from .base import Connectable
 from .base import Connection
 from .base import Engine
+from .interfaces import ReflectedColumn
 from .. import exc
 from .. import inspection
 from .. import sql
@@ -47,7 +50,7 @@ def cache(fn, self, con, *args, **kw):
         return fn(self, con, *args, **kw)
     key = (
         fn.__name__,
-        tuple(a for a in args if isinstance(a, util.string_types)),
+        tuple(a for a in args if isinstance(a, str)),
         tuple((k, v) for k, v in kw.items() if k != "info_cache"),
     )
     ret = info_cache.get(key)
@@ -58,7 +61,7 @@ def cache(fn, self, con, *args, **kw):
 
 
 @inspection._self_inspects
-class Inspector(object):
+class Inspector(inspection.Inspectable["Inspector"]):
     """Performs database schema inspection.
 
     The Inspector acts as a proxy to the reflection methods of the
@@ -96,7 +99,7 @@ class Inspector(object):
     def __init__(self, bind):
         """Initialize a new :class:`_reflection.Inspector`.
 
-        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
+        :param bind: a :class:`~sqlalchemy.engine.Connection`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
@@ -153,10 +156,8 @@ class Inspector(object):
         """Construct a new dialect-specific Inspector object from the given
         engine or connection.
 
-        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
-          which is typically an instance of
-          :class:`~sqlalchemy.engine.Engine` or
-          :class:`~sqlalchemy.engine.Connection`.
+        :param bind: a :class:`~sqlalchemy.engine.Connection`
+         or :class:`~sqlalchemy.engine.Engine`.
 
         This method differs from direct a direct constructor call of
         :class:`_reflection.Inspector` in that the
@@ -169,13 +170,6 @@ class Inspector(object):
 
         """
         return cls._construct(cls._init_legacy, bind)
-
-    @inspection._inspects(Connectable)
-    def _connectable_insp(bind):
-        # this method should not be used unless some unusual case
-        # has subclassed "Connectable"
-
-        return Inspector._construct(Inspector._init_legacy, bind)
 
     @inspection._inspects(Engine)
     def _engine_insp(bind):
@@ -268,14 +262,18 @@ class Inspector(object):
             )
 
     def has_table(self, table_name, schema=None):
-        """Return True if the backend has a table of the given name.
-
+        """Return True if the backend has a table or view of the given name.
 
         :param table_name: name of the table to check
         :param schema: schema name to query, if not the default schema.
 
         .. versionadded:: 1.4 - the :meth:`.Inspector.has_table` method
            replaces the :meth:`_engine.Engine.has_table` method.
+
+        .. versionchanged:: 2.0:: The method checks also for views.
+           In previous version this behaviour was dialect specific. New
+           dialect suite tests were added to ensure all dialect conform with
+           this behaviour.
 
         """
         # TODO: info_cache?
@@ -319,7 +317,6 @@ class Inspector(object):
             with an already-given :class:`_schema.MetaData`.
 
         """
-
         with self._operation_context() as conn:
             tnames = self.dialect.get_table_names(
                 conn, schema, info_cache=self.info_cache
@@ -439,7 +436,9 @@ class Inspector(object):
                 conn, view_name, schema, info_cache=self.info_cache
             )
 
-    def get_columns(self, table_name, schema=None, **kw):
+    def get_columns(
+        self, table_name: str, schema: Optional[str] = None, **kw
+    ) -> List[ReflectedColumn]:
         """Return information about columns in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -687,17 +686,6 @@ class Inspector(object):
                 conn, table_name, schema, info_cache=self.info_cache, **kw
             )
 
-    @util.deprecated_20(
-        ":meth:`_reflection.Inspector.reflecttable`",
-        "The :meth:`_reflection.Inspector.reflecttable` "
-        "method was renamed to "
-        ":meth:`_reflection.Inspector.reflect_table`. This deprecated alias "
-        "will be removed in a future release.",
-    )
-    def reflecttable(self, *args, **kwargs):
-        "See reflect_table. This method name is deprecated"
-        return self.reflect_table(*args, **kwargs)
-
     def reflect_table(
         self,
         table,
@@ -762,12 +750,6 @@ class Inspector(object):
             # returned them
             table._validate_dialect_kwargs(tbl_opts)
 
-        if util.py2k:
-            if isinstance(schema, str):
-                schema = schema.decode(dialect.encoding)
-            if isinstance(table_name, str):
-                table_name = table_name.decode(dialect.encoding)
-
         found_table = False
         cols_by_orig_name = {}
 
@@ -784,8 +766,9 @@ class Inspector(object):
                 cols_by_orig_name,
             )
 
-        if not found_table:
-            raise exc.NoSuchTableError(table.name)
+        # NOTE: support tables/views with no columns
+        if not found_table and not self.has_table(table_name, schema):
+            raise exc.NoSuchTableError(table_name)
 
         self._reflect_pk(
             table_name, schema, table, cols_by_orig_name, exclude_columns
@@ -904,7 +887,7 @@ class Inspector(object):
 
     def _reflect_col_sequence(self, col_d, colargs):
         if "sequence" in col_d:
-            # TODO: mssql and sybase are using this.
+            # TODO: mssql is using this.
             seq = col_d["sequence"]
             sequence = sa_schema.Sequence(seq["name"], 1, 1)
             if "start" in seq:
@@ -971,7 +954,7 @@ class Inspector(object):
                         schema=referred_schema,
                         autoload_with=self.bind,
                         _extend_on=_extend_on,
-                        **reflection_options
+                        **reflection_options,
                     )
                 for column in referred_columns:
                     refspec.append(
@@ -985,7 +968,7 @@ class Inspector(object):
                         autoload_with=self.bind,
                         schema=sa_schema.BLANK_SCHEMA,
                         _extend_on=_extend_on,
-                        **reflection_options
+                        **reflection_options,
                     )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
@@ -999,7 +982,7 @@ class Inspector(object):
                     refspec,
                     conname,
                     link_to_name=True,
-                    **options
+                    **options,
                 )
             )
 
@@ -1065,7 +1048,7 @@ class Inspector(object):
                 name,
                 *idx_cols,
                 _table=table,
-                **dict(list(dialect_options.items()) + [("unique", unique)])
+                **dict(list(dialect_options.items()) + [("unique", unique)]),
             )
 
     def _reflect_unique_constraints(

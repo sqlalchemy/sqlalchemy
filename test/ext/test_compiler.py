@@ -37,6 +37,8 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_column(self):
         class MyThingy(ColumnClause):
+            inherit_cache = False
+
             def __init__(self, arg=None):
                 super(MyThingy, self).__init__(arg or "MYTHINGY!")
 
@@ -96,7 +98,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_no_compile_for_col_label(self):
         class MyThingy(FunctionElement):
-            pass
+            inherit_cache = True
 
         @compiles(MyThingy)
         def visit_thingy(thingy, compiler, **kw):
@@ -120,6 +122,8 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_stateful(self):
         class MyThingy(ColumnClause):
+            inherit_cache = False
+
             def __init__(self):
                 super(MyThingy, self).__init__("MYTHINGY!")
 
@@ -142,6 +146,8 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_callout_to_compiler(self):
         class InsertFromSelect(ClauseElement):
+            inherit_cache = False
+
             def __init__(self, table, select):
                 self.table = table
                 self.select = select
@@ -162,7 +168,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_no_default_but_has_a_visit(self):
         class MyThingy(ColumnClause):
-            pass
+            inherit_cache = False
 
         @compiles(MyThingy, "postgresql")
         def visit_thingy(thingy, compiler, **kw):
@@ -172,7 +178,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_no_default_has_no_visit(self):
         class MyThingy(TypeEngine):
-            pass
+            inherit_cache = False
 
         @compiles(MyThingy, "postgresql")
         def visit_thingy(thingy, compiler, **kw):
@@ -189,6 +195,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations((True,), (False,))
     def test_no_default_proxy_generation(self, named):
         class my_function(FunctionElement):
+            inherit_cache = False
             if named:
                 name = "my_function"
             type = Numeric()
@@ -215,7 +222,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_no_default_message(self):
         class MyThingy(ClauseElement):
-            pass
+            inherit_cache = False
 
         @compiles(MyThingy, "postgresql")
         def visit_thingy(thingy, compiler, **kw):
@@ -314,7 +321,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         from sqlalchemy.dialects import postgresql
 
         class MyUtcFunction(FunctionElement):
-            pass
+            inherit_cache = True
 
         @compiles(MyUtcFunction)
         def visit_myfunc(element, compiler, **kw):
@@ -335,7 +342,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_functions_args_noname(self):
         class myfunc(FunctionElement):
-            pass
+            inherit_cache = True
 
         @compiles(myfunc)
         def visit_myfunc(element, compiler, **kw):
@@ -351,6 +358,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         class greatest(FunctionElement):
             type = Numeric()
             name = "greatest"
+            inherit_cache = True
 
         @compiles(greatest)
         def default_greatest(element, compiler, **kw):
@@ -380,12 +388,15 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_function_subclasses_one(self):
         class Base(FunctionElement):
+            inherit_cache = True
             name = "base"
 
         class Sub1(Base):
+            inherit_cache = True
             name = "sub1"
 
         class Sub2(Base):
+            inherit_cache = True
             name = "sub2"
 
         @compiles(Base)
@@ -407,6 +418,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             name = "base"
 
         class Sub1(Base):
+            inherit_cache = True
             name = "sub1"
 
         @compiles(Base)
@@ -414,9 +426,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return element.name
 
         class Sub2(Base):
+            inherit_cache = True
             name = "sub2"
 
         class SubSub1(Sub1):
+            inherit_cache = True
             name = "subsub1"
 
         self.assert_compile(
@@ -545,7 +559,7 @@ class ExecuteTest(fixtures.TablesTest):
     @testing.fixture()
     def insert_fixture(self):
         class MyInsert(Executable, ClauseElement):
-            pass
+            inherit_cache = True
 
         @compiles(MyInsert)
         def _run_myinsert(element, compiler, **kw):
@@ -556,7 +570,7 @@ class ExecuteTest(fixtures.TablesTest):
     @testing.fixture()
     def select_fixture(self):
         class MySelect(Executable, ClauseElement):
-            pass
+            inherit_cache = True
 
         @compiles(MySelect)
         def _run_myinsert(element, compiler, **kw):

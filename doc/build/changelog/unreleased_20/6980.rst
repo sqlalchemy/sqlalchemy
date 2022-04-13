@@ -1,0 +1,22 @@
+.. change::
+    :tags: improvement, typing
+    :tickets: 6980
+
+    The :meth:`_sqltypes.TypeEngine.with_variant` method now returns a copy of
+    the original :class:`_sqltypes.TypeEngine` object, rather than wrapping it
+    inside the ``Variant`` class, which is effectively removed (the import
+    symbol remains for backwards compatibility with code that may be testing
+    for this symbol). While the previous approach maintained in-Python
+    behaviors, maintaining the original type allows for clearer type checking
+    and debugging.
+
+    :meth:`_sqltypes.TypeEngine.with_variant` also accepts multiple dialect
+    names per call as well, in particular this is helpful for related
+    backend names such as ``"mysql", "mariadb"``.
+
+    .. seealso::
+
+        :ref:`change_6980`
+
+
+

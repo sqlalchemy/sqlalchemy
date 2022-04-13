@@ -2,7 +2,6 @@ import operator
 import re
 
 import sqlalchemy as sa
-from sqlalchemy import func
 from .. import config
 from .. import engines
 from .. import eq_
@@ -15,6 +14,7 @@ from ..schema import Column
 from ..schema import Table
 from ... import event
 from ... import ForeignKey
+from ... import func
 from ... import Identity
 from ... import inspect
 from ... import Integer
@@ -25,6 +25,7 @@ from ... import types as sql_types
 from ...schema import DDL
 from ...schema import Index
 from ...sql.elements import quoted_name
+from ...sql.schema import BLANK_SCHEMA
 from ...testing import is_false
 from ...testing import is_true
 
@@ -75,6 +76,32 @@ class HasTableTest(fixtures.TablesTest):
                 config.db.dialect.has_table(
                     conn, "nonexistent_table", schema=config.test_schema
                 )
+            )
+
+    @testing.requires.views
+    def test_has_table_view(self, connection):
+        query = "CREATE VIEW vv AS SELECT * FROM test_table"
+        connection.execute(sa.sql.text(query))
+        insp = inspect(connection)
+        try:
+            is_true(insp.has_table("vv"))
+        finally:
+            connection.execute(sa.sql.text("DROP VIEW vv"))
+
+    @testing.requires.views
+    @testing.requires.schemas
+    def test_has_table_view_schema(self, connection):
+        query = "CREATE VIEW %s.vv AS SELECT * FROM %s.test_table_s" % (
+            config.test_schema,
+            config.test_schema,
+        )
+        connection.execute(sa.sql.text(query))
+        insp = inspect(connection)
+        try:
+            is_true(insp.has_table("vv", config.test_schema))
+        finally:
+            connection.execute(
+                sa.sql.text("DROP VIEW %s.vv" % config.test_schema)
             )
 
 
@@ -317,7 +344,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 metadata,
                 Column("user_id", sa.INT, primary_key=True),
                 Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(5), nullable=False),
+                Column("test2", sa.Float(), nullable=False),
                 Column(
                     "parent_user_id",
                     sa.Integer,
@@ -334,7 +361,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 metadata,
                 Column("user_id", sa.INT, primary_key=True),
                 Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(5), nullable=False),
+                Column("test2", sa.Float(), nullable=False),
                 schema=schema,
                 test_needs_fk=True,
             )
@@ -468,7 +495,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             # https://www.arbinada.com/en/node/1645
             sa.UniqueConstraint("name", name="user_tmp_uq_%s" % config.ident),
             sa.Index("user_tmp_ix", "foo"),
-            **kw
+            **kw,
         )
         if (
             testing.requires.view_reflection.enabled
@@ -509,6 +536,20 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schema_reflection
     def test_get_schema_names(self):
         insp = inspect(self.bind)
+
+        self.assert_(testing.config.test_schema in insp.get_schema_names())
+
+    @testing.requires.schema_reflection
+    def test_get_schema_names_w_translate_map(self, connection):
+        """test #7300"""
+
+        connection = connection.execution_options(
+            schema_translate_map={
+                "foo": "bar",
+                BLANK_SCHEMA: testing.config.test_schema,
+            }
+        )
+        insp = inspect(connection)
 
         self.assert_(testing.config.test_schema in insp.get_schema_names())
 
@@ -1063,6 +1104,61 @@ class ComponentReflectionTest(fixtures.TablesTest):
             assert id_.get("autoincrement", True)
 
 
+class TableNoColumnsTest(fixtures.TestBase):
+    __requires__ = ("reflect_tables_no_columns",)
+    __backend__ = True
+
+    @testing.fixture
+    def table_no_columns(self, connection, metadata):
+        Table("empty", metadata)
+        metadata.create_all(connection)
+
+    @testing.fixture
+    def view_no_columns(self, connection, metadata):
+        Table("empty", metadata)
+        metadata.create_all(connection)
+
+        Table("empty", metadata)
+        event.listen(
+            metadata,
+            "after_create",
+            DDL("CREATE VIEW empty_v AS SELECT * FROM empty"),
+        )
+
+        # for transactional DDL the transaction is rolled back before this
+        # drop statement is invoked
+        event.listen(
+            metadata, "before_drop", DDL("DROP VIEW IF EXISTS empty_v")
+        )
+        metadata.create_all(connection)
+
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_table_no_columns(self, connection, table_no_columns):
+        t2 = Table("empty", MetaData(), autoload_with=connection)
+        eq_(list(t2.c), [])
+
+    @testing.requires.reflect_tables_no_columns
+    def test_get_columns_table_no_columns(self, connection, table_no_columns):
+        eq_(inspect(connection).get_columns("empty"), [])
+
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_incl_table_no_columns(self, connection, table_no_columns):
+        m = MetaData()
+        m.reflect(connection)
+        assert set(m.tables).intersection(["empty"])
+
+    @testing.requires.views
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_view_no_columns(self, connection, view_no_columns):
+        t2 = Table("empty_v", MetaData(), autoload_with=connection)
+        eq_(list(t2.c), [])
+
+    @testing.requires.views
+    @testing.requires.reflect_tables_no_columns
+    def test_get_columns_view_no_columns(self, connection, view_no_columns):
+        eq_(inspect(connection).get_columns("empty_v"), [])
+
+
 class ComponentReflectionTestExtra(fixtures.TestBase):
 
     __backend__ = True
@@ -1082,7 +1178,9 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
             metadata,
             Column("a", Integer()),
             sa.CheckConstraint("a > 1 AND a < 5", name="cc1"),
-            sa.CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
+            sa.CheckConstraint(
+                "a = 1 OR (a > 2 AND a < 5)", name="UsesCasing"
+            ),
             schema=schema,
         )
 
@@ -1109,8 +1207,8 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         eq_(
             reflected,
             [
+                {"name": "UsesCasing", "sqltext": "a = 1 or a > 2 and a < 5"},
                 {"name": "cc1", "sqltext": "a > 1 and a < 5"},
-                {"name": "cc2", "sqltext": "a = 1 or a > 2 and a < 5"},
             ],
         )
 
@@ -1136,6 +1234,9 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"] = {
+                "%s_include" % connection.engine.name: []
+            }
 
         with expect_warnings(
             "Skipped unsupported reflection of expression-based index t_idx"
@@ -1168,15 +1269,26 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
                     "column_names": ["x"],
                     "include_columns": ["y"],
                     "unique": False,
+                    "dialect_options": {
+                        "%s_include" % connection.engine.name: ["y"]
+                    },
                 }
             ],
+        )
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        eq_(
+            list(t2.indexes)[0].dialect_options[connection.engine.name][
+                "include"
+            ],
+            ["y"],
         )
 
     def _type_round_trip(self, connection, metadata, *types):
         t = Table(
             "t",
             metadata,
-            *[Column("t%d" % i, type_) for i, type_ in enumerate(types)]
+            *[Column("t%d" % i, type_) for i, type_ in enumerate(types)],
         )
         t.create(connection)
 
@@ -1641,6 +1753,7 @@ class CompositeKeyReflectionTest(fixtures.TablesTest):
 __all__ = (
     "ComponentReflectionTest",
     "ComponentReflectionTestExtra",
+    "TableNoColumnsTest",
     "QuotedNameArgumentTest",
     "HasTableTest",
     "HasIndexTest",

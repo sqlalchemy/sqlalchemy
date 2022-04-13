@@ -1,5 +1,5 @@
 # ext/automap.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -56,6 +56,7 @@ asking it to reflect the schema and produce mappings::
 
     # collection-based relationships are by default named
     # "<classname>_collection"
+    u1 = session.query(User).first()
     print (u1.address_collection)
 
 Above, calling :meth:`.AutomapBase.prepare` while passing along the
@@ -717,7 +718,7 @@ def generate_relationship(
         raise TypeError("Unknown relationship function: %s" % return_fn)
 
 
-class AutomapBase(object):
+class AutomapBase:
     """Base class for an "automap" schema.
 
     The :class:`.AutomapBase` class can be compared to the "declarative base"
@@ -1082,7 +1083,7 @@ def _relationships_for_fks(
                         referred_cls,
                         local_cls,
                         collection_class=collection_class,
-                        **o2m_kws
+                        **o2m_kws,
                     )
                 else:
                     backref_obj = None
@@ -1114,7 +1115,7 @@ def _relationships_for_fks(
                     foreign_keys=[fk.parent for fk in constraint.elements],
                     back_populates=relationship_name,
                     collection_class=collection_class,
-                    **o2m_kws
+                    **o2m_kws,
                 )
                 if rel is not None:
                     referred_cfg.properties[backref_name] = rel

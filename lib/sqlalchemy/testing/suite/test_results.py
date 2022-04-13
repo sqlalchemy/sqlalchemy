@@ -14,7 +14,6 @@ from ... import sql
 from ... import String
 from ... import testing
 from ... import text
-from ... import util
 
 
 class RowFetchTest(fixtures.TablesTest):
@@ -245,6 +244,8 @@ class ServerSideCursorsTest(
             return cursor.server_side
         elif self.engine.dialect.driver == "pg8000":
             return getattr(cursor, "server_side", False)
+        elif self.engine.dialect.driver == "psycopg":
+            return bool(getattr(cursor, "name", False))
         else:
             return False
 
@@ -306,7 +307,7 @@ class ServerSideCursorsTest(
     ):
         engine = self._fixture(engine_ss_arg)
         with engine.begin() as conn:
-            if isinstance(statement, util.string_types):
+            if isinstance(statement, str):
                 result = conn.exec_driver_sql(statement)
             else:
                 result = conn.execute(statement)
@@ -322,6 +323,20 @@ class ServerSideCursorsTest(
                 stream_results=True
             ).exec_driver_sql("select 1")
             assert self._is_server_side(result.cursor)
+
+            # the connection has autobegun, which means at the end of the
+            # block, we will roll back, which on MySQL at least will fail
+            # with "Commands out of sync" if the result set
+            # is not closed, so we close it first.
+            #
+            # fun fact!  why did we not have this result.close() in this test
+            # before 2.0? don't we roll back in the connection pool
+            # unconditionally? yes!  and in fact if you run this test in 1.4
+            # with stdout shown, there is in fact "Exception during reset or
+            # similar" with "Commands out sync" emitted a warning!  2.0's
+            # architecture finds and fixes what was previously an expensive
+            # silent error condition.
+            result.close()
 
     def test_stmt_enabled_conn_option_disabled(self):
         engine = self._fixture(False)

@@ -1,5 +1,5 @@
 # mysql/mysqlconnector.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,42 +27,22 @@ from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
-from ... import processors
 from ... import util
 
 
 class MySQLCompiler_mysqlconnector(MySQLCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
-        if self.dialect._mysqlconnector_double_percents:
-            return (
-                self.process(binary.left, **kw)
-                + " %% "
-                + self.process(binary.right, **kw)
-            )
-        else:
-            return (
-                self.process(binary.left, **kw)
-                + " % "
-                + self.process(binary.right, **kw)
-            )
-
-    def post_process_text(self, text):
-        if self.dialect._mysqlconnector_double_percents:
-            return text.replace("%", "%%")
-        else:
-            return text
-
-    def escape_literal_column(self, text):
-        if self.dialect._mysqlconnector_double_percents:
-            return text.replace("%", "%%")
-        else:
-            return text
+        return (
+            self.process(binary.left, **kw)
+            + " % "
+            + self.process(binary.right, **kw)
+        )
 
 
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
     @property
     def _double_percents(self):
-        return self.dialect._mysqlconnector_double_percents
+        return False
 
     @_double_percents.setter
     def _double_percents(self, value):
@@ -70,10 +50,7 @@ class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
-        if self.dialect._mysqlconnector_double_percents:
-            return value.replace("%", "%%")
-        else:
-            return value
+        return value
 
 
 class _myconnpyBIT(BIT):
@@ -87,8 +64,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = "mysqlconnector"
     supports_statement_cache = True
 
-    supports_unicode_binds = True
-
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
@@ -101,31 +76,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _myconnpyBIT})
 
-    def __init__(self, *arg, **kw):
-        super(MySQLDialect_mysqlconnector, self).__init__(*arg, **kw)
-
-        # hack description encoding since mysqlconnector randomly
-        # returns bytes or not
-        self._description_decoder = (
-            processors.to_conditional_unicode_processor_factory
-        )(self.description_encoding)
-
-    def _check_unicode_description(self, connection):
-        # hack description encoding since mysqlconnector randomly
-        # returns bytes or not
-        return False
-
-    @property
-    def description_encoding(self):
-        # total guess
-        return "latin-1"
-
-    @util.memoized_property
-    def supports_unicode_statements(self):
-        return util.py3k or self._mysqlconnector_version_info > (2, 0)
-
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         from mysql import connector
 
         return connector
@@ -188,10 +140,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
             if m:
                 return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
-
-    @util.memoized_property
-    def _mysqlconnector_double_percents(self):
-        return not util.py3k and self._mysqlconnector_version_info < (2, 0)
 
     def _detect_charset(self, connection):
         return connection.connection.charset

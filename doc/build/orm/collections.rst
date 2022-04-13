@@ -32,10 +32,13 @@ loading of child items both at load time as well as deletion time.
 Dynamic Relationship Loaders
 ----------------------------
 
-.. note:: This is a legacy feature.  Using the :func:`_orm.with_parent`
-   filter in conjunction with :func:`_sql.select` is the :term:`2.0 style`
-   method of use.  For relationships that shouldn't load, set
-   :paramref:`_orm.relationship.lazy` to ``noload``.
+.. note:: SQLAlchemy 2.0 will have a slightly altered pattern for "dynamic"
+   loaders that does not rely upon the :class:`_orm.Query` object, which
+   will be legacy in 2.0.   For current migration strategies,
+   see :ref:`migration_20_dynamic_loaders`.
+
+.. note:: This loader is in the general case not compatible with the :ref:`asyncio_toplevel` extension.
+   It can be used with some limitations, as indicated in :ref:`Asyncio dynamic guidelines <dynamic_asyncio>`.
 
 .. note:: This loader is in the general case not compatible with the :ref:`asyncio_toplevel` extension.
    It can be used with some limitations, as indicated in :ref:`Asyncio dynamic guidelines <dynamic_asyncio>`.
@@ -52,7 +55,7 @@ offsets, either explicitly or via array slices::
 
         posts = relationship(Post, lazy="dynamic")
 
-    jack = session.query(User).get(id)
+    jack = session.get(User, id)
 
     # filter Jack's blog posts
     posts = jack.posts.filter(Post.headline=='this is a post')
@@ -453,7 +456,7 @@ interface are detected and instrumented via duck-typing:
 
 .. sourcecode:: python+sql
 
-    class ListLike(object):
+    class ListLike:
         def __init__(self):
             self.data = []
         def append(self, item):
@@ -475,7 +478,7 @@ Duck-typing (i.e. guesswork) isn't rock-solid, of course, so you can be
 explicit about the interface you are implementing by providing an
 ``__emulates__`` class attribute::
 
-    class SetLike(object):
+    class SetLike:
         __emulates__ = set
 
         def __init__(self):
@@ -511,7 +514,7 @@ get the job done.
 
     from sqlalchemy.orm.collections import collection
 
-    class SetLike(object):
+    class SetLike:
         __emulates__ = set
 
         def __init__(self):

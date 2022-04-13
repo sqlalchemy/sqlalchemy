@@ -1,0 +1,69 @@
+"""this suite experiments with other kinds of relationship syntaxes.
+
+"""
+import typing
+from typing import List
+from typing import Optional
+from typing import Set
+
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+
+    # this currently doesnt generate an error.  not sure how to get the
+    # overloads to hit this one, nor am i sure i really want to do that
+    # anyway
+    name_this_works_atm: Mapped[str] = mapped_column(nullable=True)
+
+    extra: Mapped[Optional[str]] = mapped_column()
+    extra_name: Mapped[Optional[str]] = mapped_column("extra_name")
+
+    addresses_style_one: Mapped[List["Address"]] = relationship()
+    addresses_style_two: Mapped[Set["Address"]] = relationship()
+
+
+class Address(Base):
+    __tablename__ = "address"
+
+    id = mapped_column(Integer, primary_key=True)
+    user_id = mapped_column(ForeignKey("user.id"))
+    email = mapped_column(String, nullable=False)
+    email_name = mapped_column("email_name", String, nullable=False)
+
+    user_style_one: Mapped[User] = relationship()
+    user_style_two: Mapped["User"] = relationship()
+
+
+if typing.TYPE_CHECKING:
+    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    reveal_type(User.extra)
+
+    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    reveal_type(User.extra_name)
+
+    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*\]
+    reveal_type(Address.email)
+
+    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*\]
+    reveal_type(Address.email_name)
+
+    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[experimental_relationship.Address\]\]
+    reveal_type(User.addresses_style_one)
+
+    # EXPECTED_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*\[experimental_relationship.Address\]\]
+    reveal_type(User.addresses_style_two)

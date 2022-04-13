@@ -1,12 +1,17 @@
 import random
 
+import sqlalchemy as sa
+from sqlalchemy import Column
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import Integer
 from sqlalchemy import null
 from sqlalchemy import select
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import defaultload
@@ -21,6 +26,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
@@ -29,6 +35,7 @@ from sqlalchemy.sql.expression import case
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -115,6 +122,12 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 with_expression(User.name, null()),
                 with_expression(User.name, func.foobar()),
                 with_expression(User.name, User.name == "test"),
+            ),
+            compare_values=True,
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
                 Load(User).with_expression(User.name, true()),
                 Load(User).with_expression(User.name, null()),
                 Load(User).with_expression(User.name, func.foobar()),
@@ -128,7 +141,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         from sqlalchemy import Column, Integer, String
 
-        class Foo(object):
+        class Foo:
             id = Column(Integer)
             name = Column(String)
 
@@ -146,7 +159,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
     def test_loader_criteria_bound_param_thing(self):
         from sqlalchemy import Column, Integer
 
-        class Foo(object):
+        class Foo:
             id = Column(Integer)
 
         def go(param):
@@ -188,22 +201,18 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             lambda: (
                 joinedload(User.addresses),
                 joinedload(User.addresses.of_type(aliased(Address))),
-                joinedload("addresses"),
                 joinedload(User.orders),
                 joinedload(User.orders.and_(Order.id != 5)),
                 joinedload(User.orders.and_(Order.id == 5)),
                 joinedload(User.orders.and_(Order.description != "somename")),
-                joinedload(User.orders).selectinload("items"),
                 joinedload(User.orders).selectinload(Order.items),
                 defer(User.id),
-                defer("id"),
                 defer("*"),
                 defer(Address.id),
                 subqueryload(User.orders),
                 selectinload(User.orders),
                 joinedload(User.addresses).defer(Address.id),
                 joinedload(aliased(User).addresses).defer(Address.id),
-                joinedload(User.addresses).defer("id"),
                 joinedload(User.orders).joinedload(Order.items),
                 joinedload(User.orders).subqueryload(Order.items),
                 subqueryload(User.orders).subqueryload(Order.items),
@@ -222,6 +231,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
         )
+        Dingaling = self.classes.Dingaling
 
         self._run_cache_key_fixture(
             lambda: (
@@ -229,7 +239,9 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                     joinedload(Address.dingaling)
                 ),
                 joinedload(User.addresses).options(
-                    joinedload(Address.dingaling).options(load_only("name"))
+                    joinedload(Address.dingaling).options(
+                        load_only(Dingaling.id)
+                    )
                 ),
                 joinedload(User.orders).options(
                     joinedload(Order.items).options(joinedload(Item.keywords))
@@ -243,6 +255,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             "User", "Address", "Keyword", "Order", "Item"
         )
 
+        a1 = aliased(Address)
+
         self._run_cache_key_fixture(
             lambda: (
                 Load(User).joinedload(User.addresses),
@@ -255,10 +269,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                     User.orders.and_(Order.description != "somename")
                 ),
                 Load(User).defer(User.id),
-                Load(User).subqueryload("addresses"),
-                Load(Address).defer("id"),
+                Load(User).subqueryload(User.addresses),
+                Load(Address).defer(Address.id),
                 Load(Address).defer("*"),
-                Load(aliased(Address)).defer("id"),
+                Load(a1).defer(a1.id),
                 Load(User).joinedload(User.addresses).defer(Address.id),
                 Load(User).joinedload(User.orders).joinedload(Order.items),
                 Load(User).joinedload(User.orders).subqueryload(Order.items),
@@ -270,32 +284,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 Load(User).defaultload(User.orders).defaultload(Order.items),
                 Load(User).defaultload(User.orders),
                 Load(Address).raiseload("*"),
-                Load(Address).raiseload("user"),
+                Load(Address).raiseload(Address.user),
             ),
             compare_values=True,
         )
-
-    def test_bound_options_equiv_on_strname(self):
-        """Bound loader options resolve on string name so test that the cache
-        key for the string version matches the resolved version.
-
-        """
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        for left, right in [
-            (Load(User).defer(User.id), Load(User).defer("id")),
-            (
-                Load(User).joinedload(User.addresses),
-                Load(User).joinedload("addresses"),
-            ),
-            (
-                Load(User).joinedload(User.orders).joinedload(Order.items),
-                Load(User).joinedload("orders").joinedload("items"),
-            ),
-        ]:
-            eq_(left._generate_cache_key(), right._generate_cache_key())
 
     def test_selects_w_orm_joins(self):
 
@@ -347,16 +339,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .join(User.orders),
                 fixture_session()
                 .query(User)
-                .join("addresses")
-                .join("dingalings", from_joinpoint=True),
-                fixture_session().query(User).join("addresses"),
-                fixture_session().query(User).join("orders"),
-                fixture_session().query(User).join("addresses").join("orders"),
+                .join(User.addresses)
+                .join(Address.dingaling),
                 fixture_session().query(User).join(Address, User.addresses),
-                fixture_session().query(User).join(a1, "addresses"),
-                fixture_session()
-                .query(User)
-                .join(a1, "addresses", aliased=True),
+                fixture_session().query(User).join(a1, User.addresses),
                 fixture_session().query(User).join(User.addresses.of_type(a1)),
             ),
             compare_values=True,
@@ -403,6 +389,35 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .query(Address, User)
                 .join(Address.dingaling)
                 .with_entities(Address.id),
+            ),
+            compare_values=True,
+        )
+
+    def test_synonyms(self, registry):
+        """test for issue discovered in #7394"""
+
+        @registry.mapped
+        class User2(object):
+            __table__ = self.tables.users
+
+            name_syn = synonym("name")
+
+        @registry.mapped
+        class Address2(object):
+            __table__ = self.tables.addresses
+
+            name_syn = synonym("email_address")
+
+        self._run_cache_key_fixture(
+            lambda: (
+                User2.id,
+                User2.name,
+                User2.name_syn,
+                Address2.name_syn,
+                Address2.email_address,
+                aliased(User2).name_syn,
+                aliased(User2, name="foo").name_syn,
+                aliased(User2, name="bar").name_syn,
             ),
             compare_values=True,
         )
@@ -601,13 +616,6 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             "Person", "Manager", "Engineer", "Boss"
         )
 
-        def one():
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer])
-            )
-
         def two():
             wp = with_polymorphic(Person, [Manager, Engineer])
 
@@ -623,14 +631,6 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
             return fixture_session().query(wp).filter(wp.name == "asdfo")
 
-        def four():
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer])
-                .filter(Person.name == "asdf")
-            )
-
         def five():
             subq = (
                 select(Person)
@@ -642,25 +642,8 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
             return fixture_session().query(wp).filter(wp.name == "asdfo")
 
-        def six():
-            subq = (
-                select(Person)
-                .outerjoin(Manager)
-                .outerjoin(Engineer)
-                .subquery()
-            )
-
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer], subq)
-                .filter(Person.name == "asdfo")
-            )
-
         self._run_cache_key_fixture(
-            lambda: stmt_20(
-                one(), two(), three(), three_a(), four(), five(), six()
-            ),
+            lambda: stmt_20(two(), three(), three_a(), five()),
             compare_values=True,
         )
 
@@ -884,3 +867,74 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
             go()
 
         eq_(len(cache), lc)
+
+
+class CompositeTest(fixtures.MappedTest):
+    __dialect__ = "default"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "edges",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x1", Integer),
+            Column("y1", Integer),
+            Column("x2", Integer),
+            Column("y2", Integer),
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        edges = cls.tables.edges
+
+        class Point(cls.Comparable):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+            def __composite_values__(self):
+                return [self.x, self.y]
+
+            __hash__ = None
+
+            def __eq__(self, other):
+                return (
+                    isinstance(other, Point)
+                    and other.x == self.x
+                    and other.y == self.y
+                )
+
+            def __ne__(self, other):
+                return not isinstance(other, Point) or not self.__eq__(other)
+
+        class Edge(cls.Comparable):
+            def __init__(self, *args):
+                if args:
+                    self.start, self.end = args
+
+        cls.mapper_registry.map_imperatively(
+            Edge,
+            edges,
+            properties={
+                "start": sa.orm.composite(Point, edges.c.x1, edges.c.y1),
+                "end": sa.orm.composite(Point, edges.c.x2, edges.c.y2),
+            },
+        )
+
+    def test_bulk_update_cache_key(self):
+        """test secondary issue located as part of #7209"""
+        Edge, Point = (self.classes.Edge, self.classes.Point)
+
+        stmt = (
+            update(Edge)
+            .filter(Edge.start == Point(14, 5))
+            .values({Edge.end: Point(16, 10)})
+        )
+        stmt2 = (
+            update(Edge)
+            .filter(Edge.start == Point(14, 5))
+            .values({Edge.end: Point(17, 8)})
+        )
+
+        eq_(stmt._generate_cache_key(), stmt2._generate_cache_key())

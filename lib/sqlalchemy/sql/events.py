@@ -1,15 +1,29 @@
 # sqlalchemy/sql/events.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
+from typing import Any
+from typing import TYPE_CHECKING
+
 from .base import SchemaEventTarget
 from .. import event
 
+if TYPE_CHECKING:
+    from .schema import Column
+    from .schema import Constraint
+    from .schema import SchemaItem
+    from .schema import Table
+    from ..engine.base import Connection
+    from ..engine.interfaces import ReflectedColumn
+    from ..engine.reflection import Inspector
 
-class DDLEvents(event.Events):
+
+class DDLEvents(event.Events[SchemaEventTarget]):
     """
     Define event listeners for schema objects,
     that is, :class:`.SchemaItem` and other :class:`.SchemaEventTarget`
@@ -91,7 +105,9 @@ class DDLEvents(event.Events):
     _target_class_doc = "SomeSchemaClassOrObject"
     _dispatch_target = SchemaEventTarget
 
-    def before_create(self, target, connection, **kw):
+    def before_create(
+        self, target: SchemaEventTarget, connection: Connection, **kw: Any
+    ) -> None:
         r"""Called before CREATE statements are emitted.
 
         :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
@@ -118,7 +134,9 @@ class DDLEvents(event.Events):
 
         """
 
-    def after_create(self, target, connection, **kw):
+    def after_create(
+        self, target: SchemaEventTarget, connection: Connection, **kw: Any
+    ) -> None:
         r"""Called after CREATE statements are emitted.
 
         :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
@@ -140,7 +158,9 @@ class DDLEvents(event.Events):
 
         """
 
-    def before_drop(self, target, connection, **kw):
+    def before_drop(
+        self, target: SchemaEventTarget, connection: Connection, **kw: Any
+    ) -> None:
         r"""Called before DROP statements are emitted.
 
         :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
@@ -162,7 +182,9 @@ class DDLEvents(event.Events):
 
         """
 
-    def after_drop(self, target, connection, **kw):
+    def after_drop(
+        self, target: SchemaEventTarget, connection: Connection, **kw: Any
+    ) -> None:
         r"""Called after DROP statements are emitted.
 
         :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
@@ -184,7 +206,9 @@ class DDLEvents(event.Events):
 
         """
 
-    def before_parent_attach(self, target, parent):
+    def before_parent_attach(
+        self, target: SchemaEventTarget, parent: SchemaItem
+    ) -> None:
         """Called before a :class:`.SchemaItem` is associated with
         a parent :class:`.SchemaItem`.
 
@@ -199,7 +223,9 @@ class DDLEvents(event.Events):
 
         """
 
-    def after_parent_attach(self, target, parent):
+    def after_parent_attach(
+        self, target: SchemaEventTarget, parent: SchemaItem
+    ) -> None:
         """Called after a :class:`.SchemaItem` is associated with
         a parent :class:`.SchemaItem`.
 
@@ -214,13 +240,17 @@ class DDLEvents(event.Events):
 
         """
 
-    def _sa_event_column_added_to_pk_constraint(self, const, col):
+    def _sa_event_column_added_to_pk_constraint(
+        self, const: Constraint, col: Column[Any]
+    ) -> None:
         """internal event hook used for primary key naming convention
         updates.
 
         """
 
-    def column_reflect(self, inspector, table, column_info):
+    def column_reflect(
+        self, inspector: Inspector, table: Table, column_info: ReflectedColumn
+    ) -> None:
         """Called for each unit of 'column info' retrieved when
         a :class:`_schema.Table` is being reflected.
 

@@ -1,5 +1,5 @@
 # mysql/types.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,11 +8,11 @@
 import datetime
 
 from ... import exc
-from ... import types as sqltypes
 from ... import util
+from ...sql import sqltypes
 
 
-class _NumericType(object):
+class _NumericType:
     """Base for MySQL numeric types.
 
     This is the base both for NUMERIC as well as INTEGER, hence
@@ -74,7 +74,7 @@ class _StringType(sqltypes.String):
         binary=False,
         unicode=False,
         national=False,
-        **kw
+        **kw,
     ):
         self.charset = charset
 
@@ -152,7 +152,7 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
         )
 
 
-class DOUBLE(_FloatType):
+class DOUBLE(_FloatType, sqltypes.DOUBLE):
     """MySQL DOUBLE type."""
 
     __visit_name__ = "DOUBLE"

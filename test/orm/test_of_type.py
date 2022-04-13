@@ -30,7 +30,7 @@ from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 
 
-class _PolymorphicTestBase(object):
+class _PolymorphicTestBase:
     __dialect__ = "default"
 
     def test_any_one(self):
@@ -81,7 +81,8 @@ class _PolymorphicTestBase(object):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join(Company.employees.of_type(Engineer), "machines")
+            .join(Company.employees.of_type(Engineer))
+            .join(Engineer.machines)
             .filter(Machine.name.ilike("%thinkpad%"))
             .all(),
             [self.c1],
@@ -1150,10 +1151,10 @@ class SubclassRelationshipTest3(
         "c.id AS c_id, c.type AS c_type, c.b_id AS c_b_id, a.id AS a_id, "
         "a.type AS a_type "
         "FROM a LEFT OUTER JOIN b ON "
-        "a.id = b.a_id AND b.type IN ([POSTCOMPILE_type_1]) "
+        "a.id = b.a_id AND b.type IN (__[POSTCOMPILE_type_1]) "
         "LEFT OUTER JOIN c ON "
-        "b.id = c.b_id AND c.type IN ([POSTCOMPILE_type_2]) "
-        "WHERE a.type IN ([POSTCOMPILE_type_3])"
+        "b.id = c.b_id AND c.type IN (__[POSTCOMPILE_type_2]) "
+        "WHERE a.type IN (__[POSTCOMPILE_type_3])"
     )
 
     _query2 = (
@@ -1161,10 +1162,10 @@ class SubclassRelationshipTest3(
         "ccc.id AS ccc_id, ccc.type AS ccc_type, ccc.b_id AS ccc_b_id, "
         "aaa.id AS aaa_id, aaa.type AS aaa_type "
         "FROM a AS aaa LEFT OUTER JOIN b AS bbb "
-        "ON aaa.id = bbb.a_id AND bbb.type IN ([POSTCOMPILE_type_1]) "
+        "ON aaa.id = bbb.a_id AND bbb.type IN (__[POSTCOMPILE_type_1]) "
         "LEFT OUTER JOIN c AS ccc ON "
-        "bbb.id = ccc.b_id AND ccc.type IN ([POSTCOMPILE_type_2]) "
-        "WHERE aaa.type IN ([POSTCOMPILE_type_3])"
+        "bbb.id = ccc.b_id AND ccc.type IN (__[POSTCOMPILE_type_2]) "
+        "WHERE aaa.type IN (__[POSTCOMPILE_type_3])"
     )
 
     _query3 = (
@@ -1172,10 +1173,10 @@ class SubclassRelationshipTest3(
         "c.id AS c_id, c.type AS c_type, c.b_id AS c_b_id, "
         "aaa.id AS aaa_id, aaa.type AS aaa_type "
         "FROM a AS aaa LEFT OUTER JOIN b AS bbb "
-        "ON aaa.id = bbb.a_id AND bbb.type IN ([POSTCOMPILE_type_1]) "
+        "ON aaa.id = bbb.a_id AND bbb.type IN (__[POSTCOMPILE_type_1]) "
         "LEFT OUTER JOIN c ON "
-        "bbb.id = c.b_id AND c.type IN ([POSTCOMPILE_type_2]) "
-        "WHERE aaa.type IN ([POSTCOMPILE_type_3])"
+        "bbb.id = c.b_id AND c.type IN (__[POSTCOMPILE_type_2]) "
+        "WHERE aaa.type IN (__[POSTCOMPILE_type_3])"
     )
 
     def _test(self, join_of_type, of_type_for_c1, aliased_):

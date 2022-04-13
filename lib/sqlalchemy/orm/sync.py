@@ -1,5 +1,5 @@
 # orm/sync.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,10 +10,11 @@ between instances based on join conditions.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc
 from . import util as orm_util
-from .. import util
 
 
 def populate(
@@ -143,25 +144,19 @@ def _raise_col_to_prop(
     isdest, source_mapper, source_column, dest_mapper, dest_column, err
 ):
     if isdest:
-        util.raise_(
-            exc.UnmappedColumnError(
-                "Can't execute sync rule for "
-                "destination column '%s'; mapper '%s' does not map "
-                "this column.  Try using an explicit `foreign_keys` "
-                "collection which does not include this column (or use "
-                "a viewonly=True relation)." % (dest_column, dest_mapper)
-            ),
-            replace_context=err,
-        )
+        raise exc.UnmappedColumnError(
+            "Can't execute sync rule for "
+            "destination column '%s'; mapper '%s' does not map "
+            "this column.  Try using an explicit `foreign_keys` "
+            "collection which does not include this column (or use "
+            "a viewonly=True relation)." % (dest_column, dest_mapper)
+        ) from err
     else:
-        util.raise_(
-            exc.UnmappedColumnError(
-                "Can't execute sync rule for "
-                "source column '%s'; mapper '%s' does not map this "
-                "column.  Try using an explicit `foreign_keys` "
-                "collection which does not include destination column "
-                "'%s' (or use a viewonly=True relation)."
-                % (source_column, source_mapper, dest_column)
-            ),
-            replace_context=err,
-        )
+        raise exc.UnmappedColumnError(
+            "Can't execute sync rule for "
+            "source column '%s'; mapper '%s' does not map this "
+            "column.  Try using an explicit `foreign_keys` "
+            "collection which does not include destination column "
+            "'%s' (or use a viewonly=True relation)."
+            % (source_column, source_mapper, dest_column)
+        ) from err

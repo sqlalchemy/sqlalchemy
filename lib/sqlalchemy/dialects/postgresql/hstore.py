@@ -1,5 +1,5 @@
 # postgresql/hstore.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,7 +9,6 @@ import re
 
 from .array import ARRAY
 from ... import types as sqltypes
-from ... import util
 from ...sql import functions as sqlfunc
 from ...sql import operators
 
@@ -228,42 +227,20 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     comparator_factory = Comparator
 
     def bind_processor(self, dialect):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value).encode(encoding)
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value)
-                else:
-                    return value
+        def process(value):
+            if isinstance(value, dict):
+                return _serialize_hstore(value)
+            else:
+                return value
 
         return process
 
     def result_processor(self, dialect, coltype):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value.decode(encoding))
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value)
-                else:
-                    return value
+        def process(value):
+            if value is not None:
+                return _parse_hstore(value)
+            else:
+                return value
 
         return process
 
@@ -296,41 +273,49 @@ class hstore(sqlfunc.GenericFunction):
 
     type = HSTORE
     name = "hstore"
+    inherit_cache = True
 
 
 class _HStoreDefinedFunction(sqlfunc.GenericFunction):
     type = sqltypes.Boolean
     name = "defined"
+    inherit_cache = True
 
 
 class _HStoreDeleteFunction(sqlfunc.GenericFunction):
     type = HSTORE
     name = "delete"
+    inherit_cache = True
 
 
 class _HStoreSliceFunction(sqlfunc.GenericFunction):
     type = HSTORE
     name = "slice"
+    inherit_cache = True
 
 
 class _HStoreKeysFunction(sqlfunc.GenericFunction):
     type = ARRAY(sqltypes.Text)
     name = "akeys"
+    inherit_cache = True
 
 
 class _HStoreValsFunction(sqlfunc.GenericFunction):
     type = ARRAY(sqltypes.Text)
     name = "avals"
+    inherit_cache = True
 
 
 class _HStoreArrayFunction(sqlfunc.GenericFunction):
     type = ARRAY(sqltypes.Text)
     name = "hstore_to_array"
+    inherit_cache = True
 
 
 class _HStoreMatrixFunction(sqlfunc.GenericFunction):
     type = ARRAY(sqltypes.Text)
     name = "hstore_to_matrix"
+    inherit_cache = True
 
 
 #
@@ -435,7 +420,7 @@ def _serialize_hstore(val):
     def esc(s, position):
         if position == "value" and s is None:
             return "NULL"
-        elif isinstance(s, util.string_types):
+        elif isinstance(s, str):
             return '"%s"' % s.replace("\\", "\\\\").replace('"', r"\"")
         else:
             raise ValueError(

@@ -1,8 +1,11 @@
 import inspect as _py_inspect
+import pickle
 
 import sqlalchemy as sa
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
@@ -10,6 +13,7 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import close_all_sessions
@@ -24,6 +28,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import was_deleted
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -40,7 +45,6 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.util import pickle
 from sqlalchemy.util.compat import inspect_getfullargspec
 from test.orm import _fixtures
 
@@ -82,6 +86,23 @@ class ExecutionTest(_fixtures.FixtureTest):
             ).fetchall(),
             [(7,), (8,), (9,)],
         )
+
+    def test_no_string_execute(self, connection):
+
+        with Session(bind=connection) as sess:
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                r"Textual SQL expression 'select \* from users where.*' "
+                "should be explicitly declared",
+            ):
+                sess.execute("select * from users where id=:id", {"id": 7})
+
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                r"Textual SQL expression 'select id from users .*' "
+                "should be explicitly declared",
+            ):
+                sess.scalar("select id from users where id=:id", {"id": 7})
 
 
 class TransScopingTest(_fixtures.FixtureTest):
@@ -187,39 +208,6 @@ class TransScopingTest(_fixtures.FixtureTest):
         assert not s.in_transaction()
         eq_(s.connection().scalar(select(User.name)), "u1")
 
-    def test_no_autoflush_or_commit_in_expire_w_autocommit(self):
-        """test second part of :ticket:`6233`.
-
-        Here we test that the "autoflush on unexpire" feature added
-        in :ticket:`5226` is turned off for a legacy autocommit session.
-
-        """
-
-        s = Session(
-            testing.db, autocommit=True, expire_on_commit=True, autoflush=True
-        )
-
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        u1 = User(name="u1")
-        s.add(u1)
-        s.flush()  # this commits
-
-        u1.name = "u2"  # this does not commit
-
-        assert "id" not in u1.__dict__
-        u1.id  # this unexpires
-
-        # never expired
-        eq_(u1.__dict__["name"], "u2")
-
-        eq_(u1.name, "u2")
-
-        # still in dirty collection
-        assert u1 in s.dirty
-
     def test_autobegin_begin_method(self):
         s = Session(testing.db)
 
@@ -231,7 +219,6 @@ class TransScopingTest(_fixtures.FixtureTest):
             s.begin,
         )
 
-    @testing.combinations((True,), (False,), argnames="autocommit")
     @testing.combinations((True,), (False,), argnames="begin")
     @testing.combinations((True,), (False,), argnames="expire_on_commit")
     @testing.combinations((True,), (False,), argnames="modify_unconditional")
@@ -239,7 +226,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         ("nothing",), ("modify",), ("add",), ("delete",), argnames="case_"
     )
     def test_autobegin_attr_change(
-        self, case_, autocommit, begin, modify_unconditional, expire_on_commit
+        self, case_, begin, modify_unconditional, expire_on_commit
     ):
         """test :ticket:`6360`"""
 
@@ -249,7 +236,6 @@ class TransScopingTest(_fixtures.FixtureTest):
 
         s = Session(
             testing.db,
-            autocommit=autocommit,
             expire_on_commit=expire_on_commit,
         )
 
@@ -258,10 +244,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         u3 = User(name="e")
         s.add_all([u, u2, u3])
 
-        if autocommit:
-            s.flush()
-        else:
-            s.commit()
+        s.commit()
 
         if begin:
             s.begin()
@@ -279,9 +262,6 @@ class TransScopingTest(_fixtures.FixtureTest):
         if case_ == "nothing" and not begin:
             assert not s._transaction
             expect_expire = expire_on_commit
-        elif autocommit and not begin:
-            assert not s._transaction
-            expect_expire = expire_on_commit
         else:
             assert s._transaction
             expect_expire = True
@@ -297,14 +277,11 @@ class TransScopingTest(_fixtures.FixtureTest):
         # test is that state is consistent after rollback()
         s.rollback()
 
-        if autocommit and not begin and modify_unconditional:
-            eq_(u.name, "y")
+        if not expect_expire:
+            assert "name" in u.__dict__
         else:
-            if not expect_expire:
-                assert "name" in u.__dict__
-            else:
-                assert "name" not in u.__dict__
-            eq_(u.name, "x")
+            assert "name" not in u.__dict__
+        eq_(u.name, "x")
 
     @testing.requires.independent_connections
     @engines.close_open_connections
@@ -315,7 +292,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
-        sess = Session(autocommit=False, bind=conn1)
+        sess = Session(bind=conn1)
         u = User(name="x")
         sess.add(u)
         sess.flush()
@@ -505,6 +482,24 @@ class SessionUtilTest(_fixtures.FixtureTest):
             u1,
         )
 
+    def test_get_execution_option(self):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+        sess = fixture_session()
+        called = False
+
+        @event.listens_for(sess, "do_orm_execute")
+        def check(ctx):
+            nonlocal called
+            called = True
+            eq_(ctx.execution_options["foo"], "bar")
+
+        sess.get(User, 42, execution_options={"foo": "bar"})
+        sess.close()
+
+        is_true(called)
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -532,6 +527,14 @@ class SessionStateTest(_fixtures.FixtureTest):
         s4 = maker2(info={"s4": 8})
         eq_(s4.info, {"s4": 8})
 
+    def test_autocommit_kw_accepted_but_must_be_false(self):
+        Session(autocommit=False)
+
+        with expect_raises_message(
+            sa.exc.ArgumentError, "autocommit=True is no longer supported"
+        ):
+            Session(autocommit=True)
+
     @testing.requires.independent_connections
     @engines.close_open_connections
     def test_autoflush(self):
@@ -542,7 +545,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         conn1 = bind.connect()
         conn2 = bind.connect()
 
-        sess = Session(bind=conn1, autocommit=False, autoflush=True)
+        sess = Session(bind=conn1, autoflush=True)
         u = User()
         u.name = "ed"
         sess.add(u)
@@ -684,7 +687,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        with fixture_session(autocommit=False, autoflush=True) as sess:
+        with fixture_session(autoflush=True) as sess:
             u = User()
             u.name = "ed"
             sess.add(u)
@@ -724,7 +727,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         conn1 = testing.db.connect()
-        sess = Session(bind=conn1, autocommit=False, autoflush=True)
+        sess = Session(bind=conn1, autoflush=True)
         u = User()
         u.name = "ed"
         sess.add(u)
@@ -740,28 +743,10 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
         sess.commit()
 
-    def test_autocommit_doesnt_raise_on_pending(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-        session = Session(testing.db, autocommit=True)
-
-        session.add(User(name="ed"))
-
-        session.begin()
-        session.flush()
-        session.commit()
-
-    def test_active_flag_autocommit(self):
-        sess = Session(bind=config.db, autocommit=True)
-        assert not sess.is_active
-        sess.begin()
-        assert sess.is_active
-        sess.rollback()
-        assert not sess.is_active
-
     def test_active_flag_autobegin(self):
-        sess = Session(bind=config.db, autocommit=False)
+        sess = Session(
+            bind=config.db,
+        )
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -770,7 +755,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
 
     def test_active_flag_autobegin_future(self):
-        sess = Session(bind=config.db, future=True)
+        sess = Session(bind=config.db)
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -779,14 +764,16 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
 
     def test_active_flag_partial_rollback(self):
-        sess = Session(bind=config.db, autocommit=False)
+        sess = Session(
+            bind=config.db,
+        )
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
         assert sess.is_active
         sess.begin(_subtrans=True)
         sess.rollback()
-        assert not sess.is_active
+        assert sess.is_active
 
         sess.rollback()
         assert sess.is_active
@@ -846,7 +833,7 @@ class SessionStateTest(_fixtures.FixtureTest):
             s2.delete,
             user,
         )
-        u2 = s2.query(User).get(user.id)
+        u2 = s2.get(User, user.id)
         s2.expunge(u2)
         assert_raises_message(
             sa.exc.InvalidRequestError,
@@ -943,6 +930,9 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert "addresses" not in inspect(u1).dict
         assert a2 in inspect(u1)._pending_mutations["addresses"].added_items
 
+        # this is needed now that cascade_backrefs is turned off
+        session.add(a2)
+
         with assertions.expect_warnings(
             r"Identity map already had an identity "
             r"for \(.*Address.*\), replacing"
@@ -983,7 +973,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u1 not in sess
         assert Session.object_session(u1) is None
 
-        u2 = sess.query(User).get(u1.id)
+        u2 = sess.get(User, u1.id)
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
@@ -1011,7 +1001,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         sess.expunge_all()
 
-        u3 = sess.query(User).get(u1.id)
+        u3 = sess.get(User, u1.id)
         assert u3 is not u1 and u3 is not u2 and u3.name == u1.name
 
     def test_no_double_save(self):
@@ -1019,7 +1009,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         sess = fixture_session()
 
-        class Foo(object):
+        class Foo:
             def __init__(self):
                 sess.add(self)
 
@@ -1076,7 +1066,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
     def test_extra_dirty_state_post_flush_warning(self):
         s, a1, a2 = self._test_extra_dirty_state()
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "Attribute history events accumulated on 1 previously "
             "clean instances",
@@ -1194,7 +1184,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
         """
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
         eq_(
@@ -1205,15 +1197,13 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_obj_was_gced(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(
-            autoflush=True, autocommit=False, expire_on_commit=False
-        )
+        sess = fixture_session(autoflush=True, expire_on_commit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
 
         sess.commit()
         sess.close()
-        u = sess.query(User).get(u.id)
+        u = sess.get(User, u.id)
         q = sess.query(Address).filter(Address.user == u)
         del u
         gc_collect()
@@ -1227,9 +1217,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
 
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(
-            autoflush=True, autocommit=False, expire_on_commit=False
-        )
+        sess = fixture_session(autoflush=True, expire_on_commit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
         sess.commit()
@@ -1242,7 +1230,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_obj_was_never_flushed(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         assert_raises_message(
@@ -1271,7 +1261,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_unflushed_obj_became_detached_unexpired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1285,7 +1277,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_unflushed_obj_became_detached_expired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1300,7 +1294,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expr_unflushed_obj_became_detached_expired_by_key(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1315,9 +1311,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_expired_obj_became_detached_expired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = fixture_session(
-            autoflush=True, autocommit=False, expire_on_commit=True
-        )
+        sess = fixture_session(autoflush=True, expire_on_commit=True)
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         sess.add(u)
@@ -1360,8 +1354,8 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
             User, users, properties={"addresses": relationship(Address)}
         )
 
-        sess = fixture_session(autocommit=False, autoflush=True)
-        u = sess.query(User).get(8)
+        sess = fixture_session(autoflush=True)
+        u = sess.get(User, 8)
         newad = Address(email_address="a new address")
         u.addresses.append(newad)
         u.name = "some new name"
@@ -1577,14 +1571,24 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
         assert not s.dirty
 
         user = s.query(User).one()
+
+        # heisenberg the GC a little bit, since #7823 caused a lot more
+        # GC when mappings are set up, larger test suite started failing
+        # on this being gc'ed
+        user_is = user._sa_instance_state
         del user
         gc_collect()
+        gc_collect()
+        gc_collect()
+        assert user_is.obj() is None
+
         assert len(s.identity_map) == 0
 
         user = s.query(User).one()
@@ -1609,6 +1613,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
@@ -1651,6 +1656,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             properties={"addresses": relationship(Address, backref="user")},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
 
@@ -1691,6 +1698,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", address=Address(email_address="ed1")))
         s.commit()
 
@@ -1718,6 +1727,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = Session(testing.db)
 
@@ -1749,6 +1759,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = fixture_session()
 
@@ -1952,7 +1963,7 @@ class DisposedStates(fixtures.MappedTest):
         self._test_session().expire_all()
 
     def test_rollback(self):
-        sess = self._test_session(autocommit=False, expire_on_commit=True)
+        sess = self._test_session(expire_on_commit=True)
         sess.commit()
 
         sess.rollback()
@@ -2033,7 +2044,7 @@ class SessionInterface(fixtures.MappedTest):
 
         # flush will no-op without something in the unit of work
         def _():
-            class OK(object):
+            class OK:
                 pass
 
             self._map_it(OK)
@@ -2103,7 +2114,7 @@ class SessionInterface(fixtures.MappedTest):
         )
 
     def test_unmapped_instance(self):
-        class Unmapped(object):
+        class Unmapped:
             pass
 
         self._test_instance_guards(Unmapped())
@@ -2115,14 +2126,14 @@ class SessionInterface(fixtures.MappedTest):
             self._test_class_guards(prim, is_class=False)
 
     def test_unmapped_class_for_instance(self):
-        class Unmapped(object):
+        class Unmapped:
             pass
 
         self._test_instance_guards(Unmapped)
         self._test_class_guards(Unmapped)
 
     def test_mapped_class_for_instance(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         self._map_it(Mapped)
@@ -2131,7 +2142,7 @@ class SessionInterface(fixtures.MappedTest):
         # no class guards- it would pass.
 
     def test_missing_state(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         early = Mapped()
@@ -2141,7 +2152,7 @@ class SessionInterface(fixtures.MappedTest):
         self._test_class_guards(early, is_class=False)
 
     def test_refresh_arg_signature(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         self._map_it(Mapped)
@@ -2187,7 +2198,10 @@ class NewStyleExecutionTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         cls._setup_stock_mapping()
 
-    @testing.combinations(("close",), ("expunge_all",))
+    @testing.combinations(
+        ("close", testing.requires.cursor_works_post_rollback),
+        ("expunge_all",),
+    )
     def test_unbuffered_result_session_is_closed(self, meth):
         """test #7128"""
         User = self.classes.User
@@ -2205,6 +2219,32 @@ class NewStyleExecutionTest(_fixtures.FixtureTest):
             "as this identity map is no longer valid.",
         ):
             result.all()
+
+    @testing.combinations("insert", "update", "delete", argnames="dml_expr")
+    @testing.combinations("core", "orm", argnames="coreorm")
+    def test_dml_execute(self, dml_expr, coreorm):
+        User = self.classes.User
+        users = self.tables.users
+
+        sess = fixture_session()
+
+        if coreorm == "orm":
+            if dml_expr == "insert":
+                stmt = insert(User).values(id=12, name="some user")
+            elif dml_expr == "update":
+                stmt = update(User).values(name="sone name").filter_by(id=15)
+            else:
+                stmt = delete(User).filter_by(id=15)
+        else:
+            if dml_expr == "insert":
+                stmt = insert(users).values(id=12, name="some user")
+            elif dml_expr == "update":
+                stmt = update(users).values(name="sone name").filter_by(id=15)
+            else:
+                stmt = delete(users).filter_by(id=15)
+
+        result = sess.execute(stmt)
+        result.close()
 
     @testing.combinations((True,), (False,), argnames="prebuffered")
     @testing.combinations(("close",), ("expunge_all",), argnames="meth")
@@ -2316,7 +2356,8 @@ class FlushWarningsTest(fixtures.MappedTest):
         def evt(mapper, conn, instance):
             instance.addresses[0].user = User(name="u2")
 
-        self._test(evt, "related attribute set")
+        with expect_raises_message(orm_exc.FlushError, ".*Over 100"):
+            self._test(evt, "related attribute set")
 
     def test_m2o_cascade_remove(self):
         def evt(mapper, conn, instance):
@@ -2347,7 +2388,10 @@ class FlushWarningsTest(fixtures.MappedTest):
         def evt(mapper, conn, instance):
             object_session(instance).delete(Address(email="x1"))
 
-        self._test(evt, r"Session.delete\(\)")
+        with expect_raises_message(
+            sa.exc.InvalidRequestError, ".*is not persisted"
+        ):
+            self._test(evt, r"Session.delete\(\)")
 
     def _test(self, fn, method):
         User = self.classes.User
@@ -2358,6 +2402,6 @@ class FlushWarningsTest(fixtures.MappedTest):
 
         u1 = User(name="u1", addresses=[Address(name="a1")])
         s.add(u1)
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning, "Usage of the '%s'" % method, s.commit
         )

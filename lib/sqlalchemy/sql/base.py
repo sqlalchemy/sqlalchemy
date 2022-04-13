@@ -1,5 +1,5 @@
 # sql/base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,34 +10,128 @@
 """
 
 
+from __future__ import annotations
+
+from enum import Enum
+from functools import reduce
 import itertools
+from itertools import zip_longest
 import operator
 import re
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Mapping
+from typing import MutableMapping
+from typing import NoReturn
+from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
 from . import roles
 from . import visitors
-from .traversals import HasCacheKey  # noqa
+from .cache_key import HasCacheKey  # noqa
+from .cache_key import MemoizedHasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
-from .traversals import MemoizedHasCacheKey  # noqa
 from .visitors import ClauseVisitor
 from .visitors import ExtendedInternalTraversal
+from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
+from .. import event
 from .. import exc
 from .. import util
-from ..util import HasMemoized
+from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
+from ..util import typing as compat_typing
+from ..util.typing import Protocol
+from ..util.typing import Self
+from ..util.typing import TypeGuard
+
+if TYPE_CHECKING:
+    from . import coercions
+    from . import elements
+    from . import type_api
+    from ._typing import _ColumnsClauseArgument
+    from .elements import BindParameter
+    from .elements import ColumnClause
+    from .elements import ColumnElement
+    from .elements import NamedColumn
+    from .elements import SQLCoreOperations
+    from .elements import TextClause
+    from .selectable import _JoinTargetElement
+    from .selectable import _SelectIterable
+    from .selectable import FromClause
+    from ..engine import Connection
+    from ..engine import CursorResult
+    from ..engine import Result
+    from ..engine.base import _CompiledCacheType
+    from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import _ExecuteOptionsParameter
+    from ..engine.interfaces import _ImmutableExecuteOptions
+    from ..engine.interfaces import _SchemaTranslateMapType
+    from ..engine.interfaces import CacheStats
+    from ..engine.interfaces import Compiled
+    from ..engine.interfaces import Dialect
+    from ..event import dispatcher
+
+if not TYPE_CHECKING:
+    coercions = None  # noqa
+    elements = None  # noqa
+    type_api = None  # noqa
 
 
-coercions = None
-elements = None
-type_api = None
-
-PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
-NO_ARG = util.symbol("NO_ARG")
+class _NoArg(Enum):
+    NO_ARG = 0
 
 
-class Immutable(object):
-    """mark a ClauseElement as 'immutable' when expressions are cloned."""
+NO_ARG = _NoArg.NO_ARG
+
+_T = TypeVar("_T", bound=Any)
+
+_Fn = TypeVar("_Fn", bound=Callable[..., Any])
+
+_AmbiguousTableNameMap = MutableMapping[str, str]
+
+
+class _EntityNamespace(Protocol):
+    def __getattr__(self, key: str) -> SQLCoreOperations[Any]:
+        ...
+
+
+class _HasEntityNamespace(Protocol):
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
+        ...
+
+
+def _is_has_entity_namespace(element: Any) -> TypeGuard[_HasEntityNamespace]:
+    return hasattr(element, "entity_namespace")
+
+
+class Immutable:
+    """mark a ClauseElement as 'immutable' when expressions are cloned.
+
+    "immutable" objects refers to the "mutability" of an object in the
+    context of SQL DQL and DML generation.   Such as, in DQL, one can
+    compose a SELECT or subquery of varied forms, but one cannot modify
+    the structure of a specific table or column within DQL.
+    :class:`.Immutable` is mostly intended to follow this concept, and as
+    such the primary "immutable" objects are :class:`.ColumnClause`,
+    :class:`.Column`, :class:`.TableClause`, :class:`.Table`.
+
+    """
 
     _is_immutable = True
 
@@ -47,10 +141,12 @@ class Immutable(object):
     def params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
-    def _clone(self, **kw):
+    def _clone(self: Self, **kw: Any) -> Self:
         return self
 
-    def _copy_internals(self, **kw):
+    def _copy_internals(
+        self, omit_attrs: Iterable[str] = (), **kw: Any
+    ) -> None:
         pass
 
 
@@ -59,13 +155,19 @@ class SingletonConstant(Immutable):
 
     _is_singleton_constant = True
 
-    def __new__(cls, *arg, **kw):
-        return cls._singleton
+    _singleton: SingletonConstant
+
+    def __new__(cls: _T, *arg: Any, **kw: Any) -> _T:
+        return cast(_T, cls._singleton)
+
+    @util.non_memoized_property
+    def proxy_set(self) -> FrozenSet[ColumnElement[Any]]:
+        raise NotImplementedError()
 
     @classmethod
     def _create_singleton(cls):
         obj = object.__new__(cls)
-        obj.__init__()
+        obj.__init__()  # type: ignore
 
         # for a long time this was an empty frozenset, meaning
         # a SingletonConstant would never be a "corresponding column" in
@@ -78,13 +180,19 @@ class SingletonConstant(Immutable):
         cls._singleton = obj
 
 
-def _from_objects(*elements):
+def _from_objects(
+    *elements: Union[
+        ColumnElement[Any], FromClause, TextClause, _JoinTargetElement
+    ]
+) -> Iterator[FromClause]:
     return itertools.chain.from_iterable(
         [element._from_objects for element in elements]
     )
 
 
-def _select_iterables(elements):
+def _select_iterables(
+    elements: Iterable[roles.ColumnsClauseRole],
+) -> _SelectIterable:
     """expand tables into individual columns in the
     given list of column expressions.
 
@@ -94,7 +202,15 @@ def _select_iterables(elements):
     )
 
 
-def _generative(fn):
+_SelfGenerativeType = TypeVar("_SelfGenerativeType", bound="_GenerativeType")
+
+
+class _GenerativeType(compat_typing.Protocol):
+    def _generate(self: _SelfGenerativeType) -> _SelfGenerativeType:
+        ...
+
+
+def _generative(fn: _Fn) -> _Fn:
     """non-caching _generative() decorator.
 
     This is basically the legacy decorator that copies the object and
@@ -103,20 +219,22 @@ def _generative(fn):
     """
 
     @util.decorator
-    def _generative(fn, self, *args, **kw):
+    def _generative(
+        fn: _Fn, self: _SelfGenerativeType, *args: Any, **kw: Any
+    ) -> _SelfGenerativeType:
         """Mark a method as generative."""
 
         self = self._generate()
         x = fn(self, *args, **kw)
-        assert x is None, "generative methods must have no return value"
+        assert x is self, "generative methods must return self"
         return self
 
-    decorated = _generative(fn)
-    decorated.non_generative = fn
-    return decorated
+    decorated = _generative(fn)  # type: ignore
+    decorated.non_generative = fn  # type: ignore
+    return decorated  # type: ignore
 
 
-def _exclusive_against(*names, **kw):
+def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
     msgs = kw.pop("msgs", {})
 
     defaults = kw.pop("defaults", {})
@@ -154,6 +272,11 @@ def _expand_cloned(elements):
     predecessors.
 
     """
+    # TODO: cython candidate
+    # and/or change approach: in
+    # https://gerrit.sqlalchemy.org/c/sqlalchemy/sqlalchemy/+/3712 we propose
+    # getting rid of _cloned_set.
+    # turning this into chain.from_iterable adds all kinds of callcount
     return itertools.chain(*[x._cloned_set for x in elements])
 
 
@@ -177,7 +300,7 @@ def _cloned_difference(a, b):
     )
 
 
-class _DialectArgView(util.collections_abc.MutableMapping):
+class _DialectArgView(MutableMapping[str, Any]):
     """A dictionary view of dialect-level arguments in the form
     <dialectname>_<argument_name>.
 
@@ -190,7 +313,7 @@ class _DialectArgView(util.collections_abc.MutableMapping):
         try:
             dialect, value_key = key.split("_", 1)
         except ValueError as err:
-            util.raise_(KeyError(key), replace_context=err)
+            raise KeyError(key) from err
         else:
             return dialect, value_key
 
@@ -200,7 +323,7 @@ class _DialectArgView(util.collections_abc.MutableMapping):
         try:
             opt = self.obj.dialect_options[dialect]
         except exc.NoSuchModuleError as err:
-            util.raise_(KeyError(key), replace_context=err)
+            raise KeyError(key) from err
         else:
             return opt[value_key]
 
@@ -208,12 +331,9 @@ class _DialectArgView(util.collections_abc.MutableMapping):
         try:
             dialect, value_key = self._key(key)
         except KeyError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "Keys must be of the form <dialectname>_<argname>"
-                ),
-                replace_context=err,
-            )
+            raise exc.ArgumentError(
+                "Keys must be of the form <dialectname>_<argname>"
+            ) from err
         else:
             self.obj.dialect_options[dialect][value_key] = value
 
@@ -237,7 +357,7 @@ class _DialectArgView(util.collections_abc.MutableMapping):
         )
 
 
-class _DialectArgDict(util.collections_abc.MutableMapping):
+class _DialectArgDict(MutableMapping[str, Any]):
     """A dictionary view of dialect-level arguments for a specific
     dialect.
 
@@ -277,7 +397,7 @@ def _kw_reg_for_dialect(dialect_name):
     return dict(dialect_cls.construct_arguments)
 
 
-class DialectKWArgs(object):
+class DialectKWArgs:
     """Establish the ability for a class to have dialect-specific arguments
     with defaults and constructor validation.
 
@@ -289,6 +409,8 @@ class DialectKWArgs(object):
         :attr:`.DefaultDialect.construct_arguments`
 
     """
+
+    __slots__ = ()
 
     _dialect_kwargs_traverse_internals = [
         ("dialect_options", InternalTraversal.dp_dialect_options)
@@ -412,7 +534,7 @@ class DialectKWArgs(object):
             util.portable_instancemethod(self._kw_reg_for_dialect_cls)
         )
 
-    def _validate_dialect_kwargs(self, kwargs):
+    def _validate_dialect_kwargs(self, kwargs: Any) -> None:
         # validate remaining kwargs that they all specify DB prefixes
 
         if not kwargs:
@@ -452,7 +574,7 @@ class DialectKWArgs(object):
                     construct_arg_dictionary[arg_name] = kwargs[k]
 
 
-class CompileState(object):
+class CompileState:
     """Produces additional object state necessary for a statement to be
     compiled.
 
@@ -479,9 +601,11 @@ class CompileState(object):
 
     """
 
-    __slots__ = ("statement",)
+    __slots__ = ("statement", "_ambiguous_table_name_map")
 
-    plugins = {}
+    plugins: Dict[Tuple[str, str], Type[CompileState]] = {}
+
+    _ambiguous_table_name_map: Optional[_AmbiguousTableNameMap]
 
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
@@ -513,10 +637,31 @@ class CompileState(object):
         self.statement = statement
 
     @classmethod
-    def get_plugin_class(cls, statement):
+    def get_plugin_class(
+        cls, statement: Executable
+    ) -> Optional[Type[CompileState]]:
         plugin_name = statement._propagate_attrs.get(
-            "compile_state_plugin", "default"
+            "compile_state_plugin", None
         )
+
+        if plugin_name:
+            key = (plugin_name, statement._effective_plugin_target)
+            if key in cls.plugins:
+                return cls.plugins[key]
+
+        # there's no case where we call upon get_plugin_class() and want
+        # to get None back, there should always be a default.  return that
+        # if there was no plugin-specific class  (e.g. Insert with "orm"
+        # plugin)
+        try:
+            return cls.plugins[("default", statement._effective_plugin_target)]
+        except KeyError:
+            return None
+
+    @classmethod
+    def _get_plugin_class_for_plugin(
+        cls, statement: Executable, plugin_name: str
+    ) -> Optional[Type[CompileState]]:
         try:
             return cls.plugins[
                 (plugin_name, statement._effective_plugin_target)
@@ -525,16 +670,9 @@ class CompileState(object):
             return None
 
     @classmethod
-    def _get_plugin_class_for_plugin(cls, statement, plugin_name):
-        try:
-            return cls.plugins[
-                (plugin_name, statement._effective_plugin_target)
-            ]
-        except KeyError:
-            return None
-
-    @classmethod
-    def plugin_for(cls, plugin_name, visit_name):
+    def plugin_for(
+        cls, plugin_name: str, visit_name: str
+    ) -> Callable[[_Fn], _Fn]:
         def decorate(cls_to_decorate):
             cls.plugins[(plugin_name, visit_name)] = cls_to_decorate
             return cls_to_decorate
@@ -542,11 +680,14 @@ class CompileState(object):
         return decorate
 
 
+SelfGenerative = TypeVar("SelfGenerative", bound="Generative")
+
+
 class Generative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator."""
 
-    def _generate(self):
+    def _generate(self: SelfGenerative) -> SelfGenerative:
         skip = self._memoized_keys
         cls = self.__class__
         s = cls.__new__(cls)
@@ -573,26 +714,23 @@ class InPlaceGenerative(HasMemoized):
 class HasCompileState(Generative):
     """A class that has a :class:`.CompileState` associated with it."""
 
-    _compile_state_plugin = None
+    _compile_state_plugin: Optional[Type[CompileState]] = None
 
-    _attributes = util.immutabledict()
+    _attributes: util.immutabledict[str, Any] = util.EMPTY_DICT
 
     _compile_state_factory = CompileState.create_for_statement
 
 
 class _MetaOptions(type):
-    """metaclass for the Options class."""
+    """metaclass for the Options class.
 
-    def __init__(cls, classname, bases, dict_):
-        cls._cache_attrs = tuple(
-            sorted(
-                d
-                for d in dict_
-                if not d.startswith("__")
-                and d not in ("_cache_key_traversal",)
-            )
-        )
-        type.__init__(cls, classname, bases, dict_)
+    This metaclass is actually necessary despite the availability of the
+    ``__init_subclass__()`` hook as this type also provides custom class-level
+    behavior for the ``__add__()`` method.
+
+    """
+
+    _cache_attrs: Tuple[str, ...]
 
     def __add__(self, other):
         o1 = self()
@@ -608,8 +746,24 @@ class _MetaOptions(type):
         return o1
 
 
-class Options(util.with_metaclass(_MetaOptions)):
+class Options(metaclass=_MetaOptions):
     """A cacheable option dictionary with defaults."""
+
+    __slots__ = ()
+
+    _cache_attrs: Tuple[str, ...]
+
+    def __init_subclass__(cls) -> None:
+        dict_ = cls.__dict__
+        cls._cache_attrs = tuple(
+            sorted(
+                d
+                for d in dict_
+                if not d.startswith("__")
+                and d not in ("_cache_key_traversal",)
+            )
+        )
+        super().__init_subclass__()
 
     def __init__(self, **kw):
         self.__dict__.update(kw)
@@ -631,7 +785,7 @@ class Options(util.with_metaclass(_MetaOptions)):
     def __eq__(self, other):
         # TODO: very inefficient.  This is used only in test suites
         # right now.
-        for a, b in util.zip_longest(self._cache_attrs, other._cache_attrs):
+        for a, b in zip_longest(self._cache_attrs, other._cache_attrs):
             if getattr(self, a) != getattr(other, b):
                 return False
         return True
@@ -649,7 +803,7 @@ class Options(util.with_metaclass(_MetaOptions)):
         )
 
     @classmethod
-    def isinstance(cls, klass):
+    def isinstance(cls, klass: Type[Any]) -> bool:
         return issubclass(cls, klass)
 
     @hybridmethod
@@ -657,13 +811,13 @@ class Options(util.with_metaclass(_MetaOptions)):
         return self + {name: getattr(self, name) + value}
 
     @hybridmethod
-    def _state_dict(self):
+    def _state_dict_inst(self) -> Mapping[str, Any]:
         return self.__dict__
 
-    _state_dict_const = util.immutabledict()
+    _state_dict_const: util.immutabledict[str, Any] = util.EMPTY_DICT
 
-    @_state_dict.classlevel
-    def _state_dict(cls):
+    @_state_dict_inst.classlevel
+    def _state_dict(cls) -> Mapping[str, Any]:
         return cls._state_dict_const
 
     @classmethod
@@ -747,11 +901,13 @@ class Options(util.with_metaclass(_MetaOptions)):
 
 
 class CacheableOptions(Options, HasCacheKey):
+    __slots__ = ()
+
     @hybridmethod
-    def _gen_cache_key(self, anon_map, bindparams):
+    def _gen_cache_key_inst(self, anon_map, bindparams):
         return HasCacheKey._gen_cache_key(self, anon_map, bindparams)
 
-    @_gen_cache_key.classlevel
+    @_gen_cache_key_inst.classlevel
     def _gen_cache_key(cls, anon_map, bindparams):
         return (cls, ())
 
@@ -760,16 +916,25 @@ class CacheableOptions(Options, HasCacheKey):
         return HasCacheKey._generate_cache_key_for_object(self)
 
 
-class ExecutableOption(HasCopyInternals, HasCacheKey):
+class ExecutableOption(HasCopyInternals):
+    __slots__ = ()
+
     _annotations = util.EMPTY_DICT
 
     __visit_name__ = "executable_option"
 
+    _is_has_cache_key = False
+
+    _is_core = True
+
     def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""
         c = self.__class__.__new__(self.__class__)
-        c.__dict__ = dict(self.__dict__)
+        c.__dict__ = dict(self.__dict__)  # type: ignore
         return c
+
+
+SelfExecutable = TypeVar("SelfExecutable", bound="Executable")
 
 
 class Executable(roles.StatementRole, Generative):
@@ -781,11 +946,13 @@ class Executable(roles.StatementRole, Generative):
 
     """
 
-    supports_execution = True
-    _execution_options = util.immutabledict()
-    _bind = None
-    _with_options = ()
-    _with_context_options = ()
+    supports_execution: bool = True
+    _execution_options: _ImmutableExecuteOptions = util.EMPTY_DICT
+    _with_options: Tuple[ExecutableOption, ...] = ()
+    _with_context_options: Tuple[
+        Tuple[Callable[[CompileState], None], Any], ...
+    ] = ()
+    _compile_options: Optional[Union[Type[CacheableOptions], CacheableOptions]]
 
     _executable_traverse_internals = [
         ("_with_options", InternalTraversal.dp_executable_options),
@@ -803,12 +970,45 @@ class Executable(roles.StatementRole, Generative):
     is_delete = False
     is_dml = False
 
+    if TYPE_CHECKING:
+
+        __visit_name__: str
+
+        def _compile_w_cache(
+            self,
+            dialect: Dialect,
+            *,
+            compiled_cache: Optional[_CompiledCacheType],
+            column_keys: List[str],
+            for_executemany: bool = False,
+            schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+            **kw: Any,
+        ) -> Tuple[
+            Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
+        ]:
+            ...
+
+        def _execute_on_connection(
+            self,
+            connection: Connection,
+            distilled_params: _CoreMultiExecuteParams,
+            execution_options: _ExecuteOptionsParameter,
+            _force: bool = False,
+        ) -> CursorResult:
+            ...
+
+    @util.ro_non_memoized_property
+    def _all_selected_columns(self):
+        raise NotImplementedError()
+
     @property
-    def _effective_plugin_target(self):
+    def _effective_plugin_target(self) -> str:
         return self.__visit_name__
 
     @_generative
-    def options(self, *options):
+    def options(
+        self: SelfExecutable, *options: ExecutableOption
+    ) -> SelfExecutable:
         """Apply options to this statement.
 
         In the general sense, options are any kind of Python object
@@ -824,7 +1024,7 @@ class Executable(roles.StatementRole, Generative):
         For background on specific kinds of options for specific kinds of
         statements, refer to the documentation for those option objects.
 
-        .. versionchanged:: 1.4 - added :meth:`.Generative.options` to
+        .. versionchanged:: 1.4 - added :meth:`.Executable.options` to
            Core statement objects towards the goal of allowing unified
            Core / ORM querying capabilities.
 
@@ -838,11 +1038,15 @@ class Executable(roles.StatementRole, Generative):
 
         """
         self._with_options += tuple(
-            coercions.expect(roles.HasCacheKeyRole, opt) for opt in options
+            coercions.expect(roles.ExecutableOptionRole, opt)
+            for opt in options
         )
+        return self
 
     @_generative
-    def _set_compile_options(self, compile_options):
+    def _set_compile_options(
+        self: SelfExecutable, compile_options: CacheableOptions
+    ) -> SelfExecutable:
         """Assign the compile options to a new value.
 
         :param compile_options: appropriate CacheableOptions structure
@@ -850,15 +1054,24 @@ class Executable(roles.StatementRole, Generative):
         """
 
         self._compile_options = compile_options
+        return self
 
     @_generative
-    def _update_compile_options(self, options):
+    def _update_compile_options(
+        self: SelfExecutable, options: CacheableOptions
+    ) -> SelfExecutable:
         """update the _compile_options with new keys."""
 
+        assert self._compile_options is not None
         self._compile_options += options
+        return self
 
     @_generative
-    def _add_context_option(self, callable_, cache_args):
+    def _add_context_option(
+        self: SelfExecutable,
+        callable_: Callable[[CompileState], None],
+        cache_args: Any,
+    ) -> SelfExecutable:
         """Add a context option to this statement.
 
         These are callable functions that will
@@ -870,40 +1083,111 @@ class Executable(roles.StatementRole, Generative):
 
         """
         self._with_context_options += ((callable_, cache_args),)
+        return self
 
     @_generative
-    def execution_options(self, **kw):
+    def execution_options(self: SelfExecutable, **kw: Any) -> SelfExecutable:
         """Set non-SQL options for the statement which take effect during
         execution.
 
-        Execution options can be set on a per-statement or
-        per :class:`_engine.Connection` basis.   Additionally, the
-        :class:`_engine.Engine` and ORM :class:`~.orm.query.Query`
-        objects provide
-        access to execution options which they in turn configure upon
-        connections.
+        Execution options can be set at many scopes, including per-statement,
+        per-connection, or per execution, using methods such as
+        :meth:`_engine.Connection.execution_options` and parameters which
+        accept a dictionary of options such as
+        :paramref:`_engine.Connection.execute.execution_options` and
+        :paramref:`_orm.Session.execute.execution_options`.
 
-        The :meth:`execution_options` method is generative.  A new
-        instance of this statement is returned that contains the options::
+        The primary characteristic of an execution option, as opposed to
+        other kinds of options such as ORM loader options, is that
+        **execution options never affect the compiled SQL of a query, only
+        things that affect how the SQL statement itself is invoked or how
+        results are fetched**.  That is, execution options are not part of
+        what's accommodated by SQL compilation nor are they considered part of
+        the cached state of a statement.
+
+        The :meth:`_sql.Executable.execution_options` method is
+        :term:`generative`, as
+        is the case for the method as applied to the :class:`_engine.Engine`
+        and :class:`_orm.Query` objects, which means when the method is called,
+        a copy of the object is returned, which applies the given parameters to
+        that new copy, but leaves the original unchanged::
 
             statement = select(table.c.x, table.c.y)
-            statement = statement.execution_options(autocommit=True)
+            new_statement = statement.execution_options(my_option=True)
 
-        Note that only a subset of possible execution options can be applied
-        to a statement - these include "autocommit" and "stream_results",
-        but not "isolation_level" or "compiled_cache".
-        See :meth:`_engine.Connection.execution_options` for a full list of
-        possible options.
+        An exception to this behavior is the :class:`_engine.Connection`
+        object, where the :meth:`_engine.Connection.execution_options` method
+        is explicitly **not** generative.
+
+        The kinds of options that may be passed to
+        :meth:`_sql.Executable.execution_options` and other related methods and
+        parameter dictionaries include parameters that are explicitly consumed
+        by SQLAlchemy Core or ORM, as well as arbitrary keyword arguments not
+        defined by SQLAlchemy, which means the methods and/or parameter
+        dictionaries may be used for user-defined parameters that interact with
+        custom code, which may access the parameters using methods such as
+        :meth:`_sql.Executable.get_execution_options` and
+        :meth:`_engine.Connection.get_execution_options`, or within selected
+        event hooks using a dedicated ``execution_options`` event parameter
+        such as
+        :paramref:`_events.ConnectionEvents.before_execute.execution_options`
+        or :attr:`_orm.ORMExecuteState.execution_options`, e.g.::
+
+             from sqlalchemy import event
+
+             @event.listens_for(some_engine, "before_execute")
+             def _process_opt(conn, statement, multiparams, params, execution_options):
+                 "run a SQL function before invoking a statement"
+
+                 if execution_options.get("do_special_thing", False):
+                     conn.exec_driver_sql("run_special_function()")
+
+        Within the scope of options that are explicitly recognized by
+        SQLAlchemy, most apply to specific classes of objects and not others.
+        The most common execution options include:
+
+        * :paramref:`_engine.Connection.execution_options.isolation_level` -
+          sets the isolation level for a connection or a class of connections
+          via an :class:`_engine.Engine`.  This option is accepted only
+          by :class:`_engine.Connection` or :class:`_engine.Engine`.
+
+        * :paramref:`_engine.Connection.execution_options.stream_results` -
+          indicates results should be fetched using a server side cursor;
+          this option is accepted by :class:`_engine.Connection`, by the
+          :paramref:`_engine.Connection.execute.execution_options` parameter
+          on :meth:`_engine.Connection.execute`, and additionally by
+          :meth:`_sql.Executable.execution_options` on a SQL statement object,
+          as well as by ORM constructs like :meth:`_orm.Session.execute`.
+
+        * :paramref:`_engine.Connection.execution_options.compiled_cache` -
+          indicates a dictionary that will serve as the
+          :ref:`SQL compilation cache <sql_caching>`
+          for a :class:`_engine.Connection` or :class:`_engine.Engine`, as
+          well as for ORM methods like :meth:`_orm.Session.execute`.
+          Can be passed as ``None`` to disable caching for statements.
+          This option is not accepted by
+          :meth:`_sql.Executable.execution_options` as it is inadvisable to
+          carry along a compilation cache within a statement object.
+
+        * :paramref:`_engine.Connection.execution_options.schema_translate_map`
+          - a mapping of schema names used by the
+          :ref:`Schema Translate Map <schema_translating>` feature, accepted
+          by :class:`_engine.Connection`, :class:`_engine.Engine`,
+          :class:`_sql.Executable`, as well as by ORM constructs
+          like :meth:`_orm.Session.execute`.
 
         .. seealso::
 
             :meth:`_engine.Connection.execution_options`
 
-            :meth:`_query.Query.execution_options`
+            :paramref:`_engine.Connection.execute.execution_options`
 
-            :meth:`.Executable.get_execution_options`
+            :paramref:`_orm.Session.execute.execution_options`
 
-        """
+            :ref:`orm_queryguide_execution_options` - documentation on all
+            ORM-specific execution options
+
+        """  # noqa: E501
         if "isolation_level" in kw:
             raise exc.ArgumentError(
                 "'isolation_level' execution option may only be specified "
@@ -917,8 +1201,9 @@ class Executable(roles.StatementRole, Generative):
                 "on Connection.execution_options(), not per statement."
             )
         self._execution_options = self._execution_options.union(kw)
+        return self
 
-    def get_execution_options(self):
+    def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
 
         .. versionadded:: 1.3
@@ -929,97 +1214,8 @@ class Executable(roles.StatementRole, Generative):
         """
         return self._execution_options
 
-    @util.deprecated_20(
-        ":meth:`.Executable.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
-        e = self.bind
-        if e is None:
-            label = (
-                getattr(self, "description", None) or self.__class__.__name__
-            )
-            msg = (
-                "This %s is not directly bound to a Connection or Engine. "
-                "Use the .execute() method of a Connection or Engine "
-                "to execute this construct." % label
-            )
-            raise exc.UnboundExecutionError(msg)
-        return e._execute_clauseelement(
-            self, multiparams, params, util.immutabledict()
-        )
 
-    @util.deprecated_20(
-        ":meth:`.Executable.scalar`",
-        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.scalar` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.scalar` method of "
-        ":class:`.Session`.",
-    )
-    def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`, returning the
-        result's scalar representation.
-
-        """
-        return self.execute(*multiparams, **params).scalar()
-
-    @property
-    @util.deprecated_20(
-        ":attr:`.Executable.bind`",
-        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
-        enable_warnings=False,
-    )
-    def bind(self):
-        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
-        to
-        which this :class:`.Executable` is bound, or None if none found.
-
-        This is a traversal which checks locally, then
-        checks among the "from" clauses of associated objects
-        until a bound engine or connection is found.
-
-        """
-        if self._bind is not None:
-            return self._bind
-
-        for f in _from_objects(self):
-            if f is self:
-                continue
-            engine = f.bind
-            if engine is not None:
-                return engine
-        else:
-            return None
-
-
-class prefix_anon_map(dict):
-    """A map that creates new keys for missing key access.
-
-    Considers keys of the form "<ident> <name>" to produce
-    new symbols "<name>_<index>", where "index" is an incrementing integer
-    corresponding to <name>.
-
-    Inlines the approach taken by :class:`sqlalchemy.util.PopulateDict` which
-    is otherwise usually used for this type of operation.
-
-    """
-
-    def __missing__(self, key):
-        (ident, derived) = key.split(" ", 1)
-        anonymous_counter = self.get(derived, 1)
-        self[derived] = anonymous_counter + 1
-        value = derived + "_" + str(anonymous_counter)
-        self[key] = value
-        return value
-
-
-class SchemaEventTarget(object):
+class SchemaEventTarget(event.EventTarget):
     """Base class for elements that are the targets of :class:`.DDLEvents`
     events.
 
@@ -1027,10 +1223,14 @@ class SchemaEventTarget(object):
 
     """
 
-    def _set_parent(self, parent, **kw):
+    dispatch: dispatcher[SchemaEventTarget]
+
+    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         """Associate with this SchemaEvent's parent object."""
 
-    def _set_parent_with_dispatch(self, parent, **kw):
+    def _set_parent_with_dispatch(
+        self, parent: SchemaEventTarget, **kw: Any
+    ) -> None:
         self.dispatch.before_parent_attach(self, parent)
         self._set_parent(parent, **kw)
         self.dispatch.after_parent_attach(self, parent)
@@ -1042,7 +1242,11 @@ class SchemaVisitor(ClauseVisitor):
     __traverse_options__ = {"schema_visitor": True}
 
 
-class ColumnCollection(object):
+_COLKEY = TypeVar("_COLKEY", Union[None, str], str)
+_COL = TypeVar("_COL", bound="ColumnElement[Any]")
+
+
+class ColumnCollection(Generic[_COLKEY, _COL]):
     """Collection of :class:`_expression.ColumnElement` instances,
     typically for
     :class:`_sql.FromClause` objects.
@@ -1153,32 +1357,38 @@ class ColumnCollection(object):
 
     __slots__ = "_collection", "_index", "_colset"
 
-    def __init__(self, columns=None):
+    _collection: List[Tuple[_COLKEY, _COL]]
+    _index: Dict[Union[None, str, int], _COL]
+    _colset: Set[_COL]
+
+    def __init__(
+        self, columns: Optional[Iterable[Tuple[_COLKEY, _COL]]] = None
+    ):
         object.__setattr__(self, "_colset", set())
         object.__setattr__(self, "_index", {})
         object.__setattr__(self, "_collection", [])
         if columns:
             self._initial_populate(columns)
 
-    def _initial_populate(self, iter_):
+    def _initial_populate(self, iter_: Iterable[Tuple[_COLKEY, _COL]]) -> None:
         self._populate_separate_keys(iter_)
 
     @property
-    def _all_columns(self):
+    def _all_columns(self) -> List[_COL]:
         return [col for (k, col) in self._collection]
 
-    def keys(self):
+    def keys(self) -> List[_COLKEY]:
         """Return a sequence of string key names for all columns in this
         collection."""
         return [k for (k, col) in self._collection]
 
-    def values(self):
+    def values(self) -> List[_COL]:
         """Return a sequence of :class:`_sql.ColumnClause` or
         :class:`_schema.Column` objects for all columns in this
         collection."""
         return [col for (k, col) in self._collection]
 
-    def items(self):
+    def items(self) -> List[Tuple[_COLKEY, _COL]]:
         """Return a sequence of (key, column) tuples for all columns in this
         collection each consisting of a string key name and a
         :class:`_sql.ColumnClause` or
@@ -1187,34 +1397,34 @@ class ColumnCollection(object):
 
         return list(self._collection)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._collection)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._collection)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_COL]:
         # turn to a list first to maintain over a course of changes
         return iter([col for k, col in self._collection])
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[str, int]) -> _COL:
         try:
             return self._index[key]
         except KeyError as err:
-            if isinstance(key, util.int_types):
-                util.raise_(IndexError(key), replace_context=err)
+            if isinstance(key, int):
+                raise IndexError(key) from err
             else:
                 raise
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> _COL:
         try:
             return self._index[key]
         except KeyError as err:
-            util.raise_(AttributeError(key), replace_context=err)
+            raise AttributeError(key) from err
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         if key not in self._index:
-            if not isinstance(key, util.string_types):
+            if not isinstance(key, str):
                 raise exc.ArgumentError(
                     "__contains__ requires a string argument"
                 )
@@ -1222,20 +1432,20 @@ class ColumnCollection(object):
         else:
             return True
 
-    def compare(self, other):
+    def compare(self, other: ColumnCollection[Any, Any]) -> bool:
         """Compare this :class:`_expression.ColumnCollection` to another
         based on the names of the keys"""
 
-        for l, r in util.zip_longest(self, other):
+        for l, r in zip_longest(self, other):
             if l is not r:
                 return False
         else:
             return True
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return self.compare(other)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Optional[_COL] = None) -> Optional[_COL]:
         """Get a :class:`_sql.ColumnClause` or :class:`_schema.Column` object
         based on a string key name from this
         :class:`_expression.ColumnCollection`."""
@@ -1245,39 +1455,40 @@ class ColumnCollection(object):
         else:
             return default
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(str(c) for c in self),
         )
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> NoReturn:
         raise NotImplementedError()
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> NoReturn:
         raise NotImplementedError()
 
-    def __setattr__(self, key, obj):
+    def __setattr__(self, key: str, obj: Any) -> NoReturn:
         raise NotImplementedError()
 
-    def clear(self):
+    def clear(self) -> NoReturn:
         """Dictionary clear() is not implemented for
         :class:`_sql.ColumnCollection`."""
         raise NotImplementedError()
 
-    def remove(self, column):
-        """Dictionary remove() is not implemented for
-        :class:`_sql.ColumnCollection`."""
+    def remove(self, column: Any) -> None:
         raise NotImplementedError()
 
-    def update(self, iter_):
+    def update(self, iter_: Any) -> NoReturn:
         """Dictionary update() is not implemented for
         :class:`_sql.ColumnCollection`."""
         raise NotImplementedError()
 
-    __hash__ = None
+    # https://github.com/python/mypy/issues/4266
+    __hash__ = None  # type: ignore
 
-    def _populate_separate_keys(self, iter_):
+    def _populate_separate_keys(
+        self, iter_: Iterable[Tuple[_COLKEY, _COL]]
+    ) -> None:
         """populate from an iterator of (key, column)"""
         cols = list(iter_)
         self._collection[:] = cols
@@ -1287,7 +1498,7 @@ class ColumnCollection(object):
         )
         self._index.update({k: col for k, col in reversed(self._collection)})
 
-    def add(self, column, key=None):
+    def add(self, column: _COL, key: Optional[_COLKEY] = None) -> None:
         """Add a column to this :class:`_sql.ColumnCollection`.
 
         .. note::
@@ -1299,30 +1510,34 @@ class ColumnCollection(object):
             object, use the :meth:`_schema.Table.append_column` method.
 
         """
+        colkey: _COLKEY
+
         if key is None:
-            key = column.key
+            colkey = column.key  # type: ignore
+        else:
+            colkey = key
 
         l = len(self._collection)
-        self._collection.append((key, column))
+        self._collection.append((colkey, column))
         self._colset.add(column)
         self._index[l] = column
-        if key not in self._index:
-            self._index[key] = column
+        if colkey not in self._index:
+            self._index[colkey] = column
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         return {"_collection": self._collection, "_index": self._index}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         object.__setattr__(self, "_index", state["_index"])
         object.__setattr__(self, "_collection", state["_collection"])
         object.__setattr__(
             self, "_colset", {col for k, col in self._collection}
         )
 
-    def contains_column(self, col):
+    def contains_column(self, col: _COL) -> bool:
         """Checks if a column object exists in this collection"""
         if col not in self._colset:
-            if isinstance(col, util.string_types):
+            if isinstance(col, str):
                 raise exc.ArgumentError(
                     "contains_column cannot be used with string arguments. "
                     "Use ``col_name in table.c`` instead."
@@ -1331,13 +1546,15 @@ class ColumnCollection(object):
         else:
             return True
 
-    def as_immutable(self):
-        """Return an "immutable" form of this
+    def as_readonly(self) -> ReadOnlyColumnCollection[_COLKEY, _COL]:
+        """Return a "read only" form of this
         :class:`_sql.ColumnCollection`."""
 
-        return ImmutableColumnCollection(self)
+        return ReadOnlyColumnCollection(self)
 
-    def corresponding_column(self, column, require_embedded=False):
+    def corresponding_column(
+        self, column: _COL, require_embedded: bool = False
+    ) -> Optional[_COL]:
         """Given a :class:`_expression.ColumnElement`, return the exported
         :class:`_expression.ColumnElement` object from this
         :class:`_expression.ColumnCollection`
@@ -1368,6 +1585,11 @@ class ColumnCollection(object):
            was moved onto the :class:`_expression.ColumnCollection` itself.
 
         """
+        # TODO: cython candidate
+
+        # don't dig around if the column is locally present
+        if column in self._colset:
+            return column
 
         def embedded(expanded_proxy_set, target_set):
             for t in target_set.difference(expanded_proxy_set):
@@ -1377,9 +1599,6 @@ class ColumnCollection(object):
                     return False
             return True
 
-        # don't dig around if the column is locally present
-        if column in self._colset:
-            return column
         col, intersect = None, None
         target_set = column.proxy_set
         cols = [c for (k, c) in self._collection]
@@ -1390,7 +1609,7 @@ class ColumnCollection(object):
                 not require_embedded
                 or embedded(expanded_proxy_set, target_set)
             ):
-                if col is None:
+                if col is None or intersect is None:
 
                     # no corresponding column yet, pick this one.
 
@@ -1414,7 +1633,7 @@ class ColumnCollection(object):
                     # columns that have no reference to the target
                     # column (also occurs with CompoundSelect)
 
-                    col_distance = util.reduce(
+                    col_distance = reduce(
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
@@ -1422,7 +1641,7 @@ class ColumnCollection(object):
                             if sc.shares_lineage(column)
                         ],
                     )
-                    c_distance = util.reduce(
+                    c_distance = reduce(
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
@@ -1435,7 +1654,10 @@ class ColumnCollection(object):
         return col
 
 
-class DedupeColumnCollection(ColumnCollection):
+_NAMEDCOL = TypeVar("_NAMEDCOL", bound="NamedColumn[Any]")
+
+
+class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
     """A :class:`_expression.ColumnCollection`
     that maintains deduplicating behavior.
 
@@ -1448,7 +1670,7 @@ class DedupeColumnCollection(ColumnCollection):
 
     """
 
-    def add(self, column, key=None):
+    def add(self, column: _NAMEDCOL, key: Optional[str] = None) -> None:
 
         if key is not None and column.key != key:
             raise exc.ArgumentError(
@@ -1482,7 +1704,9 @@ class DedupeColumnCollection(ColumnCollection):
             self._index[l] = column
             self._index[key] = column
 
-    def _populate_separate_keys(self, iter_):
+    def _populate_separate_keys(
+        self, iter_: Iterable[Tuple[str, _NAMEDCOL]]
+    ) -> None:
         """populate from an iterator of (key, column)"""
         cols = list(iter_)
 
@@ -1507,10 +1731,10 @@ class DedupeColumnCollection(ColumnCollection):
         for col in replace_col:
             self.replace(col)
 
-    def extend(self, iter_):
-        self._populate_separate_keys((col.key, col) for col in iter_)
+    def extend(self, iter_: Iterable[_NAMEDCOL]) -> None:
+        self._populate_separate_keys((col.key, col) for col in iter_)  # type: ignore  # noqa: E501
 
-    def remove(self, column):
+    def remove(self, column: _NAMEDCOL) -> None:
         if column not in self._colset:
             raise ValueError(
                 "Can't remove column %r; column is not in this collection"
@@ -1527,7 +1751,7 @@ class DedupeColumnCollection(ColumnCollection):
         # delete higher index
         del self._index[len(self._collection)]
 
-    def replace(self, column):
+    def replace(self, column: _NAMEDCOL) -> None:
         """add the given column to this collection, removing unaliased
         versions of this column  as well as existing columns with the
         same key.
@@ -1554,7 +1778,7 @@ class DedupeColumnCollection(ColumnCollection):
         if column.key in self._index:
             remove_col.add(self._index[column.key])
 
-        new_cols = []
+        new_cols: List[Tuple[str, _NAMEDCOL]] = []
         replaced = False
         for k, col in self._collection:
             if col in remove_col:
@@ -1580,7 +1804,9 @@ class DedupeColumnCollection(ColumnCollection):
         self._index.update(self._collection)
 
 
-class ImmutableColumnCollection(util.ImmutableContainer, ColumnCollection):
+class ReadOnlyColumnCollection(
+    util.ReadOnlyContainer, ColumnCollection[_COLKEY, _COL]
+):
     __slots__ = ("_parent",)
 
     def __init__(self, collection):
@@ -1594,21 +1820,25 @@ class ImmutableColumnCollection(util.ImmutableContainer, ColumnCollection):
 
     def __setstate__(self, state):
         parent = state["_parent"]
-        self.__init__(parent)
+        self.__init__(parent)  # type: ignore
 
-    add = extend = remove = util.ImmutableContainer._immutable
+    def add(self, column: Any, key: Any = ...) -> Any:
+        self._readonly()
+
+    def extend(self, elements: Any) -> NoReturn:
+        self._readonly()
+
+    def remove(self, item: Any) -> NoReturn:
+        self._readonly()
 
 
-class ColumnSet(util.ordered_column_set):
+class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
     def contains_column(self, col):
         return col in self
 
     def extend(self, cols):
         for col in cols:
             self.add(col)
-
-    def __add__(self, other):
-        return list(self) + list(other)
 
     def __eq__(self, other):
         l = []
@@ -1622,33 +1852,9 @@ class ColumnSet(util.ordered_column_set):
         return hash(tuple(x for x in self))
 
 
-def _bind_or_error(schemaitem, msg=None):
-
-    util.warn_deprecated_20(
-        "The ``bind`` argument for schema methods that invoke SQL "
-        "against an engine or connection will be required in SQLAlchemy 2.0."
-    )
-    bind = schemaitem.bind
-    if not bind:
-        name = schemaitem.__class__.__name__
-        label = getattr(
-            schemaitem, "fullname", getattr(schemaitem, "name", None)
-        )
-        if label:
-            item = "%s object %r" % (name, label)
-        else:
-            item = "%s object" % name
-        if msg is None:
-            msg = (
-                "%s is not bound to an Engine or Connection.  "
-                "Execution can not proceed without a database to execute "
-                "against." % item
-            )
-        raise exc.UnboundExecutionError(msg)
-    return bind
-
-
-def _entity_namespace(entity):
+def _entity_namespace(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible]
+) -> _EntityNamespace:
     """Return the nearest .entity_namespace for the given entity.
 
     If not immediately available, does an iterate to find a sub-element
@@ -1656,16 +1862,20 @@ def _entity_namespace(entity):
 
     """
     try:
-        return entity.entity_namespace
+        return cast(_HasEntityNamespace, entity).entity_namespace
     except AttributeError:
-        for elem in visitors.iterate(entity):
-            if hasattr(elem, "entity_namespace"):
+        for elem in visitors.iterate(cast(ExternallyTraversible, entity)):
+            if _is_has_entity_namespace(elem):
                 return elem.entity_namespace
         else:
             raise
 
 
-def _entity_namespace_key(entity, key):
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: Union[SQLCoreOperations[Any], _NoArg] = NO_ARG,
+) -> SQLCoreOperations[Any]:
     """Return an entry from an entity_namespace.
 
 
@@ -1676,12 +1886,11 @@ def _entity_namespace_key(entity, key):
 
     try:
         ns = _entity_namespace(entity)
-        return getattr(ns, key)
+        if default is not NO_ARG:
+            return getattr(ns, key, default)
+        else:
+            return getattr(ns, key)  # type: ignore
     except AttributeError as err:
-        util.raise_(
-            exc.InvalidRequestError(
-                'Entity namespace for "%s" has no property "%s"'
-                % (entity, key)
-            ),
-            replace_context=err,
-        )
+        raise exc.InvalidRequestError(
+            'Entity namespace for "%s" has no property "%s"' % (entity, key)
+        ) from err

@@ -76,7 +76,7 @@ class InheritTest(fixtures.MappedTest):
         )
 
     def test_basic(self):
-        class Principal(object):
+        class Principal:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -151,7 +151,7 @@ class InheritTest2(fixtures.MappedTest):
         )
 
     def test_get(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, data=None):
                 self.data = data
 
@@ -173,7 +173,7 @@ class InheritTest2(fixtures.MappedTest):
         assert sess.get(Bar, b.id).id == b.id
 
     def test_basic(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, data=None):
                 self.data = data
 
@@ -231,7 +231,7 @@ class InheritTest3(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub, bar_foo, blub_bar, blub_foo
 
-        # the 'data' columns are to appease SQLite which cant handle a blank
+        # the 'data' columns are to appease SQLite which can't handle a blank
         # INSERT
         foo = Table(
             "foo",
@@ -281,7 +281,7 @@ class InheritTest3(fixtures.MappedTest):
         )
 
     def test_basic(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, data=None):
                 self.data = data
 
@@ -317,7 +317,7 @@ class InheritTest3(fixtures.MappedTest):
         eq_(found, compare)
 
     def test_advanced(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, data=None):
                 self.data = data
 

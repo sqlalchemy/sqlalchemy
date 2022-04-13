@@ -28,7 +28,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
 
-class ORMExpr(object):
+class ORMExpr:
     def __init__(self, col):
         self.col = col
 
@@ -36,7 +36,7 @@ class ORMExpr(object):
         return self.col
 
 
-class _InsertTestBase(object):
+class _InsertTestBase:
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1423,7 +1423,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         stmt = table.insert().return_defaults().values(id=func.foobar())
         compiled = stmt.compile(dialect=sqlite.dialect(), column_keys=["data"])
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [])
+        eq_(compiled.implicit_returning, [])
 
         self.assert_compile(
             stmt,
@@ -1452,7 +1452,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=returning_dialect, column_keys=["data"]
         )
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [table.c.id])
+        eq_(compiled.implicit_returning, [table.c.id])
 
         self.assert_compile(
             stmt,
@@ -1482,7 +1482,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=returning_dialect, column_keys=["data"]
         )
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [table.c.id])
+        eq_(compiled.implicit_returning, [table.c.id])
 
         self.assert_compile(
             stmt,

@@ -2,7 +2,7 @@ from sqlalchemy import and_
 from sqlalchemy import case
 from sqlalchemy import cast
 from sqlalchemy import Column
-from sqlalchemy import exc
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -13,7 +13,6 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -56,7 +55,6 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.db.begin() as conn:
             info_table.drop(conn)
 
-    @testing.fails_on("firebird", "FIXME: unknown")
     @testing.requires.subqueries
     def test_case(self, connection):
         inner = select(
@@ -126,23 +124,62 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ],
         )
 
-    def test_literal_interpretation_ambiguous(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            r"Column expression expected, got 'x'",
-            case,
-            ("x", "y"),
+    def test_literal_interpretation_one(self):
+        """note this is modified as of #7287 to accept strings, tuples
+        and other literal values as input
+        where they are interpreted as bound values just like any other
+        expression.
+
+        Previously, an exception would be raised that the literal was
+        ambiguous.
+
+
+        """
+        self.assert_compile(
+            case(("x", "y")),
+            "CASE WHEN :param_1 THEN :param_2 END",
+            checkparams={"param_1": "x", "param_2": "y"},
         )
 
-    def test_literal_interpretation_ambiguous_tuple(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            r"Column expression expected, got \('x', 'y'\)",
-            case,
-            (("x", "y"), "z"),
+    def test_literal_interpretation_two(self):
+        """note this is modified as of #7287 to accept strings, tuples
+        and other literal values as input
+        where they are interpreted as bound values just like any other
+        expression.
+
+        Previously, an exception would be raised that the literal was
+        ambiguous.
+
+
+        """
+        self.assert_compile(
+            case(
+                (("x", "y"), "z"),
+            ),
+            "CASE WHEN :param_1 THEN :param_2 END",
+            checkparams={"param_1": ("x", "y"), "param_2": "z"},
         )
 
-    def test_literal_interpretation(self):
+    def test_literal_interpretation_two_point_five(self):
+        """note this is modified as of #7287 to accept strings, tuples
+        and other literal values as input
+        where they are interpreted as bound values just like any other
+        expression.
+
+        Previously, an exception would be raised that the literal was
+        ambiguous.
+
+
+        """
+        self.assert_compile(
+            case(
+                (12, "z"),
+            ),
+            "CASE WHEN :param_1 THEN :param_2 END",
+            checkparams={"param_1": 12, "param_2": "z"},
+        )
+
+    def test_literal_interpretation_three(self):
         t = table("test", column("col1"))
 
         self.assert_compile(
@@ -178,23 +215,10 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_when_dicts(self, test_case, expected):
         t = table("test", column("col1"))
 
-        whens, value, else_ = testing.resolve_lambda(test_case, t=t)
-
-        def _case_args(whens, value=None, else_=None):
-            kw = {}
-            if value is not None:
-                kw["value"] = value
-            if else_ is not None:
-                kw["else_"] = else_
-
-            return case(whens, **kw)
-
-            # note: 1.3 also does not allow this form
-            # case([whens], **kw)
+        when_dict, value, else_ = testing.resolve_lambda(test_case, t=t)
 
         self.assert_compile(
-            _case_args(whens=whens, value=value, else_=else_),
-            expected,
+            case(when_dict, value=value, else_=else_), expected
         )
 
     def test_text_doesnt_explode(self, connection):
@@ -220,6 +244,16 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
                 connection.execute(s).all(),
                 [("no",), ("no",), ("no",), ("yes",), ("no",), ("no",)],
             )
+
+    def test_text_doenst_explode_even_in_whenlist(self):
+        """test #7287"""
+        self.assert_compile(
+            case(
+                (text(":case = 'upper'"), func.upper(literal_column("q"))),
+                else_=func.lower(literal_column("q")),
+            ),
+            "CASE WHEN :case = 'upper' THEN upper(q) ELSE lower(q) END",
+        )
 
     def testcase_with_dict(self):
         query = select(

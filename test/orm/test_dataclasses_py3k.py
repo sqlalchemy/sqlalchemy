@@ -26,8 +26,6 @@ except ImportError:
 
 
 class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -195,7 +193,7 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             session.commit()
 
         with fixture_session() as session:
-            a = session.query(Account).get(42)
+            a = session.get(Account, 42)
             self.check_data_fixture(a)
 
     def test_appending_to_relationship(self):
@@ -208,7 +206,7 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             account.add_widget(Widget("Xyzzy"))
 
         with Session(testing.db) as session:
-            a = session.query(Account).get(42)
+            a = session.get(Account, 42)
             eq_(a.widget_count, 3)
             eq_(len(a.widgets), 3)
 
@@ -232,8 +230,6 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
 
 class PlainDeclarativeDataclassesTest(DataclassesTest):
-    __requires__ = ("dataclasses",)
-
     run_setup_classes = "each"
     run_setup_mappers = "each"
 
@@ -275,7 +271,9 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
             widgets: List[Widget] = dataclasses.field(default_factory=list)
             widget_count: int = dataclasses.field(init=False)
 
-            widgets = relationship("Widget")
+            __mapper_args__ = dict(
+                properties=dict(widgets=relationship("Widget"))
+            )
 
             def __post_init__(self):
                 self.widget_count = len(self.widgets)
@@ -296,8 +294,6 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
 class FieldEmbeddedDeclarativeDataclassesTest(
     fixtures.DeclarativeMappedTest, DataclassesTest
 ):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -391,8 +387,6 @@ class FieldEmbeddedDeclarativeDataclassesTest(
 
 
 class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -521,8 +515,6 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
 
 
 class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -699,8 +691,6 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
 
 
 class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -840,8 +830,6 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
 
 
 class PropagationFromMixinTest(fixtures.TestBase):
-    __requires__ = ("dataclasses",)
-
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass
         class CommonMixin:
@@ -926,7 +914,7 @@ class PropagationFromMixinTest(fixtures.TestBase):
             eq_(BaseType.__table__.name, "basetype")
             eq_(
                 list(BaseType.__table__.c.keys()),
-                ["timestamp", "type", "id", "value"],
+                ["type", "id", "value", "timestamp"],
             )
             eq_(BaseType.__table__.kwargs, {"mysql_engine": "InnoDB"})
             assert Single.__table__ is BaseType.__table__
@@ -940,8 +928,6 @@ class PropagationFromMixinTest(fixtures.TestBase):
 
 
 class PropagationFromAbstractTest(fixtures.TestBase):
-    __requires__ = ("dataclasses",)
-
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass
         class BaseType:

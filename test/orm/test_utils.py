@@ -5,7 +5,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
@@ -15,15 +14,17 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.path_registry import PathRegistry
+from sqlalchemy.orm.path_registry import PathToken
 from sqlalchemy.orm.path_registry import RootRegistry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import is_true
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.util import compat
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 
@@ -46,7 +47,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         return table
 
     def test_simple(self):
-        class Point(object):
+        class Point:
             pass
 
         table = self._fixture(Point)
@@ -61,7 +62,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert alias.id.__clause_element__().table is not table
 
     def test_named_entity(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point)
@@ -73,7 +74,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_named_selectable(self):
-        class Point(object):
+        class Point:
             pass
 
         table = self._fixture(Point)
@@ -85,7 +86,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_not_instantiatable(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point)
@@ -94,7 +95,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert_raises(TypeError, alias)
 
     def test_instancemethod(self):
-        class Point(object):
+        class Point:
             def zero(self):
                 self.x, self.y = 0, 0
 
@@ -106,7 +107,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert getattr(alias, "zero")
 
     def test_classmethod(self):
-        class Point(object):
+        class Point:
             @classmethod
             def max_x(cls):
                 return 100
@@ -119,7 +120,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert Point.max_x() == alias.max_x() == 100
 
     def test_simple_property(self):
-        class Point(object):
+        class Point:
             @property
             def max_x(self):
                 return 100
@@ -133,7 +134,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert Point.max_x is alias.max_x
 
     def test_descriptors(self):
-        class descriptor(object):
+        class descriptor:
             def __init__(self, fn):
                 self.fn = fn
 
@@ -146,7 +147,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
             def method(self):
                 return "method"
 
-        class Point(object):
+        class Point:
             center = (0, 0)
 
             @descriptor
@@ -171,7 +172,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                 assert child.table is table
 
     def test_hybrid_descriptor_one(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -191,7 +192,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_hybrid_descriptor_two(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -203,7 +204,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         alias = aliased(Point)
 
         eq_(str(Point.double_x), "Point.double_x")
-        eq_(str(alias.double_x), "AliasedClass_Point.double_x")
+        eq_(str(alias.double_x), "aliased(Point).double_x")
         eq_(str(Point.double_x.__clause_element__()), "point.x * :x_1")
         eq_(str(alias.double_x.__clause_element__()), "point_1.x * :x_1")
 
@@ -217,7 +218,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_hybrid_descriptor_three(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -229,7 +230,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         alias = aliased(Point)
 
         eq_(str(Point.x_alone), "Point.x_alone")
-        eq_(str(alias.x_alone), "AliasedClass_Point.x_alone")
+        eq_(str(alias.x_alone), "aliased(Point).x_alone")
 
         # from __clause_element__() perspective, Point.x_alone
         # and Point.x return the same thing, so that's good
@@ -289,7 +290,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_proxy_descriptor_one(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -297,7 +298,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         alias = aliased(Point)
 
         eq_(str(Point.x_syn), "Point.x_syn")
-        eq_(str(alias.x_syn), "AliasedClass_Point.x_syn")
+        eq_(str(alias.x_syn), "aliased(Point).x_syn")
 
         sess = fixture_session()
         self.assert_compile(
@@ -313,14 +314,14 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return cls.x
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             pass
 
         self._fixture(Point)
         alias = aliased(Point)
 
         eq_(str(Point.x_syn), "Point.x")
-        eq_(str(alias.x_syn), "AliasedClass_Point.x")
+        eq_(str(alias.x_syn), "aliased(Point).x")
 
         # from __clause_element__() perspective, Point.x_syn
         # and Point.x return the same thing, so that's good
@@ -354,7 +355,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return cls._impl_double_x
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             @hybrid_property
             def _impl_double_x(self):
                 return self.x * 2
@@ -363,7 +364,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         alias = aliased(Point)
 
         eq_(str(Point.double_x), "Point._impl_double_x")
-        eq_(str(alias.double_x), "AliasedClass_Point._impl_double_x")
+        eq_(str(alias.double_x), "aliased(Point)._impl_double_x")
         eq_(str(Point.double_x.__clause_element__()), "point.x * :x_1")
         eq_(str(alias.double_x.__clause_element__()), "point_1.x * :x_1")
 
@@ -387,7 +388,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return double_x.__get__(None, cls)
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             pass
 
         self._fixture(Point)
@@ -407,7 +408,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_parententity_vs_parentmapper(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point, properties={"x_syn": synonym("x")})
@@ -586,6 +587,38 @@ class PathRegistryTest(_fixtures.FixtureTest):
         )
         is_(path[0], umapper)
         is_(path[2], amapper)
+
+    def test_indexed_key_token(self):
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+        path = PathRegistry.coerce(
+            (
+                umapper,
+                umapper.attrs.addresses,
+                amapper,
+                PathToken.intern(":*"),
+            )
+        )
+        is_true(path.is_token)
+        eq_(path[1], umapper.attrs.addresses)
+        eq_(path[3], ":*")
+
+        with expect_raises(IndexError):
+            path[amapper]
+
+    def test_slice_token(self):
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+        path = PathRegistry.coerce(
+            (
+                umapper,
+                umapper.attrs.addresses,
+                amapper,
+                PathToken.intern(":*"),
+            )
+        )
+        is_true(path.is_token)
+        eq_(path[1:3], (umapper.attrs.addresses, amapper))
 
     def test_indexed_key(self):
         umapper = inspect(self.classes.User)
@@ -840,62 +873,6 @@ class PathRegistryTest(_fixtures.FixtureTest):
         eq_(p1.serialize(), [(User, "addresses"), (Address, "email_address")])
         eq_(p2.serialize(), [(User, "addresses"), (Address, None)])
         eq_(p3.serialize(), [(User, "addresses")])
-
-    def test_serialize_context_dict(self):
-        reg = util.OrderedDict()
-        umapper = inspect(self.classes.User)
-        amapper = inspect(self.classes.Address)
-
-        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
-        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
-        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
-
-        p1.set(reg, "p1key", "p1value")
-        p2.set(reg, "p2key", "p2value")
-        p3.set(reg, "p3key", "p3value")
-        eq_(
-            reg,
-            {
-                ("p1key", p1.path): "p1value",
-                ("p2key", p2.path): "p2value",
-                ("p3key", p3.path): "p3value",
-            },
-        )
-
-        serialized = PathRegistry.serialize_context_dict(
-            reg, ("p1key", "p2key")
-        )
-        eq_(
-            serialized,
-            [
-                (("p1key", p1.serialize()), "p1value"),
-                (("p2key", p2.serialize()), "p2value"),
-            ],
-        )
-
-    def test_deseralize_context_dict(self):
-        umapper = inspect(self.classes.User)
-        amapper = inspect(self.classes.Address)
-
-        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
-        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
-        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
-
-        serialized = [
-            (("p1key", p1.serialize()), "p1value"),
-            (("p2key", p2.serialize()), "p2value"),
-            (("p3key", p3.serialize()), "p3value"),
-        ]
-        deserialized = PathRegistry.deserialize_context_dict(serialized)
-
-        eq_(
-            deserialized,
-            {
-                ("p1key", p1.path): "p1value",
-                ("p2key", p2.path): "p2value",
-                ("p3key", p3.path): "p3value",
-            },
-        )
 
     def test_deseralize(self):
         User = self.classes.User

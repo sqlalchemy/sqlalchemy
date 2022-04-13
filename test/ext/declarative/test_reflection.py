@@ -224,8 +224,10 @@ class DeferredReflectionTest(DeferredReflectBase):
         eq_(len(_DeferredMapperConfig._configs), 2)
         del Address
         gc_collect()
+        gc_collect()
         eq_(len(_DeferredMapperConfig._configs), 1)
         DeferredReflection.prepare(testing.db)
+        gc_collect()
         assert not _DeferredMapperConfig._configs
 
 

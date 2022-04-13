@@ -1,5 +1,5 @@
 # engine/url.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,31 +14,35 @@ argument; alternatively, the URL is a public-facing construct which can
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
+from __future__ import annotations
+
+import collections.abc as collections_abc
 import re
+from typing import Any
+from typing import cast
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Mapping
+from typing import NamedTuple
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import Union
+from urllib.parse import parse_qsl
+from urllib.parse import quote_plus
+from urllib.parse import unquote
 
 from .interfaces import Dialect
 from .. import exc
 from .. import util
 from ..dialects import plugins
 from ..dialects import registry
-from ..util import collections_abc
-from ..util import compat
 
 
-class URL(
-    util.namedtuple(
-        "URL",
-        [
-            "drivername",
-            "username",
-            "password",
-            "host",
-            "port",
-            "database",
-            "query",
-        ],
-    )
-):
+class URL(NamedTuple):
     """
     Represent the components of a URL used to connect to a database.
 
@@ -48,7 +52,7 @@ class URL(
     format of the URL is an RFC-1738-style string.
 
     To create a new :class:`_engine.URL` object, use the
-    :func:`_engine.url.make_url` function.  To construct a :class:`_engine.URL`
+    :func:`.make_url` function.  To construct a :class:`_engine.URL`
     programmatically, use the :meth:`_engine.URL.create` constructor.
 
     .. versionchanged:: 1.4
@@ -61,6 +65,10 @@ class URL(
         :meth:`_engine.URL.update_query_dict` to return a new
         :class:`_engine.URL` object with modifications.   See notes for this
         change at :ref:`change_5526`.
+
+    .. seealso::
+
+        :ref:`database_urls`
 
     :class:`_engine.URL` contains the following attributes:
 
@@ -84,30 +92,30 @@ class URL(
 
     """
 
-    def __new__(self, *arg, **kw):
-        if kw.pop("_new_ok", False):
-            return super(URL, self).__new__(self, *arg, **kw)
-        else:
-            util.warn_deprecated(
-                "Calling URL() directly is deprecated and will be disabled "
-                "in a future release.  The public constructor for URL is "
-                "now the URL.create() method.",
-                "1.4",
-            )
-            return URL.create(*arg, **kw)
+    drivername: str
+    username: Optional[str]
+    password: Optional[str]
+    host: Optional[str]
+    port: Optional[int]
+    database: Optional[str]
+    query: util.immutabledict[str, Union[Tuple[str, ...], str]]
 
     @classmethod
     def create(
         cls,
-        drivername,
-        username=None,
-        password=None,
-        host=None,
-        port=None,
-        database=None,
-        query=util.EMPTY_DICT,
-    ):
+        drivername: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        database: Optional[str] = None,
+        query: Mapping[str, Union[Sequence[str], str]] = util.EMPTY_DICT,
+    ) -> URL:
         """Create a new :class:`_engine.URL` object.
+
+        .. seealso::
+
+            :ref:`database_urls`
 
         :param drivername: the name of the database backend. This name will
           correspond to a module in sqlalchemy/databases or a third party
@@ -151,11 +159,10 @@ class URL(
             cls._assert_port(port),
             cls._assert_none_str(database, "database"),
             cls._str_dict(query),
-            _new_ok=True,
         )
 
     @classmethod
-    def _assert_port(cls, port):
+    def _assert_port(cls, port: Optional[int]) -> Optional[int]:
         if port is None:
             return None
         try:
@@ -164,24 +171,48 @@ class URL(
             raise TypeError("Port argument must be an integer or None")
 
     @classmethod
-    def _assert_str(cls, v, paramname):
-        if not isinstance(v, compat.string_types):
+    def _assert_str(cls, v: str, paramname: str) -> str:
+        if not isinstance(v, str):
             raise TypeError("%s must be a string" % paramname)
         return v
 
     @classmethod
-    def _assert_none_str(cls, v, paramname):
+    def _assert_none_str(
+        cls, v: Optional[str], paramname: str
+    ) -> Optional[str]:
         if v is None:
             return v
 
         return cls._assert_str(v, paramname)
 
     @classmethod
-    def _str_dict(cls, dict_):
+    def _str_dict(
+        cls,
+        dict_: Optional[
+            Union[
+                Sequence[Tuple[str, Union[Sequence[str], str]]],
+                Mapping[str, Union[Sequence[str], str]],
+            ]
+        ],
+    ) -> util.immutabledict[str, Union[Tuple[str, ...], str]]:
         if dict_ is None:
             return util.EMPTY_DICT
 
-        def _assert_value(val):
+        @overload
+        def _assert_value(
+            val: str,
+        ) -> str:
+            ...
+
+        @overload
+        def _assert_value(
+            val: Sequence[str],
+        ) -> Union[str, Tuple[str, ...]]:
+            ...
+
+        def _assert_value(
+            val: Union[str, Sequence[str]],
+        ) -> Union[str, Tuple[str, ...]]:
             if isinstance(val, str):
                 return val
             elif isinstance(val, collections_abc.Sequence):
@@ -192,11 +223,12 @@ class URL(
                     "sequences of strings"
                 )
 
-        def _assert_str(v):
-            if not isinstance(v, compat.string_types):
+        def _assert_str(v: str) -> str:
+            if not isinstance(v, str):
                 raise TypeError("Query dictionary keys must be strings")
             return v
 
+        dict_items: Iterable[Tuple[str, Union[Sequence[str], str]]]
         if isinstance(dict_, collections_abc.Sequence):
             dict_items = dict_
         else:
@@ -213,14 +245,14 @@ class URL(
 
     def set(
         self,
-        drivername=None,
-        username=None,
-        password=None,
-        host=None,
-        port=None,
-        database=None,
-        query=None,
-    ):
+        drivername: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        database: Optional[str] = None,
+        query: Optional[Mapping[str, Union[Sequence[str], str]]] = None,
+    ) -> URL:
         """return a new :class:`_engine.URL` object with modifications.
 
         Values are used if they are non-None.  To set a value to ``None``
@@ -246,7 +278,7 @@ class URL(
 
         """
 
-        kw = {}
+        kw: Dict[str, Any] = {}
         if drivername is not None:
             kw["drivername"] = drivername
         if username is not None:
@@ -262,10 +294,10 @@ class URL(
         if query is not None:
             kw["query"] = query
 
-        return self._replace(**kw)
+        return self._assert_replace(**kw)
 
-    def _replace(self, **kw):
-        """Override ``namedtuple._replace()`` to provide argument checking."""
+    def _assert_replace(self, **kw: Any) -> URL:
+        """argument checks before calling _replace()"""
 
         if "drivername" in kw:
             self._assert_str(kw["drivername"], "drivername")
@@ -277,19 +309,21 @@ class URL(
         if "query" in kw:
             kw["query"] = self._str_dict(kw["query"])
 
-        return super(URL, self)._replace(**kw)
+        return self._replace(**kw)
 
-    def update_query_string(self, query_string, append=False):
+    def update_query_string(
+        self, query_string: str, append: bool = False
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
         parameter dictionary updated by the given query string.
 
         E.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_string("alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
         :param query_string: a URL escaped query string, not including the
          question mark.
@@ -308,11 +342,13 @@ class URL(
             :meth:`_engine.URL.update_query_dict`
 
         """  # noqa: E501
-        return self.update_query_pairs(
-            util.parse_qsl(query_string), append=append
-        )
+        return self.update_query_pairs(parse_qsl(query_string), append=append)
 
-    def update_query_pairs(self, key_value_pairs, append=False):
+    def update_query_pairs(
+        self,
+        key_value_pairs: Iterable[Tuple[str, Union[str, List[str]]]],
+        append: bool = False,
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query`
         parameter dictionary updated by the given sequence of key/value pairs
@@ -320,10 +356,10 @@ class URL(
         E.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_pairs([("alt_host", "host1"), ("alt_host", "host2"), ("ssl_cipher", "/path/to/crt")])
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
         :param key_value_pairs: A sequence of tuples containing two strings
          each.
@@ -346,23 +382,27 @@ class URL(
         """  # noqa: E501
 
         existing_query = self.query
-        new_keys = {}
+        new_keys: Dict[str, Union[str, List[str]]] = {}
 
         for key, value in key_value_pairs:
             if key in new_keys:
                 new_keys[key] = util.to_list(new_keys[key])
-                new_keys[key].append(value)
+                cast("List[str]", new_keys[key]).append(cast(str, value))
             else:
-                new_keys[key] = value
+                new_keys[key] = (
+                    list(value) if isinstance(value, (list, tuple)) else value
+                )
 
+        new_query: Mapping[str, Union[str, Sequence[str]]]
         if append:
             new_query = {}
 
             for k in new_keys:
                 if k in existing_query:
-                    new_query[k] = util.to_list(
-                        existing_query[k]
-                    ) + util.to_list(new_keys[k])
+                    new_query[k] = tuple(
+                        util.to_list(existing_query[k])
+                        + util.to_list(new_keys[k])
+                    )
                 else:
                     new_query[k] = new_keys[k]
 
@@ -373,10 +413,19 @@ class URL(
                 }
             )
         else:
-            new_query = self.query.union(new_keys)
+            new_query = self.query.union(
+                {
+                    k: tuple(v) if isinstance(v, list) else v
+                    for k, v in new_keys.items()
+                }
+            )
         return self.set(query=new_query)
 
-    def update_query_dict(self, query_parameters, append=False):
+    def update_query_dict(
+        self,
+        query_parameters: Mapping[str, Union[str, List[str]]],
+        append: bool = False,
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query` parameter dictionary updated by the given
         dictionary.
@@ -389,10 +438,10 @@ class URL(
 
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_dict({"alt_host": ["host1", "host2"], "ssl_cipher": "/path/to/crt"})
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
 
         :param query_parameters: A dictionary with string keys and values
@@ -421,7 +470,7 @@ class URL(
         """  # noqa: E501
         return self.update_query_pairs(query_parameters.items(), append=append)
 
-    def difference_update_query(self, names):
+    def difference_update_query(self, names: Iterable[str]) -> URL:
         """
         Remove the given names from the :attr:`_engine.URL.query` dictionary,
         returning the new :class:`_engine.URL`.
@@ -467,11 +516,10 @@ class URL(
                     for key in set(self.query).difference(names)
                 }
             ),
-            _new_ok=True,
         )
 
     @util.memoized_property
-    def normalized_query(self):
+    def normalized_query(self) -> Mapping[str, Sequence[str]]:
         """Return the :attr:`_engine.URL.query` dictionary with values normalized
         into sequences.
 
@@ -485,7 +533,7 @@ class URL(
 
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
             >>> url.query
             immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
             >>> url.normalized_query
@@ -506,7 +554,7 @@ class URL(
         "be removed in a future release.  Please use the "
         ":meth:`_engine.URL.render_as_string` method.",
     )
-    def __to_string__(self, hide_password=True):
+    def __to_string__(self, hide_password: bool = True) -> str:
         """Render this :class:`_engine.URL` object as a string.
 
         :param hide_password: Defaults to True.   The password is not shown
@@ -515,7 +563,7 @@ class URL(
         """
         return self.render_as_string(hide_password=hide_password)
 
-    def render_as_string(self, hide_password=True):
+    def render_as_string(self, hide_password: bool = True) -> str:
         """Render this :class:`_engine.URL` object as a string.
 
         This method is used when the ``__str__()`` or ``__repr__()``
@@ -548,22 +596,38 @@ class URL(
             keys = list(self.query)
             keys.sort()
             s += "?" + "&".join(
-                "%s=%s" % (util.quote_plus(k), util.quote_plus(element))
+                "%s=%s" % (quote_plus(k), quote_plus(element))
                 for k in keys
                 for element in util.to_list(self.query[k])
             )
         return s
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.render_as_string(hide_password=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.render_as_string()
 
-    def __hash__(self):
+    def __copy__(self) -> URL:
+        return self.__class__.create(
+            self.drivername,
+            self.username,
+            self.password,
+            self.host,
+            self.port,
+            self.database,
+            # note this is an immutabledict of str-> str / tuple of str,
+            # also fully immutable.  does not require deepcopy
+            self.query,
+        )
+
+    def __deepcopy__(self, memo: Any) -> URL:
+        return self.__copy__()
+
+    def __hash__(self) -> int:
         return hash(str(self))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, URL)
             and self.drivername == other.drivername
@@ -575,10 +639,10 @@ class URL(
             and self.port == other.port
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def get_backend_name(self):
+    def get_backend_name(self) -> str:
         """Return the backend name.
 
         This is the name that corresponds to the database backend in
@@ -591,7 +655,7 @@ class URL(
         else:
             return self.drivername.split("+")[0]
 
-    def get_driver_name(self):
+    def get_driver_name(self) -> str:
         """Return the backend name.
 
         This is the name that corresponds to the DBAPI driver in
@@ -609,7 +673,9 @@ class URL(
         else:
             return self.drivername.split("+")[1]
 
-    def _instantiate_plugins(self, kwargs):
+    def _instantiate_plugins(
+        self, kwargs: Mapping[str, Any]
+    ) -> Tuple[URL, List[Any], Dict[str, Any]]:
         plugin_names = util.to_list(self.query.get("plugin", ()))
         plugin_names += kwargs.get("plugins", [])
 
@@ -631,7 +697,7 @@ class URL(
 
         return u, loaded_plugins, kwargs
 
-    def _get_entrypoint(self):
+    def _get_entrypoint(self) -> Type[Dialect]:
         """Return the "entry point" dialect class.
 
         This is normally the dialect itself except in the case when the
@@ -653,18 +719,23 @@ class URL(
         ):
             return cls.dialect
         else:
-            return cls
+            return cast("Type[Dialect]", cls)
 
-    def get_dialect(self):
+    def get_dialect(self, _is_async: bool = False) -> Type[Dialect]:
         """Return the SQLAlchemy :class:`_engine.Dialect` class corresponding
         to this URL's driver name.
 
         """
         entrypoint = self._get_entrypoint()
-        dialect_cls = entrypoint.get_dialect_cls(self)
+        if _is_async:
+            dialect_cls = entrypoint.get_async_dialect_cls(self)
+        else:
+            dialect_cls = entrypoint.get_dialect_cls(self)
         return dialect_cls
 
-    def translate_connect_args(self, names=None, **kw):
+    def translate_connect_args(
+        self, names: Optional[List[str]] = None, **kw: Any
+    ) -> Dict[str, Any]:
         r"""Translate url attributes into a dictionary of connection arguments.
 
         Returns attributes of this url (`host`, `database`, `username`,
@@ -704,20 +775,25 @@ class URL(
         return translated
 
 
-def make_url(name_or_url):
-    """Given a string or unicode instance, produce a new URL instance.
+def make_url(name_or_url: Union[str, URL]) -> URL:
+    """Given a string, produce a new URL instance.
 
     The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
+
+    .. seealso::
+
+        :ref:`database_urls`
+
     """
 
-    if isinstance(name_or_url, util.string_types):
+    if isinstance(name_or_url, str):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
 
 
-def _parse_rfc1738_args(name):
+def _parse_rfc1738_args(name: str) -> URL:
     pattern = re.compile(
         r"""
             (?P<name>[\w\+]+)://
@@ -741,15 +817,14 @@ def _parse_rfc1738_args(name):
     m = pattern.match(name)
     if m is not None:
         components = m.groupdict()
+        query: Optional[Dict[str, Union[str, List[str]]]]
         if components["query"] is not None:
             query = {}
 
-            for key, value in util.parse_qsl(components["query"]):
-                if util.py2k:
-                    key = key.encode("ascii")
+            for key, value in parse_qsl(components["query"]):
                 if key in query:
                     query[key] = util.to_list(query[key])
-                    query[key].append(value)
+                    cast("List[str]", query[key]).append(value)
                 else:
                     query[key] = value
         else:
@@ -770,7 +845,7 @@ def _parse_rfc1738_args(name):
         if components["port"]:
             components["port"] = int(components["port"])
 
-        return URL.create(name, **components)
+        return URL.create(name, **components)  # type: ignore
 
     else:
         raise exc.ArgumentError(
@@ -778,19 +853,8 @@ def _parse_rfc1738_args(name):
         )
 
 
-def _rfc_1738_quote(text):
+def _rfc_1738_quote(text: str) -> str:
     return re.sub(r"[:@/]", lambda m: "%%%X" % ord(m.group(0)), text)
 
 
-def _rfc_1738_unquote(text):
-    return util.unquote(text)
-
-
-def _parse_keyvalue_args(name):
-    m = re.match(r"(\w+)://(.*)", name)
-    if m is not None:
-        (name, args) = m.group(1, 2)
-        opts = dict(util.parse_qsl(args))
-        return URL(name, *opts)
-    else:
-        return None
+_rfc_1738_unquote = unquote

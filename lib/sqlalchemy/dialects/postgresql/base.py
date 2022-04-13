@@ -1,5 +1,5 @@
 # postgresql/base.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,7 +8,7 @@
 r"""
 .. dialect:: postgresql
     :name: PostgreSQL
-    :full_support: 9.6, 10, 11, 12, 13
+    :full_support: 9.6, 10, 11, 12, 13, 14
     :normal_support: 9.6+
     :best_effort: 8+
 
@@ -273,20 +273,22 @@ be reverted when the DBAPI connection has a rollback.
 Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
-**TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
-name schemas **other** than ``public`` explicitly within ``Table`` definitions.
+.. admonition:: Section Best Practices Summarized
 
-The PostgreSQL dialect can reflect tables from any schema.  The
-:paramref:`_schema.Table.schema` argument, or alternatively the
-:paramref:`.MetaData.reflect.schema` argument determines which schema will
-be searched for the table or tables.   The reflected :class:`_schema.Table`
-objects
-will in all cases retain this ``.schema`` attribute as was specified.
-However, with regards to tables which these :class:`_schema.Table`
-objects refer to
-via foreign key constraint, a decision must be made as to how the ``.schema``
-is represented in those remote tables, in the case where that remote
-schema name is also a member of the current
+    keep the ``search_path`` variable set to its default of ``public``, without
+    any other schema names. For other schema names, name these explicitly
+    within :class:`_schema.Table` definitions. Alternatively, the
+    ``postgresql_ignore_search_path`` option will cause all reflected
+    :class:`_schema.Table` objects to have a :attr:`_schema.Table.schema`
+    attribute set up.
+
+The PostgreSQL dialect can reflect tables from any schema, as outlined in
+:ref:`schema_table_reflection`.
+
+With regards to tables which these :class:`_schema.Table`
+objects refer to via foreign key constraint, a decision must be made as to how
+the ``.schema`` is represented in those remote tables, in the case where that
+remote schema name is also a member of the current
 `PostgreSQL search path
 <https://www.postgresql.org/docs/current/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
 
@@ -346,11 +348,11 @@ were set to include ``test_schema``, and we invoked a table
 reflection process as follows::
 
     >>> from sqlalchemy import Table, MetaData, create_engine, text
-    >>> engine = create_engine("postgresql://scott:tiger@localhost/test")
+    >>> engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
-    ...     meta = MetaData()
-    ...     referring = Table('referring', meta,
+    ...     metadata_obj = MetaData()
+    ...     referring = Table('referring', metadata_obj,
     ...                       autoload_with=conn)
     ...
     <sqlalchemy.engine.result.CursorResult object at 0x101612ed0>
@@ -359,7 +361,7 @@ The above process would deliver to the :attr:`_schema.MetaData.tables`
 collection
 ``referred`` table named **without** the schema::
 
-    >>> meta.tables['referred'].schema is None
+    >>> metadata_obj.tables['referred'].schema is None
     True
 
 To alter the behavior of reflection such that the referred schema is
@@ -370,8 +372,8 @@ dialect-specific argument to both :class:`_schema.Table` as well as
 
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
-    ...     meta = MetaData()
-    ...     referring = Table('referring', meta,
+    ...     metadata_obj = MetaData()
+    ...     referring = Table('referring', metadata_obj,
     ...                       autoload_with=conn,
     ...                       postgresql_ignore_search_path=True)
     ...
@@ -379,7 +381,7 @@ dialect-specific argument to both :class:`_schema.Table` as well as
 
 We will now have ``test_schema.referred`` stored as schema-qualified::
 
-    >>> meta.tables['test_schema.referred'].schema
+    >>> metadata_obj.tables['test_schema.referred'].schema
     'test_schema'
 
 .. sidebar:: Best Practices for PostgreSQL Schema reflection
@@ -401,12 +403,10 @@ installation, this is the name ``public``.  So a table that refers to another
 which is in the ``public`` (i.e. default) schema will always have the
 ``.schema`` attribute set to ``None``.
 
-.. versionadded:: 0.9.2 Added the ``postgresql_ignore_search_path``
-   dialect-level option accepted by :class:`_schema.Table` and
-   :meth:`_schema.MetaData.reflect`.
-
-
 .. seealso::
+
+    :ref:`reflection_schema_qualified_interaction` - discussion of the issue
+    from a backend-agnostic perspective
 
     `The Schema Search Path
     <https://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
@@ -1058,7 +1058,54 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 .. seealso::
 
     `PostgreSQL CREATE TABLE options
-    <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_
+    <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_ -
+    in the PostgreSQL documentation.
+
+.. _postgresql_constraint_options:
+
+PostgreSQL Constraint Options
+-----------------------------
+
+The following option(s) are supported by the PostgreSQL dialect in conjunction
+with selected constraint constructs:
+
+* ``NOT VALID``:  This option applies towards CHECK and FOREIGN KEY constraints
+  when the constraint is being added to an existing table via ALTER TABLE,
+  and has the effect that existing rows are not scanned during the ALTER
+  operation against the constraint being added.
+
+  When using a SQL migration tool such as `Alembic <https://alembic.sqlalchemy.org>`_
+  that renders ALTER TABLE constructs, the ``postgresql_not_valid`` argument
+  may be specified as an additional keyword argument within the operation
+  that creates the constraint, as in the following Alembic example::
+
+        def update():
+            op.create_foreign_key(
+                "fk_user_address",
+                "address",
+                "user",
+                ["user_id"],
+                ["id"],
+                postgresql_not_valid=True
+            )
+
+  The keyword is ultimately accepted directly by the
+  :class:`_schema.CheckConstraint`, :class:`_schema.ForeignKeyConstraint`
+  and :class:`_schema.ForeignKey` constructs; when using a tool like
+  Alembic, dialect-specific keyword arguments are passed through to
+  these constructs from the migration operation directives::
+
+       CheckConstraint("some_field IS NOT NULL", postgresql_not_valid=True)
+
+       ForeignKeyConstraint(["some_id"], ["some_table.some_id"], postgresql_not_valid=True)
+
+  .. versionadded:: 1.4.32
+
+  .. seealso::
+
+      `PostgreSQL ALTER TABLE options
+      <https://www.postgresql.org/docs/current/static/sql-altertable.html>`_ -
+      in the PostgreSQL documentation.
 
 .. _postgresql_table_valued_overview:
 
@@ -1135,11 +1182,14 @@ Examples from PostgreSQL's reference documentation follow below:
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(
-    ...     func.generate_series(4, 1, -1).table_valued("value", with_ordinality="ordinality")
+    ...     func.generate_series(4, 1, -1).
+    ...     table_valued("value", with_ordinality="ordinality").
+    ...     render_derived()
     ... )
     >>> print(stmt)
     SELECT anon_1.value, anon_1.ordinality
-    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
+    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3)
+    WITH ORDINALITY AS anon_1(value, ordinality)
 
 .. versionadded:: 1.4.0b2
 
@@ -1371,7 +1421,7 @@ E.g.::
     )
 
 
-"""  # noqa E501
+"""  # noqa: E501
 
 from collections import defaultdict
 import datetime as dt
@@ -1379,6 +1429,7 @@ import re
 from uuid import UUID as _python_UUID
 
 from . import array as _array
+from . import dml
 from . import hstore as _hstore
 from . import json as _json
 from . import ranges as _ranges
@@ -1388,6 +1439,7 @@ from ... import sql
 from ... import util
 from ...engine import characteristics
 from ...engine import default
+from ...engine import interfaces
 from ...engine import reflection
 from ...sql import coercions
 from ...sql import compiler
@@ -1401,6 +1453,7 @@ from ...types import BIGINT
 from ...types import BOOLEAN
 from ...types import CHAR
 from ...types import DATE
+from ...types import DOUBLE_PRECISION
 from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NUMERIC
@@ -1409,14 +1462,7 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 
-
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
-
-AUTOCOMMIT_REGEXP = re.compile(
-    r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|GRANT|REVOKE|"
-    "IMPORT FOREIGN SCHEMA|REFRESH MATERIALIZED VIEW|TRUNCATE)",
-    re.I | re.UNICODE,
-)
 
 RESERVED_WORDS = set(
     [
@@ -1532,10 +1578,6 @@ _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
-
-
-class DOUBLE_PRECISION(sqltypes.Float):
-    __visit_name__ = "DOUBLE_PRECISION"
 
 
 class INET(sqltypes.TypeEngine):
@@ -1674,9 +1716,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     def python_type(self):
         return dt.timedelta
 
-    def coerce_compared_value(self, op, value):
-        return self
-
 
 PGInterval = INTERVAL
 
@@ -1706,20 +1745,22 @@ class UUID(sqltypes.TypeEngine):
     or as Python uuid objects.
 
     The UUID type is currently known to work within the prominent DBAPI
-    drivers supported by SQLAlchemy including psycopg2, pg8000 and
+    drivers supported by SQLAlchemy including psycopg, psycopg2, pg8000 and
     asyncpg. Support for other DBAPI drivers may be incomplete or non-present.
 
     """
 
     __visit_name__ = "UUID"
 
-    def __init__(self, as_uuid=False):
+    def __init__(self, as_uuid=True):
         """Construct a UUID type.
 
 
-        :param as_uuid=False: if True, values will be interpreted
+        :param as_uuid=True: if True, values will be interpreted
          as Python uuid objects, converting to/from string via the
          DBAPI.
+
+         .. versionchanged: 2 ``as_uuid`` now defaults to ``True``.
 
         """
         self.as_uuid = as_uuid
@@ -1727,7 +1768,7 @@ class UUID(sqltypes.TypeEngine):
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        if isinstance(value, util.string_types):
+        if isinstance(value, str):
             return self
         else:
             return super(UUID, self).coerce_compared_value(op, value)
@@ -1737,7 +1778,7 @@ class UUID(sqltypes.TypeEngine):
 
             def process(value):
                 if value is not None:
-                    value = util.text_type(value)
+                    value = str(value)
                 return value
 
             return process
@@ -1755,6 +1796,24 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
+
+    def literal_processor(self, dialect):
+        if self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'::UUID" % value
+                return value
+
+            return process
+        else:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'" % value
+                return value
+
+            return process
 
 
 PGUuid = UUID
@@ -1997,6 +2056,12 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
             self.connection.execute(DropEnumType(enum))
 
+    def get_dbapi_type(self, dbapi):
+        """dont return dbapi.STRING for ENUM in PostgreSQL, since that's
+        a different type"""
+
+        return None
+
     def _check_for_name_in_memos(self, checkfirst, kw):
         """Look in the 'ddl runner' for 'memos', then
         note our name in that collection.
@@ -2102,6 +2167,13 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
+    def render_bind_cast(self, type_, dbapi_type, sqltext):
+        return f"""{sqltext}::{
+                self.dialect.type_compiler_instance.process(
+                    dbapi_type, identifier_preparer=self.preparer
+                )
+            }"""
+
     def visit_array(self, element, **kw):
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
 
@@ -2247,7 +2319,7 @@ class PGCompiler(compiler.SQLCompiler):
         return "SELECT %s WHERE 1!=1" % (
             ", ".join(
                 "CAST(NULL AS %s)"
-                % self.dialect.type_compiler.process(
+                % self.dialect.type_compiler_instance.process(
                     INTEGER() if type_._isnull else type_
                 )
                 for type_ in element_types or [INTEGER()]
@@ -2329,10 +2401,11 @@ class PGCompiler(compiler.SQLCompiler):
 
         return tmp
 
-    def returning_clause(self, stmt, returning_cols):
-
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = [
-            self._label_returning_column(stmt, c)
+            self._label_returning_column(stmt, c, populate_result_map)
             for c in expression._select_iterables(returning_cols)
         ]
 
@@ -2365,7 +2438,7 @@ class PGCompiler(compiler.SQLCompiler):
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
-                    if isinstance(c, util.string_types)
+                    if isinstance(c, str)
                     else self.process(c, include_table=False, use_schema=False)
                 )
                 for c in clause.inferred_target_elements
@@ -2380,6 +2453,24 @@ class PGCompiler(compiler.SQLCompiler):
             target_text = ""
 
         return target_text
+
+    @util.memoized_property
+    def _is_safe_for_fast_insert_values_helper(self):
+        # don't allow fast executemany if _post_values_clause is
+        # present and is not an OnConflictDoNothing. what this means
+        # concretely is that the
+        # "fast insert executemany helper" won't be used, in other
+        # words we won't convert "executemany()" of many parameter
+        # sets into a single INSERT with many elements in VALUES.
+        # We can't apply that optimization safely if for example the
+        # statement includes a clause like "ON CONFLICT DO UPDATE"
+
+        return self.insert_single_values_expr is not None and (
+            self.statement._post_values_clause is None
+            or isinstance(
+                self.statement._post_values_clause, dml.OnConflictDoNothing
+            )
+        )
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
 
@@ -2441,7 +2532,7 @@ class PGCompiler(compiler.SQLCompiler):
             for k, v in set_parameters.items():
                 key_text = (
                     self.preparer.quote(k)
-                    if isinstance(k, util.string_types)
+                    if isinstance(k, str)
                     else self.process(k, use_schema=False)
                 )
                 value_text = self.process(
@@ -2533,7 +2624,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + self.dialect.type_compiler.process(
+            colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type,
                 type_expression=column,
                 identifier_preparer=self.preparer,
@@ -2553,6 +2644,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NULL"
         return colspec
 
+    def _define_constraint_validity(self, constraint):
+        not_valid = constraint.dialect_options["postgresql"]["not_valid"]
+        return " NOT VALID" if not_valid else ""
+
     def visit_check_constraint(self, constraint):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
@@ -2567,7 +2662,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     "create_constraint=False on this Enum datatype."
                 )
 
-        return super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text = super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text += self._define_constraint_validity(constraint)
+        return text
+
+    def visit_foreign_key_constraint(self, constraint):
+        text = super(PGDDLCompiler, self).visit_foreign_key_constraint(
+            constraint
+        )
+        text += self._define_constraint_validity(constraint)
+        return text
 
     def visit_drop_table_comment(self, drop):
         return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
@@ -2643,9 +2747,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         includeclause = index.dialect_options["postgresql"]["include"]
         if includeclause:
             inclusions = [
-                index.table.c[col]
-                if isinstance(col, util.string_types)
-                else col
+                index.table.c[col] if isinstance(col, str) else col
                 for col in includeclause
             ]
             text += " INCLUDE (%s)" % ", ".join(
@@ -2811,8 +2913,8 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "FLOAT(%(precision)s)" % {"precision": type_.precision}
 
-    def visit_DOUBLE_PRECISION(self, type_, **kw):
-        return "DOUBLE PRECISION"
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type, **kw)
 
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
@@ -2843,6 +2945,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_TSTZRANGE(self, type_, **kw):
         return "TSTZRANGE"
+
+    def visit_json_int_index(self, type_, **kw):
+        return "INT"
+
+    def visit_json_str_index(self, type_, **kw):
+        return "TEXT"
 
     def visit_datetime(self, type_, **kw):
         return self.visit_TIMESTAMP(type_, **kw)
@@ -3073,9 +3181,6 @@ class PGExecutionContext(default.DefaultExecutionContext):
 
         return super(PGExecutionContext, self).get_insert_default(column)
 
-    def should_autocommit_text(self, statement):
-        return AUTOCOMMIT_REGEXP.match(statement)
-
 
 class PGReadOnlyConnectionCharacteristic(
     characteristics.ConnectionCharacteristic
@@ -3114,6 +3219,8 @@ class PGDialect(default.DefaultDialect):
     max_identifier_length = 63
     supports_sane_rowcount = True
 
+    bind_typing = interfaces.BindTyping.RENDER_CASTS
+
     supports_native_enum = True
     supports_native_boolean = True
     supports_smallserial = True
@@ -3138,11 +3245,10 @@ class PGDialect(default.DefaultDialect):
 
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
-    type_compiler = PGTypeCompiler
+    type_compiler_cls = PGTypeCompiler
     preparer = PGIdentifierPreparer
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector
-    isolation_level = None
 
     implicit_returning = True
     full_returning = True
@@ -3181,6 +3287,18 @@ class PGDialect(default.DefaultDialect):
                 "inherits": None,
             },
         ),
+        (
+            schema.CheckConstraint,
+            {
+                "not_valid": False,
+            },
+        ),
+        (
+            schema.ForeignKeyConstraint,
+            {
+                "not_valid": False,
+            },
+        ),
     ]
 
     reflection_options = ("postgresql_ignore_search_path",)
@@ -3189,19 +3307,9 @@ class PGDialect(default.DefaultDialect):
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
 
-    def __init__(
-        self,
-        isolation_level=None,
-        json_serializer=None,
-        json_deserializer=None,
-        **kwargs
-    ):
+    def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
 
-        # the isolation_level parameter to the PGDialect itself is legacy.
-        # still works however the execution_options method is the one that
-        # is documented.
-        self.isolation_level = isolation_level
         self._json_deserializer = json_deserializer
         self._json_serializer = json_serializer
 
@@ -3241,43 +3349,27 @@ class PGDialect(default.DefaultDialect):
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
 
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
-
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_conn):
+        # note the generic dialect doesn't have AUTOCOMMIT, however
+        # all postgresql dialects should include AUTOCOMMIT.
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
-        ]
-    )
+        )
 
-    def set_isolation_level(self, connection, level):
-        level = level.replace("_", " ")
-        if level not in self._isolation_lookup:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
-        cursor = connection.cursor()
+    def set_isolation_level(self, dbapi_connection, level):
+        cursor = dbapi_connection.cursor()
         cursor.execute(
             "SET SESSION CHARACTERISTICS AS TRANSACTION "
-            "ISOLATION LEVEL %s" % level
+            f"ISOLATION LEVEL {level}"
         )
         cursor.execute("COMMIT")
         cursor.close()
 
-    def get_isolation_level(self, connection):
-        cursor = connection.cursor()
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
         cursor.execute("show transaction isolation level")
         val = cursor.fetchone()[0]
         cursor.close()
@@ -3346,7 +3438,7 @@ class PGDialect(default.DefaultDialect):
             sql.text(query).bindparams(
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema.lower()),
+                    str(schema.lower()),
                     type_=sqltypes.Unicode,
                 )
             )
@@ -3367,7 +3459,7 @@ class PGDialect(default.DefaultDialect):
                 ).bindparams(
                     sql.bindparam(
                         "name",
-                        util.text_type(table_name),
+                        str(table_name),
                         type_=sqltypes.Unicode,
                     )
                 )
@@ -3381,12 +3473,12 @@ class PGDialect(default.DefaultDialect):
                 ).bindparams(
                     sql.bindparam(
                         "name",
-                        util.text_type(table_name),
+                        str(table_name),
                         type_=sqltypes.Unicode,
                     ),
                     sql.bindparam(
                         "schema",
-                        util.text_type(schema),
+                        str(schema),
                         type_=sqltypes.Unicode,
                     ),
                 )
@@ -3404,12 +3496,12 @@ class PGDialect(default.DefaultDialect):
             ).bindparams(
                 sql.bindparam(
                     "name",
-                    util.text_type(sequence_name),
+                    str(sequence_name),
                     type_=sqltypes.Unicode,
                 ),
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema),
+                    str(schema),
                     type_=sqltypes.Unicode,
                 ),
             )
@@ -3438,15 +3530,11 @@ class PGDialect(default.DefaultDialect):
                 """
             query = sql.text(query)
         query = query.bindparams(
-            sql.bindparam(
-                "typname", util.text_type(type_name), type_=sqltypes.Unicode
-            )
+            sql.bindparam("typname", str(type_name), type_=sqltypes.Unicode)
         )
         if schema is not None:
             query = query.bindparams(
-                sql.bindparam(
-                    "nspname", util.text_type(schema), type_=sqltypes.Unicode
-                )
+                sql.bindparam("nspname", str(schema), type_=sqltypes.Unicode)
             )
         cursor = connection.execute(query)
         return bool(cursor.scalar())
@@ -3491,9 +3579,9 @@ class PGDialect(default.DefaultDialect):
         )
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
-        table_name = util.text_type(table_name)
+        table_name = str(table_name)
         if schema is not None:
-            schema = util.text_type(schema)
+            schema = str(schema)
         s = sql.text(query).bindparams(table_name=sqltypes.Unicode)
         s = s.columns(oid=sqltypes.Integer)
         if schema:
@@ -3593,7 +3681,7 @@ class PGDialect(default.DefaultDialect):
             ).bindparams(
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema),
+                    str(schema),
                     type_=sqltypes.Unicode,
                 ),
             )
@@ -3955,7 +4043,7 @@ class PGDialect(default.DefaultDialect):
         table_name,
         schema=None,
         postgresql_ignore_search_path=False,
-        **kw
+        **kw,
     ):
         preparer = self.identifier_preparer
         table_oid = self.get_table_oid(
@@ -4262,6 +4350,8 @@ class PGDialect(default.DefaultDialect):
                 "column_names": [idx["cols"][i] for i in idx["key"]],
             }
             if self.server_version_info >= (11, 0):
+                # NOTE: this is legacy, this is part of dialect_options now
+                # as of #7382
                 entry["include_columns"] = [idx["cols"][i] for i in idx["inc"]]
             if "duplicates_constraint" in idx:
                 entry["duplicates_constraint"] = idx["duplicates_constraint"]
@@ -4270,6 +4360,10 @@ class PGDialect(default.DefaultDialect):
                     (idx["cols"][idx["key"][i]], value)
                     for i, value in idx["sorting"].items()
                 )
+            if "include_columns" in entry:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_include"
+                ] = entry["include_columns"]
             if "options" in idx:
                 entry.setdefault("dialect_options", {})[
                     "postgresql_with"

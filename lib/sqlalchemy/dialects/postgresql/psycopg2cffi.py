@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,6 +23,7 @@ is as per ``psycopg2``.
 
 """  # noqa
 from .psycopg2 import PGDialect_psycopg2
+from ... import util
 
 
 class PGDialect_psycopg2cffi(PGDialect_psycopg2):
@@ -43,15 +44,15 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("psycopg2cffi")
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extensions(cls):
         root = __import__("psycopg2cffi", fromlist=["extensions"])
         return root.extensions
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extras(cls):
         root = __import__("psycopg2cffi", fromlist=["extras"])
         return root.extras
