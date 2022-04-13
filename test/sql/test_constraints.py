@@ -1348,7 +1348,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    @testing.requires.system_versioned_tables_support
+    # @testing.requires.system_versioned_tables_support
     def test_create_table_versioning_no_columns(self):
         m = MetaData()
         t1 = Table("t1", m, Column("x", Integer), system_versioning=True)
@@ -1357,7 +1357,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t1 (x INTEGER) WITH SYSTEM VERSIONING",
         )
 
-    @testing.requires.system_versioned_tables_support
+    # @testing.requires.system_versioned_tables_support
     def test_create_table_versioning_columns_specified(self):
         m = MetaData()
         t1 = Table(
@@ -1380,7 +1380,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             ") WITH SYSTEM VERSIONING",
         )
 
-    @testing.requires.system_versioned_tables_support
+    # @testing.requires.system_versioned_tables_support
     def test_missing_system_versioning_column(self):
         m = MetaData()
         t1 = Table(
@@ -1400,7 +1400,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             testing.db,
         )
 
-    @testing.requires.system_versioned_tables_support
+    # @testing.requires.system_versioned_tables_support
     def test_too_many_system_versioning_columns(self):
         m = MetaData()
         t1 = Table(
