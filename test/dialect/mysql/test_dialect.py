@@ -2,33 +2,28 @@
 
 import datetime
 
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Integer,
-    MetaData,
-    Table,
-    bindparam,
-    event,
-    exc,
-    func,
-    select,
-    testing,
-)
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.testing import (
-    assert_raises_message,
-    engines,
-    eq_,
-    expect_warnings,
-    fixtures,
-    in_,
-    is_,
-    mock,
-)
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
-
 from .test_compiler import ReservedWordFixture
 
 

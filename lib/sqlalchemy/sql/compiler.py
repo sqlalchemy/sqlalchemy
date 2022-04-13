@@ -27,89 +27,90 @@ from __future__ import annotations
 import collections
 import collections.abc as collections_abc
 import contextlib
+from enum import IntEnum
 import itertools
 import operator
 import re
-import typing
-from enum import IntEnum
 from time import perf_counter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    FrozenSet,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    NamedTuple,
-    NoReturn,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+import typing
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
+from typing import Iterable
+from typing import List
+from typing import Mapping
+from typing import MutableMapping
+from typing import NamedTuple
+from typing import NoReturn
+from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import Union
 
-from .. import exc, util
-from ..util.typing import Literal, Protocol, TypedDict
-from . import (
-    base,
-    coercions,
-    crud,
-    elements,
-    functions,
-    operators,
-    schema,
-    selectable,
-    sqltypes,
-)
-from ._typing import is_column_element, is_dml
-from .base import NO_ARG, Executable, _from_objects
-from .elements import ClauseElement, quoted_name
+from . import base
+from . import coercions
+from . import crud
+from . import elements
+from . import functions
+from . import operators
+from . import schema
+from . import selectable
+from . import sqltypes
+from ._typing import is_column_element
+from ._typing import is_dml
+from .base import _from_objects
+from .base import Executable
+from .base import NO_ARG
+from .elements import ClauseElement
+from .elements import quoted_name
 from .schema import Column
 from .sqltypes import TupleType
 from .type_api import TypeEngine
-from .visitors import Visitable, prefix_anon_map
+from .visitors import prefix_anon_map
+from .visitors import Visitable
+from .. import exc
+from .. import util
+from ..util.typing import Literal
+from ..util.typing import Protocol
+from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
-    from ..engine.cursor import CursorResultMetaData
-    from ..engine.interfaces import (
-        Dialect,
-        _CoreSingleExecuteParams,
-        _ExecuteOptions,
-        _MutableCoreSingleExecuteParams,
-        _SchemaTranslateMapType,
-    )
     from . import roles
     from .annotation import _AnnotationDict
-    from .base import CompileState, _AmbiguousTableNameMap
+    from .base import _AmbiguousTableNameMap
+    from .base import CompileState
     from .cache_key import CacheKey
     from .ddl import DDLElement
-    from .dml import Insert, UpdateBase, ValuesBase
-    from .elements import (
-        BindParameter,
-        ColumnClause,
-        ColumnElement,
-        Label,
-        _truncated_label,
-    )
+    from .dml import Insert
+    from .dml import UpdateBase
+    from .dml import ValuesBase
+    from .elements import _truncated_label
+    from .elements import BindParameter
+    from .elements import ColumnClause
+    from .elements import ColumnElement
+    from .elements import Label
     from .functions import Function
-    from .selectable import (
-        CTE,
-        Alias,
-        AliasedReturnsRows,
-        CompoundSelectState,
-        FromClause,
-        NamedFromClause,
-        ReturnsRows,
-        Select,
-        SelectState,
-    )
+    from .selectable import Alias
+    from .selectable import AliasedReturnsRows
+    from .selectable import CompoundSelectState
+    from .selectable import CTE
+    from .selectable import FromClause
+    from .selectable import NamedFromClause
+    from .selectable import ReturnsRows
+    from .selectable import Select
+    from .selectable import SelectState
     from .type_api import _BindProcessorType
+    from ..engine.cursor import CursorResultMetaData
+    from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import _MutableCoreSingleExecuteParams
+    from ..engine.interfaces import _SchemaTranslateMapType
+    from ..engine.interfaces import Dialect
 
 _FromHintsType = Dict["FromClause", str]
 
