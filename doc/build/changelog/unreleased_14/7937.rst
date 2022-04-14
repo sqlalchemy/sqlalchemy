@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 7937
+
+    Allow setting contextvar values inside async adapted event handlers.
+    Previously the value set to the contextvar would not be properly
+    propagated.
+
