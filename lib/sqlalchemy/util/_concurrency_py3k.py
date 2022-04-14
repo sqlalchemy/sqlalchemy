@@ -17,18 +17,10 @@ from . import compat
 from .langhelpers import memoized_property
 from .. import exc
 
-if compat.py37:
-    try:
-        from contextvars import copy_context as _copy_context
-
-        # If greenlet.gr_context is present in current version of greenlet,
-        # it will be set with a copy of the current context on creation.
-        # Refs: https://github.com/python-greenlet/greenlet/pull/198
-        getattr(greenlet.greenlet, "gr_context")
-    except (ImportError, AttributeError):
-        _copy_context = None
-else:
-    _copy_context = None
+# If greenlet.gr_context is present in current version of greenlet,
+# it will be set with the current context on creation.
+# Refs: https://github.com/python-greenlet/greenlet/pull/198
+_has_gr_context = hasattr(greenlet.getcurrent(), "gr_context")
 
 
 def is_exit_exception(e):
@@ -48,15 +40,15 @@ class _AsyncIoGreenlet(greenlet.greenlet):
     def __init__(self, fn, driver):
         greenlet.greenlet.__init__(self, fn, driver)
         self.driver = driver
-        if _copy_context is not None:
-            self.gr_context = _copy_context()
+        if _has_gr_context:
+            self.gr_context = driver.gr_context
 
 
 def await_only(awaitable: Coroutine) -> Any:
     """Awaits an async function in a sync method.
 
     The sync method must be inside a :func:`greenlet_spawn` context.
-    :func:`await_` calls cannot be nested.
+    :func:`await_only` calls cannot be nested.
 
     :param awaitable: The coroutine to call.
 
@@ -65,8 +57,8 @@ def await_only(awaitable: Coroutine) -> Any:
     current = greenlet.getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
         raise exc.MissingGreenlet(
-            "greenlet_spawn has not been called; can't call await_() here. "
-            "Was IO attempted in an unexpected place?"
+            "greenlet_spawn has not been called; can't call await_only() "
+            "here. Was IO attempted in an unexpected place?"
         )
 
     # returns the control to the driver greenlet passing it
@@ -80,7 +72,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
     """Awaits an async function in a sync method.
 
     The sync method must be inside a :func:`greenlet_spawn` context.
-    :func:`await_` calls cannot be nested.
+    :func:`await_fallback` calls cannot be nested.
 
     :param awaitable: The coroutine to call.
 
@@ -92,7 +84,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
         if loop.is_running():
             raise exc.MissingGreenlet(
                 "greenlet_spawn has not been called and asyncio event "
-                "loop is already running; can't call await_() here. "
+                "loop is already running; can't call await_fallback() here. "
                 "Was IO attempted in an unexpected place?"
             )
         return loop.run_until_complete(awaitable)
@@ -105,7 +97,7 @@ async def greenlet_spawn(
 ) -> Any:
     """Runs a sync function ``fn`` in a new greenlet.
 
-    The sync function can then use :func:`await_` to wait for async
+    The sync function can then use :func:`await_only` to wait for async
     functions.
 
     :param fn: The sync callable to call.
@@ -115,7 +107,7 @@ async def greenlet_spawn(
 
     context = _AsyncIoGreenlet(fn, greenlet.getcurrent())
     # runs the function synchronously in gl greenlet. If the execution
-    # is interrupted by await_, context is not dead and result is a
+    # is interrupted by await_only, context is not dead and result is a
     # coroutine to wait. If the context is dead the function has
     # returned, and its result can be returned.
     switch_occurred = False
@@ -124,7 +116,7 @@ async def greenlet_spawn(
         while not context.dead:
             switch_occurred = True
             try:
-                # wait for a coroutine from await_ and then return its
+                # wait for a coroutine from await_only and then return its
                 # result back to it.
                 value = await result
             except BaseException:
