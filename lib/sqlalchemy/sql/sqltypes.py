@@ -521,41 +521,34 @@ class BigInteger(Integer):
 
 class Numeric(_LookupExpressionAdapter, TypeEngine):
 
-    """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
+    """Base for non-integer numeric types, such as
+    ``NUMERIC``, ``FLOAT``, ``DECIMAL``, and other variants.
 
-    This type returns Python ``decimal.Decimal`` objects by default, unless
-    the :paramref:`.Numeric.asdecimal` flag is set to False, in which case
-    they are coerced to Python ``float`` objects.
+    The :class:`.Numeric` datatype when used directly will render DDL
+    corresponding to precision numerics if available, such as
+    ``NUMERIC(precision, scale)``.  The :class:`.Float` subclass will
+    attempt to render a floating-point datatype such as ``FLOAT(precision)``.
+
+    :class:`.Numeric` returns Python ``decimal.Decimal`` objects by default,
+    based on the default value of ``True`` for the
+    :paramref:`.Numeric.asdecimal` parameter.  If this parameter is set to
+    False, returned values are coerced to Python ``float`` objects.
+
+    The :class:`.Float` subtype, being more specific to floating point,
+    defaults the :paramref:`.Float.asdecimal` flag to False so that the
+    default Python datatype is ``float``.
 
     .. note::
 
-        The :class:`.Numeric` type is designed to receive data from a database
-        type that is explicitly known to be a decimal type
-        (e.g. ``DECIMAL``, ``NUMERIC``, others) and not a floating point
-        type (e.g. ``FLOAT``, ``REAL``, others).
-        If the database column on the server is in fact a floating-point
-        type, such as ``FLOAT`` or ``REAL``, use the :class:`.Float`
-        type or a subclass, otherwise numeric coercion between
-        ``float``/``Decimal`` may or may not function as expected.
-
-    .. note::
-
-       The Python ``decimal.Decimal`` class is generally slow
-       performing; cPython 3.3 has now switched to use the `cdecimal
-       <http://pypi.python.org/pypi/cdecimal/>`_ library natively. For
-       older Python versions, the ``cdecimal`` library can be patched
-       into any application where it will replace the ``decimal``
-       library fully, however this needs to be applied globally and
-       before any other modules have been imported, as follows::
-
-           import sys
-           import cdecimal
-           sys.modules["decimal"] = cdecimal
-
-       Note that the ``cdecimal`` and ``decimal`` libraries are **not
-       compatible with each other**, so patching ``cdecimal`` at the
-       global level is the only way it can be used effectively with
-       various DBAPIs that hardcode to import the ``decimal`` library.
+        When using a :class:`.Numeric` datatype against a database type that
+        returns Python floating point values to the driver, the accuracy of the
+        decimal conversion indicated by :paramref:`.Numeric.asdecimal` may be
+        limited.   The behavior of specific numeric/floating point datatypes
+        is a product of the SQL datatype in use, the Python :term:`DBAPI`
+        in use, as well as strategies that may be present within
+        the SQLAlchemy dialect in use.   Users requiring specific precision/
+        scale are encouraged to experiment with the available datatypes
+        in order to determine the best results.
 
     """
 
@@ -594,8 +587,6 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
          :class:`.Numeric` as well as the MySQL float types, will use the
          value of ".scale" as the default for decimal_return_scale, if not
          otherwise specified.
-
-         .. versionadded:: 0.9.0
 
         When using the ``Numeric`` type, care should be taken to ensure
         that the asdecimal setting is appropriate for the DBAPI in use -
@@ -705,16 +696,6 @@ class Float(Numeric):
     :paramref:`.Float.asdecimal` flag is set to True, in which case they
     are coerced to ``decimal.Decimal`` objects.
 
-    .. note::
-
-        The :class:`.Float` type is designed to receive data from a database
-        type that is explicitly known to be a floating point type
-        (e.g. ``FLOAT``, ``REAL``, others)
-        and not a decimal type (e.g. ``DECIMAL``, ``NUMERIC``, others).
-        If the database column on the server is in fact a Numeric
-        type, such as ``DECIMAL`` or ``NUMERIC``, use the :class:`.Numeric`
-        type or a subclass, otherwise numeric coercion between
-        ``float``/``Decimal`` may or may not function as expected.
 
     """
 
