@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7936
+
+    Fixed regression where the change in #7861, released in version 1.4.33,
+    that brought the :class:`.Insert` construct to be partially recognized as
+    an ORM-enabled statement did not properly transfer the correct mapper /
+    mapped table state to the :class:`.Session`, causing the
+    :meth:`.Session.get_bind` method to fail for a :class:`.Session` that was
+    bound to engines and/or connections using the :paramref:`.Session.binds`
+    parameter.

@@ -2196,6 +2196,14 @@ class ORMInsert(ORMDMLState, InsertDMLState):
         bind_arguments,
         is_reentrant_invoke,
     ):
+        bind_arguments["clause"] = statement
+        try:
+            plugin_subject = statement._propagate_attrs["plugin_subject"]
+        except KeyError:
+            assert False, "statement had 'orm' plugin but no plugin_subject"
+        else:
+            bind_arguments["mapper"] = plugin_subject.mapper
+
         return (
             statement,
             util.immutabledict(execution_options),
