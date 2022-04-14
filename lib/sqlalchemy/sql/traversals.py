@@ -924,7 +924,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                 ):
                     return COMPARE_FAILED
 
-    def compare_clauselist(self, left, right, **kw):
+    def compare_expression_clauselist(self, left, right, **kw):
         if left.operator is right.operator:
             if operators.is_associative(left.operator):
                 if self._compare_unordered_sequences(
@@ -937,6 +937,9 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                 return ["operator"]
         else:
             return COMPARE_FAILED
+
+    def compare_clauselist(self, left, right, **kw):
+        return self.compare_expression_clauselist(left, right, **kw)
 
     def compare_binary(self, left, right, **kw):
         if left.operator == right.operator:

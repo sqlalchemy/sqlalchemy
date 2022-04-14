@@ -84,6 +84,7 @@ class HasExpressionLookup(TypeEngineMixin):
         raise NotImplementedError()
 
     class Comparator(TypeEngine.Comparator[_CT]):
+        __slots__ = ()
 
         _blank_dict = util.EMPTY_DICT
 
@@ -114,6 +115,8 @@ class Concatenable(TypeEngineMixin):
     typically strings."""
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _adapt_expression(
             self,
             op: OperatorType,
@@ -143,6 +146,8 @@ class Indexable(TypeEngineMixin):
     """
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _setup_getitem(self, index):
             raise NotImplementedError()
 
@@ -174,12 +179,9 @@ class String(Concatenable, TypeEngine[str]):
     __visit_name__ = "string"
 
     def __init__(
-        # note pylance appears to require the "self" type in a constructor
-        # for the _T type to be correctly recognized when we send the
-        # class as the argument, e.g. `column("somecol", String)`
         self,
-        length=None,
-        collation=None,
+        length: Optional[int] = None,
+        collation: Optional[str] = None,
     ):
         """
         Create a string-holding type.
@@ -1508,6 +1510,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 ) from err
 
     class Comparator(String.Comparator[str]):
+        __slots__ = ()
+
         type: String
 
         def _adapt_expression(
@@ -1963,7 +1967,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
         TypeDecorator.Comparator[_CT],
         _AbstractInterval.Comparator[_CT],
     ):
-        pass
+        __slots__ = ()
 
     comparator_factory = Comparator
 
@@ -2385,6 +2389,8 @@ class JSON(Indexable, TypeEngine[Any]):
     class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""
 
+        __slots__ = ()
+
         def _setup_getitem(self, index):
             if not isinstance(index, str) and isinstance(
                 index, collections_abc.Sequence
@@ -2709,6 +2715,8 @@ class ARRAY(
         of this type.  See :class:`.postgresql.ARRAY.Comparator`.
 
         """
+
+        __slots__ = ()
 
         def _setup_getitem(self, index):
 
@@ -3221,6 +3229,8 @@ class NullType(TypeEngine[None]):
         return process
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _adapt_expression(
             self,
             op: OperatorType,

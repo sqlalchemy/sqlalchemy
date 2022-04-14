@@ -884,12 +884,12 @@ def _emit_update_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col._label, type_=col.type)
             )
 
         if needs_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -1316,12 +1316,12 @@ def _emit_post_update_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col._label, type_=col.type)
             )
 
         if needs_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -1437,12 +1437,12 @@ def _emit_delete_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col.key, type_=col.type)
             )
 
         if need_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col.key, type_=mapper.version_id_col.type

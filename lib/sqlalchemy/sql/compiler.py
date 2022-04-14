@@ -2013,6 +2013,24 @@ class SQLCompiler(Compiled):
 
         return self._generate_delimited_list(clauselist.clauses, sep, **kw)
 
+    def visit_expression_clauselist(self, clauselist, **kw):
+        operator_ = clauselist.operator
+
+        disp = self._get_operator_dispatch(
+            operator_, "expression_clauselist", None
+        )
+        if disp:
+            return disp(clauselist, operator_, **kw)
+
+        try:
+            opstring = OPERATORS[operator_]
+        except KeyError as err:
+            raise exc.UnsupportedCompilationError(self, operator_) from err
+        else:
+            return self._generate_delimited_list(
+                clauselist.clauses, opstring, **kw
+            )
+
     def visit_case(self, clause, **kwargs):
         x = "CASE "
         if clause.value is not None:
