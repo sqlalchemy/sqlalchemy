@@ -22,9 +22,7 @@ if TYPE_CHECKING:
     from .base import _EntityNamespace
     from .base import ColumnCollection
     from .base import ReadOnlyColumnCollection
-    from .elements import ClauseElement
     from .elements import ColumnClause
-    from .elements import ColumnElement
     from .elements import Label
     from .elements import NamedColumn
     from .selectable import _SelectIterable
@@ -271,7 +269,14 @@ class StatementRole(SQLRole):
     __slots__ = ()
     _role_name = "Executable SQL or text() construct"
 
-    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
+    if TYPE_CHECKING:
+
+        @util.memoized_property
+        def _propagate_attrs(self) -> _PropagateAttrsType:
+            ...
+
+    else:
+        _propagate_attrs = util.EMPTY_DICT
 
 
 class SelectStatementRole(StatementRole, ReturnsRowsRole):

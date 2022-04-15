@@ -187,7 +187,9 @@ def is_union(type_):
     return is_origin_of(type_, "Union")
 
 
-def is_origin_of(type_, *names, module=None):
+def is_origin_of(
+    type_: Any, *names: str, module: Optional[str] = None
+) -> bool:
     """return True if the given type has an __origin__ with the given name
     and optional module."""
 
@@ -200,7 +202,7 @@ def is_origin_of(type_, *names, module=None):
     )
 
 
-def _get_type_name(type_):
+def _get_type_name(type_: Type[Any]) -> str:
     if compat.py310:
         return type_.__name__
     else:
@@ -208,4 +210,4 @@ def _get_type_name(type_):
         if typ_name is None:
             typ_name = getattr(type_, "_name", None)
 
-        return typ_name
+        return typ_name  # type: ignore

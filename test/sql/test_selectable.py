@@ -776,6 +776,28 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_reduce_cols_odd_expressions(self):
+        """test util.reduce_columns() works with text, non-col expressions
+        in a SELECT.
+
+        found_during_type_annotation
+
+        """
+
+        stmt = select(
+            table1.c.col1,
+            table1.c.col3 * 5,
+            text("some_expr"),
+            table2.c.col2,
+            func.foo(),
+        ).join(table2)
+        self.assert_compile(
+            stmt.reduce_columns(only_synonyms=False),
+            "SELECT table1.col1, table1.col3 * :col3_1 AS anon_1, "
+            "some_expr, foo() AS foo_1 FROM table1 JOIN table2 "
+            "ON table1.col1 = table2.col2",
+        )
+
     def test_with_only_generative_no_list(self):
         s1 = table1.select().scalar_subquery()
 

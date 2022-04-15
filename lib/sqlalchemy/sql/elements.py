@@ -293,11 +293,18 @@ class ClauseElement(
 
     __visit_name__ = "clause"
 
-    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
-    """like annotations, however these propagate outwards liberally
-    as SQL constructs are built, and are set up at construction time.
+    if TYPE_CHECKING:
 
-    """
+        @util.memoized_property
+        def _propagate_attrs(self) -> _PropagateAttrsType:
+            """like annotations, however these propagate outwards liberally
+            as SQL constructs are built, and are set up at construction time.
+
+            """
+            ...
+
+    else:
+        _propagate_attrs = util.EMPTY_DICT
 
     @util.ro_memoized_property
     def description(self) -> Optional[str]:
@@ -343,7 +350,9 @@ class ClauseElement(
     def _from_objects(self) -> List[FromClause]:
         return []
 
-    def _set_propagate_attrs(self, values):
+    def _set_propagate_attrs(
+        self: SelfClauseElement, values: Mapping[str, Any]
+    ) -> SelfClauseElement:
         # usually, self._propagate_attrs is empty here.  one case where it's
         # not is a subquery against ORM select, that is then pulled as a
         # property of an aliased class.   should all be good
@@ -526,13 +535,10 @@ class ClauseElement(
             if unique:
                 bind._convert_to_unique()
 
-        return cast(
-            SelfClauseElement,
-            cloned_traverse(
-                self,
-                {"maintain_key": True, "detect_subquery_cols": True},
-                {"bindparam": visit_bindparam},
-            ),
+        return cloned_traverse(
+            self,
+            {"maintain_key": True, "detect_subquery_cols": True},
+            {"bindparam": visit_bindparam},
         )
 
     def compare(self, other, **kw):
@@ -730,7 +736,9 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
     # redefined with the specific types returned by ColumnElement hierarchies
     if typing.TYPE_CHECKING:
 
-        _propagate_attrs: _PropagateAttrsType
+        @util.non_memoized_property
+        def _propagate_attrs(self) -> _PropagateAttrsType:
+            ...
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
@@ -2064,10 +2072,11 @@ class TextClause(
     roles.OrderByRole,
     roles.FromClauseRole,
     roles.SelectStatementRole,
-    roles.BinaryElementRole[Any],
     roles.InElementRole,
     Executable,
     DQLDMLClauseElement,
+    roles.BinaryElementRole[Any],
+    inspection.Inspectable["TextClause"],
 ):
     """Represent a literal SQL text fragment.
 

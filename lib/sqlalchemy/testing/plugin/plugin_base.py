@@ -167,14 +167,6 @@ def setup_options(make_option):
         "when -n<num> is used",
     )
     make_option(
-        "--reversetop",
-        action="store_true",
-        dest="reversetop",
-        default=False,
-        help="Use a random-ordering set implementation in the ORM "
-        "(helps reveal dependency issues)",
-    )
-    make_option(
         "--requirements",
         action="callback",
         type=str,
@@ -473,14 +465,6 @@ def _prep_testing_database(options, file_config):
 
         for cfg in config.Config.all_configs():
             provision.drop_all_schema_objects(cfg, cfg.db)
-
-
-@post
-def _reverse_topological(options, file_config):
-    if options.reversetop:
-        from sqlalchemy.orm.util import randomize_unitofwork
-
-        randomize_unitofwork()
 
 
 @post

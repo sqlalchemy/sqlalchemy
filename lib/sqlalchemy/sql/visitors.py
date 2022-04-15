@@ -961,12 +961,16 @@ def cloned_traverse(
     ...
 
 
+# a bit of controversy here, as the clone of the lead element
+# *could* in theory replace with an entirely different kind of element.
+# however this is really not how cloned_traverse is ever used internally
+# at least.
 @overload
 def cloned_traverse(
-    obj: ExternallyTraversible,
+    obj: _ET,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> ExternallyTraversible:
+) -> _ET:
     ...
 
 

@@ -444,7 +444,7 @@ class DeferredLambdaElement(LambdaElement):
     def _invoke_user_fn(self, fn, *arg):
         return fn(*self.lambda_args)
 
-    def _resolve_with_args(self, *lambda_args):
+    def _resolve_with_args(self, *lambda_args: Any) -> ClauseElement:
         assert isinstance(self._rec, AnalyzedFunction)
         tracker_fn = self._rec.tracker_instrumented_fn
         expr = tracker_fn(*lambda_args)
@@ -478,7 +478,7 @@ class DeferredLambdaElement(LambdaElement):
         for deferred_copy_internals in self._transforms:
             expr = deferred_copy_internals(expr)
 
-        return expr
+        return expr  # type: ignore
 
     def _copy_internals(
         self, clone=_clone, deferred_copy_internals=None, **kw

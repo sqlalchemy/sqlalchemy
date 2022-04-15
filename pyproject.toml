@@ -56,7 +56,8 @@ incremental = true
 
 [[tool.mypy.overrides]]
 
-# ad-hoc ignores
+#####################################################################
+# modules / packages explicitly not checked by Mypy at all right now.
 module = [
     "sqlalchemy.engine.reflection",  # interim, should be strict
 
@@ -86,7 +87,8 @@ module = [
 warn_unused_ignores = false
 ignore_errors = true
 
-# strict checking
+################################################
+# modules explicitly for Mypy strict checking
 [[tool.mypy.overrides]]
 
 module = [
@@ -98,6 +100,11 @@ module = [
     "sqlalchemy.engine.*",
     "sqlalchemy.pool.*",
 
+    # uncomment, trying to make sure mypy
+    # is at a baseline
+    # "sqlalchemy.orm._orm_constructors",
+
+    "sqlalchemy.orm.path_registry",
     "sqlalchemy.orm.scoping",
     "sqlalchemy.orm.session",
     "sqlalchemy.orm.state",
@@ -114,7 +121,8 @@ warn_unused_ignores = false
 ignore_errors = false
 strict = true
 
-# partial checking
+################################################
+# modules explicitly for Mypy non-strict checking
 [[tool.mypy.overrides]]
 
 module = [
@@ -134,6 +142,12 @@ module = [
     "sqlalchemy.sql.sqltypes",   # would be nice as strict
     "sqlalchemy.sql.traversals",
     "sqlalchemy.sql.util",
+
+    "sqlalchemy.orm._orm_constructors",
+
+    "sqlalchemy.orm.interfaces",
+    "sqlalchemy.orm.mapper",
+    "sqlalchemy.orm.util",
 
     "sqlalchemy.util.*",
 ]

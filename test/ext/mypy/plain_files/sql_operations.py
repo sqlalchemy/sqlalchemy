@@ -3,6 +3,7 @@ import typing
 from sqlalchemy import Boolean
 from sqlalchemy import column
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 
 
@@ -32,6 +33,7 @@ expr7 = c1 + "x"
 
 expr8 = c2 + 10
 
+stmt = select(column("q")).where(lambda: column("g") > 5).where(c2 == 5)
 
 if typing.TYPE_CHECKING:
 

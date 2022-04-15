@@ -69,10 +69,10 @@ expr3 = Interval.radius.in_([0.5, 5.2])
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: builtins.int\*
+    # EXPECTED_TYPE: builtins.int\*?
     reveal_type(i1.length)
 
-    # EXPECTED_TYPE: builtins.float\*
+    # EXPECTED_TYPE: builtins.float\*?
     reveal_type(i2.radius)
 
     # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]

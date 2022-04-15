@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import operator
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-from sqlalchemy.sql.base import Executable
 from . import roles
 from .. import util
 from ..inspection import Inspectable
@@ -16,6 +17,7 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
+    from .base import Executable
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .compiler import SQLCompiler
@@ -27,17 +29,20 @@ if TYPE_CHECKING:
     from .elements import quoted_name
     from .elements import SQLCoreOperations
     from .elements import TextClause
+    from .lambdas import LambdaElement
     from .roles import ColumnsClauseRole
     from .roles import FromClauseRole
     from .schema import Column
     from .schema import DefaultGenerator
     from .schema import Sequence
+    from .schema import Table
     from .selectable import Alias
     from .selectable import FromClause
     from .selectable import Join
     from .selectable import NamedFromClause
     from .selectable import ReturnsRows
     from .selectable import Select
+    from .selectable import Selectable
     from .selectable import SelectBase
     from .selectable import Subquery
     from .selectable import TableClause
@@ -45,7 +50,6 @@ if TYPE_CHECKING:
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from ..util.typing import TypeGuard
-
 
 _T = TypeVar("_T", bound=Any)
 
@@ -89,7 +93,11 @@ sets; select(...), insert().returning(...), etc.
 """
 
 _ColumnExpressionArgument = Union[
-    "ColumnElement[_T]", _HasClauseElement, roles.ExpressionElementRole[_T]
+    "ColumnElement[_T]",
+    _HasClauseElement,
+    roles.ExpressionElementRole[_T],
+    Callable[[], "ColumnElement[_T]"],
+    "LambdaElement",
 ]
 """narrower "column expression" argument.
 
@@ -102,6 +110,7 @@ This includes ColumnElement, or ORM-mapped attributes that will have a
 overall which brings in the TextClause object also.
 
 """
+
 
 _InfoType = Dict[Any, Any]
 """the .info dictionary accepted and used throughout Core /ORM"""
@@ -169,6 +178,8 @@ _PropagateAttrsType = util.immutabledict[str, Any]
 
 _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 
+_EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
+
 if TYPE_CHECKING:
 
     def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]:
@@ -193,6 +204,9 @@ if TYPE_CHECKING:
         ...
 
     def is_table_value_type(t: TypeEngine[Any]) -> TypeGuard[TableValueType]:
+        ...
+
+    def is_selectable(t: Any) -> TypeGuard[Selectable]:
         ...
 
     def is_select_base(
@@ -224,6 +238,7 @@ else:
     is_from_clause = operator.attrgetter("_is_from_clause")
     is_tuple_type = operator.attrgetter("_is_tuple_type")
     is_table_value_type = operator.attrgetter("_is_table_value")
+    is_selectable = operator.attrgetter("is_selectable")
     is_select_base = operator.attrgetter("_is_select_base")
     is_select_statement = operator.attrgetter("_is_select_statement")
     is_table = operator.attrgetter("_is_table")

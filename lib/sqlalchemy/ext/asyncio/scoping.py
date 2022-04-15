@@ -76,7 +76,6 @@ if TYPE_CHECKING:
         "expunge",
         "expunge_all",
         "flush",
-        "get",
         "get_bind",
         "is_modified",
         "invalidate",
@@ -203,6 +202,49 @@ class async_scoped_session:
         if self.registry.has():
             await self.registry().close()
         self.registry.clear()
+
+    async def get(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: Optional[ForUpdateArg] = None,
+        identity_token: Optional[Any] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> Optional[_O]:
+        r"""Return an instance based on the given primary key identifier,
+        or ``None`` if not found.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.get` - main documentation for get
+
+
+
+        """  # noqa: E501
+
+        # this was proxied but Mypy is requiring the return type to be
+        # clarified
+
+        # work around:
+        # https://github.com/python/typing/discussions/1143
+        return_value = await self._proxied.get(
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+            execution_options=execution_options,
+        )
+        return return_value
 
     # START PROXY METHODS async_scoped_session
 
@@ -631,43 +673,6 @@ class async_scoped_session:
         """  # noqa: E501
 
         return await self._proxied.flush(objects=objects)
-
-    async def get(
-        self,
-        entity: _EntityBindKey[_O],
-        ident: _PKIdentityArgument,
-        *,
-        options: Optional[Sequence[ORMOption]] = None,
-        populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
-        identity_token: Optional[Any] = None,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-    ) -> Optional[_O]:
-        r"""Return an instance based on the given primary key identifier,
-        or ``None`` if not found.
-
-        .. container:: class_bases
-
-            Proxied for the :class:`_asyncio.AsyncSession` class on
-            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
-
-        .. seealso::
-
-            :meth:`_orm.Session.get` - main documentation for get
-
-
-
-        """  # noqa: E501
-
-        return await self._proxied.get(
-            entity,
-            ident,
-            options=options,
-            populate_existing=populate_existing,
-            with_for_update=with_for_update,
-            identity_token=identity_token,
-            execution_options=execution_options,
-        )
 
     def get_bind(
         self,

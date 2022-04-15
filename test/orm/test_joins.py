@@ -1374,6 +1374,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             [User(name="fred")],
         )
 
+    def test_str_not_accepted_orm_join(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "ON clause, typically a SQL expression or ORM "
+            "relationship attribute expected, got 'addresses'.",
+        ):
+            outerjoin(User, Address, "addresses")
+
     def test_aliased_classes(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -1409,7 +1419,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(result, [(user8, address3)])
 
         result = (
-            q.select_from(outerjoin(User, AdAlias, "addresses"))
+            q.select_from(outerjoin(User, AdAlias, User.addresses))
             .filter(AdAlias.email_address == "ed@bettyboop.com")
             .all()
         )
@@ -1504,7 +1514,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(Order)
         q = (
             q.add_entity(Item)
-            .select_from(join(Order, Item, "items"))
+            .select_from(join(Order, Item, Order.items))
             .order_by(Order.id, Item.id)
         )
         result = q.all()
@@ -1513,7 +1523,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         IAlias = aliased(Item)
         q = (
             sess.query(Order, IAlias)
-            .select_from(join(Order, IAlias, "items"))
+            .select_from(join(Order, IAlias, Order.items))
             .filter(IAlias.description == "item 3")
         )
         result = q.all()
@@ -2569,18 +2579,6 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             s.query(Node).join(Node.children)._compile_context,
         )
 
-    def test_explicit_join_1(self):
-        Node = self.classes.Node
-        n1 = aliased(Node)
-        n2 = aliased(Node)
-
-        self.assert_compile(
-            join(Node, n1, "children").join(n2, "children"),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
-            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
-            use_default_dialect=True,
-        )
-
     def test_explicit_join_2(self):
         Node = self.classes.Node
         n1 = aliased(Node)
@@ -2598,12 +2596,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n1 = aliased(Node)
         n2 = aliased(Node)
 
-        # the join_to_left=False here is unfortunate.   the default on this
-        # flag should be False.
         self.assert_compile(
-            join(Node, n1, Node.children).join(
-                n2, Node.children, join_to_left=False
-            ),
+            join(Node, n1, Node.children).join(n2, Node.children),
             "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
             use_default_dialect=True,
@@ -2646,7 +2640,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         node = (
             sess.query(Node)
-            .select_from(join(Node, n1, "children"))
+            .select_from(join(Node, n1, n1.children))
             .filter(n1.data == "n122")
             .first()
         )
@@ -2660,7 +2654,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         node = (
             sess.query(Node)
-            .select_from(join(Node, n1, "children").join(n2, "children"))
+            .select_from(join(Node, n1, Node.children).join(n2, n1.children))
             .filter(n2.data == "n122")
             .first()
         )
@@ -2676,7 +2670,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         node = (
             sess.query(Node)
             .select_from(
-                join(Node, n1, Node.id == n1.parent_id).join(n2, "children")
+                join(Node, n1, Node.id == n1.parent_id).join(n2, n1.children)
             )
             .filter(n2.data == "n122")
             .first()
@@ -2691,7 +2685,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         node = (
             sess.query(Node)
-            .select_from(join(Node, n1, "parent").join(n2, "parent"))
+            .select_from(join(Node, n1, Node.parent).join(n2, n1.parent))
             .filter(
                 and_(Node.data == "n122", n1.data == "n12", n2.data == "n1")
             )
@@ -2708,7 +2702,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         eq_(
             list(
                 sess.query(Node)
-                .select_from(join(Node, n1, "parent").join(n2, "parent"))
+                .select_from(join(Node, n1, Node.parent).join(n2, n1.parent))
                 .filter(
                     and_(
                         Node.data == "n122", n1.data == "n12", n2.data == "n1"
@@ -3085,7 +3079,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
         n1 = aliased(Node)
         eq_(
             sess.query(Node)
-            .select_from(join(Node, n1, "children"))
+            .select_from(join(Node, n1, Node.children))
             .filter(n1.data.in_(["n3", "n7"]))
             .order_by(Node.id)
             .all(),

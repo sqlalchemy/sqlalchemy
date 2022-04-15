@@ -39,6 +39,7 @@ from . import persistence
 from . import query
 from . import state as statelib
 from ._typing import _O
+from ._typing import insp_is_mapper
 from ._typing import is_composite_class
 from ._typing import is_user_defined_option
 from .base import _class_to_mapper
@@ -69,12 +70,14 @@ from ..engine.util import TransactionalContext
 from ..event import dispatcher
 from ..event import EventTarget
 from ..inspection import inspect
+from ..inspection import Inspectable
 from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
 from ..sql import Select
 from ..sql import visitors
 from ..sql.base import CompileState
+from ..sql.schema import Table
 from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import IdentitySet
@@ -90,6 +93,7 @@ if typing.TYPE_CHECKING:
     from .path_registry import PathRegistry
     from ..engine import Result
     from ..engine import Row
+    from ..engine import RowMapping
     from ..engine.base import Transaction
     from ..engine.base import TwoPhaseTransaction
     from ..engine.interfaces import _CoreAnyExecuteParams
@@ -103,6 +107,7 @@ if typing.TYPE_CHECKING:
     from ..sql.base import Executable
     from ..sql.elements import ClauseElement
     from ..sql.schema import Table
+    from ..sql.selectable import TableClause
 
 __all__ = [
     "Session",
@@ -184,7 +189,7 @@ class _SessionClassMethods:
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Row] = None,
+        row: Optional[Union[Row, RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         """Return an identity key.
@@ -2050,9 +2055,12 @@ class Session(_SessionClassMethods, EventTarget):
             else:
                 self.__binds[key] = bind
         else:
-            if insp.is_selectable:
+            if TYPE_CHECKING:
+                assert isinstance(insp, Inspectable)
+
+            if isinstance(insp, Table):
                 self.__binds[insp] = bind
-            elif insp.is_mapper:
+            elif insp_is_mapper(insp):
                 self.__binds[insp.class_] = bind
                 for _selectable in insp._all_tables:
                     self.__binds[_selectable] = bind
@@ -2211,7 +2219,7 @@ class Session(_SessionClassMethods, EventTarget):
         # we don't have self.bind and either have self.__binds
         # or we don't have self.__binds (which is legacy).  Look at the
         # mapper and the clause
-        if mapper is clause is None:
+        if mapper is None and clause is None:
             if self.bind:
                 return self.bind
             else:
@@ -2350,7 +2358,10 @@ class Session(_SessionClassMethods, EventTarget):
         key = mapper.identity_key_from_primary_key(
             primary_key_identity, identity_token=identity_token
         )
-        return loading.get_from_identity(self, mapper, key, passive)
+
+        # work around: https://github.com/python/typing/discussions/1143
+        return_value = loading.get_from_identity(self, mapper, key, passive)
+        return return_value
 
     @util.non_memoized_property
     @contextlib.contextmanager

@@ -47,7 +47,7 @@ expr2 = Interval.contains(7)
 expr3 = Interval.intersects(i2)
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: builtins.int\*
+    # EXPECTED_TYPE: builtins.int\*?
     reveal_type(i1.length)
 
     # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]

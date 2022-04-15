@@ -832,6 +832,8 @@ from ..util.typing import Protocol
 
 
 if TYPE_CHECKING:
+    from ..orm._typing import _ORMColumnExprArgument
+    from ..orm.interfaces import MapperProperty
     from ..orm.util import AliasedInsp
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _DMLColumnArgument
@@ -839,7 +841,6 @@ if TYPE_CHECKING:
     from ..sql._typing import _InfoType
     from ..sql.operators import OperatorType
     from ..sql.roles import ColumnsClauseRole
-
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -1289,7 +1290,7 @@ class Comparator(interfaces.PropComparator[_T]):
     ):
         self.expression = expression
 
-    def __clause_element__(self) -> ColumnsClauseRole:
+    def __clause_element__(self) -> _ORMColumnExprArgument[_T]:
         expr = self.expression
         if is_has_clause_element(expr):
             ret_expr = expr.__clause_element__()
@@ -1298,10 +1299,15 @@ class Comparator(interfaces.PropComparator[_T]):
                 assert isinstance(expr, ColumnElement)
             ret_expr = expr
 
+        if TYPE_CHECKING:
+            # see test_hybrid->test_expression_isnt_clause_element
+            # that exercises the usual place this is caught if not
+            # true
+            assert isinstance(ret_expr, ColumnElement)
         return ret_expr
 
-    @util.non_memoized_property
-    def property(self) -> Any:
+    @util.ro_non_memoized_property
+    def property(self) -> Optional[interfaces.MapperProperty[_T]]:
         return None
 
     def adapt_to_entity(
@@ -1325,7 +1331,7 @@ class ExprComparator(Comparator[_T]):
     def __getattr__(self, key: str) -> Any:
         return getattr(self.expression, key)
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def info(self) -> _InfoType:
         return self.hybrid.info
 
@@ -1339,8 +1345,8 @@ class ExprComparator(Comparator[_T]):
         else:
             return [(self.expression, value)]
 
-    @util.non_memoized_property
-    def property(self) -> Any:
+    @util.ro_non_memoized_property
+    def property(self) -> Optional[MapperProperty[_T]]:
         return self.expression.property  # type: ignore
 
     def operate(

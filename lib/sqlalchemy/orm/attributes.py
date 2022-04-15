@@ -44,7 +44,7 @@ from .base import instance_dict as instance_dict
 from .base import instance_state as instance_state
 from .base import instance_str
 from .base import LOAD_AGAINST_COMMITTED
-from .base import manager_of_class
+from .base import manager_of_class as manager_of_class
 from .base import Mapped as Mapped  # noqa
 from .base import NEVER_SET  # noqa
 from .base import NO_AUTOFLUSH
@@ -52,6 +52,7 @@ from .base import NO_CHANGE  # noqa
 from .base import NO_RAISE
 from .base import NO_VALUE
 from .base import NON_PERSISTENT_OK  # noqa
+from .base import opt_manager_of_class as opt_manager_of_class
 from .base import PASSIVE_CLASS_MISMATCH  # noqa
 from .base import PASSIVE_NO_FETCH
 from .base import PASSIVE_NO_FETCH_RELATED  # noqa
@@ -74,6 +75,7 @@ from ..sql import traversals
 from ..sql import visitors
 
 if TYPE_CHECKING:
+    from .interfaces import MapperProperty
     from .state import InstanceState
     from ..sql.dml import _DMLColumnElement
     from ..sql.elements import ColumnElement
@@ -146,7 +148,7 @@ class QueryableAttribute(
         self._of_type = of_type
         self._extra_criteria = extra_criteria
 
-        manager = manager_of_class(class_)
+        manager = opt_manager_of_class(class_)
         # manager is None in the case of AliasedClass
         if manager:
             # propagate existing event listeners from
@@ -370,7 +372,7 @@ class QueryableAttribute(
         return "%s.%s" % (self.class_.__name__, self.key)
 
     @util.memoized_property
-    def property(self):
+    def property(self) -> MapperProperty[_T]:
         """Return the :class:`.MapperProperty` associated with this
         :class:`.QueryableAttribute`.
 

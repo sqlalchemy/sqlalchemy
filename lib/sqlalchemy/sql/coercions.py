@@ -214,6 +214,7 @@ def expect(
         Type[roles.ExpressionElementRole[Any]],
         Type[roles.LimitOffsetRole],
         Type[roles.WhereHavingRole],
+        Type[roles.OnClauseRole],
     ],
     element: Any,
     **kw: Any,

@@ -9,20 +9,19 @@ from __future__ import annotations
 
 import typing
 from typing import Any
+from typing import Callable
 from typing import Collection
-from typing import Dict
-from typing import List
 from typing import Optional
 from typing import overload
-from typing import Set
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import Union
 
-from . import mapper as mapperlib
+from . import mapperlib as mapperlib
+from ._typing import _O
 from .base import Mapped
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
-from .mapper import Mapper
 from .properties import ColumnProperty
 from .properties import MappedColumn
 from .query import AliasOption
@@ -37,10 +36,28 @@ from .. import sql
 from .. import util
 from ..exc import InvalidRequestError
 from ..sql.base import SchemaEventTarget
-from ..sql.selectable import Alias
+from ..sql.schema import SchemaConst
 from ..sql.selectable import FromClause
-from ..sql.type_api import TypeEngine
 from ..util.typing import Literal
+
+if TYPE_CHECKING:
+    from ._typing import _EntityType
+    from ._typing import _ORMColumnExprArgument
+    from .descriptor_props import _CompositeAttrType
+    from .interfaces import PropComparator
+    from .query import Query
+    from .relationships import _LazyLoadArgumentType
+    from .relationships import _ORMBackrefArgument
+    from .relationships import _ORMColCollectionArgument
+    from .relationships import _ORMOrderByArgument
+    from .relationships import _RelationshipJoinConditionArgument
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _InfoType
+    from ..sql._typing import _TypeEngineArgument
+    from ..sql.schema import _ServerDefaultType
+    from ..sql.schema import FetchedValue
+    from ..sql.selectable import Alias
+    from ..sql.selectable import Subquery
 
 _T = typing.TypeVar("_T")
 
@@ -61,7 +78,7 @@ SynonymProperty = Synonym
     "for entities to be matched up to a query that is established "
     "via :meth:`.Query.from_statement` and now does nothing.",
 )
-def contains_alias(alias) -> AliasOption:
+def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
     r"""Return a :class:`.MapperOption` that will indicate to the
     :class:`_query.Query`
     that the main table has been aliased.
@@ -70,134 +87,36 @@ def contains_alias(alias) -> AliasOption:
     return AliasOption(alias)
 
 
-# see test/ext/mypy/plain_files/mapped_column.py for mapped column
-# typing tests
-
-
-@overload
 def mapped_column(
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
+    __name_pos: Optional[
+        Union[str, _TypeEngineArgument[Any], SchemaEventTarget]
+    ] = None,
+    __type_pos: Optional[
+        Union[_TypeEngineArgument[Any], SchemaEventTarget]
+    ] = None,
     *args: SchemaEventTarget,
-    nullable: Literal[None] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Any]":
-    ...
-
-
-@overload
-def mapped_column(
-    __name: str,
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: Literal[None] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Any]":
-    ...
-
-
-@overload
-def mapped_column(
-    __name: str,
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: Literal[True] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Optional[_T]]":
-    ...
-
-
-@overload
-def mapped_column(
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: Literal[True] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Optional[_T]]":
-    ...
-
-
-@overload
-def mapped_column(
-    __name: str,
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: Literal[False] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[_T]":
-    ...
-
-
-@overload
-def mapped_column(
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: Literal[False] = ...,
-    primary_key: Literal[None] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[_T]":
-    ...
-
-
-@overload
-def mapped_column(
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: bool = ...,
-    primary_key: Literal[True] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[_T]":
-    ...
-
-
-@overload
-def mapped_column(
-    __name: str,
-    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
-    *args: SchemaEventTarget,
-    nullable: bool = ...,
-    primary_key: Literal[True] = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[_T]":
-    ...
-
-
-@overload
-def mapped_column(
-    __name: str,
-    *args: SchemaEventTarget,
-    nullable: bool = ...,
-    primary_key: bool = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Any]":
-    ...
-
-
-@overload
-def mapped_column(
-    *args: SchemaEventTarget,
-    nullable: bool = ...,
-    primary_key: bool = ...,
-    deferred: bool = ...,
-    **kw: Any,
-) -> "MappedColumn[Any]":
-    ...
-
-
-def mapped_column(*args: Any, **kw: Any) -> "MappedColumn[Any]":
+    nullable: Optional[
+        Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
+    ] = SchemaConst.NULL_UNSPECIFIED,
+    primary_key: Optional[bool] = False,
+    deferred: bool = False,
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
+    default: Optional[Any] = None,
+    doc: Optional[str] = None,
+    key: Optional[str] = None,
+    index: Optional[bool] = None,
+    unique: Optional[bool] = None,
+    info: Optional[_InfoType] = None,
+    onupdate: Optional[Any] = None,
+    server_default: Optional[_ServerDefaultType] = None,
+    server_onupdate: Optional[FetchedValue] = None,
+    quote: Optional[bool] = None,
+    system: bool = False,
+    comment: Optional[str] = None,
+    **dialect_kwargs: Any,
+) -> MappedColumn[Any]:
     r"""construct a new ORM-mapped :class:`_schema.Column` construct.
 
     The :func:`_orm.mapped_column` function provides an ORM-aware and
@@ -363,12 +282,45 @@ def mapped_column(*args: Any, **kw: Any) -> "MappedColumn[Any]":
 
     """
 
-    return MappedColumn(*args, **kw)
+    return MappedColumn(
+        __name_pos,
+        __type_pos,
+        *args,
+        name=name,
+        type_=type_,
+        autoincrement=autoincrement,
+        default=default,
+        doc=doc,
+        key=key,
+        index=index,
+        unique=unique,
+        info=info,
+        nullable=nullable,
+        onupdate=onupdate,
+        primary_key=primary_key,
+        server_default=server_default,
+        server_onupdate=server_onupdate,
+        quote=quote,
+        comment=comment,
+        system=system,
+        deferred=deferred,
+        **dialect_kwargs,
+    )
 
 
 def column_property(
-    column: sql.ColumnElement[_T], *additional_columns, **kwargs
-) -> "ColumnProperty[_T]":
+    column: _ORMColumnExprArgument[_T],
+    *additional_columns: _ORMColumnExprArgument[Any],
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+    descriptor: Optional[Any] = None,
+    active_history: bool = False,
+    expire_on_flush: bool = True,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+) -> ColumnProperty[_T]:
     r"""Provide a column-level property for use with a mapping.
 
     Column-based properties can normally be applied to the mapper's
@@ -452,13 +404,25 @@ def column_property(
         expressions
 
     """
-    return ColumnProperty(column, *additional_columns, **kwargs)
+    return ColumnProperty(
+        column,
+        *additional_columns,
+        group=group,
+        deferred=deferred,
+        raiseload=raiseload,
+        comparator_factory=comparator_factory,
+        descriptor=descriptor,
+        active_history=active_history,
+        expire_on_flush=expire_on_flush,
+        info=info,
+        doc=doc,
+    )
 
 
 @overload
 def composite(
     class_: Type[_T],
-    *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
+    *attrs: _CompositeAttrType[Any],
     **kwargs: Any,
 ) -> Composite[_T]:
     ...
@@ -466,7 +430,7 @@ def composite(
 
 @overload
 def composite(
-    *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
+    *attrs: _CompositeAttrType[Any],
     **kwargs: Any,
 ) -> Composite[Any]:
     ...
@@ -474,7 +438,7 @@ def composite(
 
 def composite(
     class_: Any = None,
-    *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
+    *attrs: _CompositeAttrType[Any],
     **kwargs: Any,
 ) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
@@ -529,13 +493,13 @@ def composite(
 
 
 def with_loader_criteria(
-    entity_or_base,
-    where_criteria,
-    loader_only=False,
-    include_aliases=False,
-    propagate_to_loaders=True,
-    track_closure_variables=True,
-) -> "LoaderCriteriaOption":
+    entity_or_base: _EntityType[Any],
+    where_criteria: _ColumnExpressionArgument[bool],
+    loader_only: bool = False,
+    include_aliases: bool = False,
+    propagate_to_loaders: bool = True,
+    track_closure_variables: bool = True,
+) -> LoaderCriteriaOption:
     """Add additional WHERE criteria to the load for all occurrences of
     a particular entity.
 
@@ -711,180 +675,40 @@ def with_loader_criteria(
     )
 
 
-@overload
 def relationship(
-    argument: str,
-    secondary=...,
-    *,
-    uselist: bool = ...,
-    collection_class: Literal[None] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Any]:
-    ...
-
-
-@overload
-def relationship(
-    argument: str,
-    secondary=...,
-    *,
-    uselist: bool = ...,
-    collection_class: Type[Set] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Set[Any]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: str,
-    secondary=...,
-    *,
-    uselist: bool = ...,
-    collection_class: Type[List] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[List[Any]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=...,
-    *,
-    uselist: Literal[False] = ...,
-    collection_class: Literal[None] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[_T]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=...,
-    *,
-    uselist: Literal[True] = ...,
-    collection_class: Literal[None] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[List[_T]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=...,
-    *,
-    uselist: Union[Literal[None], Literal[True]] = ...,
-    collection_class: Type[List] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[List[_T]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=...,
-    *,
-    uselist: Union[Literal[None], Literal[True]] = ...,
-    collection_class: Type[Set] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Set[_T]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=...,
-    *,
-    uselist: Union[Literal[None], Literal[True]] = ...,
-    collection_class: Type[Dict[Any, Any]] = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Dict[Any, _T]]:
-    ...
-
-
-@overload
-def relationship(
-    argument: _RelationshipArgumentType[_T],
-    secondary=...,
-    *,
-    uselist: Literal[None] = ...,
-    collection_class: Literal[None] = ...,
-    primaryjoin=...,
-    secondaryjoin=None,
-    back_populates=None,
-    **kw: Any,
-) -> Relationship[Any]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]] = ...,
-    secondary=...,
-    *,
-    uselist: Literal[True] = ...,
-    collection_class: Any = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Any]:
-    ...
-
-
-@overload
-def relationship(
-    argument: Literal[None] = ...,
-    secondary=...,
-    *,
-    uselist: Optional[bool] = ...,
-    collection_class: Any = ...,
-    primaryjoin=...,
-    secondaryjoin=...,
-    back_populates=...,
-    **kw: Any,
-) -> Relationship[Any]:
-    ...
-
-
-def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]] = None,
-    secondary=None,
+    argument: Optional[_RelationshipArgumentType[Any]] = None,
+    secondary: Optional[FromClause] = None,
     *,
     uselist: Optional[bool] = None,
-    collection_class: Optional[Type[Collection]] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    collection_class: Optional[
+        Union[Type[Collection[Any]], Callable[[], Collection[Any]]]
+    ] = None,
+    primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
+    secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
+    back_populates: Optional[str] = None,
+    order_by: _ORMOrderByArgument = False,
+    backref: Optional[_ORMBackrefArgument] = None,
+    overlaps: Optional[str] = None,
+    post_update: bool = False,
+    cascade: str = "save-update, merge",
+    viewonly: bool = False,
+    lazy: _LazyLoadArgumentType = "select",
+    passive_deletes: bool = False,
+    passive_updates: bool = True,
+    active_history: bool = False,
+    enable_typechecks: bool = True,
+    foreign_keys: Optional[_ORMColCollectionArgument] = None,
+    remote_side: Optional[_ORMColCollectionArgument] = None,
+    join_depth: Optional[int] = None,
+    comparator_factory: Optional[Type[PropComparator[Any]]] = None,
+    single_parent: bool = False,
+    innerjoin: bool = False,
+    distinct_target_key: Optional[bool] = None,
+    load_on_pending: bool = False,
+    query_class: Optional[Type[Query[Any]]] = None,
+    info: Optional[_InfoType] = None,
+    omit_join: Literal[None, False] = None,
+    sync_backref: Optional[bool] = None,
     **kw: Any,
 ) -> Relationship[Any]:
     """Provide a relationship between two mapped classes.
@@ -1097,13 +921,6 @@ def relationship(
        .. seealso::
 
             :ref:`error_qzyx` - usage example
-
-    :param bake_queries=True:
-        Legacy parameter, not used.
-
-          .. versionchanged:: 1.4.23 the "lambda caching" system is no longer
-             used by loader strategies and the ``bake_queries`` parameter
-             has no effect.
 
     :param cascade:
       A comma-separated list of cascade rules which determines how
@@ -1701,18 +1518,42 @@ def relationship(
         primaryjoin=primaryjoin,
         secondaryjoin=secondaryjoin,
         back_populates=back_populates,
+        order_by=order_by,
+        backref=backref,
+        overlaps=overlaps,
+        post_update=post_update,
+        cascade=cascade,
+        viewonly=viewonly,
+        lazy=lazy,
+        passive_deletes=passive_deletes,
+        passive_updates=passive_updates,
+        active_history=active_history,
+        enable_typechecks=enable_typechecks,
+        foreign_keys=foreign_keys,
+        remote_side=remote_side,
+        join_depth=join_depth,
+        comparator_factory=comparator_factory,
+        single_parent=single_parent,
+        innerjoin=innerjoin,
+        distinct_target_key=distinct_target_key,
+        load_on_pending=load_on_pending,
+        query_class=query_class,
+        info=info,
+        omit_join=omit_join,
+        sync_backref=sync_backref,
         **kw,
     )
 
 
 def synonym(
-    name,
-    map_column=None,
-    descriptor=None,
-    comparator_factory=None,
-    doc=None,
-    info=None,
-) -> "Synonym[Any]":
+    name: str,
+    *,
+    map_column: Optional[bool] = None,
+    descriptor: Optional[Any] = None,
+    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+) -> Synonym[Any]:
     """Denote an attribute name as a synonym to a mapped property,
     in that the attribute will mirror the value and expression behavior
     of another attribute.
@@ -1951,8 +1792,8 @@ def deferred(*columns, **kw):
 
 
 def query_expression(
-    default_expr: sql.ColumnElement[_T] = sql.null(),
-) -> "Mapped[_T]":
+    default_expr: _ORMColumnExprArgument[_T] = sql.null(),
+) -> Mapped[_T]:
     """Indicate an attribute that populates from a query-time SQL expression.
 
     :param default_expr: Optional SQL expression object that will be used in
@@ -2010,33 +1851,33 @@ def clear_mappers():
 
 @overload
 def aliased(
-    element: Union[Type[_T], "Mapper[_T]", "AliasedClass[_T]"],
-    alias=None,
-    name=None,
-    flat=False,
-    adapt_on_names=False,
-) -> "AliasedClass[_T]":
+    element: _EntityType[_O],
+    alias: Optional[Union[Alias, Subquery]] = None,
+    name: Optional[str] = None,
+    flat: bool = False,
+    adapt_on_names: bool = False,
+) -> AliasedClass[_O]:
     ...
 
 
 @overload
 def aliased(
-    element: "FromClause",
-    alias=None,
-    name=None,
-    flat=False,
-    adapt_on_names=False,
-) -> "Alias":
+    element: FromClause,
+    alias: Optional[Union[Alias, Subquery]] = None,
+    name: Optional[str] = None,
+    flat: bool = False,
+    adapt_on_names: bool = False,
+) -> FromClause:
     ...
 
 
 def aliased(
-    element: Union[Type[_T], "Mapper[_T]", "FromClause", "AliasedClass[_T]"],
-    alias=None,
-    name=None,
-    flat=False,
-    adapt_on_names=False,
-) -> Union["AliasedClass[_T]", "Alias"]:
+    element: Union[_EntityType[_O], FromClause],
+    alias: Optional[Union[Alias, Subquery]] = None,
+    name: Optional[str] = None,
+    flat: bool = False,
+    adapt_on_names: bool = False,
+) -> Union[AliasedClass[_O], FromClause]:
     """Produce an alias of the given element, usually an :class:`.AliasedClass`
     instance.
 
@@ -2233,9 +2074,7 @@ def with_polymorphic(
     )
 
 
-def join(
-    left, right, onclause=None, isouter=False, full=False, join_to_left=None
-):
+def join(left, right, onclause=None, isouter=False, full=False):
     r"""Produce an inner join between left and right clauses.
 
     :func:`_orm.join` is an extension to the core join interface
@@ -2270,16 +2109,11 @@ def join(
     See :ref:`orm_queryguide_joins` for information on modern usage
     of ORM level joins.
 
-    .. deprecated:: 0.8
-
-        the ``join_to_left`` parameter is deprecated, and will be removed
-        in a future release.  The parameter has no effect.
-
     """
     return _ORMJoin(left, right, onclause, isouter, full)
 
 
-def outerjoin(left, right, onclause=None, full=False, join_to_left=None):
+def outerjoin(left, right, onclause=None, full=False):
     """Produce a left outer join between left and right clauses.
 
     This is the "outer join" version of the :func:`_orm.join` function,

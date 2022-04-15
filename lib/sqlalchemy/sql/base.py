@@ -218,7 +218,7 @@ def _generative(fn: _Fn) -> _Fn:
 
     """
 
-    @util.decorator
+    @util.decorator  # type: ignore
     def _generative(
         fn: _Fn, self: _SelfGenerativeType, *args: Any, **kw: Any
     ) -> _SelfGenerativeType:
@@ -244,7 +244,7 @@ def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
         for name in names
     ]
 
-    @util.decorator
+    @util.decorator  # type: ignore
     def check(fn, *args, **kw):
         # make pylance happy by not including "self" in the argument
         # list
@@ -260,7 +260,7 @@ def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
                 raise exc.InvalidRequestError(msg)
         return fn(self, *args, **kw)
 
-    return check
+    return check  # type: ignore
 
 
 def _clone(element, **kw):
@@ -1750,15 +1750,14 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
                 self._collection.append((k, col))
         self._colset.update(c for (k, c) in self._collection)
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            (idx, c) for idx, (k, c) in enumerate(self._collection)  # type: ignore  # noqa: E501
+            (idx, c) for idx, (k, c) in enumerate(self._collection)
         )
         for col in replace_col:
             self.replace(col)
 
     def extend(self, iter_: Iterable[_NAMEDCOL]) -> None:
-        self._populate_separate_keys((col.key, col) for col in iter_)  # type: ignore  # noqa: E501
+        self._populate_separate_keys((col.key, col) for col in iter_)
 
     def remove(self, column: _NAMEDCOL) -> None:
         if column not in self._colset:
@@ -1772,9 +1771,8 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             (k, c) for (k, c) in self._collection if c is not column
         ]
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
         )
         # delete higher index
         del self._index[len(self._collection)]
@@ -1827,9 +1825,8 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 
         self._index.clear()
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
         )
         self._index.update(self._collection)
 

@@ -1223,7 +1223,9 @@ class Join(roles.DMLTableRole, FromClause):
     @util.preload_module("sqlalchemy.sql.util")
     def _populate_column_collection(self):
         sqlutil = util.preloaded.sql_util
-        columns = [c for c in self.left.c] + [c for c in self.right.c]
+        columns: List[ColumnClause[Any]] = [c for c in self.left.c] + [
+            c for c in self.right.c
+        ]
 
         self.primary_key.extend(  # type: ignore
             sqlutil.reduce_columns(

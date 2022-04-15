@@ -50,7 +50,7 @@ from ..util import hybridproperty
 from ..util import typing as compat_typing
 
 if typing.TYPE_CHECKING:
-    from .state import InstanceState  # noqa
+    from .state import InstanceState
 
 _T = TypeVar("_T", bound=Any)
 
@@ -280,7 +280,7 @@ class declared_attr(interfaces._MappedAttribute[_T]):
         # for the span of the declarative scan_attributes() phase.
         # to achieve this we look at the class manager that's configured.
         cls = owner
-        manager = attributes.manager_of_class(cls)
+        manager = attributes.opt_manager_of_class(cls)
         if manager is None:
             if not re.match(r"^__.+__$", self.fget.__name__):
                 # if there is no manager at all, then this class hasn't been
@@ -1294,8 +1294,8 @@ def as_declarative(**kw):
 @inspection._inspects(
     DeclarativeMeta, DeclarativeBase, DeclarativeAttributeIntercept
 )
-def _inspect_decl_meta(cls):
-    mp = _inspect_mapped_class(cls)
+def _inspect_decl_meta(cls: Type[Any]) -> Mapper[Any]:
+    mp: Mapper[Any] = _inspect_mapped_class(cls)
     if mp is None:
         if _DeferredMapperConfig.has_cls(cls):
             _DeferredMapperConfig.raise_unmapped_for_cls(cls)

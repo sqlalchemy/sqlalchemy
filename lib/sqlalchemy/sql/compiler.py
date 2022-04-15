@@ -1078,7 +1078,7 @@ class SQLCompiler(Compiled):
         return list(self.insert_prefetch) + list(self.update_prefetch)
 
     @util.memoized_property
-    def _global_attributes(self):
+    def _global_attributes(self) -> Dict[Any, Any]:
         return {}
 
     @util.memoized_instancemethod

@@ -6389,6 +6389,23 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             Order(description="order 5"),
         ] == o
 
+    def test_invalid_property(self):
+        """Test if with_parent is passed a non-relationship
+
+        found_during_type_annotation
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.get(User, 7)
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected relationship property for with_parent\(\), "
+            "got User.name",
+        ):
+            with_parent(u1, User.name)
+
     def test_select_from(self):
         User, Address = self.classes.User, self.classes.Address
 

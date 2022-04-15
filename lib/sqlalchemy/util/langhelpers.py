@@ -238,6 +238,8 @@ def map_bits(fn: Callable[[int], Any], n: int) -> Iterator[Any]:
 
 _Fn = TypeVar("_Fn", bound="Callable[..., Any]")
 
+# this seems to be in flux in recent mypy versions
+
 
 def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
     """A signature-matching decorator factory."""

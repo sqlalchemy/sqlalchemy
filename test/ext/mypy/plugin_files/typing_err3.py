@@ -43,11 +43,11 @@ class Address(Base):
 
     @declared_attr
     def email_address(cls) -> Column[String]:
-        # EXPECTED_MYPY: No overload variant of "Column" matches argument type "bool" # noqa
+        # EXPECTED_MYPY: Argument 1 to "Column" has incompatible type "bool";
         return Column(True)
 
     @declared_attr
     # EXPECTED_MYPY: Invalid type comment or annotation
     def thisisweird(cls) -> Column(String):
-        # EXPECTED_MYPY: No overload variant of "Column" matches argument type "bool" # noqa
+        # EXPECTED_MYPY: Argument 1 to "Column" has incompatible type "bool";
         return Column(False)

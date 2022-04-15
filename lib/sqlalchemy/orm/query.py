@@ -30,6 +30,7 @@ from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from . import exc as orm_exc
 from . import interfaces
@@ -77,6 +78,8 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 if TYPE_CHECKING:
     from ..sql.selectable import _SetupJoinsElement
+    from ..sql.selectable import Alias
+    from ..sql.selectable import Subquery
 
 __all__ = ["Query", "QueryContext"]
 
@@ -2769,14 +2772,14 @@ class AliasOption(interfaces.LoaderOption):
         "for entities to be matched up to a query that is established "
         "via :meth:`.Query.from_statement` and now does nothing.",
     )
-    def __init__(self, alias):
+    def __init__(self, alias: Union[Alias, Subquery]):
         r"""Return a :class:`.MapperOption` that will indicate to the
         :class:`_query.Query`
         that the main table has been aliased.
 
         """
 
-    def process_compile_state(self, compile_state):
+    def process_compile_state(self, compile_state: ORMCompileState):
         pass
 
 

@@ -25,6 +25,7 @@ from ..orm import exc as orm_exc
 from ..orm import instrumentation as orm_instrumentation
 from ..orm.instrumentation import _default_dict_getter
 from ..orm.instrumentation import _default_manager_getter
+from ..orm.instrumentation import _default_opt_manager_getter
 from ..orm.instrumentation import _default_state_getter
 from ..orm.instrumentation import ClassManager
 from ..orm.instrumentation import InstrumentationFactory
@@ -140,7 +141,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
         hierarchy = util.class_hierarchy(cls)
         factories = set()
         for member in hierarchy:
-            manager = self.manager_of_class(member)
+            manager = self.opt_manager_of_class(member)
             if manager is not None:
                 factories.add(manager.factory)
             else:
@@ -161,16 +162,33 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
             del self._state_finders[class_]
             del self._dict_finders[class_]
 
-    def manager_of_class(self, cls):
-        if cls is None:
-            return None
+    def opt_manager_of_class(self, cls):
         try:
-            finder = self._manager_finders.get(cls, _default_manager_getter)
+            finder = self._manager_finders.get(
+                cls, _default_opt_manager_getter
+            )
         except TypeError:
             # due to weakref lookup on invalid object
             return None
         else:
             return finder(cls)
+
+    def manager_of_class(self, cls):
+        try:
+            finder = self._manager_finders.get(cls, _default_manager_getter)
+        except TypeError:
+            # due to weakref lookup on invalid object
+            raise orm_exc.UnmappedClassError(
+                cls, f"Can't locate an instrumentation manager for class {cls}"
+            )
+        else:
+            manager = finder(cls)
+            if manager is None:
+                raise orm_exc.UnmappedClassError(
+                    cls,
+                    f"Can't locate an instrumentation manager for class {cls}",
+                )
+            return manager
 
     def state_of(self, instance):
         if instance is None:
@@ -384,6 +402,7 @@ def _install_instrumented_lookups():
             instance_state=_instrumentation_factory.state_of,
             instance_dict=_instrumentation_factory.dict_of,
             manager_of_class=_instrumentation_factory.manager_of_class,
+            opt_manager_of_class=_instrumentation_factory.opt_manager_of_class,
         )
     )
 
@@ -395,16 +414,19 @@ def _reinstall_default_lookups():
             instance_state=_default_state_getter,
             instance_dict=_default_dict_getter,
             manager_of_class=_default_manager_getter,
+            opt_manager_of_class=_default_opt_manager_getter,
         )
     )
     _instrumentation_factory._extended = False
 
 
 def _install_lookups(lookups):
-    global instance_state, instance_dict, manager_of_class
+    global instance_state, instance_dict
+    global manager_of_class, opt_manager_of_class
     instance_state = lookups["instance_state"]
     instance_dict = lookups["instance_dict"]
     manager_of_class = lookups["manager_of_class"]
+    opt_manager_of_class = lookups["opt_manager_of_class"]
     orm_base.instance_state = (
         attributes.instance_state
     ) = orm_instrumentation.instance_state = instance_state
@@ -414,3 +436,6 @@ def _install_lookups(lookups):
     orm_base.manager_of_class = (
         attributes.manager_of_class
     ) = orm_instrumentation.manager_of_class = manager_of_class
+    orm_base.opt_manager_of_class = (
+        attributes.opt_manager_of_class
+    ) = orm_instrumentation.opt_manager_of_class = opt_manager_of_class

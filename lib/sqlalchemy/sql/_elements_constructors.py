@@ -389,7 +389,7 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
 
 
 def bindparam(
-    key: str,
+    key: Optional[str],
     value: Any = _NoArg.NO_ARG,
     type_: Optional[TypeEngine[_T]] = None,
     unique: bool = False,
@@ -520,6 +520,11 @@ def bindparam(
       if other :class:`BindParameter` objects exist with the same
       key, or if its length is too long and truncation is
       required.
+
+      If omitted, an "anonymous" name is generated for the bound parameter;
+      when given a value to bind, the end result is equivalent to calling upon
+      the :func:`.literal` function with a value to bind, particularly
+      if the :paramref:`.bindparam.unique` parameter is also provided.
 
     :param value:
       Initial value for this bind param.  Will be used at statement

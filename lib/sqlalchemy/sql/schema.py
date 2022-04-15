@@ -144,9 +144,9 @@ class SchemaConst(Enum):
     NULL_UNSPECIFIED = 3
     """Symbol indicating the "nullable" keyword was not passed to a Column.
 
-    Normally we would expect None to be acceptable for this but some backends
-    such as that of SQL Server place special signficance on a "nullability"
-    value of None.
+    This is used to distinguish between the use case of passing
+    ``nullable=None`` to a :class:`.Column`, which has special meaning
+    on some backends such as SQL Server.
 
     """
 
@@ -308,7 +308,9 @@ class HasSchemaAttr(SchemaItem):
     schema: Optional[str]
 
 
-class Table(DialectKWArgs, HasSchemaAttr, TableClause):
+class Table(
+    DialectKWArgs, HasSchemaAttr, TableClause, inspection.Inspectable["Table"]
+):
     r"""Represent a table in a database.
 
     e.g.::
@@ -1318,117 +1320,15 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     inherit_cache = True
     key: str
 
-    @overload
     def __init__(
         self,
+        __name_pos: Optional[
+            Union[str, _TypeEngineArgument[_T], SchemaEventTarget]
+        ] = None,
+        __type_pos: Optional[
+            Union[_TypeEngineArgument[_T], SchemaEventTarget]
+        ] = None,
         *args: SchemaEventTarget,
-        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
-        default: Optional[Any] = None,
-        doc: Optional[str] = None,
-        key: Optional[str] = None,
-        index: Optional[bool] = None,
-        unique: Optional[bool] = None,
-        info: Optional[_InfoType] = None,
-        nullable: Optional[
-            Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-        ] = NULL_UNSPECIFIED,
-        onupdate: Optional[Any] = None,
-        primary_key: bool = False,
-        server_default: Optional[_ServerDefaultType] = None,
-        server_onupdate: Optional[FetchedValue] = None,
-        quote: Optional[bool] = None,
-        system: bool = False,
-        comment: Optional[str] = None,
-        _proxies: Optional[Any] = None,
-        **dialect_kwargs: Any,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        __name: str,
-        *args: SchemaEventTarget,
-        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
-        default: Optional[Any] = None,
-        doc: Optional[str] = None,
-        key: Optional[str] = None,
-        index: Optional[bool] = None,
-        unique: Optional[bool] = None,
-        info: Optional[_InfoType] = None,
-        nullable: Optional[
-            Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-        ] = NULL_UNSPECIFIED,
-        onupdate: Optional[Any] = None,
-        primary_key: bool = False,
-        server_default: Optional[_ServerDefaultType] = None,
-        server_onupdate: Optional[FetchedValue] = None,
-        quote: Optional[bool] = None,
-        system: bool = False,
-        comment: Optional[str] = None,
-        _proxies: Optional[Any] = None,
-        **dialect_kwargs: Any,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        __type: _TypeEngineArgument[_T],
-        *args: SchemaEventTarget,
-        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
-        default: Optional[Any] = None,
-        doc: Optional[str] = None,
-        key: Optional[str] = None,
-        index: Optional[bool] = None,
-        unique: Optional[bool] = None,
-        info: Optional[_InfoType] = None,
-        nullable: Optional[
-            Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-        ] = NULL_UNSPECIFIED,
-        onupdate: Optional[Any] = None,
-        primary_key: bool = False,
-        server_default: Optional[_ServerDefaultType] = None,
-        server_onupdate: Optional[FetchedValue] = None,
-        quote: Optional[bool] = None,
-        system: bool = False,
-        comment: Optional[str] = None,
-        _proxies: Optional[Any] = None,
-        **dialect_kwargs: Any,
-    ):
-        ...
-
-    @overload
-    def __init__(
-        self,
-        __name: str,
-        __type: _TypeEngineArgument[_T],
-        *args: SchemaEventTarget,
-        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
-        default: Optional[Any] = None,
-        doc: Optional[str] = None,
-        key: Optional[str] = None,
-        index: Optional[bool] = None,
-        unique: Optional[bool] = None,
-        info: Optional[_InfoType] = None,
-        nullable: Optional[
-            Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-        ] = NULL_UNSPECIFIED,
-        onupdate: Optional[Any] = None,
-        primary_key: bool = False,
-        server_default: Optional[_ServerDefaultType] = None,
-        server_onupdate: Optional[FetchedValue] = None,
-        quote: Optional[bool] = None,
-        system: bool = False,
-        comment: Optional[str] = None,
-        _proxies: Optional[Any] = None,
-        **dialect_kwargs: Any,
-    ):
-        ...
-
-    def __init__(
-        self,
-        *args: Union[str, _TypeEngineArgument[_T], SchemaEventTarget],
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
         autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
@@ -1440,7 +1340,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         info: Optional[_InfoType] = None,
         nullable: Optional[
             Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-        ] = NULL_UNSPECIFIED,
+        ] = SchemaConst.NULL_UNSPECIFIED,
         onupdate: Optional[Any] = None,
         primary_key: bool = False,
         server_default: Optional[_ServerDefaultType] = None,
@@ -1953,7 +1853,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         """  # noqa: E501, RST201, RST202
 
-        l_args = list(args)
+        l_args = [__name_pos, __type_pos] + list(args)
         del args
 
         if l_args:
@@ -1963,6 +1863,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                         "May not pass name positionally and as a keyword."
                     )
                 name = l_args.pop(0)  # type: ignore
+            elif l_args[0] is None:
+                l_args.pop(0)
         if l_args:
             coltype = l_args[0]
 
@@ -1972,6 +1874,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                         "May not pass type_ positionally and as a keyword."
                     )
                 type_ = l_args.pop(0)  # type: ignore
+            elif l_args[0] is None:
+                l_args.pop(0)
 
         if name is not None:
             name = quoted_name(name, quote)
@@ -1989,7 +1893,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.primary_key = primary_key
 
         self._user_defined_nullable = udn = nullable
-
         if udn is not NULL_UNSPECIFIED:
             self.nullable = udn
         else:
@@ -5128,7 +5031,7 @@ class MetaData(HasSchemaAttr):
     def clear(self) -> None:
         """Clear all Table objects from this MetaData."""
 
-        dict.clear(self.tables)
+        dict.clear(self.tables)  # type: ignore
         self._schemas.clear()
         self._fk_memos.clear()
 

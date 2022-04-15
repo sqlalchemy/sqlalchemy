@@ -16,7 +16,9 @@ as well as some of the attribute loading strategies.
 from __future__ import annotations
 
 from typing import Any
+from typing import Dict
 from typing import Iterable
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -63,6 +65,9 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 _O = TypeVar("_O", bound=object)
 _new_runid = util.counter()
+
+
+_PopulatorDict = Dict[str, List[Tuple[str, Any]]]
 
 
 def instances(cursor, context):
@@ -383,7 +388,7 @@ def get_from_identity(
     mapper: Mapper[_O],
     key: _IdentityKeyType[_O],
     passive: PassiveFlag,
-) -> Union[Optional[_O], LoaderCallableStatus]:
+) -> Union[LoaderCallableStatus, Optional[_O]]:
     """Look up the given key in the given session's identity map,
     check the object for expired state if found.
 

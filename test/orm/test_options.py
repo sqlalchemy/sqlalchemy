@@ -11,7 +11,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
-from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
@@ -82,8 +81,7 @@ class PathTest:
         r = []
         for i, item in enumerate(path):
             if i % 2 == 0:
-                if isinstance(item, type):
-                    item = class_mapper(item)
+                item = inspect(item)
             else:
                 if isinstance(item, str):
                     item = inspect(r[-1]).mapper.attrs[item]
