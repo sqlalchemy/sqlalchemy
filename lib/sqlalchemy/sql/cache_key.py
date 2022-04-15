@@ -102,8 +102,8 @@ class HasCacheKey:
     """private attribute which may be set to False to prevent the
     inherit_cache warning from being emitted for a hierarchy of subclasses.
 
-    Currently applies to the DDLElement hierarchy which does not implement
-    caching.
+    Currently applies to the :class:`.ExecutableDDLElement` hierarchy which
+    does not implement caching.
 
     """
 

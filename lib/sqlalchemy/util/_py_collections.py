@@ -136,7 +136,7 @@ class OrderedSet(Set[_T]):
 
     _list: List[_T]
 
-    def __init__(self, d=None):
+    def __init__(self, d: Optional[Iterable[_T]] = None) -> None:
         if d is not None:
             self._list = unique_list(d)
             super().update(self._list)

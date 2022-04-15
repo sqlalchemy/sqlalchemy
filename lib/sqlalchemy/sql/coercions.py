@@ -14,10 +14,13 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -50,6 +53,7 @@ if typing.TYPE_CHECKING:
     from . import traversals
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnsClauseArgument
+    from ._typing import _DDLColumnArgument
     from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
     from .dml import _DMLTableElement
@@ -166,19 +170,28 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.StatementOptionRole],
+    role: Type[roles.DDLReferredColumnRole],
     element: Any,
     **kw: Any,
-) -> DQLDMLClauseElement:
+) -> Column[Any]:
     ...
 
 
 @overload
 def expect(
-    role: Type[roles.DDLReferredColumnRole],
+    role: Type[roles.DDLConstraintColumnRole],
     element: Any,
     **kw: Any,
-) -> Column[Any]:
+) -> Union[Column[Any], str]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.StatementOptionRole],
+    element: Any,
+    **kw: Any,
+) -> DQLDMLClauseElement:
     ...
 
 
@@ -398,21 +411,33 @@ def expect_as_key(role, element, **kw):
     return expect(role, element, **kw)
 
 
-def expect_col_expression_collection(role, expressions):
+def expect_col_expression_collection(
+    role: Type[roles.DDLConstraintColumnRole],
+    expressions: Iterable[_DDLColumnArgument],
+) -> Iterator[
+    Tuple[
+        Union[str, Column[Any]],
+        Optional[ColumnClause[Any]],
+        Optional[str],
+        Optional[Union[Column[Any], str]],
+    ]
+]:
     for expr in expressions:
         strname = None
         column = None
 
-        resolved = expect(role, expr)
+        resolved: Union[Column[Any], str] = expect(role, expr)
         if isinstance(resolved, str):
+            assert isinstance(expr, str)
             strname = resolved = expr
         else:
-            cols: List[ColumnClause[Any]] = []
-            col_append: _TraverseCallableType[ColumnClause[Any]] = cols.append
+            cols: List[Column[Any]] = []
+            col_append: _TraverseCallableType[Column[Any]] = cols.append
             visitors.traverse(resolved, {}, {"column": col_append})
             if cols:
                 column = cols[0]
         add_element = column if column is not None else strname
+
         yield resolved, column, strname, add_element
 
 

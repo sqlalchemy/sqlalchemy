@@ -229,18 +229,19 @@ A synopsis is as follows:
               raise TypeError("coalesce only supports two arguments on Oracle")
           return "nvl(%s)" % compiler.process(element.clauses, **kw)
 
-* :class:`.DDLElement` - The root of all DDL expressions,
-  like CREATE TABLE, ALTER TABLE, etc. Compilation of :class:`.DDLElement`
-  subclasses is issued by a :class:`.DDLCompiler` instead of a
-  :class:`.SQLCompiler`. :class:`.DDLElement` can also be used as an event hook
-  in conjunction with event hooks like :meth:`.DDLEvents.before_create` and
+* :class:`.ExecutableDDLElement` - The root of all DDL expressions,
+  like CREATE TABLE, ALTER TABLE, etc. Compilation of
+  :class:`.ExecutableDDLElement` subclasses is issued by a
+  :class:`.DDLCompiler` instead of a :class:`.SQLCompiler`.
+  :class:`.ExecutableDDLElement` can also be used as an event hook in
+  conjunction with event hooks like :meth:`.DDLEvents.before_create` and
   :meth:`.DDLEvents.after_create`, allowing the construct to be invoked
   automatically during CREATE TABLE and DROP TABLE sequences.
 
   .. seealso::
 
     :ref:`metadata_ddl_toplevel` - contains examples of associating
-    :class:`.DDL` objects (which are themselves :class:`.DDLElement`
+    :class:`.DDL` objects (which are themselves :class:`.ExecutableDDLElement`
     instances) with :class:`.DDLEvents` event hooks.
 
 * :class:`~sqlalchemy.sql.expression.Executable` - This is a mixin which

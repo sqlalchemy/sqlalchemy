@@ -1677,7 +1677,7 @@ def parse_user_argument_for_enum(
 _creation_order = 1
 
 
-def set_creation_order(instance):
+def set_creation_order(instance: Any) -> None:
     """Assign a '_creation_order' sequence to the given instance.
 
     This allows multiple instances to be sorted in order of creation

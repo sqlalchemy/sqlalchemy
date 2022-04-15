@@ -62,6 +62,10 @@ from .. import util
 
 if TYPE_CHECKING:
     from ._typing import _TypeEngineArgument
+    from ..engine.base import Connection
+    from ..engine.cursor import CursorResult
+    from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import _ExecuteOptionsParameter
 
 _T = TypeVar("_T", bound=Any)
 
@@ -167,8 +171,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         )
 
     def _execute_on_connection(
-        self, connection, distilled_params, execution_options
-    ):
+        self,
+        connection: Connection,
+        distilled_params: _CoreMultiExecuteParams,
+        execution_options: _ExecuteOptionsParameter,
+    ) -> CursorResult:
         return connection._execute_function(
             self, distilled_params, execution_options
         )

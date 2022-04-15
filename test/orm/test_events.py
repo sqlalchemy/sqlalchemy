@@ -3,6 +3,7 @@ from unittest.mock import call
 from unittest.mock import Mock
 
 import sqlalchemy as sa
+from sqlalchemy import bindparam
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
@@ -238,6 +239,37 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 * num_opts
             ),
         )
+
+    def test_override_parameters_scalar(self):
+        """test that session.scalar() maintains the 'scalar-ness' of the
+        result when using re-execute events.
+
+        This got more complicated when the session.scalar(Sequence("my_seq"))
+        use case needed to keep working and returning a scalar result.
+
+        """
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            return ctx.invoke_statement(params={"id": 7})
+
+        orig_params = {"id": 18}
+        with self.sql_execution_asserter() as asserter:
+            result = sess.scalar(
+                select(User).where(User.id == bindparam("id")), orig_params
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users WHERE users.id = :id",
+                [{"id": 7}],
+            )
+        )
+        eq_(result, User(id=7))
+        # orig params weren't mutated
+        eq_(orig_params, {"id": 18})
 
     def test_override_parameters_executesingle(self):
         User = self.classes.User

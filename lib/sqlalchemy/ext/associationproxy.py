@@ -65,6 +65,7 @@ if typing.TYPE_CHECKING:
     from ..orm.interfaces import MapperProperty
     from ..orm.interfaces import PropComparator
     from ..orm.mapper import Mapper
+    from ..sql._typing import _InfoType
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -221,8 +222,8 @@ class _AssociationProxyProtocol(Protocol[_T]):
     proxy_factory: Optional[_ProxyFactoryProtocol]
     proxy_bulk_set: Optional[_ProxyBulkSetProtocol]
 
-    @util.memoized_property
-    def info(self) -> Dict[Any, Any]:
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         ...
 
     def for_class(
@@ -259,7 +260,7 @@ class AssociationProxy(
         getset_factory: Optional[_GetSetFactoryProtocol] = None,
         proxy_factory: Optional[_ProxyFactoryProtocol] = None,
         proxy_bulk_set: Optional[_ProxyBulkSetProtocol] = None,
-        info: Optional[Dict[Any, Any]] = None,
+        info: Optional[_InfoType] = None,
         cascade_scalar_deletes: bool = False,
     ):
         """Construct a new :class:`.AssociationProxy`.
@@ -338,7 +339,7 @@ class AssociationProxy(
             id(self),
         )
         if info:
-            self.info = info
+            self.info = info  # type: ignore
 
     @overload
     def __get__(
@@ -777,8 +778,8 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
 
             return getter, plain_setter
 
-    @property
-    def info(self) -> Dict[Any, Any]:
+    @util.ro_non_memoized_property
+    def info(self) -> _InfoType:
         return self.parent.info
 
     @overload

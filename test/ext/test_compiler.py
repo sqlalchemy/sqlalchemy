@@ -16,7 +16,7 @@ from sqlalchemy.ext.compiler import deregister
 from sqlalchemy.orm import Session
 from sqlalchemy.schema import CreateColumn
 from sqlalchemy.schema import CreateTable
-from sqlalchemy.schema import DDLElement
+from sqlalchemy.schema import ExecutableDDLElement
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import BindParameter
 from sqlalchemy.sql.expression import ClauseElement
@@ -275,10 +275,10 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
                 del Select._compiler_dispatcher
 
     def test_dialect_specific(self):
-        class AddThingy(DDLElement):
+        class AddThingy(ExecutableDDLElement):
             __visit_name__ = "add_thingy"
 
-        class DropThingy(DDLElement):
+        class DropThingy(ExecutableDDLElement):
             __visit_name__ = "drop_thingy"
 
         @compiles(AddThingy, "sqlite")

@@ -23,6 +23,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -139,24 +140,24 @@ EMPTY_DICT: immutabledict[Any, Any] = immutabledict()
 class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
-    def __new__(cls, *args):
+    def __new__(cls, *args: Any) -> FacadeDict[Any, Any]:
         new = dict.__new__(cls)
         return new
 
-    def copy(self):
+    def copy(self) -> NoReturn:
         raise NotImplementedError(
             "an immutabledict shouldn't need to be copied.  use dict(d) "
             "if you need a mutable dictionary."
         )
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return FacadeDict, (dict(self),)
 
-    def _insert_item(self, key, value):
+    def _insert_item(self, key: _KT, value: _VT) -> None:
         """insert an item into the dictionary directly."""
         dict.__setitem__(self, key, value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "FacadeDict(%s)" % dict.__repr__(self)
 
 

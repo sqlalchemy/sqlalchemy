@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from ...orm.session import _PKIdentityArgument
     from ...orm.session import _SessionBind
     from ...orm.session import _SessionBindKey
+    from ...sql._typing import _InfoType
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateArg
@@ -260,6 +261,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -294,6 +296,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -306,19 +309,28 @@ class AsyncSession(ReversibleProxy[Session]):
 
         """
 
-        result = await self.execute(
+        if execution_options:
+            execution_options = util.immutabledict(execution_options).union(
+                _EXECUTE_OPTIONS
+            )
+        else:
+            execution_options = _EXECUTE_OPTIONS
+
+        result = await greenlet_spawn(
+            self.sync_session.scalar,
             statement,
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
             **kw,
         )
-        return result.scalar()
+        return result
 
     async def scalars(
         self,
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -383,6 +395,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -414,6 +427,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -1277,7 +1291,7 @@ class async_sessionmaker:
         class_: Type[AsyncSession] = AsyncSession,
         autoflush: bool = True,
         expire_on_commit: bool = True,
-        info: Optional[Dict[Any, Any]] = None,
+        info: Optional[_InfoType] = None,
         **kw: Any,
     ):
         r"""Construct a new :class:`.async_sessionmaker`.

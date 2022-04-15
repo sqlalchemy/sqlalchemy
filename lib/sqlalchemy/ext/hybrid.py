@@ -808,7 +808,6 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Dict
 from typing import Generic
 from typing import List
 from typing import Optional
@@ -837,8 +836,10 @@ if TYPE_CHECKING:
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _DMLColumnArgument
     from ..sql._typing import _HasClauseElement
+    from ..sql._typing import _InfoType
     from ..sql.operators import OperatorType
     from ..sql.roles import ColumnsClauseRole
+
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -1325,7 +1326,7 @@ class ExprComparator(Comparator[_T]):
         return getattr(self.expression, key)
 
     @util.non_memoized_property
-    def info(self) -> Dict[Any, Any]:
+    def info(self) -> _InfoType:
         return self.hybrid.info
 
     def _bulk_update_tuples(

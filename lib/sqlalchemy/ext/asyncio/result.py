@@ -710,7 +710,14 @@ _RT = TypeVar("_RT", bound="Result")
 
 async def _ensure_sync_result(result: _RT, calling_method: Any) -> _RT:
     cursor_result: CursorResult
-    if not result._is_cursor:
+
+    try:
+        is_cursor = result._is_cursor
+    except AttributeError:
+        # legacy execute(DefaultGenerator) case
+        return result
+
+    if not is_cursor:
         cursor_result = getattr(result, "raw", None)  # type: ignore
     else:
         cursor_result = result  # type: ignore

@@ -53,7 +53,6 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -489,15 +488,6 @@ class ExecuteTest(fixtures.TablesTest):
                     conn.execute,
                     obj,
                 )
-
-    def test_subquery_exec_warning(self):
-        for obj in (select(1).alias(), select(1).subquery()):
-            with testing.db.connect() as conn:
-                with expect_deprecated(
-                    "Executing a subquery object is deprecated and will "
-                    "raise ObjectNotExecutableError"
-                ):
-                    eq_(conn.execute(obj).scalar(), 1)
 
     def test_stmt_exception_bytestring_raised(self):
         name = "méil"

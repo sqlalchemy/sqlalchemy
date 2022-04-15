@@ -23,6 +23,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
@@ -503,14 +504,44 @@ class DefaultRoundTripTest(fixtures.TablesTest):
     def teardown_test(self):
         self.default_generator["x"] = 50
 
-    def test_standalone(self, connection):
+    def test_standalone_via_exec_removed(self, connection):
         t = self.tables.default_test
-        x = connection.execute(t.c.col1.default)
-        y = connection.execute(t.c.col2.default)
-        z = connection.execute(t.c.col3.default)
+
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            x = connection.execute(t.c.col1.default)
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            y = connection.execute(t.c.col2.default)
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            z = connection.execute(t.c.col3.default)
+
+    def test_standalone_default_scalar(self, connection):
+        t = self.tables.default_test
+        x = connection.scalar(t.c.col1.default)
+        y = connection.scalar(t.c.col2.default)
+        z = connection.scalar(t.c.col3.default)
         assert 50 <= x <= 57
         eq_(y, "imthedefault")
         eq_(z, self.f)
+
+    def test_standalone_function_execute(self, connection):
+        ctexec = connection.execute(self.currenttime)
+        assert isinstance(ctexec.scalar(), datetime.date)
+
+    def test_standalone_function_scalar(self, connection):
+        ctexec = connection.scalar(self.currenttime)
+        assert isinstance(ctexec, datetime.date)
 
     def test_insert(self, connection):
         t = self.tables.default_test

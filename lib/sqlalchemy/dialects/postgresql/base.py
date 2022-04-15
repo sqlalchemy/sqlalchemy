@@ -1448,7 +1448,7 @@ from ...sql import expression
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
-from ...sql.ddl import DDLBase
+from ...sql.ddl import InvokeDDLBase
 from ...types import BIGINT
 from ...types import BOOLEAN
 from ...types import CHAR
@@ -2014,7 +2014,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
         bind._run_ddl_visitor(self.EnumDropper, self, checkfirst=checkfirst)
 
-    class EnumGenerator(DDLBase):
+    class EnumGenerator(InvokeDDLBase):
         def __init__(self, dialect, connection, checkfirst=False, **kwargs):
             super(ENUM.EnumGenerator, self).__init__(connection, **kwargs)
             self.checkfirst = checkfirst
@@ -2035,7 +2035,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
             self.connection.execute(CreateEnumType(enum))
 
-    class EnumDropper(DDLBase):
+    class EnumDropper(InvokeDDLBase):
         def __init__(self, dialect, connection, checkfirst=False, **kwargs):
             super(ENUM.EnumDropper, self).__init__(connection, **kwargs)
             self.checkfirst = checkfirst

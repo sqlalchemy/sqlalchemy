@@ -17,6 +17,7 @@ import enum
 import json
 import pickle
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import List
@@ -59,7 +60,10 @@ from ..util import OrderedDict
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _TypeEngineArgument
     from .operators import OperatorType
+    from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _ResultProcessorType
@@ -161,7 +165,7 @@ class Indexable(TypeEngineMixin):
                 adjusted_op, adjusted_right_expr, result_type=result_type
             )
 
-    comparator_factory = Comparator
+    comparator_factory: _ComparatorFactory[Any] = Comparator
 
 
 class String(Concatenable, TypeEngine[str]):
@@ -451,10 +455,10 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
     def __init__(
         self,
-        precision=None,
-        scale=None,
-        decimal_return_scale=None,
-        asdecimal=True,
+        precision: Optional[int] = None,
+        scale: Optional[int] = None,
+        decimal_return_scale: Optional[int] = None,
+        asdecimal: bool = True,
     ):
         """
         Construct a Numeric.
@@ -716,7 +720,7 @@ class DateTime(
 
     __visit_name__ = "datetime"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         """Construct a new :class:`.DateTime`.
 
         :param timezone: boolean.  Indicates that the datetime type should
@@ -801,7 +805,7 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
     __visit_name__ = "time"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         self.timezone = timezone
 
     def get_dbapi_type(self, dbapi):
@@ -833,7 +837,7 @@ class _Binary(TypeEngine[bytes]):
 
     """Define base behavior for binary types."""
 
-    def __init__(self, length=None):
+    def __init__(self, length: Optional[int] = None):
         self.length = length
 
     def literal_processor(self, dialect):
@@ -902,7 +906,7 @@ class LargeBinary(_Binary):
 
     __visit_name__ = "large_binary"
 
-    def __init__(self, length=None):
+    def __init__(self, length: Optional[int] = None):
         """
         Construct a LargeBinary type.
 
@@ -944,12 +948,12 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
     def __init__(
         self,
-        name=None,
-        schema=None,
-        metadata=None,
-        inherit_schema=False,
-        quote=None,
-        _create_events=True,
+        name: Optional[str] = None,
+        schema: Optional[str] = None,
+        metadata: Optional[MetaData] = None,
+        inherit_schema: bool = False,
+        quote: Optional[bool] = None,
+        _create_events: bool = True,
     ):
         if name is not None:
             self.name = quoted_name(name, quote)
@@ -1127,7 +1131,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # be integration tested by PG-specific tests
         def _we_are_the_impl(typ):
             return (
-                typ is self or isinstance(typ, ARRAY) and typ.item_type is self
+                typ is self
+                or isinstance(typ, ARRAY)
+                and typ.item_type is self  # type: ignore[comparison-overlap]
             )
 
         if dialect.name in variant_mapping and _we_are_the_impl(
@@ -1216,7 +1222,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     __visit_name__ = "enum"
 
-    def __init__(self, *enums, **kw):
+    def __init__(self, *enums: object, **kw: Any):
         r"""Construct an enum.
 
         Keyword arguments which don't apply to a specific backend are ignored
@@ -1660,10 +1666,10 @@ class PickleType(TypeDecorator[object]):
 
     def __init__(
         self,
-        protocol=pickle.HIGHEST_PROTOCOL,
-        pickler=None,
-        comparator=None,
-        impl=None,
+        protocol: int = pickle.HIGHEST_PROTOCOL,
+        pickler: Any = None,
+        comparator: Optional[Callable[[Any, Any], bool]] = None,
+        impl: Optional[_TypeEngineArgument[Any]] = None,
     ):
         """
         Construct a PickleType.
@@ -1691,7 +1697,9 @@ class PickleType(TypeDecorator[object]):
         super(PickleType, self).__init__()
 
         if impl:
-            self.impl = to_instance(impl)
+            # custom impl is not necessarily a LargeBinary subclass.
+            # make an exception to typing for this
+            self.impl = to_instance(impl)  # type: ignore
 
     def __reduce__(self):
         return PickleType, (self.protocol, None, self.comparator)
@@ -1770,9 +1778,9 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
 
     def __init__(
         self,
-        create_constraint=False,
-        name=None,
-        _create_events=True,
+        create_constraint: bool = False,
+        name: Optional[str] = None,
+        _create_events: bool = True,
     ):
         """Construct a Boolean.
 
@@ -1922,7 +1930,12 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     epoch = dt.datetime.utcfromtimestamp(0)
     cache_ok = True
 
-    def __init__(self, native=True, second_precision=None, day_precision=None):
+    def __init__(
+        self,
+        native: bool = True,
+        second_precision: Optional[int] = None,
+        day_precision: Optional[int] = None,
+    ):
         """Construct an Interval object.
 
         :param native: when True, use the actual
@@ -2262,7 +2275,7 @@ class JSON(Indexable, TypeEngine[Any]):
 
     """
 
-    def __init__(self, none_as_null=False):
+    def __init__(self, none_as_null: bool = False):
         """Construct a :class:`_types.JSON` type.
 
         :param none_as_null=False: if True, persist the value ``None`` as a
@@ -2688,7 +2701,10 @@ class ARRAY(
     """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""
 
-    class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
+    class Comparator(
+        Indexable.Comparator[Sequence[Any]],
+        Concatenable.Comparator[Sequence[Any]],
+    ):
 
         """Define comparison operations for :class:`_types.ARRAY`.
 
@@ -2702,6 +2718,8 @@ class ARRAY(
         def _setup_getitem(self, index):
 
             arr_type = cast(ARRAY, self.type)
+
+            return_type: TypeEngine[Any]
 
             if isinstance(index, slice):
                 return_type = arr_type
@@ -2821,7 +2839,11 @@ class ARRAY(
     comparator_factory = Comparator
 
     def __init__(
-        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+        self,
+        item_type: _TypeEngineArgument[Any],
+        as_tuple: bool = False,
+        dimensions: Optional[int] = None,
+        zero_indexes: bool = False,
     ):
         """Construct an :class:`_types.ARRAY`.
 
@@ -2899,7 +2921,7 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
 
     types: List[TypeEngine[Any]]
 
-    def __init__(self, *types):
+    def __init__(self, *types: _TypeEngineArgument[Any]):
         self._fully_typed = NULLTYPE not in types
         self.types = [
             item_type() if isinstance(item_type, type) else item_type
@@ -3059,7 +3081,7 @@ class TIMESTAMP(DateTime):
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         """Construct a new :class:`_types.TIMESTAMP`.
 
         :param timezone: boolean.  Indicates that the TIMESTAMP type should
@@ -3236,7 +3258,7 @@ class TableValueType(HasCacheKey, TypeEngine[Any]):
         ("_elements", InternalTraversal.dp_clauseelement_list),
     ]
 
-    def __init__(self, *elements):
+    def __init__(self, *elements: Union[str, _ColumnExpressionArgument[Any]]):
         self._elements = [
             coercions.expect(roles.StrAsPlainColumnRole, elem)
             for elem in elements

@@ -778,7 +778,7 @@ class ExecuteTest(fixtures.TestBase):
         seq = Sequence("foo_seq")
         seq.create(connection)
         try:
-            val = connection.execute(seq)
+            val = connection.scalar(seq)
             eq_(val, 1)
             assert type(val) is int
         finally:

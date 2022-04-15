@@ -2101,8 +2101,8 @@ class BulkUDCompileState(CompileState):
         result = session.execute(
             select_stmt,
             params,
-            execution_options,
-            bind_arguments,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
             _add_event=skip_for_full_returning,
         )
         matched_rows = result.fetchall()

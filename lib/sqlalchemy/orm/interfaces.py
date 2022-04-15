@@ -62,6 +62,7 @@ if typing.TYPE_CHECKING:
     from .decl_api import RegistryType
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _DMLColumnArgument
+    from ..sql._typing import _InfoType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -192,7 +193,7 @@ class MapperProperty(
         """
         raise NotImplementedError()
 
-    def _memoized_attr_info(self):
+    def _memoized_attr_info(self) -> _InfoType:
         """Info dictionary associated with the object, allowing user-defined
         data to be associated with this :class:`.InspectionAttr`.
 
@@ -522,7 +523,7 @@ class PropComparator(SQLORMOperations[_T]):
             return self._adapt_to_entity._adapt_element
 
     @util.non_memoized_property
-    def info(self):
+    def info(self) -> _InfoType:
         return self.property.info
 
     @staticmethod

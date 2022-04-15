@@ -42,6 +42,7 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .mapper import Mapper
     from .state import InstanceState
+    from ..sql._typing import _InfoType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -587,8 +588,8 @@ class InspectionAttrInfo(InspectionAttr):
 
     __slots__ = ()
 
-    @util.memoized_property
-    def info(self) -> Dict[Any, Any]:
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         """Info dictionary associated with the object, allowing user-defined
         data to be associated with this :class:`.InspectionAttr`.
 
