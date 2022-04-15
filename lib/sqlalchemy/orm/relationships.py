@@ -367,20 +367,11 @@ class RelationshipProperty(StrategizedProperty):
                 :ref:`error_qzyx` - usage example
 
         :param bake_queries=True:
-          Enable :ref:`lambda caching <engine_lambda_caching>` for loader
-          strategies, if applicable, which adds a performance gain to the
-          construction of SQL constructs used by loader strategies, in addition
-          to the usual SQL statement caching used throughout SQLAlchemy. This
-          parameter currently applies only to the "lazy" and "selectin" loader
-          strategies. There is generally no reason to set this parameter to
-          False.
+          Legacy parameter, not used.
 
-          .. versionchanged:: 1.4  Relationship loaders no longer use the
-             previous "baked query" system of query caching.   The "lazy"
-             and "selectin" loaders make use of the "lambda cache" system
-             for the construction of SQL constructs,
-             as well as the usual SQL caching system that is throughout
-             SQLAlchemy as of the 1.4 series.
+          .. versionchanged:: 1.4.23 the "lambda caching" system is no longer
+             used by loader strategies and the ``bake_queries`` parameter
+             has no effect.
 
         :param cascade:
           A comma-separated list of cascade rules which determines how
