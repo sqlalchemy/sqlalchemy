@@ -15,7 +15,6 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.engine import default
-from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1341,80 +1340,4 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
-        )
-
-
-# I just added this class here, anyone can refactor it to wherever it fits best
-class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    # @testing.requires.system_versioned_tables_support
-    def test_create_table_versioning_no_columns(self):
-        m = MetaData()
-        t1 = Table("t1", m, Column("x", Integer), system_versioning=True)
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE t1 (x INTEGER) WITH SYSTEM VERSIONING",
-        )
-
-    # @testing.requires.system_versioned_tables_support
-    def test_create_table_versioning_columns_specified(self):
-        m = MetaData()
-        t1 = Table(
-            "t1",
-            m,
-            Column("x", Integer),
-            Column("y", Integer, system_versioning=False),
-            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
-            Column("end_timestamp", TIMESTAMP(6), system_versioning="end"),
-            system_versioning=True,
-        )
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE t1 ("
-            "x INTEGER, "
-            "y INTEGER WITHOUT SYSTEM VERSIONING, "
-            "start_timestamp TIMESTAMP GENERATED ALWAYS AS ROW START, "
-            "end_timestamp TIMESTAMP GENERATED ALWAYS AS ROW END, "
-            "PERIOD FOR SYSTEM_TIME (start_timestamp, end_timestamp)"
-            ") WITH SYSTEM VERSIONING",
-        )
-
-    # @testing.requires.system_versioned_tables_support
-    def test_missing_system_versioning_column(self):
-        m = MetaData()
-        t1 = Table(
-            "t1",
-            m,
-            Column("x", Integer),
-            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
-            Column("end_timestamp ", TIMESTAMP(6)),
-            system_versioning=True,
-        )
-
-        assert_raises_message(
-            exc.CompileError,
-            "Unable to compile system versioning period. "
-            'Did you set both "start" and "end" columns?',
-            m.create_all,
-            testing.db,
-        )
-
-    # @testing.requires.system_versioned_tables_support
-    def test_too_many_system_versioning_columns(self):
-        m = MetaData()
-        t1 = Table(
-            "t1",
-            m,
-            Column("x", Integer),
-            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
-            Column("end_timestamp ", TIMESTAMP(6), system_versioning="start"),
-            system_versioning=True,
-        )
-
-        assert_raises_message(
-            exc.CompileError,
-            ".*too many system versioning.*",
-            m.create_all,
-            testing.db,
         )

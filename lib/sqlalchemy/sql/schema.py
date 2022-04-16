@@ -344,8 +344,10 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    _versioning_columns = {}
-    """A collection of "start" and "end" columns used for system versioning"""
+    periods: Set[Period]
+    """A collection of all :class:`_schema.Period` objects associated with this
+        :class:`_schema.Table`.
+    """
 
     _traverse_internals = TableClause._traverse_internals + [
         ("schema", InternalTraversal.dp_string)
@@ -777,7 +779,6 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         include_columns = kwargs.pop("include_columns", None)
 
         self.implicit_returning = kwargs.pop("implicit_returning", True)
-        self.system_versioning = kwargs.pop("system_versioning", False)
 
         self.comment = kwargs.pop("comment", None)
 
@@ -1830,9 +1831,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-        :param system_versioning: "disable", indicates that a column should not
-            be part of system versioning. "start" or "end" indicates that this
-            column should be the start or end generate columns, respectively
+        :param system_versioning: ``False`` indicates that a column should not
+            be part of system versioning. ``True`` will apply
+            ``WITH SYSTEM VERSIONING`` to the column.
 
         :param comment: Optional string that will render an SQL comment on
              table creation.
@@ -1903,10 +1904,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.autoincrement = kwargs.pop("autoincrement", "auto")
         self.constraints = set()
         self.foreign_keys = set()
+        self.periods = set()
         self.comment = kwargs.pop("comment", None)
         self.computed = None
         self.identity = None
-        self.system_versioning = kwargs.pop("system_versioning", None)
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -5364,3 +5365,98 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         )
 
         return self._schema_item_copy(i)
+
+
+class Period(SchemaItem):
+    """Defines a period column, i.e. "PERIOD FOR" syntax
+
+    See the linked documentation below for complete details.
+
+    .. versionadded:: TODO
+
+    .. seealso::
+
+        :ref:`temporal_ddl`
+    """
+
+    __visit_name__ = "period"
+
+    table: Table
+
+    def __init__(
+        self,
+        name: str,
+        start: Union[str, Column[Any], SQLCoreOperations[Any]],
+        end: Union[str, Column[Any], SQLCoreOperations[Any]],
+    ):
+        """Construct a PERIOD FOR DDL construct to accompany a
+        :class:`_schema.Column`.
+
+        :param name:
+          The name of the period
+
+        :param start:
+            A target column that defines the period's start. A
+            :class:`_schema.Column` object or a column name as a string.
+
+        :param end:
+            A target column that defines the period's start. A
+            :class:`_schema.Column` object or a column name as a string.
+        """
+        self.name = name
+        self.start = coercions.expect(roles.DDLExpressionRole, start)
+        self.end = coercions.expect(roles.DDLExpressionRole, end)
+
+    def _set_parent(self, table):
+        existing = getattr(self, "table", None)
+        if existing is not None and existing is not table:
+            raise exc.ArgumentError(
+                "Period object '%s' already assigned to Table '%s'"
+                % (self.name, existing.description)
+            )
+
+        period = table._periods.get(self.name)
+        if period and period is not self:
+            exc.ArgumentError(
+                "A period with name '%s' is already"
+                "present in table '%s'" % (self.name, table.name)
+            )
+
+        table._periods.add(self)
+
+        self.table = table
+
+    # def _copy(self, target_table=None, **kw):
+    #     sqltext = _copy_expression(
+    #         self.sqltext,
+    #         self.column.table if self.column is not None else None,
+    #         target_table,
+    #     )
+    #     g = Computed(sqltext, persisted=self.persisted)
+
+    #     return self._schema_item_copy(g)
+
+
+class ApplicationTimePeriod(Period):
+    pass
+
+
+class SystemTimePeriod(Period):
+    def __init__(
+        self,
+        start: Union[str, Column[Any], SQLCoreOperations[Any]] = None,
+        end: Union[str, Column[Any], SQLCoreOperations[Any]] = None,
+    ):
+        if start and end:
+            super(SystemTimePeriod, self).__init__("SYSTEM_TIME", start, end)
+        elif start or end:
+            exc.ArgumentError(
+                "Period object requires Both start"
+                " and end columns must be specified"
+            )
+        else:
+            self.name = "SYSTEM_TIME"
+
+    def _set_parent(self, table: Table):
+        super(SystemTimePeriod, self).__init__(table)
+        table

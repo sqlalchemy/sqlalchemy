@@ -57,6 +57,7 @@ from .sql.schema import ForeignKeyConstraint as ForeignKeyConstraint
 from .sql.schema import Identity as Identity
 from .sql.schema import Index as Index
 from .sql.schema import MetaData as MetaData
+from .sql.schema import Period as Period
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .sql.schema import SchemaItem as SchemaItem
 from .sql.schema import Sequence as Sequence

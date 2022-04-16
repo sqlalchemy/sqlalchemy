@@ -69,6 +69,7 @@ from .base import NO_ARG
 from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
+from .schema import Period
 from .sqltypes import TupleType
 from .type_api import TypeEngine
 from .visitors import prefix_anon_map
@@ -4853,7 +4854,6 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_create_table(self, create, **kw):
-        # TODO_active
         table = create.element
         preparer = self.preparer
 
@@ -4902,32 +4902,7 @@ class DDLCompiler(Compiled):
         if const:
             text += separator + "\t" + const
 
-        # NOTE: This is proof of concept, needs to be moved into
-        # create_table_constraints once I figure that out
-        if table._versioning_columns != {}:
-            try:
-                text += ", \n\tPERIOD FOR SYSTEM_TIME (%s, %s)" % (
-                    table._versioning_columns["start"],
-                    table._versioning_columns["end"],
-                )
-            except KeyError:
-                raise exc.CompileError(
-                    "Unable to compile system versioning period. "
-                    'Did you set both "start" and "end" columns?'
-                ) from KeyError
-
-        text += "\n)%s" % self.post_create_table(table)
-        vers = self.create_table_system_versioning(table)
-        part = self.create_table_partitioning(table)
-
-        if vers != "":
-            text += " " + vers
-
-        if part != "":
-            text += " \n" + part
-
-        text += "\n\n"
-
+        text += "\n)%s\n\n" % self.post_create_table(table)
         return text
 
     def visit_create_column(self, create, first_pk=False, **kw):
@@ -5157,7 +5132,6 @@ class DDLCompiler(Compiled):
                 column.type, type_expression=column
             )
         )
-
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -5175,60 +5149,12 @@ class DDLCompiler(Compiled):
             not column.identity or not self.dialect.supports_identity_columns
         ):
             colspec += " NOT NULL"
-
-        if column.system_versioning:
-            option = self.get_column_versioning_options(self, column)
-            colspec += " %s" % option
-
         return colspec
-
-    def get_column_versioning_options(self, *args, **kw) -> str:
-        """Return strings to allow system versioning for columns
-        Raise errors if there is more than one column marked start or end"""
-        # TODO For some reason I can't just have an arg named column,
-        # some issue about too many arguments that I don't understand
-        column = args[1]
-        if column.system_versioning == "start":
-            try:
-                assert "start" not in column.table._versioning_columns
-            except AssertionError:
-                raise exc.CompileError(
-                    "Can't generate DDL for %r; "
-                    "too many system versioning "
-                    '"start" columns' % column.name
-                )
-            column.table._versioning_columns["start"] = column.name
-            return "GENERATED ALWAYS AS ROW START"
-        elif column.system_versioning == "end":
-            try:
-                assert "end" not in column.table._versioning_columns
-            except AssertionError:
-                raise exc.CompileError(
-                    "Can't generate DDL for %r; "
-                    "too many system versioning "
-                    '"end" columns' % column.name
-                )
-            column.table._versioning_columns["end"] = column.name
-            return "GENERATED ALWAYS AS ROW END"
-        elif (
-            column.system_versioning == "disabled"
-            or column.system_versioning == False
-        ):
-            return "WITHOUT SYSTEM VERSIONING"
-        return ""
 
     def create_table_suffix(self, table):
         return ""
 
     def post_create_table(self, table):
-        return ""
-
-    def create_table_system_versioning(self, table):
-        if table.system_versioning:
-            return "WITH SYSTEM VERSIONING"
-        return ""
-
-    def create_table_partitioning(self, table):
         return ""
 
     def get_column_default_string(self, column):
@@ -5386,6 +5312,9 @@ class DDLCompiler(Compiled):
         if options:
             text += " (%s)" % options
         return text
+
+    def visit_period(self, period: Period, **kw):
+        pass
 
 
 class GenericTypeCompiler(TypeCompiler):
