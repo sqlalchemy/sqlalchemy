@@ -708,11 +708,11 @@ class AliasedInsp(
             # make sure the adapter doesn't try to grab other tables that
             # are not even the thing we are mapping, such as embedded
             # selectables in subqueries or CTEs.  See issue #6060
-            adapt_from_selectables=[
+            adapt_from_selectables={
                 m.selectable
                 for m in self.with_polymorphic_mappers
                 if not adapt_on_names
-            ],
+            },
         )
 
         if nest_adapters:
