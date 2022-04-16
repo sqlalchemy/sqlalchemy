@@ -86,7 +86,7 @@ if typing.TYPE_CHECKING:
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
     from .cache_key import CacheKey
-    from .ddl import DDLElement
+    from .ddl import ExecutableDDLElement
     from .dml import Insert
     from .dml import UpdateBase
     from .dml import ValuesBase
@@ -2013,6 +2013,24 @@ class SQLCompiler(Compiled):
             sep = OPERATORS[clauselist.operator]
 
         return self._generate_delimited_list(clauselist.clauses, sep, **kw)
+
+    def visit_expression_clauselist(self, clauselist, **kw):
+        operator_ = clauselist.operator
+
+        disp = self._get_operator_dispatch(
+            operator_, "expression_clauselist", None
+        )
+        if disp:
+            return disp(clauselist, operator_, **kw)
+
+        try:
+            opstring = OPERATORS[operator_]
+        except KeyError as err:
+            raise exc.UnsupportedCompilationError(self, operator_) from err
+        else:
+            return self._generate_delimited_list(
+                clauselist.clauses, opstring, **kw
+            )
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "
@@ -4799,7 +4817,7 @@ class DDLCompiler(Compiled):
         def __init__(
             self,
             dialect: Dialect,
-            statement: DDLElement,
+            statement: ExecutableDDLElement,
             schema_translate_map: Optional[_SchemaTranslateMapType] = ...,
             render_schema_translate: bool = ...,
             compile_kwargs: Mapping[str, Any] = ...,

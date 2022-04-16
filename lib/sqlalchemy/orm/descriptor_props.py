@@ -19,7 +19,6 @@ import operator
 import typing
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -49,6 +48,7 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .properties import MappedColumn
     from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _InfoType
     from ..sql.schema import Column
 
 _T = TypeVar("_T", bound=Any)
@@ -158,7 +158,7 @@ class Composite(
         deferred: bool = False,
         group: Optional[str] = None,
         comparator_factory: Optional[Type[Comparator]] = None,
-        info: Optional[Dict[Any, Any]] = None,
+        info: Optional[_InfoType] = None,
     ):
         super().__init__()
 

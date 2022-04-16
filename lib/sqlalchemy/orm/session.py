@@ -21,6 +21,7 @@ from typing import Iterator
 from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -98,6 +99,7 @@ if typing.TYPE_CHECKING:
     from ..engine.result import ScalarResult
     from ..event import _InstanceLevelDispatch
     from ..sql._typing import _ColumnsClauseArgument
+    from ..sql._typing import _InfoType
     from ..sql.base import Executable
     from ..sql.elements import ClauseElement
     from ..sql.schema import Table
@@ -380,11 +382,11 @@ class ORMExecuteState(util.MemoizedSlots):
         if execution_options:
             _execution_options = _execution_options.union(execution_options)
 
-        return self.session.execute(
+        return self.session._execute_internal(
             statement,
             _params,
-            _execution_options,
-            _bind_arguments,
+            execution_options=_execution_options,
+            bind_arguments=_bind_arguments,
             _parent_execute_state=self,
         )
 
@@ -1232,7 +1234,7 @@ class Session(_SessionClassMethods, EventTarget):
         twophase: bool = False,
         binds: Optional[Dict[_SessionBindKey, _SessionBind]] = None,
         enable_baked_queries: bool = True,
-        info: Optional[Dict[Any, Any]] = None,
+        info: Optional[_InfoType] = None,
         query_cls: Optional[Type[Query[Any]]] = None,
         autocommit: Literal[False] = False,
     ):
@@ -1452,7 +1454,7 @@ class Session(_SessionClassMethods, EventTarget):
         return self._nested_transaction
 
     @util.memoized_property
-    def info(self) -> Dict[Any, Any]:
+    def info(self) -> _InfoType:
         """A user-modifiable dictionary.
 
         The initial value of this dictionary can be populated using the
@@ -1686,66 +1688,45 @@ class Session(_SessionClassMethods, EventTarget):
             trans = self._autobegin_t()
         return trans._connection_for_bind(engine, execution_options)
 
-    def execute(
+    @overload
+    def _execute_internal(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
+        _scalar_result: Literal[True] = ...,
+    ) -> Any:
+        ...
+
+    @overload
+    def _execute_internal(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+        _scalar_result: bool = ...,
     ) -> Result:
-        r"""Execute a SQL expression construct.
+        ...
 
-        Returns a :class:`_engine.Result` object representing
-        results of the statement execution.
-
-        E.g.::
-
-            from sqlalchemy import select
-            result = session.execute(
-                select(User).where(User.id == 5)
-            )
-
-        The API contract of :meth:`_orm.Session.execute` is similar to that
-        of :meth:`_engine.Connection.execute`, the :term:`2.0 style` version
-        of :class:`_engine.Connection`.
-
-        .. versionchanged:: 1.4 the :meth:`_orm.Session.execute` method is
-           now the primary point of ORM statement execution when using
-           :term:`2.0 style` ORM usage.
-
-        :param statement:
-            An executable statement (i.e. an :class:`.Executable` expression
-            such as :func:`_expression.select`).
-
-        :param params:
-            Optional dictionary, or list of dictionaries, containing
-            bound parameter values.   If a single dictionary, single-row
-            execution occurs; if a list of dictionaries, an
-            "executemany" will be invoked.  The keys in each dictionary
-            must correspond to parameter names present in the statement.
-
-        :param execution_options: optional dictionary of execution options,
-         which will be associated with the statement execution.  This
-         dictionary can provide a subset of the options that are accepted
-         by :meth:`_engine.Connection.execution_options`, and may also
-         provide additional options understood only in an ORM context.
-
-         .. seealso::
-
-            :ref:`orm_queryguide_execution_options` - ORM-specific execution
-            options
-
-        :param bind_arguments: dictionary of additional arguments to determine
-         the bind.  May include "mapper", "bind", or other custom arguments.
-         Contents of this dictionary are passed to the
-         :meth:`.Session.get_bind` method.
-
-        :return: a :class:`_engine.Result` object.
-
-
-        """
+    def _execute_internal(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+        _scalar_result: bool = False,
+    ) -> Any:
         statement = coercions.expect(roles.StatementRole, statement)
 
         if not bind_arguments:
@@ -1805,7 +1786,10 @@ class Session(_SessionClassMethods, EventTarget):
                 orm_exec_state._starting_event_idx = idx
                 fn_result: Optional[Result] = fn(orm_exec_state)
                 if fn_result:
-                    return fn_result
+                    if _scalar_result:
+                        return fn_result.scalar()
+                    else:
+                        return fn_result
 
             statement = orm_exec_state.statement
             execution_options = orm_exec_state.local_execution_options
@@ -1813,6 +1797,12 @@ class Session(_SessionClassMethods, EventTarget):
         bind = self.get_bind(**bind_arguments)
 
         conn = self._connection_for_bind(bind)
+
+        if _scalar_result and not compile_state_cls:
+            if TYPE_CHECKING:
+                params = cast(_CoreSingleExecuteParams, params)
+            return conn.scalar(statement, params or {}, execution_options)
+
         result: Result = conn.execute(
             statement, params or {}, execution_options
         )
@@ -1827,12 +1817,86 @@ class Session(_SessionClassMethods, EventTarget):
                 result,
             )
 
-        return result
+        if _scalar_result:
+            return result.scalar()
+        else:
+            return result
+
+    def execute(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> Result:
+        r"""Execute a SQL expression construct.
+
+        Returns a :class:`_engine.Result` object representing
+        results of the statement execution.
+
+        E.g.::
+
+            from sqlalchemy import select
+            result = session.execute(
+                select(User).where(User.id == 5)
+            )
+
+        The API contract of :meth:`_orm.Session.execute` is similar to that
+        of :meth:`_engine.Connection.execute`, the :term:`2.0 style` version
+        of :class:`_engine.Connection`.
+
+        .. versionchanged:: 1.4 the :meth:`_orm.Session.execute` method is
+           now the primary point of ORM statement execution when using
+           :term:`2.0 style` ORM usage.
+
+        :param statement:
+            An executable statement (i.e. an :class:`.Executable` expression
+            such as :func:`_expression.select`).
+
+        :param params:
+            Optional dictionary, or list of dictionaries, containing
+            bound parameter values.   If a single dictionary, single-row
+            execution occurs; if a list of dictionaries, an
+            "executemany" will be invoked.  The keys in each dictionary
+            must correspond to parameter names present in the statement.
+
+        :param execution_options: optional dictionary of execution options,
+         which will be associated with the statement execution.  This
+         dictionary can provide a subset of the options that are accepted
+         by :meth:`_engine.Connection.execution_options`, and may also
+         provide additional options understood only in an ORM context.
+
+         .. seealso::
+
+            :ref:`orm_queryguide_execution_options` - ORM-specific execution
+            options
+
+        :param bind_arguments: dictionary of additional arguments to determine
+         the bind.  May include "mapper", "bind", or other custom arguments.
+         Contents of this dictionary are passed to the
+         :meth:`.Session.get_bind` method.
+
+        :return: a :class:`_engine.Result` object.
+
+
+        """
+        return self._execute_internal(
+            statement,
+            params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            _parent_execute_state=_parent_execute_state,
+            _add_event=_add_event,
+        )
 
     def scalar(
         self,
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -1845,18 +1909,20 @@ class Session(_SessionClassMethods, EventTarget):
 
         """
 
-        return self.execute(
+        return self._execute_internal(
             statement,
-            params=params,
+            params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
+            _scalar_result=True,
             **kw,
-        ).scalar()
+        )
 
     def scalars(
         self,
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
@@ -1874,11 +1940,12 @@ class Session(_SessionClassMethods, EventTarget):
 
         """
 
-        return self.execute(
+        return self._execute_internal(
             statement,
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
+            _scalar_result=False,  # mypy appreciates this
             **kw,
         ).scalars()
 
@@ -4220,7 +4287,7 @@ class sessionmaker(_SessionClassMethods):
         class_: Type[Session] = Session,
         autoflush: bool = True,
         expire_on_commit: bool = True,
-        info: Optional[Dict[Any, Any]] = None,
+        info: Optional[_InfoType] = None,
         **kw: Any,
     ):
         r"""Construct a new :class:`.sessionmaker`.

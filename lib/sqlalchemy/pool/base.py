@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from ..event import _DispatchCommon
     from ..event import _ListenerFnType
     from ..event import dispatcher
+    from ..sql._typing import _InfoType
 
 
 class ResetStyle(Enum):
@@ -461,51 +462,55 @@ class ManagesConnection:
 
     """
 
-    info: Dict[str, Any]
-    """Info dictionary associated with the underlying DBAPI connection
-    referred to by this :class:`.ManagesConnection` instance, allowing
-    user-defined data to be associated with the connection.
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
+        """Info dictionary associated with the underlying DBAPI connection
+        referred to by this :class:`.ManagesConnection` instance, allowing
+        user-defined data to be associated with the connection.
 
-    The data in this dictionary is persistent for the lifespan
-    of the DBAPI connection itself, including across pool checkins
-    and checkouts.  When the connection is invalidated
-    and replaced with a new one, this dictionary is cleared.
+        The data in this dictionary is persistent for the lifespan
+        of the DBAPI connection itself, including across pool checkins
+        and checkouts.  When the connection is invalidated
+        and replaced with a new one, this dictionary is cleared.
 
-    For a :class:`.PoolProxiedConnection` instance that's not associated
-    with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
-    attribute returns a dictionary that is local to that
-    :class:`.ConnectionPoolEntry`. Therefore the
-    :attr:`.ManagesConnection.info` attribute will always provide a Python
-    dictionary.
+        For a :class:`.PoolProxiedConnection` instance that's not associated
+        with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
+        attribute returns a dictionary that is local to that
+        :class:`.ConnectionPoolEntry`. Therefore the
+        :attr:`.ManagesConnection.info` attribute will always provide a Python
+        dictionary.
 
-    .. seealso::
+        .. seealso::
 
-        :attr:`.ManagesConnection.record_info`
-
-
-    """
-
-    record_info: Optional[Dict[str, Any]]
-    """Persistent info dictionary associated with this
-    :class:`.ManagesConnection`.
-
-    Unlike the :attr:`.ManagesConnection.info` dictionary, the lifespan
-    of this dictionary is that of the :class:`.ConnectionPoolEntry`
-    which owns it; therefore this dictionary will persist across
-    reconnects and connection invalidation for a particular entry
-    in the connection pool.
-
-    For a :class:`.PoolProxiedConnection` instance that's not associated
-    with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
-    attribute returns None. Contrast to the :attr:`.ManagesConnection.info`
-    dictionary which is never None.
+            :attr:`.ManagesConnection.record_info`
 
 
-    .. seealso::
+        """
+        raise NotImplementedError()
 
-        :attr:`.ManagesConnection.info`
+    @util.ro_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
+        """Persistent info dictionary associated with this
+        :class:`.ManagesConnection`.
 
-    """
+        Unlike the :attr:`.ManagesConnection.info` dictionary, the lifespan
+        of this dictionary is that of the :class:`.ConnectionPoolEntry`
+        which owns it; therefore this dictionary will persist across
+        reconnects and connection invalidation for a particular entry
+        in the connection pool.
+
+        For a :class:`.PoolProxiedConnection` instance that's not associated
+        with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
+        attribute returns None. Contrast to the :attr:`.ManagesConnection.info`
+        dictionary which is never None.
+
+
+        .. seealso::
+
+            :attr:`.ManagesConnection.info`
+
+        """
+        raise NotImplementedError()
 
     def invalidate(
         self, e: Optional[BaseException] = None, soft: bool = False
@@ -627,12 +632,12 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
     _soft_invalidate_time: float = 0
 
-    @util.memoized_property
-    def info(self) -> Dict[str, Any]:  # type: ignore[override]  # mypy#4125
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         return {}
 
-    @util.memoized_property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
+    @util.ro_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         return {}
 
     @classmethod
@@ -1080,8 +1085,8 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
     ) -> None:
         self._is_valid = False
 
-    @property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
+    @util.ro_non_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         return self._connection_record.record_info
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
@@ -1314,15 +1319,15 @@ class _ConnectionFairy(PoolProxiedConnection):
     def is_detached(self) -> bool:
         return self._connection_record is None
 
-    @util.memoized_property
-    def info(self) -> Dict[str, Any]:  # type: ignore[override]  # mypy#4125
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         if self._connection_record is None:
             return {}
         else:
             return self._connection_record.info
 
-    @property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
+    @util.ro_non_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         if self._connection_record is None:
             return None
         else:

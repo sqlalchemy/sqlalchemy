@@ -111,6 +111,9 @@ changelog_render_changeset = "https://www.sqlalchemy.org/trac/changeset/%s"
 
 exclude_patterns = ["build", "**/unreleased*/*", "*_include.rst"]
 
+autodoc_class_signature = "separated"
+autodoc_typehints_format = "short"
+
 # zzzeeksphinx makes these conversions when it is rendering the
 # docstrings classes, methods, and functions within the scope of
 # Sphinx autodoc

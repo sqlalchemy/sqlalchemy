@@ -96,6 +96,39 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         cls.mapper_registry.map_imperatively(Address, addresses)
 
+    @testing.combinations("table", "mapper", "both", argnames="bind_type")
+    @testing.combinations(
+        "update", "insert", "delete", argnames="statement_type"
+    )
+    def test_get_bind_scenarios(self, connection, bind_type, statement_type):
+        """test for #7936"""
+
+        User = self.classes.User
+
+        if statement_type == "insert":
+            stmt = insert(User).values(
+                {User.id: 5, User.age: 25, User.name: "spongebob"}
+            )
+        elif statement_type == "update":
+            stmt = (
+                update(User)
+                .where(User.id == 2)
+                .values({User.name: "spongebob"})
+            )
+        elif statement_type == "delete":
+            stmt = delete(User)
+
+        binds = {}
+        if bind_type == "both":
+            binds = {User: connection, User.__table__: connection}
+        elif bind_type == "mapper":
+            binds = {User: connection}
+        elif bind_type == "table":
+            binds = {User.__table__: connection}
+
+        with Session(binds=binds) as sess:
+            sess.execute(stmt)
+
     def test_illegal_eval(self):
         User = self.classes.User
         s = fixture_session()

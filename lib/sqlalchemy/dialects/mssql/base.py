@@ -1833,6 +1833,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LEN%s" % self.function_argspec(fn, **kw)
 
+    def visit_concat_op_expression_clauselist(
+        self, clauselist, operator, **kw
+    ):
+        return " + ".join(self.process(elem, **kw) for elem in clauselist)
+
     def visit_concat_op_binary(self, binary, operator, **kw):
         return "%s + %s" % (
             self.process(binary.left, **kw),

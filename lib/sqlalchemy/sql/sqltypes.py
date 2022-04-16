@@ -17,6 +17,7 @@ import enum
 import json
 import pickle
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import List
@@ -59,7 +60,10 @@ from ..util import OrderedDict
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _TypeEngineArgument
     from .operators import OperatorType
+    from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _ResultProcessorType
@@ -84,6 +88,7 @@ class HasExpressionLookup(TypeEngineMixin):
         raise NotImplementedError()
 
     class Comparator(TypeEngine.Comparator[_CT]):
+        __slots__ = ()
 
         _blank_dict = util.EMPTY_DICT
 
@@ -114,6 +119,8 @@ class Concatenable(TypeEngineMixin):
     typically strings."""
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _adapt_expression(
             self,
             op: OperatorType,
@@ -143,6 +150,8 @@ class Indexable(TypeEngineMixin):
     """
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _setup_getitem(self, index):
             raise NotImplementedError()
 
@@ -156,7 +165,7 @@ class Indexable(TypeEngineMixin):
                 adjusted_op, adjusted_right_expr, result_type=result_type
             )
 
-    comparator_factory = Comparator
+    comparator_factory: _ComparatorFactory[Any] = Comparator
 
 
 class String(Concatenable, TypeEngine[str]):
@@ -174,12 +183,9 @@ class String(Concatenable, TypeEngine[str]):
     __visit_name__ = "string"
 
     def __init__(
-        # note pylance appears to require the "self" type in a constructor
-        # for the _T type to be correctly recognized when we send the
-        # class as the argument, e.g. `column("somecol", String)`
         self,
-        length=None,
-        collation=None,
+        length: Optional[int] = None,
+        collation: Optional[str] = None,
     ):
         """
         Create a string-holding type.
@@ -412,41 +418,34 @@ _N = TypeVar("_N", bound=Union[decimal.Decimal, float])
 
 class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
-    """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
+    """Base for non-integer numeric types, such as
+    ``NUMERIC``, ``FLOAT``, ``DECIMAL``, and other variants.
 
-    This type returns Python ``decimal.Decimal`` objects by default, unless
-    the :paramref:`.Numeric.asdecimal` flag is set to False, in which case
-    they are coerced to Python ``float`` objects.
+    The :class:`.Numeric` datatype when used directly will render DDL
+    corresponding to precision numerics if available, such as
+    ``NUMERIC(precision, scale)``.  The :class:`.Float` subclass will
+    attempt to render a floating-point datatype such as ``FLOAT(precision)``.
+
+    :class:`.Numeric` returns Python ``decimal.Decimal`` objects by default,
+    based on the default value of ``True`` for the
+    :paramref:`.Numeric.asdecimal` parameter.  If this parameter is set to
+    False, returned values are coerced to Python ``float`` objects.
+
+    The :class:`.Float` subtype, being more specific to floating point,
+    defaults the :paramref:`.Float.asdecimal` flag to False so that the
+    default Python datatype is ``float``.
 
     .. note::
 
-        The :class:`.Numeric` type is designed to receive data from a database
-        type that is explicitly known to be a decimal type
-        (e.g. ``DECIMAL``, ``NUMERIC``, others) and not a floating point
-        type (e.g. ``FLOAT``, ``REAL``, others).
-        If the database column on the server is in fact a floating-point
-        type, such as ``FLOAT`` or ``REAL``, use the :class:`.Float`
-        type or a subclass, otherwise numeric coercion between
-        ``float``/``Decimal`` may or may not function as expected.
-
-    .. note::
-
-       The Python ``decimal.Decimal`` class is generally slow
-       performing; cPython 3.3 has now switched to use the `cdecimal
-       <https://pypi.org/project/cdecimal/>`_ library natively. For
-       older Python versions, the ``cdecimal`` library can be patched
-       into any application where it will replace the ``decimal``
-       library fully, however this needs to be applied globally and
-       before any other modules have been imported, as follows::
-
-           import sys
-           import cdecimal
-           sys.modules["decimal"] = cdecimal
-
-       Note that the ``cdecimal`` and ``decimal`` libraries are **not
-       compatible with each other**, so patching ``cdecimal`` at the
-       global level is the only way it can be used effectively with
-       various DBAPIs that hardcode to import the ``decimal`` library.
+        When using a :class:`.Numeric` datatype against a database type that
+        returns Python floating point values to the driver, the accuracy of the
+        decimal conversion indicated by :paramref:`.Numeric.asdecimal` may be
+        limited.   The behavior of specific numeric/floating point datatypes
+        is a product of the SQL datatype in use, the Python :term:`DBAPI`
+        in use, as well as strategies that may be present within
+        the SQLAlchemy dialect in use.   Users requiring specific precision/
+        scale are encouraged to experiment with the available datatypes
+        in order to determine the best results.
 
     """
 
@@ -456,10 +455,10 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
     def __init__(
         self,
-        precision=None,
-        scale=None,
-        decimal_return_scale=None,
-        asdecimal=True,
+        precision: Optional[int] = None,
+        scale: Optional[int] = None,
+        decimal_return_scale: Optional[int] = None,
+        asdecimal: bool = True,
     ):
         """
         Construct a Numeric.
@@ -485,8 +484,6 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
          :class:`.Numeric` as well as the MySQL float types, will use the
          value of ".scale" as the default for decimal_return_scale, if not
          otherwise specified.
-
-         .. versionadded:: 0.9.0
 
         When using the ``Numeric`` type, care should be taken to ensure
         that the asdecimal setting is appropriate for the DBAPI in use -
@@ -585,16 +582,6 @@ class Float(Numeric[_N]):
     :paramref:`.Float.asdecimal` flag is set to True, in which case they
     are coerced to ``decimal.Decimal`` objects.
 
-    .. note::
-
-        The :class:`.Float` type is designed to receive data from a database
-        type that is explicitly known to be a floating point type
-        (e.g. ``FLOAT``, ``REAL``, others)
-        and not a decimal type (e.g. ``DECIMAL``, ``NUMERIC``, others).
-        If the database column on the server is in fact a Numeric
-        type, such as ``DECIMAL`` or ``NUMERIC``, use the :class:`.Numeric`
-        type or a subclass, otherwise numeric coercion between
-        ``float``/``Decimal`` may or may not function as expected.
 
     """
 
@@ -733,7 +720,7 @@ class DateTime(
 
     __visit_name__ = "datetime"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         """Construct a new :class:`.DateTime`.
 
         :param timezone: boolean.  Indicates that the datetime type should
@@ -818,7 +805,7 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
     __visit_name__ = "time"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         self.timezone = timezone
 
     def get_dbapi_type(self, dbapi):
@@ -850,7 +837,7 @@ class _Binary(TypeEngine[bytes]):
 
     """Define base behavior for binary types."""
 
-    def __init__(self, length=None):
+    def __init__(self, length: Optional[int] = None):
         self.length = length
 
     def literal_processor(self, dialect):
@@ -919,7 +906,7 @@ class LargeBinary(_Binary):
 
     __visit_name__ = "large_binary"
 
-    def __init__(self, length=None):
+    def __init__(self, length: Optional[int] = None):
         """
         Construct a LargeBinary type.
 
@@ -961,12 +948,12 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
     def __init__(
         self,
-        name=None,
-        schema=None,
-        metadata=None,
-        inherit_schema=False,
-        quote=None,
-        _create_events=True,
+        name: Optional[str] = None,
+        schema: Optional[str] = None,
+        metadata: Optional[MetaData] = None,
+        inherit_schema: bool = False,
+        quote: Optional[bool] = None,
+        _create_events: bool = True,
     ):
         if name is not None:
             self.name = quoted_name(name, quote)
@@ -1144,7 +1131,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # be integration tested by PG-specific tests
         def _we_are_the_impl(typ):
             return (
-                typ is self or isinstance(typ, ARRAY) and typ.item_type is self
+                typ is self
+                or isinstance(typ, ARRAY)
+                and typ.item_type is self  # type: ignore[comparison-overlap]
             )
 
         if dialect.name in variant_mapping and _we_are_the_impl(
@@ -1233,7 +1222,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     __visit_name__ = "enum"
 
-    def __init__(self, *enums, **kw):
+    def __init__(self, *enums: object, **kw: Any):
         r"""Construct an enum.
 
         Keyword arguments which don't apply to a specific backend are ignored
@@ -1508,6 +1497,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 ) from err
 
     class Comparator(String.Comparator[str]):
+        __slots__ = ()
+
         type: String
 
         def _adapt_expression(
@@ -1675,10 +1666,10 @@ class PickleType(TypeDecorator[object]):
 
     def __init__(
         self,
-        protocol=pickle.HIGHEST_PROTOCOL,
-        pickler=None,
-        comparator=None,
-        impl=None,
+        protocol: int = pickle.HIGHEST_PROTOCOL,
+        pickler: Any = None,
+        comparator: Optional[Callable[[Any, Any], bool]] = None,
+        impl: Optional[_TypeEngineArgument[Any]] = None,
     ):
         """
         Construct a PickleType.
@@ -1706,7 +1697,9 @@ class PickleType(TypeDecorator[object]):
         super(PickleType, self).__init__()
 
         if impl:
-            self.impl = to_instance(impl)
+            # custom impl is not necessarily a LargeBinary subclass.
+            # make an exception to typing for this
+            self.impl = to_instance(impl)  # type: ignore
 
     def __reduce__(self):
         return PickleType, (self.protocol, None, self.comparator)
@@ -1785,9 +1778,9 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
 
     def __init__(
         self,
-        create_constraint=False,
-        name=None,
-        _create_events=True,
+        create_constraint: bool = False,
+        name: Optional[str] = None,
+        _create_events: bool = True,
     ):
         """Construct a Boolean.
 
@@ -1937,7 +1930,12 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     epoch = dt.datetime.utcfromtimestamp(0)
     cache_ok = True
 
-    def __init__(self, native=True, second_precision=None, day_precision=None):
+    def __init__(
+        self,
+        native: bool = True,
+        second_precision: Optional[int] = None,
+        day_precision: Optional[int] = None,
+    ):
         """Construct an Interval object.
 
         :param native: when True, use the actual
@@ -1963,7 +1961,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
         TypeDecorator.Comparator[_CT],
         _AbstractInterval.Comparator[_CT],
     ):
-        pass
+        __slots__ = ()
 
     comparator_factory = Comparator
 
@@ -2277,7 +2275,7 @@ class JSON(Indexable, TypeEngine[Any]):
 
     """
 
-    def __init__(self, none_as_null=False):
+    def __init__(self, none_as_null: bool = False):
         """Construct a :class:`_types.JSON` type.
 
         :param none_as_null=False: if True, persist the value ``None`` as a
@@ -2384,6 +2382,8 @@ class JSON(Indexable, TypeEngine[Any]):
 
     class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""
+
+        __slots__ = ()
 
         def _setup_getitem(self, index):
             if not isinstance(index, str) and isinstance(
@@ -2701,7 +2701,10 @@ class ARRAY(
     """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""
 
-    class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
+    class Comparator(
+        Indexable.Comparator[Sequence[Any]],
+        Concatenable.Comparator[Sequence[Any]],
+    ):
 
         """Define comparison operations for :class:`_types.ARRAY`.
 
@@ -2710,9 +2713,13 @@ class ARRAY(
 
         """
 
+        __slots__ = ()
+
         def _setup_getitem(self, index):
 
             arr_type = cast(ARRAY, self.type)
+
+            return_type: TypeEngine[Any]
 
             if isinstance(index, slice):
                 return_type = arr_type
@@ -2832,7 +2839,11 @@ class ARRAY(
     comparator_factory = Comparator
 
     def __init__(
-        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+        self,
+        item_type: _TypeEngineArgument[Any],
+        as_tuple: bool = False,
+        dimensions: Optional[int] = None,
+        zero_indexes: bool = False,
     ):
         """Construct an :class:`_types.ARRAY`.
 
@@ -2910,7 +2921,7 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
 
     types: List[TypeEngine[Any]]
 
-    def __init__(self, *types):
+    def __init__(self, *types: _TypeEngineArgument[Any]):
         self._fully_typed = NULLTYPE not in types
         self.types = [
             item_type() if isinstance(item_type, type) else item_type
@@ -3070,7 +3081,7 @@ class TIMESTAMP(DateTime):
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone=False):
+    def __init__(self, timezone: bool = False):
         """Construct a new :class:`_types.TIMESTAMP`.
 
         :param timezone: boolean.  Indicates that the TIMESTAMP type should
@@ -3221,6 +3232,8 @@ class NullType(TypeEngine[None]):
         return process
 
     class Comparator(TypeEngine.Comparator[_T]):
+        __slots__ = ()
+
         def _adapt_expression(
             self,
             op: OperatorType,
@@ -3245,7 +3258,7 @@ class TableValueType(HasCacheKey, TypeEngine[Any]):
         ("_elements", InternalTraversal.dp_clauseelement_list),
     ]
 
-    def __init__(self, *elements):
+    def __init__(self, *elements: Union[str, _ColumnExpressionArgument[Any]]):
         self._elements = [
             coercions.expect(roles.StrAsPlainColumnRole, elem)
             for elem in elements

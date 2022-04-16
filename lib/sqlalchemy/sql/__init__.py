@@ -11,6 +11,10 @@ from .compiler import COLLECT_CARTESIAN_PRODUCTS as COLLECT_CARTESIAN_PRODUCTS
 from .compiler import FROM_LINTING as FROM_LINTING
 from .compiler import NO_LINTING as NO_LINTING
 from .compiler import WARN_LINTING as WARN_LINTING
+from .ddl import BaseDDLElement as BaseDDLElement
+from .ddl import DDL as DDL
+from .ddl import DDLElement as DDLElement
+from .ddl import ExecutableDDLElement as ExecutableDDLElement
 from .expression import Alias as Alias
 from .expression import alias as alias
 from .expression import all_ as all_

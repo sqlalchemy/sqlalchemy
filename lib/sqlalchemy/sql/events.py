@@ -57,7 +57,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
         event.listen(some_table, "after_create", after_create)
 
     DDL events integrate closely with the
-    :class:`.DDL` class and the :class:`.DDLElement` hierarchy
+    :class:`.DDL` class and the :class:`.ExecutableDDLElement` hierarchy
     of DDL clause constructs, which are themselves appropriate
     as listener callables::
 
@@ -94,7 +94,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
 
         :ref:`event_toplevel`
 
-        :class:`.DDLElement`
+        :class:`.ExecutableDDLElement`
 
         :class:`.DDL`
 

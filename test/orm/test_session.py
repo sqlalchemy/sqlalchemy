@@ -56,9 +56,10 @@ class ExecutionTest(_fixtures.FixtureTest):
     @testing.combinations(
         (True,), (False,), argnames="add_do_orm_execute_event"
     )
+    @testing.combinations((True,), (False,), argnames="use_scalar")
     @testing.requires.sequences
     def test_sequence_execute(
-        self, connection, metadata, add_do_orm_execute_event
+        self, connection, metadata, add_do_orm_execute_event, use_scalar
     ):
         seq = Sequence("some_sequence", metadata=metadata)
         metadata.create_all(connection)
@@ -69,7 +70,18 @@ class ExecutionTest(_fixtures.FixtureTest):
             event.listen(
                 sess, "do_orm_execute", lambda ctx: evt(ctx.statement)
             )
-        eq_(sess.execute(seq), connection.dialect.default_sequence_base)
+
+        if use_scalar:
+            eq_(sess.scalar(seq), connection.dialect.default_sequence_base)
+        else:
+            with assertions.expect_deprecated(
+                r"Using the .execute\(\) method to invoke a "
+                r"DefaultGenerator object is deprecated; please use "
+                r"the .scalar\(\) method."
+            ):
+                eq_(
+                    sess.execute(seq), connection.dialect.default_sequence_base
+                )
         if add_do_orm_execute_event:
             eq_(evt.mock_calls, [mock.call(seq)])
 
@@ -1994,7 +2006,7 @@ class SessionInterface(fixtures.MappedTest):
                 if name in blocklist:
                     continue
                 spec = inspect_getfullargspec(getattr(Session, name))
-                if len(spec[0]) > 1 or spec[1]:
+                if len(spec.args) > 1 or spec.varargs or spec.kwonlyargs:
                     ok.add(name)
         return ok
 
@@ -2051,7 +2063,7 @@ class SessionInterface(fixtures.MappedTest):
 
             s = fixture_session()
             s.add(OK())
-            x_raises_(s, "flush", (user_arg,))
+            x_raises_(s, "flush", objects=(user_arg,))
 
         _()
 

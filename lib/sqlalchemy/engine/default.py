@@ -829,7 +829,8 @@ class DefaultExecutionContext(ExecutionContext):
         execution_options: _ExecuteOptions,
         compiled_ddl: DDLCompiler,
     ) -> ExecutionContext:
-        """Initialize execution context for a DDLElement construct."""
+        """Initialize execution context for an ExecutableDDLElement
+        construct."""
 
         self = cls.__new__(cls)
         self.root_connection = connection

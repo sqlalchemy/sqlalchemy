@@ -57,7 +57,7 @@ Database Urls
 
 The :func:`_sa.create_engine` function produces an :class:`_engine.Engine` object based
 on a URL.  These URLs follow `RFC-1738
-<https://rfc.net/rfc1738.html>`_, and usually can include username, password,
+<https://www.ietf.org/rfc/rfc1738.txt>`_, and usually can include username, password,
 hostname, database name as well as optional keyword arguments for additional configuration.
 In some cases a file path is accepted, and in others a "data source name" replaces
 the "host" and "database" portions.  The typical form of a database URL is::

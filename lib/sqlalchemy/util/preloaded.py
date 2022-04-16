@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import session as orm_session
     from sqlalchemy.orm import util as orm_util
     from sqlalchemy.sql import dml as sql_dml
+    from sqlalchemy.sql import functions as sql_functions
     from sqlalchemy.sql import util as sql_util
 
 

@@ -1328,6 +1328,13 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         return "ON DUPLICATE KEY UPDATE " + ", ".join(clauses)
 
+    def visit_concat_op_expression_clauselist(
+        self, clauselist, operator, **kw
+    ):
+        return "concat(%s)" % (
+            ", ".join(self.process(elem, **kw) for elem in clauselist.clauses)
+        )
+
     def visit_concat_op_binary(self, binary, operator, **kw):
         return "concat(%s, %s)" % (
             self.process(binary.left, **kw),

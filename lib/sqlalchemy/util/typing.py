@@ -55,10 +55,12 @@ if typing.TYPE_CHECKING or compat.py38:
     from typing import Literal as Literal
     from typing import Protocol as Protocol
     from typing import TypedDict as TypedDict
+    from typing import Final as Final
 else:
     from typing_extensions import Literal as Literal  # noqa: F401
     from typing_extensions import Protocol as Protocol  # noqa: F401
     from typing_extensions import TypedDict as TypedDict  # noqa: F401
+    from typing_extensions import Final as Final  # noqa: F401
 
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()

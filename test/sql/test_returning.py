@@ -543,7 +543,7 @@ class SequenceReturningTest(fixtures.TablesTest):
         )
         eq_(r.first(), tuple([testing.db.dialect.default_sequence_base]))
         eq_(
-            connection.execute(self.sequences.tid_seq),
+            connection.scalar(self.sequences.tid_seq),
             testing.db.dialect.default_sequence_base + 1,
         )
 

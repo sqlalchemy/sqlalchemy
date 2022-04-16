@@ -884,12 +884,12 @@ def _emit_update_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col._label, type_=col.type)
             )
 
         if needs_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -1316,12 +1316,12 @@ def _emit_post_update_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col._label, type_=col.type)
             )
 
         if needs_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -1437,12 +1437,12 @@ def _emit_delete_statements(
         clauses = BooleanClauseList._construct_raw(operators.and_)
 
         for col in mapper._pks_by_table[table]:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 col == sql.bindparam(col.key, type_=col.type)
             )
 
         if need_version_id:
-            clauses.clauses.append(
+            clauses._append_inplace(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col.key, type_=mapper.version_id_col.type
@@ -2101,8 +2101,8 @@ class BulkUDCompileState(CompileState):
         result = session.execute(
             select_stmt,
             params,
-            execution_options,
-            bind_arguments,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
             _add_event=skip_for_full_returning,
         )
         matched_rows = result.fetchall()
@@ -2209,6 +2209,14 @@ class ORMInsert(ORMDMLState, InsertDMLState):
         bind_arguments,
         is_reentrant_invoke,
     ):
+        bind_arguments["clause"] = statement
+        try:
+            plugin_subject = statement._propagate_attrs["plugin_subject"]
+        except KeyError:
+            assert False, "statement had 'orm' plugin but no plugin_subject"
+        else:
+            bind_arguments["mapper"] = plugin_subject.mapper
+
         return (
             statement,
             util.immutabledict(execution_options),

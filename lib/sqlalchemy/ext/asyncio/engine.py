@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from ...engine.url import URL
     from ...pool import Pool
     from ...pool import PoolProxiedConnection
+    from ...sql._typing import _InfoType
     from ...sql.base import Executable
 
 
@@ -241,8 +242,8 @@ class AsyncConnection(
 
         return await greenlet_spawn(getattr, self._proxied, "connection")
 
-    @property
-    def info(self) -> Dict[str, Any]:
+    @util.ro_non_memoized_property
+    def info(self) -> _InfoType:
         """Return the :attr:`_engine.Connection.info` dictionary of the
         underlying :class:`_engine.Connection`.
 
@@ -464,7 +465,7 @@ class AsyncConnection(
          * :class:`_expression.TextClause` and
            :class:`_expression.TextualSelect`
          * :class:`_schema.DDL` and objects which inherit from
-           :class:`_schema.DDLElement`
+           :class:`_schema.ExecutableDDLElement`
 
         :param parameters: parameters which will be bound into the statement.
          This may be either a dictionary of parameter names to values,

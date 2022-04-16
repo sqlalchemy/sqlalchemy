@@ -794,7 +794,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             col._make_proxy(fromclause) for col in self.c
         )
 
-    @property
+    @util.ro_non_memoized_property
     def exported_columns(self) -> ReadOnlyColumnCollection[str, Any]:
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
@@ -2778,22 +2778,6 @@ class Subquery(AliasedReturnsRows):
     )
     def as_scalar(self):
         return self.element.set_label_style(LABEL_STYLE_NONE).scalar_subquery()
-
-    def _execute_on_connection(
-        self,
-        connection,
-        distilled_params,
-        execution_options,
-    ):
-        util.warn_deprecated(
-            "Executing a subquery object is deprecated and will raise "
-            "ObjectNotExecutableError in an upcoming release.  Please "
-            "execute the underlying select() statement directly.",
-            "1.4",
-        )
-        return self.element._execute_on_connection(
-            connection, distilled_params, execution_options, _force=True
-        )
 
 
 class FromGrouping(GroupedElement, FromClause):
