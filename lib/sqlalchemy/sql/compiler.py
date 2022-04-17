@@ -70,6 +70,7 @@ from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
 from .schema import Period
+from .schema import PrimaryKeyConstraint
 from .sqltypes import TupleType
 from .type_api import TypeEngine
 from .visitors import prefix_anon_map
@@ -5218,7 +5219,9 @@ class DDLCompiler(Compiled):
         text += self.define_constraint_deferrability(constraint)
         return text
 
-    def visit_primary_key_constraint(self, constraint, **kw):
+    def visit_primary_key_constraint(
+        self, constraint: PrimaryKeyConstraint, **kw
+    ):
         if len(constraint) == 0:
             return ""
         text = ""
@@ -5227,13 +5230,16 @@ class DDLCompiler(Compiled):
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
         text += "PRIMARY KEY "
-        text += "(%s)" % ", ".join(
-            self.preparer.quote(c.name)
-            for c in (
-                constraint.columns_autoinc_first
-                if constraint._implicit_generated
-                else constraint.columns
-            )
+        text += "(%s%s)" % (
+            ", ".join(
+                self.preparer.quote(c.name)
+                for c in (
+                    constraint.columns_autoinc_first
+                    if constraint._implicit_generated
+                    else constraint.columns
+                )
+            ),
+            " WITHOUT OVERLAPS" if constraint.without_overlaps else "",
         )
         text += self.define_constraint_deferrability(constraint)
         return text
@@ -5332,6 +5338,7 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_period(self, period: Period, **kw):
+        print("oijoijoijojoi")
         pass
 
 

@@ -826,6 +826,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
+        self.periods = set()
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -1312,6 +1313,9 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
                 _table=table,
                 **index.kwargs,
             )
+        for period in self.periods:
+            if isinstance(period, SystemTimePeriod):
+                self.system_versioning = True
         return self._schema_item_copy(table)
 
 
@@ -1453,6 +1457,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
+        system_versioning: bool = None,
         _proxies: Optional[Any] = None,
         **dialect_kwargs: Any,
     ):
@@ -2019,6 +2024,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.comment = comment
         self.computed = None
         self.identity = None
+        self.system_versioning = system_versioning
 
         # check if this Column is proxying another column
 
@@ -4515,10 +4521,12 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        without_overlaps: bool = None,
         _implicit_generated: bool = False,
         **dialect_kw: Any,
     ) -> None:
         self._implicit_generated = _implicit_generated
+        self.without_overlaps = without_overlaps
         super(PrimaryKeyConstraint, self).__init__(
             *columns,
             name=name,
@@ -5696,9 +5704,9 @@ class Period(SchemaItem):
     def __init__(
         self,
         name: str,
-        start: Union[str, Column[Any], SQLCoreOperations[Any]],
-        end: Union[str, Column[Any], SQLCoreOperations[Any]],
-    ):
+        start: _DDLColumnArgument,
+        end: _DDLColumnArgument,
+    ) -> None:
         """Construct a PERIOD FOR DDL construct to accompany a
         :class:`_schema.Column`.
 
@@ -5717,7 +5725,7 @@ class Period(SchemaItem):
         self.start = coercions.expect(roles.DDLExpressionRole, start)
         self.end = coercions.expect(roles.DDLExpressionRole, end)
 
-    def _set_parent(self, table):
+    def _set_parent(self, table: Table, **kw: Any) -> None:
         existing = getattr(self, "table", None)
         if existing is not None and existing is not table:
             raise exc.ArgumentError(
@@ -5725,14 +5733,7 @@ class Period(SchemaItem):
                 % (self.name, existing.description)
             )
 
-        period = table._periods.get(self.name)
-        if period and period is not self:
-            exc.ArgumentError(
-                "A period with name '%s' is already"
-                "present in table '%s'" % (self.name, table.name)
-            )
-
-        table._periods.add(self)
+        table.periods.add(self)
 
         self.table = table
 
@@ -5754,9 +5755,9 @@ class ApplicationTimePeriod(Period):
 class SystemTimePeriod(Period):
     def __init__(
         self,
-        start: Union[str, Column[Any], SQLCoreOperations[Any]] = None,
-        end: Union[str, Column[Any], SQLCoreOperations[Any]] = None,
-    ):
+        start: _DDLColumnArgument = None,
+        end: _DDLColumnArgument = None,
+    ) -> None:
         if start and end:
             super(SystemTimePeriod, self).__init__("SYSTEM_TIME", start, end)
         elif start or end:
@@ -5766,7 +5767,3 @@ class SystemTimePeriod(Period):
             )
         else:
             self.name = "SYSTEM_TIME"
-
-    def _set_parent(self, table: Table):
-        super(SystemTimePeriod, self).__init__(table)
-        table

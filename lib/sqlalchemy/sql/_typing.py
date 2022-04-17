@@ -150,7 +150,7 @@ the DMLColumnRole to be able to accommodate.
 
 
 _DDLColumnArgument = Union[str, "Column[Any]", roles.DDLConstraintColumnRole]
-"""DDL column.
+"""DDL column accepting string or `Column` references.
 
 used for :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`, etc.
 

@@ -40,6 +40,7 @@ from .sql.ddl import (
 )
 from .sql.naming import conv as conv
 from .sql.schema import _get_table_key as _get_table_key
+from .sql.schema import ApplicationTimePeriod as ApplicationTimePeriod
 from .sql.schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .sql.schema import CheckConstraint as CheckConstraint
 from .sql.schema import Column as Column
@@ -62,5 +63,6 @@ from .sql.schema import Period as Period
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .sql.schema import SchemaItem as SchemaItem
 from .sql.schema import Sequence as Sequence
+from .sql.schema import SystemTimePeriod as SystemTimePeriod
 from .sql.schema import Table as Table
 from .sql.schema import UniqueConstraint as UniqueConstraint
