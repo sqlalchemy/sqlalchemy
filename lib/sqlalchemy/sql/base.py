@@ -229,9 +229,9 @@ def _generative(fn: _Fn) -> _Fn:
         assert x is self, "generative methods must return self"
         return self
 
-    decorated = _generative(fn)  # type: ignore
+    decorated = _generative(fn)
     decorated.non_generative = fn  # type: ignore
-    return decorated  # type: ignore
+    return decorated
 
 
 def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
@@ -1749,8 +1749,10 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
                 self._index[k] = col
                 self._collection.append((k, col))
         self._colset.update(c for (k, c) in self._collection)
+
+        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            (idx, c) for idx, (k, c) in enumerate(self._collection)
+            (idx, c) for idx, (k, c) in enumerate(self._collection)  # type: ignore  # noqa: E501
         )
         for col in replace_col:
             self.replace(col)
@@ -1769,8 +1771,10 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         self._collection[:] = [
             (k, c) for (k, c) in self._collection if c is not column
         ]
+
+        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}
+            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
         )
         # delete higher index
         del self._index[len(self._collection)]
@@ -1822,8 +1826,10 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         self._collection[:] = new_cols
 
         self._index.clear()
+
+        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}
+            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
         )
         self._index.update(self._collection)
 

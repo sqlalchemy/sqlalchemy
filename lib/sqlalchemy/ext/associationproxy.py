@@ -1804,7 +1804,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         for member in removals:
             remover(member)
 
-    def __ior__(
+    def __ior__(  # type: ignore
         self: Self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
         if not collections._set_binops_check_strict(self, other):
@@ -1887,7 +1887,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         for value in add:
             self.add(value)
 
-    def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
+    def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore  # noqa: E501
         if not collections._set_binops_check_strict(self, other):
             raise NotImplementedError()
 
