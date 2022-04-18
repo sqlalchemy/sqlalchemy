@@ -2,28 +2,49 @@
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import DATE
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
-from sqlalchemy import String
+from sqlalchemy import Period
 from sqlalchemy import Table
 from sqlalchemy import TIMESTAMP
+from sqlalchemy import VARCHAR
 from sqlalchemy.schema import CreateTable
 
-metadata_obj = MetaData()
 uri = "mariadb://scott:tiger@127.0.0.1:3306/versioning_test"
 engine = create_engine(uri)
+m = MetaData()
 
-testtab = Table(
-    "user_versioned",
-    metadata_obj,
-    Column("user_id", Integer, primary_key=True),
-    Column("user_name", String(16), nullable=False),
-    Column("start", TIMESTAMP, system_versioning="start"),
-    Column("end", TIMESTAMP, system_versioning="end"),
-    system_versioning=True,
+# testtab = Table(
+#     "user_versioned",
+#     metadata_obj,
+#     Column("user_id", Integer, primary_key=True),
+#     Column("user_name", String(16), nullable=False),
+#     Column("start", TIMESTAMP, system_versioning="start"),
+#     Column("end", TIMESTAMP, system_versioning="end"),
+#     system_versioning=True,
+# )
+
+# t1 = Table("t1", m, Column("x", Integer), SystemTimePeriod())
+t1 = Table(
+    "Emp",
+    m,
+    Column("ENo", Integer),
+    Column("ESart", DATE),
+    Column("EEnd", DATE),
+    Column("EDept", Integer),
+    Period("SYSTEM_TIME", "Sys_start", "Sys_end"),
+    Column("Sys_start", TIMESTAMP(12)),
+    Column("Sys_end", TIMESTAMP(12)),
+    Column("EName", VARCHAR(30)),
+    # SystemTimePeriod("Sys_start", "Sys_end"),
+    # PrimaryKeyConstraint("ENo", "Eperiod", without_overlaps=True),
+    # ForeignKeyConstraint(
+    #     ("EDept", "PERIOD EPeriod"),
+    #     ("Dept.DNo", "PERIOD Dept.DPeriod"),
+    # ),
 )
-
-print(CreateTable(testtab).compile(engine))
+print(CreateTable(t1).compile(engine))
 
 
 # metadata_obj.create_all(engine)

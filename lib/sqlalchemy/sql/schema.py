@@ -5767,3 +5767,7 @@ class SystemTimePeriod(Period):
             )
         else:
             self.name = "SYSTEM_TIME"
+
+    def _set_parent(self, table: Table, **kw: Any) -> None:
+        super()._set_parent(table, **kw)
+        table.system_versioning = True

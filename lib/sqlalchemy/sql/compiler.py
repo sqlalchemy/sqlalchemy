@@ -5339,6 +5339,7 @@ class DDLCompiler(Compiled):
 
     def visit_period(self, period: Period, **kw):
         print("oijoijoijojoi")
+        return "aaaaaaaa"
         pass
 
 
