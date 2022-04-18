@@ -9,6 +9,8 @@ from sqlalchemy import Table
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import VARCHAR
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import Period
+from sqlalchemy.schema import SystemTimePeriod
 
 uri = "mariadb://scott:tiger@127.0.0.1:3306/versioning_test"
 engine = create_engine(uri)
@@ -32,11 +34,11 @@ t1 = Table(
     Column("ESart", DATE),
     Column("EEnd", DATE),
     Column("EDept", Integer),
-    # Period("SYSTEM_TIME", "Sys_start", "Sys_end"),
+    Period("Eperiod", "ESart", "EEnd"),
     Column("Sys_start", TIMESTAMP(12)),
     Column("Sys_end", TIMESTAMP(12)),
     Column("EName", VARCHAR(30)),
-    # SystemTimePeriod("Sys_start", "Sys_end"),
+    SystemTimePeriod("Sys_start", "Sys_end"),
     # PrimaryKeyConstraint("ENo", "Eperiod", without_overlaps=True),
     # ForeignKeyConstraint(
     #     ("EDept", "PERIOD EPeriod"),
