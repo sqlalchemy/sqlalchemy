@@ -2832,6 +2832,10 @@ class UUIDTest(fixtures.TestBase):
         )
         eq_(v1.fetchone()[0], value1)
 
+    def test_python_type(self):
+        eq_(postgresql.UUID(as_uuid=True).python_type, uuid.UUID)
+        eq_(postgresql.UUID(as_uuid=False).python_type, str)
+
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = "postgresql"
