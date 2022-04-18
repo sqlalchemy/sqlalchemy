@@ -4922,6 +4922,15 @@ class DDLCompiler(Compiled):
             text += separator + "\t" + const
 
         text += "\n)%s\n\n" % self.post_create_table(table)
+
+        if table.system_versioning:
+            text += " WITH SYSTEM VERSIONING"
+
+        part = self.create_table_partitioning(table)
+
+        if part != "":
+            text += " \n" + part
+
         return text
 
     def visit_create_column(self, create, first_pk=False, **kw):
@@ -5168,7 +5177,28 @@ class DDLCompiler(Compiled):
             not column.identity or not self.dialect.supports_identity_columns
         ):
             colspec += " NOT NULL"
+
+        if column.system_versioning:
+            option = self.get_column_versioning_options(self, column)
+            colspec += " %s" % option
+
         return colspec
+
+    def get_column_versioning_options(self, *args, **kw) -> str:
+        """Return options for system versioning
+        Allows enabling or disabling, or configuring "GENERATED" statements"""
+        column = args[1]
+        if column.system_versioning == False:
+            return "WITHOUT SYSTEM VERSIONING"
+        if column.system_versioning == True:
+            return "WITH SYSTEM VERSIONING"
+        elif column.system_versioning == "start":
+            column.table._versioning_columns["start"] = column.name
+            return "GENERATED ALWAYS AS ROW START"
+        elif column.system_versioning == "end":
+            column.table._versioning_columns["end"] = column.name
+            return "GENERATED ALWAYS AS ROW END"
+        return ""
 
     def create_table_suffix(self, table):
         return ""
@@ -5188,6 +5218,9 @@ class DDLCompiler(Compiled):
                 )
         else:
             return None
+
+    def create_table_partitioning(self, table):
+        return ""
 
     def visit_table_or_column_check_constraint(self, constraint, **kw):
         if constraint.is_column_level:
@@ -5338,9 +5371,8 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_period(self, period: Period, **kw):
-        print("oijoijoijojoi")
-        return "aaaaaaaa"
-        pass
+        print("Visit period")
+        return f"PERIOD FOR {period.name} ({period.start} {period.end})"
 
 
 class GenericTypeCompiler(TypeCompiler):

@@ -827,6 +827,8 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
         self.periods = set()
+        self.system_versioning = False
+        self.application_versioning = False
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -1316,6 +1318,8 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         for period in self.periods:
             if isinstance(period, SystemTimePeriod):
                 self.system_versioning = True
+            elif isinstance(period, ApplicationTimePeriod):
+                self.application_versioning = True
         return self._schema_item_copy(table)
 
 
@@ -5749,7 +5753,9 @@ class Period(SchemaItem):
 
 
 class ApplicationTimePeriod(Period):
-    pass
+    def _set_parent(self, table: Table, **kw: Any) -> None:
+        super()._set_parent(table, **kw)
+        table.application_versioning = True
 
 
 class SystemTimePeriod(Period):

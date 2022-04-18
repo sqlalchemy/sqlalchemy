@@ -5,7 +5,6 @@ from sqlalchemy import create_engine
 from sqlalchemy import DATE
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
-from sqlalchemy import Period
 from sqlalchemy import Table
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import VARCHAR
@@ -33,7 +32,7 @@ t1 = Table(
     Column("ESart", DATE),
     Column("EEnd", DATE),
     Column("EDept", Integer),
-    Period("SYSTEM_TIME", "Sys_start", "Sys_end"),
+    # Period("SYSTEM_TIME", "Sys_start", "Sys_end"),
     Column("Sys_start", TIMESTAMP(12)),
     Column("Sys_end", TIMESTAMP(12)),
     Column("EName", VARCHAR(30)),
