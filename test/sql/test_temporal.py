@@ -50,6 +50,8 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("end", TIMESTAMP),
             period,
         )
+        eq_(t.application_versioning, False)
+        eq_(t.system_versioning, False)
         is_(period, t.periods.test_period)
         eq_(period.name, "test_period")
         eq_(period.start, "start")
@@ -58,9 +60,26 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class ApplicationVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     """Application versioning does not currently have anything separate
-    from the Period construct."""
+    from the Period construct outside of the table's metadata."""
 
     __dialect__ = "default"
+
+    def test_to_metadata(self):
+        period = Period("test_period", "start", "end")
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("start", TIMESTAMP),
+            Column("end", TIMESTAMP),
+            period,
+        )
+        eq_(t.application_versioning, True)
+        eq_(t.system_versioning, False)
+        is_(period, t.periods.test_period)
+        eq_(period.name, "test_period")
+        eq_(period.start, "start")
+        eq_(period.end, "end")
 
 
 class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -181,6 +200,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         sysperiod = SystemTimePeriod()
         m = MetaData()
         t = Table("t", m, Column("x", Integer), sysperiod)
+        eq_(t.system_versioning, True)
         is_(sysperiod, t.periods.system_time)
 
         sysperiod1 = SystemTimePeriod("st")
@@ -193,6 +213,8 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             sysperiod1,
         )
 
+        eq_(t1.system_versioning, True)
+        eq_(t.system_versioning, False)
         is_(sysperiod1, t1.periods.system_time)
         eq_(sysperiod1.name, "SYSTEM_TIME")
         eq_(sysperiod1.start, "start")
