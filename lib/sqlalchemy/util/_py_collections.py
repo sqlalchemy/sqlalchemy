@@ -175,7 +175,7 @@ class OrderedSet(Set[_T]):
     def __iter__(self) -> Iterator[_T]:
         return iter(self._list)
 
-    def __add__(self, other: Iterator[_T]) -> "OrderedSet[_T]":
+    def __add__(self, other: Iterator[_T]) -> OrderedSet[_T]:
         return self.union(other)
 
     def __repr__(self) -> str:
@@ -190,50 +190,50 @@ class OrderedSet(Set[_T]):
                     self._list.append(e)
                     super().add(e)
 
-    def __ior__(self, other: AbstractSet[_S]) -> "OrderedSet[Union[_T, _S]]":
+    def __ior__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
         self.update(other)  # type: ignore
         return self  # type: ignore
 
-    def union(self, *other: Iterable[_S]) -> "OrderedSet[Union[_T, _S]]":
-        result: "OrderedSet[Union[_T, _S]]" = self.__class__(self)  # type: ignore  # noqa: E501
+    def union(self, *other: Iterable[_S]) -> OrderedSet[Union[_T, _S]]:
+        result: OrderedSet[Union[_T, _S]] = self.__class__(self)  # type: ignore  # noqa: E501
         for o in other:
             result.update(o)
         return result
 
-    def __or__(self, other: AbstractSet[_S]) -> "OrderedSet[Union[_T, _S]]":
+    def __or__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
         return self.union(other)
 
-    def intersection(self, *other: Iterable[Any]) -> "OrderedSet[_T]":
+    def intersection(self, *other: Iterable[Any]) -> OrderedSet[_T]:
         other_set: Set[Any] = set()
         other_set.update(*other)
         return self.__class__(a for a in self if a in other_set)
 
-    def __and__(self, other: AbstractSet[object]) -> "OrderedSet[_T]":
+    def __and__(self, other: AbstractSet[object]) -> OrderedSet[_T]:
         return self.intersection(other)
 
-    def symmetric_difference(self, other: Iterable[_T]) -> "OrderedSet[_T]":
+    def symmetric_difference(self, other: Iterable[_T]) -> OrderedSet[_T]:
         other_set = other if isinstance(other, set) else set(other)
         result = self.__class__(a for a in self if a not in other_set)
         result.update(a for a in other if a not in self)
         return result
 
-    def __xor__(self, other: AbstractSet[_S]) -> "OrderedSet[Union[_T, _S]]":
-        return cast("OrderedSet[Union[_T, _S]]", self).symmetric_difference(
+    def __xor__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
+        return cast(OrderedSet[Union[_T, _S]], self).symmetric_difference(
             other
         )
 
-    def difference(self, *other: Iterable[Any]) -> "OrderedSet[_T]":
+    def difference(self, *other: Iterable[Any]) -> OrderedSet[_T]:
         other_set = super().difference(*other)
         return self.__class__(a for a in self._list if a in other_set)
 
-    def __sub__(self, other: AbstractSet[Optional[_T]]) -> "OrderedSet[_T]":
+    def __sub__(self, other: AbstractSet[Optional[_T]]) -> OrderedSet[_T]:
         return self.difference(other)
 
     def intersection_update(self, *other: Iterable[Any]) -> None:
         super().intersection_update(*other)
         self._list = [a for a in self._list if a in self]
 
-    def __iand__(self, other: AbstractSet[object]) -> "OrderedSet[_T]":
+    def __iand__(self, other: AbstractSet[object]) -> OrderedSet[_T]:
         self.intersection_update(other)
         return self
 
@@ -242,15 +242,15 @@ class OrderedSet(Set[_T]):
         self._list = [a for a in self._list if a in self]
         self._list += [a for a in other if a in self]
 
-    def __ixor__(self, other: AbstractSet[_S]) -> "OrderedSet[Union[_T, _S]]":
+    def __ixor__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
         self.symmetric_difference_update(other)
-        return cast("OrderedSet[Union[_T, _S]]", self)
+        return cast(OrderedSet[Union[_T, _S]], self)
 
     def difference_update(self, *other: Iterable[Any]) -> None:
         super().difference_update(*other)
         self._list = [a for a in self._list if a in self]
 
-    def __isub__(self, other: AbstractSet[Optional[_T]]) -> "OrderedSet[_T]":
+    def __isub__(self, other: AbstractSet[Optional[_T]]) -> OrderedSet[_T]:  # type: ignore  # noqa: E501
         self.difference_update(other)
         return self
 

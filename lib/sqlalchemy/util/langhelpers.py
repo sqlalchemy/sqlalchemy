@@ -23,7 +23,6 @@ import sys
 import textwrap
 import threading
 import types
-import typing
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -47,8 +46,8 @@ import warnings
 
 from . import _collections
 from . import compat
-from . import typing as compat_typing
 from ._has_cy import HAS_CYEXTENSION
+from .typing import Literal
 from .. import exc
 
 _T = TypeVar("_T")
@@ -237,18 +236,13 @@ def map_bits(fn: Callable[[int], Any], n: int) -> Iterator[Any]:
         n ^= b
 
 
-_Fn = typing.TypeVar("_Fn", bound=typing.Callable[..., Any])
-_Args = compat_typing.ParamSpec("_Args")
+_Fn = TypeVar("_Fn", bound="Callable[..., Any]")
 
 
-def decorator(
-    target: typing.Callable[  # type: ignore
-        compat_typing.Concatenate[_Fn, _Args], typing.Any
-    ]
-) -> _Fn:
+def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
     """A signature-matching decorator factory."""
 
-    def decorate(fn: typing.Callable[..., Any]) -> typing.Callable[..., Any]:
+    def decorate(fn: _Fn) -> _Fn:
         if not inspect.isfunction(fn) and not inspect.ismethod(fn):
             raise Exception("not a decoratable function")
 
@@ -282,12 +276,10 @@ def %(name)s%(grouped_args)s:
         )
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
 
-        # claims to be fixed?
-        # https://github.com/python/mypy/issues/11896
         decorated.__wrapped__ = fn  # type: ignore
-        return update_wrapper(decorated, fn)
+        return cast(_Fn, update_wrapper(decorated, fn))
 
-    return typing.cast(_Fn, update_wrapper(decorate, target))
+    return update_wrapper(decorate, target)
 
 
 def _update_argspec_defaults_into_env(spec, env):
@@ -320,8 +312,6 @@ def _exec_code_in_env(
 
 _PF = TypeVar("_PF")
 _TE = TypeVar("_TE")
-
-_P = compat_typing.ParamSpec("_P")
 
 
 class PluginLoader:
@@ -389,7 +379,7 @@ def get_cls_kwargs(
     cls: type,
     *,
     _set: Optional[Set[str]] = None,
-    raiseerr: compat_typing.Literal[True] = ...,
+    raiseerr: Literal[True] = ...,
 ) -> Set[str]:
     ...
 
@@ -1082,7 +1072,7 @@ class generic_fn_descriptor(Generic[_T_co]):
     def __get__(self: _GFD, obj: Any, cls: Any) -> Union[_GFD, _T_co]:
         raise NotImplementedError()
 
-    if typing.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def __set__(self, instance: Any, value: Any) -> None:
             ...
@@ -1192,7 +1182,7 @@ class HasMemoized:
 
     """
 
-    if not typing.TYPE_CHECKING:
+    if not TYPE_CHECKING:
         # support classes that want to have __slots__ with an explicit
         # slot for __dict__.  not sure if that requires base __slots__ here.
         __slots__ = ()
