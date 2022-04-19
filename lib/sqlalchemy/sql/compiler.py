@@ -69,6 +69,7 @@ from .base import NO_ARG
 from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
+from .schema import Computed
 from .schema import Period
 from .schema import PrimaryKeyConstraint
 from .sqltypes import TupleType
@@ -5209,17 +5210,8 @@ class DDLCompiler(Compiled):
     ) -> str:
         """Return options for system versioning
         Allows enabling or disabling, or configuring "GENERATED" statements"""
-        if column.table is not None:
-            sv_period = column.table._system_versioning_period
-        else:
-            sv_period = None
-
         if column.system:
             return ""
-        if sv_period and column is sv_period.start:
-            return " GENERATED ALWAYS AS ROW START"
-        if sv_period and column is sv_period.end:
-            return " GENERATED ALWAYS AS ROW END"
         if column._system_versioning is False:
             return " WITHOUT SYSTEM VERSIONING"
         if column._system_versioning is True:
@@ -5379,7 +5371,9 @@ class DDLCompiler(Compiled):
             text += " MATCH %s" % constraint.match
         return text
 
-    def visit_computed_column(self, generated, **kw):
+    def visit_computed_column(self, generated: Computed, **kw):
+        if generated._system_versioning:
+            return f"GENERATED ALWAYS AS {generated.sqltext}"
         text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
         )

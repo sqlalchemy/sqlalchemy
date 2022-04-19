@@ -1387,18 +1387,18 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     @property
     def _all_columns(self) -> List[_COL_co]:
-        return [col for (k, col) in self._collection]
+        return [col for (_, col) in self._collection]
 
     def keys(self) -> List[_COLKEY]:
         """Return a sequence of string key names for all columns in this
         collection."""
-        return [k for (k, col) in self._collection]
+        return [k for (k, _) in self._collection]
 
     def values(self) -> List[_COL_co]:
         """Return a sequence of :class:`_sql.ColumnClause` or
         :class:`_schema.Column` objects for all columns in this
         collection."""
-        return [col for (k, col) in self._collection]
+        return [col for (_, col) in self._collection]
 
     def items(self) -> List[Tuple[_COLKEY, _COL_co]]:
         """Return a sequence of (key, column) tuples for all columns in this
@@ -1417,7 +1417,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     def __iter__(self) -> Iterator[_COL_co]:
         # turn to a list first to maintain over a course of changes
-        return iter([col for k, col in self._collection])
+        return iter([col for _, col in self._collection])
 
     def __getitem__(self, key: Union[str, int]) -> _COL_co:
         try:
@@ -1677,6 +1677,27 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
 
 _NAMEDCOL = TypeVar("_NAMEDCOL", bound="NamedColumn[Any]")
+
+
+class PeriodCollection(ColumnCollection):
+    """A subclass of :class:`_expression.ColumnCollection`
+
+    Intent is just to adapt nomenclature.
+    """
+
+    @property
+    def _all_periods(self) -> List[_COL_co]:
+        return super()._all_columns()
+
+    def contains_period(self, col: ColumnElement[Any]):
+        return super().contains_column(col)
+
+    @property
+    def _all_columns(self) -> List[_COL_co]:
+        raise NotImplementedError
+
+    def contains_column(self):
+        raise NotImplementedError
 
 
 class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):

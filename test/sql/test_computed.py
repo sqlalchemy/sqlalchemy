@@ -53,6 +53,29 @@ class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
             "y INTEGER GENERATED ALWAYS AS (x + 2) NOT NULL, UNIQUE (y))",
         )
 
+    def test_system_versioning_option(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column(
+                "x",
+                Integer,
+                Computed("ROW START", _system_versioning=True),
+            ),
+            Column(
+                "y",
+                Integer,
+                Computed("ROW END", _system_versioning=True),
+                nullable=False,
+            ),
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t ("
+            "x INTEGER GENERATED ALWAYS AS ROW START, "
+            "y INTEGER GENERATED ALWAYS AS ROW END NOT NULL)",
+        )
+
     def test_server_default_onupdate(self):
         text = (
             "A generated column cannot specify a server_default or a "

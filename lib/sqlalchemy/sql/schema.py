@@ -57,10 +57,10 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
-from .base import ColumnCollection
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
+from .base import PeriodCollection
 from .base import SchemaEventTarget as SchemaEventTarget
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
@@ -385,7 +385,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    periods: ColumnCollection
+    periods: PeriodCollection
     """A collection of all :class:`_schema.Period` objects associated with this
         :class:`_schema.Table`.
     """
@@ -826,7 +826,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
-        self.periods = ColumnCollection()
+        self.periods = PeriodCollection()
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -1120,7 +1120,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     @property
-    def _system_versioning_period(self) -> Period:
+    def _system_versioning_period(self) -> Optional[Period]:
         """Helper method to return table's SV period."""
         return self.periods.get("SYSTEM_TIME")
 
@@ -5474,7 +5474,10 @@ class Computed(FetchedValue, SchemaItem):
         "sqltext", ":class:`.Computed`", ":paramref:`.Computed.sqltext`"
     )
     def __init__(
-        self, sqltext: _DDLColumnArgument, persisted: Optional[bool] = None
+        self,
+        sqltext: _DDLColumnArgument,
+        persisted: Optional[bool] = None,
+        _system_versioning: Optional[bool] = True,
     ) -> None:
         """Construct a GENERATED ALWAYS AS DDL construct to accompany a
         :class:`_schema.Column`.
@@ -5507,6 +5510,8 @@ class Computed(FetchedValue, SchemaItem):
         self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
         self.persisted = persisted
         self.column = None
+        # Enable SV syntax, which appears consistent across backends
+        self._system_versioning = _system_versioning
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, Column)
@@ -5544,7 +5549,11 @@ class Computed(FetchedValue, SchemaItem):
             self.column.table if self.column is not None else None,
             target_table,
         )
-        g = Computed(sqltext, persisted=self.persisted)
+        g = Computed(
+            sqltext,
+            persisted=self.persisted,
+            _system_versioning=self._system_versioning,
+        )
 
         return self._schema_item_copy(g)
 
@@ -5802,15 +5811,9 @@ class Period(SchemaItem):
 
         table.periods.add(self, self.name)
 
-    # def _copy(self, target_table=None, **kw):
-    #     sqltext = _copy_expression(
-    #         self.sqltext,
-    #         self.column.table if self.column is not None else None,
-    #         target_table,
-    #     )
-    #     g = Computed(sqltext, persisted=self.persisted)
-
-    #     return self._schema_item_copy(g)
+    def _copy(self, target_table: Table = None, **kw):
+        p = Period(name=self.name, start=str(self.start), end=str(self.end))
+        return self._schema_item_copy(p)
 
 
 class ApplicationTimePeriod(Period):
@@ -5858,3 +5861,11 @@ class SystemTimePeriod(Period):
             "SYSTEM_TIME", start, end, period_is_system
         )
         self.foreign_keys = None
+
+    def _set_parent(self, table: Table, **kw: Any) -> None:
+        super()._set_parent(table, **kw)
+
+        if self.start.computed is None:
+            Computed("ROW START", _brackets=False)._set_parent(self.start)
+        if self.end.computed is None:
+            Computed("ROW END", _brackets=False)._set_parent(self.end)

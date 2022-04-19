@@ -9,13 +9,16 @@ from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import SystemTimePeriod
 from sqlalchemy import Table
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.sql.sqltypes import DATE
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.sqltypes import VARCHAR
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_none
 
 
 class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -82,6 +85,85 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "PERIOD FOR test_period (start_ts, end_ts), "
             "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
         )
+
+    def test_period_copy(self):
+        period = Period("test_period", "start_ts", "end_ts")
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+        )
+
+        p_copy = period._copy()
+
+        t1 = Table(
+            "t1",
+            m,
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            p_copy,
+        )
+        is_not_none(t1.periods.test_period)
+
+    def test_raise_on_column_not_in_table(self):
+        m = MetaData()
+
+        def fn(**kw):
+            col1 = Column("start_ts", TIMESTAMP)
+            col2 = Column("end_ts", TIMESTAMP)
+            t1 = Table(
+                "t",
+                m,
+                Period("test_period", col1, col2),
+            )
+
+        text = "Given column object 'start_ts' does not belong to Table 't'"
+        assert_raises_message(ArgumentError, text, fn)
+
+    def test_raise_on_column_not_found(self):
+        m = MetaData()
+
+        def fn(**kw):
+            t1 = Table(
+                "t",
+                m,
+                Column("start_ts", TIMESTAMP),
+                Column("end_ts", TIMESTAMP),
+                Period("test_period", **kw),
+            )
+
+        text = "Cannot find column 'not_here' in Table 't'"
+        assert_raises_message(
+            ArgumentError, text, fn, start="start_ts", end="not_here"
+        )
+        assert_raises_message(
+            ArgumentError, text, fn, start="not_here", end="end_ts"
+        )
+
+    def test_raise_on_period_in_other_table(self):
+        m = MetaData()
+        period = (Period("test_period", "start_ts", "end_ts"),)
+        t1 = Table(
+            "t1",
+            m,
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            period,
+        )
+
+        def fn(**kw):
+            t2 = Table(
+                "t2",
+                m,
+                Column("start_ts", TIMESTAMP),
+                Column("end_ts", TIMESTAMP),
+                period,
+            )
+
+        text = "Period object 'test_period' already assigned to Table 't2'"
+        assert_raises_message(ArgumentError, text, fn)
 
     def test_to_metadata(self):
         period = Period("test_period", "start_ts", "end_ts")

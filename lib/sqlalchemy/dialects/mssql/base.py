@@ -2507,7 +2507,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
         text += self.define_constraint_deferrability(constraint)
         return text
 
-    def visit_computed_column(self, generated):
+    def visit_computed_column(self, generated: sa_schema.Computed):
+        if generated._system_versioning:
+            return f"GENERATED ALWAYS AS {generated.sqltext}"
         text = "AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
         )
