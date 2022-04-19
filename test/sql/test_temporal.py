@@ -28,58 +28,101 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table(
             "t",
             m,
-            Column("start", TIMESTAMP),
-            Column("end", TIMESTAMP),
-            Period("test_period", "start", "end"),
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts"),
         )
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t ("
-            "start_timestamp TIMESTAMP, "
-            "end_timestamp TIMESTAMP, "
-            "PERIOD FOR test_period (start_timestamp, end_timestamp))",
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts))",
         )
 
-    def test_to_metadata(self):
-        period = Period("test_period", "start", "end")
+    def test_pks(self):
+        """Test setting a primary key on a PERIOD"""
         m = MetaData()
         t = Table(
             "t",
             m,
-            Column("start", TIMESTAMP),
-            Column("end", TIMESTAMP),
+            Column("id", Integer),
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts"),
+            PrimaryKeyConstraint("id", "test_period"),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t("
+            "id INTEGER,"
+            "start_ts TIMESTAMP,"
+            "end_ts TIMESTAMP,"
+            "PERIOD FOR test_period (start_ts, end_ts),"
+            "PRIMARY KEY (id, test_period))",
+        )
+
+    def test_pk_without_overlaps(self):
+        """Test the WITHOUT OVERLAPS clause on a primary key"""
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("id", Integer),
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts"),
+            PrimaryKeyConstraint("id", "test_period", without_overlaps=True),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t("
+            "id INTEGER,"
+            "start_ts TIMESTAMP,"
+            "end_ts TIMESTAMP,"
+            "PERIOD FOR test_period (start_ts, end_ts),"
+            "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
+        )
+
+    def test_to_metadata(self):
+        period = Period("test_period", "start_ts", "end_ts")
+        start = Column("start_ts", TIMESTAMP)
+        end = Column("end_ts", TIMESTAMP)
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            start,
+            end,
             period,
         )
-        eq_(t.application_versioning, False)
-        eq_(t.system_versioning, False)
-        is_(period, t.c.test_period)
+        is_(t._system_versioning_period, None)
+        is_(period, t.periods.test_period)
         eq_(period.name, "test_period")
-        eq_(period.start, "start")
-        eq_(period.end, "end")
+        eq_(period.start, start)
+        eq_(period.end, end)
+
+        # Verify specifying period with objects
+        start1 = Column("start_ts", TIMESTAMP)
+        end1 = Column("end_ts", TIMESTAMP)
+        period1 = Period("test_period", start1, end1)
+        m1 = MetaData()
+        t1 = Table(
+            "t1",
+            m1,
+            start1,
+            end1,
+            period1,
+        )
+        eq_(period1.start, start1)
+        eq_(period1.end, end1)
 
 
 class ApplicationVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     """Application versioning does not currently have anything separate
-    from the Period construct outside of the table's metadata."""
+    from the Period construct."""
 
-    __dialect__ = "default"
-
-    def test_to_metadata(self):
-        period = Period("test_period", "start", "end")
-        m = MetaData()
-        t = Table(
-            "t",
-            m,
-            Column("start", TIMESTAMP),
-            Column("end", TIMESTAMP),
-            period,
-        )
-        eq_(t.application_versioning, True)
-        eq_(t.system_versioning, False)
-        is_(period, t.c.test_period)
-        eq_(period.name, "test_period")
-        eq_(period.start, "start")
-        eq_(period.end, "end")
+    pass
 
 
 class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -134,8 +177,8 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t ("
-            "x INTEGER WITH SYSTEM VERSIONING,"
-            "y INTEGER);",
+            "x INTEGER WITH SYSTEM VERSIONING, "
+            "y INTEGER)",
         )
 
     def test_column_without_system_versioning(self):
@@ -150,9 +193,9 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t ("
-            "x INTEGER,"
+            "x INTEGER, "
             "y INTEGER WITHOUT SYSTEM VERSIONING"
-            ") WITH SYSTEM VERSIONING;",
+            ") WITH SYSTEM VERSIONING",
         )
 
     def test_bitemporal_table(self):
@@ -167,15 +210,15 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("ESart", DATE),
             Column("EEnd", DATE),
             Column("EDept", Integer),
-            Period("SYSTEM_TIME", "Sys_start", "Sys_end"),
+            Period("EPeriod", "ESart", "EEnd"),
             Column("Sys_start", TIMESTAMP),
             Column("Sys_end", TIMESTAMP),
             Column("EName", VARCHAR(30)),
             SystemTimePeriod("Sys_start", "Sys_end"),
-            PrimaryKeyConstraint("ENo", "Eperiod", without_overlaps=True),
+            PrimaryKeyConstraint("ENo", "EPeriod", without_overlaps=True),
             ForeignKeyConstraint(
-                ("EDept", "PERIOD EPeriod"),
-                ("Dept.DNo", "PERIOD Dept.DPeriod"),
+                ("EDept", "EPeriod"),
+                ("Dept.DNo", "Dept.DPeriod"),
             ),
         )
         self.assert_compile(
@@ -197,25 +240,26 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_to_metadata(self):
+        # Test system period with no given columns
         sysperiod = SystemTimePeriod()
         m = MetaData()
         t = Table("t", m, Column("x", Integer), sysperiod)
-        eq_(t.system_versioning, True)
-        is_(sysperiod, t.c.system_time)
+        is_(t._system_versioning_period, sysperiod)
 
-        sysperiod1 = SystemTimePeriod("st")
+        # Test period with given columns
+        start = Column("start_ts", TIMESTAMP)
+        end = Column("end_ts", TIMESTAMP)
+        sysperiod1 = SystemTimePeriod(start, end)
         m1 = MetaData()
         t1 = Table(
             "t1",
             m1,
-            Column("start", TIMESTAMP),
-            Column("end", TIMESTAMP),
+            start,
+            end,
             sysperiod1,
         )
 
-        eq_(t1.system_versioning, True)
-        eq_(t.system_versioning, False)
-        is_(sysperiod1, t1.c.system_time)
+        is_(t1._system_versioning_period, sysperiod1)
         eq_(sysperiod1.name, "SYSTEM_TIME")
-        eq_(sysperiod1.start, "start")
-        eq_(sysperiod1.end, "end")
+        eq_(sysperiod1.start, start)
+        eq_(sysperiod1.end, end)

@@ -2891,7 +2891,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             return _column
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
-        assert isinstance(parent, Column)
+        assert isinstance(parent, (Column, Period))
 
         if self.parent is not None and self.parent is not parent:
             raise exc.InvalidRequestError(
@@ -2899,7 +2899,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             )
         self.parent = parent
         self.parent.foreign_keys.add(self)
-        self.parent._on_table_attach(self._set_table)
+        if isinstance(parent, Column):
+            self.parent._on_table_attach(self._set_table)
 
     def _set_remote_table(self, table: Table) -> None:
         parenttable, _, colname = self._resolve_col_tokens()
@@ -3881,8 +3882,15 @@ class ColumnCollectionMixin:
             assert len(result) == len(self._pending_colargs)
             return result
         else:
+
+            def get_col_or_period(col: str):
+                pc = parent.c.get(col)
+                if pc is not None:
+                    return pc
+                return parent.periods[col]
+
             return [
-                parent.c[col] if isinstance(col, str) else col
+                get_col_or_period(col) if isinstance(col, str) else col
                 for col in self._pending_colargs
             ]
 
@@ -4570,7 +4578,10 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         for c in self._columns:
             c.primary_key = True
-            if c._user_defined_nullable is NULL_UNSPECIFIED:
+            if (
+                not isinstance(c, Period)
+                and c._user_defined_nullable is NULL_UNSPECIFIED
+            ):
                 c.nullable = False
         if table_pks:
             self._columns.extend(table_pks)
@@ -5688,7 +5699,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
 
 class Period(SchemaItem):
-    """Defines a period column, i.e. "PERIOD FOR" syntax
+    """Defines a period construction, i.e. "PERIOD FOR" syntax
 
     See the linked documentation below for complete details.
 
@@ -5713,11 +5724,10 @@ class Period(SchemaItem):
         end: _DDLColumnArgument,
         system: Optional[bool] = False,
     ) -> None:
-        """Construct a PERIOD FOR DDL construct to accompany a
-        :class:`_schema.Column`.
+        """Construct a PERIOD FOR DDL construct on two columns.
 
         :param name:
-          The name of the period
+            The name to give the period.
 
         :param start:
             A target column that defines the period's start. A
@@ -5727,7 +5737,7 @@ class Period(SchemaItem):
             A target column that defines the period's start. A
             :class:`_schema.Column` object or a column name as a string.
 
-        :param end:
+        :param system:
             Indicates that the ``Period`` is implicit, i.e. not generated
             in DDL.
         """
@@ -5740,6 +5750,12 @@ class Period(SchemaItem):
         self.start = coercions.expect(roles.DDLExpressionRole, start)
         self.end = coercions.expect(roles.DDLExpressionRole, end)
         self.system = system
+        self.primary_key = False
+        self.foreign_keys = set()  # type: ignore
+
+    @property
+    def key(self) -> str:
+        return self.name
 
     def _get_and_validate_column(self, table: Table, column) -> Column:
         if isinstance(column, Column):
@@ -5768,6 +5784,7 @@ class Period(SchemaItem):
         if not self.system:
             self.start = self._get_and_validate_column(table, self.start)
             self.end = self._get_and_validate_column(table, self.end)
+
         self.table = table
 
         table.periods.add(self, self.name)
@@ -5788,11 +5805,43 @@ class ApplicationTimePeriod(Period):
 
 
 class SystemTimePeriod(Period):
+    """Sets `WITH SYSTEM VERSIONING` on a table ant optionally configures a
+    `SYSTEM_TIME` period.
+
+    See the linked documentation below for complete details.
+
+    .. versionadded:: TODO
+
+    .. seealso::
+
+        :ref:`temporal_ddl`
+    """
+
     def __init__(
         self,
         start: _DDLColumnArgument = None,
         end: _DDLColumnArgument = None,
     ) -> None:
+        """Add `WITH SYSTEM VERSIONING` to table options, and configure
+        `PERIOD FOR SYSTEM_TIME()`.
+
+        Supplies `GENERATED ALWAYS AS ROW_START` and
+        `GENERATED ALWAYS AS ROW_END` parameters to the given coluns. The
+        parent table will receive the `WITH SYSTEM VERSIONING` option. If
+        both `start` and `end` are omitted, or if columns are marked as
+        `system`, columns will not be configured (for constructions with
+        backend-controlled implicit column configuration)
+
+        :param start:
+            A target column that defines the period's start. A
+            :class:`_schema.Column` object or a column name as a string.
+
+        :param end:
+            A target column that defines the period's start. A
+            :class:`_schema.Column` object or a column name as a string.
+        """
+        period_is_system = start is None and end is None
         super(SystemTimePeriod, self).__init__(
-            "SYSTEM_TIME", start, end, start is None and end is None
+            "SYSTEM_TIME", start, end, period_is_system
         )
+        self.foreign_keys = None

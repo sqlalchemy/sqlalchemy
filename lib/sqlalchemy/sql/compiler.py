@@ -5206,9 +5206,11 @@ class DDLCompiler(Compiled):
         """Return options for system versioning
         Allows enabling or disabling, or configuring "GENERATED" statements"""
         sv_period = column.table._system_versioning_period
-        if column is sv_period.start:
+        if column.system:
+            return ""
+        if sv_period and column is sv_period.start:
             return " GENERATED ALWAYS AS ROW START"
-        if column is sv_period.end:
+        if sv_period and column is sv_period.end:
             return " GENERATED ALWAYS AS ROW END"
         if column._system_versioning is False:
             return " WITHOUT SYSTEM VERSIONING"
