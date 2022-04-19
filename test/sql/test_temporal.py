@@ -40,13 +40,13 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "PERIOD FOR test_period (start_ts, end_ts))",
         )
 
-    def test_pks(self):
-        """Test setting a primary key on a PERIOD"""
+    def test_pks_constraint(self):
+        """Test setting a primary key on a PERIOD via a constraint"""
         m = MetaData()
         t = Table(
             "t",
             m,
-            Column("id", Integer),
+            Column("id", Integer, nullable=False),
             Column("start_ts", TIMESTAMP),
             Column("end_ts", TIMESTAMP),
             Period("test_period", "start_ts", "end_ts"),
@@ -54,11 +54,32 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE t("
-            "id INTEGER,"
-            "start_ts TIMESTAMP,"
-            "end_ts TIMESTAMP,"
-            "PERIOD FOR test_period (start_ts, end_ts),"
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts), "
+            "PRIMARY KEY (id, test_period))",
+        )
+
+    def test_pks_col_arg(self):
+        """Test setting a primary key on a PERIOD via column/period args"""
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts", primary_key=True),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts), "
             "PRIMARY KEY (id, test_period))",
         )
 
@@ -76,11 +97,11 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE t("
-            "id INTEGER,"
-            "start_ts TIMESTAMP,"
-            "end_ts TIMESTAMP,"
-            "PERIOD FOR test_period (start_ts, end_ts),"
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts), "
             "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
         )
 

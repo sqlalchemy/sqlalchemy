@@ -5723,6 +5723,7 @@ class Period(SchemaItem):
         start: _DDLColumnArgument,
         end: _DDLColumnArgument,
         system: Optional[bool] = False,
+        primary_key: Optional[bool] = False,
     ) -> None:
         """Construct a PERIOD FOR DDL construct on two columns.
 
@@ -5750,7 +5751,7 @@ class Period(SchemaItem):
         self.start = coercions.expect(roles.DDLExpressionRole, start)
         self.end = coercions.expect(roles.DDLExpressionRole, end)
         self.system = system
-        self.primary_key = False
+        self.primary_key = primary_key
         self.foreign_keys = set()  # type: ignore
 
     @property
