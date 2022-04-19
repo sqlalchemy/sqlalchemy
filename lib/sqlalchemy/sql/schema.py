@@ -4531,12 +4531,10 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
-        without_overlaps: bool = None,
         _implicit_generated: bool = False,
         **dialect_kw: Any,
     ) -> None:
         self._implicit_generated = _implicit_generated
-        self.without_overlaps = without_overlaps
         super(PrimaryKeyConstraint, self).__init__(
             *columns,
             name=name,
@@ -4664,6 +4662,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         if len(self._columns) == 1:
             col = list(self._columns)[0]
 
+            if isinstance(col, Period):
+                return None
+
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
                 return col
@@ -4677,7 +4678,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         else:
             autoinc = None
-            for col in self._columns:
+            for col in filter(
+                lambda x: not isinstance(x, Period), self._columns
+            ):
                 if col.autoincrement is True:
                     _validate_autoinc(col, True)
                     if autoinc is not None:

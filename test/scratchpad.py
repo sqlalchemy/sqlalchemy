@@ -39,7 +39,7 @@ t1 = Table(
     Column("Sys_end", TIMESTAMP(12)),
     Column("EName", VARCHAR(30)),
     SystemTimePeriod("Sys_start", "Sys_end"),
-    # PrimaryKeyConstraint("ENo", "Eperiod", without_overlaps=True),
+    # PrimaryKeyConstraint("ENo", "Eperiod"),
     # ForeignKeyConstraint(
     #     ("EDept", "PERIOD EPeriod"),
     #     ("Dept.DNo", "PERIOD Dept.DPeriod"),

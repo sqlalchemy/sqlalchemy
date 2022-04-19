@@ -69,6 +69,7 @@ from .base import NO_ARG
 from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
+from .schema import Period
 from .schema import PrimaryKeyConstraint
 from .sqltypes import TupleType
 from .type_api import TypeEngine
@@ -5288,16 +5289,18 @@ class DDLCompiler(Compiled):
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
         text += "PRIMARY KEY "
-        text += "(%s%s)" % (
+        text += "(%s)" % (
             ", ".join(
-                self.preparer.quote(c.name)
+                (
+                    self.preparer.quote(c.name)
+                    + (" WITHOUT OVERLAPS" if isinstance(c, Period) else "")
+                )
                 for c in (
                     constraint.columns_autoinc_first
                     if constraint._implicit_generated
                     else constraint.columns
                 )
-            ),
-            " WITHOUT OVERLAPS" if constraint.without_overlaps else "",
+            )
         )
         text += self.define_constraint_deferrability(constraint)
         return text

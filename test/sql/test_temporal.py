@@ -40,7 +40,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "PERIOD FOR test_period (start_ts, end_ts))",
         )
 
-    def test_pks_constraint(self):
+    def test_period_pk_constraint(self):
         """Test setting a primary key on a PERIOD via a constraint"""
         m = MetaData()
         t = Table(
@@ -59,10 +59,10 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "start_ts TIMESTAMP, "
             "end_ts TIMESTAMP, "
             "PERIOD FOR test_period (start_ts, end_ts), "
-            "PRIMARY KEY (id, test_period))",
+            "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
         )
 
-    def test_pks_col_arg(self):
+    def test_period_pk_col_arg(self):
         """Test setting a primary key on a PERIOD via column/period args"""
         m = MetaData()
         t = Table(
@@ -72,28 +72,6 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("start_ts", TIMESTAMP),
             Column("end_ts", TIMESTAMP),
             Period("test_period", "start_ts", "end_ts", primary_key=True),
-        )
-        self.assert_compile(
-            schema.CreateTable(t),
-            "CREATE TABLE t ("
-            "id INTEGER NOT NULL, "
-            "start_ts TIMESTAMP, "
-            "end_ts TIMESTAMP, "
-            "PERIOD FOR test_period (start_ts, end_ts), "
-            "PRIMARY KEY (id, test_period))",
-        )
-
-    def test_pk_without_overlaps(self):
-        """Test the WITHOUT OVERLAPS clause on a primary key"""
-        m = MetaData()
-        t = Table(
-            "t",
-            m,
-            Column("id", Integer),
-            Column("start_ts", TIMESTAMP),
-            Column("end_ts", TIMESTAMP),
-            Period("test_period", "start_ts", "end_ts"),
-            PrimaryKeyConstraint("id", "test_period", without_overlaps=True),
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -135,8 +113,9 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             end1,
             period1,
         )
-        eq_(period1.start, start1)
-        eq_(period1.end, end1)
+        is_(t1.periods.test_period, period1)
+        is_(period1.start, start1)
+        is_(period1.end, end1)
 
 
 class ApplicationVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -236,7 +215,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("Sys_end", TIMESTAMP),
             Column("EName", VARCHAR(30)),
             SystemTimePeriod("Sys_start", "Sys_end"),
-            PrimaryKeyConstraint("ENo", "EPeriod", without_overlaps=True),
+            PrimaryKeyConstraint("ENo", "EPeriod"),
             ForeignKeyConstraint(
                 ("EDept", "EPeriod"),
                 ("Dept.DNo", "Dept.DPeriod"),
