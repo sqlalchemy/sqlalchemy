@@ -35,6 +35,7 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import Period
     from .schema import SchemaItem
     from .schema import Table
     from ..engine.base import _CompiledCacheType
@@ -537,6 +538,7 @@ class CreateTable(_CreateDropBase):
         """
         super(CreateTable, self).__init__(element, if_not_exists=if_not_exists)
         self.columns = [CreateColumn(column) for column in element.columns]
+        self.periods = [CreatePeriod(period) for period in element.periods]
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
@@ -662,6 +664,14 @@ class CreateColumn(BaseDDLElement):
     __visit_name__ = "create_column"
 
     def __init__(self, element):
+        self.element = element
+
+
+class CreatePeriod(BaseDDLElement):
+
+    __visit_name__ = "create_period"
+
+    def __init__(self, element: Period):
         self.element = element
 
 

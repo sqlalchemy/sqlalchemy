@@ -69,7 +69,6 @@ from .base import NO_ARG
 from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
-from .schema import Period
 from .schema import PrimaryKeyConstraint
 from .sqltypes import TupleType
 from .type_api import TypeEngine
@@ -87,6 +86,9 @@ if typing.TYPE_CHECKING:
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
     from .cache_key import CacheKey
+    from .ddl import CreateColumn
+    from .ddl import CreatePeriod
+    from .ddl import CreateTable
     from .ddl import ExecutableDDLElement
     from .dml import Insert
     from .dml import UpdateBase
@@ -4872,7 +4874,7 @@ class DDLCompiler(Compiled):
             text += " CASCADE"
         return text
 
-    def visit_create_table(self, create, **kw):
+    def visit_create_table(self, create: CreateTable, **kw):
         table = create.element
         preparer = self.preparer
 
@@ -4914,6 +4916,20 @@ class DDLCompiler(Compiled):
                     % (table.description, column.name, ce.args[0])
                 ) from ce
 
+        for create_period in create.periods:
+            period = create_period.element
+            try:
+                processed = self.process(create_period)
+                if processed is not None:
+                    text += separator
+                    separator = ", \n"
+                    text += "\t" + processed
+            except exc.CompileError as ce:
+                raise exc.CompileError(
+                    "(in table '%s', period '%s'): %s"
+                    % (table.description, period.name, ce.args[0])
+                ) from ce
+
         const = self.create_table_constraints(
             table,
             _include_foreign_key_constraints=create.include_foreign_key_constraints,  # noqa
@@ -4923,7 +4939,7 @@ class DDLCompiler(Compiled):
 
         text += "\n)%s" % self.post_create_table(table)
 
-        if table.system_versioning:
+        if table._system_versioning_period is not None:
             text += " WITH SYSTEM VERSIONING"
 
         part = self.create_table_partitioning(table)
@@ -4935,7 +4951,7 @@ class DDLCompiler(Compiled):
 
         return text
 
-    def visit_create_column(self, create, first_pk=False, **kw):
+    def visit_create_column(self, create: CreateColumn, first_pk=False, **kw):
         column = create.element
 
         if column.system:
@@ -5180,26 +5196,24 @@ class DDLCompiler(Compiled):
         ):
             colspec += " NOT NULL"
 
-        if column.system_versioning:
-            option = self.get_column_versioning_options(self, column)
-            colspec += " %s" % option
+        colspec += self.get_column_versioning_options(column)
 
         return colspec
 
-    def get_column_versioning_options(self, *args, **kw) -> str:
+    def get_column_versioning_options(
+        self, column: Column, *args, **kw
+    ) -> str:
         """Return options for system versioning
         Allows enabling or disabling, or configuring "GENERATED" statements"""
-        column = args[1]
-        if column.system_versioning == False:
-            return "WITHOUT SYSTEM VERSIONING"
-        if column.system_versioning == True:
-            return "WITH SYSTEM VERSIONING"
-        elif column.system_versioning == "start":
-            column.table._versioning_columns["start"] = column.name
-            return "GENERATED ALWAYS AS ROW START"
-        elif column.system_versioning == "end":
-            column.table._versioning_columns["end"] = column.name
-            return "GENERATED ALWAYS AS ROW END"
+        sv_period = column.table._system_versioning_period
+        if column is sv_period.start:
+            return " GENERATED ALWAYS AS ROW START"
+        if column is sv_period.end:
+            return " GENERATED ALWAYS AS ROW END"
+        if column._system_versioning is False:
+            return " WITHOUT SYSTEM VERSIONING"
+        if column._system_versioning is True:
+            return " WITH SYSTEM VERSIONING"
         return ""
 
     def create_table_suffix(self, table):
@@ -5372,9 +5386,16 @@ class DDLCompiler(Compiled):
             text += " (%s)" % options
         return text
 
-    def visit_period(self, period: Period, **kw):
-        print("Visit period")
-        return f"PERIOD FOR {period.name} ({period.start} {period.end})"
+    def visit_create_period(self, period: CreatePeriod, **kw):
+        # SV periods without start and end specified implies only WITH SYSTEM
+        # VERSIONING spec, no period specification
+        period = period.element
+        if period.system:
+            return None
+
+        start = self.preparer.format_column(period.start)
+        end = self.preparer.format_column(period.end)
+        return f"PERIOD FOR {period.name} ({start}, {end})"
 
 
 class GenericTypeCompiler(TypeCompiler):

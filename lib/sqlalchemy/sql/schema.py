@@ -57,6 +57,7 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
+from .base import ColumnCollection
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
@@ -86,7 +87,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
-    from .base import ColumnCollection
     from .base import DedupeColumnCollection
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
@@ -385,7 +385,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    periods: Set[Period]
+    periods: ColumnCollection
     """A collection of all :class:`_schema.Period` objects associated with this
         :class:`_schema.Table`.
     """
@@ -826,9 +826,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
-        self.periods = set()
-        self.system_versioning = False
-        self.application_versioning = False
+        self.periods = ColumnCollection()
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -1121,6 +1119,11 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         """
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
+    @property
+    def _system_versioning_period(self) -> Period:
+        """Helper method to return table's SV period."""
+        return self.periods.get("SYSTEM_TIME")
+
     @util.deprecated(
         "1.4",
         ":meth:`_schema.Table.tometadata` is renamed to "
@@ -1315,11 +1318,6 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
                 _table=table,
                 **index.kwargs,
             )
-        for period in self.periods:
-            if isinstance(period, SystemTimePeriod):
-                self.system_versioning = True
-            elif isinstance(period, ApplicationTimePeriod):
-                self.application_versioning = True
         return self._schema_item_copy(table)
 
 
@@ -1461,7 +1459,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
-        system_versioning: bool = None,
+        system_versioning: Optional[bool] = None,
         _proxies: Optional[Any] = None,
         **dialect_kwargs: Any,
     ):
@@ -2028,7 +2026,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.comment = comment
         self.computed = None
         self.identity = None
-        self.system_versioning = system_versioning
+        self._system_versioning = system_versioning
 
         # check if this Column is proxying another column
 
@@ -2368,7 +2366,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             onupdate=self.onupdate,
             server_onupdate=server_onupdate,
             doc=self.doc,
-            system_versioning=self.system_versioning,
+            system_versioning=self._system_versioning,
             comment=self.comment,
             *args,
             **column_kwargs,
@@ -5704,12 +5702,16 @@ class Period(SchemaItem):
     __visit_name__ = "period"
 
     table: Table
+    start: Column
+    end: Column
+    system: bool
 
     def __init__(
         self,
         name: str,
         start: _DDLColumnArgument,
         end: _DDLColumnArgument,
+        system: Optional[bool] = False,
     ) -> None:
         """Construct a PERIOD FOR DDL construct to accompany a
         :class:`_schema.Column`.
@@ -5724,10 +5726,36 @@ class Period(SchemaItem):
         :param end:
             A target column that defines the period's start. A
             :class:`_schema.Column` object or a column name as a string.
+
+        :param end:
+            Indicates that the ``Period`` is implicit, i.e. not generated
+            in DDL.
         """
+        if not system and (start is None) or (end is None):
+            exc.ArgumentError(
+                "Period object requires both start"
+                " and end columns must be specified"
+            )
         self.name = name
         self.start = coercions.expect(roles.DDLExpressionRole, start)
         self.end = coercions.expect(roles.DDLExpressionRole, end)
+        self.system = system
+
+    def _get_and_validate_column(self, table: Table, column) -> Column:
+        if isinstance(column, Column):
+            if column.table is not table:
+                raise exc.ArgumentError(
+                    "Given column object '%s' does not belong to Table '%s'"
+                    % (column.name, table.description)
+                )
+            return column
+        col = table.c.get(str(column))
+        if col is None:
+            raise exc.ArgumentError(
+                "Cannot find column '%s' in Table '%s'"
+                % (column, table.description)
+            )
+        return col
 
     def _set_parent(self, table: Table, **kw: Any) -> None:
         existing = getattr(self, "table", None)
@@ -5736,10 +5764,13 @@ class Period(SchemaItem):
                 "Period object '%s' already assigned to Table '%s'"
                 % (self.name, existing.description)
             )
-
-        table.periods.add(self)
-
+        # Update parameters to Column type
+        if not self.system:
+            self.start = self._get_and_validate_column(table, self.start)
+            self.end = self._get_and_validate_column(table, self.end)
         self.table = table
+
+        table.periods.add(self, self.name)
 
     # def _copy(self, target_table=None, **kw):
     #     sqltext = _copy_expression(
@@ -5753,9 +5784,7 @@ class Period(SchemaItem):
 
 
 class ApplicationTimePeriod(Period):
-    def _set_parent(self, table: Table, **kw: Any) -> None:
-        super()._set_parent(table, **kw)
-        table.application_versioning = True
+    pass
 
 
 class SystemTimePeriod(Period):
@@ -5764,16 +5793,6 @@ class SystemTimePeriod(Period):
         start: _DDLColumnArgument = None,
         end: _DDLColumnArgument = None,
     ) -> None:
-        if start and end:
-            super(SystemTimePeriod, self).__init__("SYSTEM_TIME", start, end)
-        elif start or end:
-            exc.ArgumentError(
-                "Period object requires Both start"
-                " and end columns must be specified"
-            )
-        else:
-            self.name = "SYSTEM_TIME"
-
-    def _set_parent(self, table: Table, **kw: Any) -> None:
-        super()._set_parent(table, **kw)
-        table.system_versioning = True
+        super(SystemTimePeriod, self).__init__(
+            "SYSTEM_TIME", start, end, start is None and end is None
+        )
