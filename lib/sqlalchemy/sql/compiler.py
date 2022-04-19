@@ -5208,7 +5208,11 @@ class DDLCompiler(Compiled):
     ) -> str:
         """Return options for system versioning
         Allows enabling or disabling, or configuring "GENERATED" statements"""
-        sv_period = column.table._system_versioning_period
+        if column.table is not None:
+            sv_period = column.table._system_versioning_period
+        else:
+            sv_period = None
+
         if column.system:
             return ""
         if sv_period and column is sv_period.start:

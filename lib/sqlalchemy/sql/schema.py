@@ -5786,6 +5786,15 @@ class Period(SchemaItem):
             self.start = self._get_and_validate_column(table, self.start)
             self.end = self._get_and_validate_column(table, self.end)
 
+        if self.primary_key:
+            table.primary_key._replace(self)
+        elif self.key in table.primary_key:
+            raise exc.ArgumentError(
+                "Trying to redefine primary-key period '%s' as a "
+                "non-primary-key column on table '%s'"
+                % (self.name, table.fullname)
+            )
+
         self.table = table
 
         table.periods.add(self, self.name)
