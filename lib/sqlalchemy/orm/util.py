@@ -1809,30 +1809,35 @@ def join(
     left and right selectables may be not only core selectable
     objects such as :class:`_schema.Table`, but also mapped classes or
     :class:`.AliasedClass` instances.   The "on" clause can
-    be a SQL expression, or an attribute or string name
+    be a SQL expression or an ORM mapped attribute
     referencing a configured :func:`_orm.relationship`.
+
+    .. deprecated:: 1.4 using a string relationship name for the "onclause"
+       is deprecated and will be removed in 2.0; the onclause may be only
+       an ORM-mapped relationship attribute or a SQL expression construct.
 
     :func:`_orm.join` is not commonly needed in modern usage,
     as its functionality is encapsulated within that of the
-    :meth:`_query.Query.join` method, which features a
+    :meth:`_sql.Select.join` and :meth:`_query.Query.join`
+    methods. which feature a
     significant amount of automation beyond :func:`_orm.join`
-    by itself.  Explicit usage of :func:`_orm.join`
-    with :class:`_query.Query` involves usage of the
-    :meth:`_query.Query.select_from` method, as in::
+    by itself.  Explicit use of :func:`_orm.join`
+    with ORM-enabled SELECT statements involves use of the
+    :meth:`_sql.Select.select_from` method, as in::
 
         from sqlalchemy.orm import join
-        session.query(User).\
+        stmt = select(User).\
             select_from(join(User, Address, User.addresses)).\
             filter(Address.email_address=='foo@bar.com')
 
     In modern SQLAlchemy the above join can be written more
     succinctly as::
 
-        session.query(User).\
+        stmt = select(User).\
                 join(User.addresses).\
                 filter(Address.email_address=='foo@bar.com')
 
-    See :meth:`_query.Query.join` for information on modern usage
+    See :ref:`orm_queryguide_joins` for information on modern usage
     of ORM level joins.
 
     .. deprecated:: 0.8
