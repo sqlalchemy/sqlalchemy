@@ -1729,20 +1729,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             sqltypes.TIMESTAMP,
         )
 
-        is_versioning_column = (
-            column.system_versioning == "start"
-            or column.system_versioning == "end"
-        )
-
         if not column.nullable:
             colspec.append("NOT NULL")
 
         # see: https://docs.sqlalchemy.org/en/latest/dialects/mysql.html#mysql_timestamp_null  # noqa
-        elif column.nullable and is_timestamp and not is_versioning_column:
+        elif column.nullable and is_timestamp:
             colspec.append("NULL")
-
-        if column.system_versioning:
-            colspec.append(self.get_column_versioning_options(self, column))
 
         comment = column.comment
         if comment is not None:

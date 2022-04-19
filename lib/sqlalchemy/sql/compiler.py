@@ -4937,16 +4937,19 @@ class DDLCompiler(Compiled):
         if const:
             text += separator + "\t" + const
 
-        text += "\n)%s" % self.post_create_table(table)
+        table_opts = self.post_create_table(table)
+
+        text += "\n)%s" % table_opts
 
         if table._system_versioning_period is not None:
             text += " WITH SYSTEM VERSIONING"
 
         part = self.create_table_partitioning(table)
 
-        if part:
-            text += " \n" + part
+        if part and len(table_opts) > 0:
+            text += " "
 
+        text += part
         text += "\n\n"
 
         return text
