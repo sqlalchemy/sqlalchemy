@@ -1,7 +1,6 @@
 """Tests for temporal table structure, including system and
 application versioning"""
 from sqlalchemy import Column
-from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Period
@@ -9,6 +8,7 @@ from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import SystemTimePeriod
 from sqlalchemy import Table
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.sql.sqltypes import DATE
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -43,28 +43,6 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "PERIOD FOR test_period (start_ts, end_ts))",
         )
 
-    def test_period_pk_constraint(self):
-        """Test setting a primary key on a PERIOD via a constraint"""
-        m = MetaData()
-        t = Table(
-            "t",
-            m,
-            Column("id", Integer, nullable=False),
-            Column("start_ts", TIMESTAMP),
-            Column("end_ts", TIMESTAMP),
-            Period("test_period", "start_ts", "end_ts"),
-            PrimaryKeyConstraint("id", "test_period"),
-        )
-        self.assert_compile(
-            schema.CreateTable(t),
-            "CREATE TABLE t ("
-            "id INTEGER NOT NULL, "
-            "start_ts TIMESTAMP, "
-            "end_ts TIMESTAMP, "
-            "PERIOD FOR test_period (start_ts, end_ts), "
-            "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
-        )
-
     def test_period_pk_col_arg(self):
         """Test setting a primary key on a PERIOD via column/period args"""
         m = MetaData()
@@ -84,6 +62,28 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "end_ts TIMESTAMP, "
             "PERIOD FOR test_period (start_ts, end_ts), "
             "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
+        )
+
+    def test_period_unique_constraint(self):
+        """Test setting a unique key on a PERIOD via a constraint"""
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("id", Integer, nullable=False),
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts"),
+            UniqueConstraint("id", "test_period"),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts), "
+            "UNIQUE (id, test_period WITHOUT OVERLAPS))",
         )
 
     def test_period_copy(self):
@@ -144,7 +144,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_raise_on_period_in_other_table(self):
         m = MetaData()
-        period = (Period("test_period", "start_ts", "end_ts"),)
+        period = Period("test_period", "start_ts", "end_ts")
         t1 = Table(
             "t1",
             m,
@@ -162,7 +162,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
                 period,
             )
 
-        text = "Period object 'test_period' already assigned to Table 't2'"
+        text = "Period object 'test_period' already assigned to Table 't1'"
         assert_raises_message(ArgumentError, text, fn)
 
     def test_to_metadata(self):
@@ -282,42 +282,43 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_bitemporal_table(self):
         """Test creating the example table in the document
-        "Temporal features in SQL:2011", with both SV and AV"""
+        "Temporal features in SQL:2011", with both SV and AV. FK constraint
+        is not implemented for now."""
 
         m = MetaData()
         t = Table(
-            "Emp",
+            "emp",
             m,
-            Column("ENo", Integer),
-            Column("ESart", DATE),
-            Column("EEnd", DATE),
-            Column("EDept", Integer),
-            Period("EPeriod", "ESart", "EEnd"),
-            Column("Sys_start", TIMESTAMP),
-            Column("Sys_end", TIMESTAMP),
-            Column("EName", VARCHAR(30)),
-            SystemTimePeriod("Sys_start", "Sys_end"),
-            PrimaryKeyConstraint("ENo", "EPeriod"),
-            ForeignKeyConstraint(
-                ("EDept", "EPeriod"),
-                ("Dept.DNo", "Dept.DPeriod"),
-            ),
+            Column("eno", Integer),
+            Column("estart", DATE),
+            Column("eend", DATE),
+            Column("edept", Integer),
+            Column("sys_start", TIMESTAMP),
+            Column("sys_end", TIMESTAMP),
+            Column("ename", VARCHAR(30)),
+            Period("eperiod", "estart", "eend"),
+            SystemTimePeriod("sys_start", "sys_end"),
+            PrimaryKeyConstraint("eno", "eperiod"),
+            # ForeignKeyConstraint(
+            #     ("EDept", "EPeriod"),
+            #     ("Dept.DNo", "Dept.DPeriod"),
+            # ),
         )
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE Emp("
-            "ENo INTEGER,"
-            "ESart DATE,"
-            "EEnd DATE,"
-            "EDept INTEGER,"
-            "PERIOD FOR EPeriod (EStart, EEnd),"
-            "Sys_start TIMESTAMP(12) GENERATED ALWAYS AS ROW START,"
-            "Sys_end TIMESTAMP(12) GENERATED ALWAYS AS ROW END,"
-            "EName VARCHAR(30),"
-            "PERIOD FOR SYSTEM_TIME(Sys_start, Sys_end),"
-            "PRIMARY KEY (ENo, EPeriod WITHOUT OVERLAPS),"
-            "FOREIGN KEY (Edept, PERIOD EPeriod)"
-            "REFERENCES Dept (DNo, PERIOD DPeriod)"
+            "CREATE TABLE emp ("
+            "eno INTEGER NOT NULL, "
+            "estart DATE, "
+            "eend DATE, "
+            "edept INTEGER, "
+            "sys_start TIMESTAMP GENERATED ALWAYS AS ROW START, "
+            "sys_end TIMESTAMP GENERATED ALWAYS AS ROW END, "
+            "ename VARCHAR(30), "
+            "PERIOD FOR eperiod (estart, eend), "
+            "PERIOD FOR SYSTEM_TIME (sys_start, sys_end), "
+            "PRIMARY KEY (eno, eperiod WITHOUT OVERLAPS)"
+            # "FOREIGN KEY (Edept, PERIOD EPeriod)"
+            # "REFERENCES Dept (DNo, PERIOD DPeriod)"
             ") WITH SYSTEM VERSIONING",
         )
 

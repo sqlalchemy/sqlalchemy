@@ -5477,7 +5477,7 @@ class Computed(FetchedValue, SchemaItem):
         self,
         sqltext: _DDLColumnArgument,
         persisted: Optional[bool] = None,
-        _system_versioning: Optional[bool] = True,
+        _system_versioning: Optional[bool] = False,
     ) -> None:
         """Construct a GENERATED ALWAYS AS DDL construct to accompany a
         :class:`_schema.Column`.
@@ -5865,7 +5865,12 @@ class SystemTimePeriod(Period):
     def _set_parent(self, table: Table, **kw: Any) -> None:
         super()._set_parent(table, **kw)
 
-        if self.start.computed is None:
-            Computed("ROW START", _brackets=False)._set_parent(self.start)
-        if self.end.computed is None:
-            Computed("ROW END", _brackets=False)._set_parent(self.end)
+        if not self.system:
+            if self.start.computed is None:
+                Computed("ROW START", _system_versioning=True)._set_parent(
+                    self.start
+                )
+            if self.end.computed is None:
+                Computed("ROW END", _system_versioning=True)._set_parent(
+                    self.end
+                )

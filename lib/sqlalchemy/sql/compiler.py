@@ -5335,7 +5335,13 @@ class DDLCompiler(Compiled):
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
         text += "UNIQUE (%s)" % (
-            ", ".join(self.preparer.quote(c.name) for c in constraint)
+            (
+                ", ".join(
+                    self.preparer.quote(c.name)
+                    + (" WITHOUT OVERLAPS" if isinstance(c, Period) else "")
+                )
+                for c in constraint
+            )
         )
         text += self.define_constraint_deferrability(constraint)
         return text
