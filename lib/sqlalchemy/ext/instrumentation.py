@@ -23,6 +23,7 @@ from ..orm import base as orm_base
 from ..orm import collections
 from ..orm import exc as orm_exc
 from ..orm import instrumentation as orm_instrumentation
+from ..orm import util as orm_util
 from ..orm.instrumentation import _default_dict_getter
 from ..orm.instrumentation import _default_manager_getter
 from ..orm.instrumentation import _default_opt_manager_getter
@@ -437,5 +438,7 @@ def _install_lookups(lookups):
         attributes.manager_of_class
     ) = orm_instrumentation.manager_of_class = manager_of_class
     orm_base.opt_manager_of_class = (
+        orm_util.opt_manager_of_class
+    ) = (
         attributes.opt_manager_of_class
     ) = orm_instrumentation.opt_manager_of_class = opt_manager_of_class

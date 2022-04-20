@@ -28,6 +28,7 @@ from typing import Union
 import weakref
 
 from . import attributes  # noqa
+from . import exc
 from ._typing import _O
 from ._typing import insp_is_aliased_class
 from ._typing import insp_is_mapper
@@ -41,6 +42,7 @@ from .base import InspectionAttr as InspectionAttr
 from .base import instance_str as instance_str
 from .base import object_mapper as object_mapper
 from .base import object_state as object_state
+from .base import opt_manager_of_class
 from .base import state_attribute_str as state_attribute_str
 from .base import state_class_str as state_class_str
 from .base import state_str as state_str
@@ -68,6 +70,7 @@ from ..sql.base import ColumnCollection
 from ..sql.cache_key import HasCacheKey
 from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import ColumnElement
+from ..sql.elements import KeyedColumnElement
 from ..sql.selectable import FromClause
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation
@@ -95,9 +98,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import _ColumnsClauseElement
     from ..sql.selectable import Alias
     from ..sql.selectable import Subquery
-    from ..sql.visitors import _ET
     from ..sql.visitors import anon_map
-    from ..sql.visitors import ExternallyTraversible
 
 _T = TypeVar("_T", bound=Any)
 
@@ -341,7 +342,7 @@ def identity_key(
     ident: Union[Any, Tuple[Any, ...]] = None,
     *,
     instance: Optional[_T] = None,
-    row: Optional[Union[Row, RowMapping]] = None,
+    row: Optional[Union[Row[Any], RowMapping]] = None,
     identity_token: Optional[Any] = None,
 ) -> _IdentityKeyType[_T]:
     r"""Generate "identity key" tuples, as are used as keys in the
@@ -468,7 +469,9 @@ class ORMAdapter(sql_util.ColumnAdapter):
         return not entity or entity.isa(self.mapper)
 
 
-class AliasedClass(inspection.Inspectable["AliasedInsp[_O]"], Generic[_O]):
+class AliasedClass(
+    inspection.Inspectable["AliasedInsp[_O]"], ORMColumnsClauseRole[_O]
+):
     r"""Represents an "aliased" form of a mapped class for usage with Query.
 
     The ORM equivalent of a :func:`~sqlalchemy.sql.expression.alias`
@@ -663,7 +666,7 @@ class AliasedClass(inspection.Inspectable["AliasedInsp[_O]"], Generic[_O]):
 
 @inspection._self_inspects
 class AliasedInsp(
-    ORMEntityColumnsClauseRole,
+    ORMEntityColumnsClauseRole[_O],
     ORMFromClauseRole,
     HasCacheKey,
     InspectionAttr,
@@ -1276,12 +1279,29 @@ class LoaderCriteriaOption(CriteriaOption):
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 
 
+@inspection._inspects(type)
+def _inspect_mc(
+    class_: Type[_O],
+) -> Optional[Mapper[_O]]:
+
+    try:
+        class_manager = opt_manager_of_class(class_)
+        if class_manager is None or not class_manager.is_mapped:
+            return None
+        mapper = class_manager.mapper
+    except exc.NO_STATE:
+
+        return None
+    else:
+        return mapper
+
+
 @inspection._self_inspects
 class Bundle(
-    ORMColumnsClauseRole,
+    ORMColumnsClauseRole[_T],
     SupportsCloneAnnotations,
     MemoizedHasCacheKey,
-    inspection.Inspectable["Bundle"],
+    inspection.Inspectable["Bundle[_T]"],
     InspectionAttr,
 ):
     """A grouping of SQL expressions that are returned by a :class:`.Query`
@@ -1373,10 +1393,10 @@ class Bundle(
     @property
     def entity_namespace(
         self,
-    ) -> ReadOnlyColumnCollection[str, ColumnElement[Any]]:
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         return self.c
 
-    columns: ReadOnlyColumnCollection[str, ColumnElement[Any]]
+    columns: ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]
 
     """A namespace of SQL expressions referred to by this :class:`.Bundle`.
 
@@ -1402,7 +1422,7 @@ class Bundle(
 
     """
 
-    c: ReadOnlyColumnCollection[str, ColumnElement[Any]]
+    c: ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]
     """An alias for :attr:`.Bundle.columns`."""
 
     def _clone(self):
@@ -1908,9 +1928,10 @@ def _extract_mapped_subtype(
     raw_annotation: Union[type, str],
     cls: type,
     key: str,
-    attr_cls: type,
+    attr_cls: Type[Any],
     required: bool,
     is_dataclass_field: bool,
+    superclasses: Optional[Tuple[Type[Any], ...]] = None,
 ) -> Optional[Union[type, str]]:
 
     if raw_annotation is None:
@@ -1930,9 +1951,13 @@ def _extract_mapped_subtype(
     if is_dataclass_field:
         return annotated
     else:
-        if (
-            not hasattr(annotated, "__origin__")
-            or not issubclass(annotated.__origin__, attr_cls)  # type: ignore
+        # TODO: there don't seem to be tests for the failure
+        # conditions here
+        if not hasattr(annotated, "__origin__") or (
+            not issubclass(
+                annotated.__origin__,  # type: ignore
+                superclasses if superclasses else attr_cls,
+            )
             and not issubclass(attr_cls, annotated.__origin__)  # type: ignore
         ):
             our_annotated_str = (

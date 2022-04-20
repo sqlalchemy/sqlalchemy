@@ -96,7 +96,6 @@ if TYPE_CHECKING:
     from .descriptor_props import Synonym
     from .events import MapperEvents
     from .instrumentation import ClassManager
-    from .path_registry import AbstractEntityRegistry
     from .path_registry import CachingEntityRegistry
     from .properties import ColumnProperty
     from .relationships import Relationship
@@ -108,10 +107,10 @@ if TYPE_CHECKING:
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import ColumnClause
     from ..sql.elements import ColumnElement
+    from ..sql.elements import KeyedColumnElement
     from ..sql.schema import Column
     from ..sql.schema import Table
     from ..sql.selectable import FromClause
-    from ..sql.selectable import TableClause
     from ..sql.util import ColumnAdapter
     from ..util import OrderedSet
 
@@ -161,7 +160,7 @@ _CONFIGURE_MUTEX = threading.RLock()
 @log.class_logger
 class Mapper(
     ORMFromClauseRole,
-    ORMEntityColumnsClauseRole,
+    ORMEntityColumnsClauseRole[_O],
     MemoizedHasCacheKey,
     InspectionAttr,
     log.Identified,
@@ -1006,7 +1005,7 @@ class Mapper(
 
     """
 
-    polymorphic_on: Optional[ColumnElement[Any]]
+    polymorphic_on: Optional[KeyedColumnElement[Any]]
     """The :class:`_schema.Column` or SQL expression specified as the
     ``polymorphic_on`` argument
     for this :class:`_orm.Mapper`, within an inheritance scenario.
@@ -1699,10 +1698,10 @@ class Mapper(
                     instrument = True
                 key = getattr(col, "key", None)
                 if key:
-                    if self._should_exclude(col.key, col.key, False, col):
+                    if self._should_exclude(key, key, False, col):
                         raise sa_exc.InvalidRequestError(
                             "Cannot exclude or override the "
-                            "discriminator column %r" % col.key
+                            "discriminator column %r" % key
                         )
                 else:
                     self.polymorphic_on = col = col.label("_sa_polymorphic_on")
@@ -2948,7 +2947,7 @@ class Mapper(
 
     def identity_key_from_row(
         self,
-        row: Optional[Union[Row, RowMapping]],
+        row: Optional[Union[Row[Any], RowMapping]],
         identity_token: Optional[Any] = None,
         adapter: Optional[ColumnAdapter] = None,
     ) -> _IdentityKeyType[_O]:

@@ -50,6 +50,7 @@ from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Grouping
+from .elements import KeyedColumnElement
 from .elements import Label
 from .elements import Null
 from .elements import UnaryExpression
@@ -72,9 +73,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _EquivalentColumnMap
     from ._typing import _TypeEngineArgument
     from .elements import TextClause
-    from .roles import FromClauseRole
     from .selectable import _JoinTargetElement
-    from .selectable import _OnClauseElement
     from .selectable import _SelectIterable
     from .selectable import Selectable
     from .visitors import _TraverseCallableType
@@ -569,7 +568,7 @@ class _repr_row(_repr_base):
 
     __slots__ = ("row",)
 
-    def __init__(self, row: "Row", max_chars: int = 300):
+    def __init__(self, row: "Row[Any]", max_chars: int = 300):
         self.row = row
         self.max_chars = max_chars
 
@@ -1068,7 +1067,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
             col = col._annotations["adapt_column"]
 
         if TYPE_CHECKING:
-            assert isinstance(col, ColumnElement)
+            assert isinstance(col, KeyedColumnElement)
 
         if self.adapt_from_selectables and col not in self.equivalents:
             for adp in self.adapt_from_selectables:
@@ -1078,7 +1077,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 return None
 
         if TYPE_CHECKING:
-            assert isinstance(col, ColumnElement)
+            assert isinstance(col, KeyedColumnElement)
 
         if self.include_fn and not self.include_fn(col):
             return None

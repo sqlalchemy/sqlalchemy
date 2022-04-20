@@ -70,6 +70,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import base as sql_base
+from ..sql import cache_key
 from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
@@ -99,10 +100,8 @@ class QueryableAttribute(
     traversals.HasCopyInternals,
     roles.JoinTargetRole,
     roles.OnClauseRole,
-    roles.ColumnsClauseRole,
-    roles.ExpressionElementRole[_T],
     sql_base.Immutable,
-    sql_base.MemoizedHasCacheKey,
+    cache_key.MemoizedHasCacheKey,
 ):
     """Base class for :term:`descriptor` objects that intercept
     attribute events on behalf of a :class:`.MapperProperty`

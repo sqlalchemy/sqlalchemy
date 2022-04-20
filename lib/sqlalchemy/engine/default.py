@@ -62,13 +62,9 @@ if typing.TYPE_CHECKING:
 
     from .base import Connection
     from .base import Engine
-    from .characteristics import ConnectionCharacteristic
-    from .interfaces import _AnyMultiExecuteParams
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams
-    from .interfaces import _DBAPIAnyExecuteParams
     from .interfaces import _DBAPIMultiExecuteParams
-    from .interfaces import _DBAPISingleExecuteParams
     from .interfaces import _ExecuteOptions
     from .interfaces import _IsolationLevel
     from .interfaces import _MutableCoreSingleExecuteParams
@@ -83,15 +79,11 @@ if typing.TYPE_CHECKING:
     from ..sql.compiler import Compiled
     from ..sql.compiler import Linting
     from ..sql.compiler import ResultColumnsEntry
-    from ..sql.compiler import TypeCompiler
     from ..sql.dml import DMLState
     from ..sql.dml import UpdateBase
     from ..sql.elements import BindParameter
-    from ..sql.roles import ColumnsClauseRole
     from ..sql.schema import Column
-    from ..sql.schema import ColumnDefault
     from ..sql.type_api import _BindProcessorType
-    from ..sql.type_api import _ResultProcessorType
     from ..sql.type_api import TypeEngine
 
 # When we're handed literal SQL, ensure it's a SELECT query
@@ -781,7 +773,7 @@ class DefaultExecutionContext(ExecutionContext):
     result_column_struct: Optional[
         Tuple[List[ResultColumnsEntry], bool, bool, bool]
     ] = None
-    returned_default_rows: Optional[List[Row]] = None
+    returned_default_rows: Optional[Sequence[Row[Any]]] = None
 
     execution_options: _ExecuteOptions = util.EMPTY_DICT
 
@@ -1385,7 +1377,9 @@ class DefaultExecutionContext(ExecutionContext):
         if cursor_description is None:
             strategy = _cursor._NO_CURSOR_DML
 
-        result = _cursor.CursorResult(self, strategy, cursor_description)
+        result: _cursor.CursorResult[Any] = _cursor.CursorResult(
+            self, strategy, cursor_description
+        )
 
         if self.isinsert:
             if self._is_implicit_returning:

@@ -54,7 +54,7 @@ from ..util.typing import NoneType
 if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from ..sql._typing import _InfoType
-    from ..sql.elements import ColumnElement
+    from ..sql.elements import KeyedColumnElement
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
@@ -85,7 +85,8 @@ class ColumnProperty(
     inherit_cache = True
     _links_to_entity = False
 
-    columns: List[ColumnElement[Any]]
+    columns: List[KeyedColumnElement[Any]]
+    _orig_columns: List[KeyedColumnElement[Any]]
 
     _is_polymorphic_discriminator: bool
 

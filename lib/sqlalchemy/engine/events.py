@@ -28,7 +28,6 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from .base import Connection
-    from .interfaces import _CoreAnyExecuteParams
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams
     from .interfaces import _DBAPIAnyExecuteParams
@@ -273,7 +272,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         multiparams: _CoreMultiExecuteParams,
         params: _CoreSingleExecuteParams,
         execution_options: _ExecuteOptions,
-        result: Result,
+        result: Result[Any],
     ) -> None:
         """Intercept high level execute() events after execute.
 

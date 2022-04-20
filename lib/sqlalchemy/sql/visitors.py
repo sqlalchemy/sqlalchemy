@@ -450,7 +450,7 @@ class HasTraverseInternals:
 
     @util.preload_module("sqlalchemy.sql.traversals")
     def get_children(
-        self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+        self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
     ) -> Iterable[HasTraverseInternals]:
         r"""Return immediate child :class:`.visitors.HasTraverseInternals`
         elements of this :class:`.visitors.HasTraverseInternals`.
@@ -594,7 +594,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
     if typing.TYPE_CHECKING:
 
         def get_children(
-            self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+            self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
         ) -> Iterable[ExternallyTraversible]:
             ...
 

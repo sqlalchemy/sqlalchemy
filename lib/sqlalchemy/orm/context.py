@@ -17,6 +17,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from . import attributes
@@ -48,14 +49,15 @@ from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
 from ..sql.base import Executable
+from ..sql.base import Generative
 from ..sql.base import Options
 from ..sql.dml import UpdateBase
 from ..sql.elements import GroupedElement
 from ..sql.elements import TextClause
+from ..sql.selectable import ExecutableReturnsRows
 from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..sql.selectable import ReturnsRows
 from ..sql.selectable import Select
 from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
@@ -72,6 +74,7 @@ if TYPE_CHECKING:
     from ..sql.selectable import SelectBase
     from ..sql.type_api import TypeEngine
 
+_T = TypeVar("_T", bound=Any)
 _path_registry = PathRegistry.root
 
 _EMPTY_DICT = util.immutabledict()
@@ -574,7 +577,7 @@ class ORMFromStatementCompileState(ORMCompileState):
         return None
 
 
-class FromStatement(GroupedElement, ReturnsRows, Executable):
+class FromStatement(GroupedElement, Generative, ExecutableReturnsRows):
     """Core construct that represents a load of ORM objects from various
     :class:`.ReturnsRows` and other classes including:
 

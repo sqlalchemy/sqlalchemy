@@ -175,7 +175,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         return connection._execute_function(
             self, distilled_params, execution_options
         )
@@ -623,7 +623,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             joins_implicitly=joins_implicitly,
         )
 
-    def select(self) -> "Select":
+    def select(self) -> Select[Any]:
         """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
@@ -632,7 +632,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             s = select(function_element)
 
         """
-        s = Select(self)
+        s: Select[Any] = Select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
@@ -846,7 +846,7 @@ class _FunctionGenerator:
 
     @overload
     def __call__(
-        self, *c: Any, type_: TypeEngine[_T], **kwargs: Any
+        self, *c: Any, type_: _TypeEngineArgument[_T], **kwargs: Any
     ) -> Function[_T]:
         ...
 

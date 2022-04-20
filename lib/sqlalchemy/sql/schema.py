@@ -86,7 +86,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
-    from .base import ColumnCollection
     from .base import DedupeColumnCollection
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
@@ -97,9 +96,7 @@ if typing.TYPE_CHECKING:
     from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Engine
-    from ..engine.cursor import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
-    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
     from ..engine.mock import MockConnection
@@ -2609,8 +2606,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         :class:`_schema.Table`.
 
         """
-
-        return table.columns.corresponding_column(self.column)
+        # our column is a Column, and any subquery etc. proxying us
+        # would be doing so via another Column, so that's what would
+        # be returned here
+        return table.columns.corresponding_column(self.column)  # type: ignore
 
     @util.memoized_property
     def _column_tokens(self) -> Tuple[Optional[str], str, Optional[str]]:

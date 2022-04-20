@@ -47,10 +47,10 @@ class Interval(Base):
 
         # while we are here, check some Float[] / div type stuff
         if typing.TYPE_CHECKING:
-            # EXPECTED_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
+            # EXPECTED_RE_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
             reveal_type(f1)
 
-            # EXPECTED_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
+            # EXPECTED_RE_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
             reveal_type(expr)
         return expr
 
@@ -69,23 +69,23 @@ expr3 = Interval.radius.in_([0.5, 5.2])
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: builtins.int\*?
     reveal_type(i1.length)
 
-    # EXPECTED_TYPE: builtins.float\*?
+    # EXPECTED_RE_TYPE: builtins.float\*?
     reveal_type(i2.radius)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
     reveal_type(Interval.length)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.float\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.float\*?\]
     reveal_type(Interval.radius)
 
-    # EXPECTED_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
     reveal_type(expr1)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.float\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.float\*?\]
     reveal_type(expr2)
 
-    # EXPECTED_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
     reveal_type(expr3)

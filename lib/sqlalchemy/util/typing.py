@@ -14,7 +14,7 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import NotRequired as NotRequired  # noqa
+from typing_extensions import NotRequired as NotRequired
 
 from . import compat
 

@@ -47,17 +47,17 @@ expr2 = Interval.contains(7)
 expr3 = Interval.intersects(i2)
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: builtins.int\*?
     reveal_type(i1.length)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
     reveal_type(Interval.length)
 
-    # EXPECTED_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
     reveal_type(expr1)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
     reveal_type(expr2)
 
-    # EXPECTED_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
     reveal_type(expr3)

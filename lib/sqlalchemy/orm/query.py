@@ -27,6 +27,8 @@ from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import overload
+from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -36,6 +38,7 @@ from . import exc as orm_exc
 from . import interfaces
 from . import loading
 from . import util as orm_util
+from ._typing import _O
 from .base import _assertions
 from .context import _column_descriptions
 from .context import _determine_last_joined_entity
@@ -56,6 +59,7 @@ from .. import log
 from .. import sql
 from .. import util
 from ..engine import Result
+from ..engine import Row
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
@@ -63,10 +67,12 @@ from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql._typing import _FromClauseArgument
+from ..sql._typing import _TP
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
 from ..sql.base import Executable
+from ..sql.base import Generative
 from ..sql.expression import Exists
 from ..sql.selectable import _MemoizedSelectEntities
 from ..sql.selectable import _SelectFromElements
@@ -75,10 +81,33 @@ from ..sql.selectable import HasHints
 from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..util.typing import Literal
 
 if TYPE_CHECKING:
+    from ._typing import _EntityType
+    from .session import Session
+    from ..engine.result import ScalarResult
+    from ..engine.row import Row
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _ColumnsClauseArgument
+    from ..sql._typing import _MAYBE_ENTITY
+    from ..sql._typing import _no_kw
+    from ..sql._typing import _NOT_ENTITY
+    from ..sql._typing import _PropagateAttrsType
+    from ..sql._typing import _T0
+    from ..sql._typing import _T1
+    from ..sql._typing import _T2
+    from ..sql._typing import _T3
+    from ..sql._typing import _T4
+    from ..sql._typing import _T5
+    from ..sql._typing import _T6
+    from ..sql._typing import _T7
+    from ..sql._typing import _TypedColumnClauseArgument as _TCCA
+    from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import _SetupJoinsElement
     from ..sql.selectable import Alias
+    from ..sql.selectable import ExecutableReturnsRows
+    from ..sql.selectable import ScalarSelect
     from ..sql.selectable import Subquery
 
 __all__ = ["Query", "QueryContext"]
@@ -97,6 +126,7 @@ class Query(
     HasSuffixes,
     HasHints,
     log.Identified,
+    Generative,
     Executable,
     Generic[_T],
 ):
@@ -159,9 +189,15 @@ class Query(
     # mirrors that of ClauseElement, used to propagate the "orm"
     # plugin as well as the "subject" of the plugin, e.g. the mapper
     # we are querying against.
-    _propagate_attrs = util.immutabledict()
+    @util.memoized_property
+    def _propagate_attrs(self) -> _PropagateAttrsType:
+        return util.EMPTY_DICT
 
-    def __init__(self, entities, session=None):
+    def __init__(
+        self,
+        entities: Sequence[_ColumnsClauseArgument[Any]],
+        session: Optional[Session] = None,
+    ):
         """Construct a :class:`_query.Query` directly.
 
         E.g.::
@@ -206,6 +242,36 @@ class Query(
             )
             for ent in util.to_list(entities)
         ]
+
+    @overload
+    def tuples(self: Query[Row[_TP]]) -> Query[_TP]:
+        ...
+
+    @overload
+    def tuples(self: Query[_O]) -> Query[Tuple[_O]]:
+        ...
+
+    def tuples(self) -> Query[Any]:
+        """return a tuple-typed form of this :class:`.Query`.
+
+        This method invokes the :meth:`.Query.only_return_tuples`
+        method with a value of ``True``, which by itself ensures that this
+        :class:`.Query` will always return :class:`.Row` objects, even
+        if the query is made against a single entity.  It then also
+        at the typing level will return a "typed" query, if possible,
+        that will type result rows as ``Tuple`` objects with typed
+        elements.
+
+        This method can be compared to the :meth:`.Result.tuples` method,
+        which returns "self", but from a typing perspective returns an object
+        that will yield typed ``Tuple`` objects for results.   Typing
+        takes effect only if this :class:`.Query` object is a typed
+        query object already.
+
+        .. versionadded:: 2.0
+
+        """
+        return self.only_return_tuples(True)
 
     def _entity_from_pre_ent_zero(self):
         if not self._raw_columns:
@@ -582,20 +648,52 @@ class Query(
 
         return self.enable_eagerloads(False).statement.label(name)
 
+    @overload
+    def as_scalar(
+        self: Query[Tuple[_MAYBE_ENTITY]],
+    ) -> ScalarSelect[_MAYBE_ENTITY]:
+        ...
+
+    @overload
+    def as_scalar(
+        self: Query[Tuple[_NOT_ENTITY]],
+    ) -> ScalarSelect[_NOT_ENTITY]:
+        ...
+
+    @overload
+    def as_scalar(self) -> ScalarSelect[Any]:
+        ...
+
     @util.deprecated(
         "1.4",
         "The :meth:`_query.Query.as_scalar` method is deprecated and will be "
         "removed in a future release.  Please refer to "
         ":meth:`_query.Query.scalar_subquery`.",
     )
-    def as_scalar(self):
+    def as_scalar(self) -> ScalarSelect[Any]:
         """Return the full SELECT statement represented by this
         :class:`_query.Query`, converted to a scalar subquery.
 
         """
         return self.scalar_subquery()
 
-    def scalar_subquery(self):
+    @overload
+    def scalar_subquery(
+        self: Query[Tuple[_MAYBE_ENTITY]],
+    ) -> ScalarSelect[Any]:
+        ...
+
+    @overload
+    def scalar_subquery(
+        self: Query[Tuple[_NOT_ENTITY]],
+    ) -> ScalarSelect[_NOT_ENTITY]:
+        ...
+
+    @overload
+    def scalar_subquery(self) -> ScalarSelect[Any]:
+        ...
+
+    def scalar_subquery(self) -> ScalarSelect[Any]:
         """Return the full SELECT statement represented by this
         :class:`_query.Query`, converted to a scalar subquery.
 
@@ -630,15 +728,30 @@ class Query(
             .statement
         )
 
+    @overload
+    def only_return_tuples(
+        self: Query[_O], value: Literal[True]
+    ) -> RowReturningQuery[Tuple[_O]]:
+        ...
+
+    @overload
+    def only_return_tuples(
+        self: Query[_O], value: Literal[False]
+    ) -> Query[_O]:
+        ...
+
     @_generative
-    def only_return_tuples(self: SelfQuery, value) -> SelfQuery:
-        """When set to True, the query results will always be a tuple.
+    def only_return_tuples(self, value: bool) -> Query[Any]:
+        """When set to True, the query results will always be a
+        :class:`.Row` object.
 
-        This is specifically for single element queries. The default is False.
-
-        .. versionadded:: 1.2.5
+        This can change a query that normally returns a single entity
+        as a scalar to return a :class:`.Row` result in all cases.
 
         .. seealso::
+
+            :meth:`.Query.tuples` - returns tuples, but also at the typing
+            level will type results as ``Tuple``.
 
             :meth:`_query.Query.is_single_entity`
 
@@ -1077,7 +1190,11 @@ class Query(
         return self.filter(with_parent(instance, property, entity_zero.entity))
 
     @_generative
-    def add_entity(self: SelfQuery, entity, alias=None) -> SelfQuery:
+    def add_entity(
+        self,
+        entity: _EntityType[Any],
+        alias: Optional[Union[Alias, Subquery]] = None,
+    ) -> Query[Any]:
         """add a mapped entity to the list of result columns
         to be returned."""
 
@@ -1209,8 +1326,107 @@ class Query(
         except StopIteration:
             return None
 
+    @overload
+    def with_entities(
+        self, _entity: _EntityType[_O], **kwargs: Any
+    ) -> ScalarInstanceQuery[_O]:
+        ...
+
+    @overload
+    def with_entities(
+        self, _colexpr: TypedColumnsClauseRole[_T]
+    ) -> RowReturningQuery[Tuple[_T]]:
+        ...
+
+    # START OVERLOADED FUNCTIONS self.with_entities RowReturningQuery 2-8
+
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_tuple_map_overloads.py
+
+    @overload
+    def with_entities(
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+    ) -> RowReturningQuery[Tuple[_T0, _T1]]:
+        ...
+
+    @overload
+    def with_entities(
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
+        ...
+
+    @overload
+    def with_entities(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        __ent3: _TCCA[_T3],
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
+        ...
+
+    @overload
+    def with_entities(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        __ent3: _TCCA[_T3],
+        __ent4: _TCCA[_T4],
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+        ...
+
+    @overload
+    def with_entities(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        __ent3: _TCCA[_T3],
+        __ent4: _TCCA[_T4],
+        __ent5: _TCCA[_T5],
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+        ...
+
+    @overload
+    def with_entities(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        __ent3: _TCCA[_T3],
+        __ent4: _TCCA[_T4],
+        __ent5: _TCCA[_T5],
+        __ent6: _TCCA[_T6],
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+        ...
+
+    @overload
+    def with_entities(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        __ent3: _TCCA[_T3],
+        __ent4: _TCCA[_T4],
+        __ent5: _TCCA[_T5],
+        __ent6: _TCCA[_T6],
+        __ent7: _TCCA[_T7],
+    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+        ...
+
+    # END OVERLOADED FUNCTIONS self.with_entities
+
+    @overload
+    def with_entities(
+        self: SelfQuery, *entities: _ColumnsClauseArgument[Any]
+    ) -> SelfQuery:
+        ...
+
     @_generative
-    def with_entities(self: SelfQuery, *entities) -> SelfQuery:
+    def with_entities(
+        self: SelfQuery, *entities: _ColumnsClauseArgument[Any], **__kw: Any
+    ) -> SelfQuery:
         r"""Return a new :class:`_query.Query`
         replacing the SELECT list with the
         given entities.
@@ -1234,12 +1450,14 @@ class Query(
                         limit(1)
 
         """
+        if __kw:
+            raise _no_kw()
         _MemoizedSelectEntities._generate_for_statement(self)
         self._set_entities(entities)
         return self
 
     @_generative
-    def add_columns(self: SelfQuery, *column) -> SelfQuery:
+    def add_columns(self, *column: _ColumnExpressionArgument) -> Query[Any]:
         """Add one or more column expressions to the list
         of result columns to be returned."""
 
@@ -1262,7 +1480,7 @@ class Query(
         "is deprecated and will be removed in a "
         "future release.  Please use :meth:`_query.Query.add_columns`",
     )
-    def add_column(self, column):
+    def add_column(self, column) -> Query[Any]:
         """Add a column expression to the list of result columns to be
         returned.
 
@@ -1472,7 +1690,9 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def filter(self: SelfQuery, *criterion) -> SelfQuery:
+    def filter(
+        self: SelfQuery, *criterion: _ColumnExpressionArgument[bool]
+    ) -> SelfQuery:
         r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using SQL expressions.
 
@@ -1556,7 +1776,7 @@ class Query(
 
         return self._raw_columns[0]
 
-    def filter_by(self, **kwargs):
+    def filter_by(self: SelfQuery, **kwargs: Any) -> SelfQuery:
         r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using keyword expressions.
 
@@ -1597,7 +1817,9 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def order_by(self: SelfQuery, *clauses) -> SelfQuery:
+    def order_by(
+        self: SelfQuery, *clauses: _ColumnExpressionArgument[Any]
+    ) -> SelfQuery:
         """Apply one or more ORDER BY criteria to the query and return
         the newly resulting :class:`_query.Query`.
 
@@ -1635,7 +1857,9 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def group_by(self: SelfQuery, *clauses) -> SelfQuery:
+    def group_by(
+        self: SelfQuery, *clauses: _ColumnExpressionArgument[Any]
+    ) -> SelfQuery:
         """Apply one or more GROUP BY criterion to the query and return
         the newly resulting :class:`_query.Query`.
 
@@ -1667,7 +1891,9 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def having(self: SelfQuery, criterion) -> SelfQuery:
+    def having(
+        self: SelfQuery, *having: _ColumnExpressionArgument[bool]
+    ) -> SelfQuery:
         r"""Apply a HAVING criterion to the query and return the
         newly resulting :class:`_query.Query`.
 
@@ -1684,17 +1910,17 @@ class Query(
 
         """
 
-        self._having_criteria += (
-            coercions.expect(
-                roles.WhereHavingRole, criterion, apply_propagate_attrs=self
-            ),
-        )
+        for criterion in having:
+            having_criteria = coercions.expect(
+                roles.WhereHavingRole, criterion
+            )
+            self._having_criteria += (having_criteria,)
         return self
 
     def _set_op(self, expr_fn, *q):
         return self._from_selectable(expr_fn(*([self] + list(q))).subquery())
 
-    def union(self, *q):
+    def union(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce a UNION of this Query against one or more queries.
 
         e.g.::
@@ -1733,7 +1959,7 @@ class Query(
         """
         return self._set_op(expression.union, *q)
 
-    def union_all(self, *q):
+    def union_all(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce a UNION ALL of this Query against one or more queries.
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
@@ -1742,7 +1968,7 @@ class Query(
         """
         return self._set_op(expression.union_all, *q)
 
-    def intersect(self, *q):
+    def intersect(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce an INTERSECT of this Query against one or more queries.
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
@@ -1751,7 +1977,7 @@ class Query(
         """
         return self._set_op(expression.intersect, *q)
 
-    def intersect_all(self, *q):
+    def intersect_all(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce an INTERSECT ALL of this Query against one or more queries.
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
@@ -1760,7 +1986,7 @@ class Query(
         """
         return self._set_op(expression.intersect_all, *q)
 
-    def except_(self, *q):
+    def except_(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce an EXCEPT of this Query against one or more queries.
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
@@ -1769,7 +1995,7 @@ class Query(
         """
         return self._set_op(expression.except_, *q)
 
-    def except_all(self, *q):
+    def except_all(self: SelfQuery, *q: Query[Any]) -> SelfQuery:
         """Produce an EXCEPT ALL of this Query against one or more queries.
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
@@ -2194,7 +2420,9 @@ class Query(
 
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def from_statement(self: SelfQuery, statement) -> SelfQuery:
+    def from_statement(
+        self: SelfQuery, statement: ExecutableReturnsRows
+    ) -> SelfQuery:
         """Execute the given SELECT statement and return results.
 
         This method bypasses all internal statement compilation, and the
@@ -2283,7 +2511,7 @@ class Query(
             :meth:`_query.Query.one_or_none`
 
         """
-        return self._iter().one()
+        return self._iter().one()  # type: ignore
 
     def scalar(self) -> Any:
         """Return the first element of the first result or None
@@ -2316,7 +2544,7 @@ class Query(
     def __iter__(self) -> Iterable[_T]:
         return self._iter().__iter__()
 
-    def _iter(self):
+    def _iter(self) -> Union[ScalarResult[_T], Result[_T]]:
         # new style execution.
         params = self._params
 
@@ -2837,3 +3065,7 @@ class BulkUpdate(BulkUD):
 
 class BulkDelete(BulkUD):
     """BulkUD which handles DELETEs."""
+
+
+class RowReturningQuery(Query[Row[_TP]]):
+    pass

@@ -80,7 +80,6 @@ from ..util.typing import Protocol
 from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
-    from . import roles
     from .annotation import _AnnotationDict
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
@@ -95,7 +94,6 @@ if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .elements import Label
     from .functions import Function
-    from .selectable import Alias
     from .selectable import AliasedReturnsRows
     from .selectable import CompoundSelectState
     from .selectable import CTE
@@ -386,7 +384,7 @@ class _CompilerStackEntry(_BaseCompilerStackEntry, total=False):
     need_result_map_for_nested: bool
     need_result_map_for_compound: bool
     select_0: ReturnsRows
-    insert_from_select: Select
+    insert_from_select: Select[Any]
 
 
 class ExpandedState(NamedTuple):
@@ -2834,15 +2832,31 @@ class SQLCompiler(Compiled):
                         "unique bind parameter of the same name" % name
                     )
                 elif existing._is_crud or bindparam._is_crud:
-                    raise exc.CompileError(
-                        "bindparam() name '%s' is reserved "
-                        "for automatic usage in the VALUES or SET "
-                        "clause of this "
-                        "insert/update statement.   Please use a "
-                        "name other than column name when using bindparam() "
-                        "with insert() or update() (for example, 'b_%s')."
-                        % (bindparam.key, bindparam.key)
-                    )
+                    if existing._is_crud and bindparam._is_crud:
+                        # TODO: this condition is not well understood.
+                        # see tests in test/sql/test_update.py
+                        raise exc.CompileError(
+                            "Encountered unsupported case when compiling an "
+                            "INSERT or UPDATE statement.  If this is a "
+                            "multi-table "
+                            "UPDATE statement, please provide string-named "
+                            "arguments to the "
+                            "values() method with distinct names; support for "
+                            "multi-table UPDATE statements that "
+                            "target multiple tables for UPDATE is very "
+                            "limited",
+                        )
+                    else:
+                        raise exc.CompileError(
+                            f"bindparam() name '{bindparam.key}' is reserved "
+                            "for automatic usage in the VALUES or SET "
+                            "clause of this "
+                            "insert/update statement.   Please use a "
+                            "name other than column name when using "
+                            "bindparam() "
+                            "with insert() or update() (for example, "
+                            f"'b_{bindparam.key}')."
+                        )
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
 
@@ -3881,7 +3895,7 @@ class SQLCompiler(Compiled):
         return text
 
     def _setup_select_hints(
-        self, select: Select
+        self, select: Select[Any]
     ) -> Tuple[str, _FromHintsType]:
         byfrom = dict(
             [

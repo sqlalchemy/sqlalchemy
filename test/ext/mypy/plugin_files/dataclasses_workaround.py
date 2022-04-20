@@ -66,5 +66,5 @@ class Address:
         _mypy_mapped_attrs = [id, user_id, email_address]
 
 
-stmt = select(User.name).where(User.id.in_([1, 2, 3]))
-stmt = select(Address).where(Address.email_address.contains(["foo"]))
+stmt1 = select(User.name).where(User.id.in_([1, 2, 3]))
+stmt2 = select(Address).where(Address.email_address.contains(["foo"]))

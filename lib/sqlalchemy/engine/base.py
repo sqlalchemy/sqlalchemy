@@ -18,8 +18,10 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import NoReturn
 from typing import Optional
+from typing import overload
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 from typing import Union
 
 from .interfaces import _IsolationLevel
@@ -45,12 +47,10 @@ if typing.TYPE_CHECKING:
     from . import ScalarResult
     from .interfaces import _AnyExecuteParams
     from .interfaces import _AnyMultiExecuteParams
-    from .interfaces import _AnySingleExecuteParams
     from .interfaces import _CoreAnyExecuteParams
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams
     from .interfaces import _DBAPIAnyExecuteParams
-    from .interfaces import _DBAPIMultiExecuteParams
     from .interfaces import _DBAPISingleExecuteParams
     from .interfaces import _ExecuteOptions
     from .interfaces import _ExecuteOptionsParameter
@@ -65,21 +65,21 @@ if typing.TYPE_CHECKING:
     from ..pool import PoolProxiedConnection
     from ..sql import Executable
     from ..sql._typing import _InfoType
-    from ..sql.base import SchemaVisitor
     from ..sql.compiler import Compiled
     from ..sql.ddl import ExecutableDDLElement
     from ..sql.ddl import SchemaDropper
     from ..sql.ddl import SchemaGenerator
     from ..sql.functions import FunctionElement
-    from ..sql.schema import ColumnDefault
     from ..sql.schema import DefaultGenerator
     from ..sql.schema import HasSchemaAttr
     from ..sql.schema import SchemaItem
+    from ..sql.selectable import TypedReturnsRows
 
 """Defines :class:`_engine.Connection` and :class:`_engine.Engine`.
 
 """
 
+_T = TypeVar("_T", bound=Any)
 _EMPTY_EXECUTION_OPTS: _ExecuteOptions = util.EMPTY_DICT
 NO_OPTIONS: Mapping[str, Any] = util.EMPTY_DICT
 
@@ -1142,10 +1142,31 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             self._dbapi_connection = None
         self.__can_reconnect = False
 
+    @overload
+    def scalar(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> Optional[_T]:
+        ...
+
+    @overload
     def scalar(
         self,
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> Any:
+        ...
+
+    def scalar(
+        self,
+        statement: Executable,
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
     ) -> Any:
         r"""Executes a SQL statement construct and returns a scalar object.
@@ -1170,10 +1191,31 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 execution_options or NO_OPTIONS,
             )
 
+    @overload
+    def scalars(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> ScalarResult[_T]:
+        ...
+
+    @overload
     def scalars(
         self,
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> ScalarResult[Any]:
+        ...
+
+    def scalars(
+        self,
+        statement: Executable,
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
         """Executes and returns a scalar result set, which yields scalar values
@@ -1190,14 +1232,37 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         """
 
-        return self.execute(statement, parameters, execution_options).scalars()
+        return self.execute(
+            statement, parameters, execution_options=execution_options
+        ).scalars()
+
+    @overload
+    def execute(
+        self,
+        statement: TypedReturnsRows[_T],
+        parameters: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> CursorResult[_T]:
+        ...
+
+    @overload
+    def execute(
+        self,
+        statement: Executable,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
+    ) -> CursorResult[Any]:
+        ...
 
     def execute(
         self,
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
+        *,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
 
@@ -1246,7 +1311,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         func: FunctionElement[Any],
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         """Execute a sql.FunctionElement object."""
 
         return self._execute_clauseelement(
@@ -1317,7 +1382,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         ddl: ExecutableDDLElement,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         """Execute a schema.DDL object."""
 
         execution_options = ddl._execution_options.merge_with(
@@ -1414,7 +1479,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         elem: Executable,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         """Execute a sql.ClauseElement object."""
 
         execution_options = elem._execution_options.merge_with(
@@ -1487,7 +1552,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         compiled: Compiled,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter = _EMPTY_EXECUTION_OPTS,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         """Execute a sql.Compiled object.
 
         TODO: why do we have this?   likely deprecate or remove
@@ -1537,7 +1602,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         statement: str,
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
 
@@ -1614,7 +1679,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         execution_options: _ExecuteOptions,
         *args: Any,
         **kw: Any,
-    ) -> CursorResult:
+    ) -> CursorResult[Any]:
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
 

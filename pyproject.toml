@@ -12,7 +12,6 @@ target-version = ['py37']
 
 [tool.zimports]
 black-line-length = 79
-keep-unused-type-checking = true
 
 [tool.slotscheck]
 exclude-modules = '^sqlalchemy\.testing'

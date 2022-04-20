@@ -61,7 +61,6 @@ from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util.typing import TypedDict
 
-
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _IdentityKeyType
@@ -106,12 +105,12 @@ class ORMStatementRole(roles.StatementRole):
     )
 
 
-class ORMColumnsClauseRole(roles.ColumnsClauseRole):
+class ORMColumnsClauseRole(roles.TypedColumnsClauseRole[_T]):
     __slots__ = ()
     _role_name = "ORM mapped entity, aliased entity, or Column expression"
 
 
-class ORMEntityColumnsClauseRole(ORMColumnsClauseRole):
+class ORMEntityColumnsClauseRole(ORMColumnsClauseRole[_T]):
     __slots__ = ()
     _role_name = "ORM mapped or aliased entity"
 
@@ -127,8 +126,8 @@ class ORMColumnDescription(TypedDict):
     # into "type" is a bad idea
     type: Union[Type[Any], TypeEngine[Any]]
     aliased: bool
-    expr: _ColumnsClauseArgument
-    entity: Optional[_ColumnsClauseArgument]
+    expr: _ColumnsClauseArgument[Any]
+    entity: Optional[_ColumnsClauseArgument[Any]]
 
 
 class _IntrospectsAnnotations:
@@ -282,7 +281,7 @@ class MapperProperty(
         query_entity: _MapperEntity,
         path: PathRegistry,
         mapper: Mapper[Any],
-        result: Result,
+        result: Result[Any],
         adapter: Optional[ColumnAdapter],
         populators: _PopulatorDict,
     ) -> None:
@@ -1170,7 +1169,7 @@ class LoaderStrategy:
         path: AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         mapper: Mapper[Any],
-        result: Result,
+        result: Result[Any],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:

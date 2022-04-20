@@ -38,6 +38,7 @@ from ..exc import InvalidRequestError
 from ..sql.base import SchemaEventTarget
 from ..sql.schema import SchemaConst
 from ..sql.selectable import FromClause
+from ..util.typing import Annotated
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from .descriptor_props import _CompositeAttrType
     from .interfaces import PropComparator
+    from .mapper import Mapper
     from .query import Query
     from .relationships import _LazyLoadArgumentType
     from .relationships import _ORMBackrefArgument
@@ -1849,9 +1851,27 @@ def clear_mappers():
     mapperlib._dispose_registries(mapperlib._all_registries(), False)
 
 
+# I would really like a way to get the Type[] here that shows up
+# in a different way in typing tools, however there is no current method
+# that is accepted by mypy (subclass of Type[_O] works in pylance, rejected
+# by mypy).
+AliasedType = Annotated[Type[_O], "aliased"]
+
+
 @overload
 def aliased(
-    element: _EntityType[_O],
+    element: Type[_O],
+    alias: Optional[Union[Alias, Subquery]] = None,
+    name: Optional[str] = None,
+    flat: bool = False,
+    adapt_on_names: bool = False,
+) -> AliasedType[_O]:
+    ...
+
+
+@overload
+def aliased(
+    element: Union[AliasedClass[_O], Mapper[_O], AliasedInsp[_O]],
     alias: Optional[Union[Alias, Subquery]] = None,
     name: Optional[str] = None,
     flat: bool = False,
@@ -1877,7 +1897,7 @@ def aliased(
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> Union[AliasedClass[_O], FromClause]:
+) -> Union[AliasedClass[_O], FromClause, AliasedType[_O]]:
     """Produce an alias of the given element, usually an :class:`.AliasedClass`
     instance.
 
@@ -1885,7 +1905,8 @@ def aliased(
 
         my_alias = aliased(MyClass)
 
-        session.query(MyClass, my_alias).filter(MyClass.id > my_alias.id)
+        stmt = select(MyClass, my_alias).filter(MyClass.id > my_alias.id)
+        result = session.execute(stmt)
 
     The :func:`.aliased` function is used to create an ad-hoc mapping of a
     mapped class to a new selectable.  By default, a selectable is generated
@@ -1910,6 +1931,9 @@ def aliased(
     ORM-mapped in this case.
 
     .. seealso::
+
+        :class:`.AsAliased` - a :pep:`484` typed version of
+        :func:`_orm.aliased`
 
         :ref:`tutorial_orm_entity_aliases` - in the :ref:`unified_tutorial`
 

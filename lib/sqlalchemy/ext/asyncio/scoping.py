@@ -12,10 +12,12 @@ from typing import Callable
 from typing import Iterable
 from typing import Iterator
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from .session import async_sessionmaker
@@ -37,9 +39,9 @@ if TYPE_CHECKING:
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
+    from ...engine import RowMapping
     from ...engine.interfaces import _CoreAnyExecuteParams
     from ...engine.interfaces import _CoreSingleExecuteParams
-    from ...engine.interfaces import _ExecuteOptions
     from ...engine.interfaces import _ExecuteOptionsParameter
     from ...engine.result import ScalarResult
     from ...orm._typing import _IdentityKeyType
@@ -52,6 +54,9 @@ if TYPE_CHECKING:
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateArg
+    from ...sql.selectable import TypedReturnsRows
+
+_T = TypeVar("_T", bound=Any)
 
 
 @create_proxy_methods(
@@ -480,6 +485,32 @@ class async_scoped_session:
 
         return await self._proxied.delete(instance)
 
+    @overload
+    async def execute(
+        self,
+        statement: TypedReturnsRows[_T],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> Result[_T]:
+        ...
+
+    @overload
+    async def execute(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> Result[Any]:
+        ...
+
     async def execute(
         self,
         statement: Executable,
@@ -488,7 +519,7 @@ class async_scoped_session:
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result:
+    ) -> Result[Any]:
         r"""Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -916,6 +947,30 @@ class async_scoped_session:
 
         return await self._proxied.rollback()
 
+    @overload
+    async def scalar(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[_T]:
+        ...
+
+    @overload
+    async def scalar(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Any:
+        ...
+
     async def scalar(
         self,
         statement: Executable,
@@ -946,6 +1001,30 @@ class async_scoped_session:
             bind_arguments=bind_arguments,
             **kw,
         )
+
+    @overload
+    async def scalars(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> ScalarResult[_T]:
+        ...
+
+    @overload
+    async def scalars(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> ScalarResult[Any]:
+        ...
 
     async def scalars(
         self,
@@ -984,6 +1063,19 @@ class async_scoped_session:
             **kw,
         )
 
+    @overload
+    async def stream(
+        self,
+        statement: TypedReturnsRows[_T],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncResult[_T]:
+        ...
+
+    @overload
     async def stream(
         self,
         statement: Executable,
@@ -992,7 +1084,18 @@ class async_scoped_session:
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult:
+    ) -> AsyncResult[Any]:
+        ...
+
+    async def stream(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncResult[Any]:
         r"""Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object.
 
@@ -1011,6 +1114,30 @@ class async_scoped_session:
             bind_arguments=bind_arguments,
             **kw,
         )
+
+    @overload
+    async def stream_scalars(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncScalarResult[_T]:
+        ...
+
+    @overload
+    async def stream_scalars(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncScalarResult[Any]:
+        ...
 
     async def stream_scalars(
         self,
@@ -1323,7 +1450,7 @@ class async_scoped_session:
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Row] = None,
+        row: Optional[Union[Row[Any], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.

@@ -28,6 +28,7 @@ from typing import overload
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -70,6 +71,8 @@ _RawRowType = Tuple[Any, ...]
 """represents the kind of row we get from a DBAPI cursor"""
 
 _R = TypeVar("_R", bound=_RowData)
+_T = TypeVar("_T", bound=Any)
+_TP = TypeVar("_TP", bound=Tuple[Any, ...])
 
 _InterimRowType = Union[_R, _RawRowType]
 """a catchall "anything" kind of return type that can be applied
@@ -141,7 +144,7 @@ class ResultMetaData:
 
     def _getter(
         self, key: Any, raiseerr: bool = True
-    ) -> Optional[Callable[[Row], Any]]:
+    ) -> Optional[Callable[[Row[Any]], Any]]:
 
         index = self._index_for_key(key, raiseerr)
 
@@ -270,7 +273,7 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter=_tuplefilter,
         )
 
-    def _contains(self, value: Any, row: Row) -> bool:
+    def _contains(self, value: Any, row: Row[Any]) -> bool:
         return value in row._data
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
@@ -335,7 +338,7 @@ class SimpleResultMetaData(ResultMetaData):
 
 def result_tuple(
     fields: Sequence[str], extra: Optional[Any] = None
-) -> Callable[[Iterable[Any]], Row]:
+) -> Callable[[Iterable[Any]], Row[Any]]:
     parent = SimpleResultMetaData(fields, extra)
     return functools.partial(
         Row, parent, parent._processors, parent._keymap, Row._default_key_style
@@ -355,7 +358,9 @@ SelfResultInternal = TypeVar("SelfResultInternal", bound="ResultInternal[Any]")
 
 
 class ResultInternal(InPlaceGenerative, Generic[_R]):
-    _real_result: Optional[Result] = None
+    __slots__ = ()
+
+    _real_result: Optional[Result[Any]] = None
     _generate_rows: bool = True
     _row_logging_fn: Optional[Callable[[Any], Any]]
 
@@ -367,20 +372,20 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     _source_supports_scalars: bool
 
-    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row]]:
+    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row[Any]]]:
         raise NotImplementedError()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row]]:
+    ) -> Optional[_InterimRowType[Row[Any]]]:
         raise NotImplementedError()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row]]:
+    ) -> List[_InterimRowType[Row[Any]]]:
         raise NotImplementedError()
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row]]:
+    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
         raise NotImplementedError()
 
     def _soft_close(self, hard: bool = False) -> None:
@@ -388,8 +393,10 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @HasMemoized_ro_memoized_attribute
     def _row_getter(self) -> Optional[Callable[..., _R]]:
-        real_result: Result = (
-            self._real_result if self._real_result else cast(Result, self)
+        real_result: Result[Any] = (
+            self._real_result
+            if self._real_result
+            else cast("Result[Any]", self)
         )
 
         if real_result._source_supports_scalars:
@@ -404,7 +411,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     keymap: _KeyMapType,
                     key_style: Any,
                     scalar_obj: Any,
-                ) -> Row:
+                ) -> Row[Any]:
                     return _proc(
                         metadata, processors, keymap, key_style, (scalar_obj,)
                     )
@@ -429,7 +436,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
             fixed_tf = tf
 
-            def make_row(row: _InterimRowType[Row]) -> _R:
+            def make_row(row: _InterimRowType[Row[Any]]) -> _R:
                 return _make_row_orig(fixed_tf(row))
 
         else:
@@ -447,7 +454,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if fns:
             _make_row = make_row
 
-            def make_row(row: _InterimRowType[Row]) -> _R:
+            def make_row(row: _InterimRowType[Row[Any]]) -> _R:
                 interim_row = _make_row(row)
                 for fn in fns:
                     interim_row = fn(interim_row)
@@ -465,7 +472,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def iterrows(self: Result) -> Iterator[_R]:
+            def iterrows(self: Result[Any]) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     obj: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -480,7 +487,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def iterrows(self: Result) -> Iterator[_R]:
+            def iterrows(self: Result[Any]) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     row: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -546,7 +553,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def onerow(self: Result) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Any]) -> Union[_NoRow, _R]:
                 _onerow = self._fetchone_impl
                 while True:
                     row = _onerow()
@@ -567,7 +574,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def onerow(self: Result) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Any]) -> Union[_NoRow, _R]:
                 row = self._fetchone_impl()
                 if row is None:
                     return _NO_ROW
@@ -627,7 +634,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast(Result, self)
+                        else cast("Result[Any]", self)
                     )
                     if real_result._yield_per:
                         num_required = num = real_result._yield_per
@@ -667,7 +674,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast(Result, self)
+                        else cast("Result[Any]", self)
                     )
                     num = real_result._yield_per
 
@@ -799,7 +806,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         self: SelfResultInternal, indexes: Sequence[_KeyIndexType]
     ) -> SelfResultInternal:
         real_result = (
-            self._real_result if self._real_result else cast(Result, self)
+            self._real_result
+            if self._real_result
+            else cast("Result[Any]", self)
         )
 
         if not real_result._source_supports_scalars or len(indexes) != 1:
@@ -817,7 +826,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result is not None
-            else cast(Result, self)
+            else cast("Result[Any]", self)
         )
 
         if not strategy and self._metadata._unique_filters:
@@ -836,6 +845,8 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
 
 class _WithKeys:
+    __slots__ = ()
+
     _metadata: ResultMetaData
 
     # used mainly to share documentation on the keys method.
@@ -859,10 +870,10 @@ class _WithKeys:
         return self._metadata.keys
 
 
-SelfResult = TypeVar("SelfResult", bound="Result")
+SelfResult = TypeVar("SelfResult", bound="Result[Any]")
 
 
-class Result(_WithKeys, ResultInternal[Row]):
+class Result(_WithKeys, ResultInternal[Row[_TP]]):
     """Represent a set of database results.
 
     .. versionadded:: 1.4  The :class:`.Result` object provides a completely
@@ -887,7 +898,9 @@ class Result(_WithKeys, ResultInternal[Row]):
 
     """
 
-    _row_logging_fn: Optional[Callable[[Row], Row]] = None
+    __slots__ = ("_metadata", "__dict__")
+
+    _row_logging_fn: Optional[Callable[[Row[Any]], Row[Any]]] = None
 
     _source_supports_scalars: bool = False
 
@@ -1011,6 +1024,15 @@ class Result(_WithKeys, ResultInternal[Row]):
         appropriate :class:`.ColumnElement` objects which correspond to
         a given statement construct.
 
+        .. versionchanged:: 2.0  Due to a bug in 1.4, the
+           :meth:`.Result.columns` method had an incorrect behavior where
+           calling upon the method with just one index would cause the
+           :class:`.Result` object to yield scalar values rather than
+           :class:`.Row` objects.   In version 2.0, this behavior has been
+           corrected such that calling upon :meth:`.Result.columns` with
+           a single index will produce a :class:`.Result` object that continues
+           to yield :class:`.Row` objects, which include only a single column.
+
         E.g.::
 
             statement = select(table.c.x, table.c.y, table.c.z)
@@ -1040,6 +1062,20 @@ class Result(_WithKeys, ResultInternal[Row]):
         """
         return self._column_slices(col_expressions)
 
+    @overload
+    def scalars(self: Result[Tuple[_T]]) -> ScalarResult[_T]:
+        ...
+
+    @overload
+    def scalars(
+        self: Result[Tuple[_T]], index: Literal[0]
+    ) -> ScalarResult[_T]:
+        ...
+
+    @overload
+    def scalars(self, index: _KeyIndexType = 0) -> ScalarResult[Any]:
+        ...
+
     def scalars(self, index: _KeyIndexType = 0) -> ScalarResult[Any]:
         """Return a :class:`_result.ScalarResult` filtering object which
         will return single elements rather than :class:`_row.Row` objects.
@@ -1067,7 +1103,7 @@ class Result(_WithKeys, ResultInternal[Row]):
 
     def _getter(
         self, key: _KeyIndexType, raiseerr: bool = True
-    ) -> Optional[Callable[[Row], Any]]:
+    ) -> Optional[Callable[[Row[Any]], Any]]:
         """return a callable that will retrieve the given key from a
         :class:`.Row`.
 
@@ -1105,6 +1141,43 @@ class Result(_WithKeys, ResultInternal[Row]):
 
         return MappingResult(self)
 
+    @property
+    def t(self) -> TupleResult[_TP]:
+        """Apply a "typed tuple" typing filter to returned rows.
+
+        The :attr:`.Result.t` attribute is a synonym for calling the
+        :meth:`.Result.tuples` method.
+
+        .. versionadded:: 2.0
+
+        """
+        return self  # type: ignore
+
+    def tuples(self) -> TupleResult[_TP]:
+        """Apply a "typed tuple" typing filter to returned rows.
+
+        This method returns the same :class:`.Result` object at runtime,
+        however annotates as returning a :class:`.TupleResult` object
+        that will indicate to :pep:`484` typing tools that plain typed
+        ``Tuple`` instances are returned rather than rows.  This allows
+        tuple unpacking and ``__getitem__`` access of :class:`.Row` objects
+        to by typed, for those cases where the statement invoked itself
+        included typing information.
+
+        .. versionadded:: 2.0
+
+        :return: the :class:`_result.TupleResult` type at typing time.
+
+        .. seealso::
+
+            :attr:`.Result.t` - shorter synonym
+
+            :attr:`.Row.t` - :class:`.Row` version
+
+        """
+
+        return self  # type: ignore
+
     def _raw_row_iterator(self) -> Iterator[_RowData]:
         """Return a safe iterator that yields raw row data.
 
@@ -1114,13 +1187,15 @@ class Result(_WithKeys, ResultInternal[Row]):
         """
         raise NotImplementedError()
 
-    def __iter__(self) -> Iterator[Row]:
+    def __iter__(self) -> Iterator[Row[_TP]]:
         return self._iter_impl()
 
-    def __next__(self) -> Row:
+    def __next__(self) -> Row[_TP]:
         return self._next_impl()
 
-    def partitions(self, size: Optional[int] = None) -> Iterator[List[Row]]:
+    def partitions(
+        self, size: Optional[int] = None
+    ) -> Iterator[Sequence[Row[_TP]]]:
         """Iterate through sub-lists of rows of the size given.
 
         Each list will be of the size given, excluding the last list to
@@ -1158,12 +1233,12 @@ class Result(_WithKeys, ResultInternal[Row]):
             else:
                 break
 
-    def fetchall(self) -> List[Row]:
+    def fetchall(self) -> Sequence[Row[_TP]]:
         """A synonym for the :meth:`_engine.Result.all` method."""
 
         return self._allrows()
 
-    def fetchone(self) -> Optional[Row]:
+    def fetchone(self) -> Optional[Row[_TP]]:
         """Fetch one row.
 
         When all rows are exhausted, returns None.
@@ -1185,7 +1260,7 @@ class Result(_WithKeys, ResultInternal[Row]):
         else:
             return row
 
-    def fetchmany(self, size: Optional[int] = None) -> List[Row]:
+    def fetchmany(self, size: Optional[int] = None) -> Sequence[Row[_TP]]:
         """Fetch many rows.
 
         When all rows are exhausted, returns an empty list.
@@ -1202,7 +1277,7 @@ class Result(_WithKeys, ResultInternal[Row]):
 
         return self._manyrow_getter(self, size)
 
-    def all(self) -> List[Row]:
+    def all(self) -> Sequence[Row[_TP]]:
         """Return all rows in a list.
 
         Closes the result set after invocation.   Subsequent invocations
@@ -1216,7 +1291,7 @@ class Result(_WithKeys, ResultInternal[Row]):
 
         return self._allrows()
 
-    def first(self) -> Optional[Row]:
+    def first(self) -> Optional[Row[_TP]]:
         """Fetch the first row or None if no row is present.
 
         Closes the result set and discards remaining rows.
@@ -1252,7 +1327,7 @@ class Result(_WithKeys, ResultInternal[Row]):
             raise_for_second_row=False, raise_for_none=False, scalar=False
         )
 
-    def one_or_none(self) -> Optional[Row]:
+    def one_or_none(self) -> Optional[Row[_TP]]:
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the result has no rows.
@@ -1276,6 +1351,14 @@ class Result(_WithKeys, ResultInternal[Row]):
             raise_for_second_row=True, raise_for_none=False, scalar=False
         )
 
+    @overload
+    def scalar_one(self: Result[Tuple[_T]]) -> _T:
+        ...
+
+    @overload
+    def scalar_one(self) -> Any:
+        ...
+
     def scalar_one(self) -> Any:
         """Return exactly one scalar result or raise an exception.
 
@@ -1292,6 +1375,14 @@ class Result(_WithKeys, ResultInternal[Row]):
         return self._only_one_row(
             raise_for_second_row=True, raise_for_none=True, scalar=True
         )
+
+    @overload
+    def scalar_one_or_none(self: Result[Tuple[_T]]) -> Optional[_T]:
+        ...
+
+    @overload
+    def scalar_one_or_none(self) -> Optional[Any]:
+        ...
 
     def scalar_one_or_none(self) -> Optional[Any]:
         """Return exactly one or no scalar result.
@@ -1310,7 +1401,7 @@ class Result(_WithKeys, ResultInternal[Row]):
             raise_for_second_row=True, raise_for_none=False, scalar=True
         )
 
-    def one(self) -> Row:
+    def one(self) -> Row[_TP]:
         """Return exactly one row or raise an exception.
 
         Raises :class:`.NoResultFound` if the result returns no
@@ -1341,6 +1432,14 @@ class Result(_WithKeys, ResultInternal[Row]):
             raise_for_second_row=True, raise_for_none=True, scalar=False
         )
 
+    @overload
+    def scalar(self: Result[Tuple[_T]]) -> Optional[_T]:
+        ...
+
+    @overload
+    def scalar(self) -> Any:
+        ...
+
     def scalar(self) -> Any:
         """Fetch the first column of the first row, and close the result set.
 
@@ -1359,7 +1458,7 @@ class Result(_WithKeys, ResultInternal[Row]):
             raise_for_second_row=False, raise_for_none=False, scalar=True
         )
 
-    def freeze(self) -> FrozenResult:
+    def freeze(self) -> FrozenResult[_TP]:
         """Return a callable object that will produce copies of this
         :class:`.Result` when invoked.
 
@@ -1382,7 +1481,7 @@ class Result(_WithKeys, ResultInternal[Row]):
 
         return FrozenResult(self)
 
-    def merge(self, *others: Result) -> MergedResult:
+    def merge(self, *others: Result[Any]) -> MergedResult[_TP]:
         """Merge this :class:`.Result` with other compatible result
         objects.
 
@@ -1405,9 +1504,17 @@ class FilterResult(ResultInternal[_R]):
 
     """
 
-    _post_creational_filter: Optional[Callable[[Any], Any]] = None
+    __slots__ = (
+        "_real_result",
+        "_post_creational_filter",
+        "_metadata",
+        "_unique_filter_state",
+        "__dict__",
+    )
 
-    _real_result: Result
+    _post_creational_filter: Optional[Callable[[Any], Any]]
+
+    _real_result: Result[Any]
 
     def _soft_close(self, hard: bool = False) -> None:
         self._real_result._soft_close(hard=hard)
@@ -1416,20 +1523,20 @@ class FilterResult(ResultInternal[_R]):
     def _attributes(self) -> Dict[Any, Any]:
         return self._real_result._attributes
 
-    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row]]:
+    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row[Any]]]:
         return self._real_result._fetchiter_impl()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row]]:
+    ) -> Optional[_InterimRowType[Row[Any]]]:
         return self._real_result._fetchone_impl(hard_close=hard_close)
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row]]:
+    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
         return self._real_result._fetchall_impl()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row]]:
+    ) -> List[_InterimRowType[Row[Any]]]:
         return self._real_result._fetchmany_impl(size=size)
 
 
@@ -1452,11 +1559,13 @@ class ScalarResult(FilterResult[_R]):
 
     """
 
+    __slots__ = ()
+
     _generate_rows = False
 
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
-    def __init__(self, real_result: Result, index: _KeyIndexType):
+    def __init__(self, real_result: Result[Any], index: _KeyIndexType):
         self._real_result = real_result
 
         if real_result._source_supports_scalars:
@@ -1480,7 +1589,7 @@ class ScalarResult(FilterResult[_R]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def partitions(self, size: Optional[int] = None) -> Iterator[List[_R]]:
+    def partitions(self, size: Optional[int] = None) -> Iterator[Sequence[_R]]:
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_result.Result.partitions` except that
@@ -1498,12 +1607,12 @@ class ScalarResult(FilterResult[_R]):
             else:
                 break
 
-    def fetchall(self) -> List[_R]:
+    def fetchall(self) -> Sequence[_R]:
         """A synonym for the :meth:`_engine.ScalarResult.all` method."""
 
         return self._allrows()
 
-    def fetchmany(self, size: Optional[int] = None) -> List[_R]:
+    def fetchmany(self, size: Optional[int] = None) -> Sequence[_R]:
         """Fetch many objects.
 
         Equivalent to :meth:`_result.Result.fetchmany` except that
@@ -1513,7 +1622,7 @@ class ScalarResult(FilterResult[_R]):
         """
         return self._manyrow_getter(self, size)
 
-    def all(self) -> List[_R]:
+    def all(self) -> Sequence[_R]:
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_result.Result.all` except that
@@ -1567,6 +1676,177 @@ class ScalarResult(FilterResult[_R]):
         )
 
 
+SelfTupleResult = TypeVar("SelfTupleResult", bound="TupleResult[Any]")
+
+
+class TupleResult(FilterResult[_R], util.TypingOnly):
+    """a :class:`.Result` that's typed as returning plain Python tuples
+    instead of rows.
+
+    Since :class:`.Row` acts like a tuple in every way already,
+    this class is a typing only class, regular :class:`.Result` is still
+    used at runtime.
+
+    """
+
+    __slots__ = ()
+
+    if TYPE_CHECKING:
+
+        def partitions(
+            self, size: Optional[int] = None
+        ) -> Iterator[Sequence[_R]]:
+            """Iterate through sub-lists of elements of the size given.
+
+            Equivalent to :meth:`_result.Result.partitions` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+            """
+            ...
+
+        def fetchone(self) -> Optional[_R]:
+            """Fetch one tuple.
+
+            Equivalent to :meth:`_result.Result.fetchone` except that
+            tuple values, rather than :class:`_result.Row`
+            objects, are returned.
+
+            """
+            ...
+
+        def fetchall(self) -> Sequence[_R]:
+            """A synonym for the :meth:`_engine.ScalarResult.all` method."""
+            ...
+
+        def fetchmany(self, size: Optional[int] = None) -> Sequence[_R]:
+            """Fetch many objects.
+
+            Equivalent to :meth:`_result.Result.fetchmany` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+            """
+            ...
+
+        def all(self) -> Sequence[_R]:  # noqa: A001
+            """Return all scalar values in a list.
+
+            Equivalent to :meth:`_result.Result.all` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+            """
+            ...
+
+        def __iter__(self) -> Iterator[_R]:
+            ...
+
+        def __next__(self) -> _R:
+            ...
+
+        def first(self) -> Optional[_R]:
+            """Fetch the first object or None if no object is present.
+
+            Equivalent to :meth:`_result.Result.first` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+
+            """
+            ...
+
+        def one_or_none(self) -> Optional[_R]:
+            """Return at most one object or raise an exception.
+
+            Equivalent to :meth:`_result.Result.one_or_none` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+            """
+            ...
+
+        def one(self) -> _R:
+            """Return exactly one object or raise an exception.
+
+            Equivalent to :meth:`_result.Result.one` except that
+            tuple values, rather than :class:`_result.Row` objects,
+            are returned.
+
+            """
+            ...
+
+        @overload
+        def scalar_one(self: TupleResult[Tuple[_T]]) -> _T:
+            ...
+
+        @overload
+        def scalar_one(self) -> Any:
+            ...
+
+        def scalar_one(self) -> Any:
+            """Return exactly one scalar result or raise an exception.
+
+            This is equivalent to calling :meth:`.Result.scalars` and then
+            :meth:`.Result.one`.
+
+            .. seealso::
+
+                :meth:`.Result.one`
+
+                :meth:`.Result.scalars`
+
+            """
+            ...
+
+        @overload
+        def scalar_one_or_none(self: TupleResult[Tuple[_T]]) -> Optional[_T]:
+            ...
+
+        @overload
+        def scalar_one_or_none(self) -> Optional[Any]:
+            ...
+
+        def scalar_one_or_none(self) -> Optional[Any]:
+            """Return exactly one or no scalar result.
+
+            This is equivalent to calling :meth:`.Result.scalars` and then
+            :meth:`.Result.one_or_none`.
+
+            .. seealso::
+
+                :meth:`.Result.one_or_none`
+
+                :meth:`.Result.scalars`
+
+            """
+            ...
+
+        @overload
+        def scalar(self: TupleResult[Tuple[_T]]) -> Optional[_T]:
+            ...
+
+        @overload
+        def scalar(self) -> Any:
+            ...
+
+        def scalar(self) -> Any:
+            """Fetch the first column of the first row, and close the result set.
+
+            Returns None if there are no rows to fetch.
+
+            No validation is performed to test if additional rows remain.
+
+            After calling this method, the object is fully closed,
+            e.g. the :meth:`_engine.CursorResult.close`
+            method will have been called.
+
+            :return: a Python scalar value , or None if no rows remain.
+
+            """
+            ...
+
+
 SelfMappingResult = TypeVar("SelfMappingResult", bound="MappingResult")
 
 
@@ -1579,11 +1859,13 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
     """
 
+    __slots__ = ()
+
     _generate_rows = True
 
     _post_creational_filter = operator.attrgetter("_mapping")
 
-    def __init__(self, result: Result):
+    def __init__(self, result: Result[Any]):
         self._real_result = result
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
@@ -1610,7 +1892,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
     def partitions(
         self, size: Optional[int] = None
-    ) -> Iterator[List[RowMapping]]:
+    ) -> Iterator[Sequence[RowMapping]]:
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_result.Result.partitions` except that
@@ -1628,7 +1910,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
             else:
                 break
 
-    def fetchall(self) -> List[RowMapping]:
+    def fetchall(self) -> Sequence[RowMapping]:
         """A synonym for the :meth:`_engine.MappingResult.all` method."""
 
         return self._allrows()
@@ -1648,7 +1930,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         else:
             return row
 
-    def fetchmany(self, size: Optional[int] = None) -> List[RowMapping]:
+    def fetchmany(self, size: Optional[int] = None) -> Sequence[RowMapping]:
         """Fetch many objects.
 
         Equivalent to :meth:`_result.Result.fetchmany` except that
@@ -1659,7 +1941,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
         return self._manyrow_getter(self, size)
 
-    def all(self) -> List[RowMapping]:
+    def all(self) -> Sequence[RowMapping]:
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_result.Result.all` except that
@@ -1714,7 +1996,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         )
 
 
-class FrozenResult:
+class FrozenResult(Generic[_TP]):
     """Represents a :class:`.Result` object in a "frozen" state suitable
     for caching.
 
@@ -1755,7 +2037,7 @@ class FrozenResult:
 
     data: Sequence[Any]
 
-    def __init__(self, result: Result):
+    def __init__(self, result: Result[_TP]):
         self.metadata = result._metadata._for_freeze()
         self._source_supports_scalars = result._source_supports_scalars
         self._attributes = result._attributes
@@ -1771,7 +2053,9 @@ class FrozenResult:
         else:
             return [list(row) for row in self.data]
 
-    def with_new_rows(self, tuple_data: Sequence[Row]) -> FrozenResult:
+    def with_new_rows(
+        self, tuple_data: Sequence[Row[_TP]]
+    ) -> FrozenResult[_TP]:
         fr = FrozenResult.__new__(FrozenResult)
         fr.metadata = self.metadata
         fr._attributes = self._attributes
@@ -1783,14 +2067,16 @@ class FrozenResult:
             fr.data = tuple_data
         return fr
 
-    def __call__(self) -> Result:
-        result = IteratorResult(self.metadata, iter(self.data))
+    def __call__(self) -> Result[_TP]:
+        result: IteratorResult[_TP] = IteratorResult(
+            self.metadata, iter(self.data)
+        )
         result._attributes = self._attributes
         result._source_supports_scalars = self._source_supports_scalars
         return result
 
 
-class IteratorResult(Result):
+class IteratorResult(Result[_TP]):
     """A :class:`.Result` that gets data from a Python iterator of
     :class:`.Row` objects or similar row-like data.
 
@@ -1833,7 +2119,7 @@ class IteratorResult(Result):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row]]:
+    ) -> Optional[_InterimRowType[Row[Any]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -1844,7 +2130,7 @@ class IteratorResult(Result):
         else:
             return row
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row]]:
+    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
         if self._hard_closed:
             self._raise_hard_closed()
         try:
@@ -1854,23 +2140,23 @@ class IteratorResult(Result):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row]]:
+    ) -> List[_InterimRowType[Row[Any]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
         return list(itertools.islice(self.iterator, 0, size))
 
 
-def null_result() -> IteratorResult:
+def null_result() -> IteratorResult[Any]:
     return IteratorResult(SimpleResultMetaData([]), iter([]))
 
 
 SelfChunkedIteratorResult = TypeVar(
-    "SelfChunkedIteratorResult", bound="ChunkedIteratorResult"
+    "SelfChunkedIteratorResult", bound="ChunkedIteratorResult[Any]"
 )
 
 
-class ChunkedIteratorResult(IteratorResult):
+class ChunkedIteratorResult(IteratorResult[_TP]):
     """An :class:`.IteratorResult` that works from an iterator-producing callable.
 
     The given ``chunks`` argument is a function that is given a number of rows
@@ -1922,13 +2208,13 @@ class ChunkedIteratorResult(IteratorResult):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row]]:
+    ) -> List[_InterimRowType[Row[Any]]]:
         if self.dynamic_yield_per:
             self.iterator = itertools.chain.from_iterable(self.chunks(size))
         return super()._fetchmany_impl(size=size)
 
 
-class MergedResult(IteratorResult):
+class MergedResult(IteratorResult[_TP]):
     """A :class:`_engine.Result` that is merged from any number of
     :class:`_engine.Result` objects.
 
@@ -1942,7 +2228,7 @@ class MergedResult(IteratorResult):
     rowcount: Optional[int]
 
     def __init__(
-        self, cursor_metadata: ResultMetaData, results: Sequence[Result]
+        self, cursor_metadata: ResultMetaData, results: Sequence[Result[_TP]]
     ):
         self._results = results
         super(MergedResult, self).__init__(

@@ -62,10 +62,10 @@ if TYPE_CHECKING:
     from . import coercions
     from . import elements
     from . import type_api
-    from ._typing import _ColumnsClauseArgument
     from .elements import BindParameter
-    from .elements import ColumnClause
+    from .elements import ColumnClause  # noqa
     from .elements import ColumnElement
+    from .elements import KeyedColumnElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .elements import TextClause
@@ -74,7 +74,6 @@ if TYPE_CHECKING:
     from .selectable import FromClause
     from ..engine import Connection
     from ..engine import CursorResult
-    from ..engine import Result
     from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import _ExecuteOptions
@@ -704,8 +703,11 @@ class InPlaceGenerative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator that mutates in place."""
 
+    __slots__ = ()
+
     def _generate(self):
         skip = self._memoized_keys
+        # note __dict__ needs to be in __slots__ if this is used
         for k in skip:
             self.__dict__.pop(k, None)
         return self
@@ -937,7 +939,7 @@ class ExecutableOption(HasCopyInternals):
 SelfExecutable = TypeVar("SelfExecutable", bound="Executable")
 
 
-class Executable(roles.StatementRole, Generative):
+class Executable(roles.StatementRole):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
@@ -994,7 +996,7 @@ class Executable(roles.StatementRole, Generative):
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
             execution_options: _ExecuteOptionsParameter,
-        ) -> CursorResult:
+        ) -> CursorResult[Any]:
             ...
 
         def _execute_on_scalar(
@@ -1253,7 +1255,7 @@ class SchemaVisitor(ClauseVisitor):
 _COLKEY = TypeVar("_COLKEY", Union[None, str], str)
 
 _COL_co = TypeVar("_COL_co", bound="ColumnElement[Any]", covariant=True)
-_COL = TypeVar("_COL", bound="ColumnElement[Any]")
+_COL = TypeVar("_COL", bound="KeyedColumnElement[Any]")
 
 
 class ColumnCollection(Generic[_COLKEY, _COL_co]):
@@ -1505,6 +1507,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     ) -> None:
         """populate from an iterator of (key, column)"""
         cols = list(iter_)
+
         self._collection[:] = cols
         self._colset.update(c for k, c in self._collection)
         self._index.update(

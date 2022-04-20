@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Generic
-from typing import Iterable
-from typing import List
 from typing import Optional
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -19,12 +17,7 @@ from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _PropagateAttrsType
-    from .base import _EntityNamespace
-    from .base import ColumnCollection
-    from .base import ReadOnlyColumnCollection
-    from .elements import ColumnClause
     from .elements import Label
-    from .elements import NamedColumn
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import Subquery
@@ -108,11 +101,19 @@ class TruncatedLabelRole(StringRole, SQLRole):
 
 class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     __slots__ = ()
-    _role_name = "Column expression or FROM clause"
+    _role_name = (
+        "Column expression, FROM clause, or other columns clause element"
+    )
 
     @property
     def _select_iterable(self) -> _SelectIterable:
         raise NotImplementedError()
+
+
+class TypedColumnsClauseRole(Generic[_T], SQLRole):
+    """element-typed form of ColumnsClauseRole"""
+
+    __slots__ = ()
 
 
 class LimitOffsetRole(SQLRole):
@@ -161,7 +162,7 @@ class WhereHavingRole(OnClauseRole):
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
-class ExpressionElementRole(Generic[_T], SQLRole):
+class ExpressionElementRole(TypedColumnsClauseRole[_T]):
     # note when using generics for ExpressionElementRole,
     # the generic type needs to be in
     # sqlalchemy.sql.coercions._impl_lookup mapping also.
@@ -212,38 +213,10 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
 
     named_with_column: bool
 
-    if TYPE_CHECKING:
-
-        @util.ro_non_memoized_property
-        def c(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
-            ...
-
-        @util.ro_non_memoized_property
-        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
-            ...
-
-        @util.ro_non_memoized_property
-        def entity_namespace(self) -> _EntityNamespace:
-            ...
-
-        @util.ro_non_memoized_property
-        def _hide_froms(self) -> Iterable[FromClause]:
-            ...
-
-        @util.ro_non_memoized_property
-        def _from_objects(self) -> List[FromClause]:
-            ...
-
 
 class StrictFromClauseRole(FromClauseRole):
     __slots__ = ()
     # does not allow text() or select() objects
-
-    if TYPE_CHECKING:
-
-        @util.ro_non_memoized_property
-        def description(self) -> str:
-            ...
 
 
 class AnonymizedFromClauseRole(StrictFromClauseRole):
@@ -316,16 +289,6 @@ class DMLRole(StatementRole):
 class DMLTableRole(FromClauseRole):
     __slots__ = ()
     _role_name = "subject table for an INSERT, UPDATE or DELETE"
-
-    if TYPE_CHECKING:
-
-        @util.ro_non_memoized_property
-        def primary_key(self) -> Iterable[NamedColumn[Any]]:
-            ...
-
-        @util.ro_non_memoized_property
-        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
-            ...
 
 
 class DMLColumnRole(SQLRole):

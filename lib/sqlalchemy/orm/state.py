@@ -656,13 +656,13 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     @classmethod
     def _instance_level_callable_processor(
         cls, manager: ClassManager[_O], fn: _LoaderCallable, key: Any
-    ) -> Callable[[InstanceState[_O], _InstanceDict, Row], None]:
+    ) -> Callable[[InstanceState[_O], _InstanceDict, Row[Any]], None]:
         impl = manager[key].impl
         if is_collection_impl(impl):
             fixed_impl = impl
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row
+                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -674,7 +674,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         else:
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row
+                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}

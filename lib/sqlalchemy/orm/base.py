@@ -30,6 +30,7 @@ from ._typing import insp_is_mapper
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
+from ..sql import roles
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
 from ..util.langhelpers import TypingOnly
@@ -483,19 +484,6 @@ def _inspect_mapped_class(
         return mapper
 
 
-@inspection._inspects(type)
-def _inspect_mc(class_: Type[_O]) -> Optional[Mapper[_O]]:
-    try:
-        class_manager = opt_manager_of_class(class_)
-        if class_manager is None or not class_manager.is_mapped:
-            return None
-        mapper = class_manager.mapper
-    except exc.NO_STATE:
-        return None
-    else:
-        return mapper
-
-
 def _parse_mapper_argument(arg: Union[Mapper[_O], Type[_O]]) -> Mapper[_O]:
     insp = inspection.inspect(arg, raiseerr=False)
     if insp_is_mapper(insp):
@@ -691,7 +679,7 @@ class ORMDescriptor(Generic[_T], TypingOnly):
             ...
 
 
-class Mapped(ORMDescriptor[_T], TypingOnly):
+class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
     """Represent an ORM mapped attribute on a mapped class.
 
     This class represents the complete descriptor interface for any class

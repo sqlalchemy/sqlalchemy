@@ -276,6 +276,13 @@ class ResultTest(fixtures.TestBase):
         eq_(m1.fetchone(), {"a": 1, "b": 1, "c": 1})
         eq_(r1.fetchone(), (2, 1, 2))
 
+    def test_tuples_plus_base(self):
+        r1 = self._fixture()
+
+        t1 = r1.tuples()
+        eq_(t1.fetchone(), (1, 1, 1))
+        eq_(r1.fetchone(), (2, 1, 2))
+
     def test_scalar_plus_base(self):
         r1 = self._fixture()
 

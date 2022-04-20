@@ -24,6 +24,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from .result import MergedResult
@@ -55,10 +56,11 @@ if typing.TYPE_CHECKING:
     from .interfaces import ExecutionContext
     from .result import _KeyIndexType
     from .result import _KeyMapRecType
-    from .result import _KeyMapType
     from .result import _KeyType
     from .result import _ProcessorsType
     from ..sql.type_api import _ResultProcessorType
+
+_T = TypeVar("_T", bound=Any)
 
 # metadata entry tuple indexes.
 # using raw tuple is faster than namedtuple.
@@ -214,7 +216,9 @@ class CursorResultMetaData(ResultMetaData):
         return md
 
     def __init__(
-        self, parent: CursorResult, cursor_description: _DBAPICursorDescription
+        self,
+        parent: CursorResult[Any],
+        cursor_description: _DBAPICursorDescription,
     ):
         context = parent.context
         self._tuplefilter = None
@@ -1158,7 +1162,7 @@ class _NoResultMetaData(ResultMetaData):
 _NO_RESULT_METADATA = _NoResultMetaData()
 
 
-class CursorResult(Result):
+class CursorResult(Result[_T]):
     """A Result that is representing state from a DBAPI cursor.
 
     .. versionchanged:: 1.4  The :class:`.CursorResult``
@@ -1178,6 +1182,15 @@ class CursorResult(Result):
         :class:`_engine.CursorResult` and :class:`.Row` objects.
 
     """
+
+    __slots__ = (
+        "context",
+        "dialect",
+        "cursor",
+        "cursor_strategy",
+        "_echo",
+        "connection",
+    )
 
     _metadata: Union[CursorResultMetaData, _NoResultMetaData]
     _no_result_metadata = _NO_RESULT_METADATA
@@ -1231,7 +1244,6 @@ class CursorResult(Result):
                 make_row = _make_row_2
             else:
                 make_row = _make_row
-
             self._set_memoized_attribute("_row_getter", make_row)
 
         else:
@@ -1726,12 +1738,12 @@ class CursorResult(Result):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
-    def merge(self, *others: Result) -> MergedResult:
+    def merge(self, *others: Result[Any]) -> MergedResult[Any]:
         merged_result = super().merge(*others)
         setup_rowcounts = not self._metadata.returns_rows
         if setup_rowcounts:
             merged_result.rowcount = sum(
-                cast(CursorResult, result).rowcount
+                cast("CursorResult[Any]", result).rowcount
                 for result in (self,) + others
             )
         return merged_result

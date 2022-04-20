@@ -40,32 +40,32 @@ if typing.TYPE_CHECKING:
     # as far as if this is ColumnElement, BinaryElement, SQLCoreOperations,
     # that might change.  main thing is it's SomeSQLColThing[bool] and
     # not 'bool' or 'Any'.
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[builtins.bool\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool\]
     reveal_type(expr1)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnClause\[builtins.str.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnClause\[builtins.str.?\]
     reveal_type(c1)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnClause\[builtins.int.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnClause\[builtins.int.?\]
     reveal_type(c2)
 
-    # EXPECTED_TYPE: sqlalchemy..*BinaryExpression\[builtins.bool\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*BinaryExpression\[builtins.bool\]
     reveal_type(expr2)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.float, decimal.Decimal\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.float, decimal.Decimal\]\]
     reveal_type(expr3)
 
-    # EXPECTED_TYPE: sqlalchemy..*UnaryExpression\[builtins.int.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*UnaryExpression\[builtins.int.?\]
     reveal_type(expr4)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
     reveal_type(expr5)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
     reveal_type(expr6)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[builtins.str\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.str\]
     reveal_type(expr7)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[builtins.int.?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.int.?\]
     reveal_type(expr8)

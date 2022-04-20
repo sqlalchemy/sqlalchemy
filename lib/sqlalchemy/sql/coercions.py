@@ -29,6 +29,7 @@ from typing import Union
 from . import operators
 from . import roles
 from . import visitors
+from ._typing import is_from_clause
 from .base import ExecutableOption
 from .base import Options
 from .cache_key import HasCacheKey
@@ -38,25 +39,18 @@ from .. import inspection
 from .. import util
 from ..util.typing import Literal
 
-if not typing.TYPE_CHECKING:
-    elements = None
-    lambdas = None
-    schema = None
-    selectable = None
-    traversals = None
-
 if typing.TYPE_CHECKING:
     from . import elements
     from . import lambdas
     from . import schema
     from . import selectable
-    from . import traversals
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnsClauseArgument
     from ._typing import _DDLColumnArgument
     from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
     from .dml import _DMLTableElement
+    from .elements import BindParameter
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
@@ -64,9 +58,7 @@ if typing.TYPE_CHECKING:
     from .elements import SQLCoreOperations
     from .schema import Column
     from .selectable import _ColumnsClauseElement
-    from .selectable import _JoinTargetElement
     from .selectable import _JoinTargetProtocol
-    from .selectable import _OnClauseElement
     from .selectable import FromClause
     from .selectable import HasCTE
     from .selectable import SelectBase
@@ -165,6 +157,15 @@ def expect(
     element: Any,
     **kw: Any,
 ) -> str:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.LiteralValueRole],
+    element: Any,
+    **kw: Any,
+) -> BindParameter[Any]:
     ...
 
 
@@ -272,7 +273,7 @@ def expect(
 @overload
 def expect(
     role: Type[roles.ColumnsClauseRole],
-    element: _ColumnsClauseArgument,
+    element: _ColumnsClauseArgument[Any],
     **kw: Any,
 ) -> _ColumnsClauseElement:
     ...
@@ -933,7 +934,7 @@ class GroupByImpl(ByOfImpl, RoleImpl):
         argname: Optional[str] = None,
         **kw: Any,
     ) -> Any:
-        if isinstance(resolved, roles.StrictFromClauseRole):
+        if is_from_clause(resolved):
             return elements.ClauseList(*resolved.c)
         else:
             return resolved

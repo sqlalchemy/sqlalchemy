@@ -186,6 +186,14 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    def test_single_entity_tuples(self):
+        User = self.classes.User
+        query = fixture_session().query(User).tuples()
+        is_false(query.is_single_entity)
+        row = query.first()
+        assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
+
     def test_multiple_entity_false(self):
         User = self.classes.User
         query = (
@@ -199,6 +207,14 @@ class OnlyReturnTuplesTest(QueryTest):
     def test_multiple_entity_true(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).only_return_tuples(True)
+        is_false(query.is_single_entity)
+        row = query.first()
+        assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
+
+    def test_multiple_entity_true(self):
+        User = self.classes.User
+        query = fixture_session().query(User.id, User).tuples()
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
