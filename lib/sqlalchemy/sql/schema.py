@@ -1120,9 +1120,9 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     @property
-    def _system_versioning_period(self) -> Optional[Period]:
+    def _system_versioning_period(self) -> Optional[SystemTimePeriod]:
         """Helper method to return table's SV period."""
-        return self.periods.get("SYSTEM_TIME")
+        return self.periods.get(SystemTimePeriod._period_name)
 
     @util.deprecated(
         "1.4",
@@ -5770,7 +5770,11 @@ class Period(SchemaItem):
     def key(self) -> str:
         return self.name
 
-    def _get_and_validate_column(self, table: Table, column) -> Column:
+    def _get_and_validate_column(
+        self, table: Table, column: Union[str, Column]
+    ) -> Column:
+        """Accept a string or Column object, validate it is in metadata and
+        return the Table object."""
         if isinstance(column, Column):
             if column.table is not table:
                 raise exc.ArgumentError(
@@ -5833,10 +5837,14 @@ class SystemTimePeriod(Period):
         :ref:`temporal_ddl`
     """
 
+    # Allow for overriding for e.g. oracle
+    _period_name = "SYSTEM_TIME"
+
     def __init__(
         self,
-        start: _DDLColumnArgument = None,
-        end: _DDLColumnArgument = None,
+        start: Optional[_DDLColumnArgument] = None,
+        end: Optional[_DDLColumnArgument] = None,
+        history_table: Optional[Union[Table, str]] = None,
     ) -> None:
         """Add `WITH SYSTEM VERSIONING` to table options, and configure
         `PERIOD FOR SYSTEM_TIME()`.
@@ -5855,15 +5863,41 @@ class SystemTimePeriod(Period):
         :param end:
             A target column that defines the period's start. A
             :class:`_schema.Column` object or a column name as a string.
+
+        :param history_table:
+            A table object that holds system versioning history. This is only
+            applicable for Microsoft's SQL Server. Accepts a
+            :class:`_schema.Table` object or a table name as a string.
         """
 
         period_is_system = start is None and end is None
 
         super(SystemTimePeriod, self).__init__(
-            "SYSTEM_TIME", start, end, period_is_system
+            self._period_name, start, end, period_is_system
         )
 
+        self._history_table = history_table
         self.foreign_keys = None
+
+    def _get_and_validate_table(
+        self, parent: Table, table: Union[Table, str]
+    ) -> Table:
+        """Accept a string or Table object, validate it is in metadata and
+        return the Table object."""
+        if isinstance(table, Table):
+            if table.metadata is parent.metadata:
+                return table
+            disp = table.key
+        else:
+            tab = parent.metadata.tables.get(str(table))
+            if tab is not None:
+                return tab
+            disp = table
+        raise exc.ArgumentError(
+            f"At SystemTimePeriod definition in '{parent.key}': tables "
+            f"'{disp}' and '{parent.key}' do not appear to be in the same "
+            f"metadata, or table '{disp}' does not exist."
+        )
 
     def _set_parent(self, table: Table, **kw: Any) -> None:
         super()._set_parent(table, **kw)
@@ -5877,3 +5911,14 @@ class SystemTimePeriod(Period):
                 Computed("ROW END", _system_versioning=True)._set_parent(
                     self.end
                 )
+
+        if self._history_table is not None:
+            self._history_table = self._get_and_validate_table(
+                table, self._history_table
+            )
+
+    def _copy(self, target_table: Table = None, **kw):
+        p = SystemTimePeriod(
+            start=str(self.start), end=str(self.end), table=str(self.table)
+        )
+        return self._schema_item_copy(p)

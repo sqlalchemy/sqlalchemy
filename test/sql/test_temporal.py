@@ -8,6 +8,7 @@ from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import SystemTimePeriod
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.sql.sqltypes import DATE
@@ -26,14 +27,18 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = "default"
 
-    def test_period(self):
+    @testing.combinations(lambda x: x, lambda x: x.name)
+    def test_period(self, fn):
+        """Test basic period construct specifying object and str columns"""
         m = MetaData()
+        start_ts = Column("start_ts", TIMESTAMP)
+        end_ts = Column("end_ts", TIMESTAMP)
         t = Table(
             "t",
             m,
-            Column("start_ts", TIMESTAMP),
-            Column("end_ts", TIMESTAMP),
-            Period("test_period", "start_ts", "end_ts"),
+            start_ts,
+            end_ts,
+            Period("test_period", fn(start_ts), fn(end_ts)),
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -228,23 +233,26 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     # @testing.requires.system_versioned_tables_support
-    def test_create_table_versioning_columns_specified(self):
+    @testing.combinations(lambda x: x, lambda x: x.name)
+    def test_create_table_versioning_columns_specified(self, fn):
         m = MetaData()
+        start_ts = Column("start_ts", TIMESTAMP)
+        end_ts = Column("end_ts", TIMESTAMP)
         t = Table(
             "t",
             m,
             Column("x", Integer),
-            Column("start_timestamp", TIMESTAMP),
-            Column("end_timestamp", TIMESTAMP),
-            SystemTimePeriod("start_timestamp", "end_timestamp"),
+            start_ts,
+            end_ts,
+            SystemTimePeriod(fn(start_ts), fn(end_ts)),
         )
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t ("
             "x INTEGER, "
-            "start_timestamp TIMESTAMP GENERATED ALWAYS AS ROW START, "
-            "end_timestamp TIMESTAMP GENERATED ALWAYS AS ROW END, "
-            "PERIOD FOR SYSTEM_TIME (start_timestamp, end_timestamp)"
+            "start_ts TIMESTAMP GENERATED ALWAYS AS ROW START, "
+            "end_ts TIMESTAMP GENERATED ALWAYS AS ROW END, "
+            "PERIOD FOR SYSTEM_TIME (start_ts, end_ts)"
             ") WITH SYSTEM VERSIONING",
         )
 

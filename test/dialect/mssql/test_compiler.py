@@ -1648,12 +1648,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_raises_message(exc.CompileError, error):
             print(stmt.compile(dialect=self.__dialect__))
 
-    def test_system_versioning(self):
+    def test_sv_anon_history_table(self):
         metadata = MetaData()
         tbl = Table(
             "test",
             metadata,
-            Column("id", Integer, primary_key=True),
             Column("validfrom", mssql.DATETIME2),
             Column("validto", mssql.DATETIME2),
             schema.SystemTimePeriod("validfrom", "validto"),
@@ -1662,13 +1661,92 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(tbl),
             (
                 "CREATE TABLE test ("
-                "id INTEGER NOT NULL IDENTITY, "
                 "validfrom DATETIME2 GENERATED ALWAYS AS ROW START, "
                 "validto DATETIME2 GENERATED ALWAYS AS ROW END, "
-                "PERIOD FOR SYSTEM_TIME (validfrom, validto), "
-                "PRIMARY KEY (id)) "
+                "PERIOD FOR SYSTEM_TIME (validfrom, validto)) "
                 "WITH (SYSTEM_VERSIONING = ON)"
             ),
+        )
+
+    @testing.combinations(lambda x: x, lambda x: x.key)
+    def test_sv_given_history_table(self, fn):
+        """Test specifying history table from both string and object"""
+        metadata = MetaData()
+        tbl_history = Table("history", metadata, schema="dbo")
+        tbl = Table(
+            "test",
+            metadata,
+            Column("validfrom", mssql.DATETIME2),
+            Column("validto", mssql.DATETIME2),
+            schema.SystemTimePeriod("validfrom", "validto", fn(tbl_history)),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            (
+                "CREATE TABLE test ("
+                "validfrom DATETIME2 GENERATED ALWAYS AS ROW START, "
+                "validto DATETIME2 GENERATED ALWAYS AS ROW END, "
+                "PERIOD FOR SYSTEM_TIME (validfrom, validto)) "
+                "WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.history))"
+            ),
+        )
+
+    @testing.combinations(
+        lambda x: x,
+        lambda x: x.key,
+    )
+    def test_sv_raises_tab_not_in_metadata(self, tblkeyfn):
+        metadata_history = MetaData()
+        tbl_history = Table("history", metadata_history)
+        metadata = MetaData()
+
+        def fn():
+            Table(
+                "test",
+                metadata,
+                Column("validfrom", mssql.DATETIME2),
+                Column("validto", mssql.DATETIME2),
+                schema.SystemTimePeriod(
+                    "validfrom", "validto", tblkeyfn(tbl_history)
+                ),
+            )
+
+        text = (
+            "At SystemTimePeriod definition in 'test': tables 'history' "
+            "and 'test' do not appear to be in the same metadata, or table "
+            "'history' does not exist."
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            text,
+            fn,
+        )
+
+    def test_sv_raises_no_history_schema(self):
+        metadata = MetaData()
+        tbl_history = Table("history", metadata)
+        c_tbl = schema.CreateTable(
+            Table(
+                "test",
+                metadata,
+                Column("validfrom", mssql.DATETIME2),
+                Column("validto", mssql.DATETIME2),
+                schema.SystemTimePeriod(
+                    "validfrom", "validto", tbl_history.key
+                ),
+            )
+        )
+        text = (
+            "MSSQL requires schema be specified for the history "
+            "table. Set it to 'dbo' on the Table object if no "
+            "specific schema is used."
+        )
+        assert_raises_message(
+            exc.CompileError,
+            text,
+            c_tbl.compile,
+            dialect=self.__dialect__,
         )
 
 
