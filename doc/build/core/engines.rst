@@ -52,7 +52,7 @@ See the section :ref:`dialect_toplevel` for information on the various backends 
 
 .. _database_urls:
 
-Database Urls
+Database URLs
 =============
 
 The :func:`_sa.create_engine` function produces an :class:`_engine.Engine` object based
