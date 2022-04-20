@@ -5716,10 +5716,6 @@ class Period(SchemaItem):
     See the linked documentation below for complete details.
 
     .. versionadded:: TODO
-
-    .. seealso::
-
-        :ref:`temporal_ddl`
     """
 
     __visit_name__ = "period"
@@ -5821,7 +5817,16 @@ class Period(SchemaItem):
 
 
 class ApplicationTimePeriod(Period):
-    pass
+    """:class:`_schema.ApplicationTimePeriod` is an alias for
+    :class:`_schema.Period` and accepts the same constructor. Both define a
+    period construction, i.e. "PERIOD FOR" syntax (which is used for
+    application versioning) and may be used interchangeably, based on what
+    is most clear for the given application.
+
+    See the linked documentation below for complete details.
+
+    .. versionadded:: TODO
+    """
 
 
 class SystemTimePeriod(Period):
@@ -5831,10 +5836,6 @@ class SystemTimePeriod(Period):
     See the linked documentation below for complete details.
 
     .. versionadded:: TODO
-
-    .. seealso::
-
-        :ref:`temporal_ddl`
     """
 
     # Allow for overriding for e.g. oracle

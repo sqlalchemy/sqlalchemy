@@ -39,5 +39,5 @@ in creating real schema generation scripts.
     reflection
     defaults
     constraints
+    temporal
     ddl
-
