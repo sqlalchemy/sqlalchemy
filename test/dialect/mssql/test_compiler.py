@@ -1648,6 +1648,29 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_raises_message(exc.CompileError, error):
             print(stmt.compile(dialect=self.__dialect__))
 
+    def test_system_versioning(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("validfrom", mssql.DATETIME2),
+            Column("validto", mssql.DATETIME2),
+            schema.SystemTimePeriod("validfrom", "validto"),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            (
+                "CREATE TABLE test ("
+                "id INTEGER NOT NULL IDENTITY, "
+                "validfrom DATETIME2 GENERATED ALWAYS AS ROW START, "
+                "validto DATETIME2 GENERATED ALWAYS AS ROW END, "
+                "PERIOD FOR SYSTEM_TIME (validfrom, validto), "
+                "PRIMARY KEY (id)) "
+                "WITH (SYSTEM_VERSIONING = ON)"
+            ),
+        )
+
 
 class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()

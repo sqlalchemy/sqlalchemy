@@ -72,6 +72,7 @@ from .schema import Column
 from .schema import Computed
 from .schema import Period
 from .schema import PrimaryKeyConstraint
+from .schema import Table
 from .sqltypes import TupleType
 from .type_api import TypeEngine
 from .visitors import prefix_anon_map
@@ -4943,8 +4944,7 @@ class DDLCompiler(Compiled):
 
         text += "\n)%s" % table_opts
 
-        if table._system_versioning_period is not None:
-            text += " WITH SYSTEM VERSIONING"
+        text += self.create_table_system_versioning(table)
 
         part = self.create_table_partitioning(table)
 
@@ -5224,6 +5224,13 @@ class DDLCompiler(Compiled):
     def post_create_table(self, table):
         return ""
 
+    def create_table_system_versioning(self, table: Table) -> str:
+        if table._system_versioning_period is not None:
+            return " WITH SYSTEM VERSIONING"
+
+    def create_table_partitioning(self, table: Table):
+        return ""
+
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
             if isinstance(column.server_default.arg, str):
@@ -5236,9 +5243,6 @@ class DDLCompiler(Compiled):
                 )
         else:
             return None
-
-    def create_table_partitioning(self, table):
-        return ""
 
     def visit_table_or_column_check_constraint(self, constraint, **kw):
         if constraint.is_column_level:

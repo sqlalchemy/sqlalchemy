@@ -2344,8 +2344,20 @@ class MSDDLCompiler(compiler.DDLCompiler):
         colspec = self.preparer.format_column(column)
 
         # type is not accepted in a computed column
-        if column.computed is not None:
+        if (
+            column.computed is not None
+            and not column.computed._system_versioning
+        ):
             colspec += " " + self.process(column.computed)
+        elif column.computed is not None:
+            colspec += (
+                " "
+                + self.dialect.type_compiler_instance.process(
+                    column.type, type_expression=column
+                )
+                + " "
+                + self.process(column.computed)
+            )
         else:
             colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type, type_expression=column
@@ -2534,6 +2546,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
             increment = 1 if identity.increment is None else identity.increment
             text += "(%s,%s)" % (start, increment)
         return text
+
+    def create_table_system_versioning(self, table):
+        if table._system_versioning_period is not None:
+            return " WITH (SYSTEM_VERSIONING = ON)"
 
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):

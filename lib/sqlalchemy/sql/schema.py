@@ -5856,10 +5856,13 @@ class SystemTimePeriod(Period):
             A target column that defines the period's start. A
             :class:`_schema.Column` object or a column name as a string.
         """
+
         period_is_system = start is None and end is None
+
         super(SystemTimePeriod, self).__init__(
             "SYSTEM_TIME", start, end, period_is_system
         )
+
         self.foreign_keys = None
 
     def _set_parent(self, table: Table, **kw: Any) -> None:
