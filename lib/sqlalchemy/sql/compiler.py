@@ -5227,6 +5227,7 @@ class DDLCompiler(Compiled):
     def create_table_system_versioning(self, table: Table) -> str:
         if table._system_versioning_period is not None:
             return " WITH SYSTEM VERSIONING"
+        return ""
 
     def create_table_partitioning(self, table: Table):
         return ""

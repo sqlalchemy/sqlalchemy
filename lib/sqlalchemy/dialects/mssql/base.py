@@ -2547,9 +2547,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += "(%s,%s)" % (start, increment)
         return text
 
-    def create_table_system_versioning(self, table):
+    def create_table_system_versioning(self, table: sa_schema.Table) -> str:
         if table._system_versioning_period is not None:
             return " WITH (SYSTEM_VERSIONING = ON)"
+        return ""
 
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
