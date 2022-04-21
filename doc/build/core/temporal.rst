@@ -15,6 +15,7 @@ these constructs can be represented using :class:`_schema.Period`,
 Temporal Construction Context
 -----------------------------
 
+
 Working with Application-Time Periods
 -------------------------------------
 
@@ -23,6 +24,10 @@ Using Application-Time Periods in Primary Keys
 
 Working with System-Time Periods
 --------------------------------
+
+Backend-Specific Application Versioning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Currently, the only 
 
 
 Temporal API
