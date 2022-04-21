@@ -5839,10 +5839,12 @@ class ApplicationTimePeriod(Period):
 
 
 class SystemTimePeriod(Period):
-    """Sets `WITH SYSTEM VERSIONING` on a table ant optionally configures a
-    `SYSTEM_TIME` period.
+    """Sets ``WITH SYSTEM VERSIONING`` on a table ant optionally configures a
+    ``SYSTEM_TIME`` period.
 
-    See the linked documentation below for complete details.
+    If a backend needs an alternative system time period name instead of
+    ``SYSTEM_TIME``, set it by subclassing this class and overriding the
+    _period_name = "SYSTEM_TIME" attribute.
 
     .. versionadded:: TODO
     """
@@ -5857,16 +5859,15 @@ class SystemTimePeriod(Period):
         end: Optional[_DDLColumnArgument] = None,
         history_table: Optional[Union[Table, str]] = None,
         _validate_tables: Optional[bool] = None,
-        _name: Optional[str] = None,
     ) -> None:
-        """Add `WITH SYSTEM VERSIONING` to table options, and configure
-        `PERIOD FOR SYSTEM_TIME()`.
+        """Add ``WITH SYSTEM VERSIONING`` to table options, and configure
+        ``PERIOD FOR SYSTEM_TIME()``.
 
-        Supplies `GENERATED ALWAYS AS ROW_START` and
-        `GENERATED ALWAYS AS ROW_END` parameters to the given columns. The
-        parent table will receive the `WITH SYSTEM VERSIONING` option. If
+        Supplies ``GENERATED ALWAYS AS ROW_START`` and
+        ``GENERATED ALWAYS AS ROW_END`` parameters to the given columns. The
+        parent table will receive the ``WITH SYSTEM VERSIONING`` option. If
         both `start` and `end` are omitted, or if columns are marked as
-        `system`, columns will not be configured (for constructions with
+        ``system``, columns will not be configured (for constructions with
         backend-controlled implicit column configuration)
 
         :param start:
@@ -5881,15 +5882,16 @@ class SystemTimePeriod(Period):
             A table object that holds system versioning history. This is only
             applicable for Microsoft's SQL Server. Accepts a
             :class:`_schema.Table` object or a table name as a string.
+
+        :param _validate_tables:
+            Set this to ``True`` to verify string table names exist in schema;
+            otherwise, they won't be checked.
         """
 
         period_is_system = start is None and end is None
 
-        # Allow overriding the name in the constructor if needed
-        name = self._period_name if _name is None else _name
-
         super(SystemTimePeriod, self).__init__(
-            name, start, end, period_is_system
+            self._period_name, start, end, period_is_system
         )
 
         self._history_table = history_table
