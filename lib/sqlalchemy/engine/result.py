@@ -802,11 +802,10 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             self._real_result if self._real_result else cast(Result, self)
         )
 
-        if real_result._source_supports_scalars and len(indexes) == 1:
-            self._generate_rows = False
-        else:
-            self._generate_rows = True
+        if not real_result._source_supports_scalars or len(indexes) != 1:
             self._metadata = self._metadata._reduce(indexes)
+
+        assert self._generate_rows
 
         return self
 
