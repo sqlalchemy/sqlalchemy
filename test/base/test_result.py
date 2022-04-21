@@ -5,6 +5,7 @@ from sqlalchemy.engine.row import Row
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
@@ -1054,10 +1055,47 @@ class OnlyScalarsTest(fixtures.TestBase):
             metadata, no_tuple_fixture, source_supports_scalars=True
         )
 
-        r = r.columns(0).mappings()
+        with expect_deprecated(
+            r"The Result.columns\(\) method has a bug in SQLAlchemy 1.4 "
+            r"that is causing it to yield scalar values"
+        ):
+            r = r.columns(0).mappings()
         eq_(
             list(r),
             [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
+        )
+
+    def test_scalar_mode_columns0_plain(self, no_tuple_fixture):
+        """test #7953"""
+
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        with expect_deprecated(
+            r"The Result.columns\(\) method has a bug in SQLAlchemy 1.4 "
+            r"that is causing it to yield scalar values"
+        ):
+            r = r.columns(0)
+        eq_(
+            list(r),
+            [1, 2, 1, 1, 4],
+            # [(1,), (2,), (1,), (1,), (4,)],  # correct result
+        )
+
+    def test_scalar_mode_scalars0(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars(0)
+        eq_(
+            list(r),
+            [1, 2, 1, 1, 4],
         )
 
     def test_scalar_mode_but_accessed_nonscalar_result(self, no_tuple_fixture):

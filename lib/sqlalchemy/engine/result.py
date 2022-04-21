@@ -648,6 +648,15 @@ class ResultInternal(InPlaceGenerative):
         real_result = self._real_result if self._real_result else self
 
         if real_result._source_supports_scalars and len(indexes) == 1:
+            util.warn_deprecated(
+                "The Result.columns() method has a bug in SQLAlchemy 1.4 that "
+                "is causing it to yield scalar values, rather than Row "
+                "objects, in the case where a single index is passed and the "
+                "result is against ORM mapped objects.  In SQLAlchemy 2.0, "
+                "Result will continue yield Row objects in this scenario.  "
+                "Use the Result.scalars() method to yield scalar values.",
+                "2.0",
+            )
             self._generate_rows = False
         else:
             self._generate_rows = True

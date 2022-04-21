@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7953
+
+    A warning is emitted when calling upon the :meth:`.Result.columns` method
+    with only one index, in particular ORM related cases, indicating that the
+    current behavior of :meth:`.Result.columns` is broken in this case and
+    will be changed in 2.0.  To receive a collection of scalar values,
+    use the :meth:`.Result.scalars` method.
+
