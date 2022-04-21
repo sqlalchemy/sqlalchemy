@@ -2022,7 +2022,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.autoincrement = autoincrement
         self.constraints = set()
         self.foreign_keys = set()
-        self.periods = set()
         self.comment = comment
         self.computed = None
         self.identity = None
@@ -2891,7 +2890,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             return _column
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
-        assert isinstance(parent, (Column, Period))
+        assert isinstance(parent, Column)
 
         if self.parent is not None and self.parent is not parent:
             raise exc.InvalidRequestError(
@@ -5767,7 +5766,6 @@ class Period(SchemaItem):
         self.end = coercions.expect(roles.DDLExpressionRole, end)
         self.system = system
         self.primary_key = primary_key
-        self.foreign_keys = set()  # type: ignore
 
     @property
     def key(self) -> str:
@@ -5785,7 +5783,9 @@ class Period(SchemaItem):
                     % (column.name, table.description)
                 )
             return column
+
         col = table.c.get(str(column))
+
         if col is None:
             raise exc.ArgumentError(
                 "Cannot find column '%s' in Table '%s'"
