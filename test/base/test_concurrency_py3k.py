@@ -1,4 +1,6 @@
 import asyncio
+import contextvars
+import random
 import threading
 
 from sqlalchemy import exc
@@ -88,7 +90,8 @@ class TestAsyncioCompat(fixtures.TestBase):
         to_await = run1()
         with expect_raises_message(
             exc.MissingGreenlet,
-            r"greenlet_spawn has not been called; can't call await_\(\) here.",
+            "greenlet_spawn has not been called; "
+            r"can't call await_only\(\) here.",
         ):
             await_only(to_await)
 
@@ -133,7 +136,8 @@ class TestAsyncioCompat(fixtures.TestBase):
 
         with expect_raises_message(
             exc.InvalidRequestError,
-            r"greenlet_spawn has not been called; can't call await_\(\) here.",
+            "greenlet_spawn has not been called; "
+            r"can't call await_only\(\) here.",
         ):
             await greenlet_spawn(go)
 
@@ -141,24 +145,44 @@ class TestAsyncioCompat(fixtures.TestBase):
 
     @async_test
     async def test_contextvars(self):
-        import asyncio
-        import contextvars
-
         var = contextvars.ContextVar("var")
-        concurrency = 5
+        concurrency = 500
 
+        # NOTE: sleep here is not necessary. It's used to simulate IO
+        # ensuring that task are not run sequentially
         async def async_inner(val):
+            await asyncio.sleep(random.uniform(0.005, 0.015))
             eq_(val, var.get())
             return var.get()
+
+        async def async_set(val):
+            await asyncio.sleep(random.uniform(0.005, 0.015))
+            var.set(val)
 
         def inner(val):
             retval = await_only(async_inner(val))
             eq_(val, var.get())
             eq_(retval, val)
+
+            # set the value in a sync function
+            newval = val + concurrency
+            var.set(newval)
+            syncset = await_only(async_inner(newval))
+            eq_(newval, var.get())
+            eq_(syncset, newval)
+
+            # set the value in an async function
+            retval = val + 2 * concurrency
+            await_only(async_set(retval))
+            eq_(var.get(), retval)
+            eq_(await_only(async_inner(retval)), retval)
+
             return retval
 
         async def task(val):
+            await asyncio.sleep(random.uniform(0.005, 0.015))
             var.set(val)
+            await asyncio.sleep(random.uniform(0.005, 0.015))
             return await greenlet_spawn(inner, val)
 
         values = {
@@ -167,7 +191,7 @@ class TestAsyncioCompat(fixtures.TestBase):
                 [task(i) for i in range(concurrency)]
             )
         }
-        eq_(values, set(range(concurrency)))
+        eq_(values, set(range(concurrency * 2, concurrency * 3)))
 
     @async_test
     async def test_require_await(self):
