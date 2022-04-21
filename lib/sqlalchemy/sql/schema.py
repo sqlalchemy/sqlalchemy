@@ -5711,9 +5711,8 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
 
 class Period(SchemaItem):
-    """Defines a period construction, i.e. "PERIOD FOR" syntax
-
-    See the linked documentation below for complete details.
+    """Defines a period construction, i.e. ``PERIOD FOR period_name
+    (start_col, end_col)`` syntax.
 
     .. versionadded:: TODO
     """
@@ -5733,7 +5732,7 @@ class Period(SchemaItem):
         system: Optional[bool] = False,
         primary_key: Optional[bool] = False,
     ) -> None:
-        """Construct a PERIOD FOR DDL construct on two columns.
+        """Construct a ``PERIOD FOR`` DDL construct on two columns.
 
         :param name:
             The name to give the period.
@@ -5747,8 +5746,16 @@ class Period(SchemaItem):
             :class:`_schema.Column` object or a column name as a string.
 
         :param system:
-            Indicates that the ``Period`` is implicit, i.e. not generated
-            in DDL.
+            Indicates that the ``Period`` is implicit, i.e. should not be
+            generated in DDL.
+
+        :param system:
+            Indicates that the ``Period`` is implicit, i.e. not generated in
+            DDL.
+
+        :param primary_key:
+            Whether this ``Period`` should be included in the table's primary
+            key.
         """
         if not system and (start is None) or (end is None):
             exc.ArgumentError(
@@ -5818,10 +5825,12 @@ class Period(SchemaItem):
 
 class ApplicationTimePeriod(Period):
     """:class:`_schema.ApplicationTimePeriod` is an alias for
-    :class:`_schema.Period` and accepts the same constructor. Both define a
-    period construction, i.e. "PERIOD FOR" syntax (which is used for
-    application versioning) and may be used interchangeably, based on what
-    is most clear for the given application.
+    :class:`_schema.Period` and accepts the same constructor.
+
+    Both :class:`_schema.ApplicationTimePeriod` and :class:`_schema.Period`
+    define a period construction, i.e. "PERIOD FOR" syntax (which is used for
+    application versioning) and may be used interchangeably, based on what is
+    most clear for the given application.
 
     See the linked documentation below for complete details.
 
@@ -5840,18 +5849,21 @@ class SystemTimePeriod(Period):
 
     # Allow for overriding for e.g. oracle
     _period_name = "SYSTEM_TIME"
+    _history_table: Union[Table, str]
 
     def __init__(
         self,
         start: Optional[_DDLColumnArgument] = None,
         end: Optional[_DDLColumnArgument] = None,
         history_table: Optional[Union[Table, str]] = None,
+        _validate_tables: Optional[bool] = None,
+        _name: Optional[str] = None,
     ) -> None:
         """Add `WITH SYSTEM VERSIONING` to table options, and configure
         `PERIOD FOR SYSTEM_TIME()`.
 
         Supplies `GENERATED ALWAYS AS ROW_START` and
-        `GENERATED ALWAYS AS ROW_END` parameters to the given coluns. The
+        `GENERATED ALWAYS AS ROW_END` parameters to the given columns. The
         parent table will receive the `WITH SYSTEM VERSIONING` option. If
         both `start` and `end` are omitted, or if columns are marked as
         `system`, columns will not be configured (for constructions with
@@ -5873,11 +5885,15 @@ class SystemTimePeriod(Period):
 
         period_is_system = start is None and end is None
 
+        # Allow overriding the name in the constructor if needed
+        name = self._period_name if _name is None else _name
+
         super(SystemTimePeriod, self).__init__(
-            self._period_name, start, end, period_is_system
+            name, start, end, period_is_system
         )
 
         self._history_table = history_table
+        self._validate_tables = _validate_tables
         self.foreign_keys = None
 
     def _get_and_validate_table(
@@ -5893,6 +5909,8 @@ class SystemTimePeriod(Period):
             tab = parent.metadata.tables.get(str(table))
             if tab is not None:
                 return tab
+            if not self._validate_tables:
+                return str(table)
             disp = table
         raise exc.ArgumentError(
             f"At SystemTimePeriod definition in '{parent.key}': tables "

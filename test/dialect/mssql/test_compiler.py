@@ -1668,8 +1668,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
         )
 
-    @testing.combinations(lambda x: x, lambda x: x.key)
-    def test_sv_given_history_table(self, fn):
+    @testing.combinations(
+        (lambda x: x, "dbo.history"),
+        (lambda x: x.key, "dbo.history"),
+        (lambda x: "table.in.schema", "table.in.schema"),
+    )
+    def test_sv_given_history_table(self, fn, tabname):
         """Test specifying history table from both string and object"""
         metadata = MetaData()
         tbl_history = Table("history", metadata, schema="dbo")
@@ -1687,7 +1691,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "validfrom DATETIME2 GENERATED ALWAYS AS ROW START, "
                 "validto DATETIME2 GENERATED ALWAYS AS ROW END, "
                 "PERIOD FOR SYSTEM_TIME (validfrom, validto)) "
-                "WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.history))"
+                f"WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = {tabname}))"
             ),
         )
 
@@ -1707,7 +1711,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column("validfrom", mssql.DATETIME2),
                 Column("validto", mssql.DATETIME2),
                 schema.SystemTimePeriod(
-                    "validfrom", "validto", tblkeyfn(tbl_history)
+                    "validfrom",
+                    "validto",
+                    tblkeyfn(tbl_history),
+                    _validate_tables=True,
                 ),
             )
 

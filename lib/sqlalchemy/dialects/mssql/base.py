@@ -2552,13 +2552,18 @@ class MSDDLCompiler(compiler.DDLCompiler):
             hist_table = table._system_versioning_period._history_table
             if hist_table is None:
                 return " WITH (SYSTEM_VERSIONING = ON)"
-            if hist_table.schema is None:
+            if isinstance(hist_table, str):
+                quote = hist_table
+            # Otherwise will be a table
+            elif hist_table.schema is None:
                 raise exc.CompileError(
                     "MSSQL requires schema be specified for the history "
                     "table. Set it to 'dbo' on the Table object if no "
                     "specific schema is used."
                 )
-            quote = self.preparer.format_table(hist_table, use_schema=True)
+            else:
+                quote = self.preparer.format_table(hist_table, use_schema=True)
+
             return f" WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = {quote}))"
         return ""
 
