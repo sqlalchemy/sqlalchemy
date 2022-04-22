@@ -541,6 +541,7 @@ BaseRow_getattro(BaseRow *self, PyObject *name)
                 "Could not locate column in row for column '%.200s'",
                 PyBytes_AS_STRING(err_bytes)
             );
+        Py_DECREF(err_bytes);
 #else
         PyErr_Format(
                 PyExc_AttributeError,
