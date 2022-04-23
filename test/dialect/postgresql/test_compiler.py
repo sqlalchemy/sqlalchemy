@@ -1523,48 +1523,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             postgresql.Any(4, c),
-            "%(param_1)s = ANY (x)",
-            checkparams={"param_1": 4},
+            "%(x_1)s = ANY (x)",
+            checkparams={"x_1": 4},
         )
 
         self.assert_compile(
             c.any(5),
-            "%(param_1)s = ANY (x)",
-            checkparams={"param_1": 5},
+            "%(x_1)s = ANY (x)",
+            checkparams={"x_1": 5},
         )
 
         self.assert_compile(
             ~c.any(5),
-            "NOT (%(param_1)s = ANY (x))",
-            checkparams={"param_1": 5},
+            "NOT (%(x_1)s = ANY (x))",
+            checkparams={"x_1": 5},
         )
 
         self.assert_compile(
             c.all(5),
-            "%(param_1)s = ALL (x)",
-            checkparams={"param_1": 5},
+            "%(x_1)s = ALL (x)",
+            checkparams={"x_1": 5},
         )
 
         self.assert_compile(
             ~c.all(5),
-            "NOT (%(param_1)s = ALL (x))",
-            checkparams={"param_1": 5},
+            "NOT (%(x_1)s = ALL (x))",
+            checkparams={"x_1": 5},
         )
 
         self.assert_compile(
             c.any(5, operator=operators.ne),
-            "%(param_1)s != ANY (x)",
-            checkparams={"param_1": 5},
+            "%(x_1)s != ANY (x)",
+            checkparams={"x_1": 5},
         )
         self.assert_compile(
             postgresql.All(6, c, operator=operators.gt),
-            "%(param_1)s > ALL (x)",
-            checkparams={"param_1": 6},
+            "%(x_1)s > ALL (x)",
+            checkparams={"x_1": 6},
         )
         self.assert_compile(
             c.all(7, operator=operators.lt),
-            "%(param_1)s < ALL (x)",
-            checkparams={"param_1": 7},
+            "%(x_1)s < ALL (x)",
+            checkparams={"x_1": 7},
         )
 
     @testing.combinations(

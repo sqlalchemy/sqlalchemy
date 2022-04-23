@@ -2851,10 +2851,18 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
 
+            arr_type = self.type
+
             # send plain BinaryExpression so that negate remains at None,
             # leading to NOT expr for negation.
             return elements.BinaryExpression(
-                coercions.expect(roles.ExpressionElementRole, other),
+                coercions.expect(
+                    roles.BinaryElementRole,
+                    element=other,
+                    operator=operator,
+                    expr=self.expr,
+                    bindparam_type=arr_type.item_type,
+                ),
                 elements.CollectionAggregate._create_any(self.expr),
                 operator,
             )
@@ -2895,10 +2903,18 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
 
+            arr_type = self.type
+
             # send plain BinaryExpression so that negate remains at None,
             # leading to NOT expr for negation.
             return elements.BinaryExpression(
-                coercions.expect(roles.ExpressionElementRole, other),
+                coercions.expect(
+                    roles.BinaryElementRole,
+                    element=other,
+                    operator=operator,
+                    expr=self.expr,
+                    bindparam_type=arr_type.item_type,
+                ),
                 elements.CollectionAggregate._create_all(self.expr),
                 operator,
             )

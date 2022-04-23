@@ -1261,16 +1261,16 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.any(7, operator=operators.lt)),
-            "SELECT %(param_1)s < ANY (x) AS anon_1",
-            checkparams={"param_1": 7},
+            "SELECT %(x_1)s < ANY (x) AS anon_1",
+            checkparams={"x_1": 7},
         )
 
     def test_array_all(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.all(7, operator=operators.lt)),
-            "SELECT %(param_1)s < ALL (x) AS anon_1",
-            checkparams={"param_1": 7},
+            "SELECT %(x_1)s < ALL (x) AS anon_1",
+            checkparams={"x_1": 7},
         )
 
     def test_array_contains(self):
@@ -2397,14 +2397,19 @@ class ArrayEnum(fixtures.TestBase):
                         array_cls(enum_cls(MyEnum)),
                     ),
                 )
+                data = [
+                    {"enum_col": ["foo"], "pyenum_col": [MyEnum.a, MyEnum.b]},
+                    {"enum_col": ["foo", "bar"], "pyenum_col": [MyEnum.b]},
+                ]
             else:
                 MyEnum = None
+                data = [
+                    {"enum_col": ["foo"]},
+                    {"enum_col": ["foo", "bar"]},
+                ]
 
             metadata.create_all(connection)
-            connection.execute(
-                tbl.insert(),
-                [{"enum_col": ["foo"]}, {"enum_col": ["foo", "bar"]}],
-            )
+            connection.execute(tbl.insert(), data)
             return tbl, MyEnum
 
         yield go
@@ -2420,6 +2425,27 @@ class ArrayEnum(fixtures.TestBase):
                 argnames="array_cls",
             )(fn)
         )
+
+    @testing.requires.python3
+    @_enum_combinations
+    @testing.combinations("all", "any", argnames="fn")
+    def test_any_all_roundtrip(
+        self, array_of_enum_fixture, connection, array_cls, enum_cls, fn
+    ):
+        """test #6515"""
+
+        tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
+
+        if fn == "all":
+            expr = tbl.c.pyenum_col.all(MyEnum.b)
+            result = [([MyEnum.b],)]
+        elif fn == "any":
+            expr = tbl.c.pyenum_col.any(MyEnum.b)
+            result = [([MyEnum.a, MyEnum.b],), ([MyEnum.b],)]
+        else:
+            assert False
+        sel = select(tbl.c.pyenum_col).where(expr).order_by(tbl.c.id)
+        eq_(connection.execute(sel).fetchall(), result)
 
     @_enum_combinations
     def test_array_of_enums_roundtrip(
