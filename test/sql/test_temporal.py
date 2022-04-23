@@ -69,8 +69,13 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (id, test_period WITHOUT OVERLAPS))",
         )
 
-    def test_period_unique_constraint(self):
-        """Test setting a unique key on a PERIOD via a constraint"""
+    @testing.combinations(
+        (PrimaryKeyConstraint, "PRIMARY KEY"), (UniqueConstraint, "UNIQUE")
+    )
+    def test_period_primary_and_unique_constraint(self, constraint, keytype):
+        """Test setting a primary key or a unique key on a PERIOD via a
+        constraint
+        """
         m = MetaData()
         t = Table(
             "t",
@@ -79,7 +84,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("start_ts", TIMESTAMP),
             Column("end_ts", TIMESTAMP),
             Period("test_period", "start_ts", "end_ts"),
-            UniqueConstraint("id", "test_period"),
+            constraint("id", "test_period"),
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -88,7 +93,21 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "start_ts TIMESTAMP, "
             "end_ts TIMESTAMP, "
             "PERIOD FOR test_period (start_ts, end_ts), "
-            "UNIQUE (id, test_period WITHOUT OVERLAPS))",
+            f"{keytype} (id, test_period WITHOUT OVERLAPS))",
+        )
+
+    def test_period_system(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            Period("test_period", "start_ts", "end_ts", system=True),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (" "start_ts TIMESTAMP, " "end_ts TIMESTAMP)",
         )
 
     def test_period_copy(self):
@@ -203,13 +222,6 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(t1.periods.test_period, period1)
         is_(period1.start, start1)
         is_(period1.end, end1)
-
-
-class ApplicationVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
-    """Application versioning does not currently have anything separate
-    from the Period construct."""
-
-    pass
 
 
 class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):

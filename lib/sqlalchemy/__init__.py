@@ -55,7 +55,6 @@ from .pool import PoolProxiedConnection as PoolProxiedConnection
 from .pool import QueuePool as QueuePool
 from .pool import SingletonThreadPool as SingleonThreadPool
 from .pool import StaticPool as StaticPool
-from .schema import ApplicationTimePeriod as ApplicationTimePeriod
 from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint

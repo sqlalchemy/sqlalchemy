@@ -59,8 +59,8 @@ from . import type_api
 from . import visitors
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
+from .base import DictCollection
 from .base import Executable
-from .base import PeriodCollection
 from .base import SchemaEventTarget as SchemaEventTarget
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
@@ -385,7 +385,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    periods: PeriodCollection
+    periods: DictCollection
     """A collection of all :class:`_schema.Period` objects associated with this
         :class:`_schema.Table`.
     """
@@ -826,7 +826,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
-        self.periods = PeriodCollection()
+        self.periods = DictCollection()
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -1459,7 +1459,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
-        system_versioning: Optional[bool] = None,
         _proxies: Optional[Any] = None,
         **dialect_kwargs: Any,
     ):
@@ -1955,10 +1954,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-        :param system_versioning: ``False`` indicates that a column should not
-            be part of system versioning. ``True`` will apply
-            ``WITH SYSTEM VERSIONING`` to the column.
-
         :param comment: Optional string that will render an SQL comment on
              table creation.
 
@@ -2025,7 +2020,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.comment = comment
         self.computed = None
         self.identity = None
-        self._system_versioning = system_versioning
+        # Allow column opt out without cluttering API or being dialect-locked
+        self._system_versioning = dialect_kwargs.pop("system_versioning", None)
 
         # check if this Column is proxying another column
 
@@ -2336,6 +2332,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 column_kwargs[
                     dialect_name + "_" + dialect_option_key
                 ] = dialect_option_value
+        if self._system_versioning is not None:
+            column_kwargs["system_versioning"] = self._system_versioning
 
         server_default = self.server_default
         server_onupdate = self.server_onupdate
@@ -2365,7 +2363,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             onupdate=self.onupdate,
             server_onupdate=server_onupdate,
             doc=self.doc,
-            system_versioning=self._system_versioning,
             comment=self.comment,
             *args,
             **column_kwargs,
@@ -3882,14 +3879,8 @@ class ColumnCollectionMixin:
             return result
         else:
 
-            def get_col_or_period(col: str):
-                pc = parent.c.get(col)
-                if pc is not None:
-                    return pc
-                return parent.periods[col]
-
             return [
-                get_col_or_period(col) if isinstance(col, str) else col
+                parent.c[col] if isinstance(col, str) else col
                 for col in self._pending_colargs
             ]
 
@@ -4575,13 +4566,12 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         for c in self._columns:
             c.primary_key = True
-            if (
-                not isinstance(c, Period)
-                and c._user_defined_nullable is NULL_UNSPECIFIED
-            ):
+            if c._user_defined_nullable is NULL_UNSPECIFIED:
                 c.nullable = False
         if table_pks:
             self._columns.extend(table_pks)
+
+        self._periods = [p for p in table.periods if p.primary_key]
 
     def _reload(self, columns: Iterable[Column[Any]]) -> None:
         """repopulate this :class:`.PrimaryKeyConstraint` given
@@ -4661,9 +4651,6 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         if len(self._columns) == 1:
             col = list(self._columns)[0]
 
-            if isinstance(col, Period):
-                return None
-
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
                 return col
@@ -4677,9 +4664,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         else:
             autoinc = None
-            for col in filter(
-                lambda x: not isinstance(x, Period), self._columns
-            ):
+            for col in self._columns:
                 if col.autoincrement is True:
                     _validate_autoinc(col, True)
                     if autoinc is not None:
@@ -5713,7 +5698,7 @@ class Period(SchemaItem):
     """Defines a period construction, i.e. ``PERIOD FOR period_name
     (start_col, end_col)`` syntax.
 
-    .. versionadded:: TODO
+    .. versionadded:: 2.0
     """
 
     __visit_name__ = "period"
@@ -5728,6 +5713,7 @@ class Period(SchemaItem):
         name: str,
         start: _DDLColumnArgument,
         end: _DDLColumnArgument,
+        *,
         system: Optional[bool] = False,
         primary_key: Optional[bool] = False,
     ) -> None:
@@ -5741,35 +5727,32 @@ class Period(SchemaItem):
             :class:`_schema.Column` object or a column name as a string.
 
         :param end:
-            A target column that defines the period's start. A
+            A target column that defines the period's end. A
             :class:`_schema.Column` object or a column name as a string.
 
         :param system:
             Indicates that the ``Period`` is implicit, i.e. should not be
-            generated in DDL.
-
-        :param system:
-            Indicates that the ``Period`` is implicit, i.e. not generated in
-            DDL.
+            generated in DDL. Kw only.
 
         :param primary_key:
             Whether this ``Period`` should be included in the table's primary
-            key.
+            key. Kw only.
         """
+
         if not system and (start is None) or (end is None):
             exc.ArgumentError(
                 "Period object requires both start"
                 " and end columns must be specified"
             )
+        # For now, key and name are the same. This may eventually need to
+        # change for ORM
         self.name = name
+        self.key = self.name
+
         self.start = coercions.expect(roles.DDLExpressionRole, start)
         self.end = coercions.expect(roles.DDLExpressionRole, end)
         self.system = system
         self.primary_key = primary_key
-
-    @property
-    def key(self) -> str:
-        return self.name
 
     def _get_and_validate_column(
         self, table: Table, column: Union[str, Column]
@@ -5816,37 +5799,18 @@ class Period(SchemaItem):
 
         self.table = table
 
-        table.periods.add(self, self.name)
+        table.periods.add(self, self.key)
 
     def _copy(self, target_table: Table = None, **kw):
-        p = Period(name=self.name, start=str(self.start), end=str(self.end))
+        p = Period(name=self.name, start=self.start.key, end=self.end.key)
         return self._schema_item_copy(p)
 
 
-class ApplicationTimePeriod(Period):
-    """:class:`_schema.ApplicationTimePeriod` is an alias for
-    :class:`_schema.Period` and accepts the same constructor.
-
-    Both :class:`_schema.ApplicationTimePeriod` and :class:`_schema.Period`
-    define a period construction, i.e. "PERIOD FOR" syntax (which is used for
-    application versioning) and may be used interchangeably, based on what is
-    most clear for the given application.
-
-    See the linked documentation below for complete details.
-
-    .. versionadded:: TODO
-    """
-
-
 class SystemTimePeriod(Period):
-    """Sets ``WITH SYSTEM VERSIONING`` on a table ant optionally configures a
-    ``SYSTEM_TIME`` period.
+    """Represents a ``WITH SYSTEM VERSIONING`` clause a table and optionally
+    configures a ``SYSTEM_TIME`` period.
 
-    If a backend needs an alternative system time period name instead of
-    ``SYSTEM_TIME``, set it by subclassing this class and overriding the
-    _period_name = "SYSTEM_TIME" attribute.
-
-    .. versionadded:: TODO
+    .. versionadded:: 2.0
     """
 
     # Allow for overriding for e.g. oracle
@@ -5857,18 +5821,19 @@ class SystemTimePeriod(Period):
         self,
         start: Optional[_DDLColumnArgument] = None,
         end: Optional[_DDLColumnArgument] = None,
+        *,
         history_table: Optional[Union[Table, str]] = None,
-        _validate_tables: Optional[bool] = None,
+        **kw,
     ) -> None:
         """Add ``WITH SYSTEM VERSIONING`` to table options, and configure
         ``PERIOD FOR SYSTEM_TIME()``.
 
-        Supplies ``GENERATED ALWAYS AS ROW_START`` and
-        ``GENERATED ALWAYS AS ROW_END`` parameters to the given columns. The
-        parent table will receive the ``WITH SYSTEM VERSIONING`` option. If
-        both `start` and `end` are omitted, or if columns are marked as
-        ``system``, columns will not be configured (for constructions with
-        backend-controlled implicit column configuration)
+        Supplies ``GENERATED ALWAYS AS ROW_START`` and ``GENERATED ALWAYS AS
+        ROW_END`` parameters to the given columns. The parent table will
+        receive the ``WITH SYSTEM VERSIONING`` option. If both `start` and
+        `end` are omitted, or if columns are marked as ``system``, columns will
+        not be configured (for constructions with backend-controlled implicit
+        column configuration)
 
         :param start:
             A target column that defines the period's start. A
@@ -5881,21 +5846,17 @@ class SystemTimePeriod(Period):
         :param history_table:
             A table object that holds system versioning history. This is only
             applicable for Microsoft's SQL Server. Accepts a
-            :class:`_schema.Table` object or a table name as a string.
-
-        :param _validate_tables:
-            Set this to ``True`` to verify string table names exist in schema;
-            otherwise, they won't be checked.
+            :class:`_schema.Table` object or a table name as a string. Kw only.
         """
 
         period_is_system = start is None and end is None
 
         super(SystemTimePeriod, self).__init__(
-            self._period_name, start, end, period_is_system
+            self._period_name, start, end, system=period_is_system
         )
 
         self._history_table = history_table
-        self._validate_tables = _validate_tables
+        self._validate_tables = kw.pop("validate_str_tables", False)
         self.foreign_keys = None
 
     def _get_and_validate_table(
@@ -5939,7 +5900,11 @@ class SystemTimePeriod(Period):
             )
 
     def _copy(self, target_table: Table = None, **kw):
+        copy_kwargs = {"validate_str_tables": self._validate_tables}
         p = SystemTimePeriod(
-            start=str(self.start), end=str(self.end), table=str(self.table)
+            start=self.start.key,
+            end=self.end.key,
+            history_table=self._history_table.key,
+            **copy_kwargs,
         )
         return self._schema_item_copy(p)

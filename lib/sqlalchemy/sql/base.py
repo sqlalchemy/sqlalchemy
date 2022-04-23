@@ -1484,6 +1484,12 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     def __setattr__(self, key: str, obj: Any) -> NoReturn:
         raise NotImplementedError()
 
+    def __dir__(self):
+        # Add dict items to dir() for tab completion
+        base = super(ColumnCollection, self).__dir__()
+        base.extend(self.keys())
+        return sorted(base)
+
     def clear(self) -> NoReturn:
         """Dictionary clear() is not implemented for
         :class:`_sql.ColumnCollection`."""
@@ -1677,27 +1683,6 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
 
 _NAMEDCOL = TypeVar("_NAMEDCOL", bound="NamedColumn[Any]")
-
-
-class PeriodCollection(ColumnCollection):
-    """A subclass of :class:`_expression.ColumnCollection`
-
-    Intent is just to adapt nomenclature.
-    """
-
-    @property
-    def _all_periods(self) -> List[_COL_co]:
-        return super()._all_columns()
-
-    def contains_period(self, col: ColumnElement[Any]):
-        return super().contains_column(col)
-
-    @property
-    def _all_columns(self) -> List[_COL_co]:
-        raise NotImplementedError
-
-    def contains_column(self):
-        raise NotImplementedError
 
 
 class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
@@ -1901,6 +1886,47 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
 
     def __hash__(self):
         return hash(tuple(x for x in self))
+
+
+class DictCollection(dict):
+    """A thin wrapper over ``dict`` that allows accessing members via dot
+    notation, in addition to standard dictionary usage. Can be used to hold any
+    data type.
+    """
+
+    __slots__ = tuple()
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+    def __dir__(self):
+        # Add dict items to dir() for tab completion
+        base = super(DictCollection, self).__dir__()
+        base.extend(self.keys())
+        return sorted(base)
+
+    def __getitem__(self, key: Union[str, int]) -> Any:
+        # Python dicts are ordered as of 3.7, so we can accept indices
+        if isinstance(key, int):
+            try:
+                return itertools.islice(self.values(), key, key + 1)
+            except StopIteration as ex:
+                raise IndexError(key) from ex
+        return super(DictCollection, self).__getitem__(key)
+
+    def __getattr__(self, key: str) -> Any:
+        # Reraise dict key errors as class attribute errors so
+        # getattr(x,y,default) works correctly
+        try:
+            return self.__getitem__(key)
+        except KeyError as ex:
+            raise AttributeError(key) from ex
+
+    def __iter__(self) -> Iterator:
+        return iter(self.values())
+
+    def add(self, item: Any, key: str) -> None:
+        """Add an item by key to the collection."""
+        self[key] = item
 
 
 def _entity_namespace(

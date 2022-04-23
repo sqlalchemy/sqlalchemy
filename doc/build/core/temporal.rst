@@ -9,8 +9,8 @@ Temporal Constructions (System and Application versioning)
 This section will discuss temporal features added in SQL:2011, which include DDL
 constructs ``PERIOD FOR``, ``PERIOD FOR SYSTEM_TIME``, ``WITH SYSTEM
 VERSIONING``, and ``WITHOUT OVERLAPS``. In SQLAlchemy these constructs can be
-represented using :class:`_schema.Period`, :class:`ApplicationTimePeriod` and
-:class:`.SystemTimePeriod` objects.
+represented using :class:`_schema.Period` and :class:`.SystemTimePeriod`
+objects.
 
 
 Context
@@ -18,31 +18,33 @@ Context
 The 2011 release of ISO SQL added support for temporal tables, i.e schemas where
 rows are associated with one or more time periods. This page attemps to give
 only a brief introduction to these new temporal features; for a more complete
-explanation, refer to `TF`_.
+explanation, refer to `TF`_. These temporal features are split into system
+versioning and application versioning.
 
 .. _TF: https://cs.ulb.ac.be/public/_media/teaching/infoh415/tempfeaturessql2011.pdf
 
-These temporal features are split into system versioning and application
-versioning. System versioning describes row history logging that is handled
-automatically by the backend, useful for producing auditable tables and storing
-history without triggers. Historical rows are (usually) held in the same table,
-and are hidden unless explicitly requested using ``FOR SYSTEM TIME`` in
-``SELECT`` statements.
+System versioning describes row history logging that is handled automatically by
+the backend, useful for producing auditable tables and storing history without
+triggers. Historical rows are (usually) held in the same table, and are hidden
+unless explicitly requested using ``FOR SYSTEM TIME`` in ``SELECT`` statements.
 
-Application versioning describes roww with a time period indicating its valid
+Application versioning describes row with a time period indicating its valid
 time, manually managed by the application rather than the by the backend. This
 is useful for situations where something might be valid for only a specific time
-period, e.g. insurance policies or a period of employment.
+period, e.g. insurance policies or a period of employment. Tables with
+application versioning are sometimes called application-time period tables.
 
-System versioning is currently supported only by MariaDB and Microsoft SQL
-Server. Application versioning is only supported by MariaDB.
+System versioning is currently supported only by MariaDB, Microsoft SQL Server,
+IBM Db2, and partially in Oracle (Oracle's implementation is not in accordance
+with the ISO SQL specification). Application versioning is only supported by
+MariaDB and Db2.
 
 At the moment, SQLAlchemy supports all temporal DML (``CREATE TABLE``)
-constructs for all database backends that implement it; however, it does not
-support DML constucts. These include  ``SELECT [...] FOR SYSTEM_TIME [...]`` for
-system versioning and ``SELECT [...] WHERE my_period CONTAINS [...]`` with
-application versioning - these actions can mostly be accomplished using
-:meth:`_expression.Select.with_hint` for system versioning, and and text
+constructs for MariaDB and SQL Server; however, it does not support DML
+constucts. These include  ``SELECT [...] FOR SYSTEM_TIME [...]`` for system
+versioning and ``SELECT [...] WHERE my_period CONTAINS [...]`` or ``FOR PORTION
+OF`` with application versioning - these actions can mostly be accomplished
+using :meth:`_expression.Select.with_hint` for system versioning, and text
 :meth:`_orm.Query.where`/ :meth:`_orm.Query.filter` clauses for application
 versioning.
 
@@ -50,10 +52,9 @@ versioning.
 Working with Application-Time Periods
 -------------------------------------
 Application-time period schemas can be represented in SQLAlchemy using the
-:class:`Period` schema item, or its alias :class:`ApplicationTimePeriod`. All
-that is required in SQL DDL to add application versioning to a table is to
-include a named ``PERIOD FOR`` construct. This is described similarly in
-SQLAlchemy, using something like the following:
+:class:`Period` schema item. All that is required in SQL DDL to add application
+versioning to a table is to include a named ``PERIOD FOR`` construct. This is
+described similarly in SQLAlchemy, using something like the following:
 
 .. code-block:: python
 
@@ -85,10 +86,10 @@ Using Application-Time Periods in Primary Keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQL:2011 allows for including periods in composite primary or unique keys using
-the ``WITHOUT OVERLAPS`` clause. This can be acheived in SQLAlchemy in the same
-way as usual: either with the ``primary_key`` argument to :class:`Column`, or
-with a :class:`PrimaryKeyConstraint` or :class:`UniqueConstraint` table
-argument. The below is an example:
+the ``WITHOUT OVERLAPS`` clause. This can be acheived in SQLAlchemy either with
+the ``primary_key`` argument to :class:`Period`, or with a
+:class:`PrimaryKeyConstraint` or :class:`UniqueConstraint` table argument. The
+below is an example:
 
 
 .. code-block:: python
@@ -182,8 +183,34 @@ The resulting DDL is below:
         PERIOD FOR SYSTEM_TIME (sys_start, sys_end)
     ) WITH SYSTEM VERSIONING
 
-Backend-Specific System Versioning Constructs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Some dialects may also support specifically opting a column in or out of
+versioning, which is useful to help minimize storage requirements with
+frequently-updating rows. This result can be acheived with the following syntax:
+
+.. code-block:: python
+
+    t = Table(
+        "t",
+        metadata,
+        Column("x", Integer),
+        Column("y", Integer, system_versioning=False),
+        Column("z", Integer, system_versioning=True,
+        SystemTimePeriod(),
+    )
+
+.. code-block:: sql
+
+    CREATE TABLE t (
+        x INTEGER,
+        y INTEGER WITHOUT SYSTEM VERSIONING
+        z INTEGER WITH SYSTEM VERSIONING
+    ) WITH SYSTEM VERSIONING"
+
+Backend-Specific Constructs
+----------------------------
+
+Microsoft SQL Server
+~~~~~~~~~~~~~~~~~~~~
 
 Microsoft SQL server requires a slightly different system versioning syntax,
 namely ``WITH (SYSTEM_VERSIONING = ON)`` or ``WITH (SYSTEM_VERSIONING = ON
@@ -211,10 +238,15 @@ created by passing a table name (with schema) or table object to the
     If a string arument is passed to ``history_table``, *No checks will be done
     to verify the table exists*. This is intentional, as SQL Server will create
     the history table automatically if it does not exist. If strict checking is
-    preferred, just pass the option ``_validate_tables=True``to the
+    preferred, just pass the option ``validate_str_tables=True``to the
     ``SystemTimePeriod`` constructor.
 
+Other Backends
+~~~~~~~~~~~~~~
 
+If a backend needs an alternative system time period name instead of
+``SYSTEM_TIME`` (e.g. Oracle), set it by subclassing :class:`SystemTimePeriod`
+and overriding the _period_name = "SYSTEM_TIME" class attribute.
 
 Bitemporal Tables
 -----------------
@@ -226,10 +258,6 @@ enabled. This can be done easily by providing both a :class:`Period` and a
 Temporal API
 ------------
 .. autoclass:: Period
-    :members:
-    :inherited-members:
-
-.. autoclass:: ApplicationTimePeriod
     :members:
     :inherited-members:
 

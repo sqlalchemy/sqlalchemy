@@ -40,7 +40,6 @@ from .sql.ddl import (
 )
 from .sql.naming import conv as conv
 from .sql.schema import _get_table_key as _get_table_key
-from .sql.schema import ApplicationTimePeriod as ApplicationTimePeriod
 from .sql.schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .sql.schema import CheckConstraint as CheckConstraint
 from .sql.schema import Column as Column
