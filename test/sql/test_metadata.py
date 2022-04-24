@@ -761,7 +761,10 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 "%s"
                 ", name='someconstraint')" % repr(ck.sqltext),
             ),
-            (ColumnDefault(("foo", "bar")), "ColumnDefault(('foo', 'bar'))"),
+            (
+                ColumnDefault(("foo", "bar")),
+                "ColumnDefault(('foo', 'bar'))",
+            ),
         ):
             eq_(repr(const), exp)
 
@@ -918,6 +921,46 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
         b2 = b.to_metadata(m2)
         a2 = a.to_metadata(m2)
         assert b2.c.y.references(a2.c.x)
+
+    def test_fk_w_no_colname(self):
+        """test a ForeignKey that refers to table name only.  the column
+        name is assumed to be the same col name on parent table.
+
+        this is a little used feature from long ago that nonetheless is
+        still in the code.
+
+        The feature was found to be not working but is repaired for
+        SQLAlchemy 2.0.
+
+        """
+        m1 = MetaData()
+        a = Table("a", m1, Column("x", Integer))
+        b = Table("b", m1, Column("x", Integer, ForeignKey("a")))
+        assert b.c.x.references(a.c.x)
+
+        m2 = MetaData()
+        b2 = b.to_metadata(m2)
+        a2 = a.to_metadata(m2)
+        assert b2.c.x.references(a2.c.x)
+
+    def test_fk_w_no_colname_name_missing(self):
+        """test a ForeignKey that refers to table name only.  the column
+        name is assumed to be the same col name on parent table.
+
+        this is a little used feature from long ago that nonetheless is
+        still in the code.
+
+        """
+        m1 = MetaData()
+        a = Table("a", m1, Column("x", Integer))
+        b = Table("b", m1, Column("y", Integer, ForeignKey("a")))
+
+        with expect_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not initialize target column for ForeignKey 'a' on "
+            "table 'b': table 'a' has no column named 'y'",
+        ):
+            assert b.c.y.references(a.c.x)
 
     def test_column_collection_constraint_w_ad_hoc_columns(self):
         """Test ColumnCollectionConstraint that has columns that aren't
@@ -5302,6 +5345,29 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         a1.append_constraint(fk)
         eq_(fk.name, "fk_address_user_id_user_id")
+
+    @testing.combinations(True, False, argnames="col_has_type")
+    def test_fk_ref_local_referent_has_no_type(self, col_has_type):
+        """test #7958"""
+
+        metadata = MetaData(
+            naming_convention={
+                "fk": "fk_%(referred_column_0_name)s",
+            }
+        )
+        Table("a", metadata, Column("id", Integer, primary_key=True))
+        b = Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("aid", ForeignKey("a.id"))
+            if not col_has_type
+            else Column("aid", Integer, ForeignKey("a.id")),
+        )
+        fks = list(
+            c for c in b.constraints if isinstance(c, ForeignKeyConstraint)
+        )
+        eq_(fks[0].name, "fk_id")
 
     def test_custom(self):
         def key_hash(const, table):

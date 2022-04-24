@@ -2433,10 +2433,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         return parenttable, tablekey, colname
 
     def _link_to_col_by_colstring(self, parenttable, table, colname):
-        if not hasattr(self.constraint, "_referred_table"):
-            self.constraint._referred_table = table
-        else:
-            assert self.constraint._referred_table is table
 
         _column = None
         if colname is None:
@@ -2444,8 +2440,12 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             # was specified as table name only, in which case we
             # match the column name to the same column on the
             # parent.
-            key = self.parent
-            _column = table.c.get(self.parent.key, None)
+            # this use case wasn't working in later 1.x series
+            # as it had no test coverage; fixed in 2.0
+            parent = self.parent
+            assert parent is not None
+            key = parent.key
+            _column = table.c.get(key, None)
         elif self.link_to_name:
             key = colname
             for c in table.c:
@@ -2465,10 +2465,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 key,
             )
 
-        self._set_target_column(_column)
+        return _column
 
     def _set_target_column(self, column):
-        assert isinstance(self.parent.table, Table)
+        assert self.parent is not None
 
         # propagate TypeEngine to parent if it didn't have one
         if self.parent.type._isnull:
@@ -2518,14 +2518,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     "parent MetaData" % parenttable
                 )
             else:
-                raise exc.NoReferencedColumnError(
-                    "Could not initialize target column for "
-                    "ForeignKey '%s' on table '%s': "
-                    "table '%s' has no column named '%s'"
-                    % (self._colspec, parenttable.name, tablekey, colname),
-                    tablekey,
-                    colname,
+                table = parenttable.metadata.tables[tablekey]
+                return self._link_to_col_by_colstring(
+                    parenttable, table, colname
                 )
+
         elif hasattr(self._colspec, "__clause_element__"):
             _column = self._colspec.__clause_element__()
             return _column
@@ -2545,6 +2542,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _set_remote_table(self, table):
         parenttable, tablekey, colname = self._resolve_col_tokens()
         self._link_to_col_by_colstring(parenttable, table, colname)
+
+        _column = self._link_to_col_by_colstring(parenttable, table, colname)
+        self._set_target_column(_column)
+        assert self.constraint is not None
+
         self.constraint._validate_dest_table(table)
 
     def _remove_from_metadata(self, metadata):
@@ -2583,10 +2585,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             if table_key in parenttable.metadata.tables:
                 table = parenttable.metadata.tables[table_key]
                 try:
-                    self._link_to_col_by_colstring(parenttable, table, colname)
+                    _column = self._link_to_col_by_colstring(
+                        parenttable, table, colname
+                    )
                 except exc.NoReferencedColumnError:
                     # this is OK, we'll try later
                     pass
+                else:
+                    self._set_target_column(_column)
             parenttable.metadata._fk_memos[fk_key].append(self)
         elif hasattr(self._colspec, "__clause_element__"):
             _column = self._colspec.__clause_element__()

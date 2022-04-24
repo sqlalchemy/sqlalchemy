@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 7958
+
+    Fixed bug where :class:`.ForeignKeyConstraint` naming conventions using the
+    ``referred_column_0`` naming convention key would not work if the foreign
+    key constraint were set up as a :class:`.ForeignKey` object rather than an
+    explicit :class:`.ForeignKeyConstraint` object. As this change makes use of
+    a backport of some fixes from version 2.0, an additional little-known
+    feature that has likely been broken for many years is also fixed which is
+    that a :class:`.ForeignKey` object may refer to a referred table by name of
+    the table alone without using a column name, if the name of the referent
+    column is the same as that of the referred column.
+
+    The ``referred_column_0`` naming convention key was not previously not
+    tested with the :class:`.ForeignKey` object, only
+    :class:`.ForeignKeyConstraint`, and this bug reveals that the feature has
+    never worked correctly unless :class:`.ForeignKeyConstraint` is used for
+    all FK constraints. This bug traces back to the original introduction of
+    the feature introduced for :ticket:`3989`.
