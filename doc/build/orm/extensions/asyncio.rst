@@ -271,23 +271,23 @@ prevent this:
   :meth:`_asyncio.AsyncSession.commit`, as in the line at the end where we
   access an attribute::
 
-    # create AsyncSession with expire_on_commit=False
-    async_session = AsyncSession(engine, expire_on_commit=False)
+      # create AsyncSession with expire_on_commit=False
+      async_session = AsyncSession(engine, expire_on_commit=False)
 
-    # sessionmaker version
-    async_session = async_sessionmaker(engine, expire_on_commit=False)
+      # sessionmaker version
+      async_session = async_sessionmaker(engine, expire_on_commit=False)
 
-    async with async_session() as session:
-        result = await session.execute(select(A).order_by(A.id))
+      async with async_session() as session:
+          result = await session.execute(select(A).order_by(A.id))
 
-        a1 = result.scalars().first()
+          a1 = result.scalars().first()
 
-        # commit would normally expire all attributes
-        await session.commit()
+          # commit would normally expire all attributes
+          await session.commit()
 
-        # access attribute subsequent to commit; this is what
-        # expire_on_commit=False allows
-        print(a1.data)
+          # access attribute subsequent to commit; this is what
+          # expire_on_commit=False allows
+          print(a1.data)
 
 * The :paramref:`_schema.Column.server_default` value on the ``created_at``
   column will not be refreshed by default after an INSERT; instead, it is
@@ -338,12 +338,12 @@ Other guidelines include:
   :ref:`session_run_sync`, or by using its ``.statement`` attribute
   to obtain a normal select::
 
-    user = await session.get(User, 42)
-    addresses = (await session.scalars(user.addresses.statement)).all()
-    stmt = user.addresses.statement.where(
-        Address.email_address.startswith("patrick")
-    )
-    addresses_filter = (await session.scalars(stmt)).all()
+      user = await session.get(User, 42)
+      addresses = (await session.scalars(user.addresses.statement)).all()
+      stmt = user.addresses.statement.where(
+          Address.email_address.startswith("patrick")
+      )
+      addresses_filter = (await session.scalars(stmt)).all()
 
   .. seealso::
 
