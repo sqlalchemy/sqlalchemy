@@ -71,9 +71,11 @@ to deliver a streaming server-side :class:`_asyncio.AsyncResult`::
 
     from sqlalchemy.ext.asyncio import create_async_engine
 
+
     async def async_main():
         engine = create_async_engine(
-            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+            "postgresql+asyncpg://scott:tiger@localhost/test",
+            echo=True,
         )
 
         async with engine.begin() as conn:
@@ -85,7 +87,6 @@ to deliver a streaming server-side :class:`_asyncio.AsyncResult`::
             )
 
         async with engine.connect() as conn:
-
             # select a Result, which will be delivered with buffered
             # results
             result = await conn.execute(select(t1).where(t1.c.name == "some name 1"))
@@ -95,6 +96,7 @@ to deliver a streaming server-side :class:`_asyncio.AsyncResult`::
         # for AsyncEngine created in function scope, close and
         # clean-up pooled connections
         await engine.dispose()
+
 
     asyncio.run(async_main())
 
@@ -123,7 +125,7 @@ cursor and provides an async/await API, such as an async iterator::
         async_result = await conn.stream(select(t1))
 
         async for row in async_result:
-            print("row: %s" % (row, ))
+            print("row: %s" % (row,))
 
 .. _asyncio_orm:
 
@@ -140,19 +142,10 @@ illustrates a complete example including mapper and session configuration::
 
     import asyncio
 
-    from sqlalchemy import Column
-    from sqlalchemy import DateTime
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import func
-    from sqlalchemy import Integer
-    from sqlalchemy import String
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.future import select
-    from sqlalchemy.orm import declarative_base
-    from sqlalchemy.orm import relationship
-    from sqlalchemy.orm import selectinload
+    from sqlalchemy.orm import declarative_base, relationship, selectinload
 
     Base = declarative_base()
 
@@ -278,26 +271,23 @@ prevent this:
   :meth:`_asyncio.AsyncSession.commit`, as in the line at the end where we
   access an attribute::
 
-      # create AsyncSession with expire_on_commit=False
-      async_session = AsyncSession(engine, expire_on_commit=False)
+    # create AsyncSession with expire_on_commit=False
+    async_session = AsyncSession(engine, expire_on_commit=False)
 
-      # sessionmaker version
-      async_session = async_sessionmaker(
-          engine, expire_on_commit=False
-      )
+    # sessionmaker version
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
-      async with async_session() as session:
+    async with async_session() as session:
+        result = await session.execute(select(A).order_by(A.id))
 
-          result = await session.execute(select(A).order_by(A.id))
+        a1 = result.scalars().first()
 
-          a1 = result.scalars().first()
+        # commit would normally expire all attributes
+        await session.commit()
 
-          # commit would normally expire all attributes
-          await session.commit()
-
-          # access attribute subsequent to commit; this is what
-          # expire_on_commit=False allows
-          print(a1.data)
+        # access attribute subsequent to commit; this is what
+        # expire_on_commit=False allows
+        print(a1.data)
 
 * The :paramref:`_schema.Column.server_default` value on the ``created_at``
   column will not be refreshed by default after an INSERT; instead, it is
@@ -348,12 +338,12 @@ Other guidelines include:
   :ref:`session_run_sync`, or by using its ``.statement`` attribute
   to obtain a normal select::
 
-      user = await session.get(User, 42)
-      addresses = (await session.scalars(user.addresses.statement)).all()
-      stmt = user.addresses.statement.where(
-          Address.email_address.startswith("patrick")
-      )
-      addresses_filter = (await session.scalars(stmt)).all()
+    user = await session.get(User, 42)
+    addresses = (await session.scalars(user.addresses.statement)).all()
+    stmt = user.addresses.statement.where(
+        Address.email_address.startswith("patrick")
+    )
+    addresses_filter = (await session.scalars(stmt)).all()
 
   .. seealso::
 
@@ -392,8 +382,8 @@ attribute accesses within a separate function::
 
     import asyncio
 
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 
     def fetch_and_update_objects(session):
         """run traditional sync-style ORM code in a function that will be
@@ -422,7 +412,8 @@ attribute accesses within a separate function::
 
     async def async_main():
         engine = create_async_engine(
-            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+            "postgresql+asyncpg://scott:tiger@localhost/test",
+            echo=True,
         )
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
@@ -445,6 +436,7 @@ attribute accesses within a separate function::
         # for AsyncEngine created in function scope, close and
         # clean-up pooled connections
         await engine.dispose()
+
 
     asyncio.run(async_main())
 
@@ -522,18 +514,15 @@ constructs are illustrated below::
 
     import asyncio
 
-    from sqlalchemy import text
+    from sqlalchemy import event, text
     from sqlalchemy.engine import Engine
-    from sqlalchemy import event
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     from sqlalchemy.orm import Session
 
     ## Core events ##
 
-    engine = create_async_engine(
-        "postgresql+asyncpg://scott:tiger@localhost:5432/test"
-    )
+    engine = create_async_engine("postgresql+asyncpg://scott:tiger@localhost:5432/test")
+
 
     # connect event on instance of Engine
     @event.listens_for(engine.sync_engine, "connect")
@@ -545,10 +534,15 @@ constructs are illustrated below::
         cursor.execute("select 'execute from event'")
         print(cursor.fetchone()[0])
 
+
     # before_execute event on all Engine instances
     @event.listens_for(Engine, "before_execute")
     def my_before_execute(
-        conn, clauseelement, multiparams, params, execution_options
+        conn,
+        clauseelement,
+        multiparams,
+        params,
+        execution_options,
     ):
         print("before execute!")
 
@@ -556,6 +550,7 @@ constructs are illustrated below::
     ## ORM events ##
 
     session = AsyncSession(engine)
+
 
     # before_commit event on instance of Session
     @event.listens_for(session.sync_session, "before_commit")
@@ -569,10 +564,12 @@ constructs are illustrated below::
         result = connection.execute(text("select 'execute from event'"))
         print(result.first())
 
+
     # after_commit event on all Session instances
     @event.listens_for(Session, "after_commit")
     def my_after_commit(session):
         print("after commit!")
+
 
     async def go():
         await session.execute(text("select 1"))
@@ -581,7 +578,9 @@ constructs are illustrated below::
         await session.close()
         await engine.dispose()
 
+
     asyncio.run(go())
+
 
 The above example prints something along the lines of::
 
@@ -663,15 +662,18 @@ method.  The given function itself does not need to be declared as ``async``;
 it's perfectly fine for it to be a Python ``lambda:``, as the return awaitable
 value will be invoked after being returned::
 
-    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import event
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine(...)
+
 
     @event.listens_for(engine.sync_engine, "connect")
     def register_custom_types(dbapi_connection, ...):
         dbapi_connection.run_async(
-            lambda connection: connection.set_type_codec('MyCustomType', encoder, decoder, ...)
+            lambda connection: connection.set_type_codec(
+                "MyCustomType", encoder, decoder, ...
+            )
         )
 
 Above, the object passed to the ``register_custom_types`` event handler
@@ -702,11 +704,13 @@ If the same engine must be shared between different loop, it should be configure
 to disable pooling using :class:`~sqlalchemy.pool.NullPool`, preventing the Engine
 from using any connection more than once::
 
+    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.pool import NullPool
-    engine = create_async_engine(
-        "postgresql+asyncpg://user:pass@host/dbname", poolclass=NullPool
-    )
 
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:pass@host/dbname",
+        poolclass=NullPool,
+    )
 
 .. _asyncio_scoped_session:
 
@@ -720,13 +724,18 @@ constructor::
 
     from asyncio import current_task
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker
-    from sqlalchemy.ext.asyncio import async_scoped_session
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, async_scoped_session
+    from sqlalchemy.orm import sessionmaker
 
-    async_session_factory = async_sessionmaker(some_async_engine, expire_on_commit=False)
-    AsyncScopedSession = async_scoped_session(async_session_factory, scopefunc=current_task)
-
+    async_session_factory = sessionmaker(
+        some_async_engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+    AsyncScopedSession = async_scoped_session(
+        async_session_factory,
+        copefunc=current_task,
+    )
     some_async_session = AsyncScopedSession()
 
 :class:`_asyncio.async_scoped_session` also includes **proxy
@@ -763,13 +772,11 @@ leveraging the :meth:`_asyncio.AsyncConnection.run_sync` method of
 
     import asyncio
 
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy import inspect
+    from sqlalchemy.ext.asyncio import create_async_engine
 
-    engine = create_async_engine(
-      "postgresql+asyncpg://scott:tiger@localhost/test"
-    )
+    engine = create_async_engine("postgresql+asyncpg://scott:tiger@localhost/test")
+
 
     def use_inspector(conn):
         inspector = inspect(conn)
@@ -778,9 +785,11 @@ leveraging the :meth:`_asyncio.AsyncConnection.run_sync` method of
         # return any value to the caller
         return inspector.get_table_names()
 
+
     async def async_main():
         async with engine.connect() as conn:
             tables = await conn.run_sync(use_inspector)
+
 
     asyncio.run(async_main())
 
