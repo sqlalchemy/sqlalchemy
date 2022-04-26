@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mysql, regression
-    :tickets: 7871
-
-    Fixed a regression in the untested MySQL PyODBC dialect caused by the fix
-    for :ticket:`7518` in version 1.4.32 where an argument was being propagated
-    incorrectly upon first connect, leading to a ``TypeError``.

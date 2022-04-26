@@ -15,7 +15,139 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.36
-    :include_notes_from: unreleased_14
+    :released: April 26, 2022
+
+    .. change::
+        :tags: bug, mysql, regression
+        :tickets: 7871
+
+        Fixed a regression in the untested MySQL PyODBC dialect caused by the fix
+        for :ticket:`7518` in version 1.4.32 where an argument was being propagated
+        incorrectly upon first connect, leading to a ``TypeError``.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7936
+
+        Fixed regression where the change made for :ticket:`7861`, released in
+        version 1.4.33, that brought the :class:`.Insert` construct to be partially
+        recognized as an ORM-enabled statement did not properly transfer the
+        correct mapper / mapped table state to the :class:`.Session`, causing the
+        :meth:`.Session.get_bind` method to fail for a :class:`.Session` that was
+        bound to engines and/or connections using the :paramref:`.Session.binds`
+        parameter.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7875
+
+        Fixed a memory leak in the C extensions which could occur when calling upon
+        named members of :class:`.Row` when the member does not exist under Python
+        3; in particular this could occur during NumPy transformations when it
+        attempts to call members such as ``.__array__``, but the issue was
+        surrounding any ``AttributeError`` thrown by the :class:`.Row` object. This
+        issue does not apply to version 2.0 which has already transitioned to
+        Cython. Thanks much to Sebastian Berg for identifying the problem.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6515
+
+        Fixed bug in :class:`.ARRAY` datatype in combination with :class:`.Enum` on
+        PostgreSQL where using the ``.any()`` or ``.all()`` methods to render SQL
+        ANY() or ALL(), given members of the Python enumeration as arguments, would
+        produce a type adaptation failure on all drivers.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 7943
+
+        Implemented :attr:`_postgresql.UUID.python_type` attribute for the
+        PostgreSQL :class:`_postgresql.UUID` type object. The attribute will return
+        either ``str`` or ``uuid.UUID`` based on the
+        :paramref:`_postgresql.UUID.as_uuid` parameter setting. Previously, this
+        attribute was unimplemented. Pull request courtesy Alex Grönholm.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 7919
+
+        For third party dialects, repaired a missing requirement for the
+        ``SimpleUpdateDeleteTest`` suite test which was not checking for a working
+        "rowcount" function on the target dialect.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 7930
+
+        Fixed an issue in the psycopg2 dialect when using the
+        :paramref:`.create_engine.pool_pre_ping` parameter which would cause
+        user-configured ``AUTOCOMMIT`` isolation level to be inadvertently reset by
+        the "ping" handler.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 7937
+
+        Repaired handling of ``contextvar.ContextVar`` objects inside of async
+        adapted event handlers. Previously, values applied to a ``ContextVar``
+        would not be propagated in the specific case of calling upon awaitables
+        inside of non-awaitable code.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7953
+
+        Added a warning regarding a bug which exists in the :meth:`.Result.columns`
+        method when passing 0 for the index in conjunction with a :class:`.Result`
+        that will return a single ORM entity, which indicates that the current
+        behavior of :meth:`.Result.columns` is broken in this case as the
+        :class:`.Result` object will yield scalar values and not :class:`.Row`
+        objects. The issue will be fixed in 2.0, which would be a
+        backwards-incompatible change for code that relies on the current broken
+        behavior. Code which wants to receive a collection of scalar values should
+        use the :meth:`.Result.scalars` method, which will return a new
+        :class:`.ScalarResult` object that yields non-row scalar objects.
+
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 7958
+
+        Fixed bug where :class:`.ForeignKeyConstraint` naming conventions using the
+        ``referred_column_0`` naming convention key would not work if the foreign
+        key constraint were set up as a :class:`.ForeignKey` object rather than an
+        explicit :class:`.ForeignKeyConstraint` object. As this change makes use of
+        a backport of some fixes from version 2.0, an additional little-known
+        feature that has likely been broken for many years is also fixed which is
+        that a :class:`.ForeignKey` object may refer to a referred table by name of
+        the table alone without using a column name, if the name of the referent
+        column is the same as that of the referred column.
+
+        The ``referred_column_0`` naming convention key was previously not tested
+        with the :class:`.ForeignKey` object, only :class:`.ForeignKeyConstraint`,
+        and this bug reveals that the feature has never worked correctly unless
+        :class:`.ForeignKeyConstraint` is used for all FK constraints. This bug
+        traces back to the original introduction of the feature introduced for
+        :ticket:`3989`.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 7900
+
+        Modified the :class:`.DeclarativeMeta` metaclass to pass ``cls.__dict__``
+        into the declarative scanning process to look for attributes, rather than
+        the separate dictionary passed to the type's ``__init__()`` method. This
+        allows user-defined base classes that add attributes within an
+        ``__init_subclass__()`` to work as expected, as ``__init_subclass__()`` can
+        only affect the ``cls.__dict__`` itself and not the other dictionary. This
+        is technically a regression from 1.3 where ``__dict__`` was being used.
+
+
+
 
 .. changelog::
     :version: 1.4.35
