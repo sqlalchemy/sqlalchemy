@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 7937
-
-    Repaired handling of ``contextvar.ContextVar`` objects inside of async
-    adapted event handlers. Previously, values applied to a ``ContextVar``
-    would not be propagated in the specific case of calling upon awaitables
-    inside of non-awaitable code.
-
