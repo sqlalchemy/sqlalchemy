@@ -2,6 +2,7 @@
     :tags: bug, postgresql
     :tickets: 7930
 
-    Fixed an issue what would cause autocommit mode to be reset
-    when using pre_ping in conjunction engine level autocommit
-    on the psycopg2 driver.
+    Fixed an issue in the psycopg2 dialect when using the
+    :paramref:`.create_engine.pool_pre_ping` parameter which would cause
+    user-configured ``AUTOCOMMIT`` isolation level to be inadvertently reset by
+    the "ping" handler.

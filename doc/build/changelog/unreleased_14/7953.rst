@@ -2,9 +2,14 @@
     :tags: bug, engine
     :tickets: 7953
 
-    A warning is emitted when calling upon the :meth:`.Result.columns` method
-    with only one index, in particular ORM related cases, indicating that the
-    current behavior of :meth:`.Result.columns` is broken in this case and
-    will be changed in 2.0.  To receive a collection of scalar values,
-    use the :meth:`.Result.scalars` method.
+    Added a warning regarding a bug which exists in the :meth:`.Result.columns`
+    method when passing 0 for the index in conjunction with a :class:`.Result`
+    that will return a single ORM entity, which indicates that the current
+    behavior of :meth:`.Result.columns` is broken in this case as the
+    :class:`.Result` object will yield scalar values and not :class:`.Row`
+    objects. The issue will be fixed in 2.0, which would be a
+    backwards-incompatible change for code that relies on the current broken
+    behavior. Code which wants to receive a collection of scalar values should
+    use the :meth:`.Result.scalars` method, which will return a new
+    :class:`.ScalarResult` object that yields non-row scalar objects.
 

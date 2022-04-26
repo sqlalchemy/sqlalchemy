@@ -3,6 +3,6 @@
     :tickets: 6515
 
     Fixed bug in :class:`.ARRAY` datatype in combination with :class:`.Enum` on
-    PostgreSQL where using the ``.any()`` method to render SQL ANY(), given
-    members of the Python enumeration as arguments, would produce a type
-    adaptation failure on all drivers.
+    PostgreSQL where using the ``.any()`` or ``.all()`` methods to render SQL
+    ANY() or ALL(), given members of the Python enumeration as arguments, would
+    produce a type adaptation failure on all drivers.
