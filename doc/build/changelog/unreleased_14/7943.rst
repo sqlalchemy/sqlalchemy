@@ -3,7 +3,7 @@
     :tickets: 7943
 
     Implemented :attr:`_postgresql.UUID.python_type` attribute for the
-    :class:`_postgresql.UUID` type object. The attribute will return either
-    ``str`` or ``uuid.UUID`` based on the :paramref:`_postgresql.UUID.as_uuid`
-    parameter setting. Previously, this attribute was unimplemented. Pull
-    request courtesy Alex Grönholm.
+    PostgreSQL :class:`_postgresql.UUID` type object. The attribute will return
+    either ``str`` or ``uuid.UUID`` based on the
+    :paramref:`_postgresql.UUID.as_uuid` parameter setting. Previously, this
+    attribute was unimplemented. Pull request courtesy Alex Grönholm.

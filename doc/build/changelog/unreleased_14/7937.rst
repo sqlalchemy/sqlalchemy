@@ -2,7 +2,8 @@
     :tags: bug, asyncio
     :tickets: 7937
 
-    Allow setting contextvar values inside async adapted event handlers.
-    Previously the value set to the contextvar would not be properly
-    propagated.
+    Repaired handling of ``contextvar.ContextVar`` objects inside of async
+    adapted event handlers. Previously, values applied to a ``ContextVar``
+    would not be propagated in the specific case of calling upon awaitables
+    inside of non-awaitable code.
 

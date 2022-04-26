@@ -12,9 +12,9 @@
     the table alone without using a column name, if the name of the referent
     column is the same as that of the referred column.
 
-    The ``referred_column_0`` naming convention key was not previously not
-    tested with the :class:`.ForeignKey` object, only
-    :class:`.ForeignKeyConstraint`, and this bug reveals that the feature has
-    never worked correctly unless :class:`.ForeignKeyConstraint` is used for
-    all FK constraints. This bug traces back to the original introduction of
-    the feature introduced for :ticket:`3989`.
+    The ``referred_column_0`` naming convention key was previously not tested
+    with the :class:`.ForeignKey` object, only :class:`.ForeignKeyConstraint`,
+    and this bug reveals that the feature has never worked correctly unless
+    :class:`.ForeignKeyConstraint` is used for all FK constraints. This bug
+    traces back to the original introduction of the feature introduced for
+    :ticket:`3989`.

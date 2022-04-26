@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7875
+
+    Fixed a memory leak in the C extensions which could occur when calling upon
+    named members of :class:`.Row` when the member does not exist under Python
+    3; in particular this could occur during NumPy transformations when it
+    attempts to call members such as ``.__array__``, but the issue was
+    surrounding any ``AttributeError`` thrown by the :class:`.Row` object. This
+    issue does not apply to version 2.0 which has already transitioned to
+    Cython. Thanks much to Sebastian Berg for identifying the problem.
+
