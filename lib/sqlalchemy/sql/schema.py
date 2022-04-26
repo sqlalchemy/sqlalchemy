@@ -385,7 +385,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    periods: DictCollection
+    periods: DictCollection[Period]
     """A collection of all :class:`_schema.Period` objects associated with this
         :class:`_schema.Table`.
     """
@@ -822,11 +822,11 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
         self.indexes = set()
         self.constraints = set()
+        self.periods = DictCollection()
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
         self.foreign_keys = set()  # type: ignore
-        self.periods = DictCollection()
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -4525,8 +4525,18 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         **dialect_kw: Any,
     ) -> None:
         self._implicit_generated = _implicit_generated
+
+        # Collect any periods objects (can't do anything about strings)
+        self._periods = []
+        cols = []
+        for item in columns:
+            if isinstance(item, Period):
+                self._periods.append(item)
+            else:
+                cols.append(item)
+
         super(PrimaryKeyConstraint, self).__init__(
-            *columns,
+            *cols,
             name=name,
             deferrable=deferrable,
             initially=initially,
@@ -4537,6 +4547,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
+        # POP col thingies
         super(PrimaryKeyConstraint, self)._set_parent(table)
 
         if table.primary_key is not self:
@@ -4571,7 +4582,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         if table_pks:
             self._columns.extend(table_pks)
 
-        self._periods = [p for p in table.periods if p.primary_key]
+        period_pks = [p for p in table.periods if p.primary_key]
 
     def _reload(self, columns: Iterable[Column[Any]]) -> None:
         """repopulate this :class:`.PrimaryKeyConstraint` given
@@ -5799,10 +5810,14 @@ class Period(SchemaItem):
 
         self.table = table
 
-        table.periods.add(self, self.key)
+        table.periods[self.key] = self
 
     def _copy(self, target_table: Table = None, **kw):
-        p = Period(name=self.name, start=self.start.key, end=self.end.key)
+        start = (
+            self.start if isinstance(self.start, Column) else str(self.start)
+        )
+        end = self.end if isinstance(self.end, Column) else str(self.end)
+        p = Period(name=self.name, start=start, end=end)
         return self._schema_item_copy(p)
 
 

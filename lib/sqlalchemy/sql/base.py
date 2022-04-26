@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from collections import abc as _collections_abc
 from enum import Enum
 from functools import reduce
 import itertools
@@ -24,8 +25,10 @@ from typing import cast
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
+from typing import ItemsView
 from typing import Iterable
 from typing import Iterator
+from typing import KeysView
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -38,6 +41,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+from typing import ValuesView
 
 from . import roles
 from . import visitors
@@ -1484,12 +1488,6 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     def __setattr__(self, key: str, obj: Any) -> NoReturn:
         raise NotImplementedError()
 
-    def __dir__(self):
-        # Add dict items to dir() for tab completion
-        base = super(ColumnCollection, self).__dir__()
-        base.extend(self.keys())
-        return sorted(base)
-
     def clear(self) -> NoReturn:
         """Dictionary clear() is not implemented for
         :class:`_sql.ColumnCollection`."""
@@ -1888,45 +1886,100 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
         return hash(tuple(x for x in self))
 
 
-class DictCollection(dict):
+_KT = TypeVar("_KT", bound=str)
+_VT = TypeVar("_VT")
+_VT_co = TypeVar("_VT_co", covariant=True)
+
+
+class DictCollection(_collections_abc.MutableMapping, Generic[_KT, _VT]):
     """A thin wrapper over ``dict`` that allows accessing members via dot
     notation, in addition to standard dictionary usage. Can be used to hold any
     data type.
+
+    Iteration traverses values rather than keys to allow for easier object
+    access. Implementation based on UserDict.
     """
 
-    __slots__ = tuple()
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
+    __slots__ = ("data_",)
+    data_: dict[_KT, _VT]
 
-    def __dir__(self):
+    def __init__(self, dict_: dict = None, /, **kwargs) -> None:
+        self.data_ = {}
+        if dict_ is not None:
+            self.update(dict_)
+        if kwargs:
+            self.update(kwargs)
+
+    def __basedir(self) -> Iterable[str]:
+        return super(DictCollection, self).__dir__()
+
+    def __dir__(self) -> Iterable[str]:
         # Add dict items to dir() for tab completion
-        base = super(DictCollection, self).__dir__()
+        base = self.__basedir()
         base.extend(self.keys())
         return sorted(base)
 
-    def __getitem__(self, key: Union[str, int]) -> Any:
+    def __getitem__(self, key: Union[_KT, int]) -> _VT:
         # Python dicts are ordered as of 3.7, so we can accept indices
         if isinstance(key, int):
             try:
-                return itertools.islice(self.values(), key, key + 1)
+                return next(
+                    itertools.islice(self.data_.values(), key, key + 1)
+                )
             except StopIteration as ex:
                 raise IndexError(key) from ex
-        return super(DictCollection, self).__getitem__(key)
+        return self.data_[key]
 
-    def __getattr__(self, key: str) -> Any:
-        # Reraise dict key errors as class attribute errors so
-        # getattr(x,y,default) works correctly
+    def __getattr__(self, key: _KT) -> _VT:
         try:
             return self.__getitem__(key)
         except KeyError as ex:
+            # Reraise as attr errors so getattr with default works
             raise AttributeError(key) from ex
 
-    def __iter__(self) -> Iterator:
-        return iter(self.values())
+    def __setitem__(self, key: _KT, item: _VT) -> None:
+        self.data_[key] = item
 
-    def add(self, item: Any, key: str) -> None:
-        """Add an item by key to the collection."""
-        self[key] = item
+    def __setattr__(self, name: _KT, value: _VT) -> None:
+        if name == "data_" or name in self.__basedir():
+            return super(DictCollection, self).__setattr__(name, value)
+        self.data_[name] = value
+
+    def __delitem__(self, key: _KT) -> None:
+        del self.data_[key]
+
+    __delattr__ = __delitem__
+
+    def __iter__(self) -> Iterator[_VT]:
+        return iter(self.data_.values())
+
+    def __repr__(self) -> str:
+        return repr(self.data_)
+
+    def __len__(self) -> int:
+        return len(self.data_)
+
+    def items(self) -> ItemsView[_KT, _VT_co]:
+        return self.data_.items()
+
+    def keys(self) -> KeysView[_KT]:
+        return self.data_.keys()
+
+    def values(self) -> ValuesView[_VT_co]:
+        return self.data_.values()
+
+    def get(self, key: _KT, default: Optional[Any] = None) -> Optional[_VT]:
+        return self.data_.get(key, default)
+
+    def update(self, other=(), /, **kwds) -> None:
+        if hasattr(other, "keys"):
+            for key in other.keys():
+                self[key] = other[key]
+        else:
+            for key, value in other:
+                self[key] = value
+        for key, value in kwds.items():
+            self[key] = value
 
 
 def _entity_namespace(

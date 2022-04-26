@@ -72,7 +72,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (PrimaryKeyConstraint, "PRIMARY KEY"), (UniqueConstraint, "UNIQUE")
     )
-    def test_period_primary_and_unique_constraint(self, constraint, keytype):
+    def test_period_constraints(self, constraint, keytypeddl):
         """Test setting a primary key or a unique key on a PERIOD via a
         constraint
         """
@@ -93,7 +93,36 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
             "start_ts TIMESTAMP, "
             "end_ts TIMESTAMP, "
             "PERIOD FOR test_period (start_ts, end_ts), "
-            f"{keytype} (id, test_period WITHOUT OVERLAPS))",
+            f"{keytypeddl} (id, test_period WITHOUT OVERLAPS))",
+        )
+
+    @testing.combinations(
+        (PrimaryKeyConstraint, "PRIMARY KEY"), (UniqueConstraint, "UNIQUE")
+    )
+    def test_period_constraints_obj_init(self, constraint, keytypeddl):
+        """Test setting a primary key or a unique key on a PERIOD via a
+        constraint where an object is passed to the initializer
+        """
+        m = MetaData()
+        id_col = Column("id", Integer, nullable=False)
+        period_col = Period("test_period", "start_ts", "end_ts")
+        t = Table(
+            "t",
+            m,
+            id_col,
+            Column("start_ts", TIMESTAMP),
+            Column("end_ts", TIMESTAMP),
+            period_col,
+            constraint(id_col, period_col),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "start_ts TIMESTAMP, "
+            "end_ts TIMESTAMP, "
+            "PERIOD FOR test_period (start_ts, end_ts), "
+            f"{keytypeddl} (id, test_period WITHOUT OVERLAPS))",
         )
 
     def test_period_system(self):
