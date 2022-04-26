@@ -272,12 +272,12 @@ remote tables with which to link::
     this ensures that duplicate rows won't be persisted within the table regardless
     of issues on the application side::
 
-    association_table = Table(
-        "association",
-        Base.metadata,
-        Column("left_id", ForeignKey("left.id"), primary_key=True),
-        Column("right_id", ForeignKey("right.id"), primary_key=True),
-    )
+        association_table = Table(
+            "association",
+            Base.metadata,
+            Column("left_id", ForeignKey("left.id"), primary_key=True),
+            Column("right_id", ForeignKey("right.id"), primary_key=True),
+        )
 
 For a bidirectional relationship, both sides of the relationship contain a
 collection.  Specify using :paramref:`_orm.relationship.back_populates`, and
