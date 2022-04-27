@@ -1932,9 +1932,6 @@ def aliased(
 
     .. seealso::
 
-        :class:`.AsAliased` - a :pep:`484` typed version of
-        :func:`_orm.aliased`
-
         :ref:`tutorial_orm_entity_aliases` - in the :ref:`unified_tutorial`
 
         :ref:`orm_queryguide_orm_aliases` - in the :ref:`queryguide_toplevel`
