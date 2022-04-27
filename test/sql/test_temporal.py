@@ -72,7 +72,7 @@ class PeriodTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (PrimaryKeyConstraint, "PRIMARY KEY"), (UniqueConstraint, "UNIQUE")
     )
-    def test_period_constraints(self, constraint, keytypeddl):
+    def test_period_constraints_str_init(self, constraint, keytypeddl):
         """Test setting a primary key or a unique key on a PERIOD via a
         constraint
         """

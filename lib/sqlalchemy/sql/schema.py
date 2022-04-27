@@ -3878,11 +3878,22 @@ class ColumnCollectionMixin:
             assert len(result) == len(self._pending_colargs)
             return result
         else:
-
             return [
                 parent.c[col] if isinstance(col, str) else col
                 for col in self._pending_colargs
+                if col not in parent.periods
             ]
+
+    def _period_expressions(
+        self, parent: Union[Table, Column[Any]]
+    ) -> List[Optional[Period]]:
+        if isinstance(parent, Column):
+            return []
+        return [
+            parent.periods[period]
+            for period in self._pending_colargs
+            if (isinstance(period, str) and period in parent.periods)
+        ]
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Table, Column))
