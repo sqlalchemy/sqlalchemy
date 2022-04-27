@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """private module containing functions used to convert database
 rows into object instances and associated state.
@@ -59,7 +61,6 @@ if TYPE_CHECKING:
     from .state import InstanceState
     from ..engine.interfaces import _ExecuteOptions
     from ..sql import Select
-    from ..sql.base import Executable
     from ..sql.selectable import ForUpdateArg
 
 _T = TypeVar("_T", bound=Any)

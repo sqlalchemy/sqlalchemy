@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 """
 Bootstrapper for test framework plugins.
 

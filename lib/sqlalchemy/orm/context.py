@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -67,7 +68,6 @@ if TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from .mapper import Mapper
     from .query import Query
-    from ..sql.compiler import _CompilerStackEntry
     from ..sql.dml import _DMLTableElement
     from ..sql.elements import ColumnElement
     from ..sql.selectable import _LabelConventionCallable

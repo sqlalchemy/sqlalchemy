@@ -15,6 +15,8 @@ documentation for an overview of how this module is used.
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import exc as exc
 from . import mapper as mapperlib
 from . import strategy_options as strategy_options
@@ -31,7 +33,6 @@ from ._orm_constructors import deferred as deferred
 from ._orm_constructors import dynamic_loader as dynamic_loader
 from ._orm_constructors import join as join
 from ._orm_constructors import mapped_column as mapped_column
-from ._orm_constructors import MappedColumn as MappedColumn
 from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship
@@ -48,6 +49,7 @@ from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
 from .base import Mapped as Mapped
 from .base import NotExtension as NotExtension
 from .base import ORMDescriptor as ORMDescriptor
+from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
 from .decl_api import as_declarative as as_declarative
@@ -89,8 +91,8 @@ from .mapper import Mapper as Mapper
 from .mapper import reconstructor as reconstructor
 from .mapper import validates as validates
 from .properties import ColumnProperty as ColumnProperty
+from .properties import MappedColumn as MappedColumn
 from .query import AliasOption as AliasOption
-from .query import FromStatement as FromStatement
 from .query import Query as Query
 from .relationships import foreign as foreign
 from .relationships import Relationship as Relationship
@@ -133,7 +135,7 @@ from .util import with_parent as with_parent
 from .. import util as _sa_util
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
 
     _sa_util.preloaded.import_prefix("sqlalchemy.orm")
     _sa_util.preloaded.import_prefix("sqlalchemy.ext")

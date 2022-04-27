@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import collections.abc as collections_abc
 import itertools
 

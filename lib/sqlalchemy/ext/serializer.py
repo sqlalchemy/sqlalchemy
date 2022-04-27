@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 """Serializer/Deserializer objects for usage with SQLAlchemy query structures,
 allowing "contextual" deserialization.

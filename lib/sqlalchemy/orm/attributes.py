@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 """Defines instrumentation for class attributes and their interaction
 with instances.
@@ -80,7 +81,6 @@ if TYPE_CHECKING:
     from .state import InstanceState
     from ..sql.dml import _DMLColumnElement
     from ..sql.elements import ColumnElement
-    from ..sql.elements import SQLCoreOperations
 
 _T = TypeVar("_T")
 

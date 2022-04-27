@@ -45,118 +45,48 @@ reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"
 reportTypedDictNotRequiredAccess = "warning"
-#reportIncompatibleMethodOverride = "error"
 
 [tool.mypy]
 mypy_path = "./lib/"
 show_error_codes = true
-strict = true
 incremental = true
+
+
+[[tool.mypy.overrides]]
+
+module = [
+    "sqlalchemy.*"
+]
+
+warn_unused_ignores = false
+strict = true
 
 [[tool.mypy.overrides]]
 
 #####################################################################
-# modules / packages explicitly not checked by Mypy at all right now.
+# interim list of modules that need some level of type checking to
+# pass
 module = [
-    "sqlalchemy.engine.reflection",  # interim, should be strict
 
-    # TODO for strict:
-    "sqlalchemy.ext.automap",
-    "sqlalchemy.ext.compiler",
-    "sqlalchemy.ext.declarative.*",
-    "sqlalchemy.ext.mutable",
-    "sqlalchemy.ext.horizontal_shard",
+    # TODO for ORM, non-strict
+    "sqlalchemy.orm.base",
+    "sqlalchemy.orm.decl_base",
+    "sqlalchemy.orm.descriptor_props",
+    "sqlalchemy.orm.identity",
+    "sqlalchemy.orm.mapped_collection",
+    "sqlalchemy.orm.properties",
+    "sqlalchemy.orm.relationships",
+    "sqlalchemy.orm.strategy_options",
+    "sqlalchemy.orm.state_changes",
 
-    # TODO for non-strict:
-    "sqlalchemy.ext.baked",
-    "sqlalchemy.ext.instrumentation",
-    "sqlalchemy.ext.indexable",
-    "sqlalchemy.ext.orderinglist",
-    "sqlalchemy.ext.serializer",
-
-    # not yet classified:
-    "sqlalchemy.orm.*",
-    "sqlalchemy.dialects.*",
-    "sqlalchemy.cyextension.*",
-    "sqlalchemy.future.*",
-    "sqlalchemy.testing.*",
+    # would ideally be strict
+    "sqlalchemy.orm.decl_api",
+    "sqlalchemy.orm.events",
+    "sqlalchemy.orm.query",
+    "sqlalchemy.engine.reflection",
 
 ]
 
-warn_unused_ignores = false
 ignore_errors = true
-
-################################################
-# modules explicitly for Mypy strict checking
-[[tool.mypy.overrides]]
-
-module = [
-    # packages
-    "sqlalchemy.connectors.*",
-    "sqlalchemy.event.*",
-    "sqlalchemy.ext.*",
-    "sqlalchemy.sql.*",
-    "sqlalchemy.engine.*",
-    "sqlalchemy.pool.*",
-
-    # uncomment, trying to make sure mypy
-    # is at a baseline
-    # "sqlalchemy.orm._orm_constructors",
-
-    "sqlalchemy.orm.path_registry",
-    "sqlalchemy.orm.scoping",
-    "sqlalchemy.orm.session",
-    "sqlalchemy.orm.state",
-
-    # modules
-    "sqlalchemy.events",
-    "sqlalchemy.exc",
-    "sqlalchemy.inspection",
-    "sqlalchemy.schema",
-    "sqlalchemy.types",
-]
-
 warn_unused_ignores = false
-ignore_errors = false
-strict = true
 
-################################################
-# modules explicitly for Mypy non-strict checking
-[[tool.mypy.overrides]]
-
-module = [
-    "sqlalchemy.engine.cursor",
-    "sqlalchemy.engine.default",
-
-    "sqlalchemy.sql.base",
-    "sqlalchemy.sql.coercions",
-    "sqlalchemy.sql.compiler",
-    "sqlalchemy.sql.crud",
-    "sqlalchemy.sql.ddl",  # would be nice as strict
-    "sqlalchemy.sql.elements",    # would be nice as strict
-    "sqlalchemy.sql.functions",  # would be nice as strict, requires sqltypes
-    "sqlalchemy.sql.lambdas",
-    "sqlalchemy.sql.naming",
-    "sqlalchemy.sql.selectable",   # would be nice as strict
-    "sqlalchemy.sql.sqltypes",   # would be nice as strict
-    "sqlalchemy.sql.traversals",
-    "sqlalchemy.sql.util",
-
-    "sqlalchemy.orm._orm_constructors",
-
-    "sqlalchemy.orm.interfaces",
-    "sqlalchemy.orm.mapper",
-    "sqlalchemy.orm.util",
-
-    "sqlalchemy.util.*",
-]
-
-
-warn_unused_ignores = false
-ignore_errors = false
-
-# mostly strict without requiring totally untyped things to be
-# typed
-strict = true
-allow_untyped_defs = true
-allow_untyped_calls = true

@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from ... import exc
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db

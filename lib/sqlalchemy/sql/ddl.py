@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
+
 """
 Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
