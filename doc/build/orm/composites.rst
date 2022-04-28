@@ -177,7 +177,7 @@ itself be a composite object, which is then mapped to a class ``HasVertex``::
             return self.x, self.y
 
         def __repr__(self):
-            return f"Point(x={self.x}, y={self.y})"
+            return f"Point(x={self.x!r}, y={self.y!r})"
 
         def __eq__(self, other):
             return (
