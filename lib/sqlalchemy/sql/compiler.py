@@ -70,7 +70,6 @@ from .elements import ClauseElement
 from .elements import quoted_name
 from .schema import Column
 from .schema import Computed
-from .schema import Period
 from .schema import PrimaryKeyConstraint
 from .schema import Table
 from .sqltypes import TupleType
@@ -5285,20 +5284,22 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "PRIMARY KEY "
-        text += "(%s)" % (
-            ", ".join(
-                (
-                    self.preparer.quote(c.name)
-                    + (" WITHOUT OVERLAPS" if isinstance(c, Period) else "")
-                )
-                for c in (
-                    constraint.columns_autoinc_first
-                    if constraint._implicit_generated
-                    else constraint.columns
-                )
+        coltext = ", ".join(
+            self.preparer.quote(c.name)
+            for c in (
+                constraint.columns_autoinc_first
+                if constraint._implicit_generated
+                else constraint.columns
             )
         )
+        periodtext = "".join(
+            [
+                f", {self.preparer.quote(period.name)} WITHOUT OVERLAPS"
+                for period in constraint._periods
+            ]
+        )
+
+        text += f"PRIMARY KEY ({coltext}{periodtext})"
         text += self.define_constraint_deferrability(constraint)
         return text
 
@@ -5339,16 +5340,16 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "UNIQUE (%s)" % (
-            ", ".join(
-                (
-                    self.preparer.quote(c.name)
-                    + (" WITHOUT OVERLAPS" if isinstance(c, Period) else "")
-                )
-                for c in constraint
-            )
+
+        coltext = ", ".join(self.preparer.quote(c.name) for c in constraint)
+        periodtext = "".join(
+            [
+                f", {self.preparer.quote(period.name)} WITHOUT OVERLAPS"
+                for period in constraint._periods
+            ]
         )
 
+        text += f"UNIQUE ({coltext}{periodtext})"
         text += self.define_constraint_deferrability(constraint)
         return text
 

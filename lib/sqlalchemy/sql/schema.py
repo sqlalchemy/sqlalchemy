@@ -3786,6 +3786,15 @@ class ColumnCollectionMixin:
         self._column_flag = _column_flag
         self._columns = DedupeColumnCollection()
 
+        # Collect any periods objects (can't do anything about strings)
+        self._periods: DictCollection[str, Period] = DictCollection()
+        cols = []
+        for item in columns:
+            if isinstance(item, Period):
+                self._periods[item.key] = item
+            else:
+                cols.append(item)
+
         processed_expressions: Optional[
             List[Union[ColumnElement[Any], str]]
         ] = _gather_expressions
@@ -3803,10 +3812,17 @@ class ColumnCollectionMixin:
                 self._pending_colargs.append(add_element)
                 processed_expressions.append(expr)
         else:
-            self._pending_colargs = [
-                coercions.expect(roles.DDLConstraintColumnRole, column)
-                for column in columns
-            ]
+            self._pending_periodargs = []
+            self._pending_colargs = []
+
+            for column in columns:
+                if not isinstance(column, Period):
+                    # _pending_colargs includes all columns and all strings
+                    self._pending_colargs.append(
+                        coercions.expect(roles.DDLConstraintColumnRole, column)
+                    )
+                else:
+                    self._pending_periodargs.append(column)
 
         if _autoattach and self._pending_colargs:
             self._check_attach()
@@ -3902,6 +3918,10 @@ class ColumnCollectionMixin:
             if col is not None:
                 self._columns.add(col)
 
+        for period in self._period_expressions(parent):
+            if period is not None:
+                self._periods[period.key] = period
+
 
 class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     """A constraint that proxies a ColumnCollection."""
@@ -3946,6 +3966,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
             info=info,
             **dialect_kw,
         )
+
         ColumnCollectionMixin.__init__(
             self, *columns, _autoattach=_autoattach, _column_flag=_column_flag
         )
@@ -4537,17 +4558,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     ) -> None:
         self._implicit_generated = _implicit_generated
 
-        # Collect any periods objects (can't do anything about strings)
-        self._periods = []
-        cols = []
-        for item in columns:
-            if isinstance(item, Period):
-                self._periods.append(item)
-            else:
-                cols.append(item)
-
         super(PrimaryKeyConstraint, self).__init__(
-            *cols,
+            *columns,
             name=name,
             deferrable=deferrable,
             initially=initially,
@@ -4624,9 +4636,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
         self._set_parent_with_dispatch(self.table)
 
-    def _replace(self, col: Column[Any]) -> None:
-        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
-        self._columns.replace(col)
+    def _replace(self, col: Union[Column[Any], Period]) -> None:
+        if isinstance(col, Period):
+            self._periods[col.key] = col
+        else:
+            PrimaryKeyConstraint._autoincrement_column._reset(
+                self
+            )  # type: ignore
+            self._columns.replace(col)
 
         self.dispatch._sa_event_column_added_to_pk_constraint(self, col)
 
