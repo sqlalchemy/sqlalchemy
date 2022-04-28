@@ -143,7 +143,7 @@ illustrates a complete example including mapper and session configuration::
     import asyncio
 
     from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
-    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.future import select
     from sqlalchemy.orm import declarative_base, relationship, selectinload
 
@@ -724,10 +724,13 @@ constructor::
 
     from asyncio import current_task
 
-    from sqlalchemy.ext.asyncio import AsyncSession, async_scoped_session
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_scoped_session,
+        async_sessionmaker,
+    )
 
-    async_session_factory = sessionmaker(
+    async_session_factory = async_sessionmaker(
         some_async_engine,
         expire_on_commit=False,
         class_=AsyncSession,
