@@ -5899,7 +5899,7 @@ class SystemTimePeriod(Period):
         )
 
         self._history_table = history_table
-        self._validate_tables = kw.pop("validate_str_tables", False)
+        self._validate_tables = kw.pop("_validate_str_tables", False)
         self.foreign_keys = None
 
     def _get_and_validate_table(
@@ -5943,7 +5943,7 @@ class SystemTimePeriod(Period):
             )
 
     def _copy(self, target_table: Table = None, **kw):
-        copy_kwargs = {"validate_str_tables": self._validate_tables}
+        copy_kwargs = {"_validate_str_tables": self._validate_tables}
         p = SystemTimePeriod(
             start=self.start.key,
             end=self.end.key,

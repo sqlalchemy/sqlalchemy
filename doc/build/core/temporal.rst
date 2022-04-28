@@ -238,7 +238,7 @@ created by passing a table name (with schema) or table object to the
     If a string arument is passed to ``history_table``, *No checks will be done
     to verify the table exists*. This is intentional, as SQL Server will create
     the history table automatically if it does not exist. If strict checking is
-    preferred, just pass the option ``validate_str_tables=True``to the
+    preferred, just pass the option ``_validate_str_tables=True``to the
     ``SystemTimePeriod`` constructor.
 
 Other Backends

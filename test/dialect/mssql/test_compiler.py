@@ -1682,7 +1682,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             metadata,
             Column("validfrom", mssql.DATETIME2),
             Column("validto", mssql.DATETIME2),
-            schema.SystemTimePeriod("validfrom", "validto", fn(tbl_history)),
+            schema.SystemTimePeriod(
+                "validfrom", "validto", history_table=fn(tbl_history)
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
@@ -1713,8 +1715,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 schema.SystemTimePeriod(
                     "validfrom",
                     "validto",
-                    tblkeyfn(tbl_history),
-                    _validate_tables=True,
+                    history_table=tblkeyfn(tbl_history),
+                    _validate_str_tables=True,
                 ),
             )
 
@@ -1740,7 +1742,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column("validfrom", mssql.DATETIME2),
                 Column("validto", mssql.DATETIME2),
                 schema.SystemTimePeriod(
-                    "validfrom", "validto", tbl_history.key
+                    "validfrom", "validto", history_table=tbl_history.key
                 ),
             )
         )
