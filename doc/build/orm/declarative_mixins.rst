@@ -287,7 +287,7 @@ or alternatively, the string form (which ultimately generates a lambda)::
         @declared_attr
         def target(cls):
             return relationship(
-                Target, primaryjoin=lambda: Target.id == cls.target_id
+                Target, primaryjoin=f"Target.id=={cls.__name__}.target_id"
             )
 
 .. seealso::
