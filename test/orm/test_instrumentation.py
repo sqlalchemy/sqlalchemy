@@ -736,7 +736,14 @@ class MiscTest(fixtures.MappedTest):
             pass
 
         manager = instrumentation.register_class(A)
-        attributes.register_attribute(A, "x", uselist=False, useobject=False)
+        attributes.register_attribute(
+            A,
+            "x",
+            comparator=object(),
+            parententity=object(),
+            uselist=False,
+            useobject=False,
+        )
 
         assert instrumentation.manager_of_class(A) is manager
         instrumentation.unregister_class(A)

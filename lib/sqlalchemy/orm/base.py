@@ -38,13 +38,14 @@ from ..util.typing import Literal
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
+    from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
     from .attributes import InstrumentedAttribute
     from .instrumentation import ClassManager
     from .mapper import Mapper
     from .state import InstanceState
+    from .util import AliasedClass
     from ..sql._typing import _InfoType
-
 
 _T = TypeVar("_T", bound=Any)
 
@@ -267,10 +268,22 @@ def _assertions(
 
 if TYPE_CHECKING:
 
-    def manager_of_class(cls: Type[Any]) -> ClassManager:
+    def manager_of_class(cls: Type[_O]) -> ClassManager[_O]:
         ...
 
-    def opt_manager_of_class(cls: Type[Any]) -> Optional[ClassManager]:
+    @overload
+    def opt_manager_of_class(cls: AliasedClass[Any]) -> None:
+        ...
+
+    @overload
+    def opt_manager_of_class(
+        cls: _ExternalEntityType[_O],
+    ) -> Optional[ClassManager[_O]]:
+        ...
+
+    def opt_manager_of_class(
+        cls: _ExternalEntityType[_O],
+    ) -> Optional[ClassManager[_O]]:
         ...
 
     def instance_state(instance: _O) -> InstanceState[_O]:
@@ -719,7 +732,7 @@ class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
             ...
 
         def __get__(
-            self, instance: object, owner: Any
+            self, instance: Optional[object], owner: Any
         ) -> Union[InstrumentedAttribute[_T], _T]:
             ...
 
@@ -729,10 +742,10 @@ class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
 
         def __set__(
             self, instance: Any, value: Union[SQLCoreOperations[_T], _T]
-        ):
+        ) -> None:
             ...
 
-        def __delete__(self, instance: Any):
+        def __delete__(self, instance: Any) -> None:
             ...
 
 

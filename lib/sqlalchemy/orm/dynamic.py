@@ -64,7 +64,9 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
         )
 
 
-class DynamicAttributeImpl(attributes.AttributeImpl):
+class DynamicAttributeImpl(
+    attributes.HasCollectionAdapter, attributes.AttributeImpl
+):
     uses_objects = True
     default_accepts_scalar_loader = False
     supports_population = False
@@ -120,11 +122,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     @util.memoized_property
     def _append_token(self):
-        return attributes.Event(self, attributes.OP_APPEND)
+        return attributes.AttributeEventToken(self, attributes.OP_APPEND)
 
     @util.memoized_property
     def _remove_token(self):
-        return attributes.Event(self, attributes.OP_REMOVE)
+        return attributes.AttributeEventToken(self, attributes.OP_REMOVE)
 
     def fire_append_event(
         self, state, dict_, value, initiator, collection_history=None

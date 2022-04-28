@@ -36,7 +36,6 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import ClauseElement
     from .visitors import _TraverseInternalsType
-    from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreSingleExecuteParams
 
 
@@ -390,6 +389,13 @@ class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
 
     @HasMemoized.memoized_instancemethod
     def _generate_cache_key(self) -> Optional[CacheKey]:
+        return HasCacheKey._generate_cache_key(self)
+
+
+class SlotsMemoizedHasCacheKey(HasCacheKey, util.MemoizedSlots):
+    __slots__ = ()
+
+    def _memoized_method__generate_cache_key(self) -> Optional[CacheKey]:
         return HasCacheKey._generate_cache_key(self)
 
 

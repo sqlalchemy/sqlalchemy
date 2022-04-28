@@ -36,6 +36,13 @@ def _set_callable(state, dict_, key, callable_):
     fn(state, dict_, None)
 
 
+def _register_attribute(class_, key, **kw):
+    kw.setdefault("comparator", object())
+    kw.setdefault("parententity", object())
+
+    attributes.register_attribute(class_, key, **kw)
+
+
 class AttributeImplAPITest(fixtures.MappedTest):
     def _scalar_obj_fixture(self):
         class A:
@@ -46,7 +53,7 @@ class AttributeImplAPITest(fixtures.MappedTest):
 
         instrumentation.register_class(A)
         instrumentation.register_class(B)
-        attributes.register_attribute(A, "b", uselist=False, useobject=True)
+        _register_attribute(A, "b", uselist=False, useobject=True)
         return A, B
 
     def _collection_obj_fixture(self):
@@ -58,7 +65,7 @@ class AttributeImplAPITest(fixtures.MappedTest):
 
         instrumentation.register_class(A)
         instrumentation.register_class(B)
-        attributes.register_attribute(A, "b", uselist=True, useobject=True)
+        _register_attribute(A, "b", uselist=True, useobject=True)
         return A, B
 
     def test_scalar_obj_remove_invalid(self):
@@ -228,13 +235,9 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(User)
-        attributes.register_attribute(
-            User, "user_id", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            User, "user_name", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
+        _register_attribute(User, "user_id", uselist=False, useobject=False)
+        _register_attribute(User, "user_name", uselist=False, useobject=False)
+        _register_attribute(
             User, "email_address", uselist=False, useobject=False
         )
         u = User()
@@ -263,28 +266,22 @@ class AttributesTest(fixtures.ORMTest):
     def test_pickleness(self):
         instrumentation.register_class(MyTest)
         instrumentation.register_class(MyTest2)
-        attributes.register_attribute(
-            MyTest, "user_id", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
+        _register_attribute(MyTest, "user_id", uselist=False, useobject=False)
+        _register_attribute(
             MyTest, "user_name", uselist=False, useobject=False
         )
-        attributes.register_attribute(
+        _register_attribute(
             MyTest, "email_address", uselist=False, useobject=False
         )
-        attributes.register_attribute(
-            MyTest2, "a", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            MyTest2, "b", uselist=False, useobject=False
-        )
+        _register_attribute(MyTest2, "a", uselist=False, useobject=False)
+        _register_attribute(MyTest2, "b", uselist=False, useobject=False)
 
         # shouldn't be pickling callables at the class level
 
         def somecallable(state, passive):
             return None
 
-        attributes.register_attribute(
+        _register_attribute(
             MyTest,
             "mt2",
             uselist=True,
@@ -350,9 +347,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "bars", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "bars", uselist=True, useobject=True)
 
         assert_raises_message(
             orm_exc.ObjectDereferencedError,
@@ -367,9 +362,7 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(User)
-        attributes.register_attribute(
-            User, "user_name", uselist=False, useobject=False
-        )
+        _register_attribute(User, "user_name", uselist=False, useobject=False)
 
         class Blog:
             name = User.user_name
@@ -388,7 +381,7 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, "b", uselist=False, useobject=False)
+        _register_attribute(Foo, "b", uselist=False, useobject=False)
 
         f1 = Foo()
 
@@ -417,7 +410,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, "b", uselist=False, useobject=True)
+        _register_attribute(Foo, "b", uselist=False, useobject=True)
 
         f1 = Foo()
 
@@ -444,7 +437,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, "b", uselist=True, useobject=True)
+        _register_attribute(Foo, "b", uselist=True, useobject=True)
 
         f1 = Foo()
 
@@ -472,8 +465,8 @@ class AttributesTest(fixtures.ORMTest):
         instrumentation.register_class(Foo)
         manager = attributes.manager_of_class(Foo)
         manager.expired_attribute_loader = loader
-        attributes.register_attribute(Foo, "a", uselist=False, useobject=False)
-        attributes.register_attribute(Foo, "b", uselist=False, useobject=False)
+        _register_attribute(Foo, "a", uselist=False, useobject=False)
+        _register_attribute(Foo, "b", uselist=False, useobject=False)
 
         f = Foo()
         attributes.instance_state(f)._expire(
@@ -518,12 +511,8 @@ class AttributesTest(fixtures.ORMTest):
         instrumentation.register_class(MyTest)
         manager = attributes.manager_of_class(MyTest)
         manager.expired_attribute_loader = loader
-        attributes.register_attribute(
-            MyTest, "a", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            MyTest, "b", uselist=False, useobject=False
-        )
+        _register_attribute(MyTest, "a", uselist=False, useobject=False)
+        _register_attribute(MyTest, "b", uselist=False, useobject=False)
 
         m = MyTest()
         attributes.instance_state(m)._expire(
@@ -544,19 +533,13 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(User)
         instrumentation.register_class(Address)
-        attributes.register_attribute(
-            User, "user_id", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            User, "user_name", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            User, "addresses", uselist=True, useobject=True
-        )
-        attributes.register_attribute(
+        _register_attribute(User, "user_id", uselist=False, useobject=False)
+        _register_attribute(User, "user_name", uselist=False, useobject=False)
+        _register_attribute(User, "addresses", uselist=True, useobject=True)
+        _register_attribute(
             Address, "address_id", uselist=False, useobject=False
         )
-        attributes.register_attribute(
+        _register_attribute(
             Address, "email_address", uselist=False, useobject=False
         )
 
@@ -613,7 +596,7 @@ class AttributesTest(fixtures.ORMTest):
         instrumentation.register_class(Blog)
 
         # set up instrumented attributes with backrefs
-        attributes.register_attribute(
+        _register_attribute(
             Post,
             "blog",
             uselist=False,
@@ -621,7 +604,7 @@ class AttributesTest(fixtures.ORMTest):
             trackparent=True,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Blog,
             "posts",
             uselist=True,
@@ -675,7 +658,7 @@ class AttributesTest(fixtures.ORMTest):
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
 
-        attributes.register_attribute(Post, "blog", useobject=True)
+        _register_attribute(Post, "blog", useobject=True)
         assert_raises_message(
             AssertionError,
             "This AttributeImpl is not configured to track parents.",
@@ -714,13 +697,13 @@ class AttributesTest(fixtures.ORMTest):
         def func3(state, passive):
             return "this is the shared attr"
 
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "element", uselist=False, callable_=func1, useobject=True
         )
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "element2", uselist=False, callable_=func3, useobject=True
         )
-        attributes.register_attribute(
+        _register_attribute(
             Bar, "element", uselist=False, callable_=func2, useobject=True
         )
 
@@ -766,9 +749,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "element", uselist=False, useobject=True
-        )
+        _register_attribute(Foo, "element", uselist=False, useobject=True)
         el = Element()
         x = Bar()
         x.element = el
@@ -804,13 +785,13 @@ class AttributesTest(fixtures.ORMTest):
         def func2(state, passive):
             return [bar1, bar2, bar3]
 
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "col1", uselist=False, callable_=func1, useobject=True
         )
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "col2", uselist=True, callable_=func2, useobject=True
         )
-        attributes.register_attribute(Bar, "id", uselist=False, useobject=True)
+        _register_attribute(Bar, "id", uselist=False, useobject=True)
         x = Foo()
         attributes.instance_state(x)._commit_all(attributes.instance_dict(x))
         x.col2.append(bar4)
@@ -828,10 +809,10 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "element", uselist=False, trackparent=True, useobject=True
         )
-        attributes.register_attribute(
+        _register_attribute(
             Bar, "element", uselist=False, trackparent=True, useobject=True
         )
         f1 = Foo()
@@ -878,7 +859,7 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "collection", uselist=True, typecallable=set, useobject=True
         )
         assert attributes.manager_of_class(Foo).is_instrumented("collection")
@@ -888,7 +869,7 @@ class AttributesTest(fixtures.ORMTest):
             "collection"
         )
         try:
-            attributes.register_attribute(
+            _register_attribute(
                 Foo,
                 "collection",
                 uselist=True,
@@ -911,7 +892,7 @@ class AttributesTest(fixtures.ORMTest):
             def remove(self, item):
                 del self[item.foo]
 
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "collection",
             uselist=True,
@@ -925,7 +906,7 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         try:
-            attributes.register_attribute(
+            _register_attribute(
                 Foo,
                 "collection",
                 uselist=True,
@@ -952,7 +933,7 @@ class AttributesTest(fixtures.ORMTest):
             def remove(self, item):
                 pass
 
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "collection",
             uselist=True,
@@ -970,9 +951,9 @@ class AttributesTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, "a", useobject=False)
-        attributes.register_attribute(Foo, "b", useobject=False)
-        attributes.register_attribute(Foo, "c", useobject=False)
+        _register_attribute(Foo, "a", useobject=False)
+        _register_attribute(Foo, "b", useobject=False)
+        _register_attribute(Foo, "c", useobject=False)
 
         f1 = Foo()
         state = attributes.instance_state(f1)
@@ -1026,7 +1007,7 @@ class GetNoValueTest(fixtures.ORMTest):
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
         if expected is not None:
-            attributes.register_attribute(
+            _register_attribute(
                 Foo,
                 "attr",
                 useobject=True,
@@ -1034,9 +1015,7 @@ class GetNoValueTest(fixtures.ORMTest):
                 callable_=lazy_callable,
             )
         else:
-            attributes.register_attribute(
-                Foo, "attr", useobject=True, uselist=False
-            )
+            _register_attribute(Foo, "attr", useobject=True, uselist=False)
 
         f1 = self.f1 = Foo()
         return (
@@ -1092,9 +1071,7 @@ class UtilTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "coll", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "coll", uselist=True, useobject=True)
 
         f1 = Foo()
         b1 = Bar()
@@ -1123,10 +1100,8 @@ class UtilTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "col_list", uselist=True, useobject=True
-        )
-        attributes.register_attribute(
+        _register_attribute(Foo, "col_list", uselist=True, useobject=True)
+        _register_attribute(
             Foo, "col_set", uselist=True, useobject=True, typecallable=set
         )
 
@@ -1146,8 +1121,8 @@ class UtilTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, "a", uselist=False, useobject=False)
-        attributes.register_attribute(Bar, "b", uselist=False, useobject=False)
+        _register_attribute(Foo, "a", uselist=False, useobject=False)
+        _register_attribute(Bar, "b", uselist=False, useobject=False)
 
         @event.listens_for(Foo.a, "set")
         def sync_a(target, value, oldvalue, initiator):
@@ -1182,14 +1157,14 @@ class BackrefTest(fixtures.ORMTest):
 
         instrumentation.register_class(Student)
         instrumentation.register_class(Course)
-        attributes.register_attribute(
+        _register_attribute(
             Student,
             "courses",
             uselist=True,
             backref="students",
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Course, "students", uselist=True, backref="courses", useobject=True
         )
 
@@ -1217,7 +1192,7 @@ class BackrefTest(fixtures.ORMTest):
 
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
-        attributes.register_attribute(
+        _register_attribute(
             Post,
             "blog",
             uselist=False,
@@ -1225,7 +1200,7 @@ class BackrefTest(fixtures.ORMTest):
             trackparent=True,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Blog,
             "posts",
             uselist=True,
@@ -1266,11 +1241,11 @@ class BackrefTest(fixtures.ORMTest):
         instrumentation.register_class(Port)
         instrumentation.register_class(Jack)
 
-        attributes.register_attribute(
+        _register_attribute(
             Port, "jack", uselist=False, useobject=True, backref="port"
         )
 
-        attributes.register_attribute(
+        _register_attribute(
             Jack, "port", uselist=False, useobject=True, backref="jack"
         )
 
@@ -1306,7 +1281,7 @@ class BackrefTest(fixtures.ORMTest):
         instrumentation.register_class(Parent)
         instrumentation.register_class(Child)
         instrumentation.register_class(SubChild)
-        attributes.register_attribute(
+        _register_attribute(
             Parent,
             "child",
             uselist=False,
@@ -1314,7 +1289,7 @@ class BackrefTest(fixtures.ORMTest):
             parent_token=p_token,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Child,
             "parent",
             uselist=False,
@@ -1322,7 +1297,7 @@ class BackrefTest(fixtures.ORMTest):
             parent_token=c_token,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             SubChild,
             "parent",
             uselist=False,
@@ -1354,7 +1329,7 @@ class BackrefTest(fixtures.ORMTest):
         instrumentation.register_class(Parent)
         instrumentation.register_class(SubParent)
         instrumentation.register_class(Child)
-        attributes.register_attribute(
+        _register_attribute(
             Parent,
             "children",
             uselist=True,
@@ -1362,7 +1337,7 @@ class BackrefTest(fixtures.ORMTest):
             parent_token=p_token,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             SubParent,
             "children",
             uselist=True,
@@ -1370,7 +1345,7 @@ class BackrefTest(fixtures.ORMTest):
             parent_token=p_token,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Child,
             "parent",
             uselist=False,
@@ -1444,15 +1419,11 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         instrumentation.register_class(A)
         instrumentation.register_class(B)
         instrumentation.register_class(C)
-        attributes.register_attribute(C, "a", backref="c", useobject=True)
-        attributes.register_attribute(C, "b", backref="c", useobject=True)
+        _register_attribute(C, "a", backref="c", useobject=True)
+        _register_attribute(C, "b", backref="c", useobject=True)
 
-        attributes.register_attribute(
-            A, "c", backref="a", useobject=True, uselist=True
-        )
-        attributes.register_attribute(
-            B, "c", backref="b", useobject=True, uselist=True
-        )
+        _register_attribute(A, "c", backref="a", useobject=True, uselist=True)
+        _register_attribute(B, "c", backref="b", useobject=True, uselist=True)
 
         return A, B, C
 
@@ -1470,15 +1441,11 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         instrumentation.register_class(B)
         instrumentation.register_class(C)
 
-        attributes.register_attribute(
-            C, "a", backref="c", useobject=True, uselist=True
-        )
-        attributes.register_attribute(
-            C, "b", backref="c", useobject=True, uselist=True
-        )
+        _register_attribute(C, "a", backref="c", useobject=True, uselist=True)
+        _register_attribute(C, "b", backref="c", useobject=True, uselist=True)
 
-        attributes.register_attribute(A, "c", backref="a", useobject=True)
-        attributes.register_attribute(B, "c", backref="b", useobject=True)
+        _register_attribute(A, "c", backref="a", useobject=True)
+        _register_attribute(B, "c", backref="b", useobject=True)
 
         return A, B, C
 
@@ -1492,14 +1459,10 @@ class CyclicBackrefAssertionTest(fixtures.TestBase):
         instrumentation.register_class(A)
         instrumentation.register_class(B)
 
-        attributes.register_attribute(A, "b", backref="a1", useobject=True)
-        attributes.register_attribute(
-            B, "a1", backref="b", useobject=True, uselist=True
-        )
+        _register_attribute(A, "b", backref="a1", useobject=True)
+        _register_attribute(B, "a1", backref="b", useobject=True, uselist=True)
 
-        attributes.register_attribute(
-            B, "a2", backref="b", useobject=True, uselist=True
-        )
+        _register_attribute(B, "a2", backref="b", useobject=True, uselist=True)
 
         return A, B
 
@@ -1542,7 +1505,7 @@ class PendingBackrefTest(fixtures.ORMTest):
 
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
-        attributes.register_attribute(
+        _register_attribute(
             Post,
             "blog",
             uselist=False,
@@ -1550,7 +1513,7 @@ class PendingBackrefTest(fixtures.ORMTest):
             trackparent=True,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Blog,
             "posts",
             uselist=True,
@@ -1777,7 +1740,7 @@ class HistoryTest(fixtures.TestBase):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "someattr",
             uselist=uselist,
@@ -1797,7 +1760,7 @@ class HistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "someattr",
             uselist=uselist,
@@ -2617,7 +2580,7 @@ class HistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "someattr",
             uselist=True,
@@ -2675,12 +2638,8 @@ class HistoryTest(fixtures.TestBase):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo, "someattr", uselist=True, useobject=True
-        )
-        attributes.register_attribute(
-            Foo, "id", uselist=False, useobject=False
-        )
+        _register_attribute(Foo, "someattr", uselist=True, useobject=True)
+        _register_attribute(Foo, "id", uselist=False, useobject=False)
         instrumentation.register_class(Bar)
         hi = Bar(name="hi")
         there = Bar(name="there")
@@ -2868,7 +2827,7 @@ class HistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "bars",
             uselist=True,
@@ -2876,7 +2835,7 @@ class HistoryTest(fixtures.TestBase):
             trackparent=True,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Bar,
             "foo",
             uselist=False,
@@ -2945,7 +2904,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "bars",
             uselist=True,
@@ -2954,7 +2913,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             callable_=lazyload,
             useobject=True,
         )
-        attributes.register_attribute(
+        _register_attribute(
             Bar,
             "foo",
             uselist=False,
@@ -3004,7 +2963,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "bars",
             uselist=True,
@@ -3063,7 +3022,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             return lazy_load
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        _register_attribute(
             Foo, "bar", uselist=False, callable_=lazyload, useobject=False
         )
         lazy_load = "hi"
@@ -3119,7 +3078,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
             return lazy_load
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "bar",
             uselist=False,
@@ -3184,7 +3143,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "bar",
             uselist=False,
@@ -3254,18 +3213,12 @@ class ListenerTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "data", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            Foo, "barlist", uselist=True, useobject=True
-        )
-        attributes.register_attribute(
+        _register_attribute(Foo, "data", uselist=False, useobject=False)
+        _register_attribute(Foo, "barlist", uselist=True, useobject=True)
+        _register_attribute(
             Foo, "barset", typecallable=set, uselist=True, useobject=True
         )
-        attributes.register_attribute(
-            Bar, "data", uselist=False, useobject=False
-        )
+        _register_attribute(Bar, "data", uselist=False, useobject=False)
         event.listen(Foo.data, "set", on_set, retval=True)
         event.listen(Foo.barlist, "append", append, retval=True)
         event.listen(Foo.barset, "append", append, retval=True)
@@ -3291,12 +3244,8 @@ class ListenerTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "data", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            Foo, "barlist", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "data", uselist=False, useobject=False)
+        _register_attribute(Foo, "barlist", uselist=True, useobject=True)
 
         event.listen(Foo.data, "set", canary.set, named=True)
         event.listen(Foo.barlist, "append", canary.append, named=True)
@@ -3312,21 +3261,21 @@ class ListenerTest(fixtures.ORMTest):
             [
                 call.set(
                     oldvalue=attributes.NO_VALUE,
-                    initiator=attributes.Event(
+                    initiator=attributes.AttributeEventToken(
                         Foo.data.impl, attributes.OP_REPLACE
                     ),
                     target=f1,
                     value=5,
                 ),
                 call.append(
-                    initiator=attributes.Event(
+                    initiator=attributes.AttributeEventToken(
                         Foo.barlist.impl, attributes.OP_APPEND
                     ),
                     target=f1,
                     value=b1,
                 ),
                 call.remove(
-                    initiator=attributes.Event(
+                    initiator=attributes.AttributeEventToken(
                         Foo.barlist.impl, attributes.OP_REMOVE
                     ),
                     target=f1,
@@ -3344,9 +3293,7 @@ class ListenerTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "barlist", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "barlist", uselist=True, useobject=True)
 
         canary = Mock()
         event.listen(Foo.barlist, "init_collection", canary.init)
@@ -3389,9 +3336,7 @@ class ListenerTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(
-            Foo, "barlist", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "barlist", uselist=True, useobject=True)
         canary = []
 
         def append(state, child, initiator):
@@ -3428,7 +3373,7 @@ class ListenerTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, "bar")
+        _register_attribute(Foo, "bar")
 
         event.listen(Foo.bar, "modified", canary)
         f1 = Foo()
@@ -3436,7 +3381,14 @@ class ListenerTest(fixtures.ORMTest):
         attributes.flag_modified(f1, "bar")
         eq_(
             canary.mock_calls,
-            [call(f1, attributes.Event(Foo.bar.impl, attributes.OP_MODIFIED))],
+            [
+                call(
+                    f1,
+                    attributes.AttributeEventToken(
+                        Foo.bar.impl, attributes.OP_MODIFIED
+                    ),
+                )
+            ],
         )
 
     def test_none_init_scalar(self):
@@ -3446,7 +3398,7 @@ class ListenerTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, "bar")
+        _register_attribute(Foo, "bar")
 
         event.listen(Foo.bar, "set", canary)
 
@@ -3462,7 +3414,7 @@ class ListenerTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, "bar", useobject=True)
+        _register_attribute(Foo, "bar", useobject=True)
 
         event.listen(Foo.bar, "set", canary)
 
@@ -3482,7 +3434,7 @@ class ListenerTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, "bar", useobject=True, uselist=True)
+        _register_attribute(Foo, "bar", useobject=True, uselist=True)
 
         event.listen(Foo.bar, "set", canary)
 
@@ -3622,17 +3574,17 @@ class EventPropagateTest(fixtures.TestBase):
             instrumentation.register_class(classes[3])
 
         def attr_a():
-            attributes.register_attribute(
+            _register_attribute(
                 classes[0], "attrib", uselist=False, useobject=useobject
             )
 
         def attr_b():
-            attributes.register_attribute(
+            _register_attribute(
                 classes[1], "attrib", uselist=False, useobject=useobject
             )
 
         def attr_c():
-            attributes.register_attribute(
+            _register_attribute(
                 classes[2], "attrib", uselist=False, useobject=useobject
             )
 
@@ -3702,7 +3654,7 @@ class CollectionInitTest(fixtures.TestBase):
         self.B = B
         instrumentation.register_class(A)
         instrumentation.register_class(B)
-        attributes.register_attribute(A, "bs", uselist=True, useobject=True)
+        _register_attribute(A, "bs", uselist=True, useobject=True)
 
     def test_bulk_replace_resets_empty(self):
         A = self.A
@@ -3761,7 +3713,7 @@ class TestUnlink(fixtures.TestBase):
         self.B = B
         instrumentation.register_class(A)
         instrumentation.register_class(B)
-        attributes.register_attribute(A, "bs", uselist=True, useobject=True)
+        _register_attribute(A, "bs", uselist=True, useobject=True)
 
     def test_expired(self):
         A, B = self.A, self.B

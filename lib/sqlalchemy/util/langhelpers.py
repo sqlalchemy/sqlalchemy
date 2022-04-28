@@ -1272,17 +1272,20 @@ class MemoizedSlots:
     def _fallback_getattr(self, key):
         raise AttributeError(key)
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if key.startswith("_memoized_attr_") or key.startswith(
             "_memoized_method_"
         ):
             raise AttributeError(key)
-        elif hasattr(self, "_memoized_attr_%s" % key):
-            value = getattr(self, "_memoized_attr_%s" % key)()
+        # to avoid recursion errors when interacting with other __getattr__
+        # schemes that refer to this one, when testing for memoized method
+        # look at __class__ only rather than going into __getattr__ again.
+        elif hasattr(self.__class__, f"_memoized_attr_{key}"):
+            value = getattr(self, f"_memoized_attr_{key}")()
             setattr(self, key, value)
             return value
-        elif hasattr(self, "_memoized_method_%s" % key):
-            fn = getattr(self, "_memoized_method_%s" % key)
+        elif hasattr(self.__class__, f"_memoized_method_{key}"):
+            fn = getattr(self, f"_memoized_method_{key}")
 
             def oneshot(*args, **kw):
                 result = fn(*args, **kw)

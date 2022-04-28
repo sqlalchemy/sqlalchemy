@@ -71,6 +71,7 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
+    from ._typing import _InternalEntityType
     from .mapper import Mapper
     from .util import AliasedClass
     from .util import AliasedInsp
@@ -348,7 +349,7 @@ class Relationship(
             doc=self.doc,
         )
 
-    class Comparator(PropComparator[_PT]):
+    class Comparator(util.MemoizedSlots, PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
         :class:`.Relationship` attributes.
 
@@ -369,8 +370,13 @@ class Relationship(
 
         """
 
-        _of_type = None
-        _extra_criteria = ()
+        __slots__ = (
+            "entity",
+            "mapper",
+            "property",
+            "_of_type",
+            "_extra_criteria",
+        )
 
         def __init__(
             self,
@@ -389,6 +395,8 @@ class Relationship(
             self._adapt_to_entity = adapt_to_entity
             if of_type:
                 self._of_type = of_type
+            else:
+                self._of_type = None
             self._extra_criteria = extra_criteria
 
         def adapt_to_entity(self, adapt_to_entity):
@@ -399,40 +407,35 @@ class Relationship(
                 of_type=self._of_type,
             )
 
-        @util.memoized_property
-        def entity(self):
-            """The target entity referred to by this
-            :class:`.Relationship.Comparator`.
+        entity: _InternalEntityType
+        """The target entity referred to by this
+        :class:`.Relationship.Comparator`.
 
-            This is either a :class:`_orm.Mapper` or :class:`.AliasedInsp`
-            object.
+        This is either a :class:`_orm.Mapper` or :class:`.AliasedInsp`
+        object.
 
-            This is the "target" or "remote" side of the
-            :func:`_orm.relationship`.
+        This is the "target" or "remote" side of the
+        :func:`_orm.relationship`.
 
-            """
-            # this is a relatively recent change made for
-            # 1.4.27 as part of #7244.
-            # TODO: shouldn't _of_type be inspected up front when received?
-            if self._of_type is not None:
+        """
+
+        mapper: Mapper[Any]
+        """The target :class:`_orm.Mapper` referred to by this
+        :class:`.Relationship.Comparator`.
+
+        This is the "target" or "remote" side of the
+        :func:`_orm.relationship`.
+
+        """
+
+        def _memoized_attr_entity(self) -> _InternalEntityType:
+            if self._of_type:
                 return inspect(self._of_type)
             else:
-                return self.property.entity
+                return self.prop.entity
 
-        @util.memoized_property
-        def mapper(self):
-            """The target :class:`_orm.Mapper` referred to by this
-            :class:`.Relationship.Comparator`.
-
-            This is the "target" or "remote" side of the
-            :func:`_orm.relationship`.
-
-            """
-            return self.property.mapper
-
-        @util.memoized_property
-        def _parententity(self):
-            return self.property.parent
+        def _memoized_attr_mapper(self) -> Mapper[Any]:
+            return self.entity.mapper
 
         def _source_selectable(self):
             if self._adapt_to_entity:
@@ -481,7 +484,9 @@ class Relationship(
                 extra_criteria=self._extra_criteria,
             )
 
-        def and_(self, *other):
+        def and_(
+            self, *criteria: _ColumnExpressionArgument[bool]
+        ) -> interfaces.PropComparator[bool]:
             """Add AND criteria.
 
             See :meth:`.PropComparator.and_` for an example.
@@ -489,12 +494,17 @@ class Relationship(
             .. versionadded:: 1.4
 
             """
+            exprs = tuple(
+                coercions.expect(roles.WhereHavingRole, clause)
+                for clause in util.coerce_generator_arg(criteria)
+            )
+
             return Relationship.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
                 of_type=self._of_type,
-                extra_criteria=self._extra_criteria + other,
+                extra_criteria=self._extra_criteria + exprs,
             )
 
         def in_(self, other):
@@ -924,8 +934,7 @@ class Relationship(
             else:
                 return _orm_annotate(self.__negated_contains_or_equals(other))
 
-        @util.memoized_property
-        def property(self):
+        def _memoized_attr_property(self):
             self.prop.parent._check_configure()
             return self.prop
 

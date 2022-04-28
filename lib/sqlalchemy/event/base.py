@@ -108,9 +108,11 @@ class _Dispatch(_DispatchCommon[_ET]):
 
     """
 
-    # In one ORM edge case, an attribute is added to _Dispatch,
-    # so __dict__ is used in just that case and potentially others.
+    # "active_history" is an ORM case we add here.   ideally a better
+    # system would be in place for ad-hoc attributes.
     __slots__ = "_parent", "_instance_cls", "__dict__", "_empty_listeners"
+
+    _active_history: bool
 
     _empty_listener_reg: MutableMapping[
         Type[_ET], Dict[str, _EmptyListener[_ET]]

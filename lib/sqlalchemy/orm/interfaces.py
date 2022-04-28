@@ -60,6 +60,7 @@ from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
+from ..util.typing import DescriptorReference
 from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
@@ -68,7 +69,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
     from ._typing import _InternalEntityType
     from ._typing import _ORMAdapterProto
-    from ._typing import _ORMColumnExprArgument
     from .attributes import InstrumentedAttribute
     from .context import _MapperEntity
     from .context import ORMCompileState
@@ -89,7 +89,6 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _DMLColumnArgument
     from ..sql._typing import _InfoType
-    from ..sql._typing import _PropagateAttrsType
     from ..sql.operators import OperatorType
     from ..sql.util import ColumnAdapter
     from ..sql.visitors import _TraverseInternalsType
@@ -171,12 +170,18 @@ class _MapsColumns(_MappedAttribute[_T]):
         raise NotImplementedError()
 
 
+# NOTE: MapperProperty needs to extend _MappedAttribute so that declarative
+# typing works, i.e. "Mapped[A] = relationship()".   This introduces an
+# inconvenience which is that all the MapperProperty objects are treated
+# as descriptors by typing tools, which are misled by this as assignment /
+# access to a descriptor attribute wants to move through __get__.
+# Therefore, references to MapperProperty as an instance variable, such
+# as in PropComparator, may have some special typing workarounds such as the
+# use of sqlalchemy.util.typing.DescriptorReference to avoid mis-interpretation
+# by typing tools
 @inspection._self_inspects
 class MapperProperty(
-    HasCacheKey,
-    _MappedAttribute[_T],
-    InspectionAttrInfo,
-    util.MemoizedSlots,
+    HasCacheKey, _MappedAttribute[_T], InspectionAttrInfo, util.MemoizedSlots
 ):
     """Represent a particular class attribute mapped by :class:`_orm.Mapper`.
 
@@ -522,6 +527,7 @@ class PropComparator(SQLORMOperations[_T]):
 
     _parententity: _InternalEntityType[Any]
     _adapt_to_entity: Optional[AliasedInsp[Any]]
+    prop: DescriptorReference[MapperProperty[_T]]
 
     def __init__(
         self,
@@ -533,11 +539,20 @@ class PropComparator(SQLORMOperations[_T]):
         self._parententity = adapt_to_entity or parentmapper
         self._adapt_to_entity = adapt_to_entity
 
-    @util.ro_non_memoized_property
+    @util.non_memoized_property
     def property(self) -> Optional[MapperProperty[_T]]:
+        """Return the :class:`.MapperProperty` associated with this
+        :class:`.PropComparator`.
+
+
+        Return values here will commonly be instances of
+        :class:`.ColumnProperty` or :class:`.Relationship`.
+
+
+        """
         return self.prop
 
-    def __clause_element__(self) -> _ORMColumnExprArgument[_T]:
+    def __clause_element__(self) -> roles.ColumnsClauseRole:
         raise NotImplementedError("%r" % self)
 
     def _bulk_update_tuples(
@@ -566,18 +581,6 @@ class PropComparator(SQLORMOperations[_T]):
         """legacy; this is renamed to _parententity to be
         compatible with QueryableAttribute."""
         return self._parententity.mapper
-
-    @util.memoized_property
-    def _propagate_attrs(self) -> _PropagateAttrsType:
-        # this suits the case in coercions where we don't actually
-        # call ``__clause_element__()`` but still need to get
-        # resolved._propagate_attrs.  See #6558.
-        return util.immutabledict(
-            {
-                "compile_state_plugin": "orm",
-                "plugin_subject": self._parentmapper,
-            }
-        )
 
     def _criterion_exists(
         self,
@@ -657,7 +660,7 @@ class PropComparator(SQLORMOperations[_T]):
 
     def and_(
         self, *criteria: _ColumnExpressionArgument[bool]
-    ) -> ColumnElement[bool]:
+    ) -> PropComparator[bool]:
         """Add additional criteria to the ON clause that's represented by this
         relationship attribute.
 

@@ -147,7 +147,10 @@ class _MutableDictTestBase(_MutableDictTestFixture):
             canary.mock_calls,
             [
                 mock.call(
-                    f1, attributes.Event(Foo.data.impl, attributes.OP_MODIFIED)
+                    f1,
+                    attributes.AttributeEventToken(
+                        Foo.data.impl, attributes.OP_MODIFIED
+                    ),
                 )
             ],
         )

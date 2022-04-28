@@ -24,6 +24,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -530,6 +531,8 @@ class AliasedClass(
 
 
     """
+
+    __name__: str
 
     def __init__(
         self,
@@ -1529,7 +1532,7 @@ class _ORMJoin(expression.Join):
         full: bool = False,
         _left_memo: Optional[Any] = None,
         _right_memo: Optional[Any] = None,
-        _extra_criteria: Sequence[ColumnElement[bool]] = (),
+        _extra_criteria: Tuple[ColumnElement[bool], ...] = (),
     ):
         left_info = cast(
             "Union[FromClause, _InternalEntityType[Any]]",
@@ -1547,6 +1550,8 @@ class _ORMJoin(expression.Join):
         self._right_memo = _right_memo
 
         if isinstance(onclause, attributes.QueryableAttribute):
+            if TYPE_CHECKING:
+                assert isinstance(onclause.comparator, Relationship.Comparator)
             on_selectable = onclause.comparator._source_selectable()
             prop = onclause.property
             _extra_criteria += onclause._extra_criteria
@@ -1728,12 +1733,15 @@ def with_parent(
     elif isinstance(prop, attributes.QueryableAttribute):
         if prop._of_type:
             from_entity = prop._of_type
-        if not prop_is_relationship(prop.property):
+        mapper_property = prop.property
+        if mapper_property is None or not prop_is_relationship(
+            mapper_property
+        ):
             raise sa_exc.ArgumentError(
                 f"Expected relationship property for with_parent(), "
-                f"got {prop.property}"
+                f"got {mapper_property}"
             )
-        prop_t = prop.property
+        prop_t = mapper_property
     else:
         prop_t = prop
 

@@ -410,11 +410,11 @@ class UniqueAppender(Generic[_T]):
         return iter(self.data)
 
 
-def coerce_generator_arg(arg):
+def coerce_generator_arg(arg: Any) -> List[Any]:
     if len(arg) == 1 and isinstance(arg[0], types.GeneratorType):
         return list(arg[0])
     else:
-        return arg
+        return cast("List[Any]", arg)
 
 
 def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:

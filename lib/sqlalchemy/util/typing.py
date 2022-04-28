@@ -9,6 +9,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import ForwardRef
+from typing import Generic
 from typing import Iterable
 from typing import Optional
 from typing import Tuple
@@ -213,3 +214,41 @@ def _get_type_name(type_: Type[Any]) -> str:
             typ_name = getattr(type_, "_name", None)
 
         return typ_name  # type: ignore
+
+
+class DescriptorProto(Protocol):
+    def __get__(self, instance: object, owner: Any) -> Any:
+        ...
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        ...
+
+    def __delete__(self, instance: Any) -> None:
+        ...
+
+
+_DESC = TypeVar("_DESC", bound=DescriptorProto)
+
+
+class DescriptorReference(Generic[_DESC]):
+    """a descriptor that refers to a descriptor.
+
+    used for cases where we need to have an instance variable referring to an
+    object that is itself a descriptor, which typically confuses typing tools
+    as they don't know when they should use ``__get__`` or not when referring
+    to the descriptor assignment as an instance variable. See
+    sqlalchemy.orm.interfaces.PropComparator.prop
+
+    """
+
+    def __get__(self, instance: object, owner: Any) -> _DESC:
+        ...
+
+    def __set__(self, instance: Any, value: _DESC) -> None:
+        ...
+
+    def __delete__(self, instance: Any) -> None:
+        ...
+
+
+# $def ro_descriptor_reference(fn: Callable[])
