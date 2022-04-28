@@ -8,8 +8,7 @@ mentioned throughout many of the examples here.   What does it actually do ?   L
 with the canonical ``User`` and ``Address`` scenario::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
@@ -38,8 +37,7 @@ of an event listener on both sides which will mirror attribute operations
 in both directions.   The above configuration is equivalent to::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
@@ -124,8 +122,7 @@ or a one-to-many or many-to-one which has a :paramref:`_orm.relationship.primary
 as if we limited the list of ``Address`` objects to those which start with "tony"::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
@@ -149,7 +146,6 @@ as if we limited the list of ``Address`` objects to those which start with "tony
         id = Column(Integer, primary_key=True)
         email = Column(String)
         user_id = Column(Integer, ForeignKey("user.id"))
-
 
 We can observe, by inspecting the resulting property, that both sides
 of the relationship have this join condition applied::
@@ -257,8 +253,7 @@ of the "backref" behavior on the Python side by using two separate :func:`_orm.r
 placing :paramref:`_orm.relationship.back_populates` only on one side::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 

@@ -142,9 +142,16 @@ illustrates a complete example including mapper and session configuration::
 
     import asyncio
 
-    from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+    from sqlalchemy import (
+        Column,
+        DateTime,
+        ForeignKey,
+        Integer,
+        String,
+        func,
+        select,
+    )
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.future import select
     from sqlalchemy.orm import declarative_base, relationship, selectinload
 
     Base = declarative_base()
@@ -382,6 +389,7 @@ attribute accesses within a separate function::
 
     import asyncio
 
+    from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 

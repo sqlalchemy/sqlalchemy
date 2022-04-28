@@ -8,11 +8,9 @@ A quick walkthrough of the basic relational patterns.
 The imports used for each of the following sections is as follows::
 
     from sqlalchemy import Column, ForeignKey, Integer, Table
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
-
 
 .. _relationship_patterns_o2m:
 
