@@ -147,7 +147,8 @@ definition and Python code passed to the Mypy tool is equivalent to the
 following::
 
     from sqlalchemy import Column, Integer, String, select
-    from sqlalchemy.orm import DeclarativeMeta, Mapped
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 
     class Base(metaclass=DeclarativeMeta):
