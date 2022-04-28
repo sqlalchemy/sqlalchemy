@@ -535,7 +535,8 @@ function should be invoked **for each class in the hierarchy**, in *almost*
         def id(cls):
             if has_inherited_table(cls):
                 return Column(ForeignKey("person.id"), primary_key=True)
-            return Column(Integer, primary_key=True)
+            else:
+                return Column(Integer, primary_key=True)
 
 
     class Person(HasIdMixin, Base):
