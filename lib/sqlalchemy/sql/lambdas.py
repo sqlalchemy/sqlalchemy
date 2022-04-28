@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 from __future__ import annotations
 
@@ -47,7 +48,6 @@ from ..util.typing import Self
 
 if TYPE_CHECKING:
     from .cache_key import CacheConst
-    from .cache_key import NO_CACHE
     from .elements import BindParameter
     from .elements import ClauseElement
     from .roles import SQLRole

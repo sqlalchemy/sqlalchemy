@@ -4,6 +4,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
+
 """Baked query extension.
 
 Provides a creational pattern for the :class:`.query.Query` object which

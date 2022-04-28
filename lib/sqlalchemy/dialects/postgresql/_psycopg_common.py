@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import decimal
 
 from .array import ARRAY as PGARRAY

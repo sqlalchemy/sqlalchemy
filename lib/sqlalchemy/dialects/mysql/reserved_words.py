@@ -11,6 +11,8 @@
 # https://mariadb.com/kb/en/reserved-words/
 # includes: Reserved Words, Oracle Mode (separate set unioned)
 # excludes: Exceptions, Function Names
+# mypy: ignore-errors
+
 RESERVED_WORDS_MARIADB = {
     "accessible",
     "add",

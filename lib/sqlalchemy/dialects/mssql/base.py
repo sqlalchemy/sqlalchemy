@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 """
 .. dialect:: mssql
     :name: Microsoft SQL Server
@@ -854,7 +856,6 @@ from ...types import VARCHAR
 from ...util import update_wrapper
 
 if TYPE_CHECKING:
-    from ...sql.compiler import SQLCompiler
     from ...sql.dml import DMLState
     from ...sql.selectable import TableClause
 

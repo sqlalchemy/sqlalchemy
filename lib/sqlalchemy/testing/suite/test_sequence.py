@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .. import config
 from .. import fixtures
 from ..assertions import eq_

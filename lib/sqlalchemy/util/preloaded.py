@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """supplies the "preloaded" registry to resolve circular module imports at
 runtime.
@@ -21,15 +22,15 @@ from typing import TypeVar
 
 _FN = TypeVar("_FN", bound=Callable[..., Any])
 
+
 if TYPE_CHECKING:
-    from sqlalchemy.engine import default as engine_default
-    from sqlalchemy.orm import descriptor_props as orm_descriptor_props
-    from sqlalchemy.orm import relationships as orm_relationships
-    from sqlalchemy.orm import session as orm_session
-    from sqlalchemy.orm import util as orm_util
-    from sqlalchemy.sql import dml as sql_dml
-    from sqlalchemy.sql import functions as sql_functions
-    from sqlalchemy.sql import util as sql_util
+    from sqlalchemy.engine import default as engine_default  # noqa
+    from sqlalchemy.orm import relationships as orm_relationships  # noqa
+    from sqlalchemy.orm import session as orm_session  # noqa
+    from sqlalchemy.orm import util as orm_util  # noqa
+    from sqlalchemy.sql import dml as sql_dml  # noqa
+    from sqlalchemy.sql import functions as sql_functions  # noqa
+    from sqlalchemy.sql import util as sql_util  # noqa
 
 
 class _ModuleRegistry:

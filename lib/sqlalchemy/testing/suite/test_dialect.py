@@ -1,4 +1,6 @@
 #! coding: utf-8
+# mypy: ignore-errors
+
 
 from . import testing
 from .. import assert_raises
