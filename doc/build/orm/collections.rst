@@ -205,8 +205,7 @@ of the mapped class as a key.   Below we map an ``Item`` class containing
 a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import declarative_base, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
