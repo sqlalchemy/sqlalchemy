@@ -22,7 +22,7 @@ Cascade behavior is configured using the
 :func:`~sqlalchemy.orm.relationship`::
 
     class Order(Base):
-        __tablename__ = 'order'
+        __tablename__ = "order"
 
         items = relationship("Item", cascade="all, delete-orphan")
         customer = relationship("User", cascade="save-update")
