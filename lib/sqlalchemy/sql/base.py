@@ -1959,6 +1959,12 @@ class DictCollection(_collections_abc.MutableMapping, Generic[_KT, _VT]):
     def __len__(self) -> int:
         return len(self.data_)
 
+    def __getstate__(self):
+        return self.data_
+
+    def __setstate__(self, data_):
+        self.data_ = data_
+
     def items(self) -> ItemsView[_KT, _VT_co]:
         return self.data_.items()
 
