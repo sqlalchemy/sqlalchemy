@@ -5637,7 +5637,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
 
 class Period(SchemaItem):
-    """Defines a period construction, i.e. ``PERIOD FOR period_name
+    """Defines a period construction, i.e., ``PERIOD FOR period_name
     (start_col, end_col)`` syntax.
 
     .. versionadded:: 2.0
@@ -5665,20 +5665,20 @@ class Period(SchemaItem):
             The name to give the period.
 
         :param start:
-            A target column that defines the period's start. A
+            A target column that defines the period's start. Accepts a
             :class:`_schema.Column` object or a column name as a string.
 
         :param end:
-            A target column that defines the period's end. A
+            A target column that defines the period's end. Accepts a
             :class:`_schema.Column` object or a column name as a string.
 
         :param system:
-            Indicates that the ``Period`` is implicit, i.e. should not be
-            generated in DDL. Kw only.
+            Indicates that the ``Period`` is implicit, i.e., should not be
+            generated in DDL. Keyword-only argument.
 
         :param primary_key:
             Whether this ``Period`` should be included in the table's primary
-            key. Kw only.
+            key. Keyword-only argument.
         """
 
         if not system and (start is None) or (end is None):
@@ -5753,7 +5753,7 @@ class Period(SchemaItem):
 
 
 class SystemTimePeriod(Period):
-    """Represents a ``WITH SYSTEM VERSIONING`` clause a table and optionally
+    """Represents a ``WITH SYSTEM VERSIONING`` clause on a table and optionally
     configures a ``SYSTEM_TIME`` period.
 
     .. versionadded:: 2.0
@@ -5776,23 +5776,24 @@ class SystemTimePeriod(Period):
 
         Supplies ``GENERATED ALWAYS AS ROW_START`` and ``GENERATED ALWAYS AS
         ROW_END`` parameters to the given columns. The parent table will
-        receive the ``WITH SYSTEM VERSIONING`` option. If both `start` and
-        `end` are omitted, or if columns are marked as ``system``, columns will
-        not be configured (for constructions with backend-controlled implicit
-        column configuration)
+        receive the ``WITH SYSTEM VERSIONING`` option. If both ``start`` and
+        ``end`` are omitted, or if columns are marked as ``system``, columns
+        will not be configured (for constructions with backend-controlled
+        implicit column configuration)
 
         :param start:
-            A target column that defines the period's start. A
+            A target column that defines the period's start. Accepts a
             :class:`_schema.Column` object or a column name as a string.
 
         :param end:
-            A target column that defines the period's start. A
+            A target column that defines the period's start. Accepts a
             :class:`_schema.Column` object or a column name as a string.
 
         :param history_table:
             A table object that holds system versioning history. This is only
             applicable for Microsoft's SQL Server. Accepts a
-            :class:`_schema.Table` object or a table name as a string. Kw only.
+            :class:`_schema.Table` object or a table name as a string.
+            Keyword-only argument.
         """
 
         period_is_system = start is None and end is None

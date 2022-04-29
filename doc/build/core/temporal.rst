@@ -13,48 +13,53 @@ represented using :class:`_schema.Period` and :class:`.SystemTimePeriod`
 objects.
 
 
+
 Context
 -------
-The 2011 release of ISO SQL added support for temporal tables, i.e schemas where
-rows are associated with one or more time periods. This page attemps to give
-only a brief introduction to these new temporal features; for a more complete
-explanation, refer to `TF`_. These temporal features are split into system
-versioning and application versioning.
-
-.. _TF: https://cs.ulb.ac.be/public/_media/teaching/infoh415/tempfeaturessql2011.pdf
+The 2011 release of the ISO SQL standard added support for temporal tables,
+i.e., schemas where rows are associated with one or more time periods. This page
+attempts to give only a brief introduction to these new features; for a more
+complete explanation, refer to `Temporal Features in SQL:2011
+<temporal_features_>`_ [#tempfeatures]_. Temporal features are split into two
+classes: system versioning and application versioning.
 
 System versioning describes row history logging that is handled automatically by
 the backend, useful for producing auditable tables and storing history without
-triggers. Historical rows are (usually) held in the same table, and are hidden
-unless explicitly requested using ``FOR SYSTEM TIME`` in ``SELECT`` statements.
+triggers. Historical rows are (usually) held in the same table, but are hidden
+to all DML operations unless explicitly requested using ``FOR SYSTEM TIME`` in
+``SELECT`` statements. System versioning is transparent; no user interaction is
+needed.
 
-Application versioning describes row with a time period indicating its valid
-time, manually managed by the application rather than the by the backend. This
-is useful for situations where something might be valid for only a specific time
-period, e.g. insurance policies or a period of employment. Tables with
-application versioning are sometimes called application-time period tables.
+Application versioning describes rows containing a time period that is managed
+manually by the application, rather than by the backend. Typically, this is used
+to represent the time of validity for the row, e.g., an identity document's
+valid date range, or a period of employment. These application-time periods can
+be added to primary and unique constraints in order to enforce integrity that
+would be expected in such situations. Tables with application versioning are
+sometimes referred to as application-time period tables.
 
 System versioning is currently supported only by MariaDB, Microsoft SQL Server,
-IBM Db2, and partially in Oracle (Oracle's implementation is not in accordance
+IBM Db2, and partially by Oracle (Oracle's implementation is not in accordance
 with the ISO SQL specification). Application versioning is only supported by
 MariaDB and Db2.
 
-At the moment, SQLAlchemy supports all temporal DML (``CREATE TABLE``)
-constructs for MariaDB and SQL Server; however, it does not support DML
-constucts. These include  ``SELECT [...] FOR SYSTEM_TIME [...]`` for system
-versioning and ``SELECT [...] WHERE my_period CONTAINS [...]`` or ``FOR PORTION
-OF`` with application versioning - these actions can mostly be accomplished
-using :meth:`_expression.Select.with_hint` for system versioning, and text
-:meth:`_orm.Query.where`/ :meth:`_orm.Query.filter` clauses for application
-versioning.
+Currently, SQLAlchemy supports all temporal DML (``CREATE TABLE``) constructs
+for MariaDB and SQL Server; however, it does not yet support DML constructs.
+These include  ``SELECT [...] FOR SYSTEM_TIME [...]`` for system versioning and
+``SELECT [...] WHERE my_period CONTAINS [...]`` or ``SELECT FOR PORTION OF``
+with application versioning. While not natively supported, these actions can
+mostly be accomplished using :meth:`_expression.Select.with_hint` for system
+versioning, and text :meth:`_orm.Query.where`/ :meth:`_orm.Query.filter` clauses
+for application versioning.
+
 
 
 Working with Application-Time Periods
 -------------------------------------
-Application-time period schemas can be represented in SQLAlchemy using the
-:class:`Period` schema item. All that is required in SQL DDL to add application
-versioning to a table is to include a named ``PERIOD FOR`` construct. This is
-described similarly in SQLAlchemy, using something like the following:
+Application-time period schemas can be represented in SQLAlchemy using
+:class:`Period`. All that is required in SQL DDL to add application versioning
+to a table is to include a named ``PERIOD FOR`` construct. This is described
+similarly in SQLAlchemy, using something like the following:
 
 .. code-block:: python
 
@@ -78,12 +83,14 @@ The above will compile to:
         PERIOD FOR my_period (start_ts, end_ts)
     )
 
-Once created, a ``Period`` object is accessible via the tables's
-``Table.periods`` collection. (e.g. ``t.periods.my_period``.)
+Usually application period columns are allowed to be ``DATE``, ``DATETIME``, or
+``TIMESTAMP``, but be sure to verify what is accepted with your backend. Once
+created, a ``Period`` object is accessible via the table's ``Table.periods``
+collection. (e.g., ``t.periods.my_period``.)
 
 
-Using Application-Time Periods in Primary Keys
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Application-Time Periods in Constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQL:2011 allows for including periods in composite primary or unique keys using
 the ``WITHOUT OVERLAPS`` clause. This can be acheived in SQLAlchemy either with
@@ -121,18 +128,22 @@ Generated DDL:
         UNIQUE (name, my_period WITHOUT OVERLAPS)
     )
 
-Nothing special is needed to specify `WITHOUT OVERLAPS`, it is added
-automatically if there is a period as a primary key.
+Nothing special is needed to specify ``WITHOUT OVERLAPS``, it is added
+automatically if there is a period in the constraint item list.
+
+
 
 Working with System-Time Periods
 --------------------------------
 
 System time periods are represented in DDL by adding ``WITH SYSTEM VERSIONING``
-to a table definition and by creating a ``PERIOD FOR SYSTEM_TIME(...)``
-construct. Some backends may allow omitting one of these in some cases.
+to a table definition, and by creating a period named ``SYSTEM_TIME`` (using the
+same construct as with application versioning, ``PERIOD FOR SYSTEM_TIME(...)``).
+Some backends may allow enabling system versioning with only one of these two
+statements, to simplify DDL.
 
-This can be accomplished in SQLAlchemy using the :class:`SystemTimePeriod`
-schema item, as below.
+Adding the above-mentioned constructs is represented in SQLAlchemy using the
+:class:`SystemTimePeriod` schema item, as below.
 
 .. code-block:: python
 
@@ -143,7 +154,6 @@ schema item, as below.
         metadata,
         Column("id", Integer),
         Column("name", String(30)),
-        Column("bigblob", BLOB, system_versioning=False),
         Column("sys_start", TIMESTAMP),
         Column("sys_end", TIMESTAMP),
         SystemTimePeriod("sys_start", "sys_end"),
@@ -151,9 +161,9 @@ schema item, as below.
 
 SQLAlchemy performs the following steps to create the DDL:
 
-#. Look for a ``SystemTimePeriod`` object. If present, add ``WITH SYSTEM
+1. Look for a ``SystemTimePeriod`` object. If present, add ``WITH SYSTEM
    VERSIONING`` to the table's ``CREATE`` statement.
-#. Locate the columns specified for the ``SystemTimePeriod()`` ``start`` and
+2. Locate the columns specified for the ``SystemTimePeriod()`` ``start`` and
    ``end`` arguments (first two positional arguments). For each of these,
    perform the following:
 
@@ -165,9 +175,9 @@ SQLAlchemy performs the following steps to create the DDL:
   If no column arguments are provided to ``SystemTimePeriod()``, ``WITH SYSTEM
   VERSIONING`` will be added to the table but no ``GENERATED`` columns will be
   specified. This is useful if the backend supports implicit system versioning
-  columns (e.g. MariaDB).
+  columns (e.g., MariaDB).
 
-#. Look for any columns with a ``system_versioning`` argument. This will add
+3. Look for any columns with a ``system_versioning`` argument. This will add
    ``WITH SYSTEM VERSIONING`` or ``WITHOUT SYSTEM VERSIONING`` to that column.
    Not all backends support individual column opting in/out.
 
@@ -178,16 +188,14 @@ The resulting DDL is below:
     CREATE TABLE t (
         id INTEGER,
         name VARCHAR(30),
-        bigblob BLOB WITHOUT SYSTEM VERSIONING,
         sys_start TIMESTAMP GENERATED ALWAYS AS ROW START,
         sys_end TIMESTAMP GENERATED ALWAYS AS ROW END,
         PERIOD FOR SYSTEM_TIME (sys_start, sys_end)
     ) WITH SYSTEM VERSIONING
 
-As mentioned above, some dialects may also support specifically opting a column
-in or out of versioning, which is useful to help minimize storage requirements
-with frequently-updating rows. This result can be acheived with the following
-syntax:
+As mentioned above, some dialects support specifically opting a column in or out
+of versioning, which is useful to help minimize storage requirements with
+frequently updating rows. This result can be achieved with the following syntax:
 
 .. code-block:: python
 
@@ -208,6 +216,8 @@ syntax:
         z BLOB WITHOUT SYSTEM VERSIONING
     ) WITH SYSTEM VERSIONING
 
+
+
 Backend-Specific Constructs
 ----------------------------
 
@@ -217,8 +227,8 @@ Microsoft SQL Server
 Microsoft SQL server requires a slightly different system versioning syntax,
 namely ``WITH (SYSTEM_VERSIONING = ON)`` or ``WITH (SYSTEM_VERSIONING = ON
 (HISTORY_TABLE = schema.TableHistory))``. No action is needed for the first
-construct, referred to as "anonymous" history table. The second construct Can be
-created by passing a table name (with schema) or table object to the
+construct, referred to as an "anonymous" history table. The second construct can
+be created by passing a table name (with schema) or table object to the
 ``SystemTimePeriod``'s ``history_table`` constructor argument.
 
 .. code-block:: python
@@ -229,31 +239,75 @@ created by passing a table name (with schema) or table object to the
     SystemTimePeriod("validfrom", "validto", history_table=table_history)
 
     # Alternative, option for specifying a table by name
-    SystemTimePeriod("validfrom", "validto", history_table="dbo.TableHistory")
+    SystemTimePeriod("validfrom", "validto", history_table="dbo.OtherTable")
 
 .. note::
 
     SQL Server's syntax explicitly requires specifying the table schema for the
-    ``HISTORY_TABLE`` option for DDL creation. Ensure that it is specified when
-    creating the history table object.
+    ``HISTORY_TABLE`` option if given. Ensure that it is specified if passing a
+    SQLAlchemy :class:`Table` object, as shown above.
 
-    If a string arument is passed to ``history_table``, *No checks will be done
+    If a string argument is passed to ``history_table``, *no checks will be done
     to verify the table exists*. This is intentional, as SQL Server will create
-    the history table automatically if it does not exist. If strict checking is
-    preferred, just pass the option ``_validate_str_tables=True``to the
-    ``SystemTimePeriod`` constructor.
+    the history table automatically if it is not already present in the schema.
+    If you would like SQLAlchemy to validate that the table is present in its
+    metadata, just enable strict checking by passing
+    ``_validate_str_tables=True`` to the ``SystemTimePeriod`` constructor.
+
+
+For more information on MSSQL-specific syntax, refer to their `documentation on
+system versioning <mssql_sv>`_.
+
 
 MariaDB
 ~~~~~~~
 
-MariaDB allows for implicit system versioning columns
+MariaDB allows a simplified syntax for creating system versioned tables,
+where ``ROW START`` and ``ROW END`` columns, and ``SYSTEM_TIME`` period do not
+need to be specified. This is easily implemented:
+
+.. code-block:: python
+
+    t = Table("t", metadata, Column("x", Integer), SystemTimePeriod())
+
+.. code-block:: sql
+
+   CREATE TABLE t (
+      x INTEGER
+   ) WITH SYSTEM VERSIONING;
+
+In this case, columns ``ROW_START`` and ``ROW_END`` will be implicitly added to
+the table but be made invisible (but remain selectable). If this syntax is used
+and it is desired that the columns be accessible via SQLAlchemy, create start
+and end columns using ``system=True``.
+
+.. code-block:: python
+
+    t = Table(
+        "t",
+        metadata,
+        Column("x", Integer),
+        Column('row_start', TIMESTAMP, system=True),
+        Column('row_end', TIMESTAMP, system=True),
+        SystemTimePeriod(),
+    )
+
+The above will render exactly the same as the previous example's DDL (with no
+start or end columns) but give SQLAlchemy knowledge of the implicit columns.
+
+For more information on MariaDB-specific syntax, refer to their `documentation
+on system versioning <mariadb_sv_>`_ or on `application versioning
+<mariadb_av_>`_.
+
 
 Other Backends
 ~~~~~~~~~~~~~~
 
-If a backend needs an alternative system time period name instead of
-``SYSTEM_TIME`` (e.g. Oracle), set it by subclassing :class:`SystemTimePeriod`
-and overriding the _period_name = "SYSTEM_TIME" class attribute.
+If a backend not currently supported by SQLAlchemy needs an alternative system
+time period name instead of ``SYSTEM_TIME`` (e.g., Oracle), set it by
+subclassing :class:`SystemTimePeriod` and overriding the ``_period_name =
+"SYSTEM_TIME"`` class attribute.
+
 
 Bitemporal Tables
 -----------------
@@ -261,6 +315,36 @@ Bitemporal Tables
 Bitemporal tables are those that have both system and application versioning
 enabled. This can be done easily by providing both a :class:`Period` and a
 :class:`SystemTimePeriod`.
+
+.. code-block:: python
+
+    t = Table(
+        "t",
+        metadata,
+        Column("id", Integer),
+        Column("tstart", DATE),
+        Column("tend", DATE),
+        Column("sys_start", TIMESTAMP),
+        Column("sys_end", TIMESTAMP),
+        Period("my_period", "tstart", "tend"),
+        SystemTimePeriod("sys_start", "sys_end"),
+        PrimaryKeyConstraint("id", "my_period"),
+    )
+
+.. code-block:: sql
+
+    CREATE TABLE emp (
+        id INTEGER NOT NULL, 
+        tstart DATE, 
+        tend DATE, 
+        sys_start TIMESTAMP GENERATED ALWAYS AS ROW START, 
+        sys_end TIMESTAMP GENERATED ALWAYS AS ROW END, 
+        PERIOD FOR my_period (tstart, tend), 
+        PERIOD FOR SYSTEM_TIME (sys_start, sys_end), 
+        PRIMARY KEY (id, my_period WITHOUT OVERLAPS)
+    ) WITH SYSTEM VERSIONING"
+
+
 
 Temporal API
 ------------
@@ -271,3 +355,22 @@ Temporal API
 .. autoclass:: SystemTimePeriod
     :members:
     :inherited-members:
+
+
+
+References
+----------
+
+.. [#tempfeatures] K Kulkarni, and  J.E. Michels, "Temporal Features in SQL:2011,"
+    *Sigmoid Record*, vol. 41, no. 3, September 2012. Available:
+    `<https://sigmodrecord.org/publications/sigmodRecord/1209/pdfs/07.industry.
+    kulkarni.pdf>`_
+
+
+.. Links (not displayed)
+.. _temporal_features: https://sigmodrecord.org/publications/sigmodRecord/1209
+    /pdfs/07.industry.kulkarni.pdf
+.. _mariadb_sv: https://mariadb.com/kb/en/system-versioned-tables/
+.. _mariadb_av: https://mariadb.com/kb/en/application-time-periods/
+.. _mssql_sv: https://docs.microsoft.com/en-us/sql/relational-databases/tables
+    /temporal-tables?view=sql-server-ver15
