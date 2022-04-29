@@ -791,6 +791,13 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(ci._all_columns, [c1, c2, c3, c2])
         eq_(list(ci), [c1, c2, c3, c2])
 
+    def test_keys_in_dir(self):
+        c1, c2 = sql.column("col1"), sql.column("col2")
+        cc = self._column_collection([("kcol1", c1), ("kcol2", c2)])
+
+        in_("kcol1", dir(cc))
+        in_("kcol2", dir(cc))
+
 
 class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
     def _column_collection(self, columns=None):
@@ -3064,6 +3071,11 @@ class TestProperties(fixtures.TestBase):
         data = {"hello": "bla"}
         props = util.Properties(data)
         in_("hello", dir(props))
+
+    def test_kwarg_init(self):
+        props = util.Properties(ka="va", kb="vb")
+        eq_(props.ka, "va")
+        eq_(props.kb, "vb")
 
     def test_pickle_immuatbleprops(self):
         data = {"hello": "bla"}

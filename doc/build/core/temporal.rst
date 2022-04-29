@@ -161,6 +161,7 @@ SQLAlchemy performs the following steps to create the DDL:
       action is taken.
     * If not, add a :class:`Computed` object that will render as ``GENERATED
       ALWAYS AS ROW START`` or ``GENERATED ALWAYS AS ROW END``.
+  
   If no column arguments are provided to ``SystemTimePeriod()``, ``WITH SYSTEM
   VERSIONING`` will be added to the table but no ``GENERATED`` columns will be
   specified. This is useful if the backend supports implicit system versioning
@@ -183,9 +184,10 @@ The resulting DDL is below:
         PERIOD FOR SYSTEM_TIME (sys_start, sys_end)
     ) WITH SYSTEM VERSIONING
 
-Some dialects may also support specifically opting a column in or out of
-versioning, which is useful to help minimize storage requirements with
-frequently-updating rows. This result can be acheived with the following syntax:
+As mentioned above, some dialects may also support specifically opting a column
+in or out of versioning, which is useful to help minimize storage requirements
+with frequently-updating rows. This result can be acheived with the following
+syntax:
 
 .. code-block:: python
 
@@ -193,8 +195,8 @@ frequently-updating rows. This result can be acheived with the following syntax:
         "t",
         metadata,
         Column("x", Integer),
-        Column("y", Integer, system_versioning=False),
-        Column("z", Integer, system_versioning=True,
+        Column("y", Integer, system_versioning=True),
+        Column("z", BLOB, system_versioning=False,
         SystemTimePeriod(),
     )
 
@@ -202,9 +204,9 @@ frequently-updating rows. This result can be acheived with the following syntax:
 
     CREATE TABLE t (
         x INTEGER,
-        y INTEGER WITHOUT SYSTEM VERSIONING
-        z INTEGER WITH SYSTEM VERSIONING
-    ) WITH SYSTEM VERSIONING"
+        y INTEGER WITH SYSTEM VERSIONING,
+        z BLOB WITHOUT SYSTEM VERSIONING
+    ) WITH SYSTEM VERSIONING
 
 Backend-Specific Constructs
 ----------------------------
@@ -240,6 +242,11 @@ created by passing a table name (with schema) or table object to the
     the history table automatically if it does not exist. If strict checking is
     preferred, just pass the option ``_validate_str_tables=True``to the
     ``SystemTimePeriod`` constructor.
+
+MariaDB
+~~~~~~~
+
+MariaDB allows for implicit system versioning columns
 
 Other Backends
 ~~~~~~~~~~~~~~

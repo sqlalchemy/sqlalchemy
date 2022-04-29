@@ -1,7 +1,5 @@
 """Tests for temporal table structure, including system and
 application versioning"""
-import pickle
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -13,16 +11,13 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.exc import ArgumentError
-from sqlalchemy.sql.base import DictCollection
 from sqlalchemy.sql.sqltypes import DATE
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.sqltypes import VARCHAR
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_none
 
@@ -400,93 +395,3 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(sysperiod1.name, "SYSTEM_TIME")
         eq_(sysperiod1.start, start)
         eq_(sysperiod1.end, end)
-
-
-class DictCollectionTest(fixtures.TestBase):
-    """Validate structure used to hold temporal objects, among others"""
-
-    __dialect__ = "default"
-
-    def populated_dict_collection(self):
-        return DictCollection(ka="va", kb="vb", kc="vc")
-
-    def test_dir(self):
-        dc = self.populated_dict_collection()
-        in_("ka", dir(dc))
-        in_("kb", dir(dc))
-        in_("kc", dir(dc))
-
-    def test_getitem(self):
-        dc = self.populated_dict_collection()
-        eq_(dc["ka"], "va")
-        assert_raises(KeyError, lambda: dc["not_exists"])
-
-    def test_getattr(self):
-        dc = self.populated_dict_collection()
-        eq_(dc.ka, "va")
-        eq_(getattr(dc, "ka"), "va")
-        eq_(getattr(dc, "not_exists", "default"), "default")
-        assert_raises(AttributeError, lambda: dc.not_exists)
-        assert_raises(AttributeError, lambda: getattr(dc, "not_exists"))
-
-    def test_get(self):
-        dc = self.populated_dict_collection()
-        eq_(dc.get("ka"), "va")
-        is_(dc.get("not_exists"), None)
-        eq_(dc.get("not_exists", "default"), "default")
-
-    def test_setitem(self):
-        dc = self.populated_dict_collection()
-        dc["newkey"] = "newvalue"
-        eq_(dc["newkey"], "newvalue")
-
-    def test_setattr(self):
-        dc = self.populated_dict_collection()
-        setattr(dc, "ka", "va_new")
-        setattr(dc, "knew", "vnew")
-        eq_(dc.ka, "va_new")
-        eq_(dc.knew, "vnew")
-
-    def test_delitem(self):
-        dc = self.populated_dict_collection()
-        del dc["ka"]
-        eq_(dc.data_, {"kb": "vb", "kc": "vc"})
-
-    def test_delattr(self):
-        dc = self.populated_dict_collection()
-        del dc.ka
-        eq_(dc.data_, {"kb": "vb", "kc": "vc"})
-
-    def test_iter(self):
-        dc = self.populated_dict_collection()
-        data = [v for v in dc]
-        eq_(data, ["va", "vb", "vc"])
-
-    def test_len(self):
-        dc = self.populated_dict_collection()
-        eq_(len(dc), 3)
-
-    def test_items(self):
-        dc = self.populated_dict_collection()
-        items = [i for i in dc.items()]
-        eq_(items, [("ka", "va"), ("kb", "vb"), ("kc", "vc")])
-
-    def test_keys(self):
-        dc = self.populated_dict_collection()
-        keys = [v for v in dc.keys()]
-        eq_(keys, ["ka", "kb", "kc"])
-
-    def test_values(self):
-        dc = self.populated_dict_collection()
-        values = [v for v in dc.values()]
-        eq_(values, ["va", "vb", "vc"])
-
-    def test_update(self):
-        dc = self.populated_dict_collection()
-        dc.update({"new_key": "new_value"})
-        eq_(dc["new_key"], "new_value")
-
-    def test_pickle(self):
-        dc = self.populated_dict_collection()
-        pd = pickle.dumps(dc)
-        pickle.loads(pd)

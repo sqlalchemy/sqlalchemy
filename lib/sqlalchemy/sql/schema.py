@@ -59,7 +59,6 @@ from . import type_api
 from . import visitors
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
-from .base import DictCollection
 from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
 from .coercions import _document_text_coercion
@@ -76,6 +75,7 @@ from .. import event
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util import Properties
 from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import Protocol
@@ -385,7 +385,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     """
 
-    periods: DictCollection[Period]
+    periods: Properties[Period]
     """A collection of all :class:`_schema.Period` objects associated with this
         :class:`_schema.Table`.
     """
@@ -822,7 +822,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
         self.indexes = set()
         self.constraints = set()
-        self.periods = DictCollection()
+        self.periods = Properties()
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
@@ -3787,7 +3787,7 @@ class ColumnCollectionMixin:
         self._columns = DedupeColumnCollection()
 
         # Collect any periods objects (can't do anything about strings)
-        self._periods: DictCollection[str, Period] = DictCollection()
+        self._periods: Properties[Period] = Properties()
         cols = []
         for item in columns:
             if isinstance(item, Period):

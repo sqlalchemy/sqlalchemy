@@ -173,8 +173,12 @@ class Properties(Generic[_T]):
 
     _data: Dict[str, _T]
 
-    def __init__(self, data: Dict[str, _T]):
+    def __init__(self, data: Dict[str, _T] = None, **kwargs):
+        if data is None:
+            data = {}
         object.__setattr__(self, "_data", data)
+        if kwargs:
+            self.update(kwargs)
 
     def __len__(self) -> int:
         return len(self._data)
