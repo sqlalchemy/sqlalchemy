@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 r"""
 .. dialect:: postgresql
@@ -1814,6 +1816,10 @@ class UUID(sqltypes.TypeEngine):
                 return value
 
             return process
+
+    @property
+    def python_type(self):
+        return _python_UUID if self.as_uuid else str
 
 
 PGUuid = UUID

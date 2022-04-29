@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from ... import types as sqltypes
 
 # technically, all the dialect-specific datatypes that don't have any special

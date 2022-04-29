@@ -21,7 +21,10 @@ import re
 import typing
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Optional
+from typing import Sequence
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -30,6 +33,7 @@ import weakref
 from . import attributes
 from . import strategy_options
 from .base import _is_mapped_class
+from .base import class_mapper
 from .base import state_str
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
@@ -53,7 +57,9 @@ from ..sql import expression
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
-from ..sql.elements import SQLCoreOperations
+from ..sql._typing import _ColumnExpressionArgument
+from ..sql._typing import _HasClauseElement
+from ..sql.elements import ColumnClause
 from ..sql.util import _deep_deannotate
 from ..sql.util import _shallow_annotate
 from ..sql.util import adapt_criterion_to_null
@@ -61,11 +67,14 @@ from ..sql.util import ClauseAdapter
 from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
+from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
+    from ._typing import _EntityType
     from .mapper import Mapper
     from .util import AliasedClass
     from .util import AliasedInsp
+    from ..sql.elements import ColumnElement
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
@@ -79,6 +88,34 @@ _RelationshipArgumentType = Union[
     "AliasedClass[_T]",
     Callable[[], "Mapper[_T]"],
     Callable[[], "AliasedClass[_T]"],
+]
+
+_LazyLoadArgumentType = Literal[
+    "select",
+    "joined",
+    "selectin",
+    "subquery",
+    "raise",
+    "raise_on_sql",
+    "noload",
+    "immediate",
+    "dynamic",
+    True,
+    False,
+    None,
+]
+
+
+_RelationshipJoinConditionArgument = Union[
+    str, _ColumnExpressionArgument[bool]
+]
+_ORMOrderByArgument = Union[
+    Literal[False], str, _ColumnExpressionArgument[Any]
+]
+_ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
+_ORMColCollectionArgument = Union[
+    str,
+    Sequence[Union[ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole]],
 ]
 
 
@@ -144,6 +181,7 @@ class Relationship(
     inherit_cache = True
 
     _links_to_entity = True
+    _is_relationship = True
 
     _persistence_only = dict(
         passive_deletes=False,
@@ -159,38 +197,39 @@ class Relationship(
         self,
         argument: Optional[_RelationshipArgumentType[_T]] = None,
         secondary=None,
+        *,
+        uselist=None,
+        collection_class=None,
         primaryjoin=None,
         secondaryjoin=None,
-        foreign_keys=None,
-        uselist=None,
+        back_populates=None,
         order_by=False,
         backref=None,
-        back_populates=None,
+        cascade_backrefs=False,
         overlaps=None,
         post_update=False,
-        cascade=False,
+        cascade="save-update, merge",
         viewonly=False,
-        lazy="select",
-        collection_class=None,
-        passive_deletes=_persistence_only["passive_deletes"],
-        passive_updates=_persistence_only["passive_updates"],
+        lazy: _LazyLoadArgumentType = "select",
+        passive_deletes=False,
+        passive_updates=True,
+        active_history=False,
+        enable_typechecks=True,
+        foreign_keys=None,
         remote_side=None,
-        enable_typechecks=_persistence_only["enable_typechecks"],
         join_depth=None,
         comparator_factory=None,
         single_parent=False,
         innerjoin=False,
         distinct_target_key=None,
-        doc=None,
-        active_history=_persistence_only["active_history"],
-        cascade_backrefs=_persistence_only["cascade_backrefs"],
         load_on_pending=False,
-        bake_queries=True,
-        _local_remote_pairs=None,
         query_class=None,
         info=None,
         omit_join=None,
         sync_backref=None,
+        doc=None,
+        bake_queries=True,
+        _local_remote_pairs=None,
         _legacy_inactive_history_style=False,
     ):
         super(Relationship, self).__init__()
@@ -250,7 +289,6 @@ class Relationship(
 
         self.omit_join = omit_join
         self.local_remote_pairs = _local_remote_pairs
-        self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
         self.comparator_factory = comparator_factory or Relationship.Comparator
         self.comparator = self.comparator_factory(self, None)
@@ -267,12 +305,7 @@ class Relationship(
         else:
             self._overlaps = ()
 
-        if cascade is not False:
-            self.cascade = cascade
-        elif self.viewonly:
-            self.cascade = "none"
-        else:
-            self.cascade = "save-update, merge"
+        self.cascade = cascade
 
         self.order_by = order_by
 
@@ -539,9 +572,9 @@ class Relationship(
 
         def _criterion_exists(
             self,
-            criterion: Optional[SQLCoreOperations[Any]] = None,
+            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
             **kwargs: Any,
-        ) -> Exists[bool]:
+        ) -> Exists:
             if getattr(self, "_of_type", None):
                 info = inspect(self._of_type)
                 target_mapper, to_selectable, is_aliased_class = (
@@ -898,7 +931,12 @@ class Relationship(
 
     comparator: Comparator[_T]
 
-    def _with_parent(self, instance, alias_secondary=True, from_entity=None):
+    def _with_parent(
+        self,
+        instance: object,
+        alias_secondary: bool = True,
+        from_entity: Optional[_EntityType[Any]] = None,
+    ) -> ColumnElement[bool]:
         assert instance is not None
         adapt_source = None
         if from_entity is not None:
@@ -1502,7 +1540,7 @@ class Relationship(
             argument = argument
 
         if isinstance(argument, type):
-            entity = mapperlib.class_mapper(argument, configure=False)
+            entity = class_mapper(argument, configure=False)
         else:
             try:
                 entity = inspect(argument)
@@ -1568,7 +1606,7 @@ class Relationship(
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
         mapperlib = util.preloaded.orm_mapper
-        if self.parent.non_primary and not mapperlib.class_mapper(
+        if self.parent.non_primary and not class_mapper(
             self.parent.class_, configure=False
         ).has_property(self.key):
             raise sa_exc.ArgumentError(
@@ -1585,29 +1623,23 @@ class Relationship(
             )
 
     @property
-    def cascade(self):
+    def cascade(self) -> CascadeOptions:
         """Return the current cascade setting for this
         :class:`.Relationship`.
         """
         return self._cascade
 
     @cascade.setter
-    def cascade(self, cascade):
+    def cascade(self, cascade: Union[str, CascadeOptions]):
         self._set_cascade(cascade)
 
-    def _set_cascade(self, cascade):
-        cascade = CascadeOptions(cascade)
+    def _set_cascade(self, cascade_arg: Union[str, CascadeOptions]):
+        cascade = CascadeOptions(cascade_arg)
 
         if self.viewonly:
-            non_viewonly = set(cascade).difference(
-                CascadeOptions._viewonly_cascades
+            cascade = CascadeOptions(
+                cascade.intersection(CascadeOptions._viewonly_cascades)
             )
-            if non_viewonly:
-                raise sa_exc.ArgumentError(
-                    'Cascade settings "%s" apply to persistence operations '
-                    "and should not be combined with a viewonly=True "
-                    "relationship." % (", ".join(sorted(non_viewonly)))
-                )
 
         if "mapper" in self.__dict__:
             self._check_cascade_settings(cascade)
@@ -1754,8 +1786,8 @@ class Relationship(
             relationship = Relationship(
                 parent,
                 self.secondary,
-                pj,
-                sj,
+                primaryjoin=pj,
+                secondaryjoin=sj,
                 foreign_keys=foreign_keys,
                 back_populates=self.key,
                 **kwargs,

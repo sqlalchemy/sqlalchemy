@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Optional
+from typing import overload
+from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from . import coercions
 from . import roles
 from ._typing import _ColumnsClauseArgument
+from ._typing import _no_kw
 from .elements import ColumnClause
 from .selectable import Alias
 from .selectable import CompoundSelect
@@ -34,11 +38,25 @@ if TYPE_CHECKING:
     from ._typing import _FromClauseArgument
     from ._typing import _OnClauseArgument
     from ._typing import _SelectStatementForCompoundArgument
+    from ._typing import _T0
+    from ._typing import _T1
+    from ._typing import _T2
+    from ._typing import _T3
+    from ._typing import _T4
+    from ._typing import _T5
+    from ._typing import _T6
+    from ._typing import _T7
+    from ._typing import _T8
+    from ._typing import _T9
+    from ._typing import _TypedColumnClauseArgument as _TCCA
     from .functions import Function
     from .selectable import CTE
     from .selectable import HasCTE
     from .selectable import ScalarSelect
     from .selectable import SelectBase
+
+
+_T = TypeVar("_T", bound=Any)
 
 
 def alias(
@@ -89,7 +107,9 @@ def cte(
     )
 
 
-def except_(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
+def except_(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
@@ -119,7 +139,7 @@ def except_all(
 
 def exists(
     __argument: Optional[
-        Union[_ColumnsClauseArgument, SelectBase, ScalarSelect[bool]]
+        Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
     ] = None,
 ) -> Exists:
     """Construct a new :class:`_expression.Exists` construct.
@@ -162,7 +182,9 @@ def exists(
     return Exists(__argument)
 
 
-def intersect(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
+def intersect(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
@@ -306,7 +328,129 @@ def outerjoin(
     return Join(left, right, onclause, isouter=True, full=full)
 
 
-def select(*entities: _ColumnsClauseArgument) -> Select:
+# START OVERLOADED FUNCTIONS select Select 1-10
+
+# code within this block is **programmatically,
+# statically generated** by tools/generate_tuple_map_overloads.py
+
+
+@overload
+def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
+    ...
+
+
+@overload
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[Tuple[_T0, _T1]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+) -> Select[Tuple[_T0, _T1, _T2]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+    __ent8: _TCCA[_T8],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+    __ent8: _TCCA[_T8],
+    __ent9: _TCCA[_T9],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
+    ...
+
+
+# END OVERLOADED FUNCTIONS select
+
+
+@overload
+def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+    ...
+
+
+def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -343,7 +487,11 @@ def select(*entities: _ColumnsClauseArgument) -> Select:
       given, as well as ORM-mapped classes.
 
     """
-
+    # the keyword args are a necessary element in order for the typing
+    # to work out w/ the varargs vs. having named "keyword" arguments that
+    # aren't always present.
+    if __kw:
+        raise _no_kw()
     return Select(*entities)
 
 
@@ -425,7 +573,9 @@ def tablesample(
     return TableSample._factory(selectable, sampling, name=name, seed=seed)
 
 
-def union(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
+def union(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
@@ -445,7 +595,9 @@ def union(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
     return CompoundSelect._create_union(*selects)
 
 
-def union_all(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
+def union_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of

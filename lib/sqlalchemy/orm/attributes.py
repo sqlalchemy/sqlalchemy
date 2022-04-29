@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 """Defines instrumentation for class attributes and their interaction
 with instances.
@@ -44,7 +45,7 @@ from .base import instance_dict as instance_dict
 from .base import instance_state as instance_state
 from .base import instance_str
 from .base import LOAD_AGAINST_COMMITTED
-from .base import manager_of_class
+from .base import manager_of_class as manager_of_class
 from .base import Mapped as Mapped  # noqa
 from .base import NEVER_SET  # noqa
 from .base import NO_AUTOFLUSH
@@ -52,6 +53,7 @@ from .base import NO_CHANGE  # noqa
 from .base import NO_RAISE
 from .base import NO_VALUE
 from .base import NON_PERSISTENT_OK  # noqa
+from .base import opt_manager_of_class as opt_manager_of_class
 from .base import PASSIVE_CLASS_MISMATCH  # noqa
 from .base import PASSIVE_NO_FETCH
 from .base import PASSIVE_NO_FETCH_RELATED  # noqa
@@ -69,15 +71,16 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import base as sql_base
+from ..sql import cache_key
 from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 
 if TYPE_CHECKING:
+    from .interfaces import MapperProperty
     from .state import InstanceState
     from ..sql.dml import _DMLColumnElement
     from ..sql.elements import ColumnElement
-    from ..sql.elements import SQLCoreOperations
 
 _T = TypeVar("_T")
 
@@ -97,10 +100,8 @@ class QueryableAttribute(
     traversals.HasCopyInternals,
     roles.JoinTargetRole,
     roles.OnClauseRole,
-    roles.ColumnsClauseRole,
-    roles.ExpressionElementRole[_T],
     sql_base.Immutable,
-    sql_base.MemoizedHasCacheKey,
+    cache_key.MemoizedHasCacheKey,
 ):
     """Base class for :term:`descriptor` objects that intercept
     attribute events on behalf of a :class:`.MapperProperty`
@@ -146,7 +147,7 @@ class QueryableAttribute(
         self._of_type = of_type
         self._extra_criteria = extra_criteria
 
-        manager = manager_of_class(class_)
+        manager = opt_manager_of_class(class_)
         # manager is None in the case of AliasedClass
         if manager:
             # propagate existing event listeners from
@@ -370,7 +371,7 @@ class QueryableAttribute(
         return "%s.%s" % (self.class_.__name__, self.key)
 
     @util.memoized_property
-    def property(self):
+    def property(self) -> MapperProperty[_T]:
         """Return the :class:`.MapperProperty` associated with this
         :class:`.QueryableAttribute`.
 

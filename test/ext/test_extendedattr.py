@@ -18,6 +18,7 @@ from sqlalchemy.orm.instrumentation import register_class
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -110,7 +111,13 @@ class DisposeTest(_ExtBase, fixtures.TestBase):
         class MyClass:
             __sa_instrumentation_manager__ = MyClassState
 
-        assert attributes.manager_of_class(MyClass) is None
+        assert attributes.opt_manager_of_class(MyClass) is None
+
+        with expect_raises_message(
+            sa.orm.exc.UnmappedClassError,
+            r"Can't locate an instrumentation manager for class .*MyClass",
+        ):
+            attributes.manager_of_class(MyClass)
 
         t = Table(
             "my_table",
@@ -120,7 +127,7 @@ class DisposeTest(_ExtBase, fixtures.TestBase):
 
         registry.map_imperatively(MyClass, t)
 
-        manager = attributes.manager_of_class(MyClass)
+        manager = attributes.opt_manager_of_class(MyClass)
         is_not(manager, None)
         is_(manager, MyClass.xyz)
 
@@ -128,7 +135,7 @@ class DisposeTest(_ExtBase, fixtures.TestBase):
 
         registry.dispose()
 
-        manager = attributes.manager_of_class(MyClass)
+        manager = attributes.opt_manager_of_class(MyClass)
         is_(manager, None)
 
         assert not hasattr(MyClass, "xyz")
@@ -532,9 +539,9 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
         register_class(Known)
         k, u = Known(), Unknown()
 
-        assert instrumentation.manager_of_class(Unknown) is None
-        assert instrumentation.manager_of_class(Known) is not None
-        assert instrumentation.manager_of_class(None) is None
+        assert instrumentation.opt_manager_of_class(Unknown) is None
+        assert instrumentation.opt_manager_of_class(Known) is not None
+        assert instrumentation.opt_manager_of_class(None) is None
 
         assert attributes.instance_state(k) is not None
         assert_raises((AttributeError, KeyError), attributes.instance_state, u)
@@ -583,7 +590,10 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
             )
 
         register_class(A)
-        ne_(type(manager_of_class(A)), instrumentation.ClassManager)
+        ne_(
+            type(attributes.opt_manager_of_class(A)),
+            instrumentation.ClassManager,
+        )
 
     def test_nativeext_submanager(self):
         class Mine(instrumentation.ClassManager):

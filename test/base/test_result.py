@@ -276,6 +276,13 @@ class ResultTest(fixtures.TestBase):
         eq_(m1.fetchone(), {"a": 1, "b": 1, "c": 1})
         eq_(r1.fetchone(), (2, 1, 2))
 
+    def test_tuples_plus_base(self):
+        r1 = self._fixture()
+
+        t1 = r1.tuples()
+        eq_(t1.fetchone(), (1, 1, 1))
+        eq_(r1.fetchone(), (2, 1, 2))
+
     def test_scalar_plus_base(self):
         r1 = self._fixture()
 
@@ -1067,6 +1074,34 @@ class OnlyScalarsTest(fixtures.TestBase):
         eq_(
             list(r),
             [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
+        )
+
+    def test_scalar_mode_columns0_plain(self, no_tuple_fixture):
+        """test #7953"""
+
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.columns(0)
+        eq_(
+            list(r),
+            [(1,), (2,), (1,), (1,), (4,)],
+        )
+
+    def test_scalar_mode_scalars0(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars(0)
+        eq_(
+            list(r),
+            [1, 2, 1, 1, 4],
         )
 
     def test_scalar_mode_but_accessed_nonscalar_result(self, no_tuple_fixture):

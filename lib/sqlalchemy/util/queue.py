@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """An adaptation of Py2.3/2.4's Queue module which supports reentrant
 behavior, using RLock instead of Lock for its mutex object.  The

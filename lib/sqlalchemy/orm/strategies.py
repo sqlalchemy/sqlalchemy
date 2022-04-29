@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
@@ -2162,10 +2164,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         else:
             to_adapt = self._gen_pooled_aliased_class(compile_state)
 
-        clauses = inspect(to_adapt)._memo(
+        to_adapt_insp = inspect(to_adapt)
+        clauses = to_adapt_insp._memo(
             ("joinedloader_ormadapter", self),
             orm_util.ORMAdapter,
-            to_adapt,
+            to_adapt_insp,
             equivalents=self.mapper._equivalent_columns,
             adapt_required=True,
             allow_label_resolve=False,

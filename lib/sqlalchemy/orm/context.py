@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from . import attributes
@@ -48,14 +50,15 @@ from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
 from ..sql.base import Executable
+from ..sql.base import Generative
 from ..sql.base import Options
 from ..sql.dml import UpdateBase
 from ..sql.elements import GroupedElement
 from ..sql.elements import TextClause
+from ..sql.selectable import ExecutableReturnsRows
 from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..sql.selectable import ReturnsRows
 from ..sql.selectable import Select
 from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
@@ -63,12 +66,15 @@ from ..sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
-    from ..sql.compiler import _CompilerStackEntry
+    from .mapper import Mapper
+    from .query import Query
     from ..sql.dml import _DMLTableElement
     from ..sql.elements import ColumnElement
     from ..sql.selectable import _LabelConventionCallable
     from ..sql.selectable import SelectBase
+    from ..sql.type_api import TypeEngine
 
+_T = TypeVar("_T", bound=Any)
 _path_registry = PathRegistry.root
 
 _EMPTY_DICT = util.immutabledict()
@@ -210,6 +216,9 @@ class ORMCompileState(CompileState):
         _set_base_alias = False
         _for_refresh_state = False
         _render_for_subquery = False
+
+    attributes: Dict[Any, Any]
+    global_attributes: Dict[Any, Any]
 
     statement: Union[Select, FromStatement]
     select_statement: Union[Select, FromStatement]
@@ -568,7 +577,7 @@ class ORMFromStatementCompileState(ORMCompileState):
         return None
 
 
-class FromStatement(GroupedElement, ReturnsRows, Executable):
+class FromStatement(GroupedElement, Generative, ExecutableReturnsRows):
     """Core construct that represents a load of ORM objects from various
     :class:`.ReturnsRows` and other classes including:
 
@@ -1930,7 +1939,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             assert right_mapper
 
             adapter = ORMAdapter(
-                right, equivalents=right_mapper._equivalent_columns
+                inspect(right), equivalents=right_mapper._equivalent_columns
             )
 
             # if an alias() on the right side was generated,
@@ -2075,14 +2084,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
 
 def _column_descriptions(
-    query_or_select_stmt, compile_state=None, legacy=False
+    query_or_select_stmt: Union[Query, Select, FromStatement],
+    compile_state: Optional[ORMSelectCompileState] = None,
+    legacy: bool = False,
 ) -> List[ORMColumnDescription]:
     if compile_state is None:
         compile_state = ORMSelectCompileState._create_entities_collection(
             query_or_select_stmt, legacy=legacy
         )
     ctx = compile_state
-    return [
+    d = [
         {
             "name": ent._label_name,
             "type": ent.type,
@@ -2093,17 +2104,10 @@ def _column_descriptions(
             else None,
         }
         for ent, insp_ent in [
-            (
-                _ent,
-                (
-                    inspect(_ent.entity_zero)
-                    if _ent.entity_zero is not None
-                    else None
-                ),
-            )
-            for _ent in ctx._entities
+            (_ent, _ent.entity_zero) for _ent in ctx._entities
         ]
     ]
+    return d
 
 
 def _legacy_filter_by_entity_zero(query_or_augmented_select):
@@ -2156,6 +2160,11 @@ class _QueryEntity:
     _non_hashable_value = False
     _null_column_type = False
     use_id_for_hash = False
+
+    _label_name: Optional[str]
+    type: Union[Type[Any], TypeEngine[Any]]
+    expr: Union[_InternalEntityType, ColumnElement[Any]]
+    entity_zero: Optional[_InternalEntityType]
 
     def setup_compile_state(self, compile_state: ORMCompileState) -> None:
         raise NotImplementedError()
@@ -2233,6 +2242,13 @@ class _MapperEntity(_QueryEntity):
         "selectable",
         "_polymorphic_discriminator",
     )
+
+    expr: _InternalEntityType
+    mapper: Mapper[Any]
+    entity_zero: _InternalEntityType
+    is_aliased_class: bool
+    path: PathRegistry
+    _label_name: str
 
     def __init__(
         self, compile_state, entity, entities_collection, is_current_entities
@@ -2388,6 +2404,13 @@ class _BundleEntity(_QueryEntity):
         "_entities",
         "supports_single_entity",
     )
+
+    _entities: List[_QueryEntity]
+    bundle: Bundle
+    type: Type[Any]
+    _label_name: str
+    supports_single_entity: bool
+    expr: Bundle
 
     def __init__(
         self,

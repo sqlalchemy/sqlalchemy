@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from ... import create_engine
 from ... import exc
 from ...engine import url as sa_url

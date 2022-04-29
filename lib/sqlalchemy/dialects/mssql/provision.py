@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from ... import create_engine

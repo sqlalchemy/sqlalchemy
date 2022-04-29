@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
@@ -13,7 +14,6 @@ from __future__ import annotations
 import re
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import Match
 from typing import Optional
@@ -79,7 +79,7 @@ def warn_deprecated_limited(
 
 
 def deprecated_cls(
-    version: str, message: str, constructor: str = "__init__"
+    version: str, message: str, constructor: Optional[str] = "__init__"
 ) -> Callable[[Type[_T]], Type[_T]]:
     header = ".. deprecated:: %s %s" % (version, (message or ""))
 
@@ -288,7 +288,9 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         check_any_kw = spec.varkw
 
-        @decorator
+        # latest mypy has opinions here, not sure if they implemented
+        # Concatenate or something
+        @decorator  # type: ignore
         def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
             for m in check_defaults:
                 if (defaults[m] is None and kwargs[m] is not None) or (
@@ -332,7 +334,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
                     for param, (version, message) in specs.items()
                 },
             )
-        decorated = cast(_F, warned)(fn)
+        decorated = warned(fn)  # type: ignore
         decorated.__doc__ = doc
         return decorated  # type: ignore[no-any-return]
 
@@ -352,7 +354,7 @@ def _sanitize_restructured_text(text: str) -> str:
 
 def _decorate_cls_with_warning(
     cls: Type[_T],
-    constructor: str,
+    constructor: Optional[str],
     wtype: Type[exc.SADeprecationWarning],
     message: str,
     version: str,
@@ -418,7 +420,7 @@ def _decorate_with_warning(
     else:
         doc_only = ""
 
-    @decorator
+    @decorator  # type: ignore
     def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
         skip_warning = not enable_warnings or kwargs.pop(
             "_sa_skip_warning", False
@@ -435,9 +437,9 @@ def _decorate_with_warning(
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 
-    decorated = cast(_F, warned)(func)
+    decorated = warned(func)  # type: ignore
     decorated.__doc__ = doc
-    decorated._sa_warn = lambda: _warn_with_version(
+    decorated._sa_warn = lambda: _warn_with_version(  # type: ignore
         message, version, wtype, stacklevel=3
     )
     return decorated  # type: ignore[no-any-return]

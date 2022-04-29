@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .. import fixtures
 from ..assertions import eq_
 from ..schema import Column

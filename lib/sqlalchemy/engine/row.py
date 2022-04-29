@@ -16,6 +16,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generic
 from typing import Iterator
 from typing import List
 from typing import Mapping
@@ -24,12 +25,14 @@ from typing import Optional
 from typing import overload
 from typing import Sequence
 from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from ..sql import util as sql_util
 from ..util._has_cy import HAS_CYEXTENSION
 
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
+if TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import BaseRow as BaseRow
     from ._py_row import KEY_INTEGER_ONLY
     from ._py_row import KEY_OBJECTS_ONLY
@@ -38,13 +41,16 @@ else:
     from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
     from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from .result import _KeyType
     from .result import RMKeyView
     from ..sql.type_api import _ResultProcessorType
 
+_T = TypeVar("_T", bound=Any)
+_TP = TypeVar("_TP", bound=Tuple[Any, ...])
 
-class Row(BaseRow, typing.Sequence[Any]):
+
+class Row(BaseRow, Sequence[Any], Generic[_TP]):
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is
@@ -82,6 +88,37 @@ class Row(BaseRow, typing.Sequence[Any]):
     def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
+    def tuple(self) -> _TP:
+        """Return a 'tuple' form of this :class:`.Row`.
+
+        At runtime, this method returns "self"; the :class:`.Row` object is
+        already a named tuple. However, at the typing level, if this
+        :class:`.Row` is typed, the "tuple" return type will be a :pep:`484`
+        ``Tuple`` datatype that contains typing information about individual
+        elements, supporting typed unpacking and attribute access.
+
+        .. versionadded:: 2.0
+
+        .. seealso::
+
+            :meth:`.Result.tuples`
+
+        """
+        return self  # type: ignore
+
+    @property
+    def t(self) -> _TP:
+        """a synonym for :attr:`.Row.tuple`
+
+        .. versionadded:: 2.0
+
+        .. seealso::
+
+            :meth:`.Result.t`
+
+        """
+        return self  # type: ignore
+
     @property
     def _mapping(self) -> RowMapping:
         """Return a :class:`.RowMapping` for this :class:`.Row`.
@@ -107,7 +144,7 @@ class Row(BaseRow, typing.Sequence[Any]):
 
     def _filter_on_values(
         self, filters: Optional[Sequence[Optional[_ResultProcessorType[Any]]]]
-    ) -> Row:
+    ) -> Row[Any]:
         return Row(
             self._parent,
             filters,
@@ -116,7 +153,7 @@ class Row(BaseRow, typing.Sequence[Any]):
             self._data,
         )
 
-    if not typing.TYPE_CHECKING:
+    if not TYPE_CHECKING:
 
         def _special_name_accessor(name: str) -> Any:
             """Handle ambiguous names such as "count" and "index" """
@@ -151,7 +188,7 @@ class Row(BaseRow, typing.Sequence[Any]):
 
     __hash__ = BaseRow.__hash__
 
-    if typing.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @overload
         def __getitem__(self, index: int) -> Any:
@@ -299,7 +336,7 @@ class RowMapping(BaseRow, typing.Mapping[str, Any]):
 
     _default_key_style = KEY_OBJECTS_ONLY
 
-    if typing.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def __getitem__(self, key: _KeyType) -> Any:
             ...

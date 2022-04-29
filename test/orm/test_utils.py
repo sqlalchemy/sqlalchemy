@@ -5,6 +5,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy.engine import result
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
@@ -465,8 +466,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
 
     def _cases():
         return testing.combinations(
-            (orm_util,),
-            (Session,),
+            (orm_util,), (Session,), argnames="ormutil"
         )
 
     @_cases()
@@ -504,12 +504,29 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         eq_(key, (User, (u.id,), None))
 
     @_cases()
-    def test_identity_key_3(self, ormutil):
+    @testing.combinations("dict", "row", "mapping", argnames="rowtype")
+    def test_identity_key_3(self, ormutil, rowtype):
+        """test a real Row works with identity_key.
+
+        this was broken w/ 1.4 future mode as we are assuming a mapping
+        here.  to prevent regressions, identity_key now accepts any of
+        dict, RowMapping, Row for the "row".
+
+        found_during_type_annotation
+
+
+        """
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
 
-        row = {users.c.id: 1, users.c.name: "Frank"}
+        if rowtype == "dict":
+            row = {users.c.id: 1, users.c.name: "Frank"}
+        elif rowtype in ("mapping", "row"):
+            row = result.result_tuple([users.c.id, users.c.name])((1, "Frank"))
+            if rowtype == "mapping":
+                row = row._mapping
+
         key = ormutil.identity_key(User, row=row)
         eq_(key, (User, (1,), None))
 

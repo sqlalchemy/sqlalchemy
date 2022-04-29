@@ -121,7 +121,6 @@ def __go(lcls: Any) -> None:
     coercions.lambdas = lambdas
     coercions.schema = schema
     coercions.selectable = selectable
-    coercions.traversals = traversals
 
     from .annotation import _prepare_annotations
     from .annotation import Annotated

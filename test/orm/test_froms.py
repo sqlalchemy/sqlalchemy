@@ -492,7 +492,7 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Column expression or FROM clause expected, got "
+            "Column expression, FROM clause, or other .* expected, got "
             "<sqlalchemy.sql.selectable.Select .*> object resolved from "
             "<AliasedClass .* User> object. To create a FROM clause from "
             "a <class 'sqlalchemy.sql.selectable.Select'> object",

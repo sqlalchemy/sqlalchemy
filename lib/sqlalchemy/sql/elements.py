@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Core SQL expression elements, including :class:`_expression.ClauseElement`,
 :class:`_expression.ColumnElement`, and derived classes.
@@ -54,6 +55,7 @@ from .base import _clone
 from .base import _generative
 from .base import _NoArg
 from .base import Executable
+from .base import Generative
 from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
@@ -94,10 +96,7 @@ if typing.TYPE_CHECKING:
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import NamedFromClause
-    from .selectable import ReturnsRows
     from .selectable import Select
-    from .selectable import TableClause
-    from .sqltypes import Boolean
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
@@ -122,7 +121,9 @@ _NT = TypeVar("_NT", bound="_NUMERIC")
 _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
-def literal(value, type_=None):
+def literal(
+    value: Any, type_: Optional[_TypeEngineArgument[_T]] = None
+) -> BindParameter[_T]:
     r"""Return a literal clause, bound to a bind parameter.
 
     Literal clauses are created automatically when non-
@@ -144,7 +145,9 @@ def literal(value, type_=None):
     return coercions.expect(roles.LiteralValueRole, value, type_=type_)
 
 
-def literal_column(text, type_=None):
+def literal_column(
+    text: str, type_: Optional[_TypeEngineArgument[_T]] = None
+) -> ColumnClause[_T]:
     r"""Produce a :class:`.ColumnClause` object that has the
     :paramref:`_expression.column.is_literal` flag set to True.
 
@@ -293,11 +296,18 @@ class ClauseElement(
 
     __visit_name__ = "clause"
 
-    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
-    """like annotations, however these propagate outwards liberally
-    as SQL constructs are built, and are set up at construction time.
+    if TYPE_CHECKING:
 
-    """
+        @util.memoized_property
+        def _propagate_attrs(self) -> _PropagateAttrsType:
+            """like annotations, however these propagate outwards liberally
+            as SQL constructs are built, and are set up at construction time.
+
+            """
+            ...
+
+    else:
+        _propagate_attrs = util.EMPTY_DICT
 
     @util.ro_memoized_property
     def description(self) -> Optional[str]:
@@ -309,6 +319,7 @@ class ClauseElement(
     is_selectable = False
     is_dml = False
     _is_column_element = False
+    _is_keyed_column_element = False
     _is_table = False
     _is_textual = False
     _is_from_clause = False
@@ -335,7 +346,7 @@ class ClauseElement(
     if typing.TYPE_CHECKING:
 
         def get_children(
-            self, omit_attrs: typing_Tuple[str, ...] = ..., **kw: Any
+            self, *, omit_attrs: typing_Tuple[str, ...] = ..., **kw: Any
         ) -> Iterable[ClauseElement]:
             ...
 
@@ -343,7 +354,9 @@ class ClauseElement(
     def _from_objects(self) -> List[FromClause]:
         return []
 
-    def _set_propagate_attrs(self, values):
+    def _set_propagate_attrs(
+        self: SelfClauseElement, values: Mapping[str, Any]
+    ) -> SelfClauseElement:
         # usually, self._propagate_attrs is empty here.  one case where it's
         # not is a subquery against ORM select, that is then pulled as a
         # property of an aliased class.   should all be good
@@ -446,7 +459,7 @@ class ClauseElement(
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptions,
-    ) -> Result:
+    ) -> Result[Any]:
         if self.supports_execution:
             if TYPE_CHECKING:
                 assert isinstance(self, Executable)
@@ -526,13 +539,10 @@ class ClauseElement(
             if unique:
                 bind._convert_to_unique()
 
-        return cast(
-            SelfClauseElement,
-            cloned_traverse(
-                self,
-                {"maintain_key": True, "detect_subquery_cols": True},
-                {"bindparam": visit_bindparam},
-            ),
+        return cloned_traverse(
+            self,
+            {"maintain_key": True, "detect_subquery_cols": True},
+            {"bindparam": visit_bindparam},
         )
 
     def compare(self, other, **kw):
@@ -730,7 +740,9 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
     # redefined with the specific types returned by ColumnElement hierarchies
     if typing.TYPE_CHECKING:
 
-        _propagate_attrs: _PropagateAttrsType
+        @util.non_memoized_property
+        def _propagate_attrs(self) -> _PropagateAttrsType:
+            ...
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
@@ -825,13 +837,13 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
 
         def in_(
             self,
-            other: Union[Sequence[Any], BindParameter[Any], Select],
+            other: Union[Sequence[Any], BindParameter[Any], Select[Any]],
         ) -> BinaryExpression[bool]:
             ...
 
         def not_in(
             self,
-            other: Union[Sequence[Any], BindParameter[Any], Select],
+            other: Union[Sequence[Any], BindParameter[Any], Select[Any]],
         ) -> BinaryExpression[bool]:
             ...
 
@@ -1691,6 +1703,14 @@ class ColumnElement(
         return self._anon_label(label, add_hash=idx)
 
 
+class KeyedColumnElement(ColumnElement[_T]):
+    """ColumnElement where ``.key`` is non-None."""
+
+    _is_keyed_column_element = True
+
+    key: str
+
+
 class WrapsColumnExpression(ColumnElement[_T]):
     """Mixin that defines a :class:`_expression.ColumnElement`
     as a wrapper with special
@@ -1752,7 +1772,7 @@ class WrapsColumnExpression(ColumnElement[_T]):
 SelfBindParameter = TypeVar("SelfBindParameter", bound="BindParameter[Any]")
 
 
-class BindParameter(roles.InElementRole, ColumnElement[_T]):
+class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     r"""Represent a "bound expression".
 
     :class:`.BindParameter` is invoked explicitly using the
@@ -2064,10 +2084,12 @@ class TextClause(
     roles.OrderByRole,
     roles.FromClauseRole,
     roles.SelectStatementRole,
-    roles.BinaryElementRole[Any],
     roles.InElementRole,
+    Generative,
     Executable,
     DQLDMLClauseElement,
+    roles.BinaryElementRole[Any],
+    inspection.Inspectable["TextClause"],
 ):
     """Represent a literal SQL text fragment.
 
@@ -4151,7 +4173,7 @@ class FunctionFilter(ColumnElement[_T]):
         )
 
 
-class NamedColumn(ColumnElement[_T]):
+class NamedColumn(KeyedColumnElement[_T]):
     is_literal = False
     table: Optional[FromClause] = None
     name: str
@@ -4493,7 +4515,7 @@ class ColumnClause(
 
         self.is_literal = is_literal
 
-    def get_children(self, column_tables=False, **kw):
+    def get_children(self, *, column_tables=False, **kw):
         # override base get_children() to not return the Table
         # or selectable that is parent to this column.  Traversals
         # expect the columns of tables and subqueries to be leaf nodes.

@@ -4,7 +4,6 @@ from typing import List
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
-from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -43,7 +42,20 @@ with Session(e) as sess:
     sess.add_all([Address(user=u1, email="e1"), Address(user=u1, email="e2")])
     sess.commit()
 
-with Session(e) as sess:
-    users: List[User] = sess.scalars(
-        select(User), execution_options={"stream_results": False}
-    ).all()
+    q = sess.query(User).filter_by(id=7)
+
+    # EXPECTED_TYPE: Query[User]
+    reveal_type(q)
+
+    rows1 = q.all()
+
+    # EXPECTED_RE_TYPE: builtins.[Ll]ist\[.*User\*?\]
+    reveal_type(rows1)
+
+    q2 = sess.query(User.id).filter_by(id=7)
+    rows2 = q2.all()
+
+    # EXPECTED_TYPE: List[Row[Tuple[int]]]
+    reveal_type(rows2)
+
+# more result tests in typed_results.py

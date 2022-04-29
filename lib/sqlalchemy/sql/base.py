@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Foundational utilities common to many sql modules.
 
@@ -62,10 +63,10 @@ if TYPE_CHECKING:
     from . import coercions
     from . import elements
     from . import type_api
-    from ._typing import _ColumnsClauseArgument
     from .elements import BindParameter
-    from .elements import ColumnClause
+    from .elements import ColumnClause  # noqa
     from .elements import ColumnElement
+    from .elements import KeyedColumnElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .elements import TextClause
@@ -74,7 +75,6 @@ if TYPE_CHECKING:
     from .selectable import FromClause
     from ..engine import Connection
     from ..engine import CursorResult
-    from ..engine import Result
     from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import _ExecuteOptions
@@ -218,7 +218,7 @@ def _generative(fn: _Fn) -> _Fn:
 
     """
 
-    @util.decorator
+    @util.decorator  # type: ignore
     def _generative(
         fn: _Fn, self: _SelfGenerativeType, *args: Any, **kw: Any
     ) -> _SelfGenerativeType:
@@ -244,7 +244,7 @@ def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
         for name in names
     ]
 
-    @util.decorator
+    @util.decorator  # type: ignore
     def check(fn, *args, **kw):
         # make pylance happy by not including "self" in the argument
         # list
@@ -260,7 +260,7 @@ def _exclusive_against(*names: str, **kw: Any) -> Callable[[_Fn], _Fn]:
                 raise exc.InvalidRequestError(msg)
         return fn(self, *args, **kw)
 
-    return check
+    return check  # type: ignore
 
 
 def _clone(element, **kw):
@@ -704,8 +704,11 @@ class InPlaceGenerative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator that mutates in place."""
 
+    __slots__ = ()
+
     def _generate(self):
         skip = self._memoized_keys
+        # note __dict__ needs to be in __slots__ if this is used
         for k in skip:
             self.__dict__.pop(k, None)
         return self
@@ -937,7 +940,7 @@ class ExecutableOption(HasCopyInternals):
 SelfExecutable = TypeVar("SelfExecutable", bound="Executable")
 
 
-class Executable(roles.StatementRole, Generative):
+class Executable(roles.StatementRole):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
@@ -994,7 +997,7 @@ class Executable(roles.StatementRole, Generative):
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
             execution_options: _ExecuteOptionsParameter,
-        ) -> CursorResult:
+        ) -> CursorResult[Any]:
             ...
 
         def _execute_on_scalar(
@@ -1253,7 +1256,7 @@ class SchemaVisitor(ClauseVisitor):
 _COLKEY = TypeVar("_COLKEY", Union[None, str], str)
 
 _COL_co = TypeVar("_COL_co", bound="ColumnElement[Any]", covariant=True)
-_COL = TypeVar("_COL", bound="ColumnElement[Any]")
+_COL = TypeVar("_COL", bound="KeyedColumnElement[Any]")
 
 
 class ColumnCollection(Generic[_COLKEY, _COL_co]):
@@ -1510,6 +1513,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     ) -> None:
         """populate from an iterator of (key, column)"""
         cols = list(iter_)
+
         self._collection[:] = cols
         self._colset.update(c for k, c in self._collection)
         self._index.update(
@@ -1755,15 +1759,14 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
                 self._collection.append((k, col))
         self._colset.update(c for (k, c) in self._collection)
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            (idx, c) for idx, (k, c) in enumerate(self._collection)  # type: ignore  # noqa: E501
+            (idx, c) for idx, (k, c) in enumerate(self._collection)
         )
         for col in replace_col:
             self.replace(col)
 
     def extend(self, iter_: Iterable[_NAMEDCOL]) -> None:
-        self._populate_separate_keys((col.key, col) for col in iter_)  # type: ignore  # noqa: E501
+        self._populate_separate_keys((col.key, col) for col in iter_)
 
     def remove(self, column: _NAMEDCOL) -> None:
         if column not in self._colset:
@@ -1777,9 +1780,8 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             (k, c) for (k, c) in self._collection if c is not column
         ]
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
         )
         # delete higher index
         del self._index[len(self._collection)]
@@ -1832,9 +1834,8 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 
         self._index.clear()
 
-        # https://github.com/python/mypy/issues/12610
         self._index.update(
-            {idx: col for idx, (k, col) in enumerate(self._collection)}  # type: ignore  # noqa: E501
+            {idx: col for idx, (k, col) in enumerate(self._collection)}
         )
         self._index.update(self._collection)
 

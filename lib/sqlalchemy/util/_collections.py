@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Collection classes and helpers."""
 from __future__ import annotations
@@ -26,6 +27,7 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import TypeVar
@@ -291,8 +293,8 @@ OrderedDict = dict
 sort_dictionary = _ordered_dictionary_sort
 
 
-class WeakSequence:
-    def __init__(self, __elements=()):
+class WeakSequence(Sequence[_T]):
+    def __init__(self, __elements: Sequence[_T] = ()):
         # adapted from weakref.WeakKeyDictionary, prevent reference
         # cycles in the collection itself
         def _remove(item, selfref=weakref.ref(self)):

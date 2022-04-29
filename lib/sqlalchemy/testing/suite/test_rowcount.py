@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Integer

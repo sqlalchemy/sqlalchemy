@@ -122,7 +122,11 @@ class DescriptorProperty(MapperProperty[_T]):
 
 
 _CompositeAttrType = Union[
-    str, "Column[Any]", "MappedColumn[Any]", "InstrumentedAttribute[Any]"
+    str,
+    "Column[_T]",
+    "MappedColumn[_T]",
+    "InstrumentedAttribute[_T]",
+    "Mapped[_T]",
 ]
 
 

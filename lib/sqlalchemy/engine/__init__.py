@@ -46,6 +46,7 @@ from .result import MergedResult as MergedResult
 from .result import Result as Result
 from .result import result_tuple as result_tuple
 from .result import ScalarResult as ScalarResult
+from .result import TupleResult as TupleResult
 from .row import BaseRow as BaseRow
 from .row import Row as Row
 from .row import RowMapping as RowMapping

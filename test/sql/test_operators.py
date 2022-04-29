@@ -3795,8 +3795,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             t.c.arrval.any(5, operator.gt),
-            ":param_1 > ANY (tab1.arrval)",
-            checkparams={"param_1": 5},
+            ":arrval_1 > ANY (tab1.arrval)",
+            checkparams={"arrval_1": 5},
         )
 
     def test_any_array_comparator_negate_accessor(self, t_fixture):
@@ -3804,8 +3804,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             ~t.c.arrval.any(5, operator.gt),
-            "NOT (:param_1 > ANY (tab1.arrval))",
-            checkparams={"param_1": 5},
+            "NOT (:arrval_1 > ANY (tab1.arrval))",
+            checkparams={"arrval_1": 5},
         )
 
     def test_all_array_comparator_accessor(self, t_fixture):
@@ -3813,8 +3813,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             t.c.arrval.all(5, operator.gt),
-            ":param_1 > ALL (tab1.arrval)",
-            checkparams={"param_1": 5},
+            ":arrval_1 > ALL (tab1.arrval)",
+            checkparams={"arrval_1": 5},
         )
 
     def test_all_array_comparator_negate_accessor(self, t_fixture):
@@ -3822,8 +3822,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             ~t.c.arrval.all(5, operator.gt),
-            "NOT (:param_1 > ALL (tab1.arrval))",
-            checkparams={"param_1": 5},
+            "NOT (:arrval_1 > ALL (tab1.arrval))",
+            checkparams={"arrval_1": 5},
         )
 
     def test_any_array_expression(self, t_fixture):

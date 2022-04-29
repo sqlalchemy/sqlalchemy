@@ -2,20 +2,31 @@ from __future__ import annotations
 
 import operator
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-from sqlalchemy.sql.base import Executable
 from . import roles
+from .. import exc
 from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
+    from datetime import date
+    from datetime import datetime
+    from datetime import time
+    from datetime import timedelta
+    from decimal import Decimal
+    from uuid import UUID
+
+    from .base import Executable
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .compiler import SQLCompiler
@@ -24,20 +35,21 @@ if TYPE_CHECKING:
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
+    from .elements import KeyedColumnElement
     from .elements import quoted_name
-    from .elements import SQLCoreOperations
     from .elements import TextClause
+    from .lambdas import LambdaElement
     from .roles import ColumnsClauseRole
     from .roles import FromClauseRole
     from .schema import Column
-    from .schema import DefaultGenerator
-    from .schema import Sequence
     from .selectable import Alias
+    from .selectable import CTE
     from .selectable import FromClause
     from .selectable import Join
     from .selectable import NamedFromClause
     from .selectable import ReturnsRows
     from .selectable import Select
+    from .selectable import Selectable
     from .selectable import SelectBase
     from .selectable import Subquery
     from .selectable import TableClause
@@ -45,7 +57,6 @@ if TYPE_CHECKING:
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from ..util.typing import TypeGuard
-
 
 _T = TypeVar("_T", bound=Any)
 
@@ -55,6 +66,30 @@ class _HasClauseElement(Protocol):
 
     def __clause_element__(self) -> ColumnsClauseRole:
         ...
+
+
+# match column types that are not ORM entities
+_NOT_ENTITY = TypeVar(
+    "_NOT_ENTITY",
+    int,
+    str,
+    "datetime",
+    "date",
+    "time",
+    "timedelta",
+    "UUID",
+    float,
+    "Decimal",
+)
+
+_MAYBE_ENTITY = TypeVar(
+    "_MAYBE_ENTITY",
+    roles.ColumnsClauseRole,
+    Literal["*", 1],
+    Type[Any],
+    Inspectable[_HasClauseElement],
+    _HasClauseElement,
+)
 
 
 # convention:
@@ -72,9 +107,10 @@ _TextCoercedExpressionArgument = Union[
 ]
 
 _ColumnsClauseArgument = Union[
-    Literal["*", 1],
+    roles.TypedColumnsClauseRole[_T],
     roles.ColumnsClauseRole,
-    Type[Any],
+    Literal["*", 1],
+    Type[_T],
     Inspectable[_HasClauseElement],
     _HasClauseElement,
 ]
@@ -88,8 +124,30 @@ sets; select(...), insert().returning(...), etc.
 
 """
 
+_TypedColumnClauseArgument = Union[
+    roles.TypedColumnsClauseRole[_T], roles.ExpressionElementRole[_T], Type[_T]
+]
+
+_TP = TypeVar("_TP", bound=Tuple[Any, ...])
+
+_T0 = TypeVar("_T0", bound=Any)
+_T1 = TypeVar("_T1", bound=Any)
+_T2 = TypeVar("_T2", bound=Any)
+_T3 = TypeVar("_T3", bound=Any)
+_T4 = TypeVar("_T4", bound=Any)
+_T5 = TypeVar("_T5", bound=Any)
+_T6 = TypeVar("_T6", bound=Any)
+_T7 = TypeVar("_T7", bound=Any)
+_T8 = TypeVar("_T8", bound=Any)
+_T9 = TypeVar("_T9", bound=Any)
+
+
 _ColumnExpressionArgument = Union[
-    "ColumnElement[_T]", _HasClauseElement, roles.ExpressionElementRole[_T]
+    "ColumnElement[_T]",
+    _HasClauseElement,
+    roles.ExpressionElementRole[_T],
+    Callable[[], "ColumnElement[_T]"],
+    "LambdaElement",
 ]
 """narrower "column expression" argument.
 
@@ -102,6 +160,7 @@ This includes ColumnElement, or ORM-mapped attributes that will have a
 overall which brings in the TextClause object also.
 
 """
+
 
 _InfoType = Dict[Any, Any]
 """the .info dictionary accepted and used throughout Core /ORM"""
@@ -160,6 +219,7 @@ _DMLTableArgument = Union[
     "TableClause",
     "Join",
     "Alias",
+    "CTE",
     Type[Any],
     Inspectable[_HasClauseElement],
     _HasClauseElement,
@@ -168,6 +228,8 @@ _DMLTableArgument = Union[
 _PropagateAttrsType = util.immutabledict[str, Any]
 
 _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
+
+_EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 
 if TYPE_CHECKING:
 
@@ -183,6 +245,11 @@ if TYPE_CHECKING:
     def is_column_element(c: ClauseElement) -> TypeGuard[ColumnElement[Any]]:
         ...
 
+    def is_keyed_column_element(
+        c: ClauseElement,
+    ) -> TypeGuard[KeyedColumnElement[Any]]:
+        ...
+
     def is_text_clause(c: ClauseElement) -> TypeGuard[TextClause]:
         ...
 
@@ -195,6 +262,9 @@ if TYPE_CHECKING:
     def is_table_value_type(t: TypeEngine[Any]) -> TypeGuard[TableValueType]:
         ...
 
+    def is_selectable(t: Any) -> TypeGuard[Selectable]:
+        ...
+
     def is_select_base(
         t: Union[Executable, ReturnsRows]
     ) -> TypeGuard[SelectBase]:
@@ -202,7 +272,7 @@ if TYPE_CHECKING:
 
     def is_select_statement(
         t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[Select]:
+    ) -> TypeGuard[Select[Any]]:
         ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]:
@@ -220,10 +290,12 @@ else:
     is_ddl_compiler = operator.attrgetter("is_ddl")
     is_named_from_clause = operator.attrgetter("named_with_column")
     is_column_element = operator.attrgetter("_is_column_element")
+    is_keyed_column_element = operator.attrgetter("_is_keyed_column_element")
     is_text_clause = operator.attrgetter("_is_text_clause")
     is_from_clause = operator.attrgetter("_is_from_clause")
     is_tuple_type = operator.attrgetter("_is_tuple_type")
     is_table_value_type = operator.attrgetter("_is_table_value")
+    is_selectable = operator.attrgetter("is_selectable")
     is_select_base = operator.attrgetter("_is_select_base")
     is_select_statement = operator.attrgetter("_is_select_statement")
     is_table = operator.attrgetter("_is_table")
@@ -245,3 +317,10 @@ def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement]:
 
 def is_insert_update(c: ClauseElement) -> TypeGuard[ValuesBase]:
     return c.is_dml and (c.is_insert or c.is_update)  # type: ignore
+
+
+def _no_kw() -> exc.ArgumentError:
+    return exc.ArgumentError(
+        "Additional keyword arguments are not accepted by this "
+        "function/method.  The presence of **kw is for pep-484 typing purposes"
+    )

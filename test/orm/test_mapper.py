@@ -2,6 +2,7 @@ import logging
 import logging.handlers
 
 import sqlalchemy as sa
+from sqlalchemy import column
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -9,6 +10,7 @@ from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.engine import default
@@ -131,6 +133,22 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "Class .*User.* already has a primary mapper defined",
         ):
             self.mapper(User, users)
+
+    def test_no_table(self):
+        """test new error condition raised for table=None
+
+        found_during_type_annotation
+
+        """
+
+        User = self.classes.User
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            r"Mapper\[User\(None\)\] has None for a primary table "
+            r"argument and does not specify 'inherits'",
+        ):
+            self.mapper(User, None)
 
     def test_cant_call_legacy_constructor_directly(self):
         users, User = (
@@ -340,6 +358,34 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             User,
             s,
         )
+
+    def test_no_tableclause(self):
+        """It's not tested for a Mapper to have lower-case table() objects
+        as part of its collection of tables, and in particular these objects
+        won't report on constraints or primary keys, which while this doesn't
+        necessarily disqualify them from being part of a mapper, we don't
+        have assumptions figured out right now to accommodate them.
+
+        found_during_type_annotation
+
+        """
+        User = self.classes.User
+        users = self.tables.users
+
+        address = table(
+            "address",
+            column("address_id", Integer),
+            column("user_id", Integer),
+        )
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "ORM mappings can only be made against schema-level Table "
+            "objects, not TableClause; got tableclause 'address'",
+        ):
+            self.mapper_registry.map_imperatively(
+                User, users.join(address, users.c.id == address.c.user_id)
+            )
 
     def test_reconfigure_on_other_mapper(self):
         """A configure trigger on an already-configured mapper
@@ -666,7 +712,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (column_property, (users.c.name,)),
             (relationship, (Address,)),
             (composite, (MyComposite, "id", "name")),
-            (synonym, "foo"),
+            (synonym, ("foo",)),
         ]:
             obj = constructor(info={"x": "y"}, *args)
             eq_(obj.info, {"x": "y"})

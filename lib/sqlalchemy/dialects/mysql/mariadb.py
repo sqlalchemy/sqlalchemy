@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
 

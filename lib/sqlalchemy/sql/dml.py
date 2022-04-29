@@ -22,15 +22,19 @@ from typing import List
 from typing import MutableMapping
 from typing import NoReturn
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from . import coercions
 from . import roles
 from . import util as sql_util
+from ._typing import _no_kw
+from ._typing import _TP
 from ._typing import is_column_element
 from ._typing import is_named_from_clause
 from .base import _entity_namespace_key
@@ -42,6 +46,7 @@ from .base import ColumnCollection
 from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
+from .base import Generative
 from .base import HasCompileState
 from .elements import BooleanClauseList
 from .elements import ClauseElement
@@ -49,12 +54,13 @@ from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Null
 from .selectable import Alias
+from .selectable import ExecutableReturnsRows
 from .selectable import FromClause
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .selectable import Join
-from .selectable import ReturnsRows
 from .selectable import TableClause
+from .selectable import TypedReturnsRows
 from .sqltypes import NullType
 from .visitors import InternalTraversal
 from .. import exc
@@ -66,9 +72,19 @@ if TYPE_CHECKING:
     from ._typing import _ColumnsClauseArgument
     from ._typing import _DMLColumnArgument
     from ._typing import _DMLTableArgument
-    from ._typing import _FromClauseArgument
+    from ._typing import _T0  # noqa
+    from ._typing import _T1  # noqa
+    from ._typing import _T2  # noqa
+    from ._typing import _T3  # noqa
+    from ._typing import _T4  # noqa
+    from ._typing import _T5  # noqa
+    from ._typing import _T6  # noqa
+    from ._typing import _T7  # noqa
+    from ._typing import _TypedColumnClauseArgument as _TCCA  # noqa
     from .base import ReadOnlyColumnCollection
     from .compiler import SQLCompiler
+    from .elements import ColumnElement
+    from .elements import KeyedColumnElement
     from .selectable import _ColumnsClauseElement
     from .selectable import _SelectIterable
     from .selectable import Select
@@ -87,6 +103,8 @@ else:
     isdelete = operator.attrgetter("isdelete")
     isinsert = operator.attrgetter("isinsert")
 
+
+_T = TypeVar("_T", bound=Any)
 
 _DMLColumnElement = Union[str, ColumnClause[Any]]
 _DMLTableElement = Union[TableClause, Alias, Join]
@@ -185,6 +203,11 @@ class DMLState(CompileState):
                 "%s construct does not support "
                 "multiple parameter sets." % statement.__visit_name__.upper()
             )
+        else:
+            assert isinstance(statement, Insert)
+
+            # which implies...
+            # assert isinstance(statement.table, TableClause)
 
         for parameters in statement._multi_values:
             multi_parameters: List[MutableMapping[_DMLColumnElement, Any]] = [
@@ -291,7 +314,9 @@ class UpdateDMLState(DMLState):
         elif statement._multi_values:
             self._process_multi_values(statement)
         self._extra_froms = ef = self._make_extra_froms(statement)
-        self.is_multitable = mt = ef and self._dict_parameters
+
+        self.is_multitable = mt = ef
+
         self.include_table_with_column_exprs = bool(
             mt and compiler.render_table_with_column_in_update_from
         )
@@ -317,8 +342,8 @@ class UpdateBase(
     HasCompileState,
     DialectKWArgs,
     HasPrefixes,
-    ReturnsRows,
-    Executable,
+    Generative,
+    ExecutableReturnsRows,
     ClauseElement,
 ):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
@@ -383,8 +408,8 @@ class UpdateBase(
 
     @_generative
     def returning(
-        self: SelfUpdateBase, *cols: _ColumnsClauseArgument
-    ) -> SelfUpdateBase:
+        self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+    ) -> UpdateBase:
         r"""Add a :term:`RETURNING` or equivalent clause to this statement.
 
         e.g.:
@@ -454,6 +479,8 @@ class UpdateBase(
           :ref:`tutorial_insert_returning` - in the :ref:`unified_tutorial`
 
         """  # noqa: E501
+        if __kw:
+            raise _no_kw()
         if self._return_defaults:
             raise exc.InvalidRequestError(
                 "return_defaults() is already configured on this statement"
@@ -464,7 +491,7 @@ class UpdateBase(
         return self
 
     def corresponding_column(
-        self, column: ColumnElement[Any], require_embedded: bool = False
+        self, column: KeyedColumnElement[Any], require_embedded: bool = False
     ) -> Optional[ColumnElement[Any]]:
         return self.exported_columns.corresponding_column(
             column, require_embedded=require_embedded
@@ -628,7 +655,7 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
 
-    select: Optional[Select] = None
+    select: Optional[Select[Any]] = None
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
@@ -804,10 +831,14 @@ class ValuesBase(UpdateBase):
                 )
 
             elif isinstance(arg, collections_abc.Sequence):
-
                 if arg and isinstance(arg[0], (list, dict, tuple)):
                     self._multi_values += (arg,)
                     return self
+
+                if TYPE_CHECKING:
+                    # crud.py raises during compilation if this is not the
+                    # case
+                    assert isinstance(self, Insert)
 
                 # tuple values
                 arg = {c.key: value for c, value in zip(self.table.c, arg)}
@@ -1010,7 +1041,7 @@ class Insert(ValuesBase):
     def from_select(
         self: SelfInsert,
         names: List[str],
-        select: Select,
+        select: Select[Any],
         include_defaults: bool = True,
     ) -> SelfInsert:
         """Return a new :class:`_expression.Insert` construct which represents
@@ -1072,6 +1103,114 @@ class Insert(ValuesBase):
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)
         return self
+
+    if TYPE_CHECKING:
+
+        # START OVERLOADED FUNCTIONS self.returning ReturningInsert 1-8
+
+        # code within this block is **programmatically,
+        # statically generated** by tools/generate_tuple_map_overloads.py
+
+        @overload
+        def returning(self, __ent0: _TCCA[_T0]) -> ReturningInsert[Tuple[_T0]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        ) -> ReturningInsert[Tuple[_T0, _T1]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+            __ent7: _TCCA[_T7],
+        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+            ...
+
+        # END OVERLOADED FUNCTIONS self.returning
+
+        @overload
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningInsert[Any]:
+            ...
+
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningInsert[Any]:
+            ...
+
+
+class ReturningInsert(Insert, TypedReturnsRows[_TP]):
+    """Typing-only class that establishes a generic type form of
+    :class:`.Insert` which tracks returned column types.
+
+    This datatype is delivered when calling the
+    :meth:`.Insert.returning` method.
+
+    .. versionadded:: 2.0
+
+    """
 
 
 SelfDMLWhereBase = typing.TypeVar("SelfDMLWhereBase", bound="DMLWhereBase")
@@ -1264,6 +1403,113 @@ class Update(DMLWhereBase, ValuesBase):
         self._inline = True
         return self
 
+    if TYPE_CHECKING:
+        # START OVERLOADED FUNCTIONS self.returning ReturningUpdate 1-8
+
+        # code within this block is **programmatically,
+        # statically generated** by tools/generate_tuple_map_overloads.py
+
+        @overload
+        def returning(self, __ent0: _TCCA[_T0]) -> ReturningUpdate[Tuple[_T0]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        ) -> ReturningUpdate[Tuple[_T0, _T1]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+            __ent7: _TCCA[_T7],
+        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+            ...
+
+        # END OVERLOADED FUNCTIONS self.returning
+
+        @overload
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningUpdate[Any]:
+            ...
+
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningUpdate[Any]:
+            ...
+
+
+class ReturningUpdate(Update, TypedReturnsRows[_TP]):
+    """Typing-only class that establishes a generic type form of
+    :class:`.Update` which tracks returned column types.
+
+    This datatype is delivered when calling the
+    :meth:`.Update.returning` method.
+
+    .. versionadded:: 2.0
+
+    """
+
 
 SelfDelete = typing.TypeVar("SelfDelete", bound="Delete")
 
@@ -1297,3 +1543,111 @@ class Delete(DMLWhereBase, UpdateBase):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
+
+    if TYPE_CHECKING:
+
+        # START OVERLOADED FUNCTIONS self.returning ReturningDelete 1-8
+
+        # code within this block is **programmatically,
+        # statically generated** by tools/generate_tuple_map_overloads.py
+
+        @overload
+        def returning(self, __ent0: _TCCA[_T0]) -> ReturningDelete[Tuple[_T0]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        ) -> ReturningDelete[Tuple[_T0, _T1]]:
+            ...
+
+        @overload
+        def returning(
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+            ...
+
+        @overload
+        def returning(
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            __ent3: _TCCA[_T3],
+            __ent4: _TCCA[_T4],
+            __ent5: _TCCA[_T5],
+            __ent6: _TCCA[_T6],
+            __ent7: _TCCA[_T7],
+        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+            ...
+
+        # END OVERLOADED FUNCTIONS self.returning
+
+        @overload
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningDelete[Any]:
+            ...
+
+        def returning(
+            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        ) -> ReturningDelete[Any]:
+            ...
+
+
+class ReturningDelete(Update, TypedReturnsRows[_TP]):
+    """Typing-only class that establishes a generic type form of
+    :class:`.Delete` which tracks returned column types.
+
+    This datatype is delivered when calling the
+    :meth:`.Delete.returning` method.
+
+    .. versionadded:: 2.0
+
+    """

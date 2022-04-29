@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7953
+
+    Fixed issue in :meth:`.Result.columns` method where calling upon
+    :meth:`.Result.columns` with a single index could in some cases,
+    particularly ORM result object cases, cause the :class:`.Result` to yield
+    scalar objects rather than :class:`.Row` objects, as though the
+    :meth:`.Result.scalars` method had been called. In SQLAlchemy 1.4, this
+    scenario emits a warning that the behavior will change in SQLAlchemy 2.0.

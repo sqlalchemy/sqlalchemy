@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 r"""
 
@@ -89,7 +91,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         # If it's decided that issuing that sort of SQL leaves you SOL, then
         # this can prefer the driver value.
         try:
-            value = self._fetch_setting("character_set_client")
+            value = self._fetch_setting(connection, "character_set_client")
             if value:
                 return value
         except exc.DBAPIError:

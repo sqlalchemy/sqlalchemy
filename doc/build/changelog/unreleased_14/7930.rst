@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 7930
-
-    Fixed an issue what would cause autocommit mode to be reset
-    when using pre_ping in conjunction engine level autocommit
-    on the psycopg2 driver.

@@ -11,6 +11,9 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
 import weakref
 
 from . import instrumentation
@@ -26,6 +29,10 @@ from .. import event
 from .. import exc
 from .. import util
 from ..util.compat import inspect_getfullargspec
+
+if TYPE_CHECKING:
+    from ._typing import _O
+    from .instrumentation import ClassManager
 
 
 class InstrumentationEvents(event.Events):
@@ -214,7 +221,7 @@ class InstanceEvents(event.Events):
             if issubclass(target, mapperlib.Mapper):
                 return instrumentation.ClassManager
             else:
-                manager = instrumentation.manager_of_class(target)
+                manager = instrumentation.opt_manager_of_class(target)
                 if manager:
                     return manager
                 else:
@@ -613,8 +620,8 @@ class _EventsHold(event.RefCollection):
 class _InstanceEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
 
-    def resolve(self, class_):
-        return instrumentation.manager_of_class(class_)
+    def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
+        return instrumentation.opt_manager_of_class(class_)
 
     class HoldInstanceEvents(_EventsHold.HoldEvents, InstanceEvents):
         pass

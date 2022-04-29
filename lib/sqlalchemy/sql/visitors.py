@@ -450,7 +450,7 @@ class HasTraverseInternals:
 
     @util.preload_module("sqlalchemy.sql.traversals")
     def get_children(
-        self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+        self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
     ) -> Iterable[HasTraverseInternals]:
         r"""Return immediate child :class:`.visitors.HasTraverseInternals`
         elements of this :class:`.visitors.HasTraverseInternals`.
@@ -594,7 +594,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
     if typing.TYPE_CHECKING:
 
         def get_children(
-            self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+            self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
         ) -> Iterable[ExternallyTraversible]:
             ...
 
@@ -961,12 +961,16 @@ def cloned_traverse(
     ...
 
 
+# a bit of controversy here, as the clone of the lead element
+# *could* in theory replace with an entirely different kind of element.
+# however this is really not how cloned_traverse is ever used internally
+# at least.
 @overload
 def cloned_traverse(
-    obj: ExternallyTraversible,
+    obj: _ET,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> ExternallyTraversible:
+) -> _ET:
     ...
 
 

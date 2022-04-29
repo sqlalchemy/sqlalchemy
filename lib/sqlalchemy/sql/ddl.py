@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
+
 """
 Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
@@ -14,6 +16,7 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Callable
+from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Sequence as typing_Sequence
@@ -1153,7 +1156,7 @@ class SchemaDropper(InvokeDDLBase):
 
 
 def sort_tables(
-    tables: typing_Sequence["Table"],
+    tables: Iterable["Table"],
     skip_fn: Optional[Callable[["ForeignKeyConstraint"], bool]] = None,
     extra_dependencies: Optional[
         typing_Sequence[Tuple["Table", "Table"]]

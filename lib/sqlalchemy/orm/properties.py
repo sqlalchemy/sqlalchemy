@@ -19,6 +19,8 @@ from typing import cast
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import attributes
@@ -38,16 +40,21 @@ from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
-from .. import sql
 from .. import util
 from ..sql import coercions
 from ..sql import roles
 from ..sql import sqltypes
 from ..sql.schema import Column
+from ..sql.schema import SchemaConst
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
 from ..util.typing import NoneType
+
+if TYPE_CHECKING:
+    from ._typing import _ORMColumnExprArgument
+    from ..sql._typing import _InfoType
+    from ..sql.elements import KeyedColumnElement
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
@@ -78,6 +85,11 @@ class ColumnProperty(
     inherit_cache = True
     _links_to_entity = False
 
+    columns: List[KeyedColumnElement[Any]]
+    _orig_columns: List[KeyedColumnElement[Any]]
+
+    _is_polymorphic_discriminator: bool
+
     __slots__ = (
         "_orig_columns",
         "columns",
@@ -99,7 +111,19 @@ class ColumnProperty(
     )
 
     def __init__(
-        self, column: sql.ColumnElement[_T], *additional_columns, **kwargs
+        self,
+        column: _ORMColumnExprArgument[_T],
+        *additional_columns: _ORMColumnExprArgument[Any],
+        group: Optional[str] = None,
+        deferred: bool = False,
+        raiseload: bool = False,
+        comparator_factory: Optional[Type[PropComparator]] = None,
+        descriptor: Optional[Any] = None,
+        active_history: bool = False,
+        expire_on_flush: bool = True,
+        info: Optional[_InfoType] = None,
+        doc: Optional[str] = None,
+        _instrument: bool = True,
     ):
         super(ColumnProperty, self).__init__()
         columns = (column,) + additional_columns
@@ -112,23 +136,24 @@ class ColumnProperty(
             )
             for c in columns
         ]
-        self.parent = self.key = None
-        self.group = kwargs.pop("group", None)
-        self.deferred = kwargs.pop("deferred", False)
-        self.raiseload = kwargs.pop("raiseload", False)
-        self.instrument = kwargs.pop("_instrument", True)
-        self.comparator_factory = kwargs.pop(
-            "comparator_factory", self.__class__.Comparator
+        self.group = group
+        self.deferred = deferred
+        self.raiseload = raiseload
+        self.instrument = _instrument
+        self.comparator_factory = (
+            comparator_factory
+            if comparator_factory is not None
+            else self.__class__.Comparator
         )
-        self.descriptor = kwargs.pop("descriptor", None)
-        self.active_history = kwargs.pop("active_history", False)
-        self.expire_on_flush = kwargs.pop("expire_on_flush", True)
+        self.descriptor = descriptor
+        self.active_history = active_history
+        self.expire_on_flush = expire_on_flush
 
-        if "info" in kwargs:
-            self.info = kwargs.pop("info")
+        if info is not None:
+            self.info = info
 
-        if "doc" in kwargs:
-            self.doc = kwargs.pop("doc")
+        if doc is not None:
+            self.doc = doc
         else:
             for col in reversed(self.columns):
                 doc = getattr(col, "doc", None)
@@ -137,12 +162,6 @@ class ColumnProperty(
                     break
             else:
                 self.doc = None
-
-        if kwargs:
-            raise TypeError(
-                "%s received unexpected keyword argument(s): %s"
-                % (self.__class__.__name__, ", ".join(sorted(kwargs.keys())))
-            )
 
         util.set_creation_order(self)
 
@@ -445,7 +464,10 @@ class MappedColumn(
         self.deferred = kw.pop("deferred", False)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
-        self._has_nullable = "nullable" in kw
+        self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
+            None,
+            SchemaConst.NULL_UNSPECIFIED,
+        )
         util.set_creation_order(self)
 
     def _copy(self, **kw):

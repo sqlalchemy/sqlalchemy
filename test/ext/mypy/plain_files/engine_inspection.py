@@ -14,11 +14,11 @@ c1 = cols[0]
 
 if typing.TYPE_CHECKING:
 
-    # EXPECTED_TYPE: sqlalchemy.engine.base.Engine
+    # EXPECTED_RE_TYPE: sqlalchemy.engine.base.Engine
     reveal_type(e)
 
-    # EXPECTED_TYPE: sqlalchemy.engine.reflection.Inspector.*
+    # EXPECTED_RE_TYPE: sqlalchemy.engine.reflection.Inspector.*
     reveal_type(insp)
 
-    # EXPECTED_TYPE: .*list.*TypedDict.*ReflectedColumn.*
+    # EXPECTED_RE_TYPE: .*list.*TypedDict.*ReflectedColumn.*
     reveal_type(cols)

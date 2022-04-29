@@ -22,6 +22,7 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
+from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -1336,6 +1337,20 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
             return sym
 
         self._assert_fk(t2, None, "p.t1.x", referred_schema_fn=ref_fn)
+
+    def test_fk_get_referent_is_always_a_column(self):
+        """test the annotation on ForeignKey.get_referent() in that it does
+        in fact return Column even if given a labeled expr in a subquery"""
+
+        m = MetaData()
+        a = Table("a", m, Column("id", Integer, primary_key=True))
+        b = Table("b", m, Column("aid", Integer, ForeignKey("a.id")))
+
+        stmt = select(a.c.id.label("somelabel")).subquery()
+
+        referent = list(b.c.aid.foreign_keys)[0].get_referent(stmt)
+        is_(referent, stmt.c.somelabel)
+        assert isinstance(referent, Column)
 
     def test_copy_info(self):
         m = MetaData()
@@ -5344,6 +5359,29 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         a1.append_constraint(fk)
         eq_(fk.name, "fk_address_user_id_user_id")
+
+    @testing.combinations(True, False, argnames="col_has_type")
+    def test_fk_ref_local_referent_has_no_type(self, col_has_type):
+        """test #7958"""
+
+        metadata = MetaData(
+            naming_convention={
+                "fk": "fk_%(referred_column_0_name)s",
+            }
+        )
+        Table("a", metadata, Column("id", Integer, primary_key=True))
+        b = Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("aid", ForeignKey("a.id"))
+            if not col_has_type
+            else Column("aid", Integer, ForeignKey("a.id")),
+        )
+        fks = list(
+            c for c in b.constraints if isinstance(c, ForeignKeyConstraint)
+        )
+        eq_(fks[0].name, "fk_id")
 
     def test_custom(self):
         def key_hash(const, table):

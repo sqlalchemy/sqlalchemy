@@ -12,6 +12,8 @@ import collections
 from typing import Any
 from typing import Dict
 from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
 import weakref
 
 from . import attributes
@@ -41,6 +43,10 @@ from ..sql import expression
 from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
+
+if TYPE_CHECKING:
+    from ._typing import _O
+    from ._typing import _RegistryType
 
 
 def _declared_mapping_info(cls):
@@ -121,7 +127,7 @@ def _dive_for_cls_manager(cls):
         return None
 
     for base in cls.__mro__:
-        manager = attributes.manager_of_class(base)
+        manager = attributes.opt_manager_of_class(base)
         if manager:
             return manager
     return None
@@ -171,7 +177,7 @@ class _MapperConfig:
 
     @classmethod
     def setup_mapping(cls, registry, cls_, dict_, table, mapper_kw):
-        manager = attributes.manager_of_class(cls)
+        manager = attributes.opt_manager_of_class(cls)
         if manager and manager.class_ is cls_:
             raise exc.InvalidRequestError(
                 "Class %r already has been " "instrumented declaratively" % cls
@@ -191,7 +197,12 @@ class _MapperConfig:
 
         return cfg_cls(registry, cls_, dict_, table, mapper_kw)
 
-    def __init__(self, registry, cls_, mapper_kw):
+    def __init__(
+        self,
+        registry: _RegistryType,
+        cls_: Type[Any],
+        mapper_kw: Dict[str, Any],
+    ):
         self.cls = util.assert_arg_type(cls_, type, "cls_")
         self.classname = cls_.__name__
         self.properties = util.OrderedDict()
@@ -206,7 +217,7 @@ class _MapperConfig:
                 init_method=registry.constructor,
             )
         else:
-            manager = attributes.manager_of_class(self.cls)
+            manager = attributes.opt_manager_of_class(self.cls)
             if not manager or not manager.is_mapped:
                 raise exc.InvalidRequestError(
                     "Class %s has no primary mapper configured.  Configure "
