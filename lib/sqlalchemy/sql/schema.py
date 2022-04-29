@@ -4473,7 +4473,6 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        # POP col thingies
         super(PrimaryKeyConstraint, self)._set_parent(table)
 
         if table.primary_key is not self:
