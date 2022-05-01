@@ -524,9 +524,11 @@ class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
         except exc.ArgumentError as err:
             self._raise_for_expected(element, err=err)
 
-    def _post_coercion(self, resolved, expr, **kw):
+    def _post_coercion(self, resolved, expr, bindparam_type=None, **kw):
         if resolved.type._isnull and not expr.type._isnull:
-            resolved = resolved._with_binary_element_type(expr.type)
+            resolved = resolved._with_binary_element_type(
+                bindparam_type if bindparam_type is not None else expr.type
+            )
         return resolved
 
 
