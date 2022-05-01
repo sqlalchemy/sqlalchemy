@@ -5,6 +5,7 @@ import pickle
 
 from sqlalchemy import and_
 from sqlalchemy import between
+from sqlalchemy import bindparam
 from sqlalchemy import exc
 from sqlalchemy import Integer
 from sqlalchemy import join
@@ -3789,6 +3790,24 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             t.c.data + all_(t.c.arrval), "tab1.data + ALL (tab1.arrval)"
         )
+
+    @testing.combinations("all", "any", argnames="op")
+    def test_any_all_bindparam_coercion(self, t_fixture, op):
+        """test #7979"""
+        t = t_fixture
+
+        if op == "all":
+            expr = t.c.arrval.all(bindparam("param"))
+            expected = "%(param)s = ALL (tab1.arrval)"
+        elif op == "any":
+            expr = t.c.arrval.any(bindparam("param"))
+            expected = "%(param)s = ANY (tab1.arrval)"
+        else:
+            assert False
+
+        is_(expr.left.type._type_affinity, Integer)
+
+        self.assert_compile(expr, expected, dialect="postgresql")
 
     def test_any_array_comparator_accessor(self, t_fixture):
         t = t_fixture

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7979
+
+    Fixed an issue where using :func:`.bindparam` with no explicit data or type
+    given could be coerced into the incorrect type when used in expressions
+    such as when using :meth:`.ARRAY.comparator.any` and
+    :meth:`.ARRAY.comparator.all`.
+
