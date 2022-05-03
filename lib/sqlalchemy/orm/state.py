@@ -23,6 +23,7 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import Union
 import weakref
 
 from . import base
@@ -43,6 +44,7 @@ from .path_registry import PathRegistry
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
+from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
@@ -53,6 +55,7 @@ if TYPE_CHECKING:
     from .attributes import History
     from .base import LoaderCallableStatus
     from .base import PassiveFlag
+    from .collections import _AdaptedCollectionProtocol
     from .identity import IdentityMap
     from .instrumentation import ClassManager
     from .interfaces import ORMOption
@@ -421,7 +424,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self.key
 
     @util.memoized_property
-    def parents(self) -> Dict[int, InstanceState[Any]]:
+    def parents(self) -> Dict[int, Union[Literal[False], InstanceState[Any]]]:
         return {}
 
     @util.memoized_property
@@ -429,7 +432,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return {}
 
     @util.memoized_property
-    def _empty_collections(self) -> Dict[Any, Any]:
+    def _empty_collections(self) -> Dict[str, _AdaptedCollectionProtocol]:
         return {}
 
     @util.memoized_property
@@ -844,7 +847,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _modified_event(
         self,
         dict_: _InstanceDict,
-        attr: AttributeImpl,
+        attr: Optional[AttributeImpl],
         previous: Any,
         collection: bool = False,
         is_userland: bool = False,

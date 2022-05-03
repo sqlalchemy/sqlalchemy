@@ -37,7 +37,7 @@ sections, are listed here.
 
 .. autodata:: CompositeProperty
 
-.. autoclass:: AttributeEvent
+.. autoclass:: AttributeEventToken
     :members:
 
 .. autoclass:: IdentityMap

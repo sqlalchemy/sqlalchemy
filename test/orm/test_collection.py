@@ -28,6 +28,13 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
+def _register_attribute(class_, key, **kw):
+    kw.setdefault("comparator", object())
+    kw.setdefault("parententity", object())
+
+    return attributes.register_attribute(class_, key, **kw)
+
+
 class Canary:
     def __init__(self):
         self.data = set()
@@ -123,7 +130,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -175,7 +182,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -212,7 +219,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -457,7 +464,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -664,7 +671,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -706,7 +713,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -974,7 +981,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -1115,7 +1122,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -1176,7 +1183,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -1304,7 +1311,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -1534,7 +1541,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo,
             "attr",
             uselist=True,
@@ -1695,7 +1702,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        d = _register_attribute(
             Foo, "attr", uselist=True, typecallable=Custom, useobject=True
         )
         canary.listen(d)
@@ -1769,9 +1776,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         canary = Canary()
         creator = self.entity_maker
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
-            Foo, "attr", uselist=True, useobject=True
-        )
+        d = _register_attribute(Foo, "attr", uselist=True, useobject=True)
         canary.listen(d)
 
         obj = Foo()
@@ -2321,10 +2326,19 @@ class CustomCollectionsTest(fixtures.MappedTest):
         replaced = set([id(b) for b in list(f.bars.values())])
         ne_(existing, replaced)
 
-    def test_list(self):
-        self._test_list(list)
+    @testing.combinations("direct", "as_callable", argnames="factory_type")
+    def test_list(self, factory_type):
+        if factory_type == "as_callable":
+            # test passing as callable
 
-    def test_list_no_setslice(self):
+            # this codepath likely was not working for many major
+            # versions, at least through 1.3
+            self._test_list(lambda: [])
+        else:
+            self._test_list(list)
+
+    @testing.combinations("direct", "as_callable", argnames="factory_type")
+    def test_list_no_setslice(self, factory_type):
         class ListLike:
             def __init__(self):
                 self.data = list()
@@ -2367,7 +2381,15 @@ class CustomCollectionsTest(fixtures.MappedTest):
             def __repr__(self):
                 return "ListLike(%s)" % repr(self.data)
 
-        self._test_list(ListLike)
+        if factory_type == "as_callable":
+            # test passing as callable
+
+            # this codepath likely was not working for many major
+            # versions, at least through 1.3
+
+            self._test_list(lambda: ListLike())
+        else:
+            self._test_list(ListLike)
 
     def _test_list(self, listcls):
         someothertable, sometable = (
@@ -2598,9 +2620,7 @@ class InstrumentationTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo, "attr", uselist=True, useobject=True
-        )
+        _register_attribute(Foo, "attr", uselist=True, useobject=True)
 
         f1 = Foo()
         f1.attr.append(3)

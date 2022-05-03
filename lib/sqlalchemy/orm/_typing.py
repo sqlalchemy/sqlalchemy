@@ -47,6 +47,8 @@ if TYPE_CHECKING:
 
 _InternalEntityType = Union["Mapper[_T]", "AliasedInsp[_T]"]
 
+_ExternalEntityType = Union[Type[_T], "AliasedClass[_T]"]
+
 _EntityType = Union[
     Type[_T], "AliasedClass[_T]", "Mapper[_T]", "AliasedInsp[_T]"
 ]

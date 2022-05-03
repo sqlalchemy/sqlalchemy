@@ -887,7 +887,13 @@ class InstrumentationTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         attributes.register_attribute(
-            Foo, "attr", uselist=True, typecallable=MyDict, useobject=True
+            Foo,
+            "attr",
+            parententity=object(),
+            comparator=object(),
+            uselist=True,
+            typecallable=MyDict,
+            useobject=True,
         )
 
         f = Foo()

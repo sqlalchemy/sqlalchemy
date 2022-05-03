@@ -26,6 +26,13 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import decorator
 
 
+def _register_attribute(class_, key, **kw):
+    kw.setdefault("comparator", object())
+    kw.setdefault("parententity", object())
+
+    attributes.register_attribute(class_, key, **kw)
+
+
 @decorator
 def modifies_instrumentation_finders(fn, *args, **kw):
     pristine = instrumentation.instrumentation_finders[:]
@@ -205,13 +212,9 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             pass
 
         register_class(User)
-        attributes.register_attribute(
-            User, "user_id", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
-            User, "user_name", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
+        _register_attribute(User, "user_id", uselist=False, useobject=False)
+        _register_attribute(User, "user_name", uselist=False, useobject=False)
+        _register_attribute(
             User, "email_address", uselist=False, useobject=False
         )
 
@@ -238,13 +241,13 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
                 pass
 
             register_class(User)
-            attributes.register_attribute(
+            _register_attribute(
                 User, "user_id", uselist=False, useobject=False
             )
-            attributes.register_attribute(
+            _register_attribute(
                 User, "user_name", uselist=False, useobject=False
             )
-            attributes.register_attribute(
+            _register_attribute(
                 User, "email_address", uselist=False, useobject=False
             )
 
@@ -284,12 +287,8 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
 
             manager = register_class(Foo)
             manager.expired_attribute_loader = loader
-            attributes.register_attribute(
-                Foo, "a", uselist=False, useobject=False
-            )
-            attributes.register_attribute(
-                Foo, "b", uselist=False, useobject=False
-            )
+            _register_attribute(Foo, "a", uselist=False, useobject=False)
+            _register_attribute(Foo, "b", uselist=False, useobject=False)
 
             if base is object:
                 assert Foo not in (
@@ -360,13 +359,13 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             def func3(state, passive):
                 return "this is the shared attr"
 
-            attributes.register_attribute(
+            _register_attribute(
                 Foo, "element", uselist=False, callable_=func1, useobject=True
             )
-            attributes.register_attribute(
+            _register_attribute(
                 Foo, "element2", uselist=False, callable_=func3, useobject=True
             )
-            attributes.register_attribute(
+            _register_attribute(
                 Bar, "element", uselist=False, callable_=func2, useobject=True
             )
 
@@ -388,7 +387,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
 
             register_class(Post)
             register_class(Blog)
-            attributes.register_attribute(
+            _register_attribute(
                 Post,
                 "blog",
                 uselist=False,
@@ -396,7 +395,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
                 trackparent=True,
                 useobject=True,
             )
-            attributes.register_attribute(
+            _register_attribute(
                 Blog,
                 "posts",
                 uselist=True,
@@ -438,15 +437,11 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
 
             register_class(Foo)
             register_class(Bar)
-            attributes.register_attribute(
-                Foo, "name", uselist=False, useobject=False
-            )
-            attributes.register_attribute(
+            _register_attribute(Foo, "name", uselist=False, useobject=False)
+            _register_attribute(
                 Foo, "bars", uselist=True, trackparent=True, useobject=True
             )
-            attributes.register_attribute(
-                Bar, "name", uselist=False, useobject=False
-            )
+            _register_attribute(Bar, "name", uselist=False, useobject=False)
 
             f1 = Foo()
             f1.name = "f1"
@@ -517,10 +512,8 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             pass
 
         register_class(Foo)
-        attributes.register_attribute(
-            Foo, "name", uselist=False, useobject=False
-        )
-        attributes.register_attribute(
+        _register_attribute(Foo, "name", uselist=False, useobject=False)
+        _register_attribute(
             Foo, "bars", uselist=True, trackparent=True, useobject=True
         )
 

@@ -41,7 +41,7 @@ from ._orm_constructors import synonym as synonym
 from ._orm_constructors import SynonymProperty as SynonymProperty
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
 from ._orm_constructors import with_polymorphic as with_polymorphic
-from .attributes import AttributeEvent as AttributeEvent
+from .attributes import AttributeEventToken as AttributeEventToken
 from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
 from .base import class_mapper as class_mapper

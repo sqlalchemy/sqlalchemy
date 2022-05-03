@@ -824,15 +824,14 @@ from ..orm import attributes
 from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
 from ..orm import ORMDescriptor
+from ..sql import roles
 from ..sql._typing import is_has_clause_element
 from ..sql.elements import ColumnElement
 from ..sql.elements import SQLCoreOperations
 from ..util.typing import Literal
 from ..util.typing import Protocol
 
-
 if TYPE_CHECKING:
-    from ..orm._typing import _ORMColumnExprArgument
     from ..orm.interfaces import MapperProperty
     from ..orm.util import AliasedInsp
     from ..sql._typing import _ColumnExpressionArgument
@@ -840,7 +839,6 @@ if TYPE_CHECKING:
     from ..sql._typing import _HasClauseElement
     from ..sql._typing import _InfoType
     from ..sql.operators import OperatorType
-    from ..sql.roles import ColumnsClauseRole
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -1290,7 +1288,7 @@ class Comparator(interfaces.PropComparator[_T]):
     ):
         self.expression = expression
 
-    def __clause_element__(self) -> _ORMColumnExprArgument[_T]:
+    def __clause_element__(self) -> roles.ColumnsClauseRole:
         expr = self.expression
         if is_has_clause_element(expr):
             ret_expr = expr.__clause_element__()
@@ -1306,7 +1304,7 @@ class Comparator(interfaces.PropComparator[_T]):
             assert isinstance(ret_expr, ColumnElement)
         return ret_expr
 
-    @util.ro_non_memoized_property
+    @util.non_memoized_property
     def property(self) -> Optional[interfaces.MapperProperty[_T]]:
         return None
 
@@ -1345,8 +1343,11 @@ class ExprComparator(Comparator[_T]):
         else:
             return [(self.expression, value)]
 
-    @util.ro_non_memoized_property
+    @util.non_memoized_property
     def property(self) -> Optional[MapperProperty[_T]]:
+        # this accessor is not normally used, however is accessed by things
+        # like ORM synonyms if the hybrid is used in this context; the
+        # .property attribute is not necessarily accessible
         return self.expression.property  # type: ignore
 
     def operate(

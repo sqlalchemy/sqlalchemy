@@ -1265,7 +1265,16 @@ class ColumnAdapter(ClauseAdapter):
         if self.adapt_required and c is col:
             return None
 
-        c._allow_label_resolve = self.allow_label_resolve
+        # allow_label_resolve is consumed by one case for joined eager loading
+        # as part of its logic to prevent its own columns from being affected
+        # by .order_by().  Before full typing were applied to the ORM, this
+        # logic would set this attribute on the incoming object (which is
+        # typically a column, but we have a test for it being a non-column
+        # object) if no column were found.  While this seemed to
+        # have no negative effects, this adjustment should only occur on the
+        # new column which is assumed to be local to an adapted selectable.
+        if c is not col:
+            c._allow_label_resolve = self.allow_label_resolve
 
         return c
 

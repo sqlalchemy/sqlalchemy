@@ -133,6 +133,8 @@ class Immutable:
 
     """
 
+    __slots__ = ()
+
     _is_immutable = True
 
     def unique_params(self, *optionaldict, **kwargs):
@@ -145,7 +147,7 @@ class Immutable:
         return self
 
     def _copy_internals(
-        self, omit_attrs: Iterable[str] = (), **kw: Any
+        self, *, omit_attrs: Iterable[str] = (), **kw: Any
     ) -> None:
         pass
 
