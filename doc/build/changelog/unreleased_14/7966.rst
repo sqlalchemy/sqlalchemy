@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 7966
+
+    Further adjustments to the MySQL PyODBC dialect to allow for complete
+    connectivity, which was previously still not working despite fixes in
+    :ticket:`7871`.
