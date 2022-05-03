@@ -290,7 +290,9 @@ def create_db(cfg, eng, ident):
     Used when a test run will employ multiple processes, e.g., when run
     via `tox` or `pytest -n4`.
     """
-    raise NotImplementedError("no DB creation routine for cfg: %s" % (eng.url,))
+    raise NotImplementedError(
+        "no DB creation routine for cfg: %s" % (eng.url,)
+    )
 
 
 @register.init
