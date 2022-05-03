@@ -287,13 +287,15 @@ def create_db(cfg, eng, ident):
     Used when a test run will employ multiple processes, e.g., when run
     via `tox` or `pytest -n4`.
     """
-    raise NotImplementedError("no DB creation routine for cfg: %s" % eng.url)
+    raise NotImplementedError(
+        "no DB creation routine for cfg: %s" % (eng.url,)
+    )
 
 
 @register.init
 def drop_db(cfg, eng, ident):
     """Drop a database that we dynamically created for testing."""
-    raise NotImplementedError("no DB drop routine for cfg: %s" % eng.url)
+    raise NotImplementedError("no DB drop routine for cfg: %s" % (eng.url,))
 
 
 @register.init
@@ -377,7 +379,7 @@ def temp_table_keyword_args(cfg, eng):
     ComponentReflectionTest class in suite/test_reflection.py
     """
     raise NotImplementedError(
-        "no temp table keyword args routine for cfg: %s" % eng.url
+        "no temp table keyword args routine for cfg: %s" % (eng.url,)
     )
 
 
