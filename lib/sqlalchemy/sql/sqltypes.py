@@ -1270,6 +1270,8 @@ class Enum(Emulated, String, SchemaType):
     a plain-string enumerated type::
 
         import enum
+        from sqlalchemy import Enum
+
         class MyEnum(enum.Enum):
             one = 1
             two = 2
