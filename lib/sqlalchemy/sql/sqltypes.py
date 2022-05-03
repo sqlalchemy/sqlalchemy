@@ -1184,7 +1184,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         import enum
         from sqlalchemy import Enum
-        
+
         class MyEnum(enum.Enum):
             one = 1
             two = 2
