@@ -80,6 +80,7 @@ from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.cache_key import MemoizedHasCacheKey
+from ..sql.elements import KeyedColumnElement
 from ..sql.schema import Table
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
@@ -108,7 +109,6 @@ if TYPE_CHECKING:
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import ColumnClause
     from ..sql.elements import ColumnElement
-    from ..sql.elements import KeyedColumnElement
     from ..sql.schema import Column
     from ..sql.selectable import FromClause
     from ..sql.util import ColumnAdapter
@@ -182,6 +182,7 @@ class Mapper(
     dispatch: dispatcher[Mapper[_O]]
 
     _dispose_called = False
+    _configure_failed: Any = False
     _ready_for_configure = False
 
     @util.deprecated_params(
@@ -710,8 +711,11 @@ class Mapper(
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
-        self.polymorphic_on = (
-            coercions.expect(
+
+        # interim - polymorphic_on is further refined in
+        # _configure_polymorphic_setter
+        self.polymorphic_on = (  # type: ignore
+            coercions.expect(  # type: ignore
                 roles.ColumnArgumentOrKeyRole,
                 polymorphic_on,
                 argname="polymorphic_on",
@@ -1832,12 +1836,22 @@ class Mapper(
                 )
 
     @util.preload_module("sqlalchemy.orm.descriptor_props")
-    def _configure_property(self, key, prop, init=True, setparent=True):
+    def _configure_property(
+        self,
+        key: str,
+        prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
+        init: bool = True,
+        setparent: bool = True,
+    ) -> MapperProperty[Any]:
         descriptor_props = util.preloaded.orm_descriptor_props
-        self._log("_configure_property(%s, %s)", key, prop.__class__.__name__)
+        self._log(
+            "_configure_property(%s, %s)", key, prop_arg.__class__.__name__
+        )
 
-        if not isinstance(prop, MapperProperty):
-            prop = self._property_from_column(key, prop)
+        if not isinstance(prop_arg, MapperProperty):
+            prop = self._property_from_column(key, prop_arg)
+        else:
+            prop = prop_arg
 
         if isinstance(prop, properties.ColumnProperty):
             col = self.persist_selectable.corresponding_column(prop.columns[0])
@@ -1950,18 +1964,23 @@ class Mapper(
         if self.configured:
             self._expire_memoizations()
 
+        return prop
+
     @util.preload_module("sqlalchemy.orm.descriptor_props")
-    def _property_from_column(self, key, prop):
+    def _property_from_column(
+        self,
+        key: str,
+        prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
+    ) -> MapperProperty[Any]:
         """generate/update a :class:`.ColumnProperty` given a
         :class:`_schema.Column` object."""
         descriptor_props = util.preloaded.orm_descriptor_props
         # we were passed a Column or a list of Columns;
         # generate a properties.ColumnProperty
-        columns = util.to_list(prop)
+        columns = util.to_list(prop_arg)
         column = columns[0]
-        assert isinstance(column, expression.ColumnElement)
 
-        prop = self._props.get(key, None)
+        prop = self._props.get(key)
 
         if isinstance(prop, properties.ColumnProperty):
             if (
@@ -2033,11 +2052,11 @@ class Mapper(
                 "columns get mapped." % (key, self, column.key, prop)
             )
 
-    def _check_configure(self):
+    def _check_configure(self) -> None:
         if self.registry._new_mappers:
             _configure_registries({self.registry}, cascade=True)
 
-    def _post_configure_properties(self):
+    def _post_configure_properties(self) -> None:
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
 
@@ -2068,7 +2087,9 @@ class Mapper(
         for key, value in dict_of_properties.items():
             self.add_property(key, value)
 
-    def add_property(self, key, prop):
+    def add_property(
+        self, key: str, prop: Union[Column[Any], MapperProperty[Any]]
+    ) -> None:
         """Add an individual MapperProperty to this mapper.
 
         If the mapper has not been configured yet, just adds the
@@ -2077,15 +2098,16 @@ class Mapper(
         the given MapperProperty is configured immediately.
 
         """
+        prop = self._configure_property(key, prop, init=self.configured)
+        assert isinstance(prop, MapperProperty)
         self._init_properties[key] = prop
-        self._configure_property(key, prop, init=self.configured)
 
-    def _expire_memoizations(self):
+    def _expire_memoizations(self) -> None:
         for mapper in self.iterate_to_root():
             mapper._reset_memoizations()
 
     @property
-    def _log_desc(self):
+    def _log_desc(self) -> str:
         return (
             "("
             + self.class_.__name__
@@ -2099,16 +2121,16 @@ class Mapper(
             + ")"
         )
 
-    def _log(self, msg, *args):
+    def _log(self, msg: str, *args: Any) -> None:
         self.logger.info("%s " + msg, *((self._log_desc,) + args))
 
-    def _log_debug(self, msg, *args):
+    def _log_debug(self, msg: str, *args: Any) -> None:
         self.logger.debug("%s " + msg, *((self._log_desc,) + args))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Mapper at 0x%x; %s>" % (id(self), self.class_.__name__)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Mapper[%s%s(%s)]" % (
             self.class_.__name__,
             self.non_primary and " (non-primary)" or "",
@@ -2155,7 +2177,9 @@ class Mapper(
                 "Mapper '%s' has no property '%s'" % (self, key)
             ) from err
 
-    def get_property_by_column(self, column):
+    def get_property_by_column(
+        self, column: ColumnElement[_T]
+    ) -> MapperProperty[_T]:
         """Given a :class:`_schema.Column` object, return the
         :class:`.MapperProperty` which maps this column."""
 
@@ -2795,7 +2819,7 @@ class Mapper(
 
         return result
 
-    def _is_userland_descriptor(self, assigned_name, obj):
+    def _is_userland_descriptor(self, assigned_name: str, obj: Any) -> bool:
         if isinstance(
             obj,
             (
@@ -3603,7 +3627,9 @@ def configure_mappers():
     _configure_registries(_all_registries(), cascade=True)
 
 
-def _configure_registries(registries, cascade):
+def _configure_registries(
+    registries: Set[_RegistryType], cascade: bool
+) -> None:
     for reg in registries:
         if reg._new_mappers:
             break
@@ -3637,7 +3663,9 @@ def _configure_registries(registries, cascade):
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
-def _do_configure_registries(registries, cascade):
+def _do_configure_registries(
+    registries: Set[_RegistryType], cascade: bool
+) -> None:
 
     registry = util.preloaded.orm_decl_api.registry
 
@@ -3688,7 +3716,7 @@ def _do_configure_registries(registries, cascade):
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
-def _dispose_registries(registries, cascade):
+def _dispose_registries(registries: Set[_RegistryType], cascade: bool) -> None:
 
     registry = util.preloaded.orm_decl_api.registry
 

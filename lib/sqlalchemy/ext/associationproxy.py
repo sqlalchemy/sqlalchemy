@@ -53,7 +53,6 @@ from ..orm import ORMDescriptor
 from ..orm.base import SQLORMOperations
 from ..sql import operators
 from ..sql import or_
-from ..sql.elements import SQLCoreOperations
 from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import Self
@@ -64,7 +63,9 @@ if typing.TYPE_CHECKING:
     from ..orm.interfaces import MapperProperty
     from ..orm.interfaces import PropComparator
     from ..orm.mapper import Mapper
+    from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
+
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -631,7 +632,9 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
 
     @property
     def _comparator(self) -> PropComparator[Any]:
-        return self._get_property().comparator
+        return getattr(  # type: ignore
+            self.owning_class, self.target_collection
+        ).comparator
 
     def __clause_element__(self) -> NoReturn:
         raise NotImplementedError(
@@ -957,7 +960,9 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         proxy.setter = setter
 
     def _criterion_exists(
-        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
+        self,
+        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        **kwargs: Any,
     ) -> ColumnElement[bool]:
         is_has = kwargs.pop("is_has", None)
 
@@ -969,8 +974,8 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             return self._comparator._criterion_exists(inner)
 
         if self._target_is_object:
-            prop = getattr(self.target_class, self.value_attr)
-            value_expr = prop._criterion_exists(criterion, **kwargs)
+            attr = getattr(self.target_class, self.value_attr)
+            value_expr = attr.comparator._criterion_exists(criterion, **kwargs)
         else:
             if kwargs:
                 raise exc.ArgumentError(
@@ -988,8 +993,10 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         return self._comparator._criterion_exists(value_expr)
 
     def any(
-        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
-    ) -> SQLCoreOperations[Any]:
+        self,
+        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        **kwargs: Any,
+    ) -> ColumnElement[bool]:
         """Produce a proxied 'any' expression using EXISTS.
 
         This expression will be a composed product
@@ -1010,8 +1017,10 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         )
 
     def has(
-        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
-    ) -> SQLCoreOperations[Any]:
+        self,
+        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        **kwargs: Any,
+    ) -> ColumnElement[bool]:
         """Produce a proxied 'has' expression using EXISTS.
 
         This expression will be a composed product
@@ -1069,12 +1078,16 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance[_T]):
         self._ambiguous()
 
     def any(
-        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
+        self,
+        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        **kwargs: Any,
     ) -> NoReturn:
         self._ambiguous()
 
     def has(
-        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
+        self,
+        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        **kwargs: Any,
     ) -> NoReturn:
         self._ambiguous()
 

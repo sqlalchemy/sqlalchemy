@@ -118,6 +118,7 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _T7
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
+    from ..sql.base import ExecutableOption
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import TypedReturnsRows
@@ -765,7 +766,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
         self.session.dispatch.after_transaction_create(self.session, self)
 
     def _raise_for_prerequisite_state(
-        self, operation_name: str, state: SessionTransactionState
+        self, operation_name: str, state: _StateChangeState
     ) -> NoReturn:
         if state is SessionTransactionState.DEACTIVE:
             if self._rollback_exception:
@@ -3183,7 +3184,7 @@ class Session(_SessionClassMethods, EventTarget):
         primary_key_identity: _PKIdentityArgument,
         db_load_fn: Callable[..., _O],
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Optional[Sequence[ExecutableOption]] = None,
         populate_existing: bool = False,
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
@@ -3377,7 +3378,7 @@ class Session(_SessionClassMethods, EventTarget):
         *,
         options: Optional[Sequence[ORMOption]] = None,
         load: bool,
-        _recursive: Dict[InstanceState[Any], object],
+        _recursive: Dict[Any, object],
         _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
     ) -> _O:
         mapper: Mapper[_O] = _state_mapper(state)

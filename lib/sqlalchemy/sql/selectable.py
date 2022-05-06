@@ -64,6 +64,7 @@ from .base import _EntityNamespace
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
+from .base import _NoArg
 from .base import _select_iterables
 from .base import CacheableOptions
 from .base import ColumnCollection
@@ -131,6 +132,7 @@ if TYPE_CHECKING:
     from .dml import Insert
     from .dml import Update
     from .elements import KeyedColumnElement
+    from .elements import Label
     from .elements import NamedColumn
     from .elements import TextClause
     from .functions import Function
@@ -212,7 +214,7 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
         """
         raise NotImplementedError()
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         """Return ``True`` if this :class:`.ReturnsRows` is
         'derived' from the given :class:`.FromClause`.
 
@@ -778,7 +780,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
         return TableSample._construct(self, sampling, name, seed)
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         """Return ``True`` if this :class:`_expression.FromClause` is
         'derived' from the given ``FromClause``.
 
@@ -1128,11 +1130,14 @@ class SelectLabelStyle(Enum):
 
     """
 
+    LABEL_STYLE_LEGACY_ORM = 3
+
 
 (
     LABEL_STYLE_NONE,
     LABEL_STYLE_TABLENAME_PLUS_COL,
     LABEL_STYLE_DISAMBIGUATE_ONLY,
+    _,
 ) = list(SelectLabelStyle)
 
 LABEL_STYLE_DEFAULT = LABEL_STYLE_DISAMBIGUATE_ONLY
@@ -1231,7 +1236,7 @@ class Join(roles.DMLTableRole, FromClause):
             id(self.right),
         )
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         return (
             # use hash() to ensure direct comparison to annotated works
             # as well
@@ -1635,7 +1640,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         """Legacy for dialects that are referring to Alias.original."""
         return self.element
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         if fromclause in self._cloned_set:
             return True
         return self.element.is_derived_from(fromclause)
@@ -2840,7 +2845,7 @@ class FromGrouping(GroupedElement, FromClause):
     def foreign_keys(self):
         return self.element.foreign_keys
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         return self.element.is_derived_from(fromclause)
 
     def alias(
@@ -3080,11 +3085,17 @@ class ForUpdateArg(ClauseElement):
 
     def __init__(
         self,
-        nowait=False,
-        read=False,
-        of=None,
-        skip_locked=False,
-        key_share=False,
+        *,
+        nowait: bool = False,
+        read: bool = False,
+        of: Optional[
+            Union[
+                _ColumnExpressionArgument[Any],
+                Sequence[_ColumnExpressionArgument[Any]],
+            ]
+        ] = None,
+        skip_locked: bool = False,
+        key_share: bool = False,
     ):
         """Represents arguments specified to
         :meth:`_expression.Select.for_update`.
@@ -3455,7 +3466,7 @@ class SelectBase(
 
         return ScalarSelect(self)
 
-    def label(self, name):
+    def label(self, name: Optional[str]) -> Label[Any]:
         """Return a 'scalar' representation of this selectable, embedded as a
         subquery with a label.
 
@@ -3667,6 +3678,7 @@ class GenerativeSelect(SelectBase, Generative):
     @_generative
     def with_for_update(
         self: SelfGenerativeSelect,
+        *,
         nowait: bool = False,
         read: bool = False,
         of: Optional[
@@ -4064,7 +4076,11 @@ class GenerativeSelect(SelectBase, Generative):
 
     @_generative
     def order_by(
-        self: SelfGenerativeSelect, *clauses: _ColumnExpressionArgument[Any]
+        self: SelfGenerativeSelect,
+        __first: Union[
+            Literal[None, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+        ] = _NoArg.NO_ARG,
+        *clauses: _ColumnExpressionArgument[Any],
     ) -> SelfGenerativeSelect:
         r"""Return a new selectable with the given list of ORDER BY
         criteria applied.
@@ -4092,18 +4108,22 @@ class GenerativeSelect(SelectBase, Generative):
 
         """
 
-        if len(clauses) == 1 and clauses[0] is None:
+        if not clauses and __first is None:
             self._order_by_clauses = ()
-        else:
+        elif __first is not _NoArg.NO_ARG:
             self._order_by_clauses += tuple(
                 coercions.expect(roles.OrderByRole, clause)
-                for clause in clauses
+                for clause in (__first,) + clauses
             )
         return self
 
     @_generative
     def group_by(
-        self: SelfGenerativeSelect, *clauses: _ColumnExpressionArgument[Any]
+        self: SelfGenerativeSelect,
+        __first: Union[
+            Literal[None, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+        ] = _NoArg.NO_ARG,
+        *clauses: _ColumnExpressionArgument[Any],
     ) -> SelfGenerativeSelect:
         r"""Return a new selectable with the given list of GROUP BY
         criterion applied.
@@ -4128,12 +4148,12 @@ class GenerativeSelect(SelectBase, Generative):
 
         """
 
-        if len(clauses) == 1 and clauses[0] is None:
+        if not clauses and __first is None:
             self._group_by_clauses = ()
-        else:
+        elif __first is not _NoArg.NO_ARG:
             self._group_by_clauses += tuple(
                 coercions.expect(roles.GroupByRole, clause)
-                for clause in clauses
+                for clause in (__first,) + clauses
             )
         return self
 
@@ -4257,7 +4277,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
     ) -> GroupedElement:
         return SelectStatementGrouping(self)
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         for s in self.selects:
             if s.is_derived_from(fromclause):
                 return True
@@ -4959,7 +4979,7 @@ class Select(
 
     _raw_columns: List[_ColumnsClauseElement]
 
-    _distinct = False
+    _distinct: bool = False
     _distinct_on: Tuple[ColumnElement[Any], ...] = ()
     _correlate: Tuple[FromClause, ...] = ()
     _correlate_except: Optional[Tuple[FromClause, ...]] = None
@@ -5478,8 +5498,8 @@ class Select(
 
         return iter(self._all_selected_columns)
 
-    def is_derived_from(self, fromclause: FromClause) -> bool:
-        if self in fromclause._cloned_set:
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+        if fromclause is not None and self in fromclause._cloned_set:
             return True
 
         for f in self._iterate_from_elements():

@@ -115,6 +115,7 @@ from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import NoReturn
 from typing import Optional
 from typing import Set
 from typing import Tuple
@@ -130,6 +131,7 @@ from ..util.compat import inspect_getfullargspec
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from .attributes import AttributeEventToken
     from .attributes import CollectionAttributeImpl
     from .mapped_collection import attribute_mapped_collection
     from .mapped_collection import column_mapped_collection
@@ -500,7 +502,7 @@ class CollectionAdapter:
         self.invalidated = False
         self.empty = False
 
-    def _warn_invalidated(self):
+    def _warn_invalidated(self) -> None:
         util.warn("This collection has been invalidated.")
 
     @property
@@ -509,7 +511,7 @@ class CollectionAdapter:
         return self._data()
 
     @property
-    def _referenced_by_owner(self):
+    def _referenced_by_owner(self) -> bool:
         """return True if the owner state still refers to this collection.
 
         This will return False within a bulk replace operation,
@@ -521,7 +523,9 @@ class CollectionAdapter:
     def bulk_appender(self):
         return self._data()._sa_appender
 
-    def append_with_event(self, item, initiator=None):
+    def append_with_event(
+        self, item: Any, initiator: Optional[AttributeEventToken] = None
+    ) -> None:
         """Add an entity to the collection, firing mutation events."""
 
         self._data()._sa_appender(item, _sa_initiator=initiator)
@@ -533,7 +537,7 @@ class CollectionAdapter:
         self.empty = True
         self.owner_state._empty_collections[self._key] = user_data
 
-    def _reset_empty(self):
+    def _reset_empty(self) -> None:
         assert (
             self.empty
         ), "This collection adapter is not in the 'empty' state"
@@ -542,20 +546,20 @@ class CollectionAdapter:
             self._key
         ] = self.owner_state._empty_collections.pop(self._key)
 
-    def _refuse_empty(self):
+    def _refuse_empty(self) -> NoReturn:
         raise sa_exc.InvalidRequestError(
             "This is a special 'empty' collection which cannot accommodate "
             "internal mutation operations"
         )
 
-    def append_without_event(self, item):
+    def append_without_event(self, item: Any) -> None:
         """Add or restore an entity to the collection, firing no events."""
 
         if self.empty:
             self._refuse_empty()
         self._data()._sa_appender(item, _sa_initiator=False)
 
-    def append_multiple_without_event(self, items):
+    def append_multiple_without_event(self, items: Iterable[Any]) -> None:
         """Add or restore an entity to the collection, firing no events."""
         if self.empty:
             self._refuse_empty()
@@ -566,17 +570,21 @@ class CollectionAdapter:
     def bulk_remover(self):
         return self._data()._sa_remover
 
-    def remove_with_event(self, item, initiator=None):
+    def remove_with_event(
+        self, item: Any, initiator: Optional[AttributeEventToken] = None
+    ) -> None:
         """Remove an entity from the collection, firing mutation events."""
         self._data()._sa_remover(item, _sa_initiator=initiator)
 
-    def remove_without_event(self, item):
+    def remove_without_event(self, item: Any) -> None:
         """Remove an entity from the collection, firing no events."""
         if self.empty:
             self._refuse_empty()
         self._data()._sa_remover(item, _sa_initiator=False)
 
-    def clear_with_event(self, initiator=None):
+    def clear_with_event(
+        self, initiator: Optional[AttributeEventToken] = None
+    ) -> None:
         """Empty the collection, firing a mutation event for each entity."""
 
         if self.empty:
@@ -585,7 +593,7 @@ class CollectionAdapter:
         for item in list(self):
             remover(item, _sa_initiator=initiator)
 
-    def clear_without_event(self):
+    def clear_without_event(self) -> None:
         """Empty the collection, firing no events."""
 
         if self.empty:

@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: allow-untyped-defs, allow-untyped-calls
 
 from __future__ import annotations
 
@@ -12,6 +11,8 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Collection
+from typing import Iterable
+from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Type
@@ -45,6 +46,7 @@ from ..util.typing import Literal
 if TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _ORMColumnExprArgument
+    from .descriptor_props import _CC
     from .descriptor_props import _CompositeAttrType
     from .interfaces import PropComparator
     from .mapper import Mapper
@@ -54,13 +56,18 @@ if TYPE_CHECKING:
     from .relationships import _ORMColCollectionArgument
     from .relationships import _ORMOrderByArgument
     from .relationships import _RelationshipJoinConditionArgument
+    from .session import _SessionBind
     from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _FromClauseArgument
     from ..sql._typing import _InfoType
+    from ..sql._typing import _OnClauseArgument
     from ..sql._typing import _TypeEngineArgument
+    from ..sql.elements import ColumnElement
     from ..sql.schema import _ServerDefaultType
     from ..sql.schema import FetchedValue
     from ..sql.selectable import Alias
     from ..sql.selectable import Subquery
+
 
 _T = typing.TypeVar("_T")
 
@@ -424,10 +431,10 @@ def column_property(
 
 @overload
 def composite(
-    class_: Type[_T],
+    class_: Type[_CC],
     *attrs: _CompositeAttrType[Any],
     **kwargs: Any,
-) -> Composite[_T]:
+) -> Composite[_CC]:
     ...
 
 
@@ -680,7 +687,7 @@ def with_loader_criteria(
 
 def relationship(
     argument: Optional[_RelationshipArgumentType[Any]] = None,
-    secondary: Optional[FromClause] = None,
+    secondary: Optional[Union[FromClause, str]] = None,
     *,
     uselist: Optional[bool] = None,
     collection_class: Optional[
@@ -696,14 +703,14 @@ def relationship(
     cascade: str = "save-update, merge",
     viewonly: bool = False,
     lazy: _LazyLoadArgumentType = "select",
-    passive_deletes: bool = False,
+    passive_deletes: Union[Literal["all"], bool] = False,
     passive_updates: bool = True,
     active_history: bool = False,
     enable_typechecks: bool = True,
     foreign_keys: Optional[_ORMColCollectionArgument] = None,
     remote_side: Optional[_ORMColCollectionArgument] = None,
     join_depth: Optional[int] = None,
-    comparator_factory: Optional[Type[PropComparator[Any]]] = None,
+    comparator_factory: Optional[Type[Relationship.Comparator[Any]]] = None,
     single_parent: bool = False,
     innerjoin: bool = False,
     distinct_target_key: Optional[bool] = None,
@@ -1660,10 +1667,19 @@ def synonym(
         than can be achieved with synonyms.
 
     """
-    return Synonym(name, map_column, descriptor, comparator_factory, doc, info)
+    return Synonym(
+        name,
+        map_column=map_column,
+        descriptor=descriptor,
+        comparator_factory=comparator_factory,
+        doc=doc,
+        info=info,
+    )
 
 
-def create_session(bind=None, **kwargs):
+def create_session(
+    bind: Optional[_SessionBind] = None, **kwargs: Any
+) -> Session:
     r"""Create a new :class:`.Session`
     with no automation enabled by default.
 
@@ -1699,7 +1715,7 @@ def create_session(bind=None, **kwargs):
     return Session(bind=bind, **kwargs)
 
 
-def _mapper_fn(*arg, **kw):
+def _mapper_fn(*arg: Any, **kw: Any) -> NoReturn:
     """Placeholder for the now-removed ``mapper()`` function.
 
     Classical mappings should be performed using the
@@ -1726,7 +1742,9 @@ def _mapper_fn(*arg, **kw):
     )
 
 
-def dynamic_loader(argument, **kw):
+def dynamic_loader(
+    argument: Optional[_RelationshipArgumentType[Any]] = None, **kw: Any
+) -> Relationship[Any]:
     """Construct a dynamically-loading mapper property.
 
     This is essentially the same as
@@ -1746,7 +1764,7 @@ def dynamic_loader(argument, **kw):
     return relationship(argument, **kw)
 
 
-def backref(name, **kwargs):
+def backref(name: str, **kwargs: Any) -> _ORMBackrefArgument:
     """Create a back reference with explicit keyword arguments, which are the
     same arguments one can send to :func:`relationship`.
 
@@ -1765,7 +1783,11 @@ def backref(name, **kwargs):
     return (name, kwargs)
 
 
-def deferred(*columns, **kw):
+def deferred(
+    column: _ORMColumnExprArgument[_T],
+    *additional_columns: _ORMColumnExprArgument[Any],
+    **kw: Any,
+) -> ColumnProperty[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
 
@@ -1791,7 +1813,8 @@ def deferred(*columns, **kw):
         :ref:`deferred`
 
     """
-    return ColumnProperty(deferred=True, *columns, **kw)
+    kw["deferred"] = True
+    return ColumnProperty(column, *additional_columns, **kw)
 
 
 def query_expression(
@@ -1824,7 +1847,7 @@ def query_expression(
     return prop
 
 
-def clear_mappers():
+def clear_mappers() -> None:
     """Remove all mappers from all classes.
 
     .. versionchanged:: 1.4  This function now locates all
@@ -2003,16 +2026,16 @@ def aliased(
 
 
 def with_polymorphic(
-    base,
-    classes,
-    selectable=False,
-    flat=False,
-    polymorphic_on=None,
-    aliased=False,
-    adapt_on_names=False,
-    innerjoin=False,
-    _use_mapper_path=False,
-):
+    base: Union[_O, Mapper[_O]],
+    classes: Iterable[Type[Any]],
+    selectable: Union[Literal[False, None], FromClause] = False,
+    flat: bool = False,
+    polymorphic_on: Optional[ColumnElement[Any]] = None,
+    aliased: bool = False,
+    innerjoin: bool = False,
+    adapt_on_names: bool = False,
+    _use_mapper_path: bool = False,
+) -> AliasedClass[_O]:
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
@@ -2096,7 +2119,13 @@ def with_polymorphic(
     )
 
 
-def join(left, right, onclause=None, isouter=False, full=False):
+def join(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    isouter: bool = False,
+    full: bool = False,
+) -> _ORMJoin:
     r"""Produce an inner join between left and right clauses.
 
     :func:`_orm.join` is an extension to the core join interface
@@ -2135,7 +2164,12 @@ def join(left, right, onclause=None, isouter=False, full=False):
     return _ORMJoin(left, right, onclause, isouter, full)
 
 
-def outerjoin(left, right, onclause=None, full=False):
+def outerjoin(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    full: bool = False,
+) -> _ORMJoin:
     """Produce a left outer join between left and right clauses.
 
     This is the "outer join" version of the :func:`_orm.join` function,

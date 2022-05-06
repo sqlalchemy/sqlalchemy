@@ -503,7 +503,7 @@ class ClauseElement(
 
     def params(
         self: SelfClauseElement,
-        __optionaldict: Optional[Dict[str, Any]] = None,
+        __optionaldict: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> SelfClauseElement:
         """Return a copy with :func:`_expression.bindparam` elements
@@ -525,7 +525,7 @@ class ClauseElement(
     def _replace_params(
         self: SelfClauseElement,
         unique: bool,
-        optionaldict: Optional[Dict[str, Any]],
+        optionaldict: Optional[Mapping[str, Any]],
         kwargs: Dict[str, Any],
     ) -> SelfClauseElement:
 
@@ -545,7 +545,7 @@ class ClauseElement(
             {"bindparam": visit_bindparam},
         )
 
-    def compare(self, other, **kw):
+    def compare(self, other: ClauseElement, **kw: Any) -> bool:
         r"""Compare this :class:`_expression.ClauseElement` to
         the given :class:`_expression.ClauseElement`.
 
@@ -2516,7 +2516,9 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
         return False_._singleton
 
     @classmethod
-    def _ifnone(cls, other):
+    def _ifnone(
+        cls, other: Optional[ColumnElement[Any]]
+    ) -> ColumnElement[Any]:
         if other is None:
             return cls._instance()
         else:
@@ -4226,7 +4228,13 @@ class NamedColumn(KeyedColumnElement[_T]):
     ) -> Optional[str]:
         return name
 
-    def _bind_param(self, operator, obj, type_=None, expanding=False):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+    ) -> BindParameter[_T]:
         return BindParameter(
             self.key,
             obj,

@@ -8,7 +8,10 @@
 
 
 """Public API functions and helpers for declarative."""
+from __future__ import annotations
 
+from typing import Callable
+from typing import TYPE_CHECKING
 
 from ... import inspection
 from ...orm import exc as orm_exc
@@ -19,6 +22,10 @@ from ...orm.decl_base import _DeferredMapperConfig
 from ...orm.util import polymorphic_union
 from ...schema import Table
 from ...util import OrderedDict
+
+if TYPE_CHECKING:
+    from ...engine.reflection import Inspector
+    from ...sql.schema import MetaData
 
 
 class ConcreteBase:
@@ -380,31 +387,36 @@ class DeferredReflection:
                 mapper = thingy.cls.__mapper__
                 metadata = mapper.class_.metadata
                 for rel in mapper._props.values():
+
                     if (
                         isinstance(rel, relationships.Relationship)
-                        and rel.secondary is not None
+                        and rel._init_args.secondary._is_populated()
                     ):
-                        if isinstance(rel.secondary, Table):
-                            cls._reflect_table(rel.secondary, insp)
-                        elif isinstance(rel.secondary, str):
+
+                        secondary_arg = rel._init_args.secondary
+
+                        if isinstance(secondary_arg.argument, Table):
+                            cls._reflect_table(secondary_arg.argument, insp)
+                        elif isinstance(secondary_arg.argument, str):
 
                             _, resolve_arg = _resolver(rel.parent.class_, rel)
 
-                            rel.secondary = resolve_arg(rel.secondary)
-                            rel.secondary._resolvers += (
+                            resolver = resolve_arg(
+                                secondary_arg.argument, True
+                            )
+                            resolver._resolvers += (
                                 cls._sa_deferred_table_resolver(
                                     insp, metadata
                                 ),
                             )
 
-                            # controversy!  do we resolve it here? or leave
-                            # it deferred?   I think doing it here is necessary
-                            # so the connection does not leak.
-                            rel.secondary = rel.secondary()
+                            secondary_arg.argument = resolver()
 
     @classmethod
-    def _sa_deferred_table_resolver(cls, inspector, metadata):
-        def _resolve(key):
+    def _sa_deferred_table_resolver(
+        cls, inspector: Inspector, metadata: MetaData
+    ) -> Callable[[str], Table]:
+        def _resolve(key: str) -> Table:
             t1 = Table(key, metadata)
             cls._reflect_table(t1, inspector)
             return t1

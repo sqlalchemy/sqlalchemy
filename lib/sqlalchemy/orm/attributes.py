@@ -117,7 +117,9 @@ class NoKey(str):
     pass
 
 
-_AllPendingType = List[Tuple[Optional["InstanceState[Any]"], Optional[object]]]
+_AllPendingType = Sequence[
+    Tuple[Optional["InstanceState[Any]"], Optional[object]]
+]
 
 NO_KEY = NoKey("no name")
 
@@ -798,6 +800,8 @@ class AttributeImpl:
     supports_population: bool
     dynamic: bool
 
+    _is_has_collection_adapter = False
+
     _replace_token: AttributeEventToken
     _remove_token: AttributeEventToken
     _append_token: AttributeEventToken
@@ -1140,7 +1144,7 @@ class AttributeImpl:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: Optional[AttributeEventToken] = None,
         passive: PassiveFlag = PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -1236,7 +1240,7 @@ class ScalarAttributeImpl(AttributeImpl):
         state: InstanceState[Any],
         dict_: Dict[str, Any],
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: Optional[AttributeEventToken] = None,
         passive: PassiveFlag = PASSIVE_OFF,
         check_old: Optional[object] = None,
         pop: bool = False,
@@ -1402,7 +1406,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: Optional[AttributeEventToken] = None,
         passive: PassiveFlag = PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -1494,6 +1498,9 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 class HasCollectionAdapter:
     __slots__ = ()
 
+    collection: bool
+    _is_has_collection_adapter = True
+
     def _dispose_previous_collection(
         self,
         state: InstanceState[Any],
@@ -1508,7 +1515,7 @@ class HasCollectionAdapter:
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
     ) -> CollectionAdapter:
         ...
@@ -1518,8 +1525,18 @@ class HasCollectionAdapter:
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
-        passive: PassiveFlag = PASSIVE_OFF,
+        user_data: _AdaptedCollectionProtocol = ...,
+        passive: PassiveFlag = ...,
+    ) -> CollectionAdapter:
+        ...
+
+    @overload
+    def get_collection(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: Optional[_AdaptedCollectionProtocol] = ...,
+        passive: PassiveFlag = ...,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
     ]:
@@ -1530,10 +1547,23 @@ class HasCollectionAdapter:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         user_data: Optional[_AdaptedCollectionProtocol] = None,
-        passive: PassiveFlag = PASSIVE_OFF,
+        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
     ]:
+        raise NotImplementedError()
+
+    def set(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        value: Any,
+        initiator: Optional[AttributeEventToken] = None,
+        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
+        check_old: Any = None,
+        pop: bool = False,
+        _adapt: bool = True,
+    ) -> None:
         raise NotImplementedError()
 
 
@@ -1790,7 +1820,9 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
-        collection = self.get_collection(state, dict_, passive=passive)
+        collection = self.get_collection(
+            state, dict_, user_data=None, passive=passive
+        )
         if collection is PASSIVE_NO_RESULT:
             value = self.fire_append_event(state, dict_, value, initiator)
             assert (
@@ -1810,7 +1842,9 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
-        collection = self.get_collection(state, state.dict, passive=passive)
+        collection = self.get_collection(
+            state, state.dict, user_data=None, passive=passive
+        )
         if collection is PASSIVE_NO_RESULT:
             self.fire_remove_event(state, dict_, value, initiator)
             assert (
@@ -1844,7 +1878,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         value: Any,
         initiator: Optional[AttributeEventToken] = None,
-        passive: PassiveFlag = PASSIVE_OFF,
+        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
         _adapt: bool = True,
@@ -1963,7 +1997,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
     ) -> CollectionAdapter:
         ...
@@ -1973,7 +2007,17 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: _AdaptedCollectionProtocol = ...,
+        passive: PassiveFlag = ...,
+    ) -> CollectionAdapter:
+        ...
+
+    @overload
+    def get_collection(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: Optional[_AdaptedCollectionProtocol] = ...,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
@@ -2490,7 +2534,7 @@ def register_attribute_impl(
     impl_class: Optional[Type[AttributeImpl]] = None,
     backref: Optional[str] = None,
     **kw: Any,
-) -> InstrumentedAttribute[Any]:
+) -> QueryableAttribute[Any]:
 
     manager = manager_of_class(class_)
     if uselist:
@@ -2599,7 +2643,7 @@ def init_state_collection(
         attr._dispose_previous_collection(state, old, old_collection, False)
 
     user_data = attr._default_value(state, dict_)
-    adapter = attr.get_collection(state, dict_, user_data)
+    adapter: CollectionAdapter = attr.get_collection(state, dict_, user_data)
     adapter._reset_empty()
 
     return adapter

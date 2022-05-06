@@ -965,6 +965,45 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             '"user".state, "user".zip FROM "user"',
         )
 
+    def test_name_cols_by_str(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            street: Mapped[str]
+            state: Mapped[str]
+
+            # TODO: this needs to be improved, we should be able to say:
+            # zip_: Mapped[str] = mapped_column("zip")
+            # and it should assign to "zip_" for the attribute. not working
+
+            zip_: Mapped[str] = mapped_column(name="zip", key="zip_")
+
+            address: Mapped["Address"] = composite(
+                Address, "street", "state", "zip_"
+            )
+
+        eq_(
+            User.__mapper__.attrs["address"].props,
+            [
+                User.__mapper__.attrs["street"],
+                User.__mapper__.attrs["state"],
+                User.__mapper__.attrs["zip_"],
+            ],
+        )
+        self.assert_compile(
+            select(User),
+            'SELECT "user".id, "user".name, "user".street, '
+            '"user".state, "user".zip FROM "user"',
+        )
+
     def test_cls_annotated_setup(self, decl_base):
         @dataclasses.dataclass
         class Address:

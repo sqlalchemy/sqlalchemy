@@ -750,6 +750,17 @@ class _MetaOptions(type):
         o1.__dict__.update(other)
         return o1
 
+    if TYPE_CHECKING:
+
+        def __getattr__(self, key: str) -> Any:
+            ...
+
+        def __setattr__(self, key: str, value: Any) -> None:
+            ...
+
+        def __delattr__(self, key: str) -> None:
+            ...
+
 
 class Options(metaclass=_MetaOptions):
     """A cacheable option dictionary with defaults."""
@@ -903,6 +914,17 @@ class Options(metaclass=_MetaOptions):
 
         else:
             return existing_options, exec_options
+
+    if TYPE_CHECKING:
+
+        def __getattr__(self, key: str) -> Any:
+            ...
+
+        def __setattr__(self, key: str, value: Any) -> None:
+            ...
+
+        def __delattr__(self, key: str) -> None:
+            ...
 
 
 class CacheableOptions(Options, HasCacheKey):

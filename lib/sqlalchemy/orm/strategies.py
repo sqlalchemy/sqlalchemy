@@ -14,6 +14,10 @@ from __future__ import annotations
 
 import collections
 import itertools
+from typing import Any
+from typing import Dict
+from typing import Tuple
+from typing import TYPE_CHECKING
 
 from . import attributes
 from . import exc as orm_exc
@@ -28,7 +32,9 @@ from . import util as orm_util
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
+from .base import LoaderCallableStatus
 from .base import PASSIVE_OFF
+from .base import PassiveFlag
 from .context import _column_descriptions
 from .context import ORMCompileState
 from .context import ORMSelectCompileState
@@ -49,6 +55,10 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import Select
+
+if TYPE_CHECKING:
+    from .relationships import Relationship
+    from ..sql.elements import ColumnElement
 
 
 def _register_attribute(
@@ -486,10 +496,10 @@ class DeferredColumnLoader(LoaderStrategy):
 
     def _load_for_state(self, state, passive):
         if not state.key:
-            return attributes.ATTR_EMPTY
+            return LoaderCallableStatus.ATTR_EMPTY
 
-        if not passive & attributes.SQL_OK:
-            return attributes.PASSIVE_NO_RESULT
+        if not passive & PassiveFlag.SQL_OK:
+            return LoaderCallableStatus.PASSIVE_NO_RESULT
 
         localparent = state.manager.mapper
 
@@ -522,7 +532,7 @@ class DeferredColumnLoader(LoaderStrategy):
             state.mapper, state, set(group), PASSIVE_OFF
         )
 
-        return attributes.ATTR_WAS_SET
+        return LoaderCallableStatus.ATTR_WAS_SET
 
     def _invoke_raise_load(self, state, passive, lazy):
         raise sa_exc.InvalidRequestError(
@@ -626,7 +636,9 @@ class NoLoader(AbstractRelationshipLoader):
 @relationships.Relationship.strategy_for(lazy="raise")
 @relationships.Relationship.strategy_for(lazy="raise_on_sql")
 @relationships.Relationship.strategy_for(lazy="baked_select")
-class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
+class LazyLoader(
+    AbstractRelationshipLoader, util.MemoizedSlots, log.Identified
+):
     """Provide loading behavior for a :class:`.Relationship`
     with "lazy=True", that is loads when first accessed.
 
@@ -648,7 +660,16 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "_raise_on_sql",
     )
 
-    def __init__(self, parent, strategy_key):
+    _lazywhere: ColumnElement[bool]
+    _bind_to_col: Dict[str, ColumnElement[Any]]
+    _rev_lazywhere: ColumnElement[bool]
+    _rev_bind_to_col: Dict[str, ColumnElement[Any]]
+
+    parent_property: Relationship[Any]
+
+    def __init__(
+        self, parent: Relationship[Any], strategy_key: Tuple[Any, ...]
+    ):
         super(LazyLoader, self).__init__(parent, strategy_key)
         self._raise_always = self.strategy_opts["lazy"] == "raise"
         self._raise_on_sql = self.strategy_opts["lazy"] == "raise_on_sql"
@@ -786,13 +807,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         o = state.obj()  # strong ref
         dict_ = attributes.instance_dict(o)
 
-        if passive & attributes.INIT_OK:
-            passive ^= attributes.INIT_OK
+        if passive & PassiveFlag.INIT_OK:
+            passive ^= PassiveFlag.INIT_OK
 
         params = {}
         for key, ident, value in param_keys:
             if ident is not None:
-                if passive and passive & attributes.LOAD_AGAINST_COMMITTED:
+                if passive and passive & PassiveFlag.LOAD_AGAINST_COMMITTED:
                     value = mapper._get_committed_state_attr_by_column(
                         state, dict_, ident, passive
                     )
@@ -818,23 +839,23 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             )
             or not state.session_id
         ):
-            return attributes.ATTR_EMPTY
+            return LoaderCallableStatus.ATTR_EMPTY
 
         pending = not state.key
         primary_key_identity = None
 
         use_get = self.use_get and (not loadopt or not loadopt._extra_criteria)
 
-        if (not passive & attributes.SQL_OK and not use_get) or (
+        if (not passive & PassiveFlag.SQL_OK and not use_get) or (
             not passive & attributes.NON_PERSISTENT_OK and pending
         ):
-            return attributes.PASSIVE_NO_RESULT
+            return LoaderCallableStatus.PASSIVE_NO_RESULT
 
         if (
             # we were given lazy="raise"
             self._raise_always
             # the no_raise history-related flag was not passed
-            and not passive & attributes.NO_RAISE
+            and not passive & PassiveFlag.NO_RAISE
             and (
                 # if we are use_get and related_object_ok is disabled,
                 # which means we are at most looking in the identity map
@@ -842,7 +863,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 # PASSIVE_NO_RESULT, don't raise.  This is also a
                 # history-related flag
                 not use_get
-                or passive & attributes.RELATED_OBJECT_OK
+                or passive & PassiveFlag.RELATED_OBJECT_OK
             )
         ):
 
@@ -850,8 +871,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         session = _state_session(state)
         if not session:
-            if passive & attributes.NO_RAISE:
-                return attributes.PASSIVE_NO_RESULT
+            if passive & PassiveFlag.NO_RAISE:
+                return LoaderCallableStatus.PASSIVE_NO_RESULT
 
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
@@ -865,19 +886,19 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             primary_key_identity = self._get_ident_for_use_get(
                 session, state, passive
             )
-            if attributes.PASSIVE_NO_RESULT in primary_key_identity:
-                return attributes.PASSIVE_NO_RESULT
-            elif attributes.NEVER_SET in primary_key_identity:
-                return attributes.NEVER_SET
+            if LoaderCallableStatus.PASSIVE_NO_RESULT in primary_key_identity:
+                return LoaderCallableStatus.PASSIVE_NO_RESULT
+            elif LoaderCallableStatus.NEVER_SET in primary_key_identity:
+                return LoaderCallableStatus.NEVER_SET
 
             if _none_set.issuperset(primary_key_identity):
                 return None
 
             if (
                 self.key in state.dict
-                and not passive & attributes.DEFERRED_HISTORY_LOAD
+                and not passive & PassiveFlag.DEFERRED_HISTORY_LOAD
             ):
-                return attributes.ATTR_WAS_SET
+                return LoaderCallableStatus.ATTR_WAS_SET
 
             # look for this identity in the identity map.  Delegate to the
             # Query class in use, as it may have special rules for how it
@@ -892,15 +913,15 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             )
 
             if instance is not None:
-                if instance is attributes.PASSIVE_CLASS_MISMATCH:
+                if instance is LoaderCallableStatus.PASSIVE_CLASS_MISMATCH:
                     return None
                 else:
                     return instance
             elif (
-                not passive & attributes.SQL_OK
-                or not passive & attributes.RELATED_OBJECT_OK
+                not passive & PassiveFlag.SQL_OK
+                or not passive & PassiveFlag.RELATED_OBJECT_OK
             ):
-                return attributes.PASSIVE_NO_RESULT
+                return LoaderCallableStatus.PASSIVE_NO_RESULT
 
         return self._emit_lazyload(
             session,
@@ -914,7 +935,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     def _get_ident_for_use_get(self, session, state, passive):
         instance_mapper = state.manager.mapper
 
-        if passive & attributes.LOAD_AGAINST_COMMITTED:
+        if passive & PassiveFlag.LOAD_AGAINST_COMMITTED:
             get_attr = instance_mapper._get_committed_state_attr_by_column
         else:
             get_attr = instance_mapper._get_state_attr_by_column
@@ -985,7 +1006,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         stmt._compile_options += {"_current_path": effective_path}
 
         if use_get:
-            if self._raise_on_sql and not passive & attributes.NO_RAISE:
+            if self._raise_on_sql and not passive & PassiveFlag.NO_RAISE:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
 
             return loading.load_on_pk_identity(
@@ -1022,9 +1043,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         if (
             self.key in state.dict
-            and not passive & attributes.DEFERRED_HISTORY_LOAD
+            and not passive & PassiveFlag.DEFERRED_HISTORY_LOAD
         ):
-            return attributes.ATTR_WAS_SET
+            return LoaderCallableStatus.ATTR_WAS_SET
 
         if pending:
             if util.has_intersection(orm_util._none_set, params.values()):
@@ -1033,7 +1054,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         elif util.has_intersection(orm_util._never_set, params.values()):
             return None
 
-        if self._raise_on_sql and not passive & attributes.NO_RAISE:
+        if self._raise_on_sql and not passive & PassiveFlag.NO_RAISE:
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
         stmt._where_criteria = (lazy_clause,)
@@ -1246,9 +1267,9 @@ class ImmediateLoader(PostLoader):
             # "use get" load.   the "_RELATED" part means it may return
             # instance even if its expired, since this is a mutually-recursive
             # load operation.
-            flags = attributes.PASSIVE_NO_FETCH_RELATED | attributes.NO_RAISE
+            flags = attributes.PASSIVE_NO_FETCH_RELATED | PassiveFlag.NO_RAISE
         else:
-            flags = attributes.PASSIVE_OFF | attributes.NO_RAISE
+            flags = attributes.PASSIVE_OFF | PassiveFlag.NO_RAISE
 
         populators["delayed"].append((self.key, load_immediate))
 
@@ -2840,7 +2861,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 # if the loaded parent objects do not have the foreign key
                 # to the related item loaded, then degrade into the joined
                 # version of selectinload
-                if attributes.PASSIVE_NO_RESULT in related_ident:
+                if LoaderCallableStatus.PASSIVE_NO_RESULT in related_ident:
                     query_info = self._fallback_query_info
                     break
 

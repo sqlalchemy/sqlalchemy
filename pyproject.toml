@@ -68,21 +68,6 @@ strict = true
 # pass
 module = [
 
-    # TODO for ORM, non-strict
-    "sqlalchemy.orm.base",
-    "sqlalchemy.orm.decl_base",
-    "sqlalchemy.orm.descriptor_props",
-    "sqlalchemy.orm.identity",
-    "sqlalchemy.orm.mapped_collection",
-    "sqlalchemy.orm.properties",
-    "sqlalchemy.orm.relationships",
-    "sqlalchemy.orm.strategy_options",
-    "sqlalchemy.orm.state_changes",
-
-    # would ideally be strict
-    "sqlalchemy.orm.decl_api",
-    "sqlalchemy.orm.events",
-    "sqlalchemy.orm.query",
     "sqlalchemy.engine.reflection",
 
 ]

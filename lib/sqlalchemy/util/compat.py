@@ -20,11 +20,14 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
+from typing import Type
 
 
 py311 = sys.version_info >= (3, 11)
@@ -225,7 +228,7 @@ def inspect_formatargspec(
     return result
 
 
-def dataclass_fields(cls):
+def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated
     with a class."""
 
@@ -235,12 +238,12 @@ def dataclass_fields(cls):
         return []
 
 
-def local_dataclass_fields(cls):
+def local_dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated with
     a class, excluding those that originate from a superclass."""
 
     if dataclasses.is_dataclass(cls):
-        super_fields = set()
+        super_fields: Set[dataclasses.Field[Any]] = set()
         for sup in cls.__bases__:
             super_fields.update(dataclass_fields(sup))
         return [f for f in dataclasses.fields(cls) if f not in super_fields]
