@@ -90,3 +90,13 @@ module = [
 ignore_errors = true
 warn_unused_ignores = false
 
+
+[tool.cibuildwheel]
+before-test = ""
+test-requires = "pytest pytest-xdist"
+# Need to change root directory, otherisw the plugin won't find setup.cfg
+test-command = "(cd {project}; pytest --trace-config;  pytest -n2 -q test --nomemory --notimingintensive)"
+
+build = "*"
+skip = "cp36-* pp*"
+test-skip = ""
