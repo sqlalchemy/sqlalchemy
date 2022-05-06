@@ -162,6 +162,9 @@ overall which brings in the TextClause object also.
 """
 
 
+_ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
+
+
 _InfoType = Dict[Any, Any]
 """the .info dictionary accepted and used throughout Core /ORM"""
 
