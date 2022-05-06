@@ -47,8 +47,8 @@ from .functions import FunctionElement
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
-    from . import sqltypes
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .functions import FunctionElement
@@ -289,7 +289,7 @@ def collate(
 
 
 def between(
-    expr: _ColumnExpressionArgument[_T],
+    expr: _ColumnExpressionOrLiteralArgument[_T],
     lower_bound: Any,
     upper_bound: Any,
     symmetric: bool = False,
@@ -782,7 +782,7 @@ def case(
 
 
 def cast(
-    expression: _ColumnExpressionArgument[Any],
+    expression: _ColumnExpressionOrLiteralArgument[Any],
     type_: _TypeEngineArgument[_T],
 ) -> Cast[_T]:
     r"""Produce a ``CAST`` expression.
@@ -1544,7 +1544,7 @@ def tuple_(
 
 
 def type_coerce(
-    expression: _ColumnExpressionArgument[Any],
+    expression: _ColumnExpressionOrLiteralArgument[Any],
     type_: _TypeEngineArgument[_T],
 ) -> TypeCoerce[_T]:
     r"""Associate a SQL expression with a particular type, without rendering
