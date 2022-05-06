@@ -45,7 +45,6 @@ from ..sql.schema import Table
 from ..util import topological
 
 if TYPE_CHECKING:
-    from ._typing import _O
     from ._typing import _RegistryType
 
 

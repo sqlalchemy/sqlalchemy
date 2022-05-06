@@ -44,14 +44,12 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import ColumnElement
     from .operators import OperatorType
-    from .schema import Column
     from .sqltypes import _resolve_value_to_type as _resolve_value_to_type
     from .sqltypes import BOOLEANTYPE as BOOLEANTYPE
     from .sqltypes import INDEXABLE as INDEXABLE
     from .sqltypes import INTEGERTYPE as INTEGERTYPE
     from .sqltypes import MATCHTYPE as MATCHTYPE
     from .sqltypes import NULLTYPE as NULLTYPE
-    from .sqltypes import NullType
     from .sqltypes import STRINGTYPE as STRINGTYPE
     from .sqltypes import TABLEVALUE as TABLEVALUE
     from ..engine.interfaces import Dialect

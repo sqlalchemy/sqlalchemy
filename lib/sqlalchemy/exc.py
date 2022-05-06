@@ -28,9 +28,6 @@ from .util import preloaded as _preloaded
 
 if typing.TYPE_CHECKING:
     from .engine.interfaces import _AnyExecuteParams
-    from .engine.interfaces import _CoreAnyExecuteParams
-    from .engine.interfaces import _CoreMultiExecuteParams
-    from .engine.interfaces import _DBAPIAnyExecuteParams
     from .engine.interfaces import Dialect
     from .sql.compiler import Compiled
     from .sql.compiler import TypeCompiler

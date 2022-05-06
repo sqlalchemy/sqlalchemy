@@ -21,14 +21,12 @@ from .. import util
 
 
 if typing.TYPE_CHECKING:
-    from .base import Connection
     from .base import Engine
     from .interfaces import _CoreAnyExecuteParams
     from .interfaces import _ExecuteOptionsParameter
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
-    from ..sql.ddl import ExecutableDDLElement
     from ..sql.ddl import SchemaDropper
     from ..sql.ddl import SchemaGenerator
     from ..sql.schema import HasSchemaAttr

@@ -70,7 +70,6 @@ if typing.TYPE_CHECKING:
     from .base import _Dispatch
     from .base import _DispatchCommon
     from .base import _HasEventsDispatch
-    from .base import _JoinedDispatcher
 
 
 class RefCollection(util.MemoizedSlots, Generic[_ET]):

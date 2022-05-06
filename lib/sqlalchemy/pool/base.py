@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
     from ..engine.interfaces import DBAPICursor
     from ..engine.interfaces import Dialect
-    from ..event import _Dispatch
     from ..event import _DispatchCommon
     from ..event import _ListenerFnType
     from ..event import dispatcher

@@ -47,7 +47,6 @@ from ..util.typing import Protocol
 if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .properties import MappedColumn
-    from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
     from ..sql.schema import Column
 

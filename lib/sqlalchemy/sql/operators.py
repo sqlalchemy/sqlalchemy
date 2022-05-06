@@ -51,8 +51,6 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
-    from .elements import BinaryExpression
-    from .elements import ColumnElement
     from .type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)

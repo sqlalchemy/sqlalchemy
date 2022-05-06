@@ -61,7 +61,6 @@ from ..util.typing import SupportsIndex
 from ..util.typing import SupportsKeysAndGetItem
 
 if typing.TYPE_CHECKING:
-    from ..orm.attributes import InstrumentedAttribute
     from ..orm.interfaces import MapperProperty
     from ..orm.interfaces import PropComparator
     from ..orm.mapper import Mapper

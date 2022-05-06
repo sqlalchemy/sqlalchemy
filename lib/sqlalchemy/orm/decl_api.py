@@ -49,8 +49,6 @@ from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
 
-if typing.TYPE_CHECKING:
-    from .state import InstanceState
 
 _T = TypeVar("_T", bound=Any)
 
