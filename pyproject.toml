@@ -95,6 +95,8 @@ warn_unused_ignores = false
 before-test = ""
 test-requires = "pytest pytest-xdist"
 # Need to change root directory, otherisw the plugin won't find setup.cfg
+# Todo: move this to a .sh file, and run
+# python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
 test-command = "(cd {project}; pytest --trace-config;  pytest -n2 -q test --nomemory --notimingintensive)"
 
 build = "*"

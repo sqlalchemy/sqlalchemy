@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+  release:
+    types: [created]  
     # paths-ignore:
     #   - "examples/**"
     #   - "doc/**"
@@ -11,7 +13,20 @@ on:
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
-    # TODO: Add logic to run/ignore on [wheels-build] or [wheels-skip]
+    # Run if this is a release, OR if commit message contains "[build wheels]"
+    # OR if the event (PR) has the label "setup", but skip if the commit
+    # message contains "[skip wheels]"
+    if: >-
+      github.event_name == 'release' ||
+      (
+        (! contains(github.event.head_commit.message, '[skip wheels]')) && (
+          contains(github.event.head_commit.message, '[build wheels]')
+          (
+            github.event.action == 'labeled' &&
+            github.event.label.name == 'setup'
+          )
+        )
+      )
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -45,21 +60,29 @@ jobs:
           path: dist/*.tar.gz
 
 
-  # upload_pypi:
-  #   needs: [build_wheels, build_sdist]
-  #   runs-on: ubuntu-latest
-  #   # upload to PyPI on every tag starting with 'v'
-  #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-  #   # alternatively, to publish when a GitHub Release is created, use the following rule:
-  #   # if: github.event_name == 'release' && github.event.action == 'published'
-  #   steps:
-  #     - uses: actions/download-artifact@v2
-  #       with:
-  #         name: artifact
-  #         path: dist
+  upload_pypi:
+    name: Upload wheels to pypi
+    # if: github.event_name == 'release'
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # upload to PyPI on every tag starting with 'v'
+    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # alternatively, to publish when a GitHub Release is created, use the following rule:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: artifact
+          path: dist
 
-  #     - uses: pypa/gh-action-pypi-publish@v1.4.2
-  #       with:
-  #         user: __token__
-  #         password: ${{ secrets.pypi_password }}
-  #         # To test: repository_url: https://test.pypi.org/legacy/
+      - uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          user: __token__
+          # password: ${{ secrets.pypi_token }}
+      #     # To test: repository_url: https://test.pypi.org/legacy/
+          password: ${{ secrets.test_pypi_token }}
+          repository_url: https://test.pypi.org/legacy/
+          print_hash: true
+      #     skip_existing: true
+      #     skip_existing
+      #     skip_existing
