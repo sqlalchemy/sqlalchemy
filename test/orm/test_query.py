@@ -45,7 +45,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import Bundle
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defer
@@ -877,6 +876,18 @@ class RowLabelingTest(QueryTest):
 
         assert_row_keys(stmt, expected, coreorm_exec)
 
+    def test_with_only_columns(self, assert_row_keys):
+        """test #8001"""
+
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id, Address.email_address).join_from(User, Address)
+        stmt = stmt.with_only_columns(
+            stmt.selected_columns.id, stmt.selected_columns.email_address
+        )
+
+        assert_row_keys(stmt, ["id", "email_address"], "orm")
+
     def test_explicit_cols_legacy(self):
         User = self.classes.User
 
@@ -1021,34 +1032,14 @@ class RowLabelingTest(QueryTest):
         eq_(row._mapping.keys(), ["id", "name", "id", "name"])
 
     @testing.fixture
-    def uname_fixture(self):
+    def uname_fixture(self, registry):
         class Foo:
             pass
 
-        if False:
-            # this conditional creates the table each time which would
-            # eliminate cross-test memoization issues.  if the tests
-            # are failing without this then there's a memoization issue.
-            # check AnnotatedColumn memoized keys
-            m = MetaData()
-            users = Table(
-                "users",
-                m,
-                Column("id", Integer, primary_key=True),
-                Column(
-                    "name",
-                    String,
-                ),
-            )
-            self.mapper_registry.map_imperatively(
-                Foo, users, properties={"uname": users.c.name}
-            )
-        else:
-            users = self.tables.users
-            clear_mappers()
-            self.mapper_registry.map_imperatively(
-                Foo, users, properties={"uname": users.c.name}
-            )
+        users = self.tables.users
+        registry.map_imperatively(
+            Foo, users, properties={"uname": users.c.name}
+        )
 
         return Foo
 

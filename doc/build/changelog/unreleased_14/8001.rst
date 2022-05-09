@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8001
+
+    Fixed issue where ORM results would apply incorrect key names to the
+    returned :class:`.Row` objects in the case where the set of columns to be
+    selected were changed, such as when using
+    :meth:`.Select.with_only_columns`.
