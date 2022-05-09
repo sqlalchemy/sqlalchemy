@@ -1560,14 +1560,36 @@ class SQLCompiler(Compiled):
             for col in table.primary_key
         ]
 
+        autoinc_getter = None
         autoinc_col = table._autoincrement_column
         if autoinc_col is not None:
             # apply type post processors to the lastrowid
-            proc = autoinc_col.type._cached_result_processor(
+            lastrowid_processor = autoinc_col.type._cached_result_processor(
                 self.dialect, None
             )
+            autoinc_key = param_key_getter(autoinc_col)
+
+            # if a bind value is present for the autoincrement column
+            # in the parameters, we need to do the logic dictated by
+            # #7998; honor a non-None user-passed parameter over lastrowid.
+            # previously in the 1.4 series we weren't fetching lastrowid
+            # at all if the key were present in the parameters
+            if autoinc_key in self.binds:
+
+                def autoinc_getter(lastrowid, parameters):
+                    param_value = parameters.get(autoinc_key, lastrowid)
+                    if param_value is not None:
+                        # they supplied non-None parameter, use that.
+                        # SQLite at least is observed to return the wrong
+                        # cursor.lastrowid for INSERT..ON CONFLICT so it
+                        # can't be used in all cases
+                        return param_value
+                    else:
+                        # use lastrowid
+                        return lastrowid
+
         else:
-            proc = None
+            lastrowid_processor = None
 
         row_fn = result.result_tuple([col.key for col in table.primary_key])
 
@@ -1578,14 +1600,20 @@ class SQLCompiler(Compiled):
             that were sent along with the INSERT.
 
             """
-            if proc is not None:
-                lastrowid = proc(lastrowid)
+            if lastrowid_processor is not None:
+                lastrowid = lastrowid_processor(lastrowid)
 
             if lastrowid is None:
                 return row_fn(getter(parameters) for getter, col in getters)
             else:
                 return row_fn(
-                    lastrowid if col is autoinc_col else getter(parameters)
+                    (
+                        autoinc_getter(lastrowid, parameters)
+                        if autoinc_getter
+                        else lastrowid
+                    )
+                    if col is autoinc_col
+                    else getter(parameters)
                     for getter, col in getters
                 )
 

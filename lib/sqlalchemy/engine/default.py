@@ -135,6 +135,7 @@ class DefaultDialect(Dialect):
     preexecute_autoincrement_sequences = False
     supports_identity_columns = False
     postfetch_lastrowid = True
+    insert_null_pk_still_autoincrements = False
     implicit_returning = False
     full_returning = False
     insert_executemany_returning = False

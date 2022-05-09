@@ -943,6 +943,57 @@ class InsertImplicitReturningTest(
             checkparams={"name_1": "foo"},
         )
 
+    @testing.combinations(
+        True, False, argnames="insert_null_still_autoincrements"
+    )
+    @testing.combinations("values", "params", "nothing", argnames="paramtype")
+    def test_explicit_null_implicit_returning_still_renders(
+        self, paramtype, insert_null_still_autoincrements
+    ):
+        """test for future support of #7998 with RETURNING"""
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer, primary_key=True),
+            Column("q", Integer),
+        )
+
+        dialect = postgresql.dialect(implicit_returning=True)
+        dialect.insert_null_pk_still_autoincrements = (
+            insert_null_still_autoincrements
+        )
+
+        if paramtype == "values":
+            # for values present, we now have an extra check for this
+            stmt = t.insert().values(x=None, q=5)
+            if insert_null_still_autoincrements:
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                )
+            else:
+                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = None
+        elif paramtype == "params":
+            # for params, compiler doesnt have the value available to look
+            # at.  we assume non-NULL
+            stmt = t.insert()
+            if insert_null_still_autoincrements:
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                )
+            else:
+                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = {"x": None, "q": 5}
+        elif paramtype == "nothing":
+            # no params, we assume full INSERT.  this kind of compilation
+            # doesn't actually happen during execution since there are always
+            # parameters or values
+            stmt = t.insert()
+            expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = None
+
+        self.assert_compile(stmt, expected, params=params, dialect=dialect)
+
     def test_insert_multiple_values(self):
         ins = self.tables.myothertable.insert().values(
             [{"othername": "foo"}, {"othername": "bar"}]

@@ -421,7 +421,7 @@ class InsertExecTest(fixtures.TablesTest):
 class TableInsertTest(fixtures.TablesTest):
 
     """test for consistent insert behavior across dialects
-    regarding the inline() method, lower-case 't' tables.
+    regarding the inline() method, values() method, lower-case 't' tables.
 
     """
 
@@ -479,8 +479,12 @@ class TableInsertTest(fixtures.TablesTest):
         returning=None,
         inserted_primary_key=False,
         table=None,
+        parameters=None,
     ):
-        r = connection.execute(stmt)
+        if parameters is not None:
+            r = connection.execute(stmt, parameters)
+        else:
+            r = connection.execute(stmt)
 
         if returning:
             returned = r.first()
@@ -644,4 +648,39 @@ class TableInsertTest(fixtures.TablesTest):
             t.insert().inline().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=(),
+        )
+
+    @testing.requires.database_discards_null_for_autoincrement
+    def test_explicit_null_pk_values_db_ignores_it(self, connection):
+        """test new use case in #7998"""
+
+        # NOTE: this use case uses cursor.lastrowid on SQLite, MySQL, MariaDB,
+        # however when SQLAlchemy 2.0 adds support for RETURNING to SQLite
+        # and MariaDB, it should work there as well.
+
+        t = self.tables.foo_no_seq
+        self._test(
+            connection,
+            t.insert().values(id=None, data="data", x=5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            inserted_primary_key=(testing.db.dialect.default_sequence_base,),
+            table=t,
+        )
+
+    @testing.requires.database_discards_null_for_autoincrement
+    def test_explicit_null_pk_params_db_ignores_it(self, connection):
+        """test new use case in #7998"""
+
+        # NOTE: this use case uses cursor.lastrowid on SQLite, MySQL, MariaDB,
+        # however when SQLAlchemy 2.0 adds support for RETURNING to SQLite
+        # and MariaDB, it should work there as well.
+
+        t = self.tables.foo_no_seq
+        self._test(
+            connection,
+            t.insert(),
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            inserted_primary_key=(testing.db.dialect.default_sequence_base,),
+            table=t,
+            parameters=dict(id=None, data="data", x=5),
         )

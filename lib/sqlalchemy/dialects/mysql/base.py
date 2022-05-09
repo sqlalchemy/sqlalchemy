@@ -2359,6 +2359,7 @@ class MySQLDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True
+    insert_null_pk_still_autoincrements = True
 
     supports_comments = True
     inline_comments = True

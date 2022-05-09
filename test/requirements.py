@@ -883,6 +883,18 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def database_discards_null_for_autoincrement(self):
+        """target database autoincrements a primary key and populates
+        .lastrowid even if NULL is explicitly passed for the column.
+
+        """
+        return succeeds_if(
+            lambda config: (
+                config.db.dialect.insert_null_pk_still_autoincrements
+            )
+        )
+
+    @property
     def emulated_lastrowid_even_with_sequences(self):
         """ "target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
