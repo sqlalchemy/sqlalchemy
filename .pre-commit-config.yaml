@@ -9,7 +9,7 @@ repos:
           - click < 8.1
 
 -   repo: https://github.com/sqlalchemyorg/zimports
-    rev: v0.5.0
+    rev: v0.6.0
     hooks:
     -   id: zimports
 
