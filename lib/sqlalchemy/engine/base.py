@@ -1500,7 +1500,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if distilled_parameters:
             # ensure we don't retain a link to the view object for keys()
             # which links to the values, which we don't want to cache
-            keys = sorted(distilled_parameters[0])
+            keys = sorted(distilled_parameters[0].keys())
             for_executemany = len(distilled_parameters) > 1
         else:
             keys = []
