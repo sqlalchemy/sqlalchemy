@@ -1,3 +1,5 @@
+import pickle
+
 import sqlalchemy as sa
 from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
@@ -43,7 +45,11 @@ from .inheritance._poly_fixtures import Paperwork
 from .inheritance._poly_fixtures import Person
 
 
-class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
+class EagerTest(
+    _fixtures.PickleFixtureMixin,
+    _fixtures.FixtureTest,
+    testing.AssertsCompiledSQL,
+):
     run_inserts = "once"
     run_deletes = None
 
@@ -759,8 +765,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         with fixture_session() as sess:
 
             def go():
+                result = (
+                    sess.query(User).options(*opts).order_by(User.id).all()
+                )
                 eq_(
-                    sess.query(User).options(*opts).order_by(User.id).all(),
+                    result,
+                    self.static.user_item_keyword_result,
+                )
+
+                print(f"pickling User structure based on: {opts}")
+                eq_(
+                    pickle.loads(pickle.dumps(result)),
                     self.static.user_item_keyword_result,
                 )
 
