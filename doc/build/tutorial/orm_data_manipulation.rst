@@ -214,6 +214,28 @@ behaviors and features:
     >>> session.commit()
     COMMIT
 
+The above operation will commit the transaction that was in progress.  The
+objects which we've dealt with are still :term:`attached` to the :class:`.Session`,
+which is a state they stay in until the :class:`.Session` is closed
+(which is introduced at :ref:`tutorial_orm_closing`).
+
+
+.. tip::
+
+  An important thing to note is that attributes on the objects that we just
+  worked with have been :term:`expired`, meaning, when we next access any
+  attributes on them, the :class:`.Session` will start a new transaction and
+  re-load their state. This option is sometimes problematic for both
+  performance reasons, or if one wishes to use the objects after closing the
+  :class:`.Session` (which is known as the :term:`detached` state), as they
+  will not have any state and will have no :class:`.Session` with which to load
+  that state, leading to "detached instance" errors. The behavior is
+  controllable using a parameter called :paramref:`.Session.expire_on_commit`.
+  More on this is at :ref:`tutorial_orm_closing`.
+
+
+
+
 .. _tutorial_orm_updating:
 
 Updating ORM Objects
@@ -510,6 +532,7 @@ and of course the database data is present again as well:
     [...] ('patrick',){stop}
     True
 
+.. _tutorial_orm_closing:
 
 Closing a Session
 ------------------
