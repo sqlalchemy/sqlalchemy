@@ -20,14 +20,6 @@ class Order(fixtures.ComparableEntity):
     pass
 
 
-class Item(fixtures.ComparableEntity):
-    pass
-
-
-class Keyword(fixtures.ComparableEntity):
-    pass
-
-
 class Dingaling(fixtures.ComparableEntity):
     pass
 

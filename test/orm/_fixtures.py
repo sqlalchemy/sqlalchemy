@@ -396,23 +396,6 @@ class FixtureTest(fixtures.MappedTest):
         return CannedResults(self)
 
 
-class PickleFixtureMixin(object):
-    @classmethod
-    def setup_classes(cls):
-        from sqlalchemy.testing import pickleable
-
-        cls.classes.update(
-            {
-                "User": pickleable.User,
-                "Order": pickleable.Order,
-                "Address": pickleable.Address,
-                "Item": pickleable.Item,
-                "Keyword": pickleable.Keyword,
-                "Dingaling": pickleable.Dingaling,
-            }
-        )
-
-
 class CannedResults(object):
     """Built on demand, instances use mappers in effect at time of call."""
 
