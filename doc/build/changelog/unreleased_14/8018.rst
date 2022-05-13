@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8018
+
+    An informative error is raised if two individual :class:`.BindParameter`
+    objects share the same name, yet one is used within an "expanding" context
+    (typically an IN expression) and the other is not; mixing the same name in
+    these two different styles of usage is not supported and typically the
+    ``expanding=True`` parameter should be set on the parameters that are to
+    receive list values outside of IN expressions (where ``expanding`` is set
+    by default).

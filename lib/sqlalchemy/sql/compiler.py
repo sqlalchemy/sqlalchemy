@@ -2860,6 +2860,15 @@ class SQLCompiler(Compiled):
                         "Bind parameter '%s' conflicts with "
                         "unique bind parameter of the same name" % name
                     )
+                elif existing.expanding != bindparam.expanding:
+                    raise exc.CompileError(
+                        "Can't reuse bound parameter name '%s' in both "
+                        "'expanding' (e.g. within an IN expression) and "
+                        "non-expanding contexts.  If this parameter is to "
+                        "receive a list/array value, set 'expanding=True' on "
+                        "it for expressions that aren't IN, otherwise use "
+                        "a different parameter name." % (name,)
+                    )
                 elif existing._is_crud or bindparam._is_crud:
                     if existing._is_crud and bindparam._is_crud:
                         # TODO: this condition is not well understood.

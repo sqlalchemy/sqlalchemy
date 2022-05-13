@@ -3662,6 +3662,25 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             s,
         )
 
+    def test_expanding_non_expanding_conflict(self):
+        """test #8018"""
+
+        s = select(
+            literal("x").in_(bindparam("q")),
+            bindparam("q"),
+        )
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't reuse bound parameter name 'q' in both 'expanding' "
+            r"\(e.g. within an IN expression\) and non-expanding contexts.  "
+            "If this parameter is to "
+            "receive a list/array value, set 'expanding=True' on "
+            "it for expressions that aren't IN, otherwise use "
+            "a different parameter name.",
+        ):
+            str(s)
+
     def test_unique_binds_no_clone_collision(self):
         """test #6824"""
         bp = bindparam("foo", unique=True)
