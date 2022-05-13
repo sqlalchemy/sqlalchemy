@@ -1615,8 +1615,22 @@ class Session(_SessionClassMethods, EventTarget):
     def commit(self) -> None:
         """Flush pending changes and commit the current transaction.
 
-        If no transaction is in progress, the method will first
-        "autobegin" a new transaction and commit.
+        When the COMMIT operation is complete, all objects are fully
+        :term:`expired`, erasing their internal contents, which will be
+        automatically re-loaded when the objects are next accessed. In the
+        interim, these objects are in an expired state and will not function if
+        they are :term:`detached` from the :class:`.Session`. Additionally,
+        this re-load operation is not supported when using asyncio-oriented
+        APIs. The :paramref:`.Session.expire_on_commit` parameter may be used
+        to disable this behavior.
+
+        When there is no transaction in place for the :class:`.Session`,
+        indicating that no operations were invoked on this :class:`.Session`
+        since the previous call to :meth:`.Session.commit`, the method will
+        begin and commit an internal-only "logical" transaction, that does not
+        normally affect the database unless pending flush changes were
+        detected, but will still invoke event handlers and object expiration
+        rules.
 
         The outermost database transaction is committed unconditionally,
         automatically releasing any SAVEPOINTs in effect.
@@ -1626,6 +1640,8 @@ class Session(_SessionClassMethods, EventTarget):
             :ref:`session_committing`
 
             :ref:`unitofwork_transaction`
+
+            :ref:`asyncio_orm_avoid_lazyloads`
 
         """
         trans = self._transaction

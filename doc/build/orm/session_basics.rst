@@ -82,6 +82,18 @@ persisted to the database.  If we were only issuing SELECT calls and did not
 need to write any changes, then the call to :meth:`_orm.Session.commit` would
 be unnecessary.
 
+.. note::
+
+    Note that after :meth:`_orm.Session.commit` is called, either explicitly or
+    when using a context manager, all objects associated with the
+    :class:`.Session` are :term:`expired`, meaning their contents are erased to
+    be re-loaded within the next transaction. If these objects are instead
+    :term:`detached`, they will be non-functional until re-associated with a
+    new :class:`.Session`, unless the :paramref:`.Session.expire_on_commit`
+    parameter is used to disable this behavior. See the
+    section :ref:`session_committing` for more detail.
+
+
 .. _session_begin_commit_rollback_block:
 
 Framing out a begin / commit / rollback block
@@ -774,13 +786,23 @@ Committing
 ----------
 
 :meth:`~.Session.commit` is used to commit the current
-transaction, if any.   When there is no transaction in place, the method
-passes silently.
+transaction.   At its core this indicates that it emits ``COMMIT`` on
+all current database connections that have a transaction in progress;
+from a :term:`DBAPI` perspective this means the ``connection.commit()``
+DBAPI method is invoked on each DBAPI connection.
 
-When :meth:`_orm.Session.commit` operates upon the current open transaction,
-it first always issues :meth:`~.Session.flush`
-beforehand to flush any remaining state to the database; this is independent
-of the "autoflush" setting.
+When there is no transaction in place for the :class:`.Session`, indicating
+that no operations were invoked on this :class:`.Session` since the previous
+call to :meth:`.Session.commit`, the method will begin and commit an
+internal-only "logical" transaction, that does not normally affect the database
+unless pending flush changes were detected, but will still invoke event
+handlers and object expiration rules.
+
+The :meth:`_orm.Session.commit` operation unconditionally issues
+:meth:`~.Session.flush` before emitting COMMIT on relevant database
+connections. If no pending changes are detected, then no SQL is emitted to the
+database. This behavior is not configurable and is not affected by the
+:paramref:`.Session.autoflush` parameter.
 
 Subsequent to that, :meth:`_orm.Session.commit` will then COMMIT the actual
 database transaction or transactions, if any, that are in place.
@@ -791,15 +813,6 @@ accessed, either through attribute access or by them being present in the
 result of a SELECT, they receive the most recent state. This behavior may be
 controlled by the :paramref:`_orm.Session.expire_on_commit` flag, which may be
 set to ``False`` when this behavior is undesirable.
-
-.. versionchanged:: 1.4
-
-    The :class:`_orm.Session` object now features deferred "begin" behavior, as
-    described in :ref:`autobegin <session_autobegin>`. If no transaction is
-    begun, methods like :meth:`_orm.Session.commit` and
-    :meth:`_orm.Session.rollback` have no effect.  This behavior would not
-    have been observed prior to 1.4 as under non-autocommit mode, a
-    transaction would always be implicitly present.
 
 .. seealso::
 
