@@ -1385,7 +1385,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                     value.type = c.type
             value_text = self.process(value.self_group(), use_schema=False)
 
-            key_text = self.preparer.quote(col_key)
+            key_text = self.preparer.quote(c.name)
             action_set_ops.append("%s = %s" % (key_text, value_text))
 
         # check for names that don't match columns

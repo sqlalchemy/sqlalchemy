@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql, postgresql, sqlite
+    :tickets: 8014
+
+    Fixed bug where the PostgreSQL :meth:`_postgresql.Insert.on_conflict`
+    method and the SQLite :meth:`_sqlite.Insert.on_conflict` method would both
+    fail to correctly accommodate a column with a separate ".key" when
+    specifying the column using its key name in the dictionary passed to
+    ``set_``, as well as if the :attr:`_sqlite.Insert.excluded` or
+    :attr:`_postgresql.Insert.excluded` collection were used as the dictionary
+    directly.
