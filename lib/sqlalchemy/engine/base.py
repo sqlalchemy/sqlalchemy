@@ -133,8 +133,8 @@ class Connection(Connectable):
         if fmt:
             message = fmt(message)
 
-        if util.py38:
-            kw["stacklevel"] = 2
+        if log.STACKLEVEL:
+            kw["stacklevel"] = 1 + log.STACKLEVEL_OFFSET
 
         self.engine.logger.info(message, *arg, **kw)
 
@@ -144,8 +144,8 @@ class Connection(Connectable):
         if fmt:
             message = fmt(message)
 
-        if util.py38:
-            kw["stacklevel"] = 2
+        if log.STACKLEVEL:
+            kw["stacklevel"] = 1 + log.STACKLEVEL_OFFSET
 
         self.engine.logger.debug(message, *arg, **kw)
 

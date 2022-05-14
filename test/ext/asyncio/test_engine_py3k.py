@@ -983,6 +983,8 @@ class AsyncResultTest(EngineFixture):
 
 
 class TextSyncDBAPI(fixtures.TestBase):
+    __requires__ = ("asyncio",)
+
     def test_sync_dbapi_raises(self):
         with expect_raises_message(
             exc.InvalidRequestError,
