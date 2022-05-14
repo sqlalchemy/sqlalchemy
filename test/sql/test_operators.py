@@ -454,7 +454,6 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 expr = op(expr, column(f"d{i}"))
 
         opstring = compiler.OPERATORS[op]
-        exprs = opstring.join(f"d{i}" for i in range(num))
 
         if negate:
             negate_op = {

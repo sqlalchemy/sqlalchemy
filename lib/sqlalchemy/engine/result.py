@@ -49,7 +49,6 @@ else:
     from sqlalchemy.cyextension.resultproxy import tuplegetter as tuplegetter
 
 if typing.TYPE_CHECKING:
-    from .row import RowMapping
     from ..sql.schema import Column
     from ..sql.type_api import _ResultProcessorType
 

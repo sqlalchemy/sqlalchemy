@@ -47,23 +47,23 @@ if not typing.TYPE_CHECKING and not have_greenlet:
             else ""
         )
 
-    def is_exit_exception(e):
+    def is_exit_exception(e):  # noqa: F811
         return not isinstance(e, Exception)
 
-    def await_only(thing):  # type: ignore
+    def await_only(thing):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def await_fallback(thing):  # type: ignore
+    def await_fallback(thing):  # type: ignore  # noqa: F811
         return thing
 
-    def greenlet_spawn(fn, *args, **kw):  # type: ignore
+    def greenlet_spawn(fn, *args, **kw):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def AsyncAdaptedLock(*args, **kw):  # type: ignore
+    def AsyncAdaptedLock(*args, **kw):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def _util_async_run(fn, *arg, **kw):  # type: ignore
+    def _util_async_run(fn, *arg, **kw):  # type: ignore  # noqa: F811
         return fn(*arg, **kw)
 
-    def _util_async_run_coroutine_function(fn, *arg, **kw):  # type: ignore
+    def _util_async_run_coroutine_function(fn, *arg, **kw):  # type: ignore  # noqa: F811,E501
         _not_implemented()

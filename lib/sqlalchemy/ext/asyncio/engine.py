@@ -36,8 +36,6 @@ from ...util.concurrency import greenlet_spawn
 from ...util.typing import Protocol
 
 if TYPE_CHECKING:
-    from ...engine import Connection
-    from ...engine import Engine
     from ...engine.cursor import CursorResult
     from ...engine.interfaces import _CoreAnyExecuteParams
     from ...engine.interfaces import _CoreSingleExecuteParams

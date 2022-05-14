@@ -39,16 +39,15 @@ from typing import Union
 from . import exc as orm_exc
 from . import path_registry
 from .base import _MappedAttribute as _MappedAttribute
-from .base import EXT_CONTINUE as EXT_CONTINUE
-from .base import EXT_SKIP as EXT_SKIP
-from .base import EXT_STOP as EXT_STOP
-from .base import InspectionAttr as InspectionAttr
-from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
+from .base import EXT_CONTINUE as EXT_CONTINUE  # noqa: F401
+from .base import EXT_SKIP as EXT_SKIP  # noqa: F401
+from .base import EXT_STOP as EXT_STOP  # noqa: F401
+from .base import InspectionAttr as InspectionAttr  # noqa: F401
 from .base import InspectionAttrInfo as InspectionAttrInfo
-from .base import MANYTOMANY as MANYTOMANY
-from .base import MANYTOONE as MANYTOONE
-from .base import NotExtension as NotExtension
-from .base import ONETOMANY as ONETOMANY
+from .base import MANYTOMANY as MANYTOMANY  # noqa: F401
+from .base import MANYTOONE as MANYTOONE  # noqa: F401
+from .base import NotExtension as NotExtension  # noqa: F401
+from .base import ONETOMANY as ONETOMANY  # noqa: F401
 from .base import SQLORMOperations
 from .. import ColumnElement
 from .. import inspection

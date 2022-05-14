@@ -110,7 +110,6 @@ if TYPE_CHECKING:
     from ..sql.elements import ColumnElement
     from ..sql.elements import KeyedColumnElement
     from ..sql.schema import Column
-    from ..sql.schema import Table
     from ..sql.selectable import FromClause
     from ..sql.util import ColumnAdapter
     from ..util import OrderedSet

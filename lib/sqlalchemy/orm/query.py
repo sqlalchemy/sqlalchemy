@@ -87,7 +87,6 @@ if TYPE_CHECKING:
     from ._typing import _EntityType
     from .session import Session
     from ..engine.result import ScalarResult
-    from ..engine.row import Row
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _MAYBE_ENTITY
@@ -1329,7 +1328,7 @@ class Query(
     @overload
     def with_entities(
         self, _entity: _EntityType[_O], **kwargs: Any
-    ) -> ScalarInstanceQuery[_O]:
+    ) -> Query[_O]:
         ...
 
     @overload

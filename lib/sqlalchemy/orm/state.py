@@ -53,7 +53,6 @@ if TYPE_CHECKING:
     from ._typing import _LoaderCallable
     from .attributes import AttributeImpl
     from .attributes import History
-    from .base import LoaderCallableStatus
     from .base import PassiveFlag
     from .collections import _AdaptedCollectionProtocol
     from .identity import IdentityMap

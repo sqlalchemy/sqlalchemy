@@ -54,14 +54,12 @@ from ..sql.selectable import SelectState
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
     from .base import LoaderCallableStatus
-    from .context import FromStatement
     from .interfaces import ORMOption
     from .mapper import Mapper
     from .session import Session
     from .state import InstanceState
     from ..engine.interfaces import _ExecuteOptions
     from ..sql import Select
-    from ..sql.selectable import ForUpdateArg
 
 _T = TypeVar("_T", bound=Any)
 _O = TypeVar("_O", bound=object)

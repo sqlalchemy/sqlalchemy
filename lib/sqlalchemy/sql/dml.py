@@ -83,7 +83,6 @@ if TYPE_CHECKING:
     from ._typing import _TypedColumnClauseArgument as _TCCA  # noqa
     from .base import ReadOnlyColumnCollection
     from .compiler import SQLCompiler
-    from .elements import ColumnElement
     from .elements import KeyedColumnElement
     from .selectable import _ColumnsClauseElement
     from .selectable import _SelectIterable

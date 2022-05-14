@@ -61,7 +61,6 @@ from ..sql.schema import default_is_scalar
 if typing.TYPE_CHECKING:
     from types import ModuleType
 
-    from .base import Connection
     from .base import Engine
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams

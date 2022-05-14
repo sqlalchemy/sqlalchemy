@@ -5030,13 +5030,6 @@ class Select(
         :func:`_sql.select` function.
 
         """
-        things = [
-            coercions.expect(
-                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
-            )
-            for ent in entities
-        ]
-
         self._raw_columns = [
             coercions.expect(
                 roles.ColumnsClauseRole, ent, apply_propagate_attrs=self

@@ -68,7 +68,7 @@ def t_select_3() -> None:
     # for aliased() to return some namespace of User that's not User.
     # AsAliased superclass type was tested for this but it had its own
     # awkwardnesses that aren't really worth it
-    x = ua(id=1, name="foo")
+    ua(id=1, name="foo")
 
     # EXPECTED_TYPE: Type[User]
     reveal_type(ua)

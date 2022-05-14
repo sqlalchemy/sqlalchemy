@@ -47,7 +47,6 @@ from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:
-    from .cache_key import CacheConst
     from .elements import BindParameter
     from .elements import ClauseElement
     from .roles import SQLRole

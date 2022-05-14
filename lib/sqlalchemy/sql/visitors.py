@@ -46,8 +46,12 @@ if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import prefix_anon_map as prefix_anon_map
     from ._py_util import cache_anon_map as anon_map
 else:
-    from sqlalchemy.cyextension.util import prefix_anon_map as prefix_anon_map
-    from sqlalchemy.cyextension.util import cache_anon_map as anon_map
+    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
+        prefix_anon_map as prefix_anon_map,
+    )
+    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
+        cache_anon_map as anon_map,
+    )
 
 
 __all__ = [

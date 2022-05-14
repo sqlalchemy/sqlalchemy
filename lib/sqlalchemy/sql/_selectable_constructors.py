@@ -34,7 +34,6 @@ from .selectable import TableSample
 from .selectable import Values
 
 if TYPE_CHECKING:
-    from ._typing import _ColumnsClauseArgument
     from ._typing import _FromClauseArgument
     from ._typing import _OnClauseArgument
     from ._typing import _SelectStatementForCompoundArgument

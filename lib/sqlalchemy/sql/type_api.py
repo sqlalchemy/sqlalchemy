@@ -45,13 +45,13 @@ if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .operators import OperatorType
     from .sqltypes import _resolve_value_to_type as _resolve_value_to_type
-    from .sqltypes import BOOLEANTYPE as BOOLEANTYPE
-    from .sqltypes import INDEXABLE as INDEXABLE
-    from .sqltypes import INTEGERTYPE as INTEGERTYPE
-    from .sqltypes import MATCHTYPE as MATCHTYPE
+    from .sqltypes import BOOLEANTYPE as BOOLEANTYPE  # noqa: F401
+    from .sqltypes import INDEXABLE as INDEXABLE  # noqa: F401
+    from .sqltypes import INTEGERTYPE as INTEGERTYPE  # noqa: F401
+    from .sqltypes import MATCHTYPE as MATCHTYPE  # noqa: F401
     from .sqltypes import NULLTYPE as NULLTYPE
-    from .sqltypes import STRINGTYPE as STRINGTYPE
-    from .sqltypes import TABLEVALUE as TABLEVALUE
+    from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
+    from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
     from ..engine.interfaces import Dialect
 
 

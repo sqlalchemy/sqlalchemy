@@ -36,13 +36,13 @@ from . import operators
 from . import roles
 from . import visitors
 from ._typing import is_text_clause
-from .annotation import _deep_annotate as _deep_annotate
-from .annotation import _deep_deannotate as _deep_deannotate
-from .annotation import _shallow_annotate as _shallow_annotate
+from .annotation import _deep_annotate as _deep_annotate  # noqa: F401
+from .annotation import _deep_deannotate as _deep_deannotate  # noqa: F401
+from .annotation import _shallow_annotate as _shallow_annotate  # noqa: F401
 from .base import _expand_cloned
 from .base import _from_objects
-from .cache_key import HasCacheKey as HasCacheKey
-from .ddl import sort_tables as sort_tables
+from .cache_key import HasCacheKey as HasCacheKey  # noqa: F401
+from .ddl import sort_tables as sort_tables  # noqa: F401
 from .elements import _find_columns as _find_columns
 from .elements import _label_reference
 from .elements import _textual_label_reference

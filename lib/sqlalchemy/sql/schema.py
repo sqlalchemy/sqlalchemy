@@ -86,7 +86,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
-    from .base import DedupeColumnCollection
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
     from .elements import BindParameter

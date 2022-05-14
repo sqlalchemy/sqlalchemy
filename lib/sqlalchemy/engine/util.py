@@ -22,10 +22,10 @@ if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import _distill_params_20 as _distill_params_20
     from ._py_util import _distill_raw_params as _distill_raw_params
 else:
-    from sqlalchemy.cyextension.util import (
+    from sqlalchemy.cyextension.util import (  # noqa: F401
         _distill_params_20 as _distill_params_20,
     )
-    from sqlalchemy.cyextension.util import (
+    from sqlalchemy.cyextension.util import (  # noqa: F401
         _distill_raw_params as _distill_raw_params,
     )
 

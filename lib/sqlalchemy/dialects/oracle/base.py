@@ -561,7 +561,6 @@ from ...types import BLOB
 from ...types import CHAR
 from ...types import CLOB
 from ...types import DOUBLE_PRECISION
-from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NCHAR
 from ...types import NVARCHAR

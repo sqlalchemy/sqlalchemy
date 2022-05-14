@@ -32,17 +32,25 @@ if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
 else:
     from sqlalchemy.cyextension.processors import (
         DecimalResultProcessor,
-    )  # noqa
-    from sqlalchemy.cyextension.processors import (
+    )
+    from sqlalchemy.cyextension.processors import (  # noqa: F401
         int_to_boolean as int_to_boolean,
     )
-    from sqlalchemy.cyextension.processors import str_to_date as str_to_date
-    from sqlalchemy.cyextension.processors import (
+    from sqlalchemy.cyextension.processors import (  # noqa: F401,E501
+        str_to_date as str_to_date,
+    )
+    from sqlalchemy.cyextension.processors import (  # noqa: F401
         str_to_datetime as str_to_datetime,
     )
-    from sqlalchemy.cyextension.processors import str_to_time as str_to_time
-    from sqlalchemy.cyextension.processors import to_float as to_float
-    from sqlalchemy.cyextension.processors import to_str as to_str
+    from sqlalchemy.cyextension.processors import (  # noqa: F401,E501
+        str_to_time as str_to_time,
+    )
+    from sqlalchemy.cyextension.processors import (  # noqa: F401,E501
+        to_float as to_float,
+    )
+    from sqlalchemy.cyextension.processors import (  # noqa: F401,E501
+        to_str as to_str,
+    )
 
     def to_decimal_processor_factory(target_class, scale):
         # Note that the scale argument is not taken into account for integer

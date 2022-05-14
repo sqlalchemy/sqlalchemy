@@ -402,7 +402,9 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
 
         def go():
-            t1t2_join_2 = select(t1.c.q).select_from(t1.join(t2)).alias()
+            t1t2_join_2 = (  # noqa: F841
+                select(t1.c.q).select_from(t1.join(t2)).alias()
+            )
             self.mapper_registry.map_imperatively(
                 Parent,
                 t2,

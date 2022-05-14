@@ -621,7 +621,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __sa_dataclass_metadata_key__ = "sa"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            bs: List["B"] = dataclasses.field(
+            bs: List["B"] = dataclasses.field(  # noqa: F821
                 default_factory=list, metadata={"sa": relationship()}
             )
 
@@ -642,7 +642,9 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[List["B"]] = relationship(back_populates="a")
+            bs: Mapped[List["B"]] = relationship(  # noqa: F821
+                back_populates="a"
+            )
 
         class B(decl_base):
             __tablename__ = "b"
@@ -717,10 +719,18 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs_list: Mapped[List["B"]] = relationship(viewonly=True)
-            bs_set: Mapped[Set["B"]] = relationship(viewonly=True)
-            bs_list_warg: Mapped[List["B"]] = relationship("B", viewonly=True)
-            bs_set_warg: Mapped[Set["B"]] = relationship("B", viewonly=True)
+            bs_list: Mapped[List["B"]] = relationship(  # noqa: F821
+                viewonly=True
+            )
+            bs_set: Mapped[Set["B"]] = relationship(  # noqa: F821
+                viewonly=True
+            )
+            bs_list_warg: Mapped[List["B"]] = relationship(  # noqa: F821
+                "B", viewonly=True
+            )
+            bs_set_warg: Mapped[Set["B"]] = relationship(  # noqa: F821
+                "B", viewonly=True
+            )
 
         class B(decl_base):
             __tablename__ = "b"
@@ -748,7 +758,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[Dict[str, "B"]] = relationship()
+            bs: Mapped[Dict[str, "B"]] = relationship()  # noqa: F821
 
         class B(decl_base):
             __tablename__ = "b"
@@ -771,7 +781,9 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[MappedCollection[str, "B"]] = relationship(
+            bs: Mapped[
+                MappedCollection[str, "B"]  # noqa: F821
+            ] = relationship(
                 collection_class=attribute_mapped_collection("name")
             )
 
@@ -1040,7 +1052,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             name: Mapped[str50]
 
-            employees: Mapped[Set["Person"]] = relationship()
+            employees: Mapped[Set["Person"]] = relationship()  # noqa: F821
 
         class Person(decl_base):
             __tablename__ = "person"

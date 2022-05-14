@@ -36,24 +36,23 @@ from ._typing import insp_is_aliased_class
 from ._typing import insp_is_mapper
 from ._typing import prop_is_relationship
 from .base import _class_to_mapper as _class_to_mapper
-from .base import _never_set as _never_set
-from .base import _none_set as _none_set
-from .base import attribute_str as attribute_str
+from .base import _never_set as _never_set  # noqa: F401
+from .base import _none_set as _none_set  # noqa: F401
+from .base import attribute_str as attribute_str  # noqa: F401
 from .base import class_mapper as class_mapper
 from .base import InspectionAttr as InspectionAttr
-from .base import instance_str as instance_str
+from .base import instance_str as instance_str  # noqa: F401
 from .base import object_mapper as object_mapper
-from .base import object_state as object_state
+from .base import object_state as object_state  # noqa: F401
 from .base import opt_manager_of_class
-from .base import state_attribute_str as state_attribute_str
-from .base import state_class_str as state_class_str
-from .base import state_str as state_str
+from .base import state_attribute_str as state_attribute_str  # noqa: F401
+from .base import state_class_str as state_class_str  # noqa: F401
+from .base import state_str as state_str  # noqa: F401
 from .interfaces import CriteriaOption
 from .interfaces import MapperProperty as MapperProperty
 from .interfaces import ORMColumnsClauseRole
 from .interfaces import ORMEntityColumnsClauseRole
 from .interfaces import ORMFromClauseRole
-from .interfaces import PropComparator as PropComparator
 from .path_registry import PathRegistry as PathRegistry
 from .. import event
 from .. import exc as sa_exc

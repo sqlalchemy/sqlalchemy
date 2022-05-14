@@ -512,19 +512,19 @@ class DefaultRoundTripTest(fixtures.TablesTest):
             r"DefaultGenerator object is deprecated; please use "
             r"the .scalar\(\) method."
         ):
-            x = connection.execute(t.c.col1.default)
+            connection.execute(t.c.col1.default)
         with expect_deprecated(
             r"Using the .execute\(\) method to invoke a "
             r"DefaultGenerator object is deprecated; please use "
             r"the .scalar\(\) method."
         ):
-            y = connection.execute(t.c.col2.default)
+            connection.execute(t.c.col2.default)
         with expect_deprecated(
             r"Using the .execute\(\) method to invoke a "
             r"DefaultGenerator object is deprecated; please use "
             r"the .scalar\(\) method."
         ):
-            z = connection.execute(t.c.col3.default)
+            connection.execute(t.c.col3.default)
 
     def test_standalone_default_scalar(self, connection):
         t = self.tables.default_test

@@ -486,7 +486,7 @@ class Relationship(
 
         def and_(
             self, *criteria: _ColumnExpressionArgument[bool]
-        ) -> interfaces.PropComparator[bool]:
+        ) -> PropComparator[bool]:
             """Add AND criteria.
 
             See :meth:`.PropComparator.and_` for an example.
@@ -1610,11 +1610,9 @@ class Relationship(
 
         return _resolver(self.parent.class_, self)
 
-    @util.preload_module("sqlalchemy.orm.mapper")
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
-        mapperlib = util.preloaded.orm_mapper
         if self.parent.non_primary and not class_mapper(
             self.parent.class_, configure=False
         ).has_property(self.key):

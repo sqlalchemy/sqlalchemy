@@ -211,7 +211,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
-    def test_multiple_entity_true(self):
+    def test_multiple_entity_true_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).tuples()
         is_false(query.is_single_entity)
@@ -6402,7 +6402,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         found_during_type_annotation
 
         """
-        User, Address = self.classes.User, self.classes.Address
+        User = self.classes.User
 
         sess = fixture_session()
         u1 = sess.get(User, 7)

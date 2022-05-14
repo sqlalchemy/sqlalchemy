@@ -90,8 +90,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _IdentityKeyType
     from ._typing import _InstanceDict
-    from ._typing import _O
-    from .context import FromStatement
     from .interfaces import ORMOption
     from .interfaces import UserDefinedOption
     from .mapper import Mapper
@@ -122,8 +120,6 @@ if typing.TYPE_CHECKING:
     from ..sql.base import Executable
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
-    from ..sql.schema import Table
-    from ..sql.selectable import Select
     from ..sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)

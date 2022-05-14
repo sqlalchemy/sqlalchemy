@@ -17,7 +17,7 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import NotRequired as NotRequired
+from typing_extensions import NotRequired as NotRequired  # noqa: F401
 
 from . import compat
 
@@ -41,13 +41,13 @@ if compat.py310:
     from typing import TypeGuard as TypeGuard
     from typing import TypeAlias as TypeAlias
 else:
-    from typing_extensions import TypeGuard as TypeGuard
-    from typing_extensions import TypeAlias as TypeAlias
+    from typing_extensions import TypeGuard as TypeGuard  # noqa: F401
+    from typing_extensions import TypeAlias as TypeAlias  # noqa: F401
 
 if typing.TYPE_CHECKING or compat.py38:
     from typing import SupportsIndex as SupportsIndex
 else:
-    from typing_extensions import SupportsIndex as SupportsIndex
+    from typing_extensions import SupportsIndex as SupportsIndex  # noqa: F401
 
 if typing.TYPE_CHECKING or compat.py310:
     from typing import Annotated as Annotated

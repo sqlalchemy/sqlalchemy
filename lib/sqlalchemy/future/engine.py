@@ -10,6 +10,6 @@ this module is legacy as 2.0 APIs are now standard.
 
 """
 
-from ..engine import Connection as Connection
-from ..engine import create_engine as create_engine
-from ..engine import Engine as Engine
+from ..engine import Connection as Connection  # noqa: F401
+from ..engine import create_engine as create_engine  # noqa: F401
+from ..engine import Engine as Engine  # noqa: F401

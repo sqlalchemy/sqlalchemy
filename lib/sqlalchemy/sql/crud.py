@@ -48,7 +48,6 @@ if TYPE_CHECKING:
     from .dml import ValuesBase
     from .elements import ColumnElement
     from .schema import _SQLExprDefault
-    from .selectable import TableClause
 
 REQUIRED = util.symbol(
     "REQUIRED",

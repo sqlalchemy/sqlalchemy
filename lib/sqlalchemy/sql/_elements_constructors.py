@@ -51,7 +51,6 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
-    from .functions import FunctionElement
     from .selectable import FromClause
     from .type_api import TypeEngine
 
