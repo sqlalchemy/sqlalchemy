@@ -1315,7 +1315,7 @@ class DefaultRequirements(SuiteRequirements):
     def async_dialect(self):
         """dialect makes use of await_() to invoke operations on the DBAPI."""
 
-        return only_on(
+        return self.asyncio + only_on(
             LambdaPredicate(
                 lambda config: config.db.dialect.is_async,
                 "Async dialect required",

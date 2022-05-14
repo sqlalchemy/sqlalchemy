@@ -1419,6 +1419,10 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def asyncio(self):
+        return self.greenlet
+
+    @property
     def greenlet(self):
         def go(config):
             try:
