@@ -653,6 +653,11 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
                     translated_error.pgcode = (
                         translated_error.sqlstate
                     ) = getattr(error, "sqlstate", None)
+
+                    translated_error.detail = getattr(error, "detail", None)
+                    translated_error.message = getattr(error, "message", None)
+                    translated_error.obj = error
+
                     raise translated_error from error
             else:
                 raise error
