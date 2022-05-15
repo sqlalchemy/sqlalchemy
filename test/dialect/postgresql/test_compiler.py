@@ -2282,40 +2282,102 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
+class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
 
-    def setup_test(self):
-        self.table1 = table1 = table(
+    run_create_tables = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        cls.table1 = table1 = table(
             "mytable",
             column("myid", Integer),
             column("name", String(128)),
             column("description", String(128)),
         )
-        md = MetaData()
-        self.table_with_metadata = Table(
+        cls.table_with_metadata = Table(
             "mytable",
-            md,
+            metadata,
             Column("myid", Integer, primary_key=True),
             Column("name", String(128)),
             Column("description", String(128)),
         )
-        self.unique_constr = schema.UniqueConstraint(
+        cls.unique_constr = schema.UniqueConstraint(
             table1.c.name, name="uq_name"
         )
-        self.excl_constr = ExcludeConstraint(
+        cls.excl_constr = ExcludeConstraint(
             (table1.c.name, "="),
             (table1.c.description, "&&"),
             name="excl_thing",
         )
-        self.excl_constr_anon = ExcludeConstraint(
-            (self.table_with_metadata.c.name, "="),
-            (self.table_with_metadata.c.description, "&&"),
-            where=self.table_with_metadata.c.description != "foo",
+        cls.excl_constr_anon = ExcludeConstraint(
+            (cls.table_with_metadata.c.name, "="),
+            (cls.table_with_metadata.c.description, "&&"),
+            where=cls.table_with_metadata.c.description != "foo",
         )
-        self.goofy_index = Index(
+        cls.goofy_index = Index(
             "goofy_index", table1.c.name, postgresql_where=table1.c.name > "m"
         )
+
+        Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+        Table(
+            "users_w_key",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), key="name_keyed"),
+        )
+
+    @testing.combinations("control", "excluded", "dict")
+    def test_set_excluded(self, scenario):
+        """test #8014, sending all of .excluded to set"""
+
+        if scenario == "control":
+            users = self.tables.users
+
+            stmt = insert(users)
+            self.assert_compile(
+                stmt.on_conflict_do_update(
+                    constraint=users.primary_key, set_=stmt.excluded
+                ),
+                "INSERT INTO users (id, name) VALUES (%(id)s, %(name)s) ON "
+                "CONFLICT (id) DO UPDATE "
+                "SET id = excluded.id, name = excluded.name",
+            )
+        else:
+            users_w_key = self.tables.users_w_key
+
+            stmt = insert(users_w_key)
+
+            if scenario == "excluded":
+                self.assert_compile(
+                    stmt.on_conflict_do_update(
+                        constraint=users_w_key.primary_key, set_=stmt.excluded
+                    ),
+                    "INSERT INTO users_w_key (id, name) "
+                    "VALUES (%(id)s, %(name_keyed)s) ON "
+                    "CONFLICT (id) DO UPDATE "
+                    "SET id = excluded.id, name = excluded.name",
+                )
+            else:
+                self.assert_compile(
+                    stmt.on_conflict_do_update(
+                        constraint=users_w_key.primary_key,
+                        set_={
+                            "id": stmt.excluded.id,
+                            "name_keyed": stmt.excluded.name_keyed,
+                        },
+                    ),
+                    "INSERT INTO users_w_key (id, name) "
+                    "VALUES (%(id)s, %(name_keyed)s) ON "
+                    "CONFLICT (id) DO UPDATE "
+                    "SET id = excluded.id, name = excluded.name",
+                )
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.table1
