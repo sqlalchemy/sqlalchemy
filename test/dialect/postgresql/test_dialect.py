@@ -282,6 +282,32 @@ class PGCodeTest(fixtures.TestBase):
             eq_(errmsg.orig.sqlstate, "23505")
 
 
+class PGExceptionDetailMessageTest(fixtures.TestBase):
+    __only_on__ = "postgresql"
+
+    def test_detail_message(self, metadata, connection):
+        t = Table("t", metadata, Column("id", Integer, primary_key=True, autoincrement=True))
+        t.create(connection)
+
+        errmsg = assert_raises(
+            exc.IntegrityError,
+            connection.execute,
+            t.insert(),
+            [{"id": 1}, {"id": 1}],
+        )
+
+        if testing.against("postgresql+asyncpg") or testing.against(
+            "postgresql+psycopg"
+        ):
+            eq_(errmsg.orig.detail, "Key (id)=(1) already exists.")
+            eq_(errmsg.orig.obj.detail, "Key (id)=(1) already exists.")
+
+            eq_(errmsg.orig.message, 'duplicate key value violates unique constraint "t_pkey"')
+            eq_(errmsg.orig.obj.message, 'duplicate key value violates unique constraint "t_pkey"')
+            eq_(errmsg.orig.obj.table_name, "t")
+            eq_(errmsg.orig.obj.constraint_name, "t_pkey")
+
+
 class ExecuteManyMode:
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
