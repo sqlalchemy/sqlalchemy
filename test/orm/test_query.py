@@ -2259,6 +2259,22 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         )
         assert a1.c.users_id is not None
 
+    def test_no_subquery_for_from_statement(self):
+        """
+        found_during_typing
+
+        """
+        User = self.classes.User
+
+        session = fixture_session()
+        q = session.query(User.id).from_statement(text("select * from user"))
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Can't call this method on a Query that uses from_statement\(\)",
+        ):
+            q.subquery()
+
     def test_reduced_subquery(self):
         User = self.classes.User
         ua = aliased(User)
@@ -6182,12 +6198,6 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users GROUP BY name",
         )
-
-    def test_orm_columns_accepts_text(self):
-        from sqlalchemy.orm.base import _orm_columns
-
-        t = text("x")
-        eq_(_orm_columns(t), [t])
 
     def test_order_by_w_eager_one(self):
         User = self.classes.User

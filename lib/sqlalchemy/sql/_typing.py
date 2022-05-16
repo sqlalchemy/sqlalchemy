@@ -61,10 +61,20 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 
 
+_CE = TypeVar("_CE", bound="ColumnElement[Any]")
+
+
 class _HasClauseElement(Protocol):
     """indicates a class that has a __clause_element__() method"""
 
     def __clause_element__(self) -> ColumnsClauseRole:
+        ...
+
+
+class _CoreAdapterProto(Protocol):
+    """protocol for the ClauseAdapter/ColumnAdapter.traverse() method."""
+
+    def __call__(self, obj: _CE) -> _CE:
         ...
 
 

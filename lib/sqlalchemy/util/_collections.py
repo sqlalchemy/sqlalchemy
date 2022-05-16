@@ -71,7 +71,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 EMPTY_SET: FrozenSet[Any] = frozenset()
 
 
-def merge_lists_w_ordering(a, b):
+def merge_lists_w_ordering(a: List[Any], b: List[Any]) -> List[Any]:
     """merge two lists, maintaining ordering as much as possible.
 
     this is to reconcile vars(cls) with cls.__annotations__.
@@ -450,7 +450,7 @@ def to_set(x):
         return x
 
 
-def to_column_set(x):
+def to_column_set(x: Any) -> Set[Any]:
     if x is None:
         return column_set()
     if not isinstance(x, column_set):

@@ -454,9 +454,23 @@ def _deep_annotate(
     return element
 
 
+@overload
+def _deep_deannotate(
+    element: Literal[None], values: Optional[Sequence[str]] = None
+) -> Literal[None]:
+    ...
+
+
+@overload
 def _deep_deannotate(
     element: _SA, values: Optional[Sequence[str]] = None
 ) -> _SA:
+    ...
+
+
+def _deep_deannotate(
+    element: Optional[_SA], values: Optional[Sequence[str]] = None
+) -> Optional[_SA]:
     """Deep copy the given element, removing annotations."""
 
     cloned: Dict[Any, SupportsAnnotations] = {}
@@ -482,9 +496,7 @@ def _deep_deannotate(
     return element
 
 
-def _shallow_annotate(
-    element: SupportsAnnotations, annotations: _AnnotationDict
-) -> SupportsAnnotations:
+def _shallow_annotate(element: _SA, annotations: _AnnotationDict) -> _SA:
     """Annotate the given ClauseElement and copy its internals so that
     internal objects refer to the new annotated object.
 

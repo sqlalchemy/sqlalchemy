@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -35,7 +36,9 @@ from sqlalchemy.testing.schema import Table
 from test.orm.test_events import _RemoveListeners
 
 
-class ConcreteTest(fixtures.MappedTest):
+class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
+    __dialect__ = "default"
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -264,6 +267,10 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "sometype",
         )
+
+        # found_during_type_annotation
+        # test the comparator returned by ConcreteInheritedProperty
+        self.assert_compile(Manager.type == "x", "pjoin.type = :type_1")
 
         jenn = Engineer("Jenn", "knows how to program")
         hacker = Hacker("Karina", "Badass", "knows how to hack")

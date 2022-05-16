@@ -258,7 +258,7 @@ class MypyPluginTest(fixtures.TestBase):
                             )
 
                             expected_msg = re.sub(
-                                r"(int|str|float|bool)",
+                                r"\b(int|str|float|bool)\b",
                                 lambda m: rf"builtins.{m.group(0)}\*?",
                                 expected_msg,
                             )

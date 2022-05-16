@@ -1305,8 +1305,8 @@ class Comparator(interfaces.PropComparator[_T]):
         return ret_expr
 
     @util.non_memoized_property
-    def property(self) -> Optional[interfaces.MapperProperty[_T]]:
-        return None
+    def property(self) -> interfaces.MapperProperty[_T]:
+        raise NotImplementedError()
 
     def adapt_to_entity(
         self, adapt_to_entity: AliasedInsp[Any]
@@ -1344,7 +1344,7 @@ class ExprComparator(Comparator[_T]):
             return [(self.expression, value)]
 
     @util.non_memoized_property
-    def property(self) -> Optional[MapperProperty[_T]]:
+    def property(self) -> MapperProperty[_T]:
         # this accessor is not normally used, however is accessed by things
         # like ORM synonyms if the hybrid is used in this context; the
         # .property attribute is not necessarily accessible

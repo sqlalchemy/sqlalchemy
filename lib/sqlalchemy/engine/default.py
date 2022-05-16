@@ -64,6 +64,7 @@ if typing.TYPE_CHECKING:
     from .base import Engine
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams
+    from .interfaces import _DBAPICursorDescription
     from .interfaces import _DBAPIMultiExecuteParams
     from .interfaces import _ExecuteOptions
     from .interfaces import _IsolationLevel
@@ -1285,8 +1286,8 @@ class DefaultExecutionContext(ExecutionContext):
     def handle_dbapi_exception(self, e):
         pass
 
-    @property
-    def rowcount(self):
+    @util.non_memoized_property
+    def rowcount(self) -> int:
         return self.cursor.rowcount
 
     def supports_sane_rowcount(self):
@@ -1304,7 +1305,7 @@ class DefaultExecutionContext(ExecutionContext):
                 strategy = _cursor.BufferedRowCursorFetchStrategy(
                     self.cursor, self.execution_options
                 )
-            cursor_description = (
+            cursor_description: _DBAPICursorDescription = (
                 strategy.alternate_cursor_description
                 or self.cursor.description
             )

@@ -82,6 +82,22 @@ class _InstanceDictProto(Protocol):
         ...
 
 
+class _InstallLoaderCallableProto(Protocol[_O]):
+    """used at result loading time to install a _LoaderCallable callable
+    upon a specific InstanceState, which will be used to populate an
+    attribute when that attribute is accessed.
+
+    Concrete examples are per-instance deferred column loaders and
+    relationship lazy loaders.
+
+    """
+
+    def __call__(
+        self, state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
+    ) -> None:
+        ...
+
+
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     """tracks state information at the instance level.
@@ -658,7 +674,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     @classmethod
     def _instance_level_callable_processor(
         cls, manager: ClassManager[_O], fn: _LoaderCallable, key: Any
-    ) -> Callable[[InstanceState[_O], _InstanceDict, Row[Any]], None]:
+    ) -> _InstallLoaderCallableProto[_O]:
         impl = manager[key].impl
         if is_collection_impl(impl):
             fixed_impl = impl

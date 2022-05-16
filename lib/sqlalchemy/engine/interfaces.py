@@ -133,17 +133,7 @@ class DBAPICursor(Protocol):
     @property
     def description(
         self,
-    ) -> Sequence[
-        Tuple[
-            str,
-            "DBAPIType",
-            Optional[int],
-            Optional[int],
-            Optional[int],
-            Optional[int],
-            Optional[bool],
-        ]
-    ]:
+    ) -> _DBAPICursorDescription:
         """The description attribute of the Cursor.
 
         .. seealso::
@@ -217,7 +207,15 @@ _DBAPIMultiExecuteParams = Union[
 _DBAPIAnyExecuteParams = Union[
     _DBAPIMultiExecuteParams, _DBAPISingleExecuteParams
 ]
-_DBAPICursorDescription = Tuple[str, Any, Any, Any, Any, Any, Any]
+_DBAPICursorDescription = Tuple[
+    str,
+    "DBAPIType",
+    Optional[int],
+    Optional[int],
+    Optional[int],
+    Optional[int],
+    Optional[bool],
+]
 
 _AnySingleExecuteParams = _DBAPISingleExecuteParams
 _AnyMultiExecuteParams = _DBAPIMultiExecuteParams
@@ -2296,6 +2294,9 @@ class ExecutionContext:
     execution.
 
     """
+
+    engine: Engine
+    """engine which the Connection is associated with"""
 
     connection: Connection
     """Connection object which can be freely used by default value

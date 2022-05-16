@@ -16,6 +16,12 @@ basic add/delete mutation.
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Optional
+from typing import overload
+from typing import TYPE_CHECKING
+from typing import Union
+
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
@@ -23,17 +29,27 @@ from . import relationships
 from . import strategies
 from . import util as orm_util
 from .base import object_mapper
+from .base import PassiveFlag
 from .query import Query
 from .session import object_session
 from .. import exc
 from .. import log
 from .. import util
 from ..engine import result
+from ..util.typing import Literal
+
+if TYPE_CHECKING:
+    from ._typing import _InstanceDict
+    from .attributes import _AdaptedCollectionProtocol
+    from .attributes import AttributeEventToken
+    from .attributes import CollectionAdapter
+    from .base import LoaderCallableStatus
+    from .state import InstanceState
 
 
 @log.class_logger
 @relationships.Relationship.strategy_for(lazy="dynamic")
-class DynaLoader(strategies.AbstractRelationshipLoader):
+class DynaLoader(strategies.AbstractRelationshipLoader, log.Identified):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
         if not self.uselist:
@@ -106,13 +122,47 @@ class DynamicAttributeImpl(
         else:
             return self.query_class(self, state)
 
+    @overload
     def get_collection(
         self,
-        state,
-        dict_,
-        user_data=None,
-        passive=attributes.PASSIVE_NO_INITIALIZE,
-    ):
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: Literal[None] = ...,
+        passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
+    ) -> CollectionAdapter:
+        ...
+
+    @overload
+    def get_collection(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: _AdaptedCollectionProtocol = ...,
+        passive: PassiveFlag = ...,
+    ) -> CollectionAdapter:
+        ...
+
+    @overload
+    def get_collection(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: Optional[_AdaptedCollectionProtocol] = ...,
+        passive: PassiveFlag = ...,
+    ) -> Union[
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
+    ]:
+        ...
+
+    def get_collection(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
+    ) -> Union[
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
+    ]:
         if not passive & attributes.SQL_OK:
             data = self._get_collection_history(state, passive).added_items
         else:
@@ -170,15 +220,15 @@ class DynamicAttributeImpl(
 
     def set(
         self,
-        state,
-        dict_,
-        value,
-        initiator=None,
-        passive=attributes.PASSIVE_OFF,
-        check_old=None,
-        pop=False,
-        _adapt=True,
-    ):
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        value: Any,
+        initiator: Optional[AttributeEventToken] = None,
+        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
+        check_old: Any = None,
+        pop: bool = False,
+        _adapt: bool = True,
+    ) -> None:
         if initiator and initiator.parent_token is self.parent_token:
             return
 

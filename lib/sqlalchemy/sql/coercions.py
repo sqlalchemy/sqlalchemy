@@ -56,6 +56,7 @@ if typing.TYPE_CHECKING:
     from .elements import ColumnClause
     from .elements import ColumnElement
     from .elements import DQLDMLClauseElement
+    from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .schema import Column
     from .selectable import _ColumnsClauseElement
@@ -199,6 +200,15 @@ def expect(
 
 @overload
 def expect(
+    role: Type[roles.LabeledColumnExprRole[Any]],
+    element: _ColumnExpressionArgument[_T],
+    **kw: Any,
+) -> NamedColumn[_T]:
+    ...
+
+
+@overload
+def expect(
     role: Union[
         Type[roles.ExpressionElementRole[Any]],
         Type[roles.LimitOffsetRole],
@@ -217,6 +227,7 @@ def expect(
         Type[roles.LimitOffsetRole],
         Type[roles.WhereHavingRole],
         Type[roles.OnClauseRole],
+        Type[roles.ColumnArgumentRole],
     ],
     element: Any,
     **kw: Any,

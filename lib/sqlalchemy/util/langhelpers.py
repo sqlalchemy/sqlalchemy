@@ -266,13 +266,31 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         metadata: Dict[str, Optional[str]] = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
         metadata["name"] = fn.__name__
-        code = (
-            """\
+
+        # look for __ positional arguments.  This is a convention in
+        # SQLAlchemy that arguments should be passed positionally
+        # rather than as keyword
+        # arguments.  note that apply_pos doesn't currently work in all cases
+        # such as when a kw-only indicator "*" is present, which is why
+        # we limit the use of this to just that case we can detect.  As we add
+        # more kinds of methods that use @decorator, things may have to
+        # be further improved in this area
+        if "__" in repr(spec[0]):
+            code = (
+                """\
+def %(name)s%(grouped_args)s:
+    return %(target)s(%(fn)s, %(apply_pos)s)
+"""
+                % metadata
+            )
+        else:
+            code = (
+                """\
 def %(name)s%(grouped_args)s:
     return %(target)s(%(fn)s, %(apply_kw)s)
 """
-            % metadata
-        )
+                % metadata
+            )
         env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
 
         decorated = cast(
@@ -1235,10 +1253,10 @@ class HasMemoized:
             return result
 
     @classmethod
-    def memoized_instancemethod(cls, fn: Any) -> Any:
+    def memoized_instancemethod(cls, fn: _F) -> _F:
         """Decorate a method memoize its return value."""
 
-        def oneshot(self, *args, **kw):
+        def oneshot(self: Any, *args: Any, **kw: Any) -> Any:
             result = fn(self, *args, **kw)
 
             def memo(*a, **kw):
@@ -1250,7 +1268,7 @@ class HasMemoized:
             self._memoized_keys |= {fn.__name__}
             return result
 
-        return update_wrapper(oneshot, fn)
+        return update_wrapper(oneshot, fn)  # type: ignore
 
 
 if TYPE_CHECKING:

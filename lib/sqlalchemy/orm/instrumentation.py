@@ -66,7 +66,7 @@ from ..util.typing import Protocol
 if TYPE_CHECKING:
     from ._typing import _RegistryType
     from .attributes import AttributeImpl
-    from .attributes import InstrumentedAttribute
+    from .attributes import QueryableAttribute
     from .collections import _AdaptedCollectionProtocol
     from .collections import _CollectionFactoryType
     from .decl_base import _MapperConfig
@@ -96,7 +96,7 @@ class _ManagerFactory(Protocol):
 
 class ClassManager(
     HasMemoized,
-    Dict[str, "InstrumentedAttribute[Any]"],
+    Dict[str, "QueryableAttribute[Any]"],
     Generic[_O],
     EventTarget,
 ):
@@ -117,7 +117,14 @@ class ClassManager(
     factory: Optional[_ManagerFactory]
 
     declarative_scan: Optional[weakref.ref[_MapperConfig]] = None
-    registry: Optional[_RegistryType] = None
+
+    registry: _RegistryType
+
+    if not TYPE_CHECKING:
+        # starts as None during setup
+        registry = None
+
+    class_: Type[_O]
 
     _bases: List[ClassManager[Any]]
 
@@ -312,7 +319,7 @@ class ClassManager(
         else:
             return default
 
-    def _attr_has_impl(self, key):
+    def _attr_has_impl(self, key: str) -> bool:
         """Return True if the given attribute is fully initialized.
 
         i.e. has an impl.
@@ -366,7 +373,12 @@ class ClassManager(
     def dict_getter(self):
         return _default_dict_getter
 
-    def instrument_attribute(self, key, inst, propagated=False):
+    def instrument_attribute(
+        self,
+        key: str,
+        inst: QueryableAttribute[Any],
+        propagated: bool = False,
+    ) -> None:
         if propagated:
             if key in self.local_attrs:
                 return  # don't override local attr with inherited attr
@@ -429,7 +441,7 @@ class ClassManager(
             delattr(self.class_, self.MANAGER_ATTR)
 
     def install_descriptor(
-        self, key: str, inst: InstrumentedAttribute[Any]
+        self, key: str, inst: QueryableAttribute[Any]
     ) -> None:
         if key in (self.STATE_ATTR, self.MANAGER_ATTR):
             raise KeyError(
@@ -490,7 +502,11 @@ class ClassManager(
     # InstanceState management
 
     def new_instance(self, state: Optional[InstanceState[_O]] = None) -> _O:
-        instance = self.class_.__new__(self.class_)
+        # here, we would prefer _O to be bound to "object"
+        # so that mypy sees that __new__ is present.   currently
+        # it's bound to Any as there were other problems not having
+        # it that way but these can be revisited
+        instance = self.class_.__new__(self.class_)  # type: ignore
         if state is None:
             state = self._state_constructor(instance, self)
         self._state_setter(instance, state)

@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 """SQLAlchemy ORM exceptions."""
 
@@ -12,13 +11,22 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Optional
+from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
 
 from .. import exc as sa_exc
 from .. import util
 from ..exc import MultipleResultsFound  # noqa
 from ..exc import NoResultFound  # noqa
 
+if TYPE_CHECKING:
+    from .interfaces import LoaderStrategy
+    from .interfaces import MapperProperty
+    from .state import InstanceState
+
+_T = TypeVar("_T", bound=Any)
 
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""
@@ -100,14 +108,14 @@ class UnmappedInstanceError(UnmappedError):
                     )
         UnmappedError.__init__(self, msg)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return self.__class__, (None, self.args[0])
 
 
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
 
-    def __init__(self, cls: Type[object], msg: Optional[str] = None):
+    def __init__(self, cls: Type[_T], msg: Optional[str] = None):
         if not msg:
             msg = _default_unmapped(cls)
         UnmappedError.__init__(self, msg)
@@ -137,7 +145,7 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
     """
 
     @util.preload_module("sqlalchemy.orm.base")
-    def __init__(self, state, msg=None):
+    def __init__(self, state: InstanceState[Any], msg: Optional[str] = None):
         base = util.preloaded.orm_base
 
         if not msg:
@@ -148,7 +156,7 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
 
         sa_exc.InvalidRequestError.__init__(self, msg)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return self.__class__, (None, self.args[0])
 
 
@@ -161,11 +169,11 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
 
     def __init__(
         self,
-        applied_to_property_type,
-        requesting_property,
-        applies_to,
-        actual_strategy_type,
-        strategy_key,
+        applied_to_property_type: Type[Any],
+        requesting_property: MapperProperty[Any],
+        applies_to: Optional[Type[MapperProperty[Any]]],
+        actual_strategy_type: Optional[Type[LoaderStrategy]],
+        strategy_key: Tuple[Any, ...],
     ):
         if actual_strategy_type is None:
             sa_exc.InvalidRequestError.__init__(
@@ -174,6 +182,7 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
                 % (strategy_key, requesting_property),
             )
         else:
+            assert applies_to is not None
             sa_exc.InvalidRequestError.__init__(
                 self,
                 'Can\'t apply "%s" strategy to property "%s", '
@@ -188,7 +197,8 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
             )
 
 
-def _safe_cls_name(cls):
+def _safe_cls_name(cls: Type[Any]) -> str:
+    cls_name: Optional[str]
     try:
         cls_name = ".".join((cls.__module__, cls.__name__))
     except AttributeError:
@@ -199,7 +209,7 @@ def _safe_cls_name(cls):
 
 
 @util.preload_module("sqlalchemy.orm.base")
-def _default_unmapped(cls) -> Optional[str]:
+def _default_unmapped(cls: Type[Any]) -> Optional[str]:
     base = util.preloaded.orm_base
 
     try:
