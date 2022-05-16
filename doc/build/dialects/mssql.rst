@@ -29,6 +29,10 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 Types which are specific to SQL Server, or have SQL Server-specific
 construction arguments, are as follows:
 
+.. note: where :noindex: is used, indicates a type that is not redefined
+   in the dialect module, just imported from sqltypes.  this avoids warnings
+   in the sphinx build
+
 .. currentmodule:: sqlalchemy.dialects.mssql
 
 .. autoclass:: BIT
@@ -37,6 +41,7 @@ construction arguments, are as follows:
 
 .. autoclass:: CHAR
    :members: __init__
+   :noindex:
 
 
 .. autoclass:: DATETIME2
@@ -61,6 +66,7 @@ construction arguments, are as follows:
 
 .. autoclass:: NCHAR
    :members: __init__
+   :noindex:
 
 
 .. autoclass:: NTEXT
@@ -69,7 +75,7 @@ construction arguments, are as follows:
 
 .. autoclass:: NVARCHAR
    :members: __init__
-
+   :noindex:
 
 .. autoclass:: REAL
    :members: __init__
@@ -91,7 +97,7 @@ construction arguments, are as follows:
 
 .. autoclass:: TEXT
    :members: __init__
-
+   :noindex:
 
 .. autoclass:: TIME
    :members: __init__
@@ -110,9 +116,11 @@ construction arguments, are as follows:
 
 .. autoclass:: VARBINARY
    :members: __init__
+   :noindex:
 
 .. autoclass:: VARCHAR
    :members: __init__
+   :noindex:
 
 
 .. autoclass:: XML

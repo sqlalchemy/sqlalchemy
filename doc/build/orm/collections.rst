@@ -658,8 +658,6 @@ Various internal methods.
 
 .. autofunction:: bulk_replace
 
-.. autoclass:: collection
-
 .. autodata:: collection_adapter
 
 .. autoclass:: CollectionAdapter

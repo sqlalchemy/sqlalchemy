@@ -34,7 +34,7 @@ This document details individual issue-level changes made throughout
         :tickets: 7936
 
         Fixed regression where the change made for :ticket:`7861`, released in
-        version 1.4.33, that brought the :class:`.Insert` construct to be partially
+        version 1.4.33, that brought the :class:`_sql.Insert` construct to be partially
         recognized as an ORM-enabled statement did not properly transfer the
         correct mapper / mapped table state to the :class:`.Session`, causing the
         :meth:`.Session.get_bind` method to fail for a :class:`.Session` that was
@@ -58,7 +58,7 @@ This document details individual issue-level changes made throughout
         :tags: bug, postgresql
         :tickets: 6515
 
-        Fixed bug in :class:`.ARRAY` datatype in combination with :class:`.Enum` on
+        Fixed bug in :class:`_sqltypes.ARRAY` datatype in combination with :class:`.Enum` on
         PostgreSQL where using the ``.any()`` or ``.all()`` methods to render SQL
         ANY() or ALL(), given members of the Python enumeration as arguments, would
         produce a type adaptation failure on all drivers.
@@ -87,7 +87,7 @@ This document details individual issue-level changes made throughout
         :tickets: 7930
 
         Fixed an issue in the psycopg2 dialect when using the
-        :paramref:`.create_engine.pool_pre_ping` parameter which would cause
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter which would cause
         user-configured ``AUTOCOMMIT`` isolation level to be inadvertently reset by
         the "ping" handler.
 
@@ -105,15 +105,15 @@ This document details individual issue-level changes made throughout
         :tags: bug, engine
         :tickets: 7953
 
-        Added a warning regarding a bug which exists in the :meth:`.Result.columns`
-        method when passing 0 for the index in conjunction with a :class:`.Result`
+        Added a warning regarding a bug which exists in the :meth:`_result.Result.columns`
+        method when passing 0 for the index in conjunction with a :class:`_result.Result`
         that will return a single ORM entity, which indicates that the current
-        behavior of :meth:`.Result.columns` is broken in this case as the
-        :class:`.Result` object will yield scalar values and not :class:`.Row`
+        behavior of :meth:`_result.Result.columns` is broken in this case as the
+        :class:`_result.Result` object will yield scalar values and not :class:`.Row`
         objects. The issue will be fixed in 2.0, which would be a
         backwards-incompatible change for code that relies on the current broken
         behavior. Code which wants to receive a collection of scalar values should
-        use the :meth:`.Result.scalars` method, which will return a new
+        use the :meth:`_result.Result.scalars` method, which will return a new
         :class:`.ScalarResult` object that yields non-row scalar objects.
 
 
@@ -199,7 +199,7 @@ This document details individual issue-level changes made throughout
         :tickets: 7878
 
         Fixed regression caused by :ticket:`7861` where invoking an
-        :class:`.Insert` construct which contained ORM entities directly via
+        :class:`_sql.Insert` construct which contained ORM entities directly via
         :meth:`_orm.Session.execute` would fail.
 
     .. change::
@@ -226,8 +226,8 @@ This document details individual issue-level changes made throughout
         and COMMIT log messages do not actually indicate a real transaction when
         the AUTOCOMMIT isolation level is in use; messaging has been extended to
         include the BEGIN message itself, and the messaging has also been fixed to
-        accommodate when the :class:`.Engine` level
-        :paramref:`.create_engine.isolation_level` parameter was used directly.
+        accommodate when the :class:`_engine.Engine` level
+        :paramref:`_sa.create_engine.isolation_level` parameter was used directly.
 
     .. change::
         :tags: bug, mssql, regression
@@ -314,7 +314,7 @@ This document details individual issue-level changes made throughout
         :tags: usecase, engine
         :tickets: 7877, 7815
 
-        Added new parameter :paramref:`.Engine.dispose.close`, defaulting to True.
+        Added new parameter :paramref:`_engine.Engine.dispose.close`, defaulting to True.
         When False, the engine disposal does not touch the connections in the old
         pool at all, simply dropping the pool and replacing it. This use case is so
         that when the original pool is transferred from a parent process, the
@@ -339,7 +339,7 @@ This document details individual issue-level changes made throughout
 
         Added new attributes :attr:`.UpdateBase.returning_column_descriptions` and
         :attr:`.UpdateBase.entity_description` to allow for inspection of ORM
-        attributes and entities that are installed as part of an :class:`.Insert`,
+        attributes and entities that are installed as part of an :class:`_sql.Insert`,
         :class:`.Update`, or :class:`.Delete` construct. The
         :attr:`.Select.column_descriptions` accessor is also now implemented for
         Core-only selectables.
@@ -1638,15 +1638,15 @@ This document details individual issue-level changes made throughout
         :tags: bug, orm
         :tickets: 7128
 
-        Fixed bug where iterating a :class:`.Result` from a :class:`_orm.Session`
+        Fixed bug where iterating a :class:`_result.Result` from a :class:`_orm.Session`
         after that :class:`_orm.Session` were closed would partially attach objects
         to that session in an essentially invalid state. It now raises an exception
         with a link to new documentation if an **un-buffered** result is iterated
         from a :class:`_orm.Session` that was closed or otherwise had the
-        :meth:`_orm.Session.expunge_all` method called after that :class:`.Result`
+        :meth:`_orm.Session.expunge_all` method called after that :class:`_result.Result`
         was generated. The ``prebuffer_rows`` execution option, as is used
         automatically by the asyncio extension for client-side result sets, may be
-        used to produce a :class:`.Result` where the ORM objects are prebuffered,
+        used to produce a :class:`_result.Result` where the ORM objects are prebuffered,
         and in this case iterating the result will produce a series of detached
         objects.
 
@@ -3484,7 +3484,7 @@ This document details individual issue-level changes made throughout
         :tickets: 6361
 
         Fixed issue where usage of an explicit :class:`.Sequence` would produce
-        inconsistent "inline" behavior for an :class:`.Insert` construct that
+        inconsistent "inline" behavior for an :class:`_sql.Insert` construct that
         includes multiple values phrases; the first seq would be inline but
         subsequent ones would be "pre-execute", leading to inconsistent sequence
         ordering. The sequence expressions are now fully inline.
@@ -4931,7 +4931,7 @@ This document details individual issue-level changes made throughout
         :tags: bug, engine, sqlite
         :tickets: 5845
 
-        Fixed bug in the 2.0 "future" version of :class:`.Engine` where emitting
+        Fixed bug in the 2.0 "future" version of :class:`_engine.Engine` where emitting
         SQL during the :meth:`.EngineEvents.begin` event hook would cause a
         re-entrant (recursive) condition due to autobegin, affecting among other
         things the recipe documented for SQLite to allow for savepoints and

@@ -1088,8 +1088,8 @@ matching objects locally present in the :class:`_orm.Session`. See the section
 Inspecting entities and columns from ORM-enabled SELECT and DML statements
 ==========================================================================
 
-The :func:`.select` construct, as well as the :func:`.insert`, :func:`.update`
-and :func:`.delete` constructs (for the latter DML constructs, as of SQLAlchemy
+The :func:`_sql.select` construct, as well as the :func:`_sql.insert`, :func:`_sql.update`
+and :func:`_sql.delete` constructs (for the latter DML constructs, as of SQLAlchemy
 1.4.33), all support the ability to inspect the entities in which these
 statements are created against, as well as the columns and datatypes that would
 be returned in a result set.
@@ -1145,7 +1145,7 @@ cases::
    this would raise ``NotImplementedError``.
 
 
-For :func:`.insert`, :func:`.update` and :func:`.delete` constructs, there are
+For :func:`_sql.insert`, :func:`.update` and :func:`.delete` constructs, there are
 two separate attributes. One is :attr:`.UpdateBase.entity_description` which
 returns information about the primary ORM entity and database table which the
 DML construct would be affecting::

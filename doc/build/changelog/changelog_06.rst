@@ -2,6 +2,7 @@
 0.6 Changelog
 =============
 
+
 .. changelog::
     :version: 0.6.9
     :released: Sat May 05 2012

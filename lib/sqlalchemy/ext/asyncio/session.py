@@ -312,7 +312,9 @@ class AsyncSession(ReversibleProxy):
         **kw
     ):
         """Execute a statement and return a streaming
-        :class:`_asyncio.AsyncResult` object."""
+        :class:`_asyncio.AsyncResult` object.
+
+        """
 
         if execution_options:
             execution_options = util.immutabledict(execution_options).union(
@@ -516,8 +518,8 @@ class AsyncSession(ReversibleProxy):
         This method may also be used to establish execution options for the
         database connection used by the current transaction.
 
-        .. versionadded:: 1.4.24  Added **kw arguments which are passed through
-           to the underlying :meth:`_orm.Session.connection` method.
+        .. versionadded:: 1.4.24  Added \**kw arguments which are passed
+           through to the underlying :meth:`_orm.Session.connection` method.
 
         .. seealso::
 

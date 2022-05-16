@@ -1167,7 +1167,11 @@ class HasMemoized(object):
         self._memoized_keys |= {key}
 
     class memoized_attribute(object):
-        """A read-only @property that is only evaluated once."""
+        """A read-only @property that is only evaluated once.
+
+        :meta private:
+
+        """
 
         def __init__(self, fget, doc=None):
             self.fget = fget

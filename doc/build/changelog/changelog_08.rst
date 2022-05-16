@@ -7,6 +7,7 @@
     .. include:: changelog_07.rst
         :start-line: 5
 
+
 .. changelog::
     :version: 0.8.7
     :released: July 22, 2014

@@ -901,7 +901,7 @@ LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
 
     Below, all column names are given a label so that the two same-named
     columns ``columna`` are disambiguated as ``table1_columna`` and
-    ``table2_columna`::
+    ``table2_columna``::
 
         >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_TABLENAME_PLUS_COL
         >>> table1 = table("table1", column("columna"), column("columnb"))

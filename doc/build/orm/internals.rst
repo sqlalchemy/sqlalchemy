@@ -16,7 +16,6 @@ sections, are listed here.
 
 .. autoclass:: ClassManager
     :members:
-    :inherited-members:
 
 .. autoclass:: ColumnProperty
     :members:

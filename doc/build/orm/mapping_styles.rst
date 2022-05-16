@@ -194,7 +194,7 @@ Imperative Mapping with Dataclasses and Attrs
 ---------------------------------------------
 
 As described in the section :ref:`orm_declarative_dataclasses`, the
-``@dataclass`` decorator and the attrs_ library both work as class
+``@dataclass`` decorator and the ``attrs`` library both work as class
 decorators that are applied to a class first, before it is passed to
 SQLAlchemy for mapping.   Just like we can use the
 :meth:`_orm.registry.mapped` decorator in order to apply declarative-style

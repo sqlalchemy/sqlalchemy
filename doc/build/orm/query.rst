@@ -43,6 +43,7 @@ ORM-Specific Query Constructs
 
 .. autoclass:: sqlalchemy.orm.Load
     :members:
+    :noindex:
 
 .. autofunction:: sqlalchemy.orm.with_loader_criteria
 
