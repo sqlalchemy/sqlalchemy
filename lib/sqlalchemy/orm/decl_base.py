@@ -876,19 +876,26 @@ class _ClassScanMapperConfig(_MapperConfig):
         name_to_prop_key = collections.defaultdict(set)
         for key, c in list(our_stuff.items()):
             if isinstance(c, _MapsColumns):
+
+                mp_to_assign = c.mapper_property_to_assign
+                if mp_to_assign:
+                    our_stuff[key] = mp_to_assign
+                else:
+                    # if no mapper property to assign, this currently means
+                    # this is a MappedColumn that will produce a Column for us
+                    del our_stuff[key]
+
                 for col in c.columns_to_assign:
                     if not isinstance(c, Composite):
                         name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
 
-                # remove object from the dictionary that will be passed
-                # as mapper(properties={...}) if it is not a MapperProperty
-                # (i.e. this currently means it's a MappedColumn)
-                mp_to_assign = c.mapper_property_to_assign
-                if mp_to_assign:
-                    our_stuff[key] = mp_to_assign
-                else:
-                    del our_stuff[key]
+                    # if this is a MappedColumn and the attribute key we
+                    # have is not what the column has for its key, map the
+                    # Column explicitly under the attribute key name.
+                    # otherwise, Mapper will map it under the column key.
+                    if mp_to_assign is None and key != col.key:
+                        our_stuff[key] = col
 
             elif isinstance(c, Column):
                 # undefer previously occurred here, and now occurs earlier.

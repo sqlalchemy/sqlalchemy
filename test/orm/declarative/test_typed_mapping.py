@@ -110,6 +110,36 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data = mapped_column()
 
+    @testing.combinations("key", "name", "both", argnames="case")
+    @testing.combinations(True, False, argnames="deferred")
+    @testing.combinations(True, False, argnames="use_add_property")
+    def test_separate_name(self, decl_base, case, deferred, use_add_property):
+        if case == "key":
+            args = {"key": "data_"}
+        elif case == "name":
+            args = {"name": "data_"}
+        else:
+            args = {"name": "data_", "key": "data_"}
+
+        if deferred:
+            args["deferred"] = True
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if not use_add_property:
+                data: Mapped[str] = mapped_column(**args)
+
+        if use_add_property:
+            args["type_"] = String()
+            A.data = mapped_column(**args)
+
+        assert not hasattr(A, "data_")
+        is_(A.data.property.expression, A.__table__.c.data_)
+        eq_(A.__table__.c.data_.key, "data_")
+
     def test_construct_rhs(self, decl_base):
         class User(decl_base):
             __tablename__ = "users"
