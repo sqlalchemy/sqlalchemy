@@ -1225,7 +1225,11 @@ class HasMemoized:
         self._memoized_keys |= {key}
 
     class memoized_attribute(memoized_property[_T]):
-        """A read-only @property that is only evaluated once."""
+        """A read-only @property that is only evaluated once.
+
+        :meta private:
+
+        """
 
         fget: Callable[..., _T]
         __doc__: Optional[str]
@@ -1254,7 +1258,11 @@ class HasMemoized:
 
     @classmethod
     def memoized_instancemethod(cls, fn: _F) -> _F:
-        """Decorate a method memoize its return value."""
+        """Decorate a method memoize its return value.
+
+        :meta private:
+
+        """
 
         def oneshot(self: Any, *args: Any, **kw: Any) -> Any:
             result = fn(self, *args, **kw)

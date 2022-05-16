@@ -20,7 +20,6 @@
         :start-line: 5
 
 
-
 .. changelog::
     :version: 1.1.18
     :released: March 6, 2018
@@ -1076,7 +1075,7 @@
         :tickets: 3842
 
         Fixed bug where newly added warning for primary key on insert w/o
-        autoincrement setting (see :ref:`change_3216`) would fail to emit
+        autoincrement setting (see :ticket:`3216`) would fail to emit
         correctly when invoked upon a lower-case :func:`.table` construct.
 
     .. change::  3852

@@ -384,7 +384,7 @@ at once, such as::
     :ref:`multipart_schema_names` - describes use of dotted schema names
     with the SQL Server dialect.
 
-    :ref:`schema_table_reflection`
+    :ref:`metadata_reflection_schemas`
 
 
 .. _schema_metadata_schema_name:

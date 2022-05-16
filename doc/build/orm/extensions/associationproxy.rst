@@ -592,4 +592,4 @@ API Documentation
    :members:
    :inherited-members:
 
-.. autodata:: ASSOCIATION_PROXY
+.. autoclass:: AssociationProxyExtensionType

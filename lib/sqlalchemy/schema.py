@@ -55,10 +55,12 @@ from .sql.schema import DefaultGenerator as DefaultGenerator
 from .sql.schema import FetchedValue as FetchedValue
 from .sql.schema import ForeignKey as ForeignKey
 from .sql.schema import ForeignKeyConstraint as ForeignKeyConstraint
+from .sql.schema import HasConditionalDDL as HasConditionalDDL
 from .sql.schema import Identity as Identity
 from .sql.schema import Index as Index
 from .sql.schema import MetaData as MetaData
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
+from .sql.schema import SchemaConst as SchemaConst
 from .sql.schema import SchemaItem as SchemaItem
 from .sql.schema import Sequence as Sequence
 from .sql.schema import Table as Table

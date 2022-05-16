@@ -7,7 +7,7 @@
 # mypy: allow-untyped-defs, allow-untyped-calls
 
 """Define cursor-specific result set constructs including
-:class:`.BaseCursorResult`, :class:`.CursorResult`."""
+:class:`.CursorResult`."""
 
 
 from __future__ import annotations

@@ -22,7 +22,7 @@ Architecture <https://martinfowler.com/eaaCatalog/registry.html>`_.
 .. warning::
 
     The :class:`.scoped_session` registry by default uses a Python
-    `threading.local() <https://docs.python.org/3/library/threading.html#thread-local-data>`_
+    ``threading.local()``
     in order to track :class:`_orm.Session` instances.   **This is not
     necessarily compatible with all application servers**, particularly those
     which make use of greenlets or other alternative forms of concurrency

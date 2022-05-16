@@ -25,6 +25,19 @@ Glossary
 
             :ref:`migration_20_toplevel`
 
+
+    imperative
+    declarative
+
+        In the SQLAlchemy ORM, these terms refer to two different styles of
+        mapping Python classes to database tables.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapping`
+
+            :ref:`orm_imperative_mapping`
+
     facade
 
         An object that serves as a front-facing interface masking more complex
@@ -1448,6 +1461,14 @@ Glossary
         The detached state is generally used when objects are being
         moved between sessions or when being moved to/from an external
         object cache.
+
+        .. seealso::
+
+            :ref:`session_object_states`
+
+    attached
+        Indicates an ORM object that is presently associated with a specific
+        :term:`Session`.
 
         .. seealso::
 

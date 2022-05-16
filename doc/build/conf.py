@@ -109,7 +109,7 @@ changelog_render_pullreq = {
 
 changelog_render_changeset = "https://www.sqlalchemy.org/trac/changeset/%s"
 
-exclude_patterns = ["build", "**/unreleased*/*", "*_include.rst"]
+exclude_patterns = ["build", "**/unreleased*/*", "**/*_include.rst"]
 
 autodoc_class_signature = "separated"
 autodoc_typehints_format = "short"

@@ -950,8 +950,8 @@
         :tags: usecase, postgresql
         :tickets: 5265
 
-        Added support for columns or type :class:`.ARRAY` of :class:`.Enum`,
-        :class:`.JSON` or :class:`_postgresql.JSONB` in PostgreSQL.
+        Added support for columns or type :class:`_sqltypes.ARRAY` of :class:`.Enum`,
+        :class:`_postgresql.JSON` or :class:`_postgresql.JSONB` in PostgreSQL.
         Previously a workaround was required in these use cases.
 
 
@@ -1002,7 +1002,7 @@
         :tickets: 5266
 
         Raise an explicit :class:`.exc.CompileError` when adding a table with a
-        column of type :class:`.ARRAY` of :class:`.Enum` configured with
+        column of type :class:`_sqltypes.ARRAY` of :class:`.Enum` configured with
         :paramref:`.Enum.native_enum` set to ``False`` when
         :paramref:`.Enum.create_constraint` is not set to ``False``
 
@@ -1966,13 +1966,13 @@
 
             :class:`_types.JSON`
 
-            :meth:`.JSON.Comparator.as_string`
+            :meth:`_sqltypes.JSON.Comparator.as_string`
 
-            :meth:`.JSON.Comparator.as_boolean`
+            :meth:`_sqltypes.JSON.Comparator.as_boolean`
 
-            :meth:`.JSON.Comparator.as_float`
+            :meth:`_sqltypes.JSON.Comparator.as_float`
 
-            :meth:`.JSON.Comparator.as_integer`
+            :meth:`_sqltypes.JSON.Comparator.as_integer`
 
     .. change::
         :tags: usecase, oracle
@@ -3828,7 +3828,7 @@
         Added support for the parameters in an ON DUPLICATE KEY UPDATE statement on
         MySQL to be ordered, since parameter order in a MySQL UPDATE clause is
         significant, in a similar manner as that described at
-        :ref:`updates_order_parameters`.  Pull request courtesy Maxim Bublis.
+        :ref:`tutorial_parameter_ordered_updates`.  Pull request courtesy Maxim Bublis.
 
         .. seealso::
 

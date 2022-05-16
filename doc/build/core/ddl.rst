@@ -320,8 +320,6 @@ DDL Expression Constructs API
 .. autoclass:: BaseDDLElement
     :members:
 
-.. autoattr:: DDLElement
-
 .. autoclass:: ExecutableDDLElement
     :members:
 

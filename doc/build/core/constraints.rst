@@ -768,6 +768,7 @@ The above schema will produce::
 
 Constraints API
 ---------------
+
 .. autoclass:: Constraint
     :members:
     :inherited-members:

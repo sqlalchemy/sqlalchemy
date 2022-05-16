@@ -87,22 +87,22 @@ NO_OPTIONS: Mapping[str, Any] = util.EMPTY_DICT
 class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     """Provides high-level functionality for a wrapped DB-API connection.
 
-    The :class:`_engine.Connection` object is procured by calling
-    the :meth:`_engine.Engine.connect` method of the :class:`_engine.Engine`
+    The :class:`_engine.Connection` object is procured by calling the
+    :meth:`_engine.Engine.connect` method of the :class:`_engine.Engine`
     object, and provides services for execution of SQL statements as well
     as transaction control.
 
-    The Connection object is **not** thread-safe.  While a Connection can be
+    The Connection object is **not** thread-safe. While a Connection can be
     shared among threads using properly synchronized access, it is still
     possible that the underlying DBAPI connection may not support shared
-    access between threads.  Check the DBAPI documentation for details.
+    access between threads. Check the DBAPI documentation for details.
 
     The Connection object represents a single DBAPI connection checked out
-    from the connection pool. In this state, the connection pool has no affect
-    upon the connection, including its expiration or timeout state. For the
-    connection pool to properly manage connections, connections should be
-    returned to the connection pool (i.e. ``connection.close()``) whenever the
-    connection is not in use.
+    from the connection pool. In this state, the connection pool has no
+    affect upon the connection, including its expiration or timeout state.
+    For the connection pool to properly manage connections, connections
+    should be returned to the connection pool (i.e. ``connection.close()``)
+    whenever the connection is not in use.
 
     .. index::
       single: thread safety; Connection
@@ -2631,6 +2631,12 @@ class Engine(
 
     @property
     def engine(self) -> Engine:
+        """Returns this :class:`.Engine`.
+
+        Used for legacy schemes that accept :class:`.Connection` /
+        :class:`.Engine` objects within the same variable.
+
+        """
         return self
 
     def clear_compiled_cache(self) -> None:

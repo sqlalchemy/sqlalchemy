@@ -747,8 +747,8 @@ class AsyncSession(ReversibleProxy[Session]):
         This method may also be used to establish execution options for the
         database connection used by the current transaction.
 
-        .. versionadded:: 1.4.24  Added **kw arguments which are passed through
-           to the underlying :meth:`_orm.Session.connection` method.
+        .. versionadded:: 1.4.24  Added \**kw arguments which are passed
+           through to the underlying :meth:`_orm.Session.connection` method.
 
         .. seealso::
 

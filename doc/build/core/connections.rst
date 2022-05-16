@@ -1981,11 +1981,12 @@ Connection / Engine API
 Result Set  API
 =================
 
-.. autoclass:: BaseCursorResult
-    :members:
-
 .. autoclass:: ChunkedIteratorResult
     :members:
+
+.. autoclass:: CursorResult
+    :members:
+    :inherited-members:
 
 .. autoclass:: FrozenResult
     :members:
@@ -1999,22 +2000,14 @@ Result Set  API
 .. autoclass:: Result
     :members:
     :inherited-members:
-    :exclude-members: memoized_attribute, memoized_instancemethod
 
 .. autoclass:: ScalarResult
     :members:
     :inherited-members:
-    :exclude-members: memoized_attribute, memoized_instancemethod
 
 .. autoclass:: MappingResult
     :members:
     :inherited-members:
-    :exclude-members: memoized_attribute, memoized_instancemethod
-
-.. autoclass:: CursorResult
-    :members:
-    :inherited-members:
-    :exclude-members: memoized_attribute, memoized_instancemethod
 
 .. autoclass:: Row
     :members:

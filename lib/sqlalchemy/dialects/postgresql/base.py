@@ -285,7 +285,7 @@ Remote-Schema Table Introspection and PostgreSQL search_path
     attribute set up.
 
 The PostgreSQL dialect can reflect tables from any schema, as outlined in
-:ref:`schema_table_reflection`.
+:ref:`metadata_reflection_schemas`.
 
 With regards to tables which these :class:`_schema.Table`
 objects refer to via foreign key constraint, a decision must be made as to how

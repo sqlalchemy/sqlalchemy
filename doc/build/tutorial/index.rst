@@ -141,8 +141,6 @@ verify that we are on  **version 2.0** of SQLAlchemy:
     >>> sqlalchemy.__version__  # doctest: +SKIP
     2.0.0
 
-.. rst-class:: core-header, orm-dependency
-
 
 
 
