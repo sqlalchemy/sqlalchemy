@@ -88,7 +88,7 @@ class SequenceTest(fixtures.TablesTest):
         )
 
     def test_nextval_direct(self, connection):
-        r = connection.execute(self.tables.seq_pk.c.id.default)
+        r = connection.scalar(self.tables.seq_pk.c.id.default)
         eq_(r, testing.db.dialect.default_sequence_base)
 
     @requirements.sequences_optional
@@ -139,7 +139,7 @@ class SequenceTest(fixtures.TablesTest):
             schema_translate_map={"alt_schema": config.test_schema}
         )
 
-        r = connection.execute(seq)
+        r = connection.scalar(seq)
         eq_(r, testing.db.dialect.default_sequence_base)
 
 

@@ -1788,6 +1788,9 @@ def warn_limited(msg: str, args: Sequence[Any]) -> None:
     _warnings_warn(msg, exc.SAWarning)
 
 
+_not_sa_pattern = re.compile(r"^(?:sqlalchemy\.(?!testing)|alembic\.)")
+
+
 def _warnings_warn(
     message: Union[str, Warning],
     category: Optional[Type[Warning]] = None,
@@ -1810,7 +1813,7 @@ def _warnings_warn(
         # __globals__ of the decorated string functions we make also.
         # we generate this using {"__name__": fn.__module__}
         while frame is not None and re.match(
-            r"^(?:sqlalchemy\.|alembic\.)", frame.f_globals.get("__name__", "")
+            _not_sa_pattern, frame.f_globals.get("__name__", "")
         ):
             frame = frame.f_back  # type: ignore[assignment]
             stacklevel += 1
