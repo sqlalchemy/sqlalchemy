@@ -325,7 +325,6 @@ def column_property(
     deferred: bool = False,
     raiseload: bool = False,
     comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-    descriptor: Optional[Any] = None,
     active_history: bool = False,
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
@@ -387,7 +386,7 @@ def column_property(
         flush, that is, has any kind of "dirty" state within a flush.
         Setting this parameter to ``False`` will have the effect of
         leaving any existing value present after the flush proceeds.
-        Note however that the :class:`.Session` with default expiration
+        Note that the :class:`.Session` with default expiration
         settings still expires
         all attributes after a :meth:`.Session.commit` call, however.
 
@@ -421,7 +420,6 @@ def column_property(
         deferred=deferred,
         raiseload=raiseload,
         comparator_factory=comparator_factory,
-        descriptor=descriptor,
         active_history=active_history,
         expire_on_flush=expire_on_flush,
         info=info,

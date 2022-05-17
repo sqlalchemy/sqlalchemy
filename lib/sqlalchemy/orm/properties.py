@@ -116,7 +116,6 @@ class ColumnProperty(
         "deferred",
         "instrument",
         "comparator_factory",
-        "descriptor",
         "active_history",
         "expire_on_flush",
         "_creation_order",
@@ -136,7 +135,6 @@ class ColumnProperty(
         deferred: bool = False,
         raiseload: bool = False,
         comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-        descriptor: Optional[Any] = None,
         active_history: bool = False,
         expire_on_flush: bool = True,
         info: Optional[_InfoType] = None,
@@ -163,7 +161,6 @@ class ColumnProperty(
             if comparator_factory is not None
             else self.__class__.Comparator
         )
-        self.descriptor = descriptor
         self.active_history = active_history
         self.expire_on_flush = expire_on_flush
 

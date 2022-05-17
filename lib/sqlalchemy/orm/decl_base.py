@@ -19,6 +19,7 @@ from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -63,6 +64,7 @@ if TYPE_CHECKING:
     from ._typing import _RegistryType
     from .decl_api import declared_attr
     from .instrumentation import ClassManager
+    from ..sql.elements import NamedColumn
     from ..sql.schema import MetaData
     from ..sql.selectable import FromClause
 
@@ -228,7 +230,12 @@ class _MapperConfig:
 
     cls: Type[Any]
     classname: str
-    properties: util.OrderedDict[str, MapperProperty[Any]]
+    properties: util.OrderedDict[
+        str,
+        Union[
+            Sequence[NamedColumn[Any]], NamedColumn[Any], MapperProperty[Any]
+        ],
+    ]
     declared_attr_reg: Dict[declared_attr[Any], Any]
 
     @classmethod
