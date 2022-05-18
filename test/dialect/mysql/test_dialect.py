@@ -199,6 +199,10 @@ class DialectTest(fixtures.TestBase):
         (2006, "foo", "OperationalError", "pymysql", True),
         (2007, "foo", "OperationalError", "mysqldb", False),
         (2007, "foo", "OperationalError", "pymysql", False),
+        (4031, "foo", "OperationalError", "mysqldb", True),
+        (4031, "foo", "OperationalError", "pymysql", True),
+        (4032, "foo", "OperationalError", "mysqldb", False),
+        (4032, "foo", "OperationalError", "pymysql", False),
     )
     def test_is_disconnect(
         self, arg0, message, exc_cls_name, dialect_name, is_disconnect
