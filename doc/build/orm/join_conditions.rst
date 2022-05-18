@@ -298,10 +298,6 @@ Will render as::
     SELECT ip_address.id AS ip_address_id, ip_address.v4address AS ip_address_v4address
     FROM ip_address JOIN network ON ip_address.v4address << network.v4representation
 
-.. versionadded:: 2.0  Added :meth:`.Operators.bool_op` to generate operators
-   that are inherently "boolean" when used in expressions and ORM join
-   conditions.
-
 .. _relationship_custom_operator_sql_function:
 
 Custom operators based on SQL functions
