@@ -22,6 +22,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import tables
+from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
@@ -32,6 +33,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import provision
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
@@ -356,6 +358,52 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     c2.exec_driver_sql(
                         "drop table #myveryveryuniquetemptablename"
                     )
+
+    @testing.fixture
+    def temp_db_alt_collation_fixture(
+        self, connection_no_trans, testing_engine
+    ):
+        temp_db_name = "%s_different_collation" % (
+            provision.FOLLOWER_IDENT or "default"
+        )
+        cnxn = connection_no_trans.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        cnxn.exec_driver_sql(f"DROP DATABASE IF EXISTS {temp_db_name}")
+        cnxn.exec_driver_sql(
+            f"CREATE DATABASE {temp_db_name} COLLATE Danish_Norwegian_CI_AS"
+        )
+        eng = testing_engine(
+            url=testing.db.url.set(database=temp_db_name),
+            options=dict(poolclass=NullPool),
+        )
+
+        yield eng
+
+        cnxn.exec_driver_sql(f"DROP DATABASE IF EXISTS {temp_db_name}")
+
+    def test_global_temp_different_collation(
+        self, temp_db_alt_collation_fixture
+    ):
+        """test #8035"""
+
+        with temp_db_alt_collation_fixture.connect() as conn:
+            conn.exec_driver_sql("CREATE TABLE ##foo (id int primary key)")
+            conn.commit()
+
+            eq_(
+                inspect(conn).get_columns("##foo"),
+                [
+                    {
+                        "name": "id",
+                        "type": testing.eq_type_affinity(sqltypes.INTEGER),
+                        "nullable": False,
+                        "default": None,
+                        "autoincrement": False,
+                    }
+                ],
+            )
+            Table("##foo", MetaData(), autoload_with=conn)
 
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
