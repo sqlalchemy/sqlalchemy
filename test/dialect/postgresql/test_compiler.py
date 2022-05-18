@@ -3038,6 +3038,36 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         c = q.compile(dialect=postgresql.dialect())
         raise ValueError(c)
 
+    def test_match_custom(self):
+        s = select(self.table_alt.c.id).where(
+            func.to_tsquery("fat").bool_op("<->")(func.to_tsquery("rat"))
+        )
+        self.assert_compile(
+            s,
+            "SELECT mytable.id FROM mytable WHERE "
+            "to_tsquery(%(to_tsquery_1)s) <-> to_tsquery(%(to_tsquery_2)s)",
+            {"to_tsquery_1": "fat", "to_tsquery_2": "rat"},
+        )
+
+    def test_match_custom_regconfig(self):
+        s = select(self.table_alt.c.id).where(
+            func.to_tsquery("english", "fat").bool_op("<->")(
+                func.to_tsquery("english", "rat")
+            )
+        )
+        self.assert_compile(
+            s,
+            "SELECT mytable.id FROM mytable WHERE "
+            "to_tsquery(%(to_tsquery_1)s, %(to_tsquery_2)s) <-> "
+            "to_tsquery(%(to_tsquery_3)s, %(to_tsquery_4)s)",
+            {
+                "to_tsquery_1": "english",
+                "to_tsquery_2": "fat",
+                "to_tsquery_3": "english",
+                "to_tsquery_4": "rat",
+            },
+        )
+
     def test_match_basic(self):
         s = select(self.table_alt.c.id).where(
             self.table_alt.c.title.match("somestring")
@@ -3046,7 +3076,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             s,
             "SELECT mytable.id "
             "FROM mytable "
-            "WHERE mytable.title @@ to_tsquery(%(title_1)s)",
+            "WHERE mytable.title @@ plainto_tsquery(%(title_1)s)",
         )
 
     def test_match_regconfig(self):
@@ -3059,7 +3089,8 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             s,
             "SELECT mytable.id "
             "FROM mytable "
-            """WHERE mytable.title @@ to_tsquery('english', %(title_1)s)""",
+            "WHERE mytable.title @@ "
+            "plainto_tsquery('english', %(title_1)s)",
         )
 
     def test_match_tsvector(self):
@@ -3071,7 +3102,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.id "
             "FROM mytable "
             "WHERE to_tsvector(mytable.title) "
-            "@@ to_tsquery(%(to_tsvector_1)s)",
+            "@@ plainto_tsquery(%(to_tsvector_1)s)",
         )
 
     def test_match_tsvectorconfig(self):
@@ -3085,7 +3116,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.id "
             "FROM mytable "
             "WHERE to_tsvector(%(to_tsvector_1)s, mytable.title) @@ "
-            "to_tsquery(%(to_tsvector_2)s)",
+            "plainto_tsquery(%(to_tsvector_2)s)",
         )
 
     def test_match_tsvectorconfig_regconfig(self):
@@ -3099,7 +3130,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.id "
             "FROM mytable "
             "WHERE to_tsvector(%(to_tsvector_1)s, mytable.title) @@ "
-            """to_tsquery('english', %(to_tsvector_2)s)""",
+            """plainto_tsquery('english', %(to_tsvector_2)s)""",
         )
 
 

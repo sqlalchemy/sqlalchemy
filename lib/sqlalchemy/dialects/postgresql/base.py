@@ -699,28 +699,68 @@ constraint violation which occurs:
 Full Text Search
 ----------------
 
-SQLAlchemy makes available the PostgreSQL ``@@`` operator via the
-:meth:`_expression.ColumnElement.match` method on any textual column expression.
+PostgreSQL's full text search system is available through the use of the
+:data:`.func` namespace, combined with the use of custom operators
+via the :meth:`.Operators.bool_op` method.    For simple cases with some
+degree of cross-backend compatibility, the :meth:`.Operators.match` operator
+may also be used.
+
+.. _postgresql_simple_match:
+
+Simple plain text matching with ``match()``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`.Operators.match` operator provides for cross-compatible simple
+text matching.   For the PostgreSQL backend, it's hardcoded to generate
+an expression using the ``@@`` operator in conjunction with the
+``plainto_tsquery()`` PostgreSQL function.
 
 On the PostgreSQL dialect, an expression like the following::
 
     select(sometable.c.text.match("search string"))
 
-will emit to the database::
+would emit to the database::
 
-    SELECT text @@ to_tsquery('search string') FROM table
+    SELECT text @@ plainto_tsquery('search string') FROM table
 
-Various other PostgreSQL text search functions such as ``to_tsquery()``,
-``to_tsvector()``, and ``plainto_tsquery()`` are available by explicitly using
-the standard SQLAlchemy :data:`.func` construct.
+Above, passing a plain string to :meth:`.Operators.match` will automatically
+make use of ``plainto_tsquery()`` to specify the type of tsquery.  This
+establishes basic database cross-compatibility for :meth:`.Operators.match`
+with other backends.
 
-For example::
+.. versionchanged:: 2.0 The default tsquery generation function used by the
+   PostgreSQL dialect with :meth:`.Operators.match` is ``plainto_tsquery()``.
 
-    select(func.to_tsvector('fat cats ate rats').match('cat & rat'))
+   To render exactly what was rendered in 1.4, use the following form::
 
-Emits the equivalent of::
+        from sqlalchemy import func
 
-    SELECT to_tsvector('fat cats ate rats') @@ to_tsquery('cat & rat')
+        select(
+            sometable.c.text.bool_op("@@")(func.to_tsquery("search string"))
+        )
+
+   Which would emit::
+
+        SELECT text @@ to_tsquery('search string') FROM table
+
+Using PostgreSQL full text functions and operators directly
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Text search operations beyond the simple use of :meth:`.Operators.match`
+may make use of the :data:`.func` namespace to generate PostgreSQL full-text
+functions, in combination with :meth:`.Operators.bool_op` to generate
+any boolean operator.
+
+For example, the query::
+
+    select(
+        func.to_tsquery('cat').bool_op("@>")(func.to_tsquery('cat & rat'))
+    )
+
+would generate:
+
+    SELECT to_tsquery('cat') @> to_tsquery('cat & rat')
+
 
 The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 
@@ -732,54 +772,32 @@ produces a statement equivalent to::
 
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
 
-.. tip::
+Specifying the "regconfig" with ``match()`` or custom operators
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    It's important to remember that text searching in PostgreSQL is powerful but complicated,
-    and SQLAlchemy users are advised to reference the PostgreSQL documentation
-    regarding
-    `Full Text Search <https://www.postgresql.org/docs/13/textsearch-controls.html>`_.
-
-    There are important differences between ``to_tsquery`` and
-    ``plainto_tsquery``, the most significant of which is that ``to_tsquery``
-    expects specially formatted "querytext" that is written to PostgreSQL's own
-    specification, while ``plainto_tsquery`` expects unformatted text that is
-    transformed into ``to_tsquery`` compatible querytext. This means the input to
-    ``.match()`` under PostgreSQL may be incompatible with the input to
-    ``.match()`` under another database backend. SQLAlchemy users who support
-    multiple backends are advised to carefully implement their usage of
-    ``.match()`` to work around these constraints.
-
-Full Text Searches in PostgreSQL are influenced by a combination of: the
-PostgreSQL setting of ``default_text_search_config``, the ``regconfig`` used
-to build the GIN/GiST indexes, and the ``regconfig`` optionally passed in
-during a query.
-
-When performing a Full Text Search against a column that has a GIN or
-GiST index that is already pre-computed (which is common on full text
-searches) one may need to explicitly pass in a particular PostgreSQL
-``regconfig`` value to ensure the query-planner utilizes the index and does
-not re-compute the column on demand.
-
-In order to provide for this explicit query planning, or to use different
-search strategies, the ``match`` method accepts a ``postgresql_regconfig``
-keyword argument::
+PostgreSQL's ``plainto_tsquery()`` function accepts an optional
+"regconfig" argument that is used to instruct PostgreSQL to use a
+particular pre-computed GIN or GiST index in order to perform the search.
+When using :meth:`.Operators.match`, this additional parameter may be
+specified using the ``postgresql_regconfig`` parameter, such as::
 
     select(mytable.c.id).where(
         mytable.c.title.match('somestring', postgresql_regconfig='english')
     )
 
-Emits the equivalent of::
+Which would emit::
 
     SELECT mytable.id FROM mytable
-    WHERE mytable.title @@ to_tsquery('english', 'somestring')
+    WHERE mytable.title @@ plainto_tsquery('english', 'somestring')
 
-One can also specifically pass in a `'regconfig'` value to the
-``to_tsvector()`` command as the initial argument::
+When using other PostgreSQL search functions with :data:`.func`, the
+"regconfig" parameter may be passed directly as the initial argument::
 
     select(mytable.c.id).where(
-            func.to_tsvector('english', mytable.c.title )\
-            .match('somestring', postgresql_regconfig='english')
+        func.to_tsvector("english", mytable.c.title).bool_op("@@")(
+            func.to_tsquery("english", "somestring")
         )
+    )
 
 produces a statement equivalent to::
 
@@ -790,6 +808,11 @@ produces a statement equivalent to::
 It is recommended that you use the ``EXPLAIN ANALYZE...`` tool from
 PostgreSQL to ensure that you are generating queries with SQLAlchemy that
 take full advantage of any indexes you may have created for full text search.
+
+.. seealso::
+
+    `Full Text Search <https://www.postgresql.org/docs/latest/textsearch-controls.html>`_ - in the PostgreSQL documentation
+
 
 FROM ONLY ...
 -------------
@@ -2238,12 +2261,12 @@ class PGCompiler(compiler.SQLCompiler):
                 binary.modifiers["postgresql_regconfig"], sqltypes.STRINGTYPE
             )
             if regconfig:
-                return "%s @@ to_tsquery(%s, %s)" % (
+                return "%s @@ plainto_tsquery(%s, %s)" % (
                     self.process(binary.left, **kw),
                     regconfig,
                     self.process(binary.right, **kw),
                 )
-        return "%s @@ to_tsquery(%s)" % (
+        return "%s @@ plainto_tsquery(%s)" % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )

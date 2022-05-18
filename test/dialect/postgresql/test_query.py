@@ -983,12 +983,13 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         if self._strs_render_bind_casts(connection):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ to_tsquery(%(title_1)s::VARCHAR(200))",
+                "matchtable.title @@ "
+                "plainto_tsquery(%(title_1)s::VARCHAR(200))",
             )
         else:
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ to_tsquery(%(title_1)s)",
+                "matchtable.title @@ plainto_tsquery(%(title_1)s)",
             )
 
     @testing.requires.format_paramstyle
@@ -998,12 +999,12 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         if self._strs_render_bind_casts(connection):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ to_tsquery(%s::VARCHAR(200))",
+                "matchtable.title @@ plainto_tsquery(%s::VARCHAR(200))",
             )
         else:
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ to_tsquery(%s)",
+                "matchtable.title @@ plainto_tsquery(%s)",
             )
 
     def test_simple_match(self, connection):
@@ -1051,9 +1052,16 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
             .order_by(matchtable.c.id)
         ).fetchall()
         eq_([3, 5], [r.id for r in results1])
+
+    def test_or_tsquery(self, connection):
+        matchtable = self.tables.matchtable
         results2 = connection.execute(
             matchtable.select()
-            .where(matchtable.c.title.match("nutshells | rubies"))
+            .where(
+                matchtable.c.title.bool_op("@@")(
+                    func.to_tsquery("nutshells | rubies")
+                )
+            )
             .order_by(matchtable.c.id)
         ).fetchall()
         eq_([3, 5], [r.id for r in results2])
@@ -1069,9 +1077,14 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
             )
         ).fetchall()
         eq_([5], [r.id for r in results1])
+
+    def test_and_tsquery(self, connection):
+        matchtable = self.tables.matchtable
         results2 = connection.execute(
             matchtable.select().where(
-                matchtable.c.title.match("python & nutshells")
+                matchtable.c.title.op("@@")(
+                    func.to_tsquery("python & nutshells")
+                )
             )
         ).fetchall()
         eq_([5], [r.id for r in results2])

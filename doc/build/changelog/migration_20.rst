@@ -419,6 +419,31 @@ the :meth:`_types.TypeEngine.with_variant` method as follows::
     )
 
 
+.. _change_7086:
+
+``match()`` operator on PostgreSQL uses ``plainto_tsquery()`` rather than ``to_tsquery()``
+------------------------------------------------------------------------------------------
+
+The :meth:`.Operators.match` function now renders
+``col @@ plainto_tsquery(expr)`` on the PostgreSQL backend, rather than
+``col @@ to_tsquery()``.  ``plainto_tsquery()`` accepts plain text whereas
+``to_tsquery()`` accepts specialized query symbols, and is therefore less
+cross-compatible with other backends.
+
+All PostgreSQL search functions and operators are available through use of
+:data:`.func` to generate PostgreSQL-specific functions and
+:meth:`.Operators.bool_op` (a boolean-typed version of :meth:`.Operators.op`)
+to generate arbitrary operators, in the same manner as they are available
+in previous versions.  See the examples at :ref:`postgresql_match`.
+
+Existing SQLAlchemy projects that make use of PG-specific directives within
+:meth:`.Operators.match` should make use of ``func.to_tsquery()`` directly.
+To render SQL in exactly the same form as would be present
+in 1.4, see the version note at :ref:`postgresql_simple_match`.
+
+
+
+:ticket:`7086`
 
 .. _migration_20_overview:
 

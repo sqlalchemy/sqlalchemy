@@ -2,6 +2,7 @@ import typing
 
 from sqlalchemy import Boolean
 from sqlalchemy import column
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -34,6 +35,9 @@ expr7 = c1 + "x"
 expr8 = c2 + 10
 
 stmt = select(column("q")).where(lambda: column("g") > 5).where(c2 == 5)
+
+expr9 = c1.bool_op("@@")(func.to_tsquery("some & query"))
+
 
 if typing.TYPE_CHECKING:
 
@@ -69,3 +73,6 @@ if typing.TYPE_CHECKING:
 
     # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.int.?\]
     reveal_type(expr8)
+
+    # EXPECTED_TYPE: BinaryExpression[bool]
+    reveal_type(expr9)

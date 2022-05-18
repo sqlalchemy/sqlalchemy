@@ -2862,7 +2862,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_match_4(self):
         self.assert_compile(
             self.table1.c.myid.match("somstr"),
-            "mytable.myid @@ to_tsquery(%(myid_1)s)",
+            "mytable.myid @@ plainto_tsquery(%(myid_1)s)",
             dialect=postgresql.dialect(),
         )
 
@@ -2881,7 +2881,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_boolean_inversion_postgresql(self):
         self.assert_compile(
             ~self.table1.c.myid.match("somstr"),
-            "NOT mytable.myid @@ to_tsquery(%(myid_1)s)",
+            "NOT mytable.myid @@ plainto_tsquery(%(myid_1)s)",
             dialect=postgresql.dialect(),
         )
 
@@ -3429,11 +3429,20 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class CustomOpTest(fixtures.TestBase):
-    def test_is_comparison(self):
+    def test_is_comparison_legacy(self):
         c = column("x")
         c2 = column("y")
         op1 = c.op("$", is_comparison=True)(c2).operator
         op2 = c.op("$", is_comparison=False)(c2).operator
+
+        assert operators.is_comparison(op1)
+        assert not operators.is_comparison(op2)
+
+    def test_is_comparison_bool_op(self):
+        c = column("x")
+        c2 = column("y")
+        op1 = c.bool_op("$")(c2).operator
+        op2 = c.op("$")(c2).operator
 
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)

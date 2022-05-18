@@ -1129,7 +1129,13 @@ class ColumnOperators(Operators):
         a MATCH-like function or operator provided by the backend.
         Examples include:
 
-        * PostgreSQL - renders ``x @@ to_tsquery(y)``
+        * PostgreSQL - renders ``x @@ plainto_tsquery(y)``
+
+            .. versionchanged:: 2.0  ``plainto_tsquery()`` is used instead
+               of ``to_tsquery()`` for PostgreSQL now; for compatibility with
+               other forms, see :ref:`postgresql_match`.
+
+
         * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
 
           .. seealso::
