@@ -2906,7 +2906,7 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("foo", String(50)),
         )
 
-    def test_join_on_custom_op(self):
+    def test_join_on_custom_op_legacy_is_comparison(self):
         class A(fixtures.BasicEntity):
             pass
 
@@ -2922,6 +2922,33 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                     primaryjoin=self.tables.a.c.foo.op(
                         "&*", is_comparison=True
                     )(foreign(self.tables.b.c.foo)),
+                    viewonly=True,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(B, self.tables.b)
+        self.assert_compile(
+            fixture_session().query(A).join(A.bs),
+            "SELECT a.id AS a_id, a.foo AS a_foo "
+            "FROM a JOIN b ON a.foo &* b.foo",
+        )
+
+    def test_join_on_custom_bool_op(self):
+        class A(fixtures.BasicEntity):
+            pass
+
+        class B(fixtures.BasicEntity):
+            pass
+
+        self.mapper_registry.map_imperatively(
+            A,
+            self.tables.a,
+            properties={
+                "bs": relationship(
+                    B,
+                    primaryjoin=self.tables.a.c.foo.bool_op("&*")(
+                        foreign(self.tables.b.c.foo)
+                    ),
                     viewonly=True,
                 )
             },
