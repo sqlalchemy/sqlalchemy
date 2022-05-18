@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 8036
+
+    Fixed an issue in the mysql dialect when using the
+    :paramref:`.create_engine.pool_pre_ping` parameter with MySQL >=
+    8.0.24, an exception was raised instead of reconnecting
