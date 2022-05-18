@@ -3189,14 +3189,16 @@ class MSDialect(default.DefaultDialect):
             computed_cols,
             onclause=sql.and_(
                 computed_cols.c.object_id == func.object_id(full_name),
-                computed_cols.c.name == columns.c.column_name,
+                computed_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         ).join(
             identity_cols,
             onclause=sql.and_(
                 identity_cols.c.object_id == func.object_id(full_name),
-                identity_cols.c.name == columns.c.column_name,
+                identity_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
