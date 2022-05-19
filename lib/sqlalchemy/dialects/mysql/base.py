@@ -2591,6 +2591,7 @@ class MySQLDialect(default.DefaultDialect):
             2014,
             2045,
             2055,
+            4031,
         ):
             return True
         elif isinstance(
