@@ -153,14 +153,16 @@ class Operators(object):
          A value of 100 will be higher or equal to all operators, and -100
          will be lower than or equal to all operators.
 
-        :param is_comparison: if True, the operator will be considered as a
-         "comparison" operator, that is which evaluates to a boolean
-         true/false value, like ``==``, ``>``, etc.  This flag should be set
+        :param is_comparison: legacy; if True, the operator will be considered
+         as a "comparison" operator, that is which evaluates to a boolean
+         true/false value, like ``==``, ``>``, etc.  This flag is provided
          so that ORM relationships can establish that the operator is a
          comparison operator when used in a custom join condition.
 
-         .. versionadded:: 0.9.2 - added the
-            :paramref:`.Operators.op.is_comparison` flag.
+         Using the ``is_comparison`` parameter is superseded by using the
+         :meth:`.Operators.bool_op` method instead;  this more succinct
+         operator sets this parameter automatically.  In SQLAlchemy 2.0 it
+         will also provide for improved typing support.
 
         :param return_type: a :class:`.TypeEngine` class or object that will
           force the return type of an expression produced by this operator
@@ -170,6 +172,8 @@ class Operators(object):
           type as the left-hand operand.
 
         .. seealso::
+
+            :meth:`.Operators.bool_op`
 
             :ref:`types_operators`
 
@@ -189,7 +193,9 @@ class Operators(object):
         This method is shorthand for calling
         :meth:`.Operators.op` and passing the
         :paramref:`.Operators.op.is_comparison`
-        flag with True.
+        flag with True.    A key advantage to using :meth:`.Operators.bool_op`
+        is that when using column constructs, the "boolean" nature of the
+        returned expression will be present for :pep:`484` purposes.
 
         .. seealso::
 

@@ -264,21 +264,13 @@ Using custom operators in join conditions
 Another use case for relationships is the use of custom operators, such
 as PostgreSQL's "is contained within" ``<<`` operator when joining with
 types such as :class:`_postgresql.INET` and :class:`_postgresql.CIDR`.
-For custom operators we use the :meth:`.Operators.op` function::
+For custom boolean operators we use the :meth:`.Operators.bool_op` function::
 
-    inet_column.op("<<")(cidr_column)
+    inet_column.bool_op("<<")(cidr_column)
 
-However, if we construct a :paramref:`_orm.relationship.primaryjoin` using this
-operator, :func:`_orm.relationship` will still need more information.  This is because
-when it examines our primaryjoin condition, it specifically looks for operators
-used for **comparisons**, and this is typically a fixed list containing known
-comparison operators such as ``==``, ``<``, etc.   So for our custom operator
-to participate in this system, we need it to register as a comparison operator
-using the :paramref:`~.Operators.op.is_comparison` parameter::
-
-    inet_column.op("<<", is_comparison=True)(cidr_column)
-
-A complete example::
+A comparison like the above may be used directly with
+:paramref:`_orm.relationship.primaryjoin` when constructing
+a :func:`_orm.relationship`::
 
     class IPA(Base):
         __tablename__ = 'ip_address'
@@ -287,7 +279,7 @@ A complete example::
         v4address = Column(INET)
 
         network = relationship("Network",
-                            primaryjoin="IPA.v4address.op('<<', is_comparison=True)"
+                            primaryjoin="IPA.v4address.bool_op('<<')"
                                 "(foreign(Network.v4representation))",
                             viewonly=True
                         )
@@ -305,10 +297,6 @@ Will render as::
 
     SELECT ip_address.id AS ip_address_id, ip_address.v4address AS ip_address_v4address
     FROM ip_address JOIN network ON ip_address.v4address << network.v4representation
-
-.. versionadded:: 0.9.2 - Added the :paramref:`.Operators.op.is_comparison`
-   flag to assist in the creation of :func:`_orm.relationship` constructs using
-   custom operators.
 
 .. _relationship_custom_operator_sql_function:
 
