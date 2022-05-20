@@ -35,11 +35,11 @@ from .base import LoaderCallableStatus
 from .base import Mapped
 from .base import PassiveFlag
 from .base import SQLORMOperations
+from .interfaces import _AttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
-from .util import _extract_mapped_subtype
 from .util import _none_set
 from .. import event
 from .. import exc as sa_exc
@@ -200,24 +200,26 @@ class Composite(
 
     def __init__(
         self,
-        class_: Union[
+        _class_or_attr: Union[
             None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
         ] = None,
         *attrs: _CompositeAttrType[Any],
+        attribute_options: Optional[_AttributeOptions] = None,
         active_history: bool = False,
         deferred: bool = False,
         group: Optional[str] = None,
         comparator_factory: Optional[Type[Comparator[_CC]]] = None,
         info: Optional[_InfoType] = None,
+        **kwargs: Any,
     ):
-        super().__init__()
+        super().__init__(attribute_options=attribute_options)
 
-        if isinstance(class_, (Mapped, str, sql.ColumnElement)):
-            self.attrs = (class_,) + attrs
+        if isinstance(_class_or_attr, (Mapped, str, sql.ColumnElement)):
+            self.attrs = (_class_or_attr,) + attrs
             # will initialize within declarative_scan
             self.composite_class = None  # type: ignore
         else:
-            self.composite_class = class_  # type: ignore
+            self.composite_class = _class_or_attr  # type: ignore
             self.attrs = attrs
 
         self.active_history = active_history
@@ -332,19 +334,15 @@ class Composite(
         cls: Type[Any],
         key: str,
         annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
-        MappedColumn = util.preloaded.orm_properties.MappedColumn
-
-        argument = _extract_mapped_subtype(
-            annotation,
-            cls,
-            key,
-            MappedColumn,
-            self.composite_class is None,
-            is_dataclass_field,
-        )
-
+        if (
+            self.composite_class is None
+            and extracted_mapped_annotation is None
+        ):
+            self._raise_for_required(key, cls)
+        argument = extracted_mapped_annotation
         if argument and self.composite_class is None:
             if isinstance(argument, str) or hasattr(
                 argument, "__forward_arg__"
@@ -371,11 +369,18 @@ class Composite(
         for param, attr in itertools.zip_longest(
             insp.parameters.values(), self.attrs
         ):
-            if param is None or attr is None:
+            if param is None:
                 raise sa_exc.ArgumentError(
-                    f"number of arguments to {self.composite_class.__name__} "
-                    f"class and number of attributes don't match"
+                    f"number of composite attributes "
+                    f"{len(self.attrs)} exceeds "
+                    f"that of the number of attributes in class "
+                    f"{self.composite_class.__name__} {len(insp.parameters)}"
                 )
+            if attr is None:
+                # fill in missing attr spots with empty MappedColumn
+                attr = MappedColumn()
+                self.attrs += (attr,)
+
             if isinstance(attr, MappedColumn):
                 attr.declarative_scan_for_composite(
                     registry, cls, key, param.name, param.annotation
@@ -800,10 +805,11 @@ class Synonym(DescriptorProperty[_T]):
         map_column: Optional[bool] = None,
         descriptor: Optional[Any] = None,
         comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+        attribute_options: Optional[_AttributeOptions] = None,
         info: Optional[_InfoType] = None,
         doc: Optional[str] = None,
     ):
-        super().__init__()
+        super().__init__(attribute_options=attribute_options)
 
         self.name = name
         self.map_column = map_column

@@ -19,6 +19,7 @@ are exposed when inspecting mappings.
 from __future__ import annotations
 
 import collections
+import dataclasses
 import typing
 from typing import Any
 from typing import Callable
@@ -27,6 +28,8 @@ from typing import ClassVar
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import NamedTuple
+from typing import NoReturn
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -51,11 +54,13 @@ from .base import ONETOMANY as ONETOMANY  # noqa: F401
 from .base import RelationshipDirection as RelationshipDirection  # noqa: F401
 from .base import SQLORMOperations
 from .. import ColumnElement
+from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
+from ..sql.base import _NoArg
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
 from ..sql.schema import Column
@@ -141,6 +146,7 @@ class _IntrospectsAnnotations:
         cls: Type[Any],
         key: str,
         annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
         """Perform class-specific initializaton at early declarative scanning
@@ -150,6 +156,70 @@ class _IntrospectsAnnotations:
 
         """
 
+    def _raise_for_required(self, key: str, cls: Type[Any]) -> NoReturn:
+        raise sa_exc.ArgumentError(
+            f"Python typing annotation is required for attribute "
+            f'"{cls.__name__}.{key}" when primary argument(s) for '
+            f'"{self.__class__.__name__}" construct are None or not present'
+        )
+
+
+class _AttributeOptions(NamedTuple):
+    """define Python-local attribute behavior options common to all
+    :class:`.MapperProperty` objects.
+
+    Currently this includes dataclass-generation arguments.
+
+    .. versionadded:: 2.0
+
+    """
+
+    dataclasses_init: Union[_NoArg, bool]
+    dataclasses_repr: Union[_NoArg, bool]
+    dataclasses_default: Union[_NoArg, Any]
+    dataclasses_default_factory: Union[_NoArg, Callable[[], Any]]
+
+    def _as_dataclass_field(self) -> Any:
+        """Return a ``dataclasses.Field`` object given these arguments."""
+
+        kw: Dict[str, Any] = {}
+        if self.dataclasses_default_factory is not _NoArg.NO_ARG:
+            kw["default_factory"] = self.dataclasses_default_factory
+        if self.dataclasses_default is not _NoArg.NO_ARG:
+            kw["default"] = self.dataclasses_default
+        if self.dataclasses_init is not _NoArg.NO_ARG:
+            kw["init"] = self.dataclasses_init
+        if self.dataclasses_repr is not _NoArg.NO_ARG:
+            kw["repr"] = self.dataclasses_repr
+
+        return dataclasses.field(**kw)
+
+    @classmethod
+    def _get_arguments_for_make_dataclass(
+        cls, key: str, annotation: Type[Any], elem: _T
+    ) -> Union[
+        Tuple[str, Type[Any]], Tuple[str, Type[Any], dataclasses.Field[Any]]
+    ]:
+        """given attribute key, annotation, and value from a class, return
+        the argument tuple we would pass to dataclasses.make_dataclass()
+        for this attribute.
+
+        """
+        if isinstance(elem, (MapperProperty, _MapsColumns)):
+            dc_field = elem._attribute_options._as_dataclass_field()
+
+            return (key, annotation, dc_field)
+        elif elem is not _NoArg.NO_ARG:
+            # why is typing not erroring on this?
+            return (key, annotation, elem)
+        else:
+            return (key, annotation)
+
+
+_DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
+    _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG
+)
+
 
 class _MapsColumns(_MappedAttribute[_T]):
     """interface for declarative-capable construct that delivers one or more
@@ -157,6 +227,9 @@ class _MapsColumns(_MappedAttribute[_T]):
     """
 
     __slots__ = ()
+
+    _attribute_options: _AttributeOptions
+    _has_dataclass_arguments: bool
 
     @property
     def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
@@ -199,6 +272,8 @@ class MapperProperty(
     __slots__ = (
         "_configure_started",
         "_configure_finished",
+        "_attribute_options",
+        "_has_dataclass_arguments",
         "parent",
         "key",
         "info",
@@ -240,6 +315,15 @@ class MapperProperty(
 
     doc: Optional[str]
     """optional documentation string"""
+
+    _attribute_options: _AttributeOptions
+    """behavioral options for ORM-enabled Python attributes
+
+    .. versionadded:: 2.0
+
+    """
+
+    _has_dataclass_arguments: bool
 
     def _memoized_attr_info(self) -> _InfoType:
         """Info dictionary associated with the object, allowing user-defined
@@ -349,9 +433,20 @@ class MapperProperty(
 
         """
 
-    def __init__(self) -> None:
+    def __init__(
+        self, attribute_options: Optional[_AttributeOptions] = None
+    ) -> None:
         self._configure_started = False
         self._configure_finished = False
+        if (
+            attribute_options
+            and attribute_options != _DEFAULT_ATTRIBUTE_OPTIONS
+        ):
+            self._has_dataclass_arguments = True
+            self._attribute_options = attribute_options
+        else:
+            self._has_dataclass_arguments = False
+            self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
 
     def init(self) -> None:
         """Called after all mappers are created to assemble

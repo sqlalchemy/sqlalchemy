@@ -25,6 +25,7 @@ from .. import event
 from .. import util
 from ..orm import declarative_base
 from ..orm import DeclarativeBase
+from ..orm import MappedAsDataclass
 from ..orm import registry
 from ..schema import sort_tables_and_constraints
 
@@ -90,7 +91,14 @@ class TestBase:
 
     @config.fixture()
     def registry(self, metadata):
-        reg = registry(metadata=metadata)
+        reg = registry(
+            metadata=metadata,
+            type_annotation_map={
+                str: sa.String().with_variant(
+                    sa.String(50), "mysql", "mariadb"
+                )
+            },
+        )
         yield reg
         reg.dispose()
 
@@ -99,6 +107,21 @@ class TestBase:
         _md = metadata
 
         class Base(DeclarativeBase):
+            metadata = _md
+            type_annotation_map = {
+                str: sa.String().with_variant(
+                    sa.String(50), "mysql", "mariadb"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
+    @config.fixture
+    def dc_decl_base(self, metadata):
+        _md = metadata
+
+        class Base(MappedAsDataclass, DeclarativeBase):
             metadata = _md
             type_annotation_map = {
                 str: sa.String().with_variant(

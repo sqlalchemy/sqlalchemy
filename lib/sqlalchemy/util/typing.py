@@ -23,6 +23,14 @@ from typing_extensions import NotRequired as NotRequired  # noqa: F401
 
 from . import compat
 
+
+# more zimports issues
+if True:
+    from typing_extensions import (  # noqa: F401
+        dataclass_transform as dataclass_transform,
+    )
+
+
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)

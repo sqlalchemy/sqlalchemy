@@ -33,6 +33,13 @@ from . import clsregistry
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
+from ._orm_constructors import column_property
+from ._orm_constructors import composite
+from ._orm_constructors import deferred
+from ._orm_constructors import mapped_column
+from ._orm_constructors import query_expression
+from ._orm_constructors import relationship
+from ._orm_constructors import synonym
 from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
 from .base import Mapped
@@ -42,8 +49,13 @@ from .decl_base import _declarative_constructor
 from .decl_base import _DeferredMapperConfig
 from .decl_base import _del_attribute
 from .decl_base import _mapper
+from .descriptor_props import Composite
+from .descriptor_props import Synonym
 from .descriptor_props import Synonym as _orm_synonym
 from .mapper import Mapper
+from .properties import ColumnProperty
+from .properties import MappedColumn
+from .relationships import Relationship
 from .state import InstanceState
 from .. import exc
 from .. import inspection
@@ -60,9 +72,9 @@ from ..util.typing import Literal
 if TYPE_CHECKING:
     from ._typing import _O
     from ._typing import _RegistryType
-    from .descriptor_props import Synonym
     from .instrumentation import ClassManager
     from .interfaces import MapperProperty
+    from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
 
 _T = TypeVar("_T", bound=Any)
@@ -118,6 +130,26 @@ class DeclarativeAttributeIntercept(
     attributes dynamically.
 
     """
+
+
+@compat_typing.dataclass_transform(
+    field_descriptors=(
+        MappedColumn[Any],
+        Relationship[Any],
+        Composite[Any],
+        ColumnProperty[Any],
+        Synonym[Any],
+        mapped_column,
+        relationship,
+        composite,
+        column_property,
+        synonym,
+        deferred,
+        query_expression,
+    ),
+)
+class DCTransformDeclarative(DeclarativeAttributeIntercept):
+    """metaclass that includes @dataclass_transforms"""
 
 
 class DeclarativeMeta(
@@ -543,11 +575,41 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
             cls._sa_registry.map_declaratively(cls)
 
 
+class MappedAsDataclass(metaclass=DCTransformDeclarative):
+    """Mixin class to indicate when mapping this class, also convert it to be
+    a dataclass.
+
+    .. seealso::
+
+        :meth:`_orm.registry.mapped_as_dataclass`
+
+    .. versionadded:: 2.0
+    """
+
+    def __init_subclass__(
+        cls,
+        init: bool = True,
+        repr: bool = True,  # noqa: A002
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+    ) -> None:
+        cls._sa_apply_dc_transforms = {
+            "init": init,
+            "repr": repr,
+            "eq": eq,
+            "order": order,
+            "unsafe_hash": unsafe_hash,
+        }
+        super().__init_subclass__()
+
+
 class DeclarativeBase(
     inspection.Inspectable[InstanceState[Any]],
     metaclass=DeclarativeAttributeIntercept,
 ):
     """Base class used for declarative class definitions.
+
 
     The :class:`_orm.DeclarativeBase` allows for the creation of new
     declarative bases in such a way that is compatible with type checkers::
@@ -1121,7 +1183,7 @@ class registry:
 
         bases = not isinstance(cls, tuple) and (cls,) or cls
 
-        class_dict = dict(registry=self, metadata=metadata)
+        class_dict: Dict[str, Any] = dict(registry=self, metadata=metadata)
         if isinstance(cls, type):
             class_dict["__doc__"] = cls.__doc__
 
@@ -1141,6 +1203,78 @@ class registry:
             class_dict["__class_getitem__"] = __class_getitem__
 
         return metaclass(name, bases, class_dict)
+
+    @compat_typing.dataclass_transform(
+        field_descriptors=(
+            MappedColumn[Any],
+            Relationship[Any],
+            Composite[Any],
+            ColumnProperty[Any],
+            Synonym[Any],
+            mapped_column,
+            relationship,
+            composite,
+            column_property,
+            synonym,
+            deferred,
+            query_expression,
+        ),
+    )
+    @overload
+    def mapped_as_dataclass(self, __cls: Type[_O]) -> Type[_O]:
+        ...
+
+    @overload
+    def mapped_as_dataclass(
+        self,
+        __cls: Literal[None] = ...,
+        *,
+        init: bool = True,
+        repr: bool = True,  # noqa: A002
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+    ) -> Callable[[Type[_O]], Type[_O]]:
+        ...
+
+    def mapped_as_dataclass(
+        self,
+        __cls: Optional[Type[_O]] = None,
+        *,
+        init: bool = True,
+        repr: bool = True,  # noqa: A002
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+    ) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
+        """Class decorator that will apply the Declarative mapping process
+        to a given class, and additionally convert the class to be a
+        Python dataclass.
+
+        .. seealso::
+
+            :meth:`_orm.registry.mapped`
+
+        .. versionadded:: 2.0
+
+
+        """
+
+        def decorate(cls: Type[_O]) -> Type[_O]:
+            cls._sa_apply_dc_transforms = {
+                "init": init,
+                "repr": repr,
+                "eq": eq,
+                "order": order,
+                "unsafe_hash": unsafe_hash,
+            }
+            _as_declarative(self, cls, cls.__dict__)
+            return cls
+
+        if __cls:
+            return decorate(__cls)
+        else:
+            return decorate
 
     def mapped(self, cls: Type[_O]) -> Type[_O]:
         """Class decorator that will apply the Declarative mapping process
@@ -1173,6 +1307,10 @@ class registry:
             :meth:`_orm.registry.generate_base` - generates a base class
             that will apply Declarative mapping to subclasses automatically
             using a Python metaclass.
+
+        .. seealso::
+
+            :meth:`_orm.registry.mapped_as_dataclass`
 
         """
         _as_declarative(self, cls, cls.__dict__)

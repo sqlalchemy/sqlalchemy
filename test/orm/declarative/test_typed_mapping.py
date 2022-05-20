@@ -190,6 +190,18 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.data.nullable)
         assert isinstance(User.__table__.c.created_at.type, DateTime)
 
+    def test_column_default(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+        mc = MyClass()
+        assert "data" not in mc.__dict__
+
+        eq_(MyClass.__table__.c.data.default.arg, "some default")
+
     def test_anno_w_fixed_table(self, decl_base):
         users = Table(
             "users",
@@ -959,7 +971,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         with expect_raises_message(
             ArgumentError,
             r"Type annotation for \"User.address\" should use the syntax "
-            r"\"Mapped\['Address'\]\" or \"MappedColumn\['Address'\]\"",
+            r"\"Mapped\['Address'\]\"",
         ):
 
             class User(decl_base):
@@ -1050,6 +1062,38 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             address: Mapped[Address] = composite(
                 mapped_column(), mapped_column(), mapped_column("zip")
             )
+
+        decl_base.metadata.create_all(testing.db)
+
+        with fixture_session() as sess:
+            sess.add(
+                User(
+                    name="user 1",
+                    address=Address("123 anywhere street", "NY", "12345"),
+                )
+            )
+            sess.commit()
+
+        with fixture_session() as sess:
+            u1 = sess.scalar(select(User))
+
+            # round trip!
+            eq_(u1.address, Address("123 anywhere street", "NY", "12345"))
+
+    def test_cls_annotated_no_mapped_cols_setup(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+
+            address: Mapped[Address] = composite()
 
         decl_base.metadata.create_all(testing.db)
 

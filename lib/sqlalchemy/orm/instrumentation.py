@@ -113,6 +113,7 @@ class ClassManager(
     "previously known as deferred_scalar_loader"
 
     init_method: Optional[Callable[..., None]]
+    original_init: Optional[Callable[..., None]] = None
 
     factory: Optional[_ManagerFactory]
 
@@ -229,7 +230,7 @@ class ClassManager(
         if finalize and not self._finalized:
             self._finalize()
 
-    def _finalize(self):
+    def _finalize(self) -> None:
         if self._finalized:
             return
         self._finalized = True
@@ -238,14 +239,14 @@ class ClassManager(
 
         _instrumentation_factory.dispatch.class_instrument(self.class_)
 
-    def __hash__(self):
+    def __hash__(self) -> int:  # type: ignore[override]
         return id(self)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return other is self
 
     @property
-    def is_mapped(self):
+    def is_mapped(self) -> bool:
         return "mapper" in self.__dict__
 
     @HasMemoized.memoized_attribute
