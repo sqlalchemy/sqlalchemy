@@ -3292,7 +3292,7 @@ class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 
         self.assert_compile(
             A.b_data == "foo",
-            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "EXISTS (SELECT 1 FROM b, a WHERE a.id = b.a_id "
             "AND b.data = :data_1)",
         )
 
@@ -3340,7 +3340,7 @@ class SynonymOfProxyTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 
         self.assert_compile(
             A.b_data_syn == "foo",
-            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "EXISTS (SELECT 1 FROM b, a WHERE a.id = b.a_id "
             "AND b.data = :data_1)",
         )
 
@@ -3471,7 +3471,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
         eq_(
             str(A.well_behaved_b_data == 5),
-            "EXISTS (SELECT 1 \nFROM a, b \nWHERE "
+            "EXISTS (SELECT 1 \nFROM b, a \nWHERE "
             "a.id = b.aid AND b.data = :data_1)",
         )
 

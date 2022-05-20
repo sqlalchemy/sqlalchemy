@@ -476,7 +476,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         q = sess.query(User)
         with self._expect_implicit_subquery():
-            q = sess.query(User).select_from(q.statement)
+            q = sess.query(User).select_from(User, q.statement)
         self.assert_compile(
             q.filter(User.name == "ed"),
             "SELECT users.id AS users_id, users.name AS users_name "

@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7888
+
+    The FROM clauses that are established on a :func:`_sql.select` construct
+    when using the :meth:`_sql.Select.select_from` method will now render first
+    in the FROM clause of the rendered SELECT, which serves to maintain the
+    ordering of clauses as was passed to the :meth:`_sql.Select.select_from`
+    method itself without being affected by the presence of those clauses also
+    being mentioned in other parts of the query. If other elements of the
+    :class:`_sql.Select` also generate FROM clauses, such as the columns clause
+    or WHERE clause, these will render after the clauses delivered by
+    :meth:`_sql.Select.select_from` assuming they were not explictly passed to
+    :meth:`_sql.Select.select_from` also. This improvement is useful in those
+    cases where a particular database generates a desirable query plan based on
+    a particular ordering of FROM clauses and allows full control over the
+    ordering of FROM clauses.

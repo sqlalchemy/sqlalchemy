@@ -1282,7 +1282,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             s,
             "SELECT table1.col1, table1.col2, table1.col3 FROM table1 "
             "WHERE table1.col1 = "
-            "(SELECT 1 FROM table1, table1 AS table1_1 "
+            "(SELECT 1 FROM table1 AS table1_1, table1 "
             "WHERE table1.col1 = table1_1.col1)",
         )
         s = CloningVisitor().traverse(s)
@@ -1290,7 +1290,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             s,
             "SELECT table1.col1, table1.col2, table1.col3 FROM table1 "
             "WHERE table1.col1 = "
-            "(SELECT 1 FROM table1, table1 AS table1_1 "
+            "(SELECT 1 FROM table1 AS table1_1, table1 "
             "WHERE table1.col1 = table1_1.col1)",
         )
 
@@ -2645,7 +2645,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select_copy,
             "SELECT table1.col1, table1.col2, "
-            "table1.col3 FROM table1, table2",
+            "table1.col3 FROM table2, table1",
         )
 
         self.assert_compile(

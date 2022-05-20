@@ -276,6 +276,34 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         eq_(stmt.entity_description, expected_entity)
         eq_(stmt.returning_column_descriptions, expected_returning)
 
+    @testing.combinations(
+        (
+            lambda User, Address: select(User.name)
+            .select_from(User, Address)
+            .where(User.id == Address.user_id),
+            "SELECT users.name FROM users, addresses "
+            "WHERE users.id = addresses.user_id",
+        ),
+        (
+            lambda User, Address: select(User.name)
+            .select_from(Address, User)
+            .where(User.id == Address.user_id),
+            "SELECT users.name FROM addresses, users "
+            "WHERE users.id = addresses.user_id",
+        ),
+    )
+    def test_select_from_ordering(self, stmt, expected):
+        User, Address = self.classes("User", "Address")
+
+        lambda_args = dict(
+            User=User,
+            Address=Address,
+            user_table=inspect(User).local_table,
+        )
+
+        stmt = testing.resolve_lambda(stmt, **lambda_args)
+        self.assert_compile(stmt, expected)
+
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"

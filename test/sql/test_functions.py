@@ -1671,11 +1671,11 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "SELECT result_elem[:result_elem_1] AS field "
-            "FROM json_array_elements("
+            'FROM "check" AS _check, json_array_elements('
             "(SELECT check_inside.response[:response_1] AS anon_1 "
             'FROM "check" AS check_inside '
             "WHERE check_inside.id = _check.id)"
-            ') AS result_elem, "check" AS _check '
+            ") AS result_elem "
             "WHERE result_elem[:result_elem_2] = :param_1",
         )
 
