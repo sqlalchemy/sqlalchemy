@@ -45,6 +45,7 @@ from .base import _inspect_mapped_class
 from .base import Mapped
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
+from .decl_base import _ClassScanMapperConfig
 from .decl_base import _declarative_constructor
 from .decl_base import _DeferredMapperConfig
 from .decl_base import _del_attribute
@@ -60,6 +61,7 @@ from .state import InstanceState
 from .. import exc
 from .. import inspection
 from .. import util
+from ..sql.base import _NoArg
 from ..sql.elements import SQLCoreOperations
 from ..sql.schema import MetaData
 from ..sql.selectable import FromClause
@@ -72,11 +74,11 @@ from ..util.typing import Literal
 if TYPE_CHECKING:
     from ._typing import _O
     from ._typing import _RegistryType
+    from .decl_base import _DataclassArguments
     from .instrumentation import ClassManager
     from .interfaces import MapperProperty
     from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
-
 _T = TypeVar("_T", bound=Any)
 
 # it's not clear how to have Annotated, Union objects etc. as keys here
@@ -588,19 +590,33 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
 
     def __init_subclass__(
         cls,
-        init: bool = True,
-        repr: bool = True,  # noqa: A002
-        eq: bool = True,
-        order: bool = False,
-        unsafe_hash: bool = False,
+        init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+        eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        order: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
     ) -> None:
-        cls._sa_apply_dc_transforms = {
+
+        apply_dc_transforms: _DataclassArguments = {
             "init": init,
             "repr": repr,
             "eq": eq,
             "order": order,
             "unsafe_hash": unsafe_hash,
         }
+
+        if hasattr(cls, "_sa_apply_dc_transforms"):
+            current = cls._sa_apply_dc_transforms  # type: ignore[attr-defined]
+
+            _ClassScanMapperConfig._assert_dc_arguments(current)
+
+            cls._sa_apply_dc_transforms = {
+                k: current.get(k, _NoArg.NO_ARG) if v is _NoArg.NO_ARG else v
+                for k, v in apply_dc_transforms.items()
+            }
+        else:
+            cls._sa_apply_dc_transforms = apply_dc_transforms
+
         super().__init_subclass__()
 
 
@@ -1229,11 +1245,11 @@ class registry:
         self,
         __cls: Literal[None] = ...,
         *,
-        init: bool = True,
-        repr: bool = True,  # noqa: A002
-        eq: bool = True,
-        order: bool = False,
-        unsafe_hash: bool = False,
+        init: Union[_NoArg, bool] = ...,
+        repr: Union[_NoArg, bool] = ...,  # noqa: A002
+        eq: Union[_NoArg, bool] = ...,
+        order: Union[_NoArg, bool] = ...,
+        unsafe_hash: Union[_NoArg, bool] = ...,
     ) -> Callable[[Type[_O]], Type[_O]]:
         ...
 
@@ -1241,11 +1257,11 @@ class registry:
         self,
         __cls: Optional[Type[_O]] = None,
         *,
-        init: bool = True,
-        repr: bool = True,  # noqa: A002
-        eq: bool = True,
-        order: bool = False,
-        unsafe_hash: bool = False,
+        init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+        eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        order: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
     ) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
         """Class decorator that will apply the Declarative mapping process
         to a given class, and additionally convert the class to be a
