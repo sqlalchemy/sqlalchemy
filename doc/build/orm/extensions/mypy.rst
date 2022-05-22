@@ -94,32 +94,33 @@ alter classes dynamically at runtime.
 To cover the major areas where this occurs, consider the following ORM
 mapping, using the typical example of the ``User`` class::
 
-    from sqlalchemy import Column
-    from sqlalchemy import Integer
-    from sqlalchemy import String
-    from sqlalchemy import select
+    from sqlalchemy import Column, Integer, String, select
     from sqlalchemy.orm import declarative_base
 
     # "Base" is a class that is created dynamically from the
     # declarative_base() function
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
+
     # "some_user" is an instance of the User class, which
     # accepts "id" and "name" kwargs based on the mapping
-    some_user = User(id=5, name='user')
+    some_user = User(id=5, name="user")
 
     # it has an attribute called .name that's a string
     print(f"Username: {some_user.name}")
 
     # a select() construct makes use of SQL expressions derived from the
     # User class itself
-    select_stmt = select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains('s'))
+    select_stmt = (
+        select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
+    )
 
 Above, the steps that the Mypy extension can take include:
 
@@ -145,35 +146,37 @@ When the Mypy plugin processes the above file, the resulting static class
 definition and Python code passed to the Mypy tool is equivalent to the
 following::
 
-    from sqlalchemy import Column
-    from sqlalchemy import Integer
-    from sqlalchemy import String
-    from sqlalchemy import select
-    from sqlalchemy.orm import declarative_base
-    from sqlalchemy.orm.decl_api import DeclarativeMeta
+    from sqlalchemy import Column, Integer, String, select
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm.decl_api import DeclarativeMeta
+
 
     class Base(metaclass=DeclarativeMeta):
         __abstract__ = True
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id: Mapped[Optional[int]] = Mapped._special_method(
             Column(Integer, primary_key=True)
         )
-        name: Mapped[Optional[str]] = Mapped._special_method(
-            Column(String)
-        )
+        name: Mapped[Optional[str]] = Mapped._special_method(Column(String))
 
-        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None:
+        def __init__(
+            self, id: Optional[int] = ..., name: Optional[str] = ...
+        ) -> None:
             ...
 
-    some_user = User(id=5, name='user')
+
+    some_user = User(id=5, name="user")
 
     print(f"Username: {some_user.name}")
 
-    select_stmt = select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains('s'))
+    select_stmt = (
+        select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
+    )
+
 
 The key steps which have been taken above include:
 
@@ -253,6 +256,7 @@ and convert them to include the ``Mapped[]`` type surrounding them.  The
 
     from sqlalchemy.orm import Mapped
 
+
     class MyClass(Base):
         # ...
 
@@ -309,14 +313,16 @@ needs an explicit type to be sent::
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id = Column(ForeignKey("user.id"))
@@ -333,7 +339,7 @@ To resolve, apply an explicit type annotation to the ``Address.user_id``
 column::
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id: int = Column(ForeignKey("user.id"))
@@ -354,7 +360,7 @@ the attributes can be explicitly stated with a complete annotation that
             Base.metadata,
             Column(Integer, primary_key=True),
             Column("employee_name", String(50), nullable=False),
-            Column(String(50))
+            Column(String(50)),
         )
 
         id: Mapped[int]
@@ -381,13 +387,14 @@ present, as well as if the target type of the :func:`_orm.relationship`
 is a string or callable, and not a class::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id: int = Column(ForeignKey("user.id"))
@@ -406,7 +413,7 @@ The error can be resolved either by using ``relationship(User, uselist=False)``
 or by providing the type, in this case the scalar ``User`` object::
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id: int = Column(ForeignKey("user.id"))
@@ -421,7 +428,8 @@ by pep-484, ensuring the class is imported with in
 the `TYPE_CHECKING block <https://www.python.org/dev/peps/pep-0484/#runtime-or-type-checking>`_
 as appropriate::
 
-    from typing import List, TYPE_CHECKING
+    from typing import TYPE_CHECKING, List
+
     from .mymodel import Base
 
     if TYPE_CHECKING:
@@ -429,8 +437,9 @@ as appropriate::
         # that cannot normally be imported at runtime
         from .myaddressmodel import Address
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -440,15 +449,18 @@ As is the case with columns, the :class:`_orm.Mapped` class may also be
 applied explicitly::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
-        addresses: Mapped[List["Address"]] = relationship("Address", back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(
+            "Address", back_populates="user"
+        )
+
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id: int = Column(ForeignKey("user.id"))
@@ -471,8 +483,8 @@ such as :meth:`_orm.registry.mapped`) should be decorated with the
 :func:`_orm.declarative_mixin` decorator, which provides a hint to the Mypy
 plugin that a particular class intends to serve as a declarative mixin::
 
-    from sqlalchemy.orm import declared_attr
-    from sqlalchemy.orm import declarative_mixin
+    from sqlalchemy.orm import declarative_mixin, declared_attr
+
 
     @declarative_mixin
     class HasUpdatedAt:
@@ -480,9 +492,9 @@ plugin that a particular class intends to serve as a declarative mixin::
         def updated_at(cls) -> Column[DateTime]:  # uses Column
             return Column(DateTime)
 
+
     @declarative_mixin
     class HasCompany:
-
         @declared_attr
         def company_id(cls) -> Mapped[int]:  # uses Mapped
             return Column(ForeignKey("company.id"))
@@ -491,8 +503,9 @@ plugin that a particular class intends to serve as a declarative mixin::
         def company(cls) -> Mapped["Company"]:
             return relationship("Company")
 
+
     class Employee(HasUpdatedAt, HasCompany, Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -507,7 +520,6 @@ this complexity::
         company_id: Mapped[int]
         company: Mapped["Company"]
 
-
 Combining with Dataclasses or Other Type-Sensitive Attribute Systems
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -517,7 +529,7 @@ use to build the class, and the value given in each assignment statement
 is significant.    That is, a class as follows has to be stated exactly
 as it is in order to be accepted by dataclasses::
 
-    mapper_registry : registry = registry()
+    mapper_registry: registry = registry()
 
 
     @mapper_registry.mapped
@@ -538,9 +550,7 @@ as it is in order to be accepted by dataclasses::
         addresses: List[Address] = field(default_factory=list)
 
         __mapper_args__ = {  # type: ignore
-            "properties" : {
-                "addresses": relationship("Address")
-            }
+            "properties": {"addresses": relationship("Address")}
         }
 
 We can't apply our ``Mapped[]`` types to the attributes ``id``, ``name``,
@@ -580,9 +590,7 @@ This attribute can be conditional within the ``TYPE_CHECKING`` variable::
             _mypy_mapped_attrs = [id, name, "fullname", "nickname", addresses]
 
         __mapper_args__ = {  # type: ignore
-            "properties" : {
-                "addresses": relationship("Address")
-            }
+            "properties": {"addresses": relationship("Address")}
         }
 
 With the above recipe, the attributes listed in ``_mypy_mapped_attrs``
