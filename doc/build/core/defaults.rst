@@ -175,6 +175,8 @@ and returned alone.
     by offering the service of organizing multiple VALUES clauses
     into individual parameter dictionaries.
 
+.. _defaults_client_invoked_sql:
+
 Client-Invoked SQL Expressions
 ------------------------------
 
