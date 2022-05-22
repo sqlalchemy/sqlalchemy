@@ -1219,7 +1219,7 @@ class SetInputSizesTest(fixtures.TestBase):
             # invent a whole wrapping scheme
 
             def __init__(self, connection_fairy):
-                self.cursor = connection_fairy.connection.cursor()
+                self.cursor = connection_fairy.dbapi_connection.cursor()
                 self.mock = mock.Mock()
                 connection_fairy.info["mock"] = self.mock
 

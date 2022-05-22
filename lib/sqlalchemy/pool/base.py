@@ -621,13 +621,13 @@ class _ConnectionRecord(ConnectionPoolEntry):
                 self.dbapi_connection
             )
 
-    @property
+    @util.deprecated_property(
+        "2.0",
+        "The _ConnectionRecord.connection attribute is deprecated; "
+        "please use 'driver_connection'",
+    )
     def connection(self) -> Optional[DBAPIConnection]:
         return self.dbapi_connection
-
-    @connection.setter
-    def connection(self, value: DBAPIConnection) -> None:
-        self.dbapi_connection = value
 
     _soft_invalidate_time: float = 0
 
@@ -1156,13 +1156,13 @@ class _ConnectionFairy(PoolProxiedConnection):
             return None
         return self._connection_record.driver_connection
 
-    @property
+    @util.deprecated_property(
+        "2.0",
+        "The _ConnectionFairy.connection attribute is deprecated; "
+        "please use 'driver_connection'",
+    )
     def connection(self) -> DBAPIConnection:
         return self.dbapi_connection
-
-    @connection.setter
-    def connection(self, value: DBAPIConnection) -> None:
-        self.dbapi_connection = value
 
     @classmethod
     def _checkout(
