@@ -29,7 +29,8 @@ useful for recreating transient properties that are normally assigned in
 
     from sqlalchemy import orm
 
-    class MyMappedClass(object):
+
+    class MyMappedClass:
         def __init__(self, data):
             self.data = data
             # we need stuff on all instances, but not in the database.

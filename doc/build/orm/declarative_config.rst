@@ -42,14 +42,19 @@ objects but also relationships and SQL expressions::
     # mapping attributes using declarative with declarative table
     # i.e. __tablename__
 
-    from sqlalchemy import Column, Integer, String, Text, ForeignKey
-    from sqlalchemy.orm import column_property, relationship, deferred
-    from sqlalchemy.orm import declarative_base
+    from sqlalchemy import Column, ForeignKey, Integer, String, Text
+    from sqlalchemy.orm import (
+        column_property,
+        declarative_base,
+        deferred,
+        relationship,
+    )
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -60,8 +65,9 @@ objects but also relationships and SQL expressions::
 
         addresses = relationship("Address", back_populates="user")
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id = Column(ForeignKey("user.id"))
@@ -90,12 +96,16 @@ hybrid table style::
     # mapping attributes using declarative with imperative table
     # i.e. __table__
 
-    from sqlalchemy import Table
-    from sqlalchemy import Column, Integer, String, Text, ForeignKey
-    from sqlalchemy.orm import column_property, relationship, deferred
-    from sqlalchemy.orm import declarative_base
+    from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text
+    from sqlalchemy.orm import (
+        column_property,
+        declarative_base,
+        deferred,
+        relationship,
+    )
 
     Base = declarative_base()
+
 
     class User(Base):
         __table__ = Table(
@@ -104,12 +114,15 @@ hybrid table style::
             Column("id", Integer, primary_key=True),
             Column("name", String),
             Column("firstname", String(50)),
-            Column("lastname", String(50))
+            Column("lastname", String(50)),
         )
 
-        fullname = column_property(__table__.c.firstname + " " + __table__.c.lastname)
+        fullname = column_property(
+            __table__.c.firstname + " " + __table__.c.lastname
+        )
 
         addresses = relationship("Address", back_populates="user")
+
 
     class Address(Base):
         __table__ = Table(
@@ -118,7 +131,7 @@ hybrid table style::
             Column("id", Integer, primary_key=True),
             Column("user_id", ForeignKey("user.id")),
             Column("email_address", String),
-            Column("address_statistics", Text)
+            Column("address_statistics", Text),
         )
 
         address_statistics = deferred(__table__.c.address_statistics)
@@ -168,15 +181,16 @@ The :paramref:`_orm.mapper.version_id_col` and
 
     from datetime import datetime
 
+
     class Widget(Base):
-        __tablename__ = 'widgets'
+        __tablename__ = "widgets"
 
         id = Column(Integer, primary_key=True)
         timestamp = Column(DateTime, nullable=False)
 
         __mapper_args__ = {
-            'version_id_col': timestamp,
-            'version_id_generator': lambda v:datetime.now()
+            "version_id_col": timestamp,
+            "version_id_generator": lambda v: datetime.now(),
         }
 
 **Single Table Inheritance**
@@ -185,19 +199,20 @@ The :paramref:`_orm.mapper.polymorphic_on` and
 :paramref:`_orm.mapper.polymorphic_identity` parameters::
 
     class Person(Base):
-        __tablename__ = 'person'
+        __tablename__ = "person"
 
         person_id = Column(Integer, primary_key=True)
         type = Column(String, nullable=False)
 
         __mapper_args__ = dict(
             polymorphic_on=type,
-            polymorphic_identity="person"
+            polymorphic_identity="person",
         )
+
 
     class Employee(Person):
         __mapper_args__ = dict(
-            polymorphic_identity="employee"
+            polymorphic_identity="employee",
         )
 
 The ``__mapper_args__`` dictionary may be generated from a class-bound
@@ -268,30 +283,34 @@ be illustrated using :meth:`_orm.registry.mapped` as follows::
 
     reg = registry()
 
+
     class BaseOne:
         metadata = MetaData()
+
 
     class BaseTwo:
         metadata = MetaData()
 
+
     @reg.mapped
     class ClassOne:
-        __tablename__ = 't1'  # will use reg.metadata
+        __tablename__ = "t1"  # will use reg.metadata
 
         id = Column(Integer, primary_key=True)
+
 
     @reg.mapped
     class ClassTwo(BaseOne):
-        __tablename__ = 't1'  # will use BaseOne.metadata
+        __tablename__ = "t1"  # will use BaseOne.metadata
 
         id = Column(Integer, primary_key=True)
+
 
     @reg.mapped
     class ClassThree(BaseTwo):
-        __tablename__ = 't1'  # will use BaseTwo.metadata
+        __tablename__ = "t1"  # will use BaseTwo.metadata
 
         id = Column(Integer, primary_key=True)
-
 
 .. versionchanged:: 1.4.3  The :meth:`_orm.registry.mapped` decorator will
    honor an attribute named ``.metadata`` on the class as an alternate
@@ -322,23 +341,26 @@ subclasses to extend just from the special class::
         __abstract__ = True
 
         def some_helpful_method(self):
-            ""
+            """"""
 
         @declared_attr
         def __mapper_args__(cls):
-            return {"helpful mapper arguments":True}
+            return {"helpful mapper arguments": True}
+
 
     class MyMappedClass(SomeAbstractBase):
-        ""
+        pass
 
 One possible use of ``__abstract__`` is to use a distinct
 :class:`_schema.MetaData` for different bases::
 
     Base = declarative_base()
 
+
     class DefaultBase(Base):
         __abstract__ = True
         metadata = MetaData()
+
 
     class OtherBase(Base):
         __abstract__ = True
@@ -352,7 +374,6 @@ created perhaps within distinct databases::
     DefaultBase.metadata.create_all(some_engine)
     OtherBase.metadata.create_all(some_other_engine)
 
-
 ``__table_cls__``
 ~~~~~~~~~~~~~~~~~
 
@@ -363,10 +384,7 @@ to a :class:`_schema.Table` that one generates here::
     class MyMixin(object):
         @classmethod
         def __table_cls__(cls, name, metadata_obj, *arg, **kw):
-            return Table(
-                "my_" + name,
-                metadata_obj, *arg, **kw
-            )
+            return Table(f"my_{name}", metadata_obj, *arg, **kw)
 
 The above mixin would cause all :class:`_schema.Table` objects generated to include
 the prefix ``"my_"``, followed by the name normally specified using the
@@ -386,14 +404,17 @@ such as, define as single-inheritance if there is no primary key present::
         @classmethod
         def __table_cls__(cls, *arg, **kw):
             for obj in arg[1:]:
-                if (isinstance(obj, Column) and obj.primary_key) or \
-                        isinstance(obj, PrimaryKeyConstraint):
+                if (isinstance(obj, Column) and obj.primary_key) or isinstance(
+                    obj, PrimaryKeyConstraint
+                ):
                     return Table(*arg, **kw)
 
             return None
 
+
     class Person(AutoTable, Base):
         id = Column(Integer, primary_key=True)
+
 
     class Employee(Person):
         employee_name = Column(String)

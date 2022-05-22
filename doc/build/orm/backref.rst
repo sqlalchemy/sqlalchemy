@@ -7,24 +7,25 @@ The :paramref:`_orm.relationship.backref` keyword argument was first introduced 
 mentioned throughout many of the examples here.   What does it actually do ?   Let's start
 with the canonical ``User`` and ``Address`` scenario::
 
-    from sqlalchemy import Integer, ForeignKey, String, Column
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
         addresses = relationship("Address", backref="user")
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = Column(Integer, primary_key=True)
         email = Column(String)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        user_id = Column(Integer, ForeignKey("user.id"))
 
 The above configuration establishes a collection of ``Address`` objects on ``User`` called
 ``User.addresses``.   It also establishes a ``.user`` attribute on ``Address`` which will
@@ -35,24 +36,25 @@ In fact, the :paramref:`_orm.relationship.backref` keyword is only a common shor
 of an event listener on both sides which will mirror attribute operations
 in both directions.   The above configuration is equivalent to::
 
-    from sqlalchemy import Integer, ForeignKey, String, Column
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
         addresses = relationship("Address", back_populates="user")
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = Column(Integer, primary_key=True)
         email = Column(String)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        user_id = Column(Integer, ForeignKey("user.id"))
 
         user = relationship("User", back_populates="addresses")
 
@@ -119,27 +121,31 @@ or a one-to-many or many-to-one which has a :paramref:`_orm.relationship.primary
 :paramref:`_orm.relationship.primaryjoin` argument is discussed in :ref:`relationship_primaryjoin`).  Such
 as if we limited the list of ``Address`` objects to those which start with "tony"::
 
-    from sqlalchemy import Integer, ForeignKey, String, Column
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
-        addresses = relationship("Address",
-                        primaryjoin="and_(User.id==Address.user_id, "
-                            "Address.email.startswith('tony'))",
-                        backref="user")
+        addresses = relationship(
+            "Address",
+            primaryjoin=(
+                "and_(User.id==Address.user_id, Address.email.startswith('tony'))"
+            ),
+            backref="user",
+        )
+
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = Column(Integer, primary_key=True)
         email = Column(String)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        user_id = Column(Integer, ForeignKey("user.id"))
 
 We can observe, by inspecting the resulting property, that both sides
 of the relationship have this join condition applied::
@@ -171,13 +177,16 @@ the :func:`.backref` function in place of a string::
     # <other imports>
     from sqlalchemy.orm import backref
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
-        addresses = relationship("Address",
-                        backref=backref("user", lazy="joined"))
+        addresses = relationship(
+            "Address",
+            backref=backref("user", lazy="joined"),
+        )
 
 Where above, we placed a ``lazy="joined"`` directive only on the ``Address.user``
 side, indicating that when a query against ``Address`` is made, a join to the ``User``
@@ -271,26 +280,31 @@ present, due to the filtering condition.   But we can do away with this unwanted
 of the "backref" behavior on the Python side by using two separate :func:`_orm.relationship` constructs,
 placing :paramref:`_orm.relationship.back_populates` only on one side::
 
-    from sqlalchemy import Integer, ForeignKey, String, Column
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String)
-        addresses = relationship("Address",
-                        primaryjoin="and_(User.id==Address.user_id, "
-                            "Address.email.startswith('tony'))",
-                        back_populates="user")
+
+        addresses = relationship(
+            "Address",
+            primaryjoin="and_(User.id==Address.user_id, "
+            "Address.email.startswith('tony'))",
+            back_populates="user",
+        )
+
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = Column(Integer, primary_key=True)
         email = Column(String)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        user_id = Column(Integer, ForeignKey("user.id"))
+
         user = relationship("User")
 
 With the above scenario, appending an ``Address`` object to the ``.addresses``

@@ -38,15 +38,16 @@ method::
 With the declarative base class, new mapped classes are declared as subclasses
 of the base::
 
-    from sqlalchemy import Column, Integer, String, ForeignKey
+    from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import declarative_base
 
     # declarative base class
     Base = declarative_base()
 
+
     # an example mapping using the base
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -120,25 +121,25 @@ a decorator.  The :meth:`_orm.registry.mapped` function is a class decorator
 that can be applied to any Python class with no hierarchy in place.  The
 Python class otherwise is configured in declarative style normally::
 
-    from sqlalchemy import Column, Integer, String, Text, ForeignKey
-
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String, Text
+    from sqlalchemy.orm import registry, relationship
 
     mapper_registry = registry()
 
+
     @mapper_registry.mapped
     class User:
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
         addresses = relationship("Address", back_populates="user")
 
+
     @mapper_registry.mapped
     class Address:
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         user_id = Column(ForeignKey("user.id"))
@@ -154,7 +155,9 @@ if the decorator is applied to that class directly.   For inheritance
 mappings, the decorator should be applied to each subclass::
 
     from sqlalchemy.orm import registry
+
     mapper_registry = registry()
+
 
     @mapper_registry.mapped
     class Person:
@@ -164,9 +167,8 @@ mappings, the decorator should be applied to each subclass::
         type = Column(String, nullable=False)
 
         __mapper_args__ = {
-
             "polymorphic_on": type,
-            "polymorphic_identity": "person"
+            "polymorphic_identity": "person",
         }
 
 
@@ -177,7 +179,7 @@ mappings, the decorator should be applied to each subclass::
         person_id = Column(ForeignKey("person.person_id"), primary_key=True)
 
         __mapper_args__ = {
-            "polymorphic_identity": "employee"
+            "polymorphic_identity": "employee",
         }
 
 Both the "declarative table" and "imperative table" styles of declarative
@@ -243,18 +245,11 @@ An example of a mapping using ``@dataclass`` using
 
     from __future__ import annotations
 
-    from dataclasses import dataclass
-    from dataclasses import field
-    from typing import List
-    from typing import Optional
+    from dataclasses import dataclass, field
+    from typing import List, Optional
 
-    from sqlalchemy import Column
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy import String
-    from sqlalchemy import Table
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String, Table
+    from sqlalchemy.orm import registry, relationship
 
     mapper_registry = registry()
 
@@ -276,11 +271,12 @@ An example of a mapping using ``@dataclass`` using
         nickname: Optional[str] = None
         addresses: List[Address] = field(default_factory=list)
 
-        __mapper_args__ = {   # type: ignore
-            "properties" : {
-                "addresses": relationship("Address")
+        __mapper_args__ = {  # type: ignore
+            "properties": {
+                "addresses": relationship("Address"),
             }
         }
+
 
     @mapper_registry.mapped
     @dataclass
@@ -328,16 +324,11 @@ association::
 
     from __future__ import annotations
 
-    from dataclasses import dataclass
-    from dataclasses import field
+    from dataclasses import dataclass, field
     from typing import List
 
-    from sqlalchemy import Column
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy import String
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.orm import registry, relationship
 
     mapper_registry = registry()
 
@@ -388,7 +379,7 @@ example at :ref:`orm_declarative_mixins_relationships`::
     class RefTargetMixin:
         @declared_attr
         def target_id(cls):
-            return Column('target_id', ForeignKey('target.id'))
+            return Column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
@@ -414,6 +405,7 @@ came from a mixin that is itself a dataclass, the form would be::
             default_factory=list, metadata={"sa": lambda: relationship("Address")}
         )
 
+
     @dataclass
     class AddressMixin:
         __tablename__ = "address"
@@ -428,13 +420,15 @@ came from a mixin that is itself a dataclass, the form would be::
             default=None, metadata={"sa": Column(String(50))}
         )
 
+
     @mapper_registry.mapped
     class User(UserMixin):
         pass
 
+
     @mapper_registry.mapped
     class Address(AddressMixin):
-      pass
+        pass
 
 .. versionadded:: 1.4.2  Added support for "declared attr" style mixin attributes,
    namely :func:`_orm.relationship` constructs as well as :class:`_schema.Column`
@@ -449,10 +443,10 @@ Example Three - attrs with Imperative Table
 A mapping using ``@attr.s``, in conjunction with imperative table::
 
     import attr
+    from sqlalchemy.orm import registry
 
     # other imports
 
-    from sqlalchemy.orm import registry
 
     mapper_registry = registry()
 
@@ -474,7 +468,9 @@ A mapping using ``@attr.s``, in conjunction with imperative table::
         nickname = attr.ib()
         addresses = attr.ib()
 
+
     # other classes...
+
 
 ``@dataclass`` and attrs_ mappings may also be used with classical mappings, i.e.
 with the :meth:`_orm.registry.map_imperatively` function.  See the section

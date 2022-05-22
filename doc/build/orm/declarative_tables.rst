@@ -29,13 +29,14 @@ With the declarative base class, the typical form of mapping includes an
 attribute ``__tablename__`` that indicates the name of a :class:`_schema.Table`
 that should be generated along with the mapping::
 
-    from sqlalchemy import Column, Integer, String, ForeignKey
+    from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import declarative_base
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -114,29 +115,29 @@ The attribute can be specified in one of two forms. One is as a
 dictionary::
 
     class MyClass(Base):
-        __tablename__ = 'sometable'
-        __table_args__ = {'mysql_engine':'InnoDB'}
+        __tablename__ = "sometable"
+        __table_args__ = {"mysql_engine": "InnoDB"}
 
 The other, a tuple, where each argument is positional
 (usually constraints)::
 
     class MyClass(Base):
-        __tablename__ = 'sometable'
+        __tablename__ = "sometable"
         __table_args__ = (
-                ForeignKeyConstraint(['id'], ['remote_table.id']),
-                UniqueConstraint('foo'),
-                )
+            ForeignKeyConstraint(["id"], ["remote_table.id"]),
+            UniqueConstraint("foo"),
+        )
 
 Keyword arguments can be specified with the above form by
 specifying the last argument as a dictionary::
 
     class MyClass(Base):
-        __tablename__ = 'sometable'
+        __tablename__ = "sometable"
         __table_args__ = (
-                ForeignKeyConstraint(['id'], ['remote_table.id']),
-                UniqueConstraint('foo'),
-                {'autoload':True}
-                )
+            ForeignKeyConstraint(["id"], ["remote_table.id"]),
+            UniqueConstraint("foo"),
+            {"autoload": True},
+        )
 
 A class may also specify the ``__table_args__`` declarative attribute,
 as well as the ``__tablename__`` attribute, in a dynamic style using the
@@ -156,9 +157,8 @@ dictionary::
 
 
     class MyClass(Base):
-        __tablename__ = 'sometable'
-        __table_args__ = {'schema': 'some_schema'}
-
+        __tablename__ = "sometable"
+        __table_args__ = {"schema": "some_schema"}
 
 The schema name can also be applied to all :class:`_schema.Table` objects
 globally by using the :paramref:`_schema.MetaData.schema` parameter documented
@@ -167,15 +167,15 @@ may be constructed separately and passed either to :func:`_orm.registry`
 or :func:`_orm.declarative_base`::
 
     from sqlalchemy import MetaData
+
     metadata_obj = MetaData(schema="some_schema")
 
-    Base = declarative_base(metadata = metadata_obj)
+    Base = declarative_base(metadata=metadata_obj)
 
 
     class MyClass(Base):
         # will use "some_schema" by default
-        __tablename__ = 'sometable'
-
+        __tablename__ = "sometable"
 
 .. seealso::
 
@@ -191,7 +191,7 @@ The declarative table configuration allows the addition of new
 is that of simply assigning new :class:`_schema.Column` objects to the
 class::
 
-    MyClass.some_new_column = Column('data', Unicode)
+    MyClass.some_new_column = Column("data", Unicode)
 
 The above operation performed against a declarative class that has been
 mapped using the declarative base (note, not the decorator form of declarative)
@@ -231,9 +231,8 @@ object is produced separately and passed to the declarative process
 directly::
 
 
+    from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import declarative_base
-    from sqlalchemy import Column, Integer, String, ForeignKey
-
 
     Base = declarative_base()
 
@@ -249,6 +248,7 @@ directly::
         Column("fullname", String),
         Column("nickname", String),
     )
+
 
     # construct the User class using this table.
     class User(Base):
@@ -278,33 +278,40 @@ mapper configuration::
 
     class Person(Base):
         __table__ = Table(
-            'person',
+            "person",
             Base.metadata,
-            Column('id', Integer, primary_key=True),
-            Column('name', String(50)),
-            Column('type', String(50))
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column("type", String(50)),
         )
 
         __mapper_args__ = {
             "polymorphic_on": __table__.c.type,
-            "polymorhpic_identity": "person"
+            "polymorhpic_identity": "person",
         }
 
 The "imperative table" form is also used when a non-:class:`_schema.Table`
 construct, such as a :class:`_sql.Join` or :class:`_sql.Subquery` object,
 is to be mapped.  An example below::
 
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
 
-    subq = select(
-        func.count(orders.c.id).label('order_count'),
-        func.max(orders.c.price).label('highest_order'),
-        orders.c.customer_id
-    ).group_by(orders.c.customer_id).subquery()
+    subq = (
+        select(
+            func.count(orders.c.id).label("order_count"),
+            func.max(orders.c.price).label("highest_order"),
+            orders.c.customer_id,
+        )
+        .group_by(orders.c.customer_id)
+        .subquery()
+    )
 
-    customer_select = select(customers, subq).join_from(
-        customers, subq, customers.c.id == subq.c.customer_id
-    ).subquery()
+    customer_select = (
+        select(customers, subq)
+        .join_from(customers, subq, customers.c.id == subq.c.customer_id)
+        .subquery()
+    )
+
 
     class Customer(Base):
         __table__ = customer_select
@@ -337,13 +344,16 @@ use a declarative hybrid mapping, passing the
 :paramref:`_schema.Table.autoload_with` parameter to the
 :class:`_schema.Table`::
 
-    engine = create_engine("postgresql://user:pass@hostname/my_existing_database")
+    engine = create_engine(
+        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
+    )
+
 
     class MyClass(Base):
         __table__ = Table(
-            'mytable',
+            "mytable",
             Base.metadata,
-            autoload_with=engine
+            autoload_with=engine,
         )
 
 A major downside of the above approach however is that it requires the database
@@ -364,22 +374,25 @@ the reflection process against a target database, and will integrate the
 results with the declarative table mapping process, that is, classes which
 use the ``__tablename__`` attribute::
 
-    from sqlalchemy.orm import declarative_base
     from sqlalchemy.ext.declarative import DeferredReflection
+    from sqlalchemy.orm import declarative_base
 
     Base = declarative_base()
+
 
     class Reflected(DeferredReflection):
         __abstract__ = True
 
+
     class Foo(Reflected, Base):
-        __tablename__ = 'foo'
+        __tablename__ = "foo"
         bars = relationship("Bar")
 
-    class Bar(Reflected, Base):
-        __tablename__ = 'bar'
 
-        foo_id = Column(Integer, ForeignKey('foo.id'))
+    class Bar(Reflected, Base):
+        __tablename__ = "bar"
+
+        foo_id = Column(Integer, ForeignKey("foo.id"))
 
 Above, we create a mixin class ``Reflected`` that will serve as a base
 for classes in our declarative hierarchy that should become mapped when
@@ -387,7 +400,9 @@ the ``Reflected.prepare`` method is called.   The above mapping is not
 complete until we do so, given an :class:`_engine.Engine`::
 
 
-    engine = create_engine("postgresql://user:pass@hostname/my_existing_database")
+    engine = create_engine(
+        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
+    )
     Reflected.prepare(engine)
 
 The purpose of the ``Reflected`` class is to define the scope at which
