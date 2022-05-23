@@ -1,5 +1,6 @@
 import dataclasses
 import inspect as pyinspect
+from itertools import product
 from typing import Any
 from typing import List
 from typing import Optional
@@ -488,14 +489,26 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
 class DataclassArgsTest(fixtures.TestBase):
     dc_arg_names = ("init", "repr", "eq", "order", "unsafe_hash")
 
-    @testing.fixture(params=dc_arg_names)
+    @testing.fixture(params=product(dc_arg_names, (True, False)))
     def dc_argument_fixture(self, request: Any, registry: _RegistryType):
-        name = request.param
+        name, use_defaults = request.param
 
         args = {n: n == name for n in self.dc_arg_names}
         if args["order"]:
             args["eq"] = True
-        yield args
+        if use_defaults:
+            default = {
+                "init": True,
+                "repr": True,
+                "eq": True,
+                "order": False,
+                "unsafe_hash": False,
+            }
+            to_apply = {k: v for k, v in args.items() if v}
+            effective = {**default, **to_apply}
+            return to_apply, effective
+        else:
+            return args, args
 
     @testing.fixture(
         params=["mapped_column", "synonym", "deferred", "column_property"]
@@ -674,7 +687,7 @@ class DataclassArgsTest(fixtures.TestBase):
         mapped_expr_constructor,
         registry: _RegistryType,
     ):
-        @registry.mapped_as_dataclass(**dc_argument_fixture)
+        @registry.mapped_as_dataclass(**dc_argument_fixture[0])
         class A:
             __tablename__ = "a"
 
@@ -685,7 +698,7 @@ class DataclassArgsTest(fixtures.TestBase):
 
             x: Mapped[Optional[int]] = mapped_expr_constructor
 
-        self._assert_cls(A, dc_argument_fixture)
+        self._assert_cls(A, dc_argument_fixture[1])
 
     def test_dc_arguments_base(
         self,
@@ -695,7 +708,9 @@ class DataclassArgsTest(fixtures.TestBase):
     ):
         reg = registry
 
-        class Base(MappedAsDataclass, DeclarativeBase, **dc_argument_fixture):
+        class Base(
+            MappedAsDataclass, DeclarativeBase, **dc_argument_fixture[0]
+        ):
             registry = reg
 
         class A(Base):
@@ -708,7 +723,7 @@ class DataclassArgsTest(fixtures.TestBase):
 
             x: Mapped[Optional[int]] = mapped_expr_constructor
 
-        self.A = A
+        self._assert_cls(A, dc_argument_fixture[1])
 
     def test_dc_arguments_perclass(
         self,
@@ -716,7 +731,7 @@ class DataclassArgsTest(fixtures.TestBase):
         mapped_expr_constructor,
         decl_base: Type[DeclarativeBase],
     ):
-        class A(MappedAsDataclass, decl_base, **dc_argument_fixture):
+        class A(MappedAsDataclass, decl_base, **dc_argument_fixture[0]):
             __tablename__ = "a"
 
             id: Mapped[int] = mapped_column(primary_key=True, init=False)
@@ -726,7 +741,106 @@ class DataclassArgsTest(fixtures.TestBase):
 
             x: Mapped[Optional[int]] = mapped_expr_constructor
 
-        self.A = A
+        self._assert_cls(A, dc_argument_fixture[1])
+
+    def test_dc_arguments_override_base(self, registry: _RegistryType):
+        reg = registry
+
+        class Base(MappedAsDataclass, DeclarativeBase, init=False, order=True):
+            registry = reg
+
+        class A(Base, init=True, repr=False):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str]
+
+            some_int: Mapped[int] = mapped_column(init=False, repr=False)
+
+            x: Mapped[Optional[int]] = mapped_column(default=7)
+
+        effective = {
+            "init": True,
+            "repr": False,
+            "eq": True,
+            "order": True,
+            "unsafe_hash": False,
+        }
+        self._assert_cls(A, effective)
+
+    def test_dc_base_unsupported_argument(self, registry: _RegistryType):
+        reg = registry
+        with expect_raises(TypeError):
+
+            class Base(MappedAsDataclass, DeclarativeBase, slots=True):
+                registry = reg
+
+        class Base2(MappedAsDataclass, DeclarativeBase, order=True):
+            registry = reg
+
+        with expect_raises(TypeError):
+
+            class A(Base2, slots=False):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+    def test_dc_decorator_unsupported_argument(self, registry: _RegistryType):
+        reg = registry
+        with expect_raises(TypeError):
+
+            @registry.mapped_as_dataclass(slots=True)
+            class Base(DeclarativeBase):
+                registry = reg
+
+        class Base2(MappedAsDataclass, DeclarativeBase, order=True):
+            registry = reg
+
+        with expect_raises(TypeError):
+
+            @registry.mapped_as_dataclass(slots=True)
+            class A(Base2):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+    def test_dc_raise_for_slots(
+        self,
+        registry: _RegistryType,
+        decl_base: Type[DeclarativeBase],
+    ):
+        reg = registry
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Dataclass argument\(s\) 'slots', 'unknown' are not accepted",
+        ):
+
+            class A(MappedAsDataclass, decl_base):
+                __tablename__ = "a"
+                _sa_apply_dc_transforms = {"slots": True, "unknown": 5}
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Dataclass argument\(s\) 'slots' are not accepted",
+        ):
+
+            class Base(MappedAsDataclass, DeclarativeBase, order=True):
+                registry = reg
+                _sa_apply_dc_transforms = {"slots": True}
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Dataclass argument\(s\) 'slots', 'unknown' are not accepted",
+        ):
+
+            @reg.mapped
+            class C:
+                __tablename__ = "a"
+                _sa_apply_dc_transforms = {"slots": True, "unknown": 5}
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
 
 
 class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):

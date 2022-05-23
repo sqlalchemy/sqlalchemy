@@ -64,6 +64,7 @@ from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
 from ..util.typing import Protocol
+from ..util.typing import TypedDict
 
 if TYPE_CHECKING:
     from ._typing import _ClassDict
@@ -89,11 +90,21 @@ class _DeclMappedClassProtocol(Protocol[_O]):
     __mapper_args__: Mapping[str, Any]
     __table_args__: Optional[_TableArgsType]
 
+    _sa_apply_dc_transforms: Optional[_DataclassArguments]
+
     def __declare_first__(self) -> None:
         pass
 
     def __declare_last__(self) -> None:
         pass
+
+
+class _DataclassArguments(TypedDict):
+    init: Union[_NoArg, bool]
+    repr: Union[_NoArg, bool]
+    eq: Union[_NoArg, bool]
+    order: Union[_NoArg, bool]
+    unsafe_hash: Union[_NoArg, bool]
 
 
 def _declared_mapping_info(
@@ -419,9 +430,10 @@ class _ClassScanMapperConfig(_MapperConfig):
     mapper_args_fn: Optional[Callable[[], Dict[str, Any]]]
     inherits: Optional[Type[Any]]
 
-    dataclass_setup_arguments: Optional[Dict[str, Any]]
+    dataclass_setup_arguments: Optional[_DataclassArguments]
     """if the class has SQLAlchemy native dataclass parameters, where
-    we will create a SQLAlchemy dataclass (not a real dataclass).
+    we will turn the class into a dataclass within the declarative mapping
+    process.
 
     """
 
@@ -956,7 +968,36 @@ class _ClassScanMapperConfig(_MapperConfig):
             setattr(self.cls, k, v)
         self.cls.__annotations__ = annotations
 
-        dataclasses.dataclass(self.cls, **dataclass_setup_arguments)
+        self._assert_dc_arguments(dataclass_setup_arguments)
+
+        dataclasses.dataclass(
+            self.cls,
+            **{
+                k: v
+                for k, v in dataclass_setup_arguments.items()
+                if v is not _NoArg.NO_ARG
+            },
+        )
+
+    @classmethod
+    def _assert_dc_arguments(cls, arguments: _DataclassArguments) -> None:
+        disallowed_args = set(arguments).difference(
+            {
+                "init",
+                "repr",
+                "order",
+                "eq",
+                "unsafe_hash",
+            }
+        )
+        if disallowed_args:
+            raise exc.ArgumentError(
+                f"Dataclass argument(s) "
+                f"""{
+                    ', '.join(f'{arg!r}'
+                    for arg in sorted(disallowed_args))
+                } are not accepted"""
+            )
 
     def _collect_annotation(
         self,
