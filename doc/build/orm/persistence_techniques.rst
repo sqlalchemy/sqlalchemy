@@ -280,7 +280,8 @@ Case 1: non primary key, RETURNING or equivalent is supported
 
 In this case, columns should be marked as :class:`.FetchedValue` or with an
 explicit :paramref:`_schema.Column.server_default`.   The
-:paramref:`.orm.mapper.eager_defaults` flag may be used to indicate that these
+:paramref:`_orm.Mapper.eager_defaults` parameter
+may be used to indicate that these
 columns should be fetched immediately upon INSERT and sometimes UPDATE::
 
 
@@ -305,6 +306,7 @@ above table will look like:
 .. sourcecode:: sql
 
    INSERT INTO my_table DEFAULT VALUES RETURNING my_table.id, my_table.timestamp, my_table.special_identifier
+
 
 Case 2: non primary key, RETURNING or equivalent is not supported or not needed
 --------------------------------------------------------------------------------
@@ -497,8 +499,61 @@ The above mapping upon INSERT will look like:
 
     :ref:`metadata_defaults_toplevel`
 
+Notes on eagerly fetching client invoked SQL expressions used for INSERT or UPDATE
+-----------------------------------------------------------------------------------
+
+The preceding examples indicate the use of :paramref:`_schema.Column.server_default`
+to create tables that include default-generation functions within their
+DDL.
+
+SQLAlchemy also supports non-DDL server side defaults, as documented at
+:ref:`defaults_client_invoked_sql`; these "client invoked SQL expressions"
+are set up using the :paramref:`_schema.Column.default` and
+:paramref:`_schema.Column.onupdate` parameters.
+
+These SQL expressions currently are subject to the same limitations within the
+ORM as occurs for true server-side defaults; they won't be eagerly fetched with
+RETURNING when using :paramref:`_orm.Mapper.eager_defaults` unless the
+:class:`.FetchedValue` directive is associated with the
+:class:`_schema.Column`, even though these expressions are not DDL server
+defaults and are actively rendered by SQLAlchemy itself. This limitation may be
+addressed in future SQLAlchemy releases.
+
+The :class:`.FetchedValue` construct can be applied to
+:paramref:`_schema.Column.server_default` or
+:paramref:`_schema.Column.server_onupdate` at the same time that a SQL
+expression is used with :paramref:`_schema.Column.default` and
+:paramref:`_schema.Column.onupdate`, such as in the example below where the
+``func.now()`` construct is used as a client-invoked SQL expression
+for :paramref:`_schema.Column.default` and
+:paramref:`_schema.Column.onupdate`.  In order for the behavior of
+:paramref:`_orm.Mapper.eager_defaults` to include that it fetches these
+values using RETURNING when available, :paramref:`_schema.Column.server_default` and
+:paramref:`_schema.Column.server_onupdate` are used with :class:`.FetchedValue`
+to ensure that the fetch occurs::
+
+    class MyModel(Base):
+        __tablename__ = 'my_table'
+
+        id = Column(Integer, primary_key=True)
+
+        created = Column(DateTime(), default=func.now(), server_default=FetchedValue())
+        updated = Column(DateTime(), onupdate=func.now(), server_default=FetchedValue(), server_onupdate=FetchedValue())
+
+        __mapper_args__ = {"eager_defaults": True}
+
+With a mapping similar to the above, the SQL rendered by the ORM for
+INSERT and UPDATE will include ``created`` and ``updated`` in the RETURNING
+clause::
+
+  INSERT INTO my_table (created) VALUES (now()) RETURNING my_table.id, my_table.created, my_table.updated
+
+  UPDATE my_table SET updated=now() WHERE my_table.id = %(my_table_id)s RETURNING my_table.updated
+
+
 
 .. _orm_dml_returning_objects:
+
 
 Using INSERT, UPDATE and ON CONFLICT (i.e. upsert) to return ORM Objects
 ==========================================================================
