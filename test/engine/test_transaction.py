@@ -346,7 +346,10 @@ class TransactionTest(fixtures.TablesTest):
         with testing.expect_warnings("nested transaction already"):
             s1.rollback()  # no error (though it warns)
 
-        t1.commit()  # no error
+        # this test was previously calling "commit", but note relies on
+        # buggy behavior in PostgreSQL as the transaction block is in fact
+        # aborted.   pg8000 enforces this on the client as of 1.29
+        t1.rollback()  # no error
 
     @testing.requires.savepoints_w_release
     def test_savepoint_release_fails_flat(self):
@@ -368,7 +371,10 @@ class TransactionTest(fixtures.TablesTest):
             assert not s1.is_active
             s1.rollback()  # no error.  prior to 1.4 this would try to rollback
 
-            t1.commit()  # no error
+            # this test was previously calling "commit", but note relies on
+            # buggy behavior in PostgreSQL as the transaction block is in fact
+            # aborted.   pg8000 enforces this on the client as of 1.29
+            t1.rollback()  # no error
 
     @testing.requires.savepoints_w_release
     def test_savepoint_release_fails_ctxmanager(self, local_connection):

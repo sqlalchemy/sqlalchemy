@@ -75,7 +75,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         # the case here due to the foreign key.
 
         with expect_warnings(".*has no Python-side or server-side default.*"):
-            with engine.begin() as conn:
+            with engine.connect() as conn:
+                conn.begin()
                 assert_raises(
                     (exc.IntegrityError, exc.ProgrammingError),
                     conn.execute,
@@ -596,7 +597,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         with engine.begin() as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -606,8 +608,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     {"data": "d2"},
                 )
+            trans.rollback()
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -617,8 +621,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     [{"data": "d2"}, {"data": "d3"}],
                 )
+            trans.rollback()
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -628,8 +634,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     {"data": "d2"},
                 )
+            trans.rollback()
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -639,6 +647,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     [{"data": "d2"}, {"data": "d3"}],
                 )
+            trans.rollback()
 
         with engine.begin() as conn:
             conn.execute(
@@ -660,7 +669,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         with engine.begin() as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -671,7 +681,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"data": "d2"},
                 )
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            trans = conn.begin()
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -681,6 +692,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     [{"data": "d2"}, {"data": "d3"}],
                 )
+            trans.rollback()
 
         with engine.begin() as conn:
             conn.execute(
