@@ -461,6 +461,10 @@ class TablesTest(TestBase):
         elif self.run_create_tables == "each":
             drop_all_tables_from_metadata(self._tables_metadata, self.bind)
 
+        savepoints = getattr(config.requirements, "savepoints", False)
+        if savepoints:
+            savepoints = savepoints.enabled
+
         # no need to run deletes if tables are recreated on setup
         if (
             self.run_define_tables != "each"
@@ -478,7 +482,11 @@ class TablesTest(TestBase):
                     ]
                 ):
                     try:
-                        conn.execute(table.delete())
+                        if savepoints:
+                            with conn.begin_nested():
+                                conn.execute(table.delete())
+                        else:
+                            conn.execute(table.delete())
                     except sa.exc.DBAPIError as ex:
                         print(
                             ("Error emptying table %s: %r" % (table, ex)),
