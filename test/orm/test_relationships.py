@@ -6549,9 +6549,9 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
         asserter_.assert_(
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE "
-                "EXISTS (SELECT 1 FROM (SELECT a.id AS aid, b.id AS id "
+                "EXISTS (SELECT 1 FROM b, (SELECT a.id AS aid, b.id AS id "
                 "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
-                "AS anon_1, b WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
+                "AS anon_1 WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
                 params=[],
             )
         )

@@ -3851,7 +3851,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         self.assert_compile(
             s.query(B).filter(B.d.any(D.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
-            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "EXISTS (SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 
@@ -3873,7 +3873,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM "
             "b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
             "JOIN d ON d.id = b_d_1.did WHERE "
-            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "EXISTS (SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 
@@ -3913,7 +3913,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             "FROM b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
             "JOIN d AS d_1 ON d_1.id = b_d_1.did "
             "WHERE EXISTS "
-            "(SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "(SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 

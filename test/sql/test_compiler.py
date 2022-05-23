@@ -550,6 +550,91 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
+    @testing.combinations(
+        (
+            select(table1.c.name)
+            .select_from(table1, table2)
+            .where(table1.c.myid == table2.c.otherid),
+            "SELECT mytable.name FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .select_from(table2, table1)
+            .where(table1.c.myid == table2.c.otherid),
+            "SELECT mytable.name FROM myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table2, table1),
+            "SELECT mytable.name FROM myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table2),
+            "SELECT mytable.name FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table3, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM mytable, thirdtable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table1, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable, mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM mytable, myothertable, thirdtable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable, myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table2)
+            .join_from(table3, table1, table3.c.userid == table1.c.myid),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable "
+            "JOIN mytable ON thirdtable.userid = mytable.myid, "
+            "myothertable WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table2, table3)
+            .join_from(table3, table1, table3.c.userid == table1.c.myid),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM myothertable, thirdtable "
+            "JOIN mytable ON thirdtable.userid = mytable.myid "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+    )
+    def test_select_from_ordering(self, stmt, expected):
+        self.assert_compile(stmt, expected)
+
     def test_from_subquery(self):
         """tests placing select statements in the column clause of
         another select, for the
@@ -1265,11 +1350,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # don't correlate in a FROM list
         self.assert_compile(
             select(users, s.c.street).select_from(s),
-            "SELECT users.user_id, users.user_name, "
-            "users.password, s.street FROM users, "
-            "(SELECT addresses.street AS street FROM "
-            "addresses, users WHERE addresses.user_id = "
-            "users.user_id) AS s",
+            "SELECT users.user_id, users.user_name, users.password, s.street "
+            "FROM (SELECT addresses.street AS street FROM addresses, users "
+            "WHERE addresses.user_id = users.user_id) AS s, users",
         )
         self.assert_compile(
             table1.select().where(

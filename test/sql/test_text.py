@@ -179,8 +179,9 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             select(table1.alias("t"), text("foo.f"))
             .where(text("foo.f = t.id"))
             .select_from(text("(select f from bar where lala=heyhey) foo")),
-            "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
-            "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
+            "SELECT t.myid, t.name, t.description, foo.f FROM "
+            "(select f from bar where lala=heyhey) foo, "
+            "mytable AS t WHERE foo.f = t.id",
         )
 
     def test_expression_element_role(self):

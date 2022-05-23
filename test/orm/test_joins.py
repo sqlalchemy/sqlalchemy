@@ -881,8 +881,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             ),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users_1.id AS users_1_id, "
-            "users_1.name AS users_1_name FROM users, users AS users_1 "
-            "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
+            "users_1.name AS users_1_name FROM users AS users_1 "
+            "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id, users",
             use_default_dialect=True,
         )
 
@@ -1041,8 +1041,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             q,
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users_1.id AS users_1_id, users_1.name AS users_1_name "
-            "FROM users AS users_1, "
-            "users JOIN addresses ON users.id = addresses.user_id",
+            "FROM "
+            "users JOIN addresses ON users.id = addresses.user_id, "
+            "users AS users_1",
         )
 
         q = sess.query(User, u1).select_from(User, u1).join(u1.addresses)
@@ -1185,9 +1186,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "orders.isopen AS orders_isopen, dingalings.id AS dingalings_id, "
             "dingalings.address_id AS dingalings_address_id, "
             "dingalings.data AS dingalings_data "
-            "FROM dingalings, orders "
+            "FROM orders "
             "JOIN addresses AS addresses_1 "
-            "ON orders.address_id = addresses_1.id",
+            "ON orders.address_id = addresses_1.id, dingalings",
         )
 
         # Dingaling is chosen to join to a1
@@ -1199,8 +1200,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "orders.isopen AS orders_isopen, dingalings.id AS dingalings_id, "
             "dingalings.address_id AS dingalings_address_id, "
             "dingalings.data AS dingalings_data "
-            "FROM orders, dingalings JOIN addresses AS addresses_1 "
-            "ON dingalings.address_id = addresses_1.id",
+            "FROM dingalings JOIN addresses AS addresses_1 "
+            "ON dingalings.address_id = addresses_1.id, orders",
         )
 
     def test_clause_present_in_froms_twice_w_onclause(self):

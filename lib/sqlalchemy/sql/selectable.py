@@ -4502,6 +4502,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
         return self._normalize_froms(
             itertools.chain(
+                self.from_clauses,
                 itertools.chain.from_iterable(
                     [
                         element._from_objects
@@ -4514,7 +4515,6 @@ class SelectState(util.MemoizedSlots, CompileState):
                         for element in statement._where_criteria
                     ]
                 ),
-                self.from_clauses,
             ),
             check_statement=statement,
             ambiguous_table_name_map=ambiguous_table_name_map,

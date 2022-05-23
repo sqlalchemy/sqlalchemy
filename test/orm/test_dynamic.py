@@ -675,8 +675,8 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             gp.grand_children.filter_by(id=1),
             "SELECT child.id AS child_id, child.type AS child_type, "
             "child.parent_id AS child_parent_id, subchild.id AS subchild_id "
-            "FROM parent, child LEFT OUTER JOIN subchild "
-            "ON child.id = subchild.id "
+            "FROM child LEFT OUTER JOIN subchild "
+            "ON child.id = subchild.id, parent "
             "WHERE :param_1 = parent.grand_parent_id "
             "AND parent.id = child.parent_id AND child.id = :id_1",
             {"id_1": 1},
@@ -727,8 +727,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             order.items.join(ItemKeyword),
             "SELECT items.id AS items_id, "
             "items.description AS items_description "
-            "FROM order_items, items "
-            "JOIN item_keywords ON items.id = item_keywords.item_id "
+            "FROM items "
+            "JOIN item_keywords ON items.id = item_keywords.item_id, "
+            "order_items "
             "WHERE :param_1 = order_items.order_id "
             "AND items.id = order_items.item_id",
             use_default_dialect=True,

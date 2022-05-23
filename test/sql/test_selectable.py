@@ -816,7 +816,7 @@ class SelectableTest(
             [table1.join(table2)],
             [table1],
         ),
-        ([table1], [table2], [table1, table2], [table1]),
+        ([table1], [table2], [table2, table1], [table1]),
         (
             [table1.c.col1, table2.c.col1],
             [],
@@ -924,8 +924,8 @@ class SelectableTest(
         stmt = select(t1, t2, t3, t4).select_from(j2)
         self.assert_compile(
             stmt,
-            "SELECT t1.a, t2.b, t3.c, t4.d FROM t3, "
-            "t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) ON t4.d = t2.b",
+            "SELECT t1.a, t2.b, t3.c, t4.d FROM "
+            "t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) ON t4.d = t2.b, t3",
         )
 
         stmt = select(t1).select_from(t3).select_from(j2)
