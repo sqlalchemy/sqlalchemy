@@ -1437,7 +1437,7 @@ class DefaultRequirements(SuiteRequirements):
             if config.db.dialect._dbapi_version() < (4, 0, 19):
                 return False
             with config.db.connect() as conn:
-                drivername = conn.connection.connection.getinfo(
+                drivername = conn.connection.driver_connection.getinfo(
                     config.db.dialect.dbapi.SQL_DRIVER_NAME
                 )
                 # on linux this is something like 'libmsodbcsql-13.1.so.9.2'.

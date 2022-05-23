@@ -282,31 +282,30 @@ def MockDBAPI():  # noqa
     return db
 
 
-class PoolTestBase(fixtures.TestBase):
-    def setup_test(self):
-        pool.clear_managers()
-        self._teardown_conns = []
-
-    def teardown_test(self):
-        for ref in self._teardown_conns:
-            conn = ref()
-            if conn:
-                conn.close()
-
-    @classmethod
-    def teardown_test_class(cls):
-        pool.clear_managers()
-
-    def _queuepool_fixture(self, **kw):
-        dbapi, pool = self._queuepool_dbapi_fixture(**kw)
-        return pool
-
-    def _queuepool_dbapi_fixture(self, **kw):
+class PoolTest(fixtures.TestBase):
+    def test_connection_rec_connection(self):
         dbapi = MockDBAPI()
-        return (
-            dbapi,
-            pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw),
-        )
+        p1 = pool.Pool(creator=lambda: dbapi.connect("foo.db"))
+
+        rec = pool._ConnectionRecord(p1)
+
+        with expect_deprecated(
+            "The _ConnectionRecord.connection attribute is deprecated; "
+            "please use 'driver_connection'"
+        ):
+            is_(rec.connection, rec.dbapi_connection)
+
+    def test_connection_fairy_connection(self):
+        dbapi = MockDBAPI()
+        p1 = pool.QueuePool(creator=lambda: dbapi.connect("foo.db"))
+
+        fairy = p1.connect()
+
+        with expect_deprecated(
+            "The _ConnectionFairy.connection attribute is deprecated; "
+            "please use 'driver_connection'"
+        ):
+            is_(fairy.connection, fairy.dbapi_connection)
 
 
 def select1(db):

@@ -135,7 +135,7 @@ class DialectWBackendTest(fixtures.TestBase):
             # cx_Oracle dialect does not raise this.
             eq_(conn.dialect.default_isolation_level, None)
 
-            dbapi_conn = conn.connection.connection
+            dbapi_conn = conn.connection.dbapi_connection
 
             eq_(
                 testing.db.dialect.get_isolation_level(dbapi_conn),
@@ -161,7 +161,7 @@ class DialectWBackendTest(fixtures.TestBase):
             # test that we can use isolation level setting and that it
             # reverts for "real" back to READ COMMITTED even though we
             # can't read it
-            dbapi_conn = conn.connection.connection
+            dbapi_conn = conn.connection.dbapi_connection
 
             conn = conn.execution_options(isolation_level="SERIALIZABLE")
             eq_(

@@ -552,11 +552,11 @@ class TransactionTest(fixtures.TablesTest):
 
         with eng.connect() as conn:
             rec = conn.connection._connection_record
-            raw_dbapi_con = rec.connection
+            raw_dbapi_con = rec.dbapi_connection
             conn.begin_twophase()
             conn.execute(users.insert(), dict(user_id=1, user_name="user1"))
 
-        assert rec.connection is raw_dbapi_con
+        assert rec.dbapi_connection is raw_dbapi_con
 
         with eng.connect() as conn:
             result = conn.execute(
