@@ -599,20 +599,6 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
 
-.. note::
-
-   Due to a bug in MappedCollection prior to version 0.7.6, this
-   workaround usually needs to be called before a custom subclass
-   of :class:`.MappedCollection` which uses :meth:`.collection.internally_instrumented`
-   can be used::
-
-    from sqlalchemy.orm.collections import _instrument_class, MappedCollection
-    _instrument_class(MappedCollection)
-
-   This will ensure that the :class:`.MappedCollection` has been properly
-   initialized with custom ``__setitem__()`` and ``__delitem__()``
-   methods before used in a custom subclass.
-
 .. autoclass:: sqlalchemy.orm.collections.MappedCollection
    :members:
 
