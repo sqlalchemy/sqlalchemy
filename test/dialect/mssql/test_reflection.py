@@ -1,6 +1,7 @@
 # -*- encoding: utf-8
 import datetime
 import decimal
+import random
 
 from sqlalchemy import Column
 from sqlalchemy import DDL
@@ -387,12 +388,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         """test #8035"""
 
+        tname = f"##foo{random.randint(1,1000000)}"
+
         with temp_db_alt_collation_fixture.connect() as conn:
-            conn.exec_driver_sql("CREATE TABLE ##foo (id int primary key)")
+            conn.exec_driver_sql(f"CREATE TABLE {tname} (id int primary key)")
             conn.commit()
 
             eq_(
-                inspect(conn).get_columns("##foo"),
+                inspect(conn).get_columns(tname),
                 [
                     {
                         "name": "id",
@@ -403,7 +406,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     }
                 ],
             )
-            Table("##foo", MetaData(), autoload_with=conn)
+            Table(tname, MetaData(), autoload_with=conn)
 
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
