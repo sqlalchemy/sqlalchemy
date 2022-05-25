@@ -56,7 +56,7 @@ if typing.TYPE_CHECKING:
     # EXPECTED_RE_TYPE: sqlalchemy..*BinaryExpression\[builtins.bool\]
     reveal_type(expr2)
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.float, decimal.Decimal\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.float, .*\.Decimal\]\]
     reveal_type(expr3)
 
     # EXPECTED_RE_TYPE: sqlalchemy..*UnaryExpression\[builtins.int.?\]

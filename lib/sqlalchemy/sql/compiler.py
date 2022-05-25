@@ -1143,10 +1143,18 @@ class SQLCompiler(Compiled):
         str, Union[_BindProcessorType[Any], Sequence[_BindProcessorType[Any]]]
     ]:
 
+        _escaped_bind_names = self.escaped_bind_names
+        has_escaped_names = bool(_escaped_bind_names)
+
         # mypy is not able to see the two value types as the above Union,
         # it just sees "object".  don't know how to resolve
         return dict(
-            (key, value)  # type: ignore
+            (
+                _escaped_bind_names.get(key, key)
+                if has_escaped_names
+                else key,
+                value,
+            )  # type: ignore
             for key, value in (
                 (
                     self.bind_names[bindparam],
