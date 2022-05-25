@@ -25,6 +25,7 @@ from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import desc
 from sqlalchemy import distinct
+from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import exists
@@ -96,6 +97,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.util import u
 
 table1 = table(
@@ -3654,6 +3656,46 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             str,
             s,
         )
+
+    def test_bind_param_escaping(self):
+        """general bind param escape unit tests added as a result of
+        #8053
+        #
+        #"""
+
+        SomeEnum = pep435_enum("SomeEnum")
+        one = SomeEnum("one", 1)
+        SomeEnum("two", 2)
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("_id", Integer, primary_key=True),
+            Column("_data", Enum(SomeEnum)),
+        )
+
+        class MyCompiler(compiler.SQLCompiler):
+            def bindparam_string(self, name, **kw):
+                kw["escaped_from"] = name
+                return super(MyCompiler, self).bindparam_string(
+                    '"%s"' % name, **kw
+                )
+
+        dialect = default.DefaultDialect()
+        dialect.statement_compiler = MyCompiler
+
+        self.assert_compile(
+            t.insert(),
+            'INSERT INTO t (_id, _data) VALUES (:"_id", :"_data")',
+            dialect=dialect,
+        )
+
+        compiled = t.insert().compile(
+            dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
+        )
+        params = compiled.construct_params({"_id": 1, "_data": one})
+        eq_(params, {'"_id"': 1, '"_data"': one})
+        eq_(compiled._bind_processors, {'"_data"': mock.ANY})
 
     def test_expanding_non_expanding_conflict(self):
         """test #8018"""

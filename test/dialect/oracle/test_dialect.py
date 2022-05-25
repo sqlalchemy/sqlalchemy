@@ -5,6 +5,7 @@ import re
 from sqlalchemy import bindparam
 from sqlalchemy import Computed
 from sqlalchemy import create_engine
+from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import func
@@ -32,6 +33,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
 from sqlalchemy.util import u
@@ -563,6 +565,23 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             ),
             4,
         )
+
+    def test_param_w_processors(self, metadata, connection):
+        """test #8053"""
+
+        SomeEnum = pep435_enum("SomeEnum")
+        one = SomeEnum("one", 1)
+        SomeEnum("two", 2)
+
+        t = Table(
+            "t",
+            metadata,
+            Column("_id", Integer, primary_key=True),
+            Column("_data", Enum(SomeEnum)),
+        )
+        t.create(connection)
+        connection.execute(t.insert(), {"_id": 1, "_data": one})
+        eq_(connection.scalar(select(t.c._data)), one)
 
     def test_numeric_bind_in_crud(self, metadata, connection):
         t = Table("asfd", metadata, Column("100K", Integer))

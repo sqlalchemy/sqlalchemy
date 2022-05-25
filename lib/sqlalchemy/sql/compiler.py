@@ -898,8 +898,16 @@ class SQLCompiler(Compiled):
 
     @util.memoized_property
     def _bind_processors(self):
+        _escaped_bind_names = self.escaped_bind_names
+        has_escaped_names = bool(_escaped_bind_names)
+
         return dict(
-            (key, value)
+            (
+                _escaped_bind_names.get(key, key)
+                if has_escaped_names
+                else key,
+                value,
+            )
             for key, value in (
                 (
                     self.bind_names[bindparam],
