@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import Optional
@@ -21,6 +22,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from .session import _S
 from .session import Session
 from .. import exc as sa_exc
 from .. import util
@@ -131,7 +133,7 @@ __all__ = ["scoped_session"]
         "info",
     ],
 )
-class scoped_session:
+class scoped_session(Generic[_S]):
     """Provides scoped management of :class:`.Session` objects.
 
     See :ref:`unitofwork_contextual` for a tutorial.
@@ -146,16 +148,16 @@ class scoped_session:
 
     _support_async: bool = False
 
-    session_factory: sessionmaker
+    session_factory: sessionmaker[_S]
     """The `session_factory` provided to `__init__` is stored in this
     attribute and may be accessed at a later time.  This can be useful when
     a new non-scoped :class:`.Session` is needed."""
 
-    registry: ScopedRegistry[Session]
+    registry: ScopedRegistry[_S]
 
     def __init__(
         self,
-        session_factory: sessionmaker,
+        session_factory: sessionmaker[_S],
         scopefunc: Optional[Callable[[], Any]] = None,
     ):
 
@@ -182,10 +184,10 @@ class scoped_session:
             self.registry = ThreadLocalRegistry(session_factory)
 
     @property
-    def _proxied(self) -> Session:
+    def _proxied(self) -> _S:
         return self.registry()
 
-    def __call__(self, **kw: Any) -> Session:
+    def __call__(self, **kw: Any) -> _S:
         r"""Return the current :class:`.Session`, creating it
         using the :attr:`.scoped_session.session_factory` if not present.
 
@@ -479,8 +481,22 @@ class scoped_session:
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_orm.scoping.scoped_session` class.
 
-        If no transaction is in progress, the method will first
-        "autobegin" a new transaction and commit.
+        When the COMMIT operation is complete, all objects are fully
+        :term:`expired`, erasing their internal contents, which will be
+        automatically re-loaded when the objects are next accessed. In the
+        interim, these objects are in an expired state and will not function if
+        they are :term:`detached` from the :class:`.Session`. Additionally,
+        this re-load operation is not supported when using asyncio-oriented
+        APIs. The :paramref:`.Session.expire_on_commit` parameter may be used
+        to disable this behavior.
+
+        When there is no transaction in place for the :class:`.Session`,
+        indicating that no operations were invoked on this :class:`.Session`
+        since the previous call to :meth:`.Session.commit`, the method will
+        begin and commit an internal-only "logical" transaction, that does not
+        normally affect the database unless pending flush changes were
+        detected, but will still invoke event handlers and object expiration
+        rules.
 
         The outermost database transaction is committed unconditionally,
         automatically releasing any SAVEPOINTs in effect.
@@ -490,6 +506,8 @@ class scoped_session:
             :ref:`session_committing`
 
             :ref:`unitofwork_transaction`
+
+            :ref:`asyncio_orm_avoid_lazyloads`
 
 
         """  # noqa: E501
