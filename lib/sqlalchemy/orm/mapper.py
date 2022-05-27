@@ -1755,7 +1755,7 @@ class Mapper(
                 col.key = col._tq_key_label = key
 
             self.columns.add(col, key)
-            for col in prop.columns + prop._orig_columns:
+            for col in prop.columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
 
@@ -2091,9 +2091,9 @@ class Mapper(
     @HasMemoized.memoized_attribute
     def _single_table_criterion(self):
         if self.single and self.inherits and self.polymorphic_on is not None:
-            return self.polymorphic_on._annotate({"parentmapper": self}).in_(
-                m.polymorphic_identity for m in self.self_and_descendants
-            )
+            return self.polymorphic_on._annotate(
+                {"parententity": self, "parentmapper": self}
+            ).in_(m.polymorphic_identity for m in self.self_and_descendants)
         else:
             return None
 
