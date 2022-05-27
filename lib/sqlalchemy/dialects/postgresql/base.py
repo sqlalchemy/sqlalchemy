@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-
 r"""
 .. dialect:: postgresql
     :name: PostgreSQL
@@ -1448,9 +1447,14 @@ E.g.::
 
 """  # noqa: E501
 
+from __future__ import annotations
+
 from collections import defaultdict
 import datetime as dt
 import re
+from typing import Any
+from typing import overload
+from typing import TypeVar
 from uuid import UUID as _python_UUID
 
 from . import array as _array
@@ -1486,6 +1490,7 @@ from ...types import REAL
 from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
+from ...util.typing import Literal
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
@@ -1601,32 +1606,32 @@ _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 
-class BYTEA(sqltypes.LargeBinary):
+class BYTEA(sqltypes.LargeBinary[bytes]):
     __visit_name__ = "BYTEA"
 
 
-class INET(sqltypes.TypeEngine):
+class INET(sqltypes.TypeEngine[str]):
     __visit_name__ = "INET"
 
 
 PGInet = INET
 
 
-class CIDR(sqltypes.TypeEngine):
+class CIDR(sqltypes.TypeEngine[str]):
     __visit_name__ = "CIDR"
 
 
 PGCidr = CIDR
 
 
-class MACADDR(sqltypes.TypeEngine):
+class MACADDR(sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR"
 
 
 PGMacAddr = MACADDR
 
 
-class MONEY(sqltypes.TypeEngine):
+class MONEY(sqltypes.TypeEngine[str]):
 
     r"""Provide the PostgreSQL MONEY type.
 
@@ -1671,7 +1676,7 @@ class MONEY(sqltypes.TypeEngine):
     __visit_name__ = "MONEY"
 
 
-class OID(sqltypes.TypeEngine):
+class OID(sqltypes.TypeEngine[int]):
 
     """Provide the PostgreSQL OID type.
 
@@ -1682,7 +1687,7 @@ class OID(sqltypes.TypeEngine):
     __visit_name__ = "OID"
 
 
-class REGCLASS(sqltypes.TypeEngine):
+class REGCLASS(sqltypes.TypeEngine[str]):
 
     """Provide the PostgreSQL REGCLASS type.
 
@@ -1745,7 +1750,7 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 PGInterval = INTERVAL
 
 
-class BIT(sqltypes.TypeEngine):
+class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
     def __init__(self, length=None, varying=False):
@@ -1760,8 +1765,10 @@ class BIT(sqltypes.TypeEngine):
 
 PGBit = BIT
 
+_UUID_RETURN = TypeVar("_UUID_RETURN", str, _python_UUID)
 
-class UUID(sqltypes.TypeEngine):
+
+class UUID(sqltypes.TypeEngine[_UUID_RETURN]):
 
     """PostgreSQL UUID type.
 
@@ -1777,7 +1784,15 @@ class UUID(sqltypes.TypeEngine):
 
     __visit_name__ = "UUID"
 
-    def __init__(self, as_uuid=True):
+    @overload
+    def __init__(self: "UUID[_python_UUID]", as_uuid: Literal[True] = ...):
+        ...
+
+    @overload
+    def __init__(self: "UUID[str]", as_uuid: Literal[False] = ...):
+        ...
+
+    def __init__(self, as_uuid: bool = True):
         """Construct a UUID type.
 
 
@@ -1848,7 +1863,7 @@ class UUID(sqltypes.TypeEngine):
 PGUuid = UUID
 
 
-class TSVECTOR(sqltypes.TypeEngine):
+class TSVECTOR(sqltypes.TypeEngine[Any]):
 
     """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.

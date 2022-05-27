@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from typing import Optional
 from typing import TypeVar
 
 from ... import types as sqltypes
 from ... import util
 from ...sql import expression
 from ...sql import operators
+from ...sql._typing import _TypeEngineArgument
 
 
 _T = TypeVar("_T", bound=Any)
@@ -244,7 +246,11 @@ class ARRAY(sqltypes.ARRAY):
     comparator_factory = Comparator
 
     def __init__(
-        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+        self,
+        item_type: _TypeEngineArgument[Any],
+        as_tuple: bool = False,
+        dimensions: Optional[int] = None,
+        zero_indexes: bool = False,
     ):
         """Construct an ARRAY.
 
