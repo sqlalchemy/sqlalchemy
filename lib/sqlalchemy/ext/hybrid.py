@@ -484,8 +484,8 @@ lowercasing can be applied to all comparison operations (i.e. ``eq``,
 ``lt``, ``gt``, etc.) using :meth:`.Operators.operate`::
 
     class CaseInsensitiveComparator(Comparator):
-        def operate(self, op, other):
-            return op(func.lower(self.__clause_element__()), func.lower(other))
+        def operate(self, op, other, **kwargs):
+            return op(func.lower(self.__clause_element__()), func.lower(other), **kwargs)
 
 .. _hybrid_reuse_subclass:
 
