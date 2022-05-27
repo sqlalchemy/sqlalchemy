@@ -38,7 +38,6 @@ from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import Relationship
-from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
@@ -103,7 +102,6 @@ class ColumnProperty(
     _links_to_entity = False
 
     columns: List[NamedColumn[Any]]
-    _orig_columns: List[NamedColumn[Any]]
 
     _is_polymorphic_discriminator: bool
 
@@ -112,7 +110,6 @@ class ColumnProperty(
     comparator_factory: Type[PropComparator[_T]]
 
     __slots__ = (
-        "_orig_columns",
         "columns",
         "group",
         "deferred",
@@ -148,14 +145,8 @@ class ColumnProperty(
             attribute_options=attribute_options
         )
         columns = (column,) + additional_columns
-        self._orig_columns = [
-            coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
-        ]
         self.columns = [
-            _orm_full_deannotate(
-                coercions.expect(roles.LabeledColumnExprRole, c)
-            )
-            for c in columns
+            coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
         ]
         self.group = group
         self.deferred = deferred
