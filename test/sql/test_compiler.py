@@ -3659,9 +3659,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_bind_param_escaping(self):
         """general bind param escape unit tests added as a result of
-        #8053
-        #
-        #"""
+        #8053.
+
+        However, note that the final application of an escaped param name
+        was moved out of compiler and into DefaultExecutionContext in
+        related issue #8056.
+
+        """
 
         SomeEnum = pep435_enum("SomeEnum")
         one = SomeEnum("one", 1)
@@ -3694,8 +3698,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
         )
         params = compiled.construct_params({"_id": 1, "_data": one})
-        eq_(params, {'"_id"': 1, '"_data"': one})
-        eq_(compiled._bind_processors, {'"_data"': mock.ANY})
+
+        eq_(params, {"_id": 1, "_data": one})
+        eq_(compiled._bind_processors, {"_data": mock.ANY})
+
+        # previously, this was:
+        # eq_(params, {'"_id"': 1, '"_data"': one})
+        # eq_(compiled._bind_processors, {'"_data"': mock.ANY})
 
     def test_expanding_non_expanding_conflict(self):
         """test #8018"""

@@ -196,6 +196,8 @@ class TraversalTest(
     def test_bindparam_key_proc_for_copies(self, meth, name):
         r"""test :ticket:`6249`.
 
+        Revised for :ticket:`8056`.
+
         The key of the bindparam needs spaces and other characters
         escaped out for the POSTCOMPILE regex to work correctly.
 

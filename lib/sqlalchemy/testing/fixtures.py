@@ -138,6 +138,10 @@ class TestBase(object):
 
         return go
 
+    @config.fixture
+    def fixture_session(self):
+        return fixture_session()
+
     @config.fixture()
     def metadata(self, request):
         """Provide bound MetaData for a single test, dropping afterwards."""

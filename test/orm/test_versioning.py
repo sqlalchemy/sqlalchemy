@@ -2006,3 +2006,55 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
             f1.value = "f2"
             f1.version_id = 2
             s1.flush()
+
+
+class QuotedBindVersioningTest(fixtures.MappedTest):
+    """test for #8056"""
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "version_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            # will need parameter quoting for Oracle and PostgreSQL
+            # dont use 'key' to make sure no the awkward name is definitely
+            # in the params
+            Column("_version%id", Integer, nullable=False),
+            Column("value", String(40), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Foo = cls.classes.Foo
+        vt = cls.tables.version_table
+        cls.mapper_registry.map_imperatively(
+            Foo,
+            vt,
+            version_id_col=vt.c["_version%id"],
+            properties={"version": vt.c["_version%id"]},
+        )
+
+    def test_round_trip(self, fixture_session):
+        Foo = self.classes.Foo
+
+        f1 = Foo(value="v1")
+        fixture_session.add(f1)
+        fixture_session.commit()
+
+        f1.value = "v2"
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            fixture_session.commit()
+
+        eq_(f1.version, 2)
