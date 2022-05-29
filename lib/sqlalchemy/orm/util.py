@@ -415,7 +415,7 @@ class ORMAdapter(sql_util.ColumnAdapter):
 
     def _include_fn(self, elem):
         entity = elem._annotations.get("parentmapper", None)
-        return not entity or entity.isa(self.mapper)
+        return not entity or entity.common_parent(self.mapper)
 
 
 class AliasedClass(object):

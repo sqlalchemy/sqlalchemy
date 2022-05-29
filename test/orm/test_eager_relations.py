@@ -179,6 +179,37 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # has to lazy load the addresses
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_column_property_adaptation(self, decl_base):
+        """test #2316 in support of #8064"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(40), nullable=False)
+            __mapper_args__ = {"polymorphic_on": type}
+
+        A.anything = column_property(A.id + 1000)
+
+        class B(A):
+            __tablename__ = "b"
+            account_id = Column(Integer, ForeignKey("a.id"), primary_key=True)
+            x_id = Column(Integer, ForeignKey("x.id"), nullable=False)
+            __mapper_args__ = {"polymorphic_identity": "named"}
+
+        class X(decl_base):
+            __tablename__ = "x"
+            id = Column(Integer, primary_key=True)
+            b = relationship("B")
+
+        self.assert_compile(
+            select(X).options(joinedload(X.b)),
+            "SELECT x.id, a_1.id AS id_1, a_1.type, a_1.id + :id_2 AS anon_1, "
+            "b_1.account_id, b_1.x_id FROM x "
+            "LEFT OUTER JOIN "
+            "(a AS a_1 JOIN b AS b_1 ON a_1.id = b_1.account_id) "
+            "ON x.id = b_1.x_id",
+        )
+
     def test_no_render_in_subquery(self):
         """test #6378"""
 

@@ -91,6 +91,10 @@ class TestBase(object):
         yield reg
         reg.dispose()
 
+    @config.fixture
+    def decl_base(self, registry):
+        return registry.generate_base()
+
     @config.fixture()
     def future_connection(self, future_engine, connection):
         # integrate the future_engine and connection fixtures so
