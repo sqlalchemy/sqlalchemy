@@ -450,7 +450,7 @@ A mapping using ``@attr.s``, in conjunction with imperative table::
 
 
     @mapper_registry.mapped
-    @attr.s
+    @define(slots=False)
     class User:
         __table__ = Table(
             "user",
@@ -460,11 +460,11 @@ A mapping using ``@attr.s``, in conjunction with imperative table::
             Column("fullname", String(50)),
             Column("nickname", String(12)),
         )
-        id = attr.ib()
-        name = attr.ib()
-        fullname = attr.ib()
-        nickname = attr.ib()
-        addresses = attr.ib()
+        id: int
+        name: str
+        fullname: str
+        nickname: str
+        addresses: List[Address]
 
 
     # other classes...
