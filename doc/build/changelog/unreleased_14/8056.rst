@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm, oracle, postgresql
+    :tickets: 8056
+
+    Fixed bug, likely a regression from 1.3, where usage of column names that
+    require bound parameter escaping, more concretely when using Oracle with
+    column names that require quoting such as those that start with an
+    underscore, or in less common cases with some PostgreSQL drivers when using
+    column names that contain percent signs, would cause the ORM versioning
+    feature to not work correctly if the versioning column itself had such a
+    name, as the ORM assumes certain bound parameter naming conventions that
+    were being interfered with via the quotes. This issue is related to
+    :ticket:`8053` and essentially revises the approach towards fixing this,
+    revising the original issue :ticket:`5653` that created the initial
+    implementation for generalized bound-parameter name quoting.
