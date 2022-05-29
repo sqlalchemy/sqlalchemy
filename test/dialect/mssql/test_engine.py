@@ -234,25 +234,49 @@ class ParseConnectTest(fixtures.TestBase):
             connection,
         )
 
-    def test_pyodbc_token_injection(self):
-        token1 = "someuser%3BPORT%3D50001"
-        token2 = "some{strange}pw%3BPORT%3D50001"
-        token3 = "somehost%3BPORT%3D50001"
-        token4 = "somedb%3BPORT%3D50001"
-
-        u = url.make_url(
-            "mssql+pyodbc://%s:%s@%s/%s?driver=foob"
-            % (token1, token2, token3, token4)
-        )
-        dialect = pyodbc.dialect()
-        connection = dialect.create_connect_args(u)
-        eq_(
-            [
+    @testing.combinations(
+        (
+            "original",
+            (
+                "someuser%3BPORT%3D50001",
+                "some{strange}pw%3BPORT%3D50001",
+                "somehost%3BPORT%3D50001",
+                "somedb%3BPORT%3D50001",
+            ),
+            (
                 [
                     "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
                     "Database=somedb%3BPORT%3D50001;UID={someuser;PORT=50001};"
                     "PWD={some{strange}}pw;PORT=50001}"
-                ],
+                ]
+            ),
+        ),
+        (
+            "issue_8062",
+            (
+                "larry",
+                "{moe",
+                "localhost",
+                "mydb",
+            ),
+            (
+                [
+                    "DRIVER={foob};Server=localhost;"
+                    "Database=mydb;UID=larry;"
+                    "PWD={{moe}"
+                ]
+            ),
+        ),
+        argnames="tokens, connection_string",
+        id_="iaa",
+    )
+    def test_pyodbc_token_injection(self, tokens, connection_string):
+        u = url.make_url("mssql+pyodbc://%s:%s@%s/%s?driver=foob" % tokens)
+        dialect = pyodbc.dialect()
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [
+                connection_string,
                 {},
             ],
             connection,

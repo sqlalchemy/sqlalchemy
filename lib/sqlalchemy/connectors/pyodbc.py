@@ -60,7 +60,7 @@ class PyODBCConnector(Connector):
         else:
 
             def check_quote(token):
-                if ";" in str(token):
+                if ";" in str(token) or str(token).startswith("{"):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
 
