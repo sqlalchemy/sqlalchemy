@@ -1001,14 +1001,31 @@ class DefaultExecutionContext(ExecutionContext):
             self.parameters = core_positional_parameters
         else:
             core_dict_parameters: MutableSequence[Dict[str, Any]] = []
-            for compiled_params in self.compiled_parameters:
+            escaped_names = compiled.escaped_bind_names
 
-                d_param: Dict[str, Any] = {
-                    key: flattened_processors[key](compiled_params[key])
-                    if key in flattened_processors
-                    else compiled_params[key]
-                    for key in compiled_params
-                }
+            # note that currently, "expanded" parameters will be present
+            # in self.compiled_parameters in their quoted form.   This is
+            # slightly inconsistent with the approach taken as of
+            # #8056 where self.compiled_parameters is meant to contain unquoted
+            # param names.
+            d_param: Dict[str, Any]
+            for compiled_params in self.compiled_parameters:
+                if escaped_names:
+                    d_param = {
+                        escaped_names.get(key, key): flattened_processors[key](
+                            compiled_params[key]
+                        )
+                        if key in flattened_processors
+                        else compiled_params[key]
+                        for key in compiled_params
+                    }
+                else:
+                    d_param = {
+                        key: flattened_processors[key](compiled_params[key])
+                        if key in flattened_processors
+                        else compiled_params[key]
+                        for key in compiled_params
+                    }
 
                 core_dict_parameters.append(d_param)
 
