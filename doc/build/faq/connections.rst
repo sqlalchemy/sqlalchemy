@@ -255,14 +255,14 @@ statement executions::
 
 
   def reconnecting_engine(engine, num_retries, retry_interval):
-      def _run_with_retries(fn, context, cursor, statement, *arg, **kw):
+      def _run_with_retries(fn, context, cursor_obj, statement, *arg, **kw):
           for retry in range(num_retries + 1):
               try:
-                  fn(cursor, statement, context=context, *arg)
+                  fn(cursor_obj, statement, context=context, *arg)
               except engine.dialect.dbapi.Error as raw_dbapi_err:
                   connection = context.root_connection
                   if engine.dialect.is_disconnect(
-                      raw_dbapi_err, connection, cursor
+                      raw_dbapi_err, connection, cursor_obj
                   ):
                       if retry > num_retries:
                           raise
