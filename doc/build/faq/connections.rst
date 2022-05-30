@@ -255,14 +255,14 @@ statement executions::
 
 
   def reconnecting_engine(engine, num_retries, retry_interval):
-      def _run_with_retries(fn, context, cursor, statement, *arg, **kw):
+      def _run_with_retries(fn, context, cursor_obj, statement, *arg, **kw):
           for retry in range(num_retries + 1):
               try:
-                  fn(cursor, statement, context=context, *arg)
+                  fn(cursor_obj, statement, context=context, *arg)
               except engine.dialect.dbapi.Error as raw_dbapi_err:
                   connection = context.root_connection
                   if engine.dialect.is_disconnect(
-                      raw_dbapi_err, connection, cursor
+                      raw_dbapi_err, connection, cursor_obj
                   ):
                       if retry > num_retries:
                           raise
@@ -281,7 +281,7 @@ statement executions::
                               trans.rollback()
 
                       time.sleep(retry_interval)
-                      context.cursor = cursor = connection.connection.cursor()
+                      context.cursor = cursor_obj = connection.connection.cursor()
                   else:
                       raise
               else:
@@ -290,15 +290,15 @@ statement executions::
       e = engine.execution_options(isolation_level="AUTOCOMMIT")
 
       @event.listens_for(e, "do_execute_no_params")
-      def do_execute_no_params(cursor, statement, context):
+      def do_execute_no_params(cursor_obj, statement, context):
           return _run_with_retries(
-              context.dialect.do_execute_no_params, context, cursor, statement
+              context.dialect.do_execute_no_params, context, cursor_obj, statement
           )
 
       @event.listens_for(e, "do_execute")
-      def do_execute(cursor, statement, parameters, context):
+      def do_execute(cursor_obj, statement, parameters, context):
           return _run_with_retries(
-              context.dialect.do_execute, context, cursor, statement, parameters
+              context.dialect.do_execute, context, cursor_obj, statement, parameters
           )
 
       return e
