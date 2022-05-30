@@ -204,7 +204,7 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         class E1(event.Events):
             @classmethod
-            def _accept_with(cls, target):
+            def _accept_with(cls, target, identifier):
                 if isinstance(target, T1):
                     return target
                 else:
@@ -782,7 +782,7 @@ class CustomTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
     def setup_test(self):
         class TargetEvents(event.Events):
             @classmethod
-            def _accept_with(cls, target):
+            def _accept_with(cls, target, identifier):
                 if target == "one":
                     return Target
                 else:

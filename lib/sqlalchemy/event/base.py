@@ -250,7 +250,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]]
+        cls, target: Union[_ET, Type[_ET]], identifier: str
     ) -> Optional[Union[_ET, Type[_ET]]]:
         raise NotImplementedError()
 
@@ -334,7 +334,7 @@ class Events(_HasEventsDispatch[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]]
+        cls, target: Union[_ET, Type[_ET]], identifier: str
     ) -> Optional[Union[_ET, Type[_ET]]]:
         def dispatch_is(*types: Type[Any]) -> bool:
             return all(isinstance(target.dispatch, t) for t in types)

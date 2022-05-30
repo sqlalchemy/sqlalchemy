@@ -62,7 +62,7 @@ class InstrumentationEvents(event.Events):
     _dispatch_target = instrumentation.InstrumentationFactory
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         if isinstance(target, type):
             return _InstrumentationEventsHold(target)
         else:
@@ -203,7 +203,7 @@ class InstanceEvents(event.Events):
 
     @classmethod
     @util.preload_module("sqlalchemy.orm")
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         orm = util.preloaded.orm
 
         if isinstance(target, instrumentation.ClassManager):
@@ -705,7 +705,7 @@ class MapperEvents(event.Events):
 
     @classmethod
     @util.preload_module("sqlalchemy.orm")
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         orm = util.preloaded.orm
 
         if target is orm.mapper:
@@ -1383,7 +1383,7 @@ class SessionEvents(event.Events[Session]):
         return fn
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         if isinstance(target, scoped_session):
 
             target = target.session_factory
@@ -1409,7 +1409,7 @@ class SessionEvents(event.Events[Session]):
             target._no_async_engine_events()
         else:
             # allows alternate SessionEvents-like-classes to be consulted
-            return event.Events._accept_with(target)
+            return event.Events._accept_with(target, identifier)
 
     @classmethod
     def _listen(
@@ -2263,7 +2263,7 @@ class AttributeEvents(event.Events):
         return dispatch
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         # TODO: coverage
         if isinstance(target, interfaces.MapperProperty):
             return getattr(target.parent.class_, target.key)

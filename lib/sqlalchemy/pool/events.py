@@ -58,7 +58,9 @@ class PoolEvents(event.Events[Pool]):
     @util.preload_module("sqlalchemy.engine")
     @classmethod
     def _accept_with(
-        cls, target: Union[Pool, Type[Pool], Engine, Type[Engine]]
+        cls,
+        target: Union[Pool, Type[Pool], Engine, Type[Engine]],
+        identifier: str,
     ) -> Optional[Union[Pool, Type[Pool]]]:
         if not typing.TYPE_CHECKING:
             Engine = util.preloaded.engine.Engine

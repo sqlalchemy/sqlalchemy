@@ -29,7 +29,7 @@ def _event_key(
     target: _ET, identifier: str, fn: _ListenerFnType
 ) -> _EventKey[_ET]:
     for evt_cls in _registrars[identifier]:
-        tgt = evt_cls._accept_with(target)
+        tgt = evt_cls._accept_with(target, identifier)
         if tgt is not None:
             return _EventKey(target, identifier, fn, tgt)
     else:

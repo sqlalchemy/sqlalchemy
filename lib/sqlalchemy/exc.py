@@ -547,9 +547,20 @@ class DBAPIError(StatementError):
 
     code = "dbapi"
 
-    # I dont think I'm going to try to do overloads like this everywhere
-    # in the library, but as this module is early days for me typing everything
-    # I am sort of just practicing
+    @overload
+    @classmethod
+    def instance(
+        cls,
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
+        orig: Exception,
+        dbapi_base_err: Type[Exception],
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        dialect: Optional["Dialect"] = None,
+        ismulti: Optional[bool] = None,
+    ) -> StatementError:
+        ...
 
     @overload
     @classmethod
@@ -564,21 +575,6 @@ class DBAPIError(StatementError):
         dialect: Optional["Dialect"] = None,
         ismulti: Optional[bool] = None,
     ) -> DontWrapMixin:
-        ...
-
-    @overload
-    @classmethod
-    def instance(
-        cls,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
-        orig: Exception,
-        dbapi_base_err: Type[Exception],
-        hide_parameters: bool = False,
-        connection_invalidated: bool = False,
-        dialect: Optional["Dialect"] = None,
-        ismulti: Optional[bool] = None,
-    ) -> StatementError:
         ...
 
     @overload
