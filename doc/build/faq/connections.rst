@@ -281,7 +281,7 @@ statement executions::
                               trans.rollback()
 
                       time.sleep(retry_interval)
-                      context.cursor = cursor_obj = connection.connection.cursor()
+                      context.cursor = cursor = connection.connection.cursor()
                   else:
                       raise
               else:
@@ -290,15 +290,15 @@ statement executions::
       e = engine.execution_options(isolation_level="AUTOCOMMIT")
 
       @event.listens_for(e, "do_execute_no_params")
-      def do_execute_no_params(cursor_obj, statement, context):
+      def do_execute_no_params(cursor, statement, context):
           return _run_with_retries(
-              context.dialect.do_execute_no_params, context, cursor_obj, statement
+              context.dialect.do_execute_no_params, context, cursor, statement
           )
 
       @event.listens_for(e, "do_execute")
-      def do_execute(cursor_obj, statement, parameters, context):
+      def do_execute(cursor, statement, parameters, context):
           return _run_with_retries(
-              context.dialect.do_execute, context, cursor_obj, statement, parameters
+              context.dialect.do_execute, context, cursor, statement, parameters
           )
 
       return e
