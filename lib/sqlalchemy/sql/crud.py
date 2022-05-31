@@ -16,6 +16,7 @@ from . import coercions
 from . import dml
 from . import elements
 from . import roles
+from .selectable import Select
 from .. import exc
 from .. import util
 
@@ -339,10 +340,20 @@ def _scan_insert_from_select_cols(
     if add_select_cols:
         values.extend(add_select_cols)
         ins_from_select = compiler.stack[-1]["insert_from_select"]
+        if not isinstance(ins_from_select, Select):
+            raise exc.CompileError(
+                "Can't extend statement for INSERT..FROM SELECT to include "
+                "additional default-holding column(s) "
+                "%s.  Convert the selectable to a subquery() first, or pass "
+                "include_defaults=False to Insert.from_select() to skip these "
+                "columns."
+                % (", ".join(repr(key) for _, key, _ in add_select_cols),)
+            )
         ins_from_select = ins_from_select._generate()
-        ins_from_select._raw_columns = tuple(
-            ins_from_select._raw_columns
-        ) + tuple(expr for col, col_expr, expr in add_select_cols)
+        # copy raw_columns
+        ins_from_select._raw_columns = list(ins_from_select._raw_columns) + [
+            expr for col, col_expr, expr in add_select_cols
+        ]
         compiler.stack[-1]["insert_from_select"] = ins_from_select
 
 
