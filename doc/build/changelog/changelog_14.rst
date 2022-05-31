@@ -15,7 +15,144 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.37
-    :include_notes_from: unreleased_14
+    :released: May 31, 2022
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 8062
+
+        Fix issue where a password with a leading "{" would result in login failure.
+
+    .. change::
+        :tags: bug, sql, postgresql, sqlite
+        :tickets: 8014
+
+        Fixed bug where the PostgreSQL
+        :meth:`_postgresql.Insert.on_conflict_do_update` method and the SQLite
+        :meth:`_sqlite.Insert.on_conflict_do_update` method would both fail to
+        correctly accommodate a column with a separate ".key" when specifying the
+        column using its key name in the dictionary passed to
+        :paramref:`_postgresql.Insert.on_conflict_do_update.set_`, as well as if
+        the :attr:`_postgresql.Insert.excluded` collection were used as the
+        dictionary directly.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8073
+
+        An informative error is raised for the use case where
+        :meth:`.Insert.from_select` is being passed a "compound select" object such
+        as a UNION, yet the INSERT statement needs to append additional columns to
+        support Python-side or explicit SQL defaults from the table metadata. In
+        this case a subquery of the compound object should be passed.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8064
+
+        Fixed issue where using a :func:`_orm.column_property` construct containing
+        a subquery against an already-mapped column attribute would not correctly
+        apply ORM-compilation behaviors to the subquery, including that the "IN"
+        expression added for a single-table inherits expression would fail to be
+        included.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8001
+
+        Fixed issue where ORM results would apply incorrect key names to the
+        returned :class:`.Row` objects in the case where the set of columns to be
+        selected were changed, such as when using
+        :meth:`.Select.with_only_columns`.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 7966
+
+        Further adjustments to the MySQL PyODBC dialect to allow for complete
+        connectivity, which was previously still not working despite fixes in
+        :ticket:`7871`.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7979
+
+        Fixed an issue where using :func:`.bindparam` with no explicit data or type
+        given could be coerced into the incorrect type when used in expressions
+        such as when using :meth:`.ARRAY.Comparator.any` and
+        :meth:`.ARRAY.Comparator.all`.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 8053
+
+        Fixed SQL compiler issue where the "bind processing" function for a bound
+        parameter would not be correctly applied to a bound value if the bound
+        parameter's name were "escaped". Concretely, this applies, among other
+        cases, to Oracle when a :class:`.Column` has a name that itself requires
+        quoting, such that the quoting-required name is then used for the bound
+        parameters generated within DML statements, and the datatype in use
+        requires bind processing, such as the :class:`.Enum` datatype.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 8035
+
+        Explicitly specify the collation when reflecting table columns using
+        MSSQL to prevent "collation conflict" errors.
+
+    .. change::
+        :tags: bug, orm, oracle, postgresql
+        :tickets: 8056
+
+        Fixed bug, likely a regression from 1.3, where usage of column names that
+        require bound parameter escaping, more concretely when using Oracle with
+        column names that require quoting such as those that start with an
+        underscore, or in less common cases with some PostgreSQL drivers when using
+        column names that contain percent signs, would cause the ORM versioning
+        feature to not work correctly if the versioning column itself had such a
+        name, as the ORM assumes certain bound parameter naming conventions that
+        were being interfered with via the quotes. This issue is related to
+        :ticket:`8053` and essentially revises the approach towards fixing this,
+        revising the original issue :ticket:`5653` that created the initial
+        implementation for generalized bound-parameter name quoting.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 8036
+
+        Added disconnect code for MySQL error 4031, introduced in MySQL >= 8.0.24,
+        indicating connection idle timeout exceeded. In particular this repairs an
+        issue where pre-ping could not reconnect on a timed-out connection. Pull
+        request courtesy valievkarim.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8018
+
+        An informative error is raised if two individual :class:`.BindParameter`
+        objects share the same name, yet one is used within an "expanding" context
+        (typically an IN expression) and the other is not; mixing the same name in
+        these two different styles of usage is not supported and typically the
+        ``expanding=True`` parameter should be set on the parameters that are to
+        receive list values outside of IN expressions (where ``expanding`` is set
+        by default).
+
+    .. change::
+        :tags: bug, engine, tests
+        :tickets: 8019
+
+        Fixed issue where support for logging "stacklevel" implemented in
+        :ticket:`7612` required adjustment to work with recently released Python
+        3.11.0b1, also repairs the unit tests which tested this feature.
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 8066
+
+        Added two new error codes for Oracle disconnect handling to support early
+        testing of the new "python-oracledb" driver released by Oracle.
 
 .. changelog::
     :version: 1.4.36

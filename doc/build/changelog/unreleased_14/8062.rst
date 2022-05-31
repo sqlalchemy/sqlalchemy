@@ -1,5 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 8062
-
-    Fix issue where a password with a leading "{" would result in login failure.

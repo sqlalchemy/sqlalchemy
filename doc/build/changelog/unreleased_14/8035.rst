@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mssql, reflection
-    :tickets: 8035
-
-    Explicitly specify the collation when reflecting table columns using
-    MSSQL to prevent "collation conflict" errors.

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine, tests
-    :tickets: 8019
-
-    Fixed issue where support for logging "stacklevel" implemented in
-    :ticket:`7612` required adjustment to work with recently released Python
-    3.11.0b1, also repairs the unit tests which tested this feature.
