@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8073
+
+    An informative error is raised for the use case where
+    :meth:`.Insert.from_select` is being passed a "compound select" object such
+    as a UNION, yet the INSERT statement needs to append additional columns to
+    support Python-side or explicit SQL defaults from the table metadata. In
+    this case a subquery of the compound object should be passed.
