@@ -229,7 +229,8 @@ with a new __slots__ based class, which is not supported. When using the old
 style annotation ``@attr.s`` or using ``define(slots=False)``, the class
 does not get replaced. Furthermore attrs removes its own class-bound attributes
 after the decorator runs, so that SQLAlchemy's mapping process takes over these
-attributes without any issue.
+attributes without any issue. Both decorators, ``@attr.s`` and ``@define(slots=False)``
+work with SQLAlchemy.
 
 .. versionadded:: 1.4 Added support for direct mapping of Python dataclasses,
    where the :class:`_orm.Mapper` will now detect attributes that are specific
