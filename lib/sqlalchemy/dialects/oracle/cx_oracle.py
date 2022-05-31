@@ -1335,9 +1335,12 @@ class OracleDialect_cx_oracle(OracleDialect):
             # TODO: Others ?
             return True
 
-        if re.match(r"^(?:DPI-1010|DPI-1080)", str(e)):
+        if re.match(r"^(?:DPI-1010|DPI-1080|DPY-1001|DPY-4011)", str(e)):
             # DPI-1010: not connected
             # DPI-1080: connection was closed by ORA-3113
+            # python-oracledb's DPY-1001: not connected to database
+            # python-oracledb's DPY-4011: the database or network closed the
+            # connection
             # TODO: others?
             return True
 
