@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 8036
-
-    Added disconnect code for MySQL error 4031, introduced in MySQL >= 8.0.24,
-    indicating connection idle timeout exceeded. In particular this repairs an
-    issue where pre-ping could not reconnect on a timed-out connection. Pull
-    request courtesy valievkarim.

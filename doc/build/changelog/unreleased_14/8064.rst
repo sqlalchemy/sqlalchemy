@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 8064
-
-    Fixed issue where using a :func:`_orm.column_property` construct containing
-    a subquery against an already-mapped column attribute would not correctly
-    apply ORM-compilation behaviors to the subquery, including that the "IN"
-    expression added for a single-table inherits expression would fail to be
-    included.
