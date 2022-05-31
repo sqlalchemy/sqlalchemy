@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, oracle
+    :tickets: 8066
+
+    Added two new error codes for Oracle disconnect handling to support early
+    testing of the new "python-oracledb" driver released by Oracle.
