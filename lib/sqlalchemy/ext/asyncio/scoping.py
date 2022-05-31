@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Callable
+from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import Optional
@@ -20,6 +21,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from .session import _AS
 from .session import async_sessionmaker
 from .session import AsyncSession
 from ... import exc as sa_exc
@@ -104,7 +106,7 @@ _T = TypeVar("_T", bound=Any)
         "info",
     ],
 )
-class async_scoped_session:
+class async_scoped_session(Generic[_AS]):
     """Provides scoped management of :class:`.AsyncSession` objects.
 
     See the section :ref:`asyncio_scoped_session` for usage details.
@@ -116,16 +118,16 @@ class async_scoped_session:
 
     _support_async = True
 
-    session_factory: async_sessionmaker
+    session_factory: async_sessionmaker[_AS]
     """The `session_factory` provided to `__init__` is stored in this
     attribute and may be accessed at a later time.  This can be useful when
     a new non-scoped :class:`.AsyncSession` is needed."""
 
-    registry: ScopedRegistry[AsyncSession]
+    registry: ScopedRegistry[_AS]
 
     def __init__(
         self,
-        session_factory: async_sessionmaker,
+        session_factory: async_sessionmaker[_AS],
         scopefunc: Callable[[], Any],
     ):
         """Construct a new :class:`_asyncio.async_scoped_session`.
@@ -144,10 +146,10 @@ class async_scoped_session:
         self.registry = ScopedRegistry(session_factory, scopefunc)
 
     @property
-    def _proxied(self) -> AsyncSession:
+    def _proxied(self) -> _AS:
         return self.registry()
 
-    def __call__(self, **kw: Any) -> AsyncSession:
+    def __call__(self, **kw: Any) -> _AS:
         r"""Return the current :class:`.AsyncSession`, creating it
         using the :attr:`.scoped_session.session_factory` if not present.
 
@@ -450,8 +452,8 @@ class async_scoped_session:
         This method may also be used to establish execution options for the
         database connection used by the current transaction.
 
-        .. versionadded:: 1.4.24  Added **kw arguments which are passed through
-           to the underlying :meth:`_orm.Session.connection` method.
+        .. versionadded:: 1.4.24  Added \**kw arguments which are passed
+           through to the underlying :meth:`_orm.Session.connection` method.
 
         .. seealso::
 
@@ -752,7 +754,8 @@ class async_scoped_session:
 
             from sqlalchemy.ext.asyncio import AsyncSession
             from sqlalchemy.ext.asyncio import create_async_engine
-            from sqlalchemy.orm import Session, sessionmaker
+            from sqlalchemy.ext.asyncio import async_sessionmaker
+            from sqlalchemy.orm import Session
 
             # construct async engines w/ async drivers
             engines = {
@@ -775,8 +778,7 @@ class async_scoped_session:
                         ].sync_engine
 
             # apply to AsyncSession using sync_session_class
-            AsyncSessionMaker = sessionmaker(
-                class_=AsyncSession,
+            AsyncSessionMaker = async_sessionmaker(
                 sync_session_class=RoutingSession
             )
 

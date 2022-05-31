@@ -22,12 +22,11 @@ import random
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
 from sqlalchemy.orm import merge_frozen_result
-from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -40,14 +39,14 @@ class A(Base):
 
 
 async def run_out_of_band(
-    sessionmaker, session, statement, merge_results=True
+    async_sessionmaker, session, statement, merge_results=True
 ):
     """run an ORM statement in a distinct session, merging the result
     back into the given session.
 
     """
 
-    async with sessionmaker() as oob_session:
+    async with async_sessionmaker() as oob_session:
 
         # use AUTOCOMMIT for each connection to reduce transaction
         # overhead / contention
@@ -94,9 +93,7 @@ async def async_main():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session = sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session, session.begin():
         session.add_all([A(data="a_%d" % i) for i in range(100)])

@@ -1068,10 +1068,15 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
 
     @property
     def engine(self) -> Any:
-        r""".. container:: class_bases
+        r"""Returns this :class:`.Engine`.
 
-        Proxied for the :class:`_engine.Engine` class
-        on behalf of the :class:`_asyncio.AsyncEngine` class.
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class
+            on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        Used for legacy schemes that accept :class:`.Connection` /
+        :class:`.Engine` objects within the same variable.
 
 
         """  # noqa: E501
