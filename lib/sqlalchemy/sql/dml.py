@@ -87,6 +87,7 @@ if TYPE_CHECKING:
     from .selectable import _ColumnsClauseElement
     from .selectable import _SelectIterable
     from .selectable import Select
+    from .selectable import Selectable
 
     def isupdate(dml: DMLState) -> TypeGuard[UpdateDMLState]:
         ...
@@ -1040,7 +1041,7 @@ class Insert(ValuesBase):
     def from_select(
         self: SelfInsert,
         names: List[str],
-        select: Select[Any],
+        select: Selectable,
         include_defaults: bool = True,
     ) -> SelfInsert:
         """Return a new :class:`_expression.Insert` construct which represents
