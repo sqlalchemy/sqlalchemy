@@ -195,19 +195,20 @@ Declarative Mapping with Dataclasses and Attrs
 The dataclasses_ module, added in Python 3.7, provides a ``@dataclass`` class
 decorator to automatically generate boilerplate definitions of ``__init__()``,
 ``__eq__()``, ``__repr()__``, etc. methods. Another very popular library that does
-the same, and much more, is attrs_.  Both libraries make use of class
-decorators in order to scan a class for attributes that define the class'
-behavior, which are then used to generate methods, documentation, and annotations.
+the same, and much more, is attrs_, which uses the ``@define`` decorator.
+Both libraries make use of class decorators in order to scan a class for
+attributes that define the class' behavior, which are then used to generate
+methods, documentation, and annotations.
 
 The :meth:`_orm.registry.mapped` class decorator allows the declarative mapping
 of a class to occur after the class has been fully constructed, allowing the
 class to be processed by other class decorators first.  The ``@dataclass``
-and ``@attr.s`` decorators may therefore be applied first before the
+and ``@define`` decorators may therefore be applied first before the
 ORM mapping process proceeds via the :meth:`_orm.registry.mapped` decorator
 or via the :meth:`_orm.registry.map_imperatively` method discussed in a
 later section.
 
-Mapping with ``@dataclass`` or ``@attr.s`` may be used in a straightforward
+Mapping with ``@dataclass`` or ``@define`` may be used in a straightforward
 way with :ref:`orm_imperative_table_configuration` style, where the
 the :class:`_schema.Table`, which means that it is defined separately and
 associated with the class via the ``__table__``.   For dataclasses specifically,
@@ -223,9 +224,12 @@ is to be mapped to a :class:`_schema.Column`, checks explicitly if the
 attribute is part of a Dataclasses setup, and if so will **replace**
 the class-bound dataclass attribute with its usual mapped
 properties.  The ``__init__`` method created by ``@dataclass`` is left
-intact.   In contrast, the ``@attr.s`` decorator actually removes its
-own class-bound attributes after the decorator runs, so that SQLAlchemy's
-mapping process takes over these attributes without any issue.
+intact. The ``@define`` decorator of attrs_ by default replaces the annotated class
+with a new __slots__ based class, which is not supported. When using the old
+style annotation ``@attr.s`` or using ``define(slots=False)``, the class
+does not get replaced. Furthermore attrs removes its own class-bound attributes
+after the decorator runs, so that SQLAlchemy's mapping process takes over these
+attributes without any issue.
 
 .. versionadded:: 1.4 Added support for direct mapping of Python dataclasses,
    where the :class:`_orm.Mapper` will now detect attributes that are specific
@@ -438,7 +442,7 @@ came from a mixin that is itself a dataclass, the form would be::
 Example Three - attrs with Imperative Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A mapping using ``@attr.s``, in conjunction with imperative table::
+A mapping using ``@define`` from attrs_, in conjunction with imperative table::
 
     import attr
     from sqlalchemy.orm import registry
