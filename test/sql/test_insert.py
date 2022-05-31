@@ -24,6 +24,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
@@ -660,6 +661,75 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.name = :name_1",
             # value filled in at execution time
             checkparams={"name_1": "foo", "foo": None},
+        )
+
+    def test_insert_from_select_fn_defaults_compound(self):
+        """test #8073"""
+
+        metadata = MetaData()
+
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default="foo"),
+            Column("bar", Integer, default="bar"),
+        )
+        table1 = self.tables.mytable
+        sel = (
+            select(table1.c.myid)
+            .where(table1.c.name == "foo")
+            .union(select(table1.c.myid).where(table1.c.name == "foo"))
+        )
+        ins = table.insert().from_select(["id"], sel)
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't extend statement for INSERT..FROM SELECT to include "
+            r"additional default-holding column\(s\) 'foo', 'bar'.  "
+            r"Convert the selectable to a subquery\(\) first, or pass "
+            r"include_defaults=False to Insert.from_select\(\) to skip these "
+            r"columns.",
+        ):
+            ins.compile()
+
+    def test_insert_from_select_fn_defaults_compound_subquery(self):
+        """test #8073"""
+
+        metadata = MetaData()
+
+        def foo(ctx):
+            return 12
+
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default="foo"),
+            Column("bar", Integer, default="bar"),
+        )
+        table1 = self.tables.mytable
+        sel = (
+            select(table1.c.myid)
+            .where(table1.c.name == "foo")
+            .union(select(table1.c.myid).where(table1.c.name == "foo"))
+            .subquery()
+        )
+
+        ins = table.insert().from_select(["id"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id, foo, bar) SELECT anon_1.myid, "
+            ":foo AS anon_2, :bar AS anon_3 FROM "
+            "(SELECT mytable.myid AS myid FROM mytable "
+            "WHERE mytable.name = :name_1 UNION "
+            "SELECT mytable.myid AS myid FROM mytable "
+            "WHERE mytable.name = :name_2) AS anon_1",
+            checkparams={
+                "foo": None,
+                "bar": None,
+                "name_1": "foo",
+                "name_2": "foo",
+            },
         )
 
     def test_insert_from_select_dont_mutate_raw_columns(self):
