@@ -1781,6 +1781,14 @@ class WrapsColumnExpression(ColumnElement[_T]):
         else:
             return self._dedupe_anon_tq_label_idx(idx)
 
+    @property
+    def _proxy_key(self):
+        wce = self.wrapped_column_expression
+
+        if not wce._is_text_clause:
+            return wce._proxy_key
+        return super()._proxy_key
+
 
 SelfBindParameter = TypeVar("SelfBindParameter", bound="BindParameter[Any]")
 
