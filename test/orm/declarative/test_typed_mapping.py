@@ -9,6 +9,7 @@ from typing import Set
 from typing import Type
 from typing import TypeVar
 from typing import Union
+import uuid
 
 from sqlalchemy import BIGINT
 from sqlalchemy import Column
@@ -22,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import types
 from sqlalchemy import VARCHAR
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import as_declarative
@@ -478,6 +480,23 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select(User).options(undefer(User.data)),
             "SELECT users.data, users.id FROM users",
         )
+
+    @testing.combinations(
+        (str, types.String),
+        (Decimal, types.Numeric),
+        (float, types.Float),
+        (datetime.datetime, types.DateTime),
+        (uuid.UUID, types.Uuid),
+        argnames="pytype,sqltype",
+    )
+    def test_datatype_lookups(self, decl_base, pytype, sqltype):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            data: Mapped[pytype]
+
+        assert isinstance(MyClass.__table__.c.data.type, sqltype)
 
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):

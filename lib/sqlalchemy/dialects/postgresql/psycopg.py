@@ -62,11 +62,9 @@ import re
 
 from ._psycopg_common import _PGDialect_common_psycopg
 from ._psycopg_common import _PGExecutionContext_common_psycopg
-from ._psycopg_common import _PsycopgUUID
 from .base import INTERVAL
 from .base import PGCompiler
 from .base import PGIdentifierPreparer
-from .base import UUID
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
@@ -118,10 +116,6 @@ class _PGJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
 
 class _PGJSONPathType(JSONPathType):
     pass
-
-
-class _PGUUID(_PsycopgUUID):
-    render_bind_cast = True
 
 
 class _PGInterval(INTERVAL):
@@ -201,7 +195,6 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
             sqltypes.JSON.JSONStrIndexType: _PGJSONStrIndexType,
-            UUID: _PGUUID,
             sqltypes.Interval: _PGInterval,
             INTERVAL: _PGInterval,
             sqltypes.Date: _PGDate,

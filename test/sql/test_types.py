@@ -381,14 +381,14 @@ class TypeAffinityTest(fixtures.TestBase):
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "postgresql":
-                    return dialect.type_descriptor(postgresql.UUID())
+                    return dialect.type_descriptor(postgresql.INET())
                 else:
                     return dialect.type_descriptor(CHAR(32))
 
         t1 = MyType()
         d = postgresql.dialect()
         assert t1._type_affinity is String
-        assert t1.dialect_impl(d)._type_affinity is postgresql.UUID
+        assert t1.dialect_impl(d)._type_affinity is postgresql.INET
 
 
 class AsGenericTest(fixtures.TestBase):

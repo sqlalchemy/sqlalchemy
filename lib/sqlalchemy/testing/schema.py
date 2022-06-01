@@ -39,6 +39,12 @@ def Table(*args, **kw):
             if "test_needs_fk" in test_opts or "test_needs_acid" in test_opts:
                 kw["mysql_engine"] = "InnoDB"
             else:
+                # there are in fact test fixtures that rely upon MyISAM,
+                # due to MySQL / MariaDB having poor FK behavior under innodb,
+                # such as a self-referential table can't be deleted from at
+                # once without attending to per-row dependencies.  We'd need to
+                # add special steps to some fixtures if we want to not
+                # explicitly state MyISAM here
                 kw["mysql_engine"] = "MyISAM"
     elif exclusions.against(config._current, "mariadb"):
         if (

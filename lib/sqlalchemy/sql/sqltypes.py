@@ -30,6 +30,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+from uuid import UUID as _python_UUID
 
 from . import coercions
 from . import elements
@@ -689,11 +690,30 @@ class Double(Float[_N]):
 
 
 class _RenderISO8601NoT:
-    def literal_processor(self, dialect):
-        def process(value):
-            if value is not None:
-                value = f"""'{value.isoformat().replace("T", " ")}'"""
-            return value
+    def _literal_processor_datetime(self, dialect):
+        return self._literal_processor_portion(dialect, None)
+
+    def _literal_processor_date(self, dialect):
+        return self._literal_processor_portion(dialect, 0)
+
+    def _literal_processor_time(self, dialect):
+        return self._literal_processor_portion(dialect, -1)
+
+    def _literal_processor_portion(self, dialect, _portion=None):
+        assert _portion in (None, 0, -1)
+        if _portion is not None:
+
+            def process(value):
+                if value is not None:
+                    value = f"""'{value.isoformat().split("T")[_portion]}'"""
+                return value
+
+        else:
+
+            def process(value):
+                if value is not None:
+                    value = f"""'{value.isoformat().replace("T", " ")}'"""
+                return value
 
         return process
 
@@ -746,6 +766,9 @@ class DateTime(
         else:
             return self
 
+    def literal_processor(self, dialect):
+        return self._literal_processor_datetime(dialect)
+
     @property
     def python_type(self):
         return dt.datetime
@@ -774,6 +797,9 @@ class Date(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.date]):
     @property
     def python_type(self):
         return dt.date
+
+    def literal_processor(self, dialect):
+        return self._literal_processor_date(dialect)
 
     @util.memoized_property
     def _expression_adaptations(self):
@@ -832,6 +858,9 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
             operators.add: {Date: DateTime, Interval: self.__class__},
             operators.sub: {Time: Interval, Interval: self.__class__},
         }
+
+    def literal_processor(self, dialect):
+        return self._literal_processor_time(dialect)
 
 
 class _Binary(TypeEngine[bytes]):
@@ -3302,6 +3331,223 @@ class MatchType(Boolean):
     """
 
 
+_UUID_RETURN = TypeVar("_UUID_RETURN", str, _python_UUID)
+
+
+class Uuid(TypeEngine[_UUID_RETURN]):
+
+    """Represent a database agnostic UUID datatype.
+
+    For backends that have no "native" UUID datatype, the value will
+    make use of ``CHAR(32)`` and store the UUID as a 32-character alphanumeric
+    hex string.
+
+    For backends which are known to support ``UUID`` directly or a similar
+    uuid-storing datatype such as SQL Server's ``UNIQUEIDENTIFIER``, a
+    "native" mode enabled by default allows these types will be used on those
+    backends.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :class:`_sqltypes.UUID` - represents exactly the ``UUID`` datatype
+        without any backend-agnostic behaviors.
+
+    """
+
+    __visit_name__ = "uuid"
+
+    collation = None
+
+    @overload
+    def __init__(
+        self: "Uuid[_python_UUID]",
+        as_uuid: Literal[True] = ...,
+        native_uuid: bool = ...,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "Uuid[str]",
+        as_uuid: Literal[False] = ...,
+        native_uuid: bool = ...,
+    ):
+        ...
+
+    def __init__(self, as_uuid: bool = True, native_uuid: bool = True):
+        """Construct a :class:`_sqltypes.Uuid` type.
+
+        :param as_uuid=True: if True, values will be interpreted
+         as Python uuid objects, converting to/from string via the
+         DBAPI.
+
+         .. versionchanged: 2.0 ``as_uuid`` now defaults to ``True``.
+
+        :param native_uuid=True: if True, backends that support either the
+         ``UUID`` datatype directly, or a UUID-storing value
+         (such as SQL Server's ``UNIQUEIDENTIFIER`` will be used by those
+         backends.   If False, a ``CHAR(32)`` datatype will be used for
+         all backends regardless of native support.
+
+        """
+        self.as_uuid = as_uuid
+        self.native_uuid = native_uuid
+
+    @property
+    def python_type(self):
+        return _python_UUID if self.as_uuid else str
+
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
+
+        if isinstance(value, str):
+            return self
+        else:
+            return super().coerce_compared_value(op, value)
+
+    def bind_processor(self, dialect):
+        character_based_uuid = (
+            not dialect.supports_native_uuid or not self.native_uuid
+        )
+
+        if character_based_uuid:
+            if self.as_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = value.hex
+                    return value
+
+                return process
+            else:
+
+                def process(value):
+                    if value is not None:
+                        value = value.replace("-", "")
+                    return value
+
+                return process
+        else:
+            return None
+
+    def result_processor(self, dialect, coltype):
+        character_based_uuid = (
+            not dialect.supports_native_uuid or not self.native_uuid
+        )
+
+        if character_based_uuid:
+            if self.as_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = _python_UUID(value)
+                    return value
+
+                return process
+            else:
+
+                def process(value):
+                    if value is not None:
+                        value = str(_python_UUID(value))
+                    return value
+
+                return process
+        else:
+
+            if not self.as_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = str(value)
+                    return value
+
+                return process
+            else:
+                return None
+
+    def literal_processor(self, dialect):
+        character_based_uuid = (
+            not dialect.supports_native_uuid or not self.native_uuid
+        )
+
+        if not self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = (
+                        f"""'{value.replace("-", "").replace("'", "''")}'"""
+                    )
+                return value
+
+            return process
+        else:
+            if character_based_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = f"""'{value.hex}'"""
+                    return value
+
+                return process
+            else:
+
+                def process(value):
+                    if value is not None:
+                        value = f"""'{str(value).replace("'", "''")}'"""
+                    return value
+
+                return process
+
+
+class UUID(Uuid[_UUID_RETURN]):
+
+    """Represent the SQL UUID type.
+
+    This is the SQL-native form of the :class:`_types.Uuid` database agnostic
+    datatype, and is backwards compatible with the previous PostgreSQL-only
+    version of ``UUID``.
+
+    The :class:`_sqltypes.UUID` datatype only works on databases that have a
+    SQL datatype named ``UUID``. It will not function for backends which don't
+    have this exact-named type, including SQL Server. For backend-agnostic UUID
+    values with native support, including for SQL Server's ``UNIQUEIDENTIFIER``
+    datatype, use the :class:`_sqltypes.Uuid` datatype.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :class:`_sqltypes.Uuid`
+
+    """
+
+    __visit_name__ = "UUID"
+
+    @overload
+    def __init__(self: "UUID[_python_UUID]", as_uuid: Literal[True] = ...):
+        ...
+
+    @overload
+    def __init__(self: "UUID[str]", as_uuid: Literal[False] = ...):
+        ...
+
+    def __init__(self, as_uuid: bool = True):
+        """Construct a :class:`_sqltypes.UUID` type.
+
+
+        :param as_uuid=True: if True, values will be interpreted
+         as Python uuid objects, converting to/from string via the
+         DBAPI.
+
+         .. versionchanged: 2.0 ``as_uuid`` now defaults to ``True``.
+
+        """
+        self.as_uuid = as_uuid
+        self.native_uuid = True
+
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
@@ -3319,6 +3565,7 @@ _type_map: Dict[Type[Any], TypeEngine[Any]] = {
     int: Integer(),
     float: Float(),
     bool: BOOLEANTYPE,
+    _python_UUID: Uuid(),
     decimal.Decimal: Numeric(),
     dt.date: Date(),
     dt.datetime: _DATETIME,

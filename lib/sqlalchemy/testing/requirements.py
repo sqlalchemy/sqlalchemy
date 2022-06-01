@@ -722,6 +722,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def unicode_data_no_special_types(self):
+        """Target database/dialect can receive / deliver / compare data with
+        non-ASCII characters in plain VARCHAR, TEXT columns, without the need
+        for special "national" datatypes like NVARCHAR or similar.
+
+        """
+        return exclusions.open()
+
+    @property
     def unicode_data(self):
         """Target database/dialect must support Python unicode objects with
         non-ASCII characters represented, delivered as bound parameters

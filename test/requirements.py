@@ -851,6 +851,15 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def unicode_data_no_special_types(self):
+        """Target database/dialect can receive / deliver / compare data with
+        non-ASCII characters in plain VARCHAR, TEXT columns, without the need
+        for special "national" datatypes like NVARCHAR or similar.
+
+        """
+        return exclusions.fails_on("mssql")
+
+    @property
     def unicode_ddl(self):
         """Target driver must support some degree of non-ascii symbol names."""
 
@@ -1750,3 +1759,8 @@ class DefaultRequirements(SuiteRequirements):
                 return res is not None
 
         return only_on(["mssql"]) + only_if(check)
+
+    @property
+    def uuid_data_type(self):
+        """Return databases that support the UUID datatype."""
+        return only_on(("postgresql >= 8.3", "mariadb >= 10.7.0"))

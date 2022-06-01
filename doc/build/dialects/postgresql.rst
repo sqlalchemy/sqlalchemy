@@ -92,6 +92,7 @@ construction arguments, are as follows:
 
 .. autoclass:: UUID
     :members: __init__
+    :noindex:
 
 
 Range Types

@@ -122,7 +122,9 @@ _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
 def literal(
-    value: Any, type_: Optional[_TypeEngineArgument[_T]] = None
+    value: Any,
+    type_: Optional[_TypeEngineArgument[_T]] = None,
+    literal_execute: bool = False,
 ) -> BindParameter[_T]:
     r"""Return a literal clause, bound to a bind parameter.
 
@@ -136,13 +138,24 @@ def literal(
     :class:`BindParameter` with a bound value.
 
     :param value: the value to be bound. Can be any Python object supported by
-        the underlying DB-API, or is translatable via the given type argument.
+     the underlying DB-API, or is translatable via the given type argument.
 
-    :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine` which
-        will provide bind-parameter translation for this literal.
+    :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine` which will
+     provide bind-parameter translation for this literal.
+
+    :param literal_execute: optional bool, when True, the SQL engine will
+     attempt to render the bound value directly in the SQL statement at
+     execution time rather than providing as a parameter value.
+
+     .. versionadded:: 2.0
 
     """
-    return coercions.expect(roles.LiteralValueRole, value, type_=type_)
+    return coercions.expect(
+        roles.LiteralValueRole,
+        value,
+        type_=type_,
+        literal_execute=literal_execute,
+    )
 
 
 def literal_column(

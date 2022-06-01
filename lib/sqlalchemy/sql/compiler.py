@@ -3013,14 +3013,14 @@ class SQLCompiler(Compiled):
 
     def bindparam_string(
         self,
-        name,
-        positional_names=None,
-        post_compile=False,
-        expanding=False,
-        escaped_from=None,
-        bindparam_type=None,
-        **kw,
-    ):
+        name: str,
+        positional_names: Optional[List[str]] = None,
+        post_compile: bool = False,
+        expanding: bool = False,
+        escaped_from: Optional[str] = None,
+        bindparam_type: Optional[TypeEngine[Any]] = None,
+        **kw: Any,
+    ) -> str:
 
         if self.positional:
             if positional_names is not None:
@@ -3045,9 +3045,23 @@ class SQLCompiler(Compiled):
                 {escaped_from: name}
             )
         if post_compile:
-            return "__[POSTCOMPILE_%s]" % name
+            ret = "__[POSTCOMPILE_%s]" % name
+            if expanding:
+                # for expanding, bound parameters or literal values will be
+                # rendered per item
+                return ret
 
-        ret = self.bindtemplate % {"name": name}
+            # otherwise, for non-expanding "literal execute", apply
+            # bind casts as determined by the datatype
+            if bindparam_type is not None:
+                type_impl = bindparam_type._unwrapped_dialect_impl(
+                    self.dialect
+                )
+                if type_impl.render_literal_cast:
+                    ret = self.render_bind_cast(bindparam_type, type_impl, ret)
+            return ret
+        else:
+            ret = self.bindtemplate % {"name": name}
 
         if (
             bindparam_type is not None
@@ -5432,10 +5446,12 @@ class GenericTypeCompiler(TypeCompiler):
     def visit_NCLOB(self, type_, **kw):
         return "NCLOB"
 
-    def _render_string_type(self, type_, name):
+    def _render_string_type(self, type_, name, length_override=None):
 
         text = name
-        if type_.length:
+        if length_override:
+            text += "(%d)" % length_override
+        elif type_.length:
             text += "(%d)" % type_.length
         if type_.collation:
             text += ' COLLATE "%s"' % type_.collation
@@ -5467,6 +5483,9 @@ class GenericTypeCompiler(TypeCompiler):
 
     def visit_BOOLEAN(self, type_, **kw):
         return "BOOLEAN"
+
+    def visit_uuid(self, type_, **kw):
+        return self._render_string_type(type_, "CHAR", length_override=32)
 
     def visit_large_binary(self, type_, **kw):
         return self.visit_BLOB(type_, **kw)

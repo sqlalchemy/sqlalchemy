@@ -2781,7 +2781,11 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
 class UUIDTest(fixtures.TestBase):
 
-    """Test the bind/return values of the UUID type."""
+    """Test postgresql-specific UUID cases.
+
+    See also generic UUID tests in testing/suite/test_types
+
+    """
 
     __only_on__ = "postgresql >= 8.3"
     __backend__ = True

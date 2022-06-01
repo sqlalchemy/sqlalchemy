@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, types
+    :tickets: 7212
+
+    Added new backend-agnostic :class:`_types.Uuid` datatype generalized from
+    the PostgreSQL dialects to now be a core type, as well as migrated
+    :class:`_types.UUID` from the PostgreSQL dialect. The SQL Server
+    :class:`_mssql.UNIQUEIDENTIFIER` datatype also becomes a UUID-handling
+    datatype. Thanks to Trevor Gross for the help on this.

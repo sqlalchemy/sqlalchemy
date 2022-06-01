@@ -8,7 +8,6 @@ from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
 from .base import PGDialect
 from .base import PGExecutionContext
-from .base import UUID
 from .hstore import HSTORE
 from ... import exc
 from ... import types as sqltypes
@@ -63,21 +62,6 @@ class _PsycopgHStore(HSTORE):
             )
 
 
-class _PsycopgUUID(UUID):
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
-
-
 class _PsycopgARRAY(PGARRAY):
     render_bind_cast = True
 
@@ -106,7 +90,6 @@ class _PGDialect_common_psycopg(PGDialect):
         {
             sqltypes.Numeric: _PsycopgNumeric,
             HSTORE: _PsycopgHStore,
-            UUID: _PsycopgUUID,
             sqltypes.ARRAY: _PsycopgARRAY,
         },
     )
@@ -115,14 +98,12 @@ class _PGDialect_common_psycopg(PGDialect):
         self,
         client_encoding=None,
         use_native_hstore=True,
-        use_native_uuid=True,
         **kwargs,
     ):
         PGDialect.__init__(self, **kwargs)
         if not use_native_hstore:
             self._has_native_hstore = False
         self.use_native_hstore = use_native_hstore
-        self.use_native_uuid = use_native_uuid
         self.client_encoding = client_encoding
 
     def create_connect_args(self, url):
