@@ -2541,11 +2541,21 @@ class ExceptionContext:
     """Encapsulate information about an error condition in progress.
 
     This object exists solely to be passed to the
-    :meth:`_events.ConnectionEvents.handle_error` event,
+    :meth:`_events.DialectEvents.handle_error` event,
     supporting an interface that
     can be extended without backwards-incompatibility.
 
-    .. versionadded:: 0.9.7
+
+    """
+
+    __slots__ = ()
+
+    dialect: Dialect
+    """The :class:`_engine.Dialect` in use.
+
+    This member is present for all invocations of the event hook.
+
+    .. versionadded:: 2.0
 
     """
 
@@ -2565,10 +2575,8 @@ class ExceptionContext:
     engine: Optional[Engine]
     """The :class:`_engine.Engine` in use during the exception.
 
-    This member should always be present, even in the case of a failure
-    when first connecting.
-
-    .. versionadded:: 1.0.0
+    This member is present in all cases except for when handling an error
+    within the connection pool "pre-ping" process.
 
     """
 
@@ -2646,7 +2654,7 @@ class ExceptionContext:
     condition.
 
     This flag will always be True or False within the scope of the
-    :meth:`_events.ConnectionEvents.handle_error` handler.
+    :meth:`_events.DialectEvents.handle_error` handler.
 
     SQLAlchemy will defer to this flag in order to determine whether or not
     the connection should be invalidated subsequently.    That is, by
@@ -2671,7 +2679,7 @@ class ExceptionContext:
     when a "disconnect" condition is in effect.
 
     Setting this flag to False within the scope of the
-    :meth:`_events.ConnectionEvents.handle_error`
+    :meth:`_events.DialectEvents.handle_error`
     event will have the effect such
     that the full collection of connections in the pool will not be
     invalidated during a disconnect; only the current connection that is the

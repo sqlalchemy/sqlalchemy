@@ -125,8 +125,9 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
     def _accept_with(
         cls,
         target: Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]],
+        identifier: str,
     ) -> Optional[Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]]]:
-        default_dispatch = super()._accept_with(target)
+        default_dispatch = super()._accept_with(target, identifier)
         if default_dispatch is None and hasattr(
             target, "_no_async_engine_events"
         ):
@@ -147,7 +148,6 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
             event_key.identifier,
             event_key._listen_fn,
         )
-
         target._has_events = True
 
         if not retval:
@@ -187,7 +187,6 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         elif retval and identifier not in (
             "before_execute",
             "before_cursor_execute",
-            "handle_error",
         ):
             raise exc.ArgumentError(
                 "Only the 'before_execute', "
@@ -366,139 +365,6 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
          be ``None``.
         :param executemany: boolean, if ``True``, this is an ``executemany()``
          call, if ``False``, this is an ``execute()`` call.
-
-        """
-
-    def handle_error(
-        self, exception_context: ExceptionContext
-    ) -> Optional[BaseException]:
-        r"""Intercept all exceptions processed by the
-        :class:`_engine.Connection`.
-
-        This includes all exceptions emitted by the DBAPI as well as
-        within SQLAlchemy's statement invocation process, including
-        encoding errors and other statement validation errors.  Other areas
-        in which the event is invoked include transaction begin and end,
-        result row fetching, cursor creation.
-
-        Note that :meth:`.handle_error` may support new kinds of exceptions
-        and new calling scenarios at *any time*.  Code which uses this
-        event must expect new calling patterns to be present in minor
-        releases.
-
-        To support the wide variety of members that correspond to an exception,
-        as well as to allow extensibility of the event without backwards
-        incompatibility, the sole argument received is an instance of
-        :class:`.ExceptionContext`.   This object contains data members
-        representing detail about the exception.
-
-        Use cases supported by this hook include:
-
-        * read-only, low-level exception handling for logging and
-          debugging purposes
-        * exception re-writing
-        * Establishing or disabling whether a connection or the owning
-          connection pool is invalidated or expired in response to a
-          specific exception [1]_.
-
-        The hook is called while the cursor from the failed operation
-        (if any) is still open and accessible.   Special cleanup operations
-        can be called on this cursor; SQLAlchemy will attempt to close
-        this cursor subsequent to this hook being invoked.
-
-        .. note::
-
-            .. [1] The pool "pre_ping" handler enabled using the
-                :paramref:`_sa.create_engine.pool_pre_ping` parameter does
-                **not** consult this event before deciding if the "ping"
-                returned false, as opposed to receiving an unhandled error.
-                For this use case, the :ref:`legacy recipe based on
-                engine_connect() may be used
-                <pool_disconnects_pessimistic_custom>`.  A future API allow
-                more comprehensive customization of the "disconnect"
-                detection mechanism across all functions.
-
-        A handler function has two options for replacing
-        the SQLAlchemy-constructed exception into one that is user
-        defined.   It can either raise this new exception directly, in
-        which case all further event listeners are bypassed and the
-        exception will be raised, after appropriate cleanup as taken
-        place::
-
-            @event.listens_for(Engine, "handle_error")
-            def handle_exception(context):
-                if isinstance(context.original_exception,
-                    psycopg2.OperationalError) and \
-                    "failed" in str(context.original_exception):
-                    raise MySpecialException("failed operation")
-
-        .. warning::  Because the
-           :meth:`_events.ConnectionEvents.handle_error`
-           event specifically provides for exceptions to be re-thrown as
-           the ultimate exception raised by the failed statement,
-           **stack traces will be misleading** if the user-defined event
-           handler itself fails and throws an unexpected exception;
-           the stack trace may not illustrate the actual code line that
-           failed!  It is advised to code carefully here and use
-           logging and/or inline debugging if unexpected exceptions are
-           occurring.
-
-        Alternatively, a "chained" style of event handling can be
-        used, by configuring the handler with the ``retval=True``
-        modifier and returning the new exception instance from the
-        function.  In this case, event handling will continue onto the
-        next handler.   The "chained" exception is available using
-        :attr:`.ExceptionContext.chained_exception`::
-
-            @event.listens_for(Engine, "handle_error", retval=True)
-            def handle_exception(context):
-                if context.chained_exception is not None and \
-                    "special" in context.chained_exception.message:
-                    return MySpecialException("failed",
-                        cause=context.chained_exception)
-
-        Handlers that return ``None`` may be used within the chain; when
-        a handler returns ``None``, the previous exception instance,
-        if any, is maintained as the current exception that is passed onto the
-        next handler.
-
-        When a custom exception is raised or returned, SQLAlchemy raises
-        this new exception as-is, it is not wrapped by any SQLAlchemy
-        object.  If the exception is not a subclass of
-        :class:`sqlalchemy.exc.StatementError`,
-        certain features may not be available; currently this includes
-        the ORM's feature of adding a detail hint about "autoflush" to
-        exceptions raised within the autoflush process.
-
-        :param context: an :class:`.ExceptionContext` object.  See this
-         class for details on all available members.
-
-        .. versionadded:: 0.9.7 Added the
-            :meth:`_events.ConnectionEvents.handle_error` hook.
-
-        .. versionchanged:: 1.1 The :meth:`.handle_error` event will now
-           receive all exceptions that inherit from ``BaseException``,
-           including ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
-           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case and
-           the default for
-           :attr:`.ExceptionContext.invalidate_pool_on_disconnect` is
-           ``False``.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
-           invoked when an :class:`_engine.Engine` fails during the initial
-           call to :meth:`_engine.Engine.connect`, as well as when a
-           :class:`_engine.Connection` object encounters an error during a
-           reconnect operation.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
-           not fired off when a dialect makes use of the
-           ``skip_user_error_events`` execution option.   This is used
-           by dialects which intend to catch SQLAlchemy-specific exceptions
-           within specific operations, such as when the MySQL dialect detects
-           a table not present within the ``has_table()`` dialect method.
-           Prior to 1.0.0, code which implements :meth:`.handle_error` needs
-           to ensure that exceptions thrown in these scenarios are re-raised
-           without modification.
 
         """
 
@@ -793,8 +659,11 @@ class DialectEvents(event.Events[Dialect]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[Engine, Type[Engine], Dialect, Type[Dialect]]
+        cls,
+        target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
+        identifier: str,
     ) -> Optional[Union[Dialect, Type[Dialect]]]:
+
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect
@@ -804,10 +673,138 @@ class DialectEvents(event.Events[Dialect]):
             return target.dialect
         elif isinstance(target, Dialect):
             return target
+        elif isinstance(target, Connection) and identifier == "handle_error":
+            raise exc.InvalidRequestError(
+                "The handle_error() event hook as of SQLAlchemy 2.0 is "
+                "established on the Dialect, and may only be applied to the "
+                "Engine as a whole or to a specific Dialect as a whole, "
+                "not on a per-Connection basis."
+            )
         elif hasattr(target, "_no_async_engine_events"):
             target._no_async_engine_events()
         else:
             return None
+
+    def handle_error(
+        self, exception_context: ExceptionContext
+    ) -> Optional[BaseException]:
+        r"""Intercept all exceptions processed by the
+        :class:`_engine.Dialect`, typically but not limited to those
+        emitted within the scope of a :class:`_engine.Connection`.
+
+        .. versionchanged:: 2.0 the :meth:`.DialectEvents.handle_error` event
+           is moved to the :class:`.DialectEvents` class, moved from the
+           :class:`.ConnectionEvents` class, so that it may also participate in
+           the "pre ping" operation configured with the
+           :paramref:`_sa.create_engine.pool_pre_ping` parameter. The event
+           remains registered by using the :class:`_engine.Engine` as the event
+           target, however note that using the :class:`_engine.Connection` as
+           an event target for :meth:`.DialectEvents.handle_error` is no longer
+           supported.
+
+        This includes all exceptions emitted by the DBAPI as well as
+        within SQLAlchemy's statement invocation process, including
+        encoding errors and other statement validation errors.  Other areas
+        in which the event is invoked include transaction begin and end,
+        result row fetching, cursor creation.
+
+        Note that :meth:`.handle_error` may support new kinds of exceptions
+        and new calling scenarios at *any time*.  Code which uses this
+        event must expect new calling patterns to be present in minor
+        releases.
+
+        To support the wide variety of members that correspond to an exception,
+        as well as to allow extensibility of the event without backwards
+        incompatibility, the sole argument received is an instance of
+        :class:`.ExceptionContext`.   This object contains data members
+        representing detail about the exception.
+
+        Use cases supported by this hook include:
+
+        * read-only, low-level exception handling for logging and
+          debugging purposes
+        * Establishing whether a DBAPI connection error message indicates
+          that the database connection needs to be reconnected, including
+          for the "pre_ping" handler used by **some** dialects
+        * Establishing or disabling whether a connection or the owning
+          connection pool is invalidated or expired in response to a
+          specific exception
+        * exception re-writing
+
+        The hook is called while the cursor from the failed operation
+        (if any) is still open and accessible.   Special cleanup operations
+        can be called on this cursor; SQLAlchemy will attempt to close
+        this cursor subsequent to this hook being invoked.
+
+        As of SQLAlchemy 2.0, the "pre_ping" handler enabled using the
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter will also
+        participate in the :meth:`.handle_error` process, **for those dialects
+        that rely upon disconnect codes to detect database liveness**. Note
+        that some dialects such as psycopg, psycopg2, and most MySQL dialects
+        make use of a native ``ping()`` method supplied by the DBAPI which does
+        not make use of disconnect codes.
+
+        A handler function has two options for replacing
+        the SQLAlchemy-constructed exception into one that is user
+        defined.   It can either raise this new exception directly, in
+        which case all further event listeners are bypassed and the
+        exception will be raised, after appropriate cleanup as taken
+        place::
+
+            @event.listens_for(Engine, "handle_error")
+            def handle_exception(context):
+                if isinstance(context.original_exception,
+                    psycopg2.OperationalError) and \
+                    "failed" in str(context.original_exception):
+                    raise MySpecialException("failed operation")
+
+        .. warning::  Because the
+           :meth:`_events.DialectEvents.handle_error`
+           event specifically provides for exceptions to be re-thrown as
+           the ultimate exception raised by the failed statement,
+           **stack traces will be misleading** if the user-defined event
+           handler itself fails and throws an unexpected exception;
+           the stack trace may not illustrate the actual code line that
+           failed!  It is advised to code carefully here and use
+           logging and/or inline debugging if unexpected exceptions are
+           occurring.
+
+        Alternatively, a "chained" style of event handling can be
+        used, by configuring the handler with the ``retval=True``
+        modifier and returning the new exception instance from the
+        function.  In this case, event handling will continue onto the
+        next handler.   The "chained" exception is available using
+        :attr:`.ExceptionContext.chained_exception`::
+
+            @event.listens_for(Engine, "handle_error", retval=True)
+            def handle_exception(context):
+                if context.chained_exception is not None and \
+                    "special" in context.chained_exception.message:
+                    return MySpecialException("failed",
+                        cause=context.chained_exception)
+
+        Handlers that return ``None`` may be used within the chain; when
+        a handler returns ``None``, the previous exception instance,
+        if any, is maintained as the current exception that is passed onto the
+        next handler.
+
+        When a custom exception is raised or returned, SQLAlchemy raises
+        this new exception as-is, it is not wrapped by any SQLAlchemy
+        object.  If the exception is not a subclass of
+        :class:`sqlalchemy.exc.StatementError`,
+        certain features may not be available; currently this includes
+        the ORM's feature of adding a detail hint about "autoflush" to
+        exceptions raised within the autoflush process.
+
+        :param context: an :class:`.ExceptionContext` object.  See this
+         class for details on all available members.
+
+
+        .. seealso::
+
+            :ref:`pool_new_disconnect_codes`
+
+        """
 
     def do_connect(
         self,

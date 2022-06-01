@@ -182,15 +182,36 @@ Disconnect Handling - Pessimistic
 
 The pessimistic approach refers to emitting a test statement on the SQL
 connection at the start of each connection pool checkout, to test
-that the database connection is still viable.   Typically, this
-is a simple statement like "SELECT 1", but may also make use of some
-DBAPI-specific method to test the connection for liveness.
+that the database connection is still viable.   The implementation is
+dialect-specific, and makes use of either a DBAPI-specific ping method,
+or by using a simple SQL statement like "SELECT 1", in order to test the
+connection for liveness.
 
 The approach adds a small bit of overhead to the connection checkout process,
 however is otherwise the most simple and reliable approach to completely
 eliminating database errors due to stale pooled connections.   The calling
 application does not need to be concerned about organizing operations
 to be able to recover from stale connections checked out from the pool.
+
+Pessimistic testing of connections upon checkout is achievable by
+using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`_sa.create_engine`
+via the :paramref:`_sa.create_engine.pool_pre_ping` argument::
+
+    engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
+
+The "pre ping" feature operates on a per-dialect basis either by invoking a
+DBAPI-specific "ping" method, or if not available will emit SQL equivalent to
+"SELECT 1", catching any errors and detecting the error as a "disconnect"
+situation. If the ping / error check determines that the connection is not
+usable, the connection will be immediately recycled, and all other pooled
+connections older than the current time are invalidated, so that the next time
+they are checked out, they will also be recycled before use.
+
+If the database is still not available when "pre ping" runs, then the initial
+connect will fail and the error for failure to connect will be propagated
+normally.  In the uncommon situation that the database is available for
+connections, but is not able to respond to a "ping", the "pre_ping" will try up
+to three times before giving up, propagating the database error last received.
 
 It is critical to note that the pre-ping approach **does not accommodate for
 connections dropped in the middle of transactions or other SQL operations**. If
@@ -206,33 +227,9 @@ configured using DBAPI-level autocommit connections, as described at
 mid-operation using events.  See the section :ref:`faq_execute_retry` for
 an example.
 
-Pessimistic testing of connections upon checkout is achievable by
-using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`_sa.create_engine`
-via the :paramref:`_sa.create_engine.pool_pre_ping` argument::
-
-    engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
-
-The "pre ping" feature will normally emit SQL equivalent to "SELECT 1" each time a
-connection is checked out from the pool; if an error is raised that is detected
-as a "disconnect" situation, the connection will be immediately recycled, and
-all other pooled connections older than the current time are invalidated, so
-that the next time they are checked out, they will also be recycled before use.
-
-If the database is still not available when "pre ping" runs, then the initial
-connect will fail and the error for failure to connect will be propagated
-normally.  In the uncommon situation that the database is available for
-connections, but is not able to respond to a "ping", the "pre_ping" will try up
-to three times before giving up, propagating the database error last received.
-
-.. note::
-
-    the "SELECT 1" emitted by "pre-ping" is invoked within the scope
-    of the connection pool / dialect, using a very short codepath for minimal
-    Python latency.   As such, this statement is **not logged in the SQL
-    echo output**, and will not show up in SQLAlchemy's engine logging.
-
-.. versionadded:: 1.2 Added "pre-ping" capability to the :class:`_pool.Pool`
-   class.
+For dialects that make use of "SELECT 1" and catch errors in order to detect
+disconnects, the disconnection test may be augmented for new backend-specific
+error messages using the :meth:`_events.DialectEvents.handle_error` hook.
 
 .. _pool_disconnects_pessimistic_custom:
 
@@ -335,6 +332,7 @@ correspond to a single request failing with a 500 error, then the web applicatio
 continuing normally beyond that.   Hence the approach is "optimistic" in that frequent
 database restarts are not anticipated.
 
+
 .. _pool_setting_recycle:
 
 Setting Pool Recycle
@@ -396,6 +394,54 @@ a DBAPI connection might be invalidated include:
 
 All invalidations which occur will invoke the :meth:`_events.PoolEvents.invalidate`
 event.
+
+.. _pool_new_disconnect_codes:
+
+Supporting new database error codes for disconnect scenarios
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy dialects each include a routine called ``is_disconnect()`` that is
+invoked whenever a DBAPI exception is encountered. The DBAPI exception object
+is passed to this method, where dialect-specific heuristics will then determine
+if the error code received indicates that the database connection has been
+"disconnected", or is in an otherwise unusable state which indicates it should
+be recycled. The heuristics applied here may be customized using the
+:meth:`_events.DialectEvents.handle_error` event hook, which is typically
+established via the owning :class:`_engine.Engine` object. Using this hook, all
+errors which occur are delivered passing along a contextual object known as
+:class:`.ExceptionContext`. Custom event hooks may control whether or not a
+particular error should be considered a "disconnect" situation or not, as well
+as if this disconnect should cause the entire connection pool to be invalidated
+or not.
+
+For example, to add support to consider the Oracle error codes
+``DPY-1001`` and ``DPY-4011`` to be handled as disconnect codes, apply an
+event handler to the engine after creation::
+
+    import re
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine("oracle://scott:tiger@dnsname")
+
+
+    @event.listens_for(engine, "handle_error")
+    def handle_exception(context: ExceptionContext) -> None:
+        if not context.is_disconnect and re.match(
+            r"^(?:DPI-1001|DPI-4011)", str(context.original_exception)
+        ):
+            context.is_disconnect = True
+
+        return None
+
+The above error processing function will be invoked for all Oracle errors
+raised, including those caught when using the
+:ref:`pool pre ping <pool_disconnects_pessimistic>` feature for those backends
+that rely upon disconnect error handling (new in 2.0).
+
+.. seealso::
+
+    :meth:`_events.DialectEvents.handle_error`
 
 .. _pool_use_lifo:
 

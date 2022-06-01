@@ -610,7 +610,23 @@ class DefaultDialect(Dialect):
             finally:
                 cursor.close()
         except self.loaded_dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, cursor):
+            is_disconnect = self.is_disconnect(err, dbapi_connection, cursor)
+
+            if self._has_events:
+                try:
+                    Connection._handle_dbapi_exception_noconnection(
+                        err,
+                        self,
+                        is_disconnect=is_disconnect,
+                        invalidate_pool_on_disconnect=False,
+                    )
+                except exc.StatementError as new_err:
+                    is_disconnect = new_err.connection_invalidated
+
+                # other exceptions modified by the event handler will be
+                # thrown
+
+            if is_disconnect:
                 return False
             else:
                 raise

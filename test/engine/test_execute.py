@@ -3034,6 +3034,21 @@ class HandleErrorTest(fixtures.TestBase):
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
+    def test_handle_error_not_on_connection(self, connection):
+
+        with expect_raises_message(
+            tsa.exc.InvalidRequestError,
+            r"The handle_error\(\) event hook as of SQLAlchemy 2.0 is "
+            r"established "
+            r"on the Dialect, and may only be applied to the Engine as a "
+            r"whole or to a specific Dialect as a whole, not on a "
+            r"per-Connection basis.",
+        ):
+
+            @event.listens_for(connection, "handle_error")
+            def handle_error(ctx):
+                pass
+
     @testing.only_on("sqlite+pysqlite")
     def test_cursor_close_resultset_failed_connectionless(self):
         engine = engines.testing_engine()

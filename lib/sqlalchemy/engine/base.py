@@ -1960,15 +1960,14 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             newraise = None
 
-            if (
-                self._has_events or self.engine._has_events
-            ) and not self._execution_options.get(
+            if (self.dialect._has_events) and not self._execution_options.get(
                 "skip_user_error_events", False
             ):
                 ctx = ExceptionContextImpl(
                     e,
                     sqlalchemy_exception,
                     self.engine,
+                    self.dialect,
                     self,
                     cursor,
                     statement,
@@ -1978,7 +1977,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     invalidate_pool_on_disconnect,
                 )
 
-                for fn in self.dispatch.handle_error:
+                for fn in self.dialect.dispatch.handle_error:
                     try:
                         # handler returns an exception;
                         # call next handler in a chain
@@ -2040,13 +2039,19 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     @classmethod
     def _handle_dbapi_exception_noconnection(
-        cls, e: BaseException, dialect: Dialect, engine: Engine
+        cls,
+        e: BaseException,
+        dialect: Dialect,
+        engine: Optional[Engine] = None,
+        is_disconnect: Optional[bool] = None,
+        invalidate_pool_on_disconnect: bool = True,
     ) -> NoReturn:
         exc_info = sys.exc_info()
 
-        is_disconnect = isinstance(
-            e, dialect.loaded_dbapi.Error
-        ) and dialect.is_disconnect(e, None, None)
+        if is_disconnect is None:
+            is_disconnect = isinstance(
+                e, dialect.loaded_dbapi.Error
+            ) and dialect.is_disconnect(e, None, None)
 
         should_wrap = isinstance(e, dialect.loaded_dbapi.Error)
 
@@ -2056,28 +2061,32 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 None,
                 cast(Exception, e),
                 dialect.loaded_dbapi.Error,
-                hide_parameters=engine.hide_parameters,
+                hide_parameters=engine.hide_parameters
+                if engine is not None
+                else False,
                 connection_invalidated=is_disconnect,
+                dialect=dialect,
             )
         else:
             sqlalchemy_exception = None
 
         newraise = None
 
-        if engine._has_events:
+        if dialect._has_events:
             ctx = ExceptionContextImpl(
                 e,
                 sqlalchemy_exception,
                 engine,
+                dialect,
                 None,
                 None,
                 None,
                 None,
                 None,
                 is_disconnect,
-                True,
+                invalidate_pool_on_disconnect,
             )
-            for fn in engine.dispatch.handle_error:
+            for fn in dialect.dispatch.handle_error:
                 try:
                     # handler returns an exception;
                     # call next handler in a chain
@@ -2121,11 +2130,27 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 class ExceptionContextImpl(ExceptionContext):
     """Implement the :class:`.ExceptionContext` interface."""
 
+    __slots__ = (
+        "connection",
+        "engine",
+        "dialect",
+        "cursor",
+        "statement",
+        "parameters",
+        "original_exception",
+        "sqlalchemy_exception",
+        "chained_exception",
+        "execution_context",
+        "is_disconnect",
+        "invalidate_pool_on_disconnect",
+    )
+
     def __init__(
         self,
         exception: BaseException,
         sqlalchemy_exception: Optional[exc.StatementError],
         engine: Optional[Engine],
+        dialect: Dialect,
         connection: Optional[Connection],
         cursor: Optional[DBAPICursor],
         statement: Optional[str],
@@ -2135,6 +2160,7 @@ class ExceptionContextImpl(ExceptionContext):
         invalidate_pool_on_disconnect: bool,
     ):
         self.engine = engine
+        self.dialect = dialect
         self.connection = connection
         self.sqlalchemy_exception = sqlalchemy_exception
         self.original_exception = exception
