@@ -1201,6 +1201,14 @@ class WrapsColumnExpression(object):
         else:
             return self._dedupe_anon_tq_label_idx(idx)
 
+    @property
+    def _proxy_key(self):
+        wce = self.wrapped_column_expression
+
+        if not wce._is_text_clause:
+            return wce._proxy_key
+        return super(WrapsColumnExpression, self)._proxy_key
+
 
 class BindParameter(roles.InElementRole, ColumnElement):
     r"""Represent a "bound expression".

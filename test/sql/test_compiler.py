@@ -3208,7 +3208,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             (exprs[1], "hoho", "hoho(mytable.myid)", "hoho_1"),
             (
                 exprs[2],
-                "_no_label",
+                "name",
                 "CAST(mytable.name AS NUMERIC)",
                 "name",  # due to [ticket:4449]
             ),
@@ -3232,6 +3232,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select(col).select_from(t)
+            eq_(col._proxy_key, key if key != "_no_label" else None)
             eq_(list(s1.subquery().c.keys()), [key])
 
             if lbl:
