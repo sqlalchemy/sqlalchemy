@@ -26,6 +26,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -936,6 +937,33 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT some_table.name AS name, "
             "some_table.name AS name, "
             "some_table.name FROM some_table",
+        )
+
+    @testing.combinations("inside", "outside")
+    def test_wraps_col_expr_label_propagate(self, cast_location):
+        """test #8084"""
+
+        table1 = self.table1
+
+        if cast_location == "inside":
+            expr = cast(table1.c.name, Integer).label("foo")
+        elif cast_location == "outside":
+            expr = cast(table1.c.name.label("foo"), Integer)
+        else:
+            assert False
+
+        self.assert_compile(
+            select(expr),
+            "SELECT CAST(some_table.name AS INTEGER) AS foo FROM some_table",
+        )
+        is_(select(expr).selected_columns.foo, expr)
+
+        subq = select(expr).subquery()
+        self.assert_compile(
+            select(subq).where(subq.c.foo == 10),
+            "SELECT anon_1.foo FROM (SELECT CAST(some_table.name AS INTEGER) "
+            "AS foo FROM some_table) AS anon_1 WHERE anon_1.foo = :foo_1",
+            checkparams={"foo_1": 10},
         )
 
     def test_type_coerce_auto_label_label_style_disambiguate(self):
