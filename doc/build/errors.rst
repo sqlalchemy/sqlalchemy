@@ -1132,9 +1132,9 @@ method.   The objects will then live on to be accessed further, very often
 within web applications where they are delivered to a server-side templating
 engine and are asked for further attributes which they cannot load.
 
-Mitigation of this error is via two general techniques:
+Mitigation of this error is via these techniques:
 
-* **Don't close the session prematurely** - Often, applications will close
+* **Try not to have detached objects; don't close the session prematurely** - Often, applications will close
   out a transaction before passing off related objects to some other system
   which then fails due to this error.   Sometimes the transaction doesn't need
   to be closed so soon; an example is the web application closes out
@@ -1146,20 +1146,26 @@ Mitigation of this error is via two general techniques:
   :class:`.Session` can be held open until the lifespan of the objects are done,
   this is the best approach.
 
-* **Load everything that's needed up front** - It is very often impossible to
+* **Otherwise, load everything that's needed up front** - It is very often impossible to
   keep the transaction open, especially in more complex applications that need
   to pass objects off to other systems that can't run in the same context
   even though they're in the same process.  In this case, the application
-  should try to make appropriate use of :term:`eager loading` to ensure
+  should prepare to deal with :term:`detached` objects,
+  and should try to make appropriate use of :term:`eager loading` to ensure
   that objects have what they need up front.
 
-  When using this approach, it is usually necessary that the
-  :paramref:`_orm.Session.expire_on_commit` parameter be set to ``False``, so
-  that after a :meth:`_orm.Session.commit` operation, the objects within the
-  session aren't :term:`expired`, which would incur a lazy load if their
-  attributes were subsequently accessed.  Additionally, the
-  :meth:`_orm.Session.rollback` method unconditionally expires all contents in
-  the :class:`_orm.Session` and should also be avoided in non-error scenarios.
+* **And importantly, set expire_on_commit to False** - When using detached objects, the
+  most common reason objects need to re-load data is because they were expired
+  from the last call to :meth:`_orm.Session.commit`.   This expiration should
+  not be used when dealing with detached objects; so the
+  :paramref:`_orm.Session.expire_on_commit` parameter be set to ``False``.
+  By preventing the objects from becoming expired outside of the transaction,
+  the data which was loaded will remain present and will not incur additional
+  lazy loads when that data is accessed.
+
+  Note also that :meth:`_orm.Session.rollback` method unconditionally expires
+  all contents in the :class:`_orm.Session` and should also be avoided in
+  non-error scenarios.
 
   .. seealso::
 
