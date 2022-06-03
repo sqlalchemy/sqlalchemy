@@ -2887,7 +2887,7 @@ class BetweenSubclassJoinWExtraJoinedLoad(
         sess = fixture_session()
 
         if autoalias:
-            # eager join is both from Enginer->LastSeen as well as
+            # eager join is both from Engineer->LastSeen as well as
             # Manager->LastSeen.  In the case of Manager->LastSeen,
             # Manager is internally aliased, and comes to JoinedEagerLoader
             # with no "parent" entity but an adapter.

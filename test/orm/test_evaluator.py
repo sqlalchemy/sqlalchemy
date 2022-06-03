@@ -245,7 +245,7 @@ class EvaluateTest(fixtures.MappedTest):
             ],
         )
 
-    def test_mulitple_expressions(self):
+    def test_multiple_expressions(self):
         User = self.classes.User
 
         evaluator = compiler.process(User.id > 5, User.name == "ed")
