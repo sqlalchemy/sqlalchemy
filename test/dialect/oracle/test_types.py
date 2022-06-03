@@ -39,6 +39,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
+from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.sql import column
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
@@ -98,9 +99,11 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         (NCHAR(), cx_oracle._OracleNChar),
         (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
         (oracle.RAW(50), cx_oracle._OracleRaw),
+        argnames="start, test",
     )
-    def test_type_adapt(self, start, test):
-        dialect = cx_oracle.dialect()
+    @testing.combinations(cx_oracle, oracledb, argnames="module")
+    def test_type_adapt(self, start, test, module):
+        dialect = module.dialect()
 
         assert isinstance(
             start.dialect_impl(dialect), test
@@ -115,9 +118,11 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         (UnicodeText(), cx_oracle._OracleUnicodeTextNCLOB),
         (NCHAR(), cx_oracle._OracleNChar),
         (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+        argnames="start, test",
     )
-    def test_type_adapt_nchar(self, start, test):
-        dialect = cx_oracle.dialect(use_nchar_for_unicode=True)
+    @testing.combinations(cx_oracle, oracledb, argnames="module")
+    def test_type_adapt_nchar(self, start, test, module):
+        dialect = module.dialect(use_nchar_for_unicode=True)
 
         assert isinstance(
             start.dialect_impl(dialect), test
@@ -723,7 +728,10 @@ class TypesTest(fixtures.TestBase):
             "SELECT CAST(-9999999999999999999 AS NUMBER(19,0)) FROM dual",
         ),
     )
-    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
+    @testing.only_on(
+        ["oracle+cx_oracle", "oracle+oracledb"],
+        "cx_oracle/oracledb specific feature",
+    )
     def test_raw_numerics(self, title, stmt):
         with testing.db.connect() as conn:
             # get a brand new connection that definitely is not
@@ -797,7 +805,7 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(t2.c.nv_data.type, sqltypes.NVARCHAR)
         assert isinstance(t2.c.c_data.type, sqltypes.NCHAR)
 
-        if testing.against("oracle+cx_oracle"):
+        if testing.against("oracle+cx_oracle", "oracle+oracledb"):
             assert isinstance(
                 t2.c.nv_data.type.dialect_impl(connection.dialect),
                 cx_oracle._OracleUnicodeStringNCHAR,
@@ -823,7 +831,7 @@ class TypesTest(fixtures.TestBase):
         t2 = Table("tnv", m2, autoload_with=connection)
         assert isinstance(t2.c.data.type, sqltypes.VARCHAR)
 
-        if testing.against("oracle+cx_oracle"):
+        if testing.against("oracle+cx_oracle", "oracle+oracledb"):
             assert isinstance(
                 t2.c.data.type.dialect_impl(connection.dialect),
                 cx_oracle._OracleString,
@@ -1089,7 +1097,7 @@ class EuroNumericTest(fixtures.TestBase):
     test the numeric output_type_handler when using non-US locale for NLS_LANG.
     """
 
-    __only_on__ = "oracle+cx_oracle"
+    __only_on__ = ("oracle+cx_oracle", "oracle+oracledb")
     __backend__ = True
 
     def setup_test(self):
@@ -1107,6 +1115,8 @@ class EuroNumericTest(fixtures.TestBase):
     def teardown_test(self):
         self.engine.dispose()
 
+    # https://python-oracledb.readthedocs.io/en/latest/user_guide/appendix_b.html#globalization-in-thin-and-thick-modes
+    @testing.requires.fail_on_oracledb_thin
     def test_were_getting_a_comma(self):
         connection = self.engine.pool._creator()
         cursor = connection.cursor()
@@ -1166,7 +1176,7 @@ class EuroNumericTest(fixtures.TestBase):
 
 
 class SetInputSizesTest(fixtures.TestBase):
-    __only_on__ = "oracle+cx_oracle"
+    __only_on__ = ("oracle+cx_oracle", "oracle+oracledb")
     __backend__ = True
 
     @testing.combinations(

@@ -198,7 +198,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def named_paramstyle(self):
-        return only_on(["sqlite", "oracle+cx_oracle"])
+        return only_on(["sqlite", "oracle+cx_oracle", "oracle+oracledb"])
 
     @property
     def format_paramstyle(self):
@@ -751,27 +751,32 @@ class DefaultRequirements(SuiteRequirements):
                 else:
                     return num > 0
 
-        return skip_if(
-            [
-                no_support("mssql", "two-phase xact not supported by drivers"),
-                no_support(
-                    "sqlite", "two-phase xact not supported by database"
-                ),
-                # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
-                # we are evaluating which modern MySQL / MariaDB versions
-                # can handle two-phase testing without too many problems
-                # no_support(
-                #     "mysql",
-                #    "recent MySQL communiity editions have too many issues "
-                #    "(late 2016), disabling for now",
-                # ),
-                NotPredicate(
-                    LambdaPredicate(
-                        pg_prepared_transaction,
-                        "max_prepared_transactions not available or zero",
-                    )
-                ),
-            ]
+        return (
+            skip_if(
+                [
+                    no_support(
+                        "mssql", "two-phase xact not supported by drivers"
+                    ),
+                    no_support(
+                        "sqlite", "two-phase xact not supported by database"
+                    ),
+                    # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
+                    # we are evaluating which modern MySQL / MariaDB versions
+                    # can handle two-phase testing without too many problems
+                    # no_support(
+                    #     "mysql",
+                    #    "recent MySQL community editions have too many "
+                    #    "issues (late 2016), disabling for now",
+                    # ),
+                    NotPredicate(
+                        LambdaPredicate(
+                            pg_prepared_transaction,
+                            "max_prepared_transactions not available or zero",
+                        )
+                    ),
+                ]
+            )
+            + self.fail_on_oracledb_thin
         )
 
     @property
@@ -1609,10 +1614,16 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def cxoracle6_or_greater(self):
-        return only_if(
-            lambda config: against(config, "oracle+cx_oracle")
-            and config.db.dialect.cx_oracle_ver >= (6,)
-        )
+        def go(config):
+            return (
+                against(config, "oracle+cx_oracle")
+                and config.db.dialect.cx_oracle_ver >= (6,)
+            ) or (
+                against(config, "oracle+oracledb")
+                and config.db.dialect.oracledb_ver >= (1,)
+            )
+
+        return only_if(go)
 
     @property
     def oracle5x(self):
@@ -1620,6 +1631,16 @@ class DefaultRequirements(SuiteRequirements):
             lambda config: against(config, "oracle+cx_oracle")
             and config.db.dialect.cx_oracle_ver < (6,)
         )
+
+    @property
+    def fail_on_oracledb_thin(self):
+        def go(config):
+            if against(config, "oracle+oracledb"):
+                with config.db.connect() as conn:
+                    return config.db.dialect.is_thin_mode(conn)
+            return False
+
+        return fails_if(go)
 
     @property
     def computed_columns(self):

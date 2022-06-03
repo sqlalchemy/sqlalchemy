@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from multiprocessing import get_context
 import re
 from unittest import mock
 from unittest.mock import Mock
@@ -23,6 +24,7 @@ from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
+from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.engine import url
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -32,6 +34,8 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
@@ -39,35 +43,85 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
 
 
-class DialectTest(fixtures.TestBase):
+class CxOracleDialectTest(fixtures.TestBase):
     def test_cx_oracle_version_parse(self):
         dialect = cx_oracle.OracleDialect_cx_oracle()
 
-        eq_(dialect._parse_cx_oracle_ver("5.2"), (5, 2))
+        def check(version):
+            dbapi = Mock(version=version)
+            dialect._load_version(dbapi)
+            return dialect.cx_oracle_ver
 
-        eq_(dialect._parse_cx_oracle_ver("5.0.1"), (5, 0, 1))
-
-        eq_(dialect._parse_cx_oracle_ver("6.0b1"), (6, 0))
+        eq_(check("7.2"), (7, 2))
+        eq_(check("7.0.1"), (7, 0, 1))
+        eq_(check("9.0b1"), (9, 0))
 
     def test_minimum_version(self):
-        with mock.patch(
-            "sqlalchemy.dialects.oracle.cx_oracle.OracleDialect_cx_oracle."
-            "_parse_cx_oracle_ver",
-            lambda self, vers: (5, 1, 5),
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "cx_Oracle version 7 and above are supported",
         ):
-            assert_raises_message(
-                exc.InvalidRequestError,
-                "cx_Oracle version 7 and above are supported",
-                cx_oracle.OracleDialect_cx_oracle,
-                dbapi=mock.Mock(),
-            )
+            cx_oracle.OracleDialect_cx_oracle(dbapi=Mock(version="5.1.5"))
 
-        with mock.patch(
-            "sqlalchemy.dialects.oracle.cx_oracle.OracleDialect_cx_oracle."
-            "_parse_cx_oracle_ver",
-            lambda self, vers: (7, 1, 0),
+        dialect = cx_oracle.OracleDialect_cx_oracle(
+            dbapi=Mock(version="7.1.0")
+        )
+        eq_(dialect.cx_oracle_ver, (7, 1, 0))
+
+
+class OracleDbDialectTest(fixtures.TestBase):
+    def test_oracledb_version_parse(self):
+        dialect = oracledb.OracleDialect_oracledb()
+
+        def check(version):
+            dbapi = Mock(version=version)
+            dialect._load_version(dbapi)
+            return dialect.oracledb_ver
+
+        eq_(check("7.2"), (7, 2))
+        eq_(check("7.0.1"), (7, 0, 1))
+        eq_(check("9.0b1"), (9, 0))
+
+    def test_minimum_version(self):
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "oracledb version 1 and above are supported",
         ):
-            cx_oracle.OracleDialect_cx_oracle(dbapi=mock.Mock())
+            oracledb.OracleDialect_oracledb(dbapi=Mock(version="0.1.5"))
+
+        dialect = oracledb.OracleDialect_oracledb(dbapi=Mock(version="7.1.0"))
+        eq_(dialect.oracledb_ver, (7, 1, 0))
+
+
+class OracledbMode(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "oracle+oracledb"
+
+    def _run_in_process(self, fn):
+        ctx = get_context("spawn")
+        queue = ctx.Queue()
+        process = ctx.Process(target=fn, args=(str(config.db_url), queue))
+        try:
+            process.start()
+            process.join(10)
+            eq_(process.exitcode, 0)
+            return queue.get_nowait()
+        finally:
+            process.kill()
+
+    def test_thin_mode(self):
+        from ._oracledb_mode import run_thin_mode
+
+        mode, is_thin = self._run_in_process(run_thin_mode)
+        is_true(is_thin)
+        is_true(mode.startswith("python-oracledb thn"))
+
+    def test_thick_mode(self):
+        from ._oracledb_mode import run_thick_mode
+
+        mode, is_thin = self._run_in_process(run_thick_mode)
+        is_false(is_thin)
+        eq_(mode.strip(), "custom-driver-name")
 
 
 class DialectWBackendTest(fixtures.TestBase):
@@ -111,7 +165,7 @@ class DialectWBackendTest(fixtures.TestBase):
             False,
         ),
     )
-    @testing.only_on("oracle+cx_oracle")
+    @testing.only_on(["oracle+cx_oracle", "oracle+oracledb"])
     def test_is_disconnect(self, message, code, expected):
 
         dialect = testing.db.dialect
@@ -289,6 +343,9 @@ class EncodingErrorsTest(fixtures.TestBase):
         argnames="cx_oracle_type",
         id_="ia",
     )
+    _dialect = testing.combinations(
+        cx_oracle.dialect, oracledb.dialect, argnames="dialect_cls"
+    )
 
     def _assert_errorhandler(self, outconverter, has_errorhandler):
         data = "\uee2c\u9a66"  # this is u"\uee2c\u9a66"
@@ -305,14 +362,11 @@ class EncodingErrorsTest(fixtures.TestBase):
             assert_raises(UnicodeDecodeError, outconverter, utf8_w_errors)
 
     @_oracle_char_combinations
+    @_dialect
     def test_encoding_errors_cx_oracle(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
+        self, cx_Oracle, cx_oracle_type, dialect_cls
     ):
-        ignore_dialect = cx_oracle.dialect(
-            dbapi=cx_Oracle, encoding_errors="ignore"
-        )
+        ignore_dialect = dialect_cls(dbapi=cx_Oracle, encoding_errors="ignore")
 
         ignore_outputhandler = (
             ignore_dialect._generate_connection_outputtype_handler()
@@ -334,12 +388,11 @@ class EncodingErrorsTest(fixtures.TestBase):
         )
 
     @_oracle_char_combinations
+    @_dialect
     def test_no_encoding_errors_cx_oracle(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
+        self, cx_Oracle, cx_oracle_type, dialect_cls
     ):
-        plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        plain_dialect = dialect_cls(dbapi=cx_Oracle)
 
         plain_outputhandler = (
             plain_dialect._generate_connection_outputtype_handler()
@@ -433,7 +486,7 @@ class ComputedReturningTest(fixtures.TablesTest):
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
-    __only_on__ = "oracle+cx_oracle"
+    __only_on__ = ("oracle+cx_oracle", "oracle+oracledb")
     __backend__ = True
 
     @classmethod
@@ -877,12 +930,21 @@ class UnicodeSchemaTest(fixtures.TestBase):
         eq_(result, "’é")
 
 
-class CXOracleConnectArgsTest(fixtures.TestBase):
-    __only_on__ = "oracle+cx_oracle"
-    __backend__ = True
+class BaseConnectArgsTest:
+    @property
+    def name(self):
+        raise NotImplementedError
+
+    @property
+    def dbapi(self):
+        raise NotImplementedError
+
+    @property
+    def dialect_cls(self):
+        raise NotImplementedError
 
     def test_cx_oracle_service_name(self):
-        url_string = "oracle+cx_oracle://scott:tiger@host/?service_name=hr"
+        url_string = f"oracle+{self.name}://scott:tiger@host/?service_name=hr"
         eng = create_engine(url_string, _initialize=False)
         cargs, cparams = eng.dialect.create_connect_args(eng.url)
 
@@ -890,7 +952,9 @@ class CXOracleConnectArgsTest(fixtures.TestBase):
         assert "SID=hr" not in cparams["dsn"]
 
     def test_cx_oracle_service_name_bad(self):
-        url_string = "oracle+cx_oracle://scott:tiger@host/hr1?service_name=hr2"
+        url_string = (
+            f"oracle+{self.name}://scott:tiger@host/hr1?service_name=hr2"
+        )
         assert_raises(
             exc.InvalidRequestError,
             create_engine,
@@ -899,69 +963,59 @@ class CXOracleConnectArgsTest(fixtures.TestBase):
         )
 
     def _test_db_opt(self, url_string, key, value):
-        import cx_Oracle
-
         url_obj = url.make_url(url_string)
-        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        dialect = self.dialect_cls(dbapi=self.dbapi)
         arg, kw = dialect.create_connect_args(url_obj)
         eq_(kw[key], value)
 
     def _test_db_opt_unpresent(self, url_string, key):
-        import cx_Oracle
-
         url_obj = url.make_url(url_string)
-        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        dialect = self.dialect_cls(dbapi=self.dbapi)
         arg, kw = dialect.create_connect_args(url_obj)
         assert key not in kw
 
     def _test_dialect_param_from_url(self, url_string, key, value):
-        import cx_Oracle
-
         url_obj = url.make_url(url_string)
-        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        dialect = self.dialect_cls(dbapi=self.dbapi)
         with testing.expect_deprecated(
-            "cx_oracle dialect option %r should" % key
+            f"{self.name} dialect option %r should" % key
         ):
             arg, kw = dialect.create_connect_args(url_obj)
         eq_(getattr(dialect, key), value)
 
         # test setting it on the dialect normally
-        dialect = cx_oracle.dialect(dbapi=cx_Oracle, **{key: value})
+        dialect = self.dialect_cls(dbapi=self.dbapi, **{key: value})
         eq_(getattr(dialect, key), value)
 
     def test_mode(self):
-        import cx_Oracle
-
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?mode=sYsDBA",
+            f"oracle+{self.name}://scott:tiger@host/?mode=sYsDBA",
             "mode",
-            cx_Oracle.SYSDBA,
+            self.dbapi.SYSDBA,
         )
 
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?mode=SYSOPER",
+            f"oracle+{self.name}://scott:tiger@host/?mode=SYSOPER",
             "mode",
-            cx_Oracle.SYSOPER,
+            self.dbapi.SYSOPER,
         )
 
     def test_int_mode(self):
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?mode=32767", "mode", 32767
+            f"oracle+{self.name}://scott:tiger@host/?mode=32767", "mode", 32767
         )
 
     @testing.requires.cxoracle6_or_greater
     def test_purity(self):
-        import cx_Oracle
-
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?purity=attr_purity_new",
+            f"oracle+{self.name}://scott:tiger@host/?purity=attr_purity_new",
             "purity",
-            cx_Oracle.ATTR_PURITY_NEW,
+            self.dbapi.ATTR_PURITY_NEW,
         )
 
     def test_encoding(self):
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/"
+            f"oracle+{self.name}://scott:tiger@host/"
             "?encoding=AMERICAN_AMERICA.UTF8",
             "encoding",
             "AMERICAN_AMERICA.UTF8",
@@ -969,43 +1023,83 @@ class CXOracleConnectArgsTest(fixtures.TestBase):
 
     def test_threaded(self):
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?threaded=true",
+            f"oracle+{self.name}://scott:tiger@host/?threaded=true",
             "threaded",
             True,
         )
 
         self._test_db_opt_unpresent(
-            "oracle+cx_oracle://scott:tiger@host/", "threaded"
+            f"oracle+{self.name}://scott:tiger@host/", "threaded"
         )
 
     def test_events(self):
         self._test_db_opt(
-            "oracle+cx_oracle://scott:tiger@host/?events=true", "events", True
+            f"oracle+{self.name}://scott:tiger@host/?events=true",
+            "events",
+            True,
         )
 
     def test_threaded_deprecated_at_dialect_level(self):
         with testing.expect_deprecated(
-            "The 'threaded' parameter to the cx_oracle dialect"
+            "The 'threaded' parameter to the cx_oracle/oracledb dialect"
         ):
-            dialect = cx_oracle.dialect(threaded=False)
+            dialect = self.dialect_cls(threaded=False)
         arg, kw = dialect.create_connect_args(
-            url.make_url("oracle+cx_oracle://scott:tiger@dsn")
+            url.make_url(f"oracle+{self.name}://scott:tiger@dsn")
         )
         eq_(kw["threaded"], False)
 
     def test_deprecated_use_ansi(self):
         self._test_dialect_param_from_url(
-            "oracle+cx_oracle://scott:tiger@host/?use_ansi=False",
+            f"oracle+{self.name}://scott:tiger@host/?use_ansi=False",
             "use_ansi",
             False,
         )
 
     def test_deprecated_auto_convert_lobs(self):
         self._test_dialect_param_from_url(
-            "oracle+cx_oracle://scott:tiger@host/?auto_convert_lobs=False",
+            f"oracle+{self.name}://scott:tiger@host/?auto_convert_lobs=False",
             "auto_convert_lobs",
             False,
         )
+
+
+class CXOracleConnectArgsTest(BaseConnectArgsTest, fixtures.TestBase):
+    __only_on__ = "oracle+cx_oracle"
+    __backend__ = True
+
+    @property
+    def name(self):
+        return "cx_oracle"
+
+    @property
+    def dbapi(self):
+        import cx_Oracle
+
+        return cx_Oracle
+
+    @property
+    def dialect_cls(self):
+        return cx_oracle.dialect
+
+
+class OracleDbConnectArgsTest(BaseConnectArgsTest, fixtures.TestBase):
+    __only_on__ = "oracle+oracledb"
+    __backend__ = True
+
+    @property
+    def name(self):
+        return "oracledb"
+
+    @property
+    def dbapi(self):
+        import oracledb
+
+        return oracledb
+
+    @property
+    def dialect_cls(self):
+        return oracledb.dialect
 
 
 class TableValuedTest(fixtures.TestBase):
