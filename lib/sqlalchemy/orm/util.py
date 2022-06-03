@@ -1970,6 +1970,7 @@ def _extract_mapped_subtype(
     required: bool,
     is_dataclass_field: bool,
     expect_mapped: bool = True,
+    raiseerr: bool = True,
 ) -> Optional[Union[type, str]]:
     """given an annotation, figure out if it's ``Mapped[something]`` and if
     so, return the ``something`` part.
@@ -2008,12 +2009,35 @@ def _extract_mapped_subtype(
                 our_annotated_str = anno_name
 
             if expect_mapped:
-                raise sa_exc.ArgumentError(
-                    f'Type annotation for "{cls.__name__}.{key}" '
-                    "should use the "
-                    f'syntax "Mapped[{our_annotated_str}]" or '
-                    f'"{attr_cls.__name__}[{our_annotated_str}]".'
-                )
+                if getattr(annotated, "__origin__", None) is typing.ClassVar:
+                    return None
+
+                if not raiseerr:
+                    return None
+
+                if attr_cls.__name__ == our_annotated_str or attr_cls is type(
+                    None
+                ):
+                    raise sa_exc.ArgumentError(
+                        f'Type annotation for "{cls.__name__}.{key}" '
+                        "should use the "
+                        f'syntax "Mapped[{our_annotated_str}]".  To leave '
+                        f"the attribute unmapped, use "
+                        f"ClassVar[{our_annotated_str}], assign a value to "
+                        f"the attribute, or "
+                        f"set __allow_unmapped__ = True on the class."
+                    )
+                else:
+                    raise sa_exc.ArgumentError(
+                        f'Type annotation for "{cls.__name__}.{key}" '
+                        "should use the "
+                        f'syntax "Mapped[{our_annotated_str}]" or '
+                        f'"{attr_cls.__name__}[{our_annotated_str}]".  To '
+                        f"leave the attribute unmapped, use "
+                        f"ClassVar[{our_annotated_str}], assign a value to "
+                        f"the attribute, or "
+                        f"set __allow_unmapped__ = True on the class."
+                    )
 
             else:
                 return annotated

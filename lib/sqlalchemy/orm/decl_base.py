@@ -411,6 +411,8 @@ class _ClassScanMapperConfig(_MapperConfig):
         "inherits",
         "allow_dataclass_fields",
         "dataclass_setup_arguments",
+        "is_dataclass_prior_to_mapping",
+        "allow_unmapped_annotations",
     )
 
     registry: _RegistryType
@@ -430,6 +432,9 @@ class _ClassScanMapperConfig(_MapperConfig):
     mapper_args_fn: Optional[Callable[[], Dict[str, Any]]]
     inherits: Optional[Type[Any]]
 
+    is_dataclass_prior_to_mapping: bool
+    allow_unmapped_annotations: bool
+
     dataclass_setup_arguments: Optional[_DataclassArguments]
     """if the class has SQLAlchemy native dataclass parameters, where
     we will turn the class into a dataclass within the declarative mapping
@@ -440,7 +445,12 @@ class _ClassScanMapperConfig(_MapperConfig):
     allow_dataclass_fields: bool
     """if true, look for dataclass-processed Field objects on the target
     class as well as superclasses and extract ORM mapping directives from
-    the "metadata" attribute of each Field"""
+    the "metadata" attribute of each Field.
+
+    if False, dataclass fields can still be used, however they won't be
+    mapped.
+
+    """
 
     def __init__(
         self,
@@ -469,7 +479,13 @@ class _ClassScanMapperConfig(_MapperConfig):
             self.cls, "_sa_apply_dc_transforms", None
         )
 
-        cld = dataclasses.is_dataclass(cls_)
+        self.allow_unmapped_annotations = getattr(
+            self.cls, "__allow_unmapped__", False
+        )
+
+        self.is_dataclass_prior_to_mapping = cld = dataclasses.is_dataclass(
+            cls_
+        )
 
         sdk = _get_immediate_cls_attr(cls_, "__sa_dataclass_metadata_key__")
 
@@ -1007,19 +1023,39 @@ class _ClassScanMapperConfig(_MapperConfig):
         expect_mapped: Optional[bool],
         attr_value: Any,
     ) -> None:
+        if raw_annotation is None:
+            return
+
+        is_dataclass = self.is_dataclass_prior_to_mapping
+        allow_unmapped = self.allow_unmapped_annotations
 
         if expect_mapped is None:
-            expect_mapped = isinstance(attr_value, _MappedAttribute)
+            is_dataclass_field = isinstance(attr_value, dataclasses.Field)
+            expect_mapped = (
+                not is_dataclass_field
+                and not allow_unmapped
+                and (
+                    attr_value is None
+                    or isinstance(attr_value, _MappedAttribute)
+                )
+            )
+        else:
+            is_dataclass_field = False
 
+        is_dataclass_field = False
         extracted_mapped_annotation = _extract_mapped_subtype(
             raw_annotation,
             self.cls,
             name,
             type(attr_value),
             required=False,
-            is_dataclass_field=False,
-            expect_mapped=expect_mapped and not self.allow_dataclass_fields,
+            is_dataclass_field=is_dataclass_field,
+            expect_mapped=expect_mapped
+            and not is_dataclass,  # self.allow_dataclass_fields,
         )
+        if extracted_mapped_annotation is None:
+            # ClassVar can come out here
+            return
 
         self.collected_annotations[name] = (
             raw_annotation,

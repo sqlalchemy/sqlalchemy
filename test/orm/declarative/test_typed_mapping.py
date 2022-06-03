@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 from decimal import Decimal
+from typing import ClassVar
 from typing import Dict
 from typing import Generic
 from typing import List
@@ -69,7 +70,9 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         class Tab(Base["Tab"]):
             __tablename__ = "foo"
-            a = Column(Integer, primary_key=True)
+
+            # old mypy plugin use
+            a: int = Column(Integer, primary_key=True)
 
         eq_(Tab.foo, 1)
         is_(Tab.__table__, inspect(Tab).local_table)
@@ -191,6 +194,88 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(User.__table__.c.name.nullable)
         is_true(User.__table__.c.data.nullable)
         assert isinstance(User.__table__.c.created_at.type, DateTime)
+
+    def test_i_have_a_classvar_on_my_class(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: ClassVar[int]
+
+        m1 = MyClass(id=1, data=5)
+        assert "status" not in inspect(m1).mapper.attrs
+
+    def test_i_have_plain_or_column_attrs_on_my_class_w_values(
+        self, decl_base
+    ):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            old_column: str = Column(String)
+
+            # we assume this is intentional
+            status: int = 5
+
+        # it's mapped too
+        assert "old_column" in inspect(MyClass).attrs
+
+    def test_i_have_plain_attrs_on_my_class_disallowed(self, decl_base):
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r'Type annotation for "MyClass.status" should use the syntax '
+            r'"Mapped\[int\]".  To leave the attribute unmapped, use '
+            r"ClassVar\[int\], assign a value to the attribute, or "
+            r"set __allow_unmapped__ = True on the class.",
+        ):
+
+            class MyClass(decl_base):
+                __tablename__ = "mytable"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str] = mapped_column(default="some default")
+
+                # we assume this is not intentional.  because I made the
+                # same mistake myself :)
+                status: int
+
+    def test_i_have_plain_attrs_on_my_class_allowed(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+            __allow_unmapped__ = True
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
+
+    def test_allow_unmapped_on_mixin(self, decl_base):
+        class AllowsUnmapped:
+            __allow_unmapped__ = True
+
+        class MyClass(AllowsUnmapped, decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
+
+    def test_allow_unmapped_on_base(self):
+        class Base(DeclarativeBase):
+            __allow_unmapped__ = True
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
 
     def test_column_default(self, decl_base):
         class MyClass(decl_base):

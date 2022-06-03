@@ -2,6 +2,7 @@ import dataclasses
 import inspect as pyinspect
 from itertools import product
 from typing import Any
+from typing import ClassVar
 from typing import List
 from typing import Optional
 from typing import Set
@@ -59,8 +60,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             __tablename__ = "b"
 
             id: Mapped[int] = mapped_column(primary_key=True, init=False)
-            a_id = mapped_column(ForeignKey("a.id"), init=False)
             data: Mapped[str]
+            a_id: Mapped[Optional[int]] = mapped_column(
+                ForeignKey("a.id"), init=False
+            )
             x: Mapped[Optional[int]] = mapped_column(default=None)
 
         A.__qualname__ = "some_module.A"
@@ -101,6 +104,32 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
+
+    def test_no_anno_doesnt_go_into_dc(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class User(dc_decl_base):
+            __tablename__: ClassVar[Optional[str]] = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            username: Mapped[str]
+            password: Mapped[str]
+            addresses: Mapped[List["Address"]] = relationship(  # noqa: F821
+                default_factory=list
+            )
+
+        class Address(dc_decl_base):
+            __tablename__: ClassVar[Optional[str]] = "address"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+            # should not be in the dataclass constructor
+            user_id = mapped_column(ForeignKey(User.id))
+
+            email_address: Mapped[str]
+
+        a1 = Address("email@address")
+        eq_(a1.email_address, "email@address")
 
     def test_basic_constructor_repr_cls_decorator(
         self, registry: _RegistryType
@@ -156,11 +185,13 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
         a2 = A("10", x=5, bs=[B("data1"), B("data2", x=12)])
+
+        # note a_id isn't included because it wasn't annotated
         eq_(
             repr(a2),
             "some_module.A(id=None, data='10', x=5, "
-            "bs=[some_module.B(id=None, data='data1', a_id=None, x=None), "
-            "some_module.B(id=None, data='data2', a_id=None, x=12)])",
+            "bs=[some_module.B(id=None, data='data1', x=None), "
+            "some_module.B(id=None, data='data2', x=12)])",
         )
 
         a3 = A("data")
@@ -224,6 +255,50 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(e1.engineer_name, "en")
         eq_(e1.primary_language, "pl")
 
+    def test_no_fields_wo_mapped_or_dc(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        """since I made this mistake in my own mapping video, lets have it
+        raise an error"""
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r'Type annotation for "A.data" should '
+            r'use the syntax "Mapped\[str\]".  '
+            r"To leave the attribute unmapped,",
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                data: str
+                ctrl_one: str = dataclasses.field()
+                some_field: int = dataclasses.field(default=5)
+
+    def test_allow_unmapped_fields_wo_mapped_or_dc(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+            __allow_unmapped__ = True
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: str
+            ctrl_one: str = dataclasses.field()
+            some_field: int = dataclasses.field(default=5)
+
+        a1 = A("data", "ctrl_one", 5)
+        eq_(
+            dataclasses.asdict(a1),
+            {
+                "ctrl_one": "ctrl_one",
+                "data": "data",
+                "id": None,
+                "some_field": 5,
+            },
+        )
+
     def test_integrated_dc(self, dc_decl_base: Type[MappedAsDataclass]):
         """We will be telling users "this is a dataclass that is also
         mapped". Therefore, they will want *any* kind of attribute to do what
@@ -237,17 +312,48 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         class A(dc_decl_base):
             __tablename__ = "a"
 
-            ctrl_one: str
+            ctrl_one: str = dataclasses.field()
 
             id: Mapped[int] = mapped_column(primary_key=True, init=False)
             data: Mapped[str]
             some_field: int = dataclasses.field(default=5)
 
-            some_none_field: Optional[str] = None
+            some_none_field: Optional[str] = dataclasses.field(default=None)
 
+            some_other_int_field: int = 10
+
+        # some field is part of the constructor
         a1 = A("ctrlone", "datafield")
-        eq_(a1.some_field, 5)
-        eq_(a1.some_none_field, None)
+        eq_(
+            dataclasses.asdict(a1),
+            {
+                "ctrl_one": "ctrlone",
+                "data": "datafield",
+                "id": None,
+                "some_field": 5,
+                "some_none_field": None,
+                "some_other_int_field": 10,
+            },
+        )
+
+        a2 = A(
+            "ctrlone",
+            "datafield",
+            some_field=7,
+            some_other_int_field=12,
+            some_none_field="x",
+        )
+        eq_(
+            dataclasses.asdict(a2),
+            {
+                "ctrl_one": "ctrlone",
+                "data": "datafield",
+                "id": None,
+                "some_field": 7,
+                "some_none_field": "x",
+                "some_other_int_field": 12,
+            },
+        )
 
         # only Mapped[] is mapped
         self.assert_compile(select(A), "SELECT a.id, a.data FROM a")
@@ -260,10 +366,11 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                     "data",
                     "some_field",
                     "some_none_field",
+                    "some_other_int_field",
                 ],
                 varargs=None,
                 varkw=None,
-                defaults=(5, None),
+                defaults=(5, None, 10),
                 kwonlyargs=[],
                 kwonlydefaults=None,
                 annotations={},

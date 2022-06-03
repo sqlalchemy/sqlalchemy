@@ -683,13 +683,15 @@ class DeclarativeBase(
 
     """
 
-    registry: ClassVar[_RegistryType]
-    _sa_registry: ClassVar[_RegistryType]
-    metadata: ClassVar[MetaData]
-    __mapper__: ClassVar[Mapper[Any]]
-    __table__: Optional[FromClause]
-
     if typing.TYPE_CHECKING:
+        registry: ClassVar[_RegistryType]
+        _sa_registry: ClassVar[_RegistryType]
+        metadata: ClassVar[MetaData]
+
+        __mapper__: ClassVar[Mapper[Any]]
+        __table__: ClassVar[Optional[FromClause]]
+
+        __tablename__: ClassVar[Optional[str]]
 
         def __init__(self, **kw: Any):
             ...
