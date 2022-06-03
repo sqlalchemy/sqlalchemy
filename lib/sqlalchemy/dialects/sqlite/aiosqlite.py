@@ -210,7 +210,6 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
             self._handle_exception(error)
 
     def close(self):
-        # print(">close", self)
         try:
             self.await_(self._connection.close())
         except Exception as error:

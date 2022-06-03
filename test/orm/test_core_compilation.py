@@ -271,6 +271,36 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         eq_(stmt.entity_description, expected_entity)
         eq_(stmt.returning_column_descriptions, expected_returning)
 
+    def test_limit_offset_select(self):
+        User = self.classes.User
+
+        stmt = select(User.id).limit(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT users.id FROM users LIMIT :param_1 OFFSET :param_2",
+            checkparams={"param_1": 5, "param_2": 6},
+        )
+
+    @testing.combinations(
+        (None, "ROWS ONLY"),
+        ({"percent": True}, "PERCENT ROWS ONLY"),
+        ({"percent": True, "with_ties": True}, "PERCENT ROWS WITH TIES"),
+    )
+    def test_fetch_offset_select(self, options, fetch_clause):
+        User = self.classes.User
+
+        if options is None:
+            stmt = select(User.id).fetch(5).offset(6)
+        else:
+            stmt = select(User.id).fetch(5, **options).offset(6)
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id FROM users OFFSET :param_1 "
+            "ROWS FETCH FIRST :param_2 %s" % (fetch_clause,),
+            checkparams={"param_1": 6, "param_2": 5},
+        )
+
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
