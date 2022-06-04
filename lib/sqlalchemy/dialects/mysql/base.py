@@ -560,7 +560,7 @@ forms are accepted, including a single dictionary:
 
 as well as a list of 2-tuples, which will automatically provide
 a parameter-ordered UPDATE statement in a manner similar to that described
-at :ref:`updates_order_parameters`.  Unlike the :class:`_expression.Update`
+at :ref:`tutorial_parameter_ordered_updates`.  Unlike the :class:`_expression.Update`
 object,
 no special flag is needed to specify the intent since the argument form is
 this context is unambiguous:

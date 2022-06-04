@@ -67,13 +67,7 @@ class URL(
     * :attr:`_engine.URL.drivername`: database backend and driver name, such as
       ``postgresql+psycopg2``
     * :attr:`_engine.URL.username`: username string
-    * :attr:`_engine.URL.password`: password string, or object that includes
-      a ``__str__()`` method that produces a password.
-
-      .. note::  A password-producing object will be stringified only
-         **once** per :class:`_engine.Engine` object.  For dynamic password
-         generation per connect, see :ref:`engines_dynamic_tokens`.
-
+    * :attr:`_engine.URL.password`: password string
     * :attr:`_engine.URL.host`: string hostname
     * :attr:`_engine.URL.port`: integer port number
     * :attr:`_engine.URL.database`: string database name

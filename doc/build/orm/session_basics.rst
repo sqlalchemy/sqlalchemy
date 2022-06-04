@@ -708,7 +708,7 @@ values for ``synchronize_session`` are supported:
       automatically.   If the operation is against multiple tables, typically
       individual UPDATE / DELETE statements against the individual tables
       should be used.   Some databases support multiple table UPDATEs.
-      Similar guidelines as those detailed at :ref:`multi_table_updates`
+      Similar guidelines as those detailed at :ref:`tutorial_update_from`
       may be applied.
 
     * The WHERE criteria needed in order to limit the polymorphic identity to

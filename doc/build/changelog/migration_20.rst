@@ -165,8 +165,8 @@ Given the example program below::
 
 The above program uses several patterns that many users will already identify
 as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
-that's part of the :ref:`connectionless execution <dbengine_implicit>`
-system.  When we run the above program against 1.4, it returns a single line::
+that's part of the "connectionless execution" API.  When we run the above
+program against 1.4, it returns a single line::
 
   $ python test3.py
   [(1,)]
@@ -2080,11 +2080,84 @@ explicit use of :meth:`_orm.Session.begin`, which is now solved by 1.4,
 as well as to allow the use of "subtransactions", which are also removed in
 2.0.
 
+.. _migration_20_session_subtransaction:
+
 Session "subtransaction" behavior removed
 ------------------------------------------
 
-See the section :ref:`session_subtransactions` for background on this
-change.
+**Synopsis**
+
+The "subtransaction" pattern that was often used with autocommit mode is
+also deprecated in 1.4.  This pattern allowed the use of the
+:meth:`_orm.Session.begin` method when a transaction were already begun,
+resulting in a construct called a "subtransaction", which was essentially
+a block that would prevent the :meth:`_orm.Session.commit` method from actually
+committing.
+
+**Migration to 2.0**
+
+
+To provide backwards compatibility for applications that make use of this
+pattern, the following context manager or a similar implementation based on
+a decorator may be used::
+
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def transaction(session):
+        if not session.in_transaction():
+            with session.begin():
+                yield
+        else:
+            yield
+
+
+The above context manager may be used in the same way the
+"subtransaction" flag works, such as in the following example::
+
+
+    # method_a starts a transaction and calls method_b
+    def method_a(session):
+        with transaction(session):
+            method_b(session)
+
+    # method_b also starts a transaction, but when
+    # called from method_a participates in the ongoing
+    # transaction.
+    def method_b(session):
+        with transaction(session):
+            session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine)
+
+    # create a Session and call method_a
+    with Session() as session:
+        method_a(session)
+
+To compare towards the preferred idiomatic pattern, the begin block should
+be at the outermost level.  This removes the need for individual functions
+or methods to be concerned with the details of transaction demarcation::
+
+    def method_a(session):
+        method_b(session)
+
+    def method_b(session):
+        session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine)
+
+    # create a Session and call method_a
+    with Session() as session:
+        with session.begin():
+            method_a(session)
+
+**Discussion**
+
+This pattern has been shown to be confusing in real world applications, and it
+is preferable for an application to ensure that the top-most level of database
+operations are performed with a single begin/commit pair.
+
 
 
 2.0 Migration - ORM Extension and Recipe Changes

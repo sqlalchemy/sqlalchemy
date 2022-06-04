@@ -1255,8 +1255,6 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
         :ref:`orm_queryguide_orm_aliases` - in the :ref:`queryguide_toplevel`
 
-    :ref:`ormtutorial_aliases` - in the legacy :ref:`ormtutorial_toplevel`
-
     :param element: element to be aliased.  Is normally a mapped class,
      but for convenience can also be a :class:`_expression.FromClause`
      element.

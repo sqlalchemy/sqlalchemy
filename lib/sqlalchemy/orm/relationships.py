@@ -212,7 +212,7 @@ class RelationshipProperty(StrategizedProperty):
           :ref:`relationship_config_toplevel` - Full introductory and
           reference documentation for :func:`_orm.relationship`.
 
-          :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
+          :ref:`tutorial_orm_related_objects` - ORM tutorial introduction.
 
         :param argument:
           A mapped class, or actual :class:`_orm.Mapper` instance,
@@ -278,9 +278,6 @@ class RelationshipProperty(StrategizedProperty):
 
               :ref:`relationships_many_to_many` - Reference example of "many
               to many".
-
-              :ref:`orm_tutorial_many_to_many` - ORM tutorial introduction to
-              many-to-many relationships.
 
               :ref:`self_referential_many_to_many` - Specifics on using
               many-to-many in a self-referential case.
@@ -391,9 +388,6 @@ class RelationshipProperty(StrategizedProperty):
 
             :ref:`unitofwork_cascades` - Full detail on each of the available
             cascade options.
-
-            :ref:`tutorial_delete_cascade` - Tutorial example describing
-            a delete cascade.
 
         :param cascade_backrefs=True:
           A boolean value indicating if the ``save-update`` cascade should
@@ -1535,7 +1529,7 @@ class RelationshipProperty(StrategizedProperty):
             See :meth:`~.RelationshipProperty.Comparator.any` for
             a less-performant alternative using EXISTS, or refer
             to :meth:`_query.Query.outerjoin`
-            as well as :ref:`ormtutorial_joins`
+            as well as :ref:`orm_queryguide_joins`
             for more details on constructing outer joins.
 
             kwargs may be ignored by this operator but are required for API

@@ -8,6 +8,7 @@
 
 .. rst-class:: core-header
 
+
 .. _tutorial_core_insert:
 
 Inserting Rows with Core

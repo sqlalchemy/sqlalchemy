@@ -97,7 +97,7 @@ class Insert(StandardInsert):
          in the UPDATE clause should be ordered as sent, in a manner similar
          to that described for the :class:`_expression.Update`
          construct overall
-         in :ref:`updates_order_parameters`::
+         in :ref:`tutorial_parameter_ordered_updates`::
 
             insert().on_duplicate_key_update(
                 [("name", "some name"), ("value", "some value")])

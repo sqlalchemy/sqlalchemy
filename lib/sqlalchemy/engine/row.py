@@ -191,7 +191,7 @@ class Row(BaseRow, collections_abc.Sequence):
 
     .. seealso::
 
-        :ref:`coretutorial_selecting` - includes examples of selecting
+        :ref:`tutorial_selecting_data` - includes examples of selecting
         rows from SELECT statements.
 
         :class:`.LegacyRow` - Compatibility interface introduced in SQLAlchemy

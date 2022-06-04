@@ -170,7 +170,7 @@ class Selectable(ReturnsRows):
 
         .. seealso::
 
-            :ref:`lateral_selects` -  overview of usage.
+            :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
         return Lateral._construct(self, name)
@@ -607,7 +607,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -1920,7 +1920,7 @@ class Lateral(AliasedReturnsRows):
 
     .. seealso::
 
-        :ref:`lateral_selects` -  overview of usage.
+        :ref:`tutorial_lateral_correlation` -  overview of usage.
 
     """
 
@@ -1947,7 +1947,8 @@ class Lateral(AliasedReturnsRows):
 
         .. seealso::
 
-            :ref:`lateral_selects` -  overview of usage.
+            :ref:`tutorial_lateral_correlation` -  overview of usage.
+
 
         """
         return coercions.expect(
@@ -2129,7 +2130,7 @@ class CTE(
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -2964,7 +2965,7 @@ class Values(Generative, FromClause):
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -3201,8 +3202,6 @@ class SelectBase(
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-            :ref:`scalar_selects` - in the 1.x tutorial
-
         """
         if self._label_style is not LABEL_STYLE_NONE:
             self = self.set_label_style(LABEL_STYLE_NONE)
@@ -3230,7 +3229,7 @@ class SelectBase(
 
         .. seealso::
 
-            :ref:`lateral_selects` -  overview of usage.
+            :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
         return Lateral._factory(self, name)
@@ -4848,8 +4847,6 @@ class Select(
 
         :func:`_sql.select`
 
-        :ref:`coretutorial_selecting` - in the 1.x tutorial
-
         :ref:`tutorial_selecting_data` - in the 2.0 tutorial
 
     """
@@ -4956,8 +4953,7 @@ class Select(
 
         .. seealso::
 
-            :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`_expression.select`.
+            :ref:`tutorial_selecting_data` - in the :ref:`unified_tutorial`
 
         :param columns:
           A list of :class:`_expression.ColumnElement` or
@@ -6078,7 +6074,7 @@ class Select(
 
             :meth:`_expression.Select.correlate_except`
 
-            :ref:`correlated_subqueries`
+            :ref:`tutorial_scalar_subquery`
 
         """
 
@@ -6116,7 +6112,7 @@ class Select(
 
             :meth:`_expression.Select.correlate`
 
-            :ref:`correlated_subqueries`
+            :ref:`tutorial_scalar_subquery`
 
         """
 
@@ -6559,8 +6555,6 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
 
         :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-        :ref:`scalar_selects` - in the 1.x tutorial
-
     """
 
     _from_objects = []
@@ -6619,8 +6613,6 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-            :ref:`correlated_subqueries` - in the 1.x tutorial
-
 
         """
         self.element = self.element.correlate(*fromclauses)
@@ -6651,8 +6643,6 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
             :meth:`_expression.ScalarSelect.correlate`
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
-
-            :ref:`correlated_subqueries` - in the 1.x tutorial
 
 
         """

@@ -703,7 +703,7 @@ class ValuesBase(UpdateBase):
 
            .. seealso::
 
-               :ref:`execute_multiple` - an introduction to
+               :ref:`tutorial_multiple_parameters` - an introduction to
                the traditional Core method of multiple parameter set
                invocation for INSERTs and other statements.
 
@@ -974,9 +974,6 @@ class Insert(ValuesBase):
 
         .. seealso::
 
-            :ref:`coretutorial_insert_expressions` - in the
-            :ref:`1.x tutorial <sqlexpression_toplevel>`
-
             :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
 
@@ -1018,9 +1015,7 @@ class Insert(ValuesBase):
 
         .. seealso::
 
-            :ref:`coretutorial_insert_expressions` - SQL Expression Tutorial
-
-            :ref:`inserts_and_updates` - SQL Expression Tutorial
+            :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
         """
         super(Insert, self).__init__(table, values, prefixes)
@@ -1134,16 +1129,6 @@ class DMLWhereBase(object):
         See the linked tutorial sections below for examples.
 
         .. seealso::
-
-            **1.x Tutorial Examples**
-
-            :ref:`tutorial_1x_correlated_updates`
-
-            :ref:`multi_table_updates`
-
-            :ref:`multi_table_deletes`
-
-            **2.0 Tutorial Examples**
 
             :ref:`tutorial_correlated_updates`
 
@@ -1276,15 +1261,6 @@ class Update(DMLWhereBase, ValuesBase):
         :meth:`_expression.TableClause.update` method on
         :class:`_schema.Table`.
 
-        .. seealso::
-
-            :ref:`inserts_and_updates` - in the
-            :ref:`1.x tutorial <sqlexpression_toplevel>`
-
-            :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
-
-
-
         :param table: A :class:`_schema.Table`
          object representing the database
          table to be updated.
@@ -1396,7 +1372,7 @@ class Update(DMLWhereBase, ValuesBase):
 
         .. seealso::
 
-           :ref:`updates_order_parameters` - full example of the
+           :ref:`tutorial_parameter_ordered_updates` - full example of the
            :meth:`_expression.Update.ordered_values` method.
 
         .. versionchanged:: 1.4 The :meth:`_expression.Update.ordered_values`

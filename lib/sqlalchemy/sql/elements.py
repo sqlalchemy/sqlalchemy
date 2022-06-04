@@ -148,7 +148,7 @@ def literal(value, type_=None):
 
 
 def outparam(key, type_=None):
-    """Create an 'OUT' parameter for usage in functions (stored procedures),
+    r"""Create an 'OUT' parameter for usage in functions (stored procedures),
     for databases which support them.
 
     The ``outparam`` can be used like a regular function parameter.
@@ -998,7 +998,7 @@ class ColumnElement(
 
         .. seealso::
 
-            :ref:`coretutorial_casts`
+            :ref:`tutorial_casts`
 
             :func:`_expression.cast`
 
@@ -1465,15 +1465,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
           .. versionchanged:: 1.3 the "expanding" bound parameter feature now
              supports empty lists.
 
-
-          .. seealso::
-
-            :ref:`coretutorial_bind_param`
-
-            :ref:`coretutorial_insert_expressions`
-
-            :func:`.outparam`
-
         :param literal_execute:
           if True, the bound parameter will be rendered in the compile phase
           with a special "POSTCOMPILE" token, and the SQLAlchemy compiler will
@@ -1494,6 +1485,11 @@ class BindParameter(roles.InElementRole, ColumnElement):
             .. seealso::
 
                 :ref:`change_4808`.
+
+        .. seealso::
+
+            :ref:`tutorial_sending_parameters` - in the
+            :ref:`unified_tutorial`
 
         """
         if required is NO_ARG:
@@ -1906,7 +1902,7 @@ class TextClause(
 
         .. seealso::
 
-            :ref:`sqlexpression_text` - in the Core tutorial
+            :ref:`tutorial_select_arbitrary_text`
 
 
         """
@@ -3057,7 +3053,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
     .. seealso::
 
-        :ref:`coretutorial_casts`
+        :ref:`tutorial_casts`
 
         :func:`.cast`
 
@@ -3118,7 +3114,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
         .. seealso::
 
-            :ref:`coretutorial_casts`
+            :ref:`tutorial_casts`
 
             :func:`.type_coerce` - an alternative to CAST that coerces the type
             on the Python side only, which is often sufficient to generate the
@@ -3239,7 +3235,7 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
 
         .. seealso::
 
-            :ref:`coretutorial_casts`
+            :ref:`tutorial_casts`
 
             :func:`.cast`
 
@@ -4881,7 +4877,7 @@ class ColumnClause(
 
             :func:`_expression.text`
 
-            :ref:`sqlexpression_literal_column`
+            :ref:`tutorial_select_arbitrary_text`
 
         """
         self.key = self.name = text

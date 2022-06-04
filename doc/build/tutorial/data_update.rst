@@ -175,6 +175,8 @@ order to refer to additional tables::
   WHERE user_account.id = address.user_id AND address.email_address = %s
 
 
+.. _tutorial_parameter_ordered_updates:
+
 Parameter Ordered Updates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

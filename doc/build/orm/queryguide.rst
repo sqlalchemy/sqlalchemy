@@ -295,6 +295,7 @@ The :class:`_orm.aliased` construct is also central to making use of subqueries
 with the ORM; the sections :ref:`orm_queryguide_subqueries` and
 :ref:`orm_queryguide_join_subqueries` discusses this further.
 
+
 .. _orm_queryguide_selecting_text:
 
 Getting ORM Results from Textual and Core Statements
@@ -476,7 +477,6 @@ and order by criteria based on its exported columns::
 .. seealso::
 
     :ref:`tutorial_orm_union` - in the :ref:`unified_tutorial`
-
 
 .. _orm_queryguide_joins:
 
