@@ -1024,7 +1024,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             '"SUM(ABC)_"',
         )
 
-    def test_order_by_literal_col_quoting_one_explict_quote(self):
+    def test_order_by_literal_col_quoting_one_explicit_quote(self):
         col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)", True))
         tbl = table("my_table")
         query = select(col).select_from(tbl).order_by(col)
