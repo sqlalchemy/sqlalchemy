@@ -1338,6 +1338,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         correlate_except,
         limit_clause,
         offset_clause,
+        fetch_clause,
+        fetch_clause_options,
         distinct,
         distinct_on,
         prefixes,
@@ -1369,6 +1371,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         statement._limit_clause = limit_clause
         statement._offset_clause = offset_clause
+        statement._fetch_clause = fetch_clause
+        statement._fetch_clause_options = fetch_clause_options
 
         if prefixes:
             statement._prefixes = prefixes
@@ -2037,6 +2041,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "prefixes": self.select_statement._prefixes,
             "suffixes": self.select_statement._suffixes,
             "group_by": self.group_by or None,
+            "fetch_clause": self.select_statement._fetch_clause,
+            "fetch_clause_options": (
+                self.select_statement._fetch_clause_options
+            ),
         }
 
     @property
