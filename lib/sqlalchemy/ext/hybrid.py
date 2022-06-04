@@ -484,8 +484,12 @@ lowercasing can be applied to all comparison operations (i.e. ``eq``,
 ``lt``, ``gt``, etc.) using :meth:`.Operators.operate`::
 
     class CaseInsensitiveComparator(Comparator):
-        def operate(self, op, other):
-            return op(func.lower(self.__clause_element__()), func.lower(other))
+        def operate(self, op, other, **kwargs):
+            return op(
+                func.lower(self.__clause_element__()),
+                func.lower(other),
+                **kwargs,
+            )
 
 .. _hybrid_reuse_subclass:
 
@@ -575,10 +579,10 @@ Replacing the previous ``CaseInsensitiveComparator`` class with a new
             else:
                 self.word = func.lower(word)
 
-        def operate(self, op, other):
+        def operate(self, op, other, **kwargs):
             if not isinstance(other, CaseInsensitiveWord):
                 other = CaseInsensitiveWord(other)
-            return op(self.word, other.word)
+            return op(self.word, other.word, **kwargs)
 
         def __clause_element__(self):
             return self.word
@@ -706,12 +710,14 @@ the ``Node.parent`` attribute and filtered based on the given criterion::
     from sqlalchemy.ext.hybrid import Comparator
 
     class GrandparentTransformer(Comparator):
-        def operate(self, op, other):
+        def operate(self, op, other, **kwargs):
             def transform(q):
                 cls = self.__clause_element__()
                 parent_alias = aliased(cls)
-                return q.join(parent_alias, cls.parent).\
-                            filter(op(parent_alias.parent, other))
+                return q.join(parent_alias, cls.parent).filter(
+                    op(parent_alias.parent, other, **kwargs)
+                )
+
             return transform
 
     Base = declarative_base()
@@ -783,8 +789,8 @@ class::
                 return q.join(self.parent_alias, Node.parent)
             return go
 
-        def operate(self, op, other):
-            return op(self.parent_alias.parent, other)
+        def operate(self, op, other, **kwargs):
+            return op(self.parent_alias.parent, other, **kwargs)
 
 .. sourcecode:: pycon+sql
 

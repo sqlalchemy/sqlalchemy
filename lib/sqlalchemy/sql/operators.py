@@ -217,8 +217,8 @@ class Operators(object):
         side::
 
             class MyComparator(ColumnOperators):
-                def operate(self, op, other):
-                    return op(func.lower(self), func.lower(other))
+                def operate(self, op, other, **kwargs):
+                    return op(func.lower(self), func.lower(other), **kwargs)
 
         :param op:  Operator callable.
         :param \*other: the 'other' side of the operation. Will
