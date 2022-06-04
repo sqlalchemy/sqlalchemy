@@ -18,3 +18,4 @@ API Reference
 
 
 .. autoclass:: HybridExtensionType
+   :members:

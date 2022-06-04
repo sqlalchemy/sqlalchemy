@@ -856,7 +856,7 @@ def relationship(
       :ref:`relationship_config_toplevel` - Full introductory and
       reference documentation for :func:`_orm.relationship`.
 
-      :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
+      :ref:`tutorial_orm_related_objects` - ORM tutorial introduction.
 
     :param argument:
       A mapped class, or actual :class:`_orm.Mapper` instance,
@@ -922,9 +922,6 @@ def relationship(
 
           :ref:`relationships_many_to_many` - Reference example of "many
           to many".
-
-          :ref:`orm_tutorial_many_to_many` - ORM tutorial introduction to
-          many-to-many relationships.
 
           :ref:`self_referential_many_to_many` - Specifics on using
           many-to-many in a self-referential case.
@@ -1028,9 +1025,6 @@ def relationship(
 
         :ref:`unitofwork_cascades` - Full detail on each of the available
         cascade options.
-
-        :ref:`tutorial_delete_cascade` - Tutorial example describing
-        a delete cascade.
 
     :param cascade_backrefs=False:
       Legacy; this flag is always False.
@@ -2094,8 +2088,6 @@ def aliased(
         :ref:`tutorial_orm_entity_aliases` - in the :ref:`unified_tutorial`
 
         :ref:`orm_queryguide_orm_aliases` - in the :ref:`queryguide_toplevel`
-
-    :ref:`ormtutorial_aliases` - in the legacy :ref:`ormtutorial_toplevel`
 
     :param element: element to be aliased.  Is normally a mapped class,
      but for convenience can also be a :class:`_expression.FromClause`

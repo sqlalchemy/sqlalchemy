@@ -102,7 +102,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
     .. seealso::
 
-        :ref:`coretutorial_functions` - in the Core tutorial
+        :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
 
         :class:`.Function` - named SQL function.
 
@@ -821,7 +821,7 @@ class _FunctionGenerator:
 
     .. seealso::
 
-        :ref:`coretutorial_functions` - in the Core Tutorial
+        :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
 
         :class:`.Function`
 

@@ -51,6 +51,7 @@ construction arguments, are as follows:
 
 .. autoclass:: DOUBLE_PRECISION
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: ENUM

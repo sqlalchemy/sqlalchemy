@@ -905,7 +905,7 @@ would render as::
 
 .. seealso::
 
-    :ref:`multi_table_deletes`
+    :ref:`tutorial_multi_table_deletes`
 
 :ticket:`959`
 

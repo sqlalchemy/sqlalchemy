@@ -290,7 +290,7 @@ def lateral(
 
     .. seealso::
 
-        :ref:`lateral_selects` -  overview of usage.
+        :ref:`tutorial_lateral_correlation` -  overview of usage.
 
     """
     return Lateral._factory(selectable, name=name)
@@ -466,8 +466,7 @@ def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
 
     .. seealso::
 
-        :ref:`coretutorial_selecting` - Core Tutorial description of
-        :func:`_expression.select`.
+        :ref:`tutorial_selecting_data` - in the :ref:`unified_tutorial`
 
     :param \*entities:
       Entities to SELECT from.  For Core usage, this is typically a series

@@ -35,9 +35,6 @@ def insert(table: _DMLTableArgument) -> Insert:
 
     .. seealso::
 
-        :ref:`coretutorial_insert_expressions` - in the
-        :ref:`1.x tutorial <sqlexpression_toplevel>`
-
         :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
 
@@ -79,9 +76,7 @@ def insert(table: _DMLTableArgument) -> Insert:
 
     .. seealso::
 
-        :ref:`coretutorial_insert_expressions` - SQL Expression Tutorial
-
-        :ref:`inserts_and_updates` - SQL Expression Tutorial
+        :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
     """
     return Insert(table)
@@ -103,15 +98,6 @@ def update(table: _DMLTableArgument) -> Update:
     Similar functionality is available via the
     :meth:`_expression.TableClause.update` method on
     :class:`_schema.Table`.
-
-    .. seealso::
-
-        :ref:`inserts_and_updates` - in the
-        :ref:`1.x tutorial <sqlexpression_toplevel>`
-
-        :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
-
-
 
     :param table: A :class:`_schema.Table`
      object representing the database

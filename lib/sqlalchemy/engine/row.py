@@ -65,7 +65,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
     .. seealso::
 
-        :ref:`coretutorial_selecting` - includes examples of selecting
+        :ref:`tutorial_selecting_data` - includes examples of selecting
         rows from SELECT statements.
 
     .. versionchanged:: 1.4

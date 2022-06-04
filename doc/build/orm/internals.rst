@@ -88,6 +88,7 @@ sections, are listed here.
             :attr:`.SchemaItem.info`
 
 .. autoclass:: InspectionAttrExtensionType
+    :members:
 
 .. autoclass:: NotExtension
     :members:

@@ -110,7 +110,7 @@ Glossary
 
             `bind parameters <https://use-the-index-luke.com/sql/where-clause/bind-parameters>`_ - at Use The Index, Luke!
 
-
+            :ref:`tutorial_sending_parameters` - in the :ref:`unified_tutorial`
 
     selectable
         A term used in SQLAlchemy to describe a SQL construct that represents

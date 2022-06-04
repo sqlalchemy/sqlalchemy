@@ -985,7 +985,7 @@ class Relationship(
             See :meth:`~.Relationship.Comparator.any` for
             a less-performant alternative using EXISTS, or refer
             to :meth:`_query.Query.outerjoin`
-            as well as :ref:`ormtutorial_joins`
+            as well as :ref:`orm_queryguide_joins`
             for more details on constructing outer joins.
 
             kwargs may be ignored by this operator but are required for API

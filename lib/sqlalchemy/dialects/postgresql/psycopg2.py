@@ -205,7 +205,7 @@ performance, primarily with INSERT statements, by multiple orders of magnitude.
 SQLAlchemy internally makes use of these extensions for ``executemany()`` style
 calls, which correspond to lists of parameters being passed to
 :meth:`_engine.Connection.execute` as detailed in :ref:`multiple parameter
-sets <execute_multiple>`.   The ORM also uses this mode internally whenever
+sets <tutorial_multiple_parameters>`.   The ORM also uses this mode internally whenever
 possible.
 
 The two available extensions on the psycopg2 side are the ``execute_values()``
@@ -281,7 +281,7 @@ size defaults to 100.  These can be affected by passing new values to
 
 .. seealso::
 
-    :ref:`execute_multiple` - General information on using the
+    :ref:`tutorial_multiple_parameters` - General information on using the
     :class:`_engine.Connection`
     object to execute statements in such a way as to make
     use of the DBAPI ``.executemany()`` method.

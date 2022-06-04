@@ -605,15 +605,6 @@ def bindparam(
       .. versionchanged:: 1.3 the "expanding" bound parameter feature now
          supports empty lists.
 
-
-      .. seealso::
-
-        :ref:`coretutorial_bind_param`
-
-        :ref:`coretutorial_insert_expressions`
-
-        :func:`.outparam`
-
     :param literal_execute:
       if True, the bound parameter will be rendered in the compile phase
       with a special "POSTCOMPILE" token, and the SQLAlchemy compiler will
@@ -634,6 +625,12 @@ def bindparam(
         .. seealso::
 
             :ref:`change_4808`.
+
+    .. seealso::
+
+        :ref:`tutorial_sending_parameters` - in the
+        :ref:`unified_tutorial`
+
 
     """
     return BindParameter(
@@ -827,7 +824,7 @@ def cast(
 
     .. seealso::
 
-        :ref:`coretutorial_casts`
+        :ref:`tutorial_casts`
 
         :func:`.type_coerce` - an alternative to CAST that coerces the type
         on the Python side only, which is often sufficient to generate the
@@ -932,7 +929,7 @@ def column(
 
         :func:`_expression.text`
 
-        :ref:`sqlexpression_literal_column`
+        :ref:`tutorial_select_arbitrary_text`
 
     """
     return ColumnClause(text, type_, is_literal, _selectable)
@@ -1468,8 +1465,7 @@ def text(text: str) -> TextClause:
 
     .. seealso::
 
-        :ref:`sqlexpression_text` - in the Core tutorial
-
+        :ref:`tutorial_select_arbitrary_text`
 
     """
     return TextClause(text)
@@ -1615,7 +1611,7 @@ def type_coerce(
 
     .. seealso::
 
-        :ref:`coretutorial_casts`
+        :ref:`tutorial_casts`
 
         :func:`.cast`
 
