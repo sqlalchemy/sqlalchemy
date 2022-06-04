@@ -789,8 +789,8 @@ class::
                 return q.join(self.parent_alias, Node.parent)
             return go
 
-        def operate(self, op, other):
-            return op(self.parent_alias.parent, other)
+        def operate(self, op, other, **kwargs):
+            return op(self.parent_alias.parent, other, **kwargs)
 
 .. sourcecode:: pycon+sql
 
