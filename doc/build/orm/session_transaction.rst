@@ -106,7 +106,7 @@ first::
 
 Similarly, the :class:`_orm.sessionmaker` can be used in the same way::
 
-    Session = sesssionmaker(engine)
+    Session = sessionmaker(engine)
 
     with Session() as session:
         with session.begin():
