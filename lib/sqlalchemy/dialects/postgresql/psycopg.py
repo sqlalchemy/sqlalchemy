@@ -256,7 +256,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
 
         # PGDialect.initialize() checks server version for <= 8.2 and sets
         # this flag to False if so
-        if not self.full_returning:
+        if not self.insert_returning:
             self.insert_executemany_returning = False
 
         # HSTORE can't be registered until we have a connection so that

@@ -2807,8 +2807,9 @@ class MSDialect(default.DefaultDialect):
     max_identifier_length = 128
     schema_name = "dbo"
 
-    implicit_returning = True
-    full_returning = True
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
 
     colspecs = {
         sqltypes.DateTime: _MSDateTime,

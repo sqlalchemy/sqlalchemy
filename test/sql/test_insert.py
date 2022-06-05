@@ -332,10 +332,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         stmt = table1.insert().returning(table1.c.myid)
-        assert_raises_message(
-            exc.CompileError,
-            "RETURNING is not supported by this dialect's statement compiler.",
-            stmt.compile,
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name, description) "
+            "VALUES (:myid, :name, :description) RETURNING mytable.myid",
             dialect=default.DefaultDialect(),
         )
 
@@ -1028,7 +1028,7 @@ class InsertImplicitReturningTest(
             Column("q", Integer),
         )
 
-        dialect = postgresql.dialect(implicit_returning=True)
+        dialect = postgresql.dialect()
         dialect.insert_null_pk_still_autoincrements = (
             insert_null_still_autoincrements
         )

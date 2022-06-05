@@ -204,8 +204,7 @@ missed version counters::
 
 It is *strongly recommended* that server side version counters only be used
 when absolutely necessary and only on backends that support :term:`RETURNING`,
-e.g. PostgreSQL, Oracle, SQL Server (though SQL Server has
-`major caveats <https://blogs.msdn.com/b/sqlprogrammability/archive/2008/07/11/update-with-output-clause-triggers-and-sqlmoreresults.aspx>`_ when triggers are used), Firebird.
+currently PostgreSQL, Oracle, MariaDB 10.5, SQLite 3.35, and SQL Server.
 
 .. versionadded:: 0.9.0
 

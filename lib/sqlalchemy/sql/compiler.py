@@ -3482,7 +3482,7 @@ class SQLCompiler(Compiled):
         )
 
     def _label_returning_column(
-        self, stmt, column, populate_result_map, column_clause_args=None
+        self, stmt, column, populate_result_map, column_clause_args=None, **kw
     ):
         """Render a column with necessary labels inside of a RETURNING clause.
 
@@ -3499,6 +3499,7 @@ class SQLCompiler(Compiled):
             populate_result_map,
             False,
             {} if column_clause_args is None else column_clause_args,
+            **kw,
         )
 
     def _label_select_column(
@@ -3514,6 +3515,7 @@ class SQLCompiler(Compiled):
         within_columns_clause=True,
         column_is_repeated=False,
         need_column_expressions=False,
+        include_table=True,
     ):
         """produce labeled columns present in a select()."""
         impl = column.type.dialect_impl(self.dialect)
@@ -3661,6 +3663,7 @@ class SQLCompiler(Compiled):
         column_clause_args.update(
             within_columns_clause=within_columns_clause,
             add_to_result_map=add_to_result_map,
+            include_table=include_table,
         )
         return result_expr._compiler_dispatch(self, **column_clause_args)
 
@@ -4218,10 +4221,12 @@ class SQLCompiler(Compiled):
         populate_result_map: bool,
         **kw: Any,
     ) -> str:
-        raise exc.CompileError(
-            "RETURNING is not supported by this "
-            "dialect's statement compiler."
-        )
+        columns = [
+            self._label_returning_column(stmt, c, populate_result_map, **kw)
+            for c in base._select_iterables(returning_cols)
+        ]
+
+        return "RETURNING " + ", ".join(columns)
 
     def limit_clause(self, select, **kw):
         text = ""

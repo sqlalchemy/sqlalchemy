@@ -737,14 +737,32 @@ class Dialect(EventTarget):
       PostgreSQL.
     """
 
-    implicit_returning: bool
-    """For dialects that support RETURNING, indicate RETURNING may be used
-    to fetch newly generated primary key values and other defaults from
-    an INSERT statement automatically.
+    insert_returning: bool
+    """if the dialect supports RETURNING with INSERT
 
-    .. seealso::
+    .. versionadded:: 2.0
 
-        :paramref:`_schema.Table.implicit_returning`
+    """
+
+    update_returning: bool
+    """if the dialect supports RETURNING with UPDATE
+
+    .. versionadded:: 2.0
+
+    """
+
+    delete_returning: bool
+    """if the dialect supports RETURNING with DELETE
+
+    .. versionadded:: 2.0
+
+    """
+
+    favor_returning_over_lastrowid: bool
+    """for backends that support both a lastrowid and a RETURNING insert
+    strategy, favor RETURNING for simple single-int pk inserts.
+
+    cursor.lastrowid tends to be more performant on most backends.
 
     """
 

@@ -626,7 +626,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect.initialize(Mock())
 
         # oracle 8 / 8i support returning
-        assert dialect.implicit_returning
+        assert dialect.insert_returning
 
         assert not dialect._supports_char_length
         assert not dialect.use_ansi

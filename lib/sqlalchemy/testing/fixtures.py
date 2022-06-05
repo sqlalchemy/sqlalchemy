@@ -90,6 +90,20 @@ class TestBase:
         conn.close()
 
     @config.fixture()
+    def close_result_when_finished(self):
+        to_close = []
+
+        def go(result):
+            to_close.append(result)
+
+        yield go
+        for r in to_close:
+            try:
+                r.close()
+            except:
+                pass
+
+    @config.fixture()
     def registry(self, metadata):
         reg = registry(
             metadata=metadata,

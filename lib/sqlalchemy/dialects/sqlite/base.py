@@ -221,6 +221,46 @@ by *not even emitting BEGIN* until the first write operation.
 
     :ref:`dbapi_autocommit`
 
+INSERT/UPDATE/DELETE...RETURNING
+---------------------------------
+
+The SQLite dialect supports SQLite 3.35's  ``INSERT|UPDATE|DELETE..RETURNING``
+syntax.   ``INSERT..RETURNING`` may be used
+automatically in some cases in order to fetch newly generated identifiers in
+place of the traditional approach of using ``cursor.lastrowid``, however
+``cursor.lastrowid`` is currently still preferred for simple single-statement
+cases for its better performance.
+
+To specify an explicit ``RETURNING`` clause, use the
+:meth:`._UpdateBase.returning` method on a per-statement basis::
+
+    # INSERT..RETURNING
+    result = connection.execute(
+        table.insert().
+        values(name='foo').
+        returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+    # UPDATE..RETURNING
+    result = connection.execute(
+        table.update().
+        where(table.c.name=='foo').
+        values(name='bar').
+        returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+    # DELETE..RETURNING
+    result = connection.execute(
+        table.delete().
+        where(table.c.name=='foo').
+        returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+.. versionadded:: 2.0  Added support for SQLite RETURNING
+
 SAVEPOINT Support
 ----------------------------
 
@@ -1280,6 +1320,19 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 "%s is not a valid extract argument." % extract.field
             ) from err
 
+    def returning_clause(
+        self,
+        stmt,
+        returning_cols,
+        *,
+        populate_result_map,
+        **kw,
+    ):
+        kw["include_table"] = False
+        return super().returning_clause(
+            stmt, returning_cols, populate_result_map=populate_result_map, **kw
+        )
+
     def limit_clause(self, select, **kw):
         text = ""
         if select._limit_clause is not None:
@@ -1371,6 +1424,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             target_text = ""
 
         return target_text
+
+    def visit_insert(self, insert_stmt, **kw):
+        if insert_stmt._post_values_clause is not None:
+            kw["disable_implicit_returning"] = True
+        return super().visit_insert(insert_stmt, **kw)
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
 
@@ -1831,6 +1889,9 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_default_metavalue = False
 
+    # https://github.com/python/cpython/issues/93421
+    supports_sane_rowcount_returning = False
+
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
@@ -1943,6 +2004,11 @@ class SQLiteDialect(default.DefaultDialect):
                 6,
                 14,
             )
+
+            if self.dbapi.sqlite_version_info >= (3, 35):
+                self.update_returning = (
+                    self.delete_returning
+                ) = self.insert_returning = True
 
     _isolation_lookup = util.immutabledict(
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}

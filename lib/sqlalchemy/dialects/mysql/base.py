@@ -488,6 +488,37 @@ available.
 
         :class:`_mysql.match`
 
+INSERT/DELETE...RETURNING
+-------------------------
+
+The MariaDB dialect supports 10.5+'s ``INSERT..RETURNING`` and
+``DELETE..RETURNING`` (10.0+) syntaxes.   ``INSERT..RETURNING`` may be used
+automatically in some cases in order to fetch newly generated identifiers in
+place of the traditional approach of using ``cursor.lastrowid``, however
+``cursor.lastrowid`` is currently still preferred for simple single-statement
+cases for its better performance.
+
+To specify an explicit ``RETURNING`` clause, use the
+:meth:`._UpdateBase.returning` method on a per-statement basis::
+
+    # INSERT..RETURNING
+    result = connection.execute(
+        table.insert().
+        values(name='foo').
+        returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+    # DELETE..RETURNING
+    result = connection.execute(
+        table.delete().
+        where(table.c.name=='foo').
+        returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+.. versionadded:: 2.0  Added support for MariaDB RETURNING
+
 .. _mysql_insert_on_duplicate_key_update:
 
 INSERT...ON DUPLICATE KEY UPDATE (Upsert)
@@ -2500,7 +2531,9 @@ class MySQLDialect(default.DefaultDialect):
 
         server_version_info = tuple(version)
 
-        self._set_mariadb(server_version_info and is_mariadb, val)
+        self._set_mariadb(
+            server_version_info and is_mariadb, server_version_info
+        )
 
         if not is_mariadb:
             self._mariadb_normalized_version_info = server_version_info
@@ -2522,7 +2555,7 @@ class MySQLDialect(default.DefaultDialect):
         if not is_mariadb and self.is_mariadb:
             raise exc.InvalidRequestError(
                 "MySQL version %s is not a MariaDB variant."
-                % (server_version_info,)
+                % (".".join(map(str, server_version_info)),)
             )
         if is_mariadb:
             self.preparer = MariaDBIdentifierPreparer
@@ -2715,6 +2748,14 @@ class MySQLDialect(default.DefaultDialect):
 
         self._needs_correct_for_88718_96365 = (
             not self.is_mariadb and self.server_version_info >= (8,)
+        )
+
+        self.delete_returning = (
+            self.is_mariadb and self.server_version_info >= (10, 0, 5)
+        )
+
+        self.insert_returning = (
+            self.is_mariadb and self.server_version_info >= (10, 5)
         )
 
         self._warn_for_known_db_issues()

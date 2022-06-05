@@ -416,7 +416,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def sql_expressions_inserted_as_primary_key(self):
-        return only_if([self.returning, self.sqlite])
+        return only_if([self.insert_returning, self.sqlite])
 
     @property
     def computed_columns_on_update_returning(self):

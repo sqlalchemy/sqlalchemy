@@ -522,6 +522,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     # mssql still has problems with this on Linux
     supports_sane_rowcount_returning = False
 
+    favor_returning_over_lastrowid = True
+
     execution_ctx_cls = MSExecutionContext_pyodbc
 
     colspecs = util.update_copy(

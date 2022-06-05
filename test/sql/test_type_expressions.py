@@ -496,7 +496,7 @@ class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
 
 
 class ReturningTest(fixtures.TablesTest):
-    __requires__ = ("returning",)
+    __requires__ = ("insert_returning",)
 
     @classmethod
     def define_tables(cls, metadata):

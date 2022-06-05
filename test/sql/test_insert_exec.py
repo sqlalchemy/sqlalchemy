@@ -100,8 +100,9 @@ class InsertExecTest(fixtures.TablesTest):
 
             # verify implicit_returning is working
             if (
-                connection.dialect.implicit_returning
+                connection.dialect.insert_returning
                 and table_.implicit_returning
+                and not connection.dialect.postfetch_lastrowid
             ):
                 ins = table_.insert()
                 comp = ins.compile(connection, column_keys=list(values))
@@ -146,7 +147,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -173,7 +174,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -200,7 +201,7 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -223,7 +224,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.sequences
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -251,7 +252,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.sequences
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -277,7 +278,7 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -299,7 +300,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -338,6 +339,7 @@ class InsertExecTest(fixtures.TablesTest):
             self.metadata,
             Column("x", Integer, primary_key=True),
             Column("y", Integer),
+            implicit_returning=False,
         )
         t.create(connection)
         with mock.patch.object(
@@ -403,12 +405,16 @@ class InsertExecTest(fixtures.TablesTest):
         eq_(r.inserted_primary_key, (None,))
 
     @testing.requires.empty_inserts
-    @testing.requires.returning
-    def test_no_inserted_pk_on_returning(self, connection):
+    @testing.requires.insert_returning
+    def test_no_inserted_pk_on_returning(
+        self, connection, close_result_when_finished
+    ):
         users = self.tables.users
         result = connection.execute(
             users.insert().returning(users.c.user_id, users.c.user_name)
         )
+        close_result_when_finished(result)
+
         assert_raises_message(
             exc.InvalidRequestError,
             r"Can't call inserted_primary_key when returning\(\) is used.",
@@ -566,7 +572,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=(1,),
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_uppercase_direct_params_returning(self, connection):
         t = self.tables.foo
         self._test(
@@ -599,7 +605,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=(),
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_direct_params_returning(self, connection):
         t = self._fixture()
         self._test(

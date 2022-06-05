@@ -229,7 +229,7 @@ class TypesTest(fixtures.TestBase):
             [(2, "value 2                       ")],
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_int_not_float(self, metadata, connection):
         m = metadata
         t1 = Table("t1", m, Column("foo", Integer))
@@ -243,7 +243,7 @@ class TypesTest(fixtures.TestBase):
         assert x == 5
         assert isinstance(x, int)
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_int_not_float_no_coerce_decimal(self, metadata):
         engine = testing_engine(options=dict(coerce_to_decimal=False))
 

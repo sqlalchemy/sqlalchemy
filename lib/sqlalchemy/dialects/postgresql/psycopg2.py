@@ -613,7 +613,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
         # PGDialect.initialize() checks server version for <= 8.2 and sets
         # this flag to False if so
-        if not self.full_returning:
+        if not self.insert_returning:
             self.insert_executemany_returning = False
             self.executemany_mode = EXECUTEMANY_PLAIN
 

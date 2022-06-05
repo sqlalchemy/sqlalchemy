@@ -639,10 +639,13 @@ class Table(
 
 
         :param implicit_returning: True by default - indicates that
-            RETURNING can be used by default to fetch newly inserted primary key
-            values, for backends which support this.  Note that
-            :func:`_sa.create_engine` also provides an ``implicit_returning``
-            flag.
+            RETURNING can be used, typically by the ORM, in order to fetch
+            server-generated values such as primary key values and
+            server side defaults, on those backends which support RETURNING.
+
+            In modern SQLAlchemy there is generally no reason to alter this
+            setting, except in the case of some backends such as SQL Server
+            when INSERT triggers are used for that table.
 
         :param include_columns: A list of strings indicating a subset of
             columns to be loaded via the ``autoload`` operation; table columns who

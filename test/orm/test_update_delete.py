@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
@@ -56,12 +57,28 @@ class UpdateDeleteTest(fixtures.MappedTest):
             Column("user_id", ForeignKey("users.id")),
         )
 
+        m = MetaData()
+        users_no_returning = Table(
+            "users",
+            m,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(32)),
+            Column("age_int", Integer),
+            implicit_returning=False,
+        )
+        cls.tables.users_no_returning = users_no_returning
+
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
             pass
 
         class Address(cls.Comparable):
+            pass
+
+        class UserNoReturning(cls.Comparable):
             pass
 
     @classmethod
@@ -95,6 +112,16 @@ class UpdateDeleteTest(fixtures.MappedTest):
             },
         )
         cls.mapper_registry.map_imperatively(Address, addresses)
+
+        UserNoReturning = cls.classes.UserNoReturning
+        users_no_returning = cls.tables.users_no_returning
+        cls.mapper_registry.map_imperatively(
+            UserNoReturning,
+            users_no_returning,
+            properties={
+                "age": users_no_returning.c.age_int,
+            },
+        )
 
     @testing.combinations("table", "mapper", "both", argnames="bind_type")
     @testing.combinations(
@@ -445,7 +472,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 {"age": User.age + 10}, synchronize_session="fetch"
             )
 
-        if testing.db.dialect.full_returning:
+        if testing.db.dialect.update_returning:
             asserter.assert_(
                 CompiledSQL(
                     "UPDATE users SET age_int=(users.age_int + %(age_int_1)s) "
@@ -857,8 +884,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
-    def test_update_fetch_returning(self):
-        User = self.classes.User
+    @testing.combinations(True, False, argnames="implicit_returning")
+    def test_update_fetch_returning(self, implicit_returning):
+        if implicit_returning:
+            User = self.classes.User
+        else:
+            User = self.classes.UserNoReturning
 
         sess = fixture_session()
 
@@ -873,7 +904,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             # the "fetch" strategy, new in 1.4, so there is no expiry
             eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
 
-        if testing.db.dialect.full_returning:
+        if implicit_returning and testing.db.dialect.update_returning:
             asserter.assert_(
                 CompiledSQL(
                     "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
@@ -919,7 +950,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             # the "fetch" strategy, new in 1.4, so there is no expiry
             eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
 
-        if testing.db.dialect.full_returning:
+        if testing.db.dialect.update_returning:
             asserter.assert_(
                 CompiledSQL(
                     "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
@@ -942,7 +973,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 ),
             )
 
-    @testing.requires.full_returning
+    @testing.requires.update_returning
     def test_update_explicit_returning(self):
         User = self.classes.User
 
@@ -974,7 +1005,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             ),
         )
 
-    @testing.requires.full_returning
+    @testing.requires.update_returning
     def test_no_fetch_w_explicit_returning(self):
         User = self.classes.User
 
@@ -994,8 +1025,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
         ):
             sess.execute(stmt)
 
-    def test_delete_fetch_returning(self):
-        User = self.classes.User
+    @testing.combinations(True, False, argnames="implicit_returning")
+    def test_delete_fetch_returning(self, implicit_returning):
+        if implicit_returning:
+            User = self.classes.User
+        else:
+            User = self.classes.UserNoReturning
 
         sess = fixture_session()
 
@@ -1009,7 +1044,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 synchronize_session="fetch"
             )
 
-        if testing.db.dialect.full_returning:
+        if implicit_returning and testing.db.dialect.delete_returning:
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
@@ -1054,7 +1089,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 stmt, execution_options={"synchronize_session": "fetch"}
             )
 
-        if testing.db.dialect.full_returning:
+        if testing.db.dialect.delete_returning:
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
@@ -2148,7 +2183,7 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
 
 class LoadFromReturningTest(fixtures.MappedTest):
     __backend__ = True
-    __requires__ = ("full_returning",)
+    __requires__ = ("insert_returning",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2197,6 +2232,7 @@ class LoadFromReturningTest(fixtures.MappedTest):
             },
         )
 
+    @testing.requires.update_returning
     def test_load_from_update(self, connection):
         User = self.classes.User
 

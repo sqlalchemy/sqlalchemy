@@ -169,6 +169,47 @@ Glossary
         also known as :term:`DML`, and typically refers to the ``INSERT``,
         ``UPDATE``, and ``DELETE`` statements.
 
+    executemany
+        This term refers to a part of the :pep:`249` DBAPI specification
+        indicating a single SQL statement that may be invoked against a
+        database connection with multiple parameter sets.   The specific
+        method is known as ``cursor.executemany()``, and it has many
+        behavioral differences in comparison to the ``cursor.execute()``
+        method which is used for single-statement invocation.   The "executemany"
+        method executes the given SQL statement multiple times, once for
+        each set of parameters passed.  As such, DBAPIs generally cannot
+        return result sets when ``cursor.executemany()`` is used.  An additional
+        limitation of ``cursor.executemany()`` is that database drivers which
+        support the ``cursor.lastrowid`` attribute, returning the most recently
+        inserted integer primary key value, also don't support this attribute
+        when using ``cursor.executemany()``.
+
+        SQLAlchemy makes use of ``cursor.executemany()`` when the
+        :meth:`_engine.Connection.execute` method is used, passing a list of
+        parameter dictionaries, instead of just a single parameter dictionary.
+        When using this form, the returned :class:`_result.Result` object will
+        not return any rows, even if the given SQL statement uses a form such
+        as RETURNING.
+
+        Since "executemany" makes it generally impossible to receive results
+        back that indicate the newly generated values of server-generated
+        identifiers, the SQLAlchemy ORM can use "executemany" style
+        statement invocations only in certain circumstances when INSERTing
+        rows; while "executemany" is generally
+        associated with faster performance for running many INSERT statements
+        at once, the SQLAlchemy ORM can only make use of it in those
+        circumstances where it does not need to fetch newly generated primary
+        key values or server side default values.   Newer versions of SQLAlchemy
+        make use of an alternate form of INSERT which is to pass a single
+        VALUES clause with many parameter sets at once, which does support
+        RETURNING.  This form is available
+        in SQLAlchemy Core using the :meth:`.Insert.values` method.
+
+        .. seealso::
+
+            :ref:`tutorial_multiple_parameters` - tutorial introduction to
+            "executemany"
+
     marshalling
     data marshalling
          The process of transforming the memory representation of an object to

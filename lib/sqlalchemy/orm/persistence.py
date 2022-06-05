@@ -39,6 +39,7 @@ from .. import exc as sa_exc
 from .. import future
 from .. import sql
 from .. import util
+from ..engine import Dialect
 from ..engine import result as _result
 from ..sql import coercions
 from ..sql import expression
@@ -57,6 +58,7 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 if TYPE_CHECKING:
     from .mapper import Mapper
+    from .session import ORMExecuteState
     from .session import SessionTransaction
     from .state import InstanceState
 
@@ -1103,7 +1105,8 @@ def _emit_insert_statements(
             or (
                 has_all_defaults
                 or not base_mapper.eager_defaults
-                or not connection.dialect.implicit_returning
+                or not base_mapper.local_table.implicit_returning
+                or not connection.dialect.insert_returning
             )
             and has_all_pks
             and not hasvalue
@@ -1118,7 +1121,6 @@ def _emit_insert_statements(
             c = connection.execute(
                 statement, multiparams, execution_options=execution_options
             )
-
             if bookkeeping:
                 for (
                     (
@@ -1803,6 +1805,10 @@ class BulkUDCompileState(CompileState):
         _refresh_identity_token = None
 
     @classmethod
+    def can_use_returning(cls, dialect: Dialect, mapper: Mapper[Any]) -> bool:
+        raise NotImplementedError()
+
+    @classmethod
     def orm_pre_session_exec(
         cls,
         session,
@@ -2093,9 +2099,10 @@ class BulkUDCompileState(CompileState):
         )
         select_stmt._where_criteria = statement._where_criteria
 
-        def skip_for_full_returning(orm_context):
+        def skip_for_returning(orm_context: ORMExecuteState) -> Any:
             bind = orm_context.session.get_bind(**orm_context.bind_arguments)
-            if bind.dialect.full_returning:
+
+            if cls.can_use_returning(bind.dialect, mapper):
                 return _result.null_result()
             else:
                 return None
@@ -2105,7 +2112,7 @@ class BulkUDCompileState(CompileState):
             params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            _add_event=skip_for_full_returning,
+            _add_event=skip_for_returning,
         )
         matched_rows = result.fetchall()
 
@@ -2283,10 +2290,9 @@ class BulkORMUpdate(ORMDMLState, UpdateDMLState, BulkUDCompileState):
         # if we are against a lambda statement we might not be the
         # topmost object that received per-execute annotations
 
-        if (
-            compiler._annotations.get("synchronize_session", None) == "fetch"
-            and compiler.dialect.full_returning
-        ):
+        if compiler._annotations.get(
+            "synchronize_session", None
+        ) == "fetch" and self.can_use_returning(compiler.dialect, mapper):
             if new_stmt._returning:
                 raise sa_exc.InvalidRequestError(
                     "Can't use synchronize_session='fetch' "
@@ -2297,6 +2303,12 @@ class BulkORMUpdate(ORMDMLState, UpdateDMLState, BulkUDCompileState):
         UpdateDMLState.__init__(self, new_stmt, compiler, **kw)
 
         return self
+
+    @classmethod
+    def can_use_returning(cls, dialect: Dialect, mapper: Mapper[Any]) -> bool:
+        return (
+            dialect.update_returning and mapper.local_table.implicit_returning
+        )
 
     @classmethod
     def _get_crud_kv_pairs(cls, statement, kv_iterator):
@@ -2478,17 +2490,20 @@ class BulkORMDelete(ORMDMLState, DeleteDMLState, BulkUDCompileState):
         if new_crit:
             statement = statement.where(*new_crit)
 
-        if (
-            mapper
-            and compiler._annotations.get("synchronize_session", None)
-            == "fetch"
-            and compiler.dialect.full_returning
-        ):
+        if compiler._annotations.get(
+            "synchronize_session", None
+        ) == "fetch" and self.can_use_returning(compiler.dialect, mapper):
             statement = statement.returning(*mapper.primary_key)
 
         DeleteDMLState.__init__(self, statement, compiler, **kw)
 
         return self
+
+    @classmethod
+    def can_use_returning(cls, dialect: Dialect, mapper: Mapper[Any]) -> bool:
+        return (
+            dialect.delete_returning and mapper.local_table.implicit_returning
+        )
 
     @classmethod
     def _do_post_synchronize_evaluate(cls, session, result, update_options):

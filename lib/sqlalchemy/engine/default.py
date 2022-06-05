@@ -57,6 +57,7 @@ from ..sql.compiler import DDLCompiler
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
 from ..sql.schema import default_is_scalar
+from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from types import ModuleType
@@ -135,9 +136,11 @@ class DefaultDialect(Dialect):
     preexecute_autoincrement_sequences = False
     supports_identity_columns = False
     postfetch_lastrowid = True
+    favor_returning_over_lastrowid = False
     insert_null_pk_still_autoincrements = False
-    implicit_returning = False
-    full_returning = False
+    update_returning = False
+    delete_returning = False
+    insert_returning = False
     insert_executemany_returning = False
 
     cte_follows_insert = False
@@ -258,7 +261,7 @@ class DefaultDialect(Dialect):
         paramstyle: Optional[_ParamStyle] = None,
         isolation_level: Optional[_IsolationLevel] = None,
         dbapi: Optional[ModuleType] = None,
-        implicit_returning: Optional[bool] = None,
+        implicit_returning: Literal[True] = True,
         supports_native_boolean: Optional[bool] = None,
         max_identifier_length: Optional[int] = None,
         label_length: Optional[int] = None,
@@ -296,8 +299,6 @@ class DefaultDialect(Dialect):
             self.paramstyle = self.dbapi.paramstyle
         else:
             self.paramstyle = self.default_paramstyle
-        if implicit_returning is not None:
-            self.implicit_returning = implicit_returning
         self.positional = self.paramstyle in ("qmark", "format", "numeric")
         self.identifier_preparer = self.preparer(self)
         self._on_connect_isolation_level = isolation_level
@@ -323,6 +324,18 @@ class DefaultDialect(Dialect):
             )
         self.label_length = label_length
         self.compiler_linting = compiler_linting
+
+    @util.deprecated_property(
+        "2.0",
+        "full_returning is deprecated, please use insert_returning, "
+        "update_returning, delete_returning",
+    )
+    def full_returning(self):
+        return (
+            self.insert_returning
+            and self.update_returning
+            and self.delete_returning
+        )
 
     @util.memoized_property
     def loaded_dbapi(self) -> ModuleType:
@@ -771,7 +784,6 @@ class StrCompileDialect(DefaultDialect):
     supports_sequences = True
     sequences_optional = True
     preexecute_autoincrement_sequences = False
-    implicit_returning = False
 
     supports_native_boolean = True
 
@@ -805,6 +817,8 @@ class DefaultExecutionContext(ExecutionContext):
     _is_server_side = False
 
     _soft_closed = False
+
+    _has_rowcount = False
 
     # a hook for SQLite's translation of
     # result column names
@@ -1450,6 +1464,7 @@ class DefaultExecutionContext(ExecutionContext):
             # is testing this, and psycopg will no longer return
             # rowcount after cursor is closed.
             result.rowcount
+            self._has_rowcount = True
 
             row = result.fetchone()
             if row is not None:
@@ -1465,7 +1480,12 @@ class DefaultExecutionContext(ExecutionContext):
             # no results, get rowcount
             # (which requires open cursor on some drivers)
             result.rowcount
+            self._has_rowcount = True
             result._soft_close()
+        elif self.isupdate or self.isdelete:
+            result.rowcount
+            self._has_rowcount = True
+
         return result
 
     @util.memoized_property
@@ -1479,7 +1499,6 @@ class DefaultExecutionContext(ExecutionContext):
         getter = cast(
             SQLCompiler, self.compiled
         )._inserted_primary_key_from_lastrowid_getter
-
         lastrowid = self.get_lastrowid()
         return [getter(lastrowid, self.compiled_parameters[0])]
 
