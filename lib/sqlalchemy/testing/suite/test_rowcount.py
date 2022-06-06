@@ -88,6 +88,7 @@ class RowCountTest(fixtures.TablesTest):
         )
         eq_(r.rowcount, 3)
 
+    @testing.requires.update_returning
     @testing.requires.sane_rowcount_w_returning
     def test_update_rowcount_return_defaults(self, connection):
         employees_table = self.tables.employees
