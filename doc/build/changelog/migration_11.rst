@@ -1213,7 +1213,7 @@ RANGE and ROWS expressions for window functions::
 
 .. seealso::
 
-    :ref:`window_functions`
+    :ref:`tutorial_window_functions`
 
 :ticket:`3049`
 
@@ -1242,7 +1242,7 @@ selectable, e.g. lateral correlation::
 
 .. seealso::
 
-    :ref:`lateral_selects`
+    :ref:`tutorial_lateral_correlation`
 
     :class:`_expression.Lateral`
 
@@ -1478,7 +1478,7 @@ this behavioral change for applications using it are at :ref:`behavior_change_35
 
 .. seealso::
 
-    :ref:`sqlexpression_text_columns` - in the Core tutorial
+  :ref:`tutorial_select_arbitrary_text`
 
     :ref:`behavior_change_3501` - backwards compatibility remarks
 
@@ -2606,9 +2606,6 @@ Support for PyGreSQL
 
 The `PyGreSQL <https://pypi.org/project/PyGreSQL>`_ DBAPI is now supported.
 
-.. seealso::
-
-    :ref:`dialect-postgresql-pygresql`
 
 The "postgres" module is removed
 --------------------------------

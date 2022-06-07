@@ -77,7 +77,7 @@ construction arguments, are as follows:
 
 .. autoclass:: DOUBLE
     :members: __init__
-
+    :noindex:
 
 .. autoclass:: ENUM
     :members: __init__

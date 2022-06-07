@@ -105,6 +105,7 @@ and_ = BooleanClauseList.and_
 _T = TypeVar("_T", bound=Any)
 
 if TYPE_CHECKING:
+    import sqlalchemy
     from ._typing import _ColumnExpressionArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
@@ -129,7 +130,6 @@ if TYPE_CHECKING:
     from .cache_key import _CacheKeyTraversalType
     from .compiler import SQLCompiler
     from .dml import Delete
-    from .dml import Insert
     from .dml import Update
     from .elements import KeyedColumnElement
     from .elements import Label
@@ -292,7 +292,7 @@ class Selectable(ReturnsRows):
 
         .. seealso::
 
-            :ref:`lateral_selects` -  overview of usage.
+            :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
         return Lateral._construct(self, name)
@@ -751,7 +751,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -1893,7 +1893,7 @@ class Lateral(FromClauseAlias, LateralFromClause):
 
     .. seealso::
 
-        :ref:`lateral_selects` -  overview of usage.
+        :ref:`tutorial_lateral_correlation` -  overview of usage.
 
     """
 
@@ -2063,7 +2063,7 @@ class CTE(
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -2996,7 +2996,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         c.table = self
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def insert(self) -> Insert:
+    def insert(self) -> sqlalchemy.sql.expression.Insert:
         """Generate an :func:`_expression.insert` construct against this
         :class:`_expression.TableClause`.
 
@@ -3180,7 +3180,7 @@ class Values(Generative, LateralFromClause):
 
         .. seealso::
 
-            :ref:`core_tutorial_aliases`
+            :ref:`tutorial_using_aliases`
 
             :func:`_expression.alias`
 
@@ -3462,8 +3462,6 @@ class SelectBase(
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-            :ref:`scalar_selects` - in the 1.x tutorial
-
         """
         if self._label_style is not LABEL_STYLE_NONE:
             self = self.set_label_style(LABEL_STYLE_NONE)
@@ -3491,7 +3489,7 @@ class SelectBase(
 
         .. seealso::
 
-            :ref:`lateral_selects` -  overview of usage.
+            :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
         return Lateral._factory(self, name)
@@ -4970,8 +4968,6 @@ class Select(
 
         :func:`_sql.select`
 
-        :ref:`coretutorial_selecting` - in the 1.x tutorial
-
         :ref:`tutorial_selecting_data` - in the 2.0 tutorial
 
     """
@@ -6022,7 +6018,7 @@ class Select(
 
             :meth:`_expression.Select.correlate_except`
 
-            :ref:`correlated_subqueries`
+            :ref:`tutorial_scalar_subquery`
 
         """
 
@@ -6072,7 +6068,7 @@ class Select(
 
             :meth:`_expression.Select.correlate`
 
-            :ref:`correlated_subqueries`
+            :ref:`tutorial_scalar_subquery`
 
         """
 
@@ -6345,8 +6341,6 @@ class ScalarSelect(
 
         :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-        :ref:`scalar_selects` - in the 1.x tutorial
-
     """
 
     _traverse_internals: _TraverseInternalsType = [
@@ -6444,8 +6438,6 @@ class ScalarSelect(
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
 
-            :ref:`correlated_subqueries` - in the 1.x tutorial
-
 
         """
         self.element = cast("Select[Any]", self.element).correlate(
@@ -6482,8 +6474,6 @@ class ScalarSelect(
             :meth:`_expression.ScalarSelect.correlate`
 
             :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
-
-            :ref:`correlated_subqueries` - in the 1.x tutorial
 
 
         """

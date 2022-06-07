@@ -137,7 +137,7 @@ the foreign key from one level of the tree to the next.  In SQL,
 a join from a table to itself requires that at least one side of the
 expression be "aliased" so that it can be unambiguously referred to.
 
-Recall from :ref:`ormtutorial_aliases` in the ORM tutorial that the
+Recall from :ref:`orm_queryguide_orm_aliases` in the ORM tutorial that the
 :func:`_orm.aliased` construct is normally used to provide an "alias" of
 an ORM entity.  Joining from ``Node`` to itself using this technique
 looks like:

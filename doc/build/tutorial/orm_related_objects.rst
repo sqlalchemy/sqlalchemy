@@ -5,6 +5,7 @@
 
 .. include:: tutorial_nav_include.rst
 
+
 .. _tutorial_orm_related_objects:
 
 Working with Related Objects
@@ -128,6 +129,9 @@ of the ``Address.user`` attribute after the fact::
 
   # equivalent effect as a2 = Address(user=u1)
   >>> a2.user = u1
+
+
+.. _tutorial_orm_cascades:
 
 Cascading Objects into the Session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

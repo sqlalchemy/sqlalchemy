@@ -557,10 +557,12 @@ Column, Table, MetaData API
 ---------------------------
 
 .. attribute:: sqlalchemy.schema.BLANK_SCHEMA
+    :noindex:
 
     Refers to :attr:`.SchemaConst.BLANK_SCHEMA`.
 
 .. attribute:: sqlalchemy.schema.RETAIN_SCHEMA
+    :noindex:
 
     Refers to :attr:`.SchemaConst.RETAIN_SCHEMA`
 

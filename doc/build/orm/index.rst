@@ -21,6 +21,6 @@ tutorial.
     examples
 
 .. toctree::
-   :hidden:
+    :hidden:
 
     tutorial

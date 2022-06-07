@@ -18,6 +18,7 @@ from typing import TypeVar
 
 from . import exc as async_exc
 from ... import util
+from ...engine import Result
 from ...engine.result import _NO_ROW
 from ...engine.result import _R
 from ...engine.result import FilterResult
@@ -31,7 +32,6 @@ from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...engine import CursorResult
-    from ...engine import Result
     from ...engine.result import _KeyIndexType
     from ...engine.result import _UniqueFilterType
     from ...engine.result import RMKeyView

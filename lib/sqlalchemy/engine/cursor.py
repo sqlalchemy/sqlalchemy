@@ -1244,7 +1244,7 @@ class CursorResult(Result[_T]):
 
     .. seealso::
 
-        :ref:`coretutorial_selecting` - introductory material for accessing
+        :ref:`tutorial_selecting_data` - introductory material for accessing
         :class:`_engine.CursorResult` and :class:`.Row` objects.
 
     """

@@ -350,7 +350,7 @@ How Do I use Textual SQL with ORM Queries?
 
 See:
 
-* :ref:`orm_tutorial_literal_sql` - Ad-hoc textual blocks with :class:`_query.Query`
+* :ref:`orm_queryguide_selecting_text` - Ad-hoc textual blocks with :class:`_query.Query`
 
 * :ref:`session_sql_expressions` - Using :class:`.Session` with textual SQL directly.
 

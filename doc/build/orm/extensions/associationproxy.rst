@@ -606,3 +606,4 @@ API Documentation
    :inherited-members:
 
 .. autoclass:: AssociationProxyExtensionType
+   :members:

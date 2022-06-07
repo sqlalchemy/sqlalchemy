@@ -190,7 +190,7 @@ def literal_column(
 
         :func:`_expression.text`
 
-        :ref:`sqlexpression_literal_column`
+        :ref:`tutorial_select_arbitrary_text`
 
     """
     return ColumnClause(text, type_=type_, is_literal=True)
@@ -1568,7 +1568,7 @@ class ColumnElement(
 
         .. seealso::
 
-            :ref:`coretutorial_casts`
+            :ref:`tutorial_casts`
 
             :func:`_expression.cast`
 
@@ -3198,7 +3198,7 @@ class Cast(WrapsColumnExpression[_T]):
 
     .. seealso::
 
-        :ref:`coretutorial_casts`
+        :ref:`tutorial_casts`
 
         :func:`.cast`
 

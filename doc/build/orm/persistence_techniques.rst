@@ -986,7 +986,7 @@ Comparison to Core Insert / Update Constructs
 The bulk methods offer performance that under particular circumstances
 can be close to that of using the core :class:`_expression.Insert` and
 :class:`_expression.Update` constructs in an "executemany" context (for a description
-of "executemany", see :ref:`execute_multiple` in the Core tutorial).
+of "executemany", see :ref:`tutorial_multiple_parameters` in the Core tutorial).
 In order to achieve this, the
 :paramref:`.Session.bulk_insert_mappings.return_defaults`
 flag should be disabled so that rows can be batched together.   The example

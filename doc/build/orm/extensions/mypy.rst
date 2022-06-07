@@ -4,7 +4,7 @@ Mypy  / Pep-484 Support for ORM Mappings
 ========================================
 
 Support for :pep:`484` typing annotations as well as the
-`Mypy <https://mypy.readthedocs.io/>`_ type checking tool.
+MyPy_ type checking tool.
 
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
@@ -62,7 +62,7 @@ TODO: document uninstallation of existing stubs:
 
 SQLAlchemy 2.0 is expected to be directly typed.
 
-The `Mypy <https://pypi.org/project/mypy/>`_ package itself is a dependency.
+The Mypy_ package itself is a dependency.
 
 Both packages may be installed using the "mypy" extras hook using pip::
 
@@ -597,3 +597,5 @@ With the above recipe, the attributes listed in ``_mypy_mapped_attrs``
 will be applied with the :class:`_orm.Mapped` typing information so that the
 ``User`` class will behave as a SQLAlchemy mapped class when used in a
 class-bound context.
+
+.. _Mypy: https://mypy.readthedocs.io/

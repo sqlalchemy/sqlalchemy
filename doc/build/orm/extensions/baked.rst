@@ -475,4 +475,5 @@ API Documentation
 
 .. autoclass:: Result
     :members:
+    :noindex:
 
