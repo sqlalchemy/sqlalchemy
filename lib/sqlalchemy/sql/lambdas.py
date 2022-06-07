@@ -12,6 +12,7 @@ import collections.abc as collections_abc
 import inspect
 import itertools
 import operator
+import threading
 import types
 from types import CodeType
 from typing import Any
@@ -695,6 +696,8 @@ class AnalyzedCode:
         CodeType, AnalyzedCode
     ] = weakref.WeakKeyDictionary()
 
+    _generation_mutex = threading.RLock()
+
     @classmethod
     def get(cls, fn, lambda_element, lambda_kw, **kw):
         try:
@@ -703,11 +706,16 @@ class AnalyzedCode:
         except KeyError:
             pass
 
-        analyzed: AnalyzedCode
-        cls._fns[fn.__code__] = analyzed = AnalyzedCode(
-            fn, lambda_element, lambda_kw, **kw
-        )
-        return analyzed
+        with cls._generation_mutex:
+            # check for other thread already created object
+            if fn.__code__ in cls._fns:
+                return cls._fns[fn.__code__]
+
+            analyzed: AnalyzedCode
+            cls._fns[fn.__code__] = analyzed = AnalyzedCode(
+                fn, lambda_element, lambda_kw, **kw
+            )
+            return analyzed
 
     def __init__(self, fn, lambda_element, opts):
         if inspect.ismethod(fn):
