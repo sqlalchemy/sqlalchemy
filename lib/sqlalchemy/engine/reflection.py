@@ -779,6 +779,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
             schema,
             table,
             cols_by_orig_name,
+            include_columns,
             exclude_columns,
             resolve_fks,
             _extend_on,
@@ -922,6 +923,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         schema,
         table,
         cols_by_orig_name,
+        include_columns,
         exclude_columns,
         resolve_fks,
         _extend_on,
@@ -938,10 +940,17 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 cols_by_orig_name[c].key if c in cols_by_orig_name else c
                 for c in fkey_d["constrained_columns"]
             ]
-            if exclude_columns and set(constrained_columns).intersection(
+
+            if (
                 exclude_columns
+                and set(constrained_columns).intersection(exclude_columns)
+                or (
+                    include_columns
+                    and set(constrained_columns).difference(include_columns)
+                )
             ):
                 continue
+
             referred_schema = fkey_d["referred_schema"]
             referred_table = fkey_d["referred_table"]
             referred_columns = fkey_d["referred_columns"]
@@ -976,6 +985,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 options = fkey_d["options"]
             else:
                 options = {}
+
             table.append_constraint(
                 sa_schema.ForeignKeyConstraint(
                     constrained_columns,

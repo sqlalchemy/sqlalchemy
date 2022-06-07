@@ -2271,10 +2271,19 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         information is not transferred.
 
         """
+
         fk = [
-            ForeignKey(f.column, _constraint=f.constraint)
-            for f in self.foreign_keys
+            ForeignKey(
+                col if col is not None else f._colspec,
+                _unresolvable=col is None,
+                _constraint=f.constraint,
+            )
+            for f, col in [
+                (fk, fk._resolve_column(raiseerr=False))
+                for fk in self.foreign_keys
+            ]
         ]
+
         if name is None and self.name is None:
             raise exc.InvalidRequestError(
                 "Cannot initialize a sub-selectable"
@@ -2375,6 +2384,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         link_to_name: bool = False,
         match: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        _unresolvable: bool = False,
         **dialect_kw: Any,
     ):
         r"""
@@ -2448,6 +2458,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """
 
         self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
+        self._unresolvable = _unresolvable
 
         if isinstance(self._colspec, str):
             self._table_column = None
@@ -2658,6 +2669,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         parenttable = self.parent.table
 
+        if self._unresolvable:
+            schema, tname, colname = self._column_tokens
+            tablekey = _get_table_key(tname, schema)
+            return parenttable, tablekey, colname
+
         # assertion
         # basically Column._make_proxy() sends the actual
         # target Column to the ForeignKey object, so the
@@ -2742,13 +2758,30 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
+        return self._resolve_column()
+
+    @overload
+    def _resolve_column(self, *, raiseerr: Literal[True] = ...) -> Column[Any]:
+        ...
+
+    @overload
+    def _resolve_column(
+        self, *, raiseerr: bool = ...
+    ) -> Optional[Column[Any]]:
+        ...
+
+    def _resolve_column(
+        self, *, raiseerr: bool = True
+    ) -> Optional[Column[Any]]:
         _column: Column[Any]
 
         if isinstance(self._colspec, str):
 
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
-            if tablekey not in parenttable.metadata:
+            if self._unresolvable or tablekey not in parenttable.metadata:
+                if not raiseerr:
+                    return None
                 raise exc.NoReferencedTableError(
                     "Foreign key associated with column '%s' could not find "
                     "table '%s' with which to generate a "
@@ -2757,6 +2790,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     tablekey,
                 )
             elif parenttable.key not in parenttable.metadata:
+                if not raiseerr:
+                    return None
                 raise exc.InvalidRequestError(
                     "Table %s is no longer associated with its "
                     "parent MetaData" % parenttable
