@@ -191,6 +191,9 @@ class DBAPICursor(Protocol):
     def nextset(self) -> Optional[bool]:
         ...
 
+    def __getattr__(self, key: str) -> Any:
+        ...
+
 
 _CoreSingleExecuteParams = Mapping[str, Any]
 _MutableCoreSingleExecuteParams = MutableMapping[str, Any]

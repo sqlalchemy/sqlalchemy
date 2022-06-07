@@ -358,28 +358,18 @@ The dialect supports RETURNING fully.
 
 .. _cx_oracle_lob:
 
-LOB Objects
------------
+LOB Datatypes
+--------------
 
-cx_oracle returns oracle LOBs using the cx_oracle.LOB object.  SQLAlchemy
-converts these to strings so that the interface of the Binary type is
-consistent with that of other backends, which takes place within a cx_Oracle
-outputtypehandler.
+LOB datatypes refer to the "large object" datatypes such as CLOB, NCLOB and
+BLOB. Modern versions of cx_Oracle and oracledb are optimized for these
+datatypes to be delivered as a single buffer. As such, SQLAlchemy makes use of
+these newer type handlers by default.
 
-cx_Oracle prior to version 6 would require that LOB objects be read before
-a new batch of rows would be read, as determined by the ``cursor.arraysize``.
-As of the 6 series, this limitation has been lifted.  Nevertheless, because
-SQLAlchemy pre-reads these LOBs up front, this issue is avoided in any case.
-
-To disable the auto "read()" feature of the dialect, the flag
-``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`.  Under
-the cx_Oracle 5 series, having this flag turned off means there is the chance
-of reading from a stale LOB object if not read as it is fetched.   With
-cx_Oracle 6, this issue is resolved.
-
-.. versionchanged:: 1.2  the LOB handling system has been greatly simplified
-   internally to make use of outputtypehandlers, and no longer makes use
-   of alternate "buffered" result set objects.
+To disable the use of newer type handlers and deliver LOB objects as classic
+buffered objects with a ``read()`` method, the parameter
+``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`,
+which takes place only engine-wide.
 
 Two Phase Transactions Not Supported
 -------------------------------------
@@ -448,6 +438,10 @@ from ...engine import interfaces
 from ...engine import processors
 from ...sql import sqltypes
 from ...sql._typing import is_sql_compiler
+
+# source:
+# https://github.com/oracle/python-cx_Oracle/issues/596#issuecomment-999243649
+_CX_ORACLE_MAGIC_LOB_SIZE = 131072
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -584,6 +578,10 @@ class _CXOracleTIMESTAMP(oracle._OracleDateLiteralRender, sqltypes.TIMESTAMP):
         return self._literal_processor_datetime(dialect)
 
 
+class _LOBDataType:
+    pass
+
+
 # TODO: the names used across CHAR / VARCHAR / NCHAR / NVARCHAR
 # here are inconsistent and not very good
 class _OracleChar(sqltypes.CHAR):
@@ -606,22 +604,31 @@ class _OracleUnicodeStringCHAR(sqltypes.Unicode):
         return dbapi.LONG_STRING
 
 
-class _OracleUnicodeTextNCLOB(oracle.NCLOB):
+class _OracleUnicodeTextNCLOB(_LOBDataType, oracle.NCLOB):
     def get_dbapi_type(self, dbapi):
-        return dbapi.NCLOB
+        # previously, this was dbapi.NCLOB.
+        # DB_TYPE_NVARCHAR will instead be passed to setinputsizes()
+        # when this datatype is used.
+        return dbapi.DB_TYPE_NVARCHAR
 
 
-class _OracleUnicodeTextCLOB(sqltypes.UnicodeText):
+class _OracleUnicodeTextCLOB(_LOBDataType, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
-        return dbapi.CLOB
+        # previously, this was dbapi.CLOB.
+        # DB_TYPE_NVARCHAR will instead be passed to setinputsizes()
+        # when this datatype is used.
+        return dbapi.DB_TYPE_NVARCHAR
 
 
-class _OracleText(sqltypes.Text):
+class _OracleText(_LOBDataType, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
-        return dbapi.CLOB
+        # previously, this was dbapi.CLOB.
+        # DB_TYPE_NVARCHAR will instead be passed to setinputsizes()
+        # when this datatype is used.
+        return dbapi.DB_TYPE_NVARCHAR
 
 
-class _OracleLong(oracle.LONG):
+class _OracleLong(_LOBDataType, oracle.LONG):
     def get_dbapi_type(self, dbapi):
         return dbapi.LONG_STRING
 
@@ -641,9 +648,12 @@ class _OracleEnum(sqltypes.Enum):
         return process
 
 
-class _OracleBinary(sqltypes.LargeBinary):
+class _OracleBinary(_LOBDataType, sqltypes.LargeBinary):
     def get_dbapi_type(self, dbapi):
-        return dbapi.BLOB
+        # previously, this was dbapi.BLOB.
+        # DB_TYPE_RAW will instead be passed to setinputsizes()
+        # when this datatype is used.
+        return dbapi.DB_TYPE_RAW
 
     def bind_processor(self, dialect):
         return None
@@ -703,6 +713,10 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         # check for has_out_parameters or RETURNING, create cx_Oracle.var
         # objects if so
         if self.compiled.has_out_parameters or self.compiled._oracle_returning:
+
+            out_parameters = self.out_parameters
+            assert out_parameters is not None
+
             quoted_bind_names = self.compiled.escaped_bind_names
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
@@ -710,13 +724,15 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                     type_impl = bindparam.type.dialect_impl(self.dialect)
 
                     if hasattr(type_impl, "_cx_oracle_var"):
-                        self.out_parameters[name] = type_impl._cx_oracle_var(
+                        out_parameters[name] = type_impl._cx_oracle_var(
                             self.dialect, self.cursor, arraysize=1
                         )
                     else:
                         dbtype = type_impl.get_dbapi_type(self.dialect.dbapi)
 
                         cx_Oracle = self.dialect.dbapi
+
+                        assert cx_Oracle is not None
 
                         if dbtype is None:
                             raise exc.InvalidRequestError(
@@ -726,23 +742,37 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                 " cx_oracle" % (bindparam.key, bindparam.type)
                             )
 
-                        if dbtype in (
-                            cx_Oracle.BLOB,
-                            cx_Oracle.CLOB,
-                            cx_Oracle.NCLOB,
-                        ):
-                            self.out_parameters[name] = self.cursor.var(
+                        # note this is an OUT parameter.   Using
+                        # non-LOB datavalues with large unicode-holding
+                        # values causes the failure (both cx_Oracle and
+                        # oracledb):
+                        # ORA-22835: Buffer too small for CLOB to CHAR or
+                        # BLOB to RAW conversion (actual: 16507,
+                        # maximum: 4000)
+                        # [SQL: INSERT INTO long_text (x, y, z) VALUES
+                        # (:x, :y, :z) RETURNING long_text.x, long_text.y,
+                        # long_text.z INTO :ret_0, :ret_1, :ret_2]
+                        # so even for DB_TYPE_NVARCHAR we convert to a LOB
+
+                        if isinstance(type_impl, _LOBDataType):
+                            if dbtype == cx_Oracle.DB_TYPE_NVARCHAR:
+                                dbtype = cx_Oracle.NCLOB
+                            elif dbtype == cx_Oracle.DB_TYPE_RAW:
+                                dbtype = cx_Oracle.BLOB
+                            # other LOB types go in directly
+
+                            out_parameters[name] = self.cursor.var(
                                 dbtype,
                                 outconverter=lambda value: value.read(),
                                 arraysize=1,
                             )
                         else:
-                            self.out_parameters[name] = self.cursor.var(
+                            out_parameters[name] = self.cursor.var(
                                 dbtype, arraysize=1
                             )
                     self.parameters[0][
                         quoted_bind_names.get(name, name)
-                    ] = self.out_parameters[name]
+                    ] = out_parameters[name]
 
     def _generate_cursor_outputtype_handler(self):
         output_handlers = {}
@@ -931,14 +961,21 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._load_version(dbapi_module)
 
         if dbapi_module is not None:
+            # these constants will first be seen in SQLAlchemy datatypes
+            # coming from the get_dbapi_type() method.   We then
+            # will place the following types into setinputsizes() calls
+            # on each statement.  Oracle constants that are not in this
+            # list will not be put into setinputsizes().
             self.include_set_input_sizes = {
                 dbapi_module.DATETIME,
-                dbapi_module.NCLOB,
-                dbapi_module.CLOB,
-                dbapi_module.LOB,
+                dbapi_module.DB_TYPE_NVARCHAR,  # used for CLOB, NCLOB
+                dbapi_module.DB_TYPE_RAW,  # used for BLOB
+                dbapi_module.NCLOB,  # not currently used except for OUT param
+                dbapi_module.CLOB,  # not currently used except for OUT param
+                dbapi_module.LOB,  # not currently used
+                dbapi_module.BLOB,  # not currently used except for OUT param
                 dbapi_module.NCHAR,
                 dbapi_module.FIXED_NCHAR,
-                dbapi_module.BLOB,
                 dbapi_module.FIXED_CHAR,
                 dbapi_module.TIMESTAMP,
                 int,  # _OracleInteger,
@@ -1131,8 +1168,8 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.NCLOB,
             ):
                 return cursor.var(
-                    cx_Oracle.LONG_STRING,
-                    size,
+                    cx_Oracle.DB_TYPE_NVARCHAR,
+                    _CX_ORACLE_MAGIC_LOB_SIZE,
                     cursor.arraysize,
                     **dialect._cursor_var_unicode_kwargs,
                 )
@@ -1141,8 +1178,8 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.BLOB,
             ):
                 return cursor.var(
-                    cx_Oracle.LONG_BINARY,
-                    size,
+                    cx_Oracle.DB_TYPE_RAW,
+                    _CX_ORACLE_MAGIC_LOB_SIZE,
                     cursor.arraysize,
                 )
 

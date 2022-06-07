@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 7494
+
+    Adjustments made to the BLOB / CLOB / NCLOB datatypes in the cx_Oracle and
+    oracledb dialects, to improve performance based on recommendations from
+    Oracle developers.
