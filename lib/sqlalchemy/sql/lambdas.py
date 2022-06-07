@@ -9,6 +9,7 @@ import inspect
 import itertools
 import operator
 import sys
+import threading
 import types
 import weakref
 
@@ -218,11 +219,17 @@ class LambdaElement(elements.ClauseElement):
 
         if rec is None:
             if cache_key is not traversals.NO_CACHE:
-                rec = AnalyzedFunction(
-                    tracker, self, apply_propagate_attrs, fn
-                )
-                rec.closure_bindparams = bindparams
-                lambda_cache[tracker_key + cache_key] = rec
+
+                with AnalyzedCode._generation_mutex:
+                    key = tracker_key + cache_key
+                    if key not in lambda_cache:
+                        rec = AnalyzedFunction(
+                            tracker, self, apply_propagate_attrs, fn
+                        )
+                        rec.closure_bindparams = bindparams
+                        lambda_cache[key] = rec
+                    else:
+                        rec = lambda_cache[key]
             else:
                 rec = NonAnalyzedFunction(self._invoke_user_fn(fn))
 
@@ -607,6 +614,8 @@ class AnalyzedCode(object):
     )
     _fns = weakref.WeakKeyDictionary()
 
+    _generation_mutex = threading.RLock()
+
     @classmethod
     def get(cls, fn, lambda_element, lambda_kw, **kw):
         try:
@@ -614,10 +623,16 @@ class AnalyzedCode(object):
             return cls._fns[fn.__code__]
         except KeyError:
             pass
-        cls._fns[fn.__code__] = analyzed = AnalyzedCode(
-            fn, lambda_element, lambda_kw, **kw
-        )
-        return analyzed
+
+        with cls._generation_mutex:
+            # check for other thread already created object
+            if fn.__code__ in cls._fns:
+                return cls._fns[fn.__code__]
+
+            cls._fns[fn.__code__] = analyzed = AnalyzedCode(
+                fn, lambda_element, lambda_kw, **kw
+            )
+            return analyzed
 
     def __init__(self, fn, lambda_element, opts):
         if inspect.ismethod(fn):

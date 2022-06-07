@@ -241,7 +241,14 @@ class ClauseElement(
         """
         skip = self._memoized_keys
         c = self.__class__.__new__(self.__class__)
-        c.__dict__ = {k: v for k, v in self.__dict__.items() if k not in skip}
+
+        if skip:
+            # ensure this iteration remains atomic
+            c.__dict__ = {
+                k: v for k, v in self.__dict__.copy().items() if k not in skip
+            }
+        else:
+            c.__dict__ = self.__dict__.copy()
 
         # this is a marker that helps to "equate" clauses to each other
         # when a Select returns its list of FROM clauses.  the cloning
