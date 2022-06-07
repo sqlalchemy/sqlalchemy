@@ -893,7 +893,7 @@ class OracleDialect_cx_oracle(OracleDialect):
     @util.deprecated_params(
         threaded=(
             "1.3",
-            "The 'threaded' parameter to the cx_oracle dialect "
+            "The 'threaded' parameter to the cx_oracle/oracledb dialect "
             "is deprecated as a dialect-level argument, and will be removed "
             "in a future release.  As of version 1.3, it defaults to False "
             "rather than True.  The 'threaded' option can be passed to "
@@ -927,40 +927,40 @@ class OracleDialect_cx_oracle(OracleDialect):
             self.colspecs[sqltypes.Unicode] = _OracleUnicodeStringNCHAR
             self.colspecs[sqltypes.UnicodeText] = _OracleUnicodeTextNCLOB
 
-        cx_Oracle = self.dbapi
+        dbapi_module = self.dbapi
+        self._load_version(dbapi_module)
 
-        if cx_Oracle is None:
-            self.cx_oracle_ver = (0, 0, 0)
-        else:
-            self.cx_oracle_ver = self._parse_cx_oracle_ver(cx_Oracle.version)
-            if self.cx_oracle_ver < (7,) and self.cx_oracle_ver > (0, 0, 0):
-                raise exc.InvalidRequestError(
-                    "cx_Oracle version 7 and above are supported"
-                )
-
+        if dbapi_module is not None:
             self.include_set_input_sizes = {
-                cx_Oracle.DATETIME,
-                cx_Oracle.NCLOB,
-                cx_Oracle.CLOB,
-                cx_Oracle.LOB,
-                cx_Oracle.NCHAR,
-                cx_Oracle.FIXED_NCHAR,
-                cx_Oracle.BLOB,
-                cx_Oracle.FIXED_CHAR,
-                cx_Oracle.TIMESTAMP,
+                dbapi_module.DATETIME,
+                dbapi_module.NCLOB,
+                dbapi_module.CLOB,
+                dbapi_module.LOB,
+                dbapi_module.NCHAR,
+                dbapi_module.FIXED_NCHAR,
+                dbapi_module.BLOB,
+                dbapi_module.FIXED_CHAR,
+                dbapi_module.TIMESTAMP,
                 int,  # _OracleInteger,
                 # _OracleBINARY_FLOAT, _OracleBINARY_DOUBLE,
-                cx_Oracle.NATIVE_FLOAT,
+                dbapi_module.NATIVE_FLOAT,
             }
 
             self._paramval = lambda value: value.getvalue()
 
-    def _parse_cx_oracle_ver(self, version):
-        m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
-        if m:
-            return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
-        else:
-            return (0, 0, 0)
+    def _load_version(self, dbapi_module):
+        version = (0, 0, 0)
+        if dbapi_module is not None:
+            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", dbapi_module.version)
+            if m:
+                version = tuple(
+                    int(x) for x in m.group(1, 2, 3) if x is not None
+                )
+        self.cx_oracle_ver = version
+        if self.cx_oracle_ver < (7,) and self.cx_oracle_ver > (0, 0, 0):
+            raise exc.InvalidRequestError(
+                "cx_Oracle version 7 and above are supported"
+            )
 
     @classmethod
     def import_dbapi(cls):
@@ -969,7 +969,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         return cx_Oracle
 
     def initialize(self, connection):
-        super(OracleDialect_cx_oracle, self).initialize(connection)
+        super().initialize(connection)
         self._detect_decimal_char(connection)
 
     def get_isolation_level(self, dbapi_connection):
@@ -1163,8 +1163,9 @@ class OracleDialect_cx_oracle(OracleDialect):
         for opt in ("use_ansi", "auto_convert_lobs"):
             if opt in opts:
                 util.warn_deprecated(
-                    "cx_oracle dialect option %r should only be passed to "
-                    "create_engine directly, not within the URL string" % opt,
+                    f"{self.driver} dialect option {opt!r} should only be "
+                    "passed to create_engine directly, not within the URL "
+                    "string",
                     version="1.3",
                 )
                 util.coerce_kw_type(opts, opt, bool)

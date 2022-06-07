@@ -56,3 +56,8 @@ cx_Oracle
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
 
+python-oracledb
+---------------
+
+.. automodule:: sqlalchemy.dialects.oracle.oracledb
+

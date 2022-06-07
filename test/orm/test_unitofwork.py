@@ -1187,7 +1187,6 @@ class DefaultTest(fixtures.MappedTest):
         self.assert_(h2.foober == h3.foober == h4.foober == "im foober")
         eq_(h5.foober, "im the new foober")
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_eager_defaults(self):
         hohoval, default_t, Hoho = (
             self.other.hohoval,
