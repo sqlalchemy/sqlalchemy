@@ -151,7 +151,7 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
                 if set(f.c).union(s.c).issuperset(cols_in_onclause):
                     idx.append(i)
                     break
-            elif Join._can_join(f, s) or onclause is not None:
+            elif onclause is not None or Join._can_join(f, s):
                 idx.append(i)
                 break
 

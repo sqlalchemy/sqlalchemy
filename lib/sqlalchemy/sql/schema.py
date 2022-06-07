@@ -2049,10 +2049,19 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         information is not transferred.
 
         """
+
         fk = [
-            ForeignKey(f.column, _constraint=f.constraint)
-            for f in self.foreign_keys
+            ForeignKey(
+                col if col is not None else f._colspec,
+                _unresolvable=col is None,
+                _constraint=f.constraint,
+            )
+            for f, col in [
+                (fk, fk._resolve_column(raiseerr=False))
+                for fk in self.foreign_keys
+            ]
         ]
+
         if name is None and self.name is None:
             raise exc.InvalidRequestError(
                 "Cannot initialize a sub-selectable"
@@ -2152,6 +2161,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         link_to_name=False,
         match=None,
         info=None,
+        _unresolvable=False,
         **dialect_kw
     ):
         r"""
@@ -2225,6 +2235,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """
 
         self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
+        self._unresolvable = _unresolvable
 
         if isinstance(self._colspec, util.string_types):
             self._table_column = None
@@ -2411,6 +2422,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         parenttable = self.parent.table
 
+        if self._unresolvable:
+            schema, tname, colname = self._column_tokens
+            tablekey = _get_table_key(tname, schema)
+            return parenttable, tablekey, colname
+
         # assertion
         # basically Column._make_proxy() sends the actual
         # target Column to the ForeignKey object, so the
@@ -2499,11 +2515,17 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
+        return self._resolve_column()
+
+    def _resolve_column(self, raiseerr=True):
+
         if isinstance(self._colspec, util.string_types):
 
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
-            if tablekey not in parenttable.metadata:
+            if self._unresolvable or tablekey not in parenttable.metadata:
+                if not raiseerr:
+                    return None
                 raise exc.NoReferencedTableError(
                     "Foreign key associated with column '%s' could not find "
                     "table '%s' with which to generate a "
@@ -2512,6 +2534,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     tablekey,
                 )
             elif parenttable.key not in parenttable.metadata:
+                if not raiseerr:
+                    return None
                 raise exc.InvalidRequestError(
                     "Table %s is no longer associated with its "
                     "parent MetaData" % parenttable

@@ -1407,21 +1407,67 @@ class SelectableTest(
         assert j4.corresponding_column(j2.c.aid) is j4.c.aid
         assert j4.corresponding_column(a.c.id) is j4.c.id
 
-    def test_two_metadata_join_raises(self):
+    @testing.combinations(True, False)
+    def test_two_metadata_join_raises(self, include_a_joining_table):
+        """test case from 2008 enhanced as of #8101, more specific failure
+        modes for non-resolvable FKs
+
+        """
         m = MetaData()
         m2 = MetaData()
 
         t1 = Table("t1", m, Column("id", Integer), Column("id2", Integer))
-        t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
+
+        if include_a_joining_table:
+            t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
+
         t3 = Table("t3", m2, Column("id", Integer, ForeignKey("t1.id2")))
 
-        s = (
-            select(t2, t3)
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            .subquery()
-        )
+        with expect_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 't3.id'",
+        ):
+            t3.join(t1)
 
-        assert_raises(exc.NoReferencedTableError, s.join, t1)
+        if include_a_joining_table:
+            s = (
+                select(t2, t3)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery()
+            )
+        else:
+            s = (
+                select(t3)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery()
+            )
+
+        with expect_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 'anon_1.t3_id' could not "
+            "find table 't1' with which to generate a foreign key to target "
+            "column 'id2'",
+        ):
+            select(s.join(t1)),
+
+        # manual join is OK.  using select().join() here is also exercising
+        # that join() does not need to resolve FKs if we provided the
+        # ON clause
+        if include_a_joining_table:
+            self.assert_compile(
+                select(s).join(
+                    t1, and_(s.c.t2_id == t1.c.id, s.c.t3_id == t1.c.id)
+                ),
+                "SELECT anon_1.t2_id, anon_1.t3_id FROM (SELECT "
+                "t2.id AS t2_id, t3.id AS t3_id FROM t2, t3) AS anon_1 "
+                "JOIN t1 ON anon_1.t2_id = t1.id AND anon_1.t3_id = t1.id",
+            )
+        else:
+            self.assert_compile(
+                select(s).join(t1, s.c.t3_id == t1.c.id),
+                "SELECT anon_1.t3_id FROM (SELECT t3.id AS t3_id FROM t3) "
+                "AS anon_1 JOIN t1 ON anon_1.t3_id = t1.id",
+            )
 
     def test_multi_label_chain_naming_col(self):
         # See [ticket:2167] for this one.
