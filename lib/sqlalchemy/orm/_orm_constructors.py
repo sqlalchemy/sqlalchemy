@@ -724,11 +724,19 @@ def with_loader_criteria(
      accepts a target class as an argument, when the given class is
      a base with many different mapped subclasses.
 
+     .. note:: when the SQL expression is a lambda, **pickling is not
+        supported**.  Set
+        :paramref:`_orm.with_loader_criteria.propagate_to_loaders`
+        to ``False`` to prevent the object from being applied to instances.
+
     :param include_aliases: if True, apply the rule to :func:`_orm.aliased`
      constructs as well.
 
     :param propagate_to_loaders: defaults to True, apply to relationship
-     loaders such as lazy loaders.
+     loaders such as lazy loaders.   This indicates that the
+     option object itself including SQL expression is carried along with
+     each loaded instance.  Set to ``False`` to prevent the object from
+     being assigned to individual instances.
 
 
      .. seealso::
