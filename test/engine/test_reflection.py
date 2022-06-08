@@ -12,6 +12,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import schema
+from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -23,6 +24,7 @@ from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -252,41 +254,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=connection,
         )
         assert "nonexistent" not in meta.tables
-
-    def test_include_columns(self, connection, metadata):
-        meta = metadata
-        foo = Table(
-            "foo",
-            meta,
-            *[Column(n, sa.String(30)) for n in ["a", "b", "c", "d", "e", "f"]]
-        )
-        meta.create_all(connection)
-        meta2 = MetaData()
-        foo = Table(
-            "foo",
-            meta2,
-            autoload_with=connection,
-            include_columns=["b", "f", "e"],
-        )
-        # test that cols come back in original order
-        eq_([c.name for c in foo.c], ["b", "e", "f"])
-        for c in ("b", "f", "e"):
-            assert c in foo.c
-        for c in ("a", "c", "d"):
-            assert c not in foo.c
-
-        # test against a table which is already reflected
-        meta3 = MetaData()
-        foo = Table("foo", meta3, autoload_with=connection)
-
-        foo = Table(
-            "foo", meta3, include_columns=["b", "f", "e"], extend_existing=True
-        )
-        eq_([c.name for c in foo.c], ["b", "e", "f"])
-        for c in ("b", "f", "e"):
-            assert c in foo.c
-        for c in ("a", "c", "d"):
-            assert c not in foo.c
 
     def test_extend_existing(self, connection, metadata):
         meta = metadata
@@ -2236,3 +2203,156 @@ class IdentityColumnTest(fixtures.TablesTest):
         is_true(table.c.id1.identity is not None)
         eq_(table.c.id1.identity.start, 2)
         eq_(table.c.id1.identity.increment, 3)
+
+
+class IncludeColsFksTest(AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def tab_wo_fks(self, connection, metadata):
+        meta = metadata
+        foo = Table(
+            "foo",
+            meta,
+            *[Column(n, sa.String(30)) for n in ["a", "b", "c", "d", "e", "f"]]
+        )
+        meta.create_all(connection)
+
+        return foo
+
+    @testing.fixture
+    def tab_w_fks(self, connection, metadata):
+        Table(
+            "a",
+            metadata,
+            Column("x", Integer, primary_key=True),
+            test_needs_fk=True,
+        )
+
+        b = Table(
+            "b",
+            metadata,
+            Column("x", Integer, primary_key=True),
+            Column("q", Integer),
+            Column("p", Integer),
+            Column("r", Integer, ForeignKey("a.x")),
+            Column("s", Integer),
+            Column("t", Integer),
+            test_needs_fk=True,
+        )
+
+        metadata.create_all(connection)
+
+        return b
+
+    def test_include_columns(self, connection, tab_wo_fks):
+        foo = tab_wo_fks
+        meta2 = MetaData()
+        foo = Table(
+            "foo",
+            meta2,
+            autoload_with=connection,
+            include_columns=["b", "f", "e"],
+        )
+        # test that cols come back in original order
+        eq_([c.name for c in foo.c], ["b", "e", "f"])
+        for c in ("b", "f", "e"):
+            assert c in foo.c
+        for c in ("a", "c", "d"):
+            assert c not in foo.c
+
+        # test against a table which is already reflected
+        meta3 = MetaData()
+        foo = Table("foo", meta3, autoload_with=connection)
+
+        foo = Table(
+            "foo", meta3, include_columns=["b", "f", "e"], extend_existing=True
+        )
+        eq_([c.name for c in foo.c], ["b", "e", "f"])
+        for c in ("b", "f", "e"):
+            assert c in foo.c
+        for c in ("a", "c", "d"):
+            assert c not in foo.c
+
+    @testing.emits_warning
+    @testing.combinations(True, False, argnames="resolve_fks")
+    def test_include_cols_skip_fk_col(
+        self, connection, tab_w_fks, resolve_fks
+    ):
+        """test #8100"""
+
+        m2 = MetaData()
+
+        b2 = Table(
+            "b",
+            m2,
+            autoload_with=connection,
+            resolve_fks=resolve_fks,
+            include_columns=["x", "q", "p"],
+        )
+
+        eq_([c.name for c in b2.c], ["x", "q", "p"])
+
+        # no FK, whether or not resolve_fks was called
+        eq_(b2.constraints, set((b2.primary_key,)))
+
+        b2a = b2.alias()
+        eq_([c.name for c in b2a.c], ["x", "q", "p"])
+
+        self.assert_compile(select(b2), "SELECT b.x, b.q, b.p FROM b")
+        self.assert_compile(
+            select(b2.alias()),
+            "SELECT b_1.x, b_1.q, b_1.p FROM b AS b_1",
+        )
+
+    def test_table_works_minus_fks(self, connection, tab_w_fks):
+        """test #8101"""
+
+        m2 = MetaData()
+
+        b2 = Table(
+            "b",
+            m2,
+            autoload_with=connection,
+            resolve_fks=False,
+        )
+
+        eq_([c.name for c in b2.c], ["x", "q", "p", "r", "s", "t"])
+
+        b2a = b2.alias()
+        eq_([c.name for c in b2a.c], ["x", "q", "p", "r", "s", "t"])
+
+        self.assert_compile(
+            select(b2), "SELECT b.x, b.q, b.p, b.r, b.s, b.t FROM b"
+        )
+        b2a_1 = b2.alias()
+        self.assert_compile(
+            select(b2a_1),
+            "SELECT b_1.x, b_1.q, b_1.p, b_1.r, b_1.s, b_1.t FROM b AS b_1",
+        )
+
+        # reflecting the related table
+        a2 = Table("a", m2, autoload_with=connection)
+
+        # the existing alias doesn't know about it
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            "Foreign key associated with column 'anon_1.r' could not find "
+            "table 'a' with which to generate a foreign key to target "
+            "column 'x'",
+        ):
+            select(b2a_1).join(a2).compile()
+
+        # can still join manually (needed to fix inside of util for this...)
+        self.assert_compile(
+            select(b2a_1).join(a2, b2a_1.c.r == a2.c.x),
+            "SELECT b_1.x, b_1.q, b_1.p, b_1.r, b_1.s, b_1.t "
+            "FROM b AS b_1 JOIN a ON b_1.r = a.x",
+        )
+
+        # a new alias does know about it however
+        self.assert_compile(
+            select(b2.alias()).join(a2),
+            "SELECT b_1.x, b_1.q, b_1.p, b_1.r, b_1.s, b_1.t "
+            "FROM b AS b_1 JOIN a ON a.x = b_1.r",
+        )
