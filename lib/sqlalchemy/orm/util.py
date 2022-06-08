@@ -907,6 +907,8 @@ class _WrapUserEntity(object):
 
     """
 
+    __slots__ = ("subject",)
+
     def __init__(self, subject):
         self.subject = subject
 
@@ -1092,10 +1094,9 @@ class LoaderCriteriaOption(CriteriaOption):
          accepts a target class as an argument, when the given class is
          a base with many different mapped subclasses.
 
-         .. note:: when the SQL expression is a lambda, **pickling is not
-            supported**.  Set
-            :paramref:`_orm.with_loader_criteria.propagate_to_loaders`
-            to ``False`` to prevent the object from being applied to instances.
+         .. note:: To support pickling, use a module-level Python function to
+            produce the SQL expression instead of a lambda or a fixed SQL
+            expression, which tend to not be picklable.
 
         :param include_aliases: if True, apply the rule to :func:`_orm.aliased`
          constructs as well.
@@ -1132,6 +1133,7 @@ class LoaderCriteriaOption(CriteriaOption):
             self.root_entity = None
             self.entity = entity
 
+        self._where_crit_orig = where_criteria
         if callable(where_criteria):
             self.deferred_where_criteria = True
             self.where_criteria = lambdas.DeferredLambdaElement(
@@ -1157,7 +1159,30 @@ class LoaderCriteriaOption(CriteriaOption):
         self.include_aliases = include_aliases
         self.propagate_to_loaders = propagate_to_loaders
 
+    @classmethod
+    def _unreduce(
+        cls, entity, where_criteria, include_aliases, propagate_to_loaders
+    ):
+        return LoaderCriteriaOption(
+            entity,
+            where_criteria,
+            include_aliases=include_aliases,
+            propagate_to_loaders=propagate_to_loaders,
+        )
+
+    def __reduce__(self):
+        return (
+            LoaderCriteriaOption._unreduce,
+            (
+                self.entity.class_ if self.entity else None,
+                self._where_crit_orig,
+                self.include_aliases,
+                self.propagate_to_loaders,
+            ),
+        )
+
     def _all_mappers(self):
+
         if self.entity:
             for ent in self.entity.mapper.self_and_descendants:
                 yield ent
