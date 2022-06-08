@@ -3828,6 +3828,33 @@ class JSONRoundTripTest(fixtures.TablesTest):
         ).fetchall()
         eq_([d for d, in data], [None])
 
+    @testing.combinations(
+        "key",
+        "réve🐍 illé",
+        'name_with"quotes"name',
+        "name with spaces",
+        "name with ' single ' quotes",
+        'some_key("idx")',
+        argnames="key",
+    )
+    def test_indexed_special_keys(self, connection, key):
+        data_table = self.tables.data_table
+        data_element = {key: "some value"}
+
+        connection.execute(
+            data_table.insert(),
+            {
+                "name": "row1",
+                "data": data_element,
+                "nulldata": data_element,
+            },
+        )
+
+        row = connection.execute(
+            select(data_table.c.data[key], data_table.c.nulldata[key])
+        ).one()
+        eq_(row, ("some value", "some value"))
+
     def test_reflect(self, connection):
         insp = inspect(connection)
         cols = insp.get_columns("data_table")
