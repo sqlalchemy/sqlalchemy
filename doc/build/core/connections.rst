@@ -1442,11 +1442,13 @@ SELECTs with LIMIT/OFFSET are correctly rendered and cached.
 Using Lambdas to add significant speed gains to statement production
 --------------------------------------------------------------------
 
-.. deepalchemy:: This technique is generally non-essential except in very performance
-   intensive scenarios, and intended for experienced Python programmers.
-   While fairly straightforward, it involves metaprogramming concepts that are
-   not appropriate for novice Python developers.  The lambda approach can be
-   applied to at a later time to existing code with a minimal amount of effort.
+.. deprecated:: 1.4  The lambda statement feature is being considered
+   for deprecation in SQLAlchemy and removal from documentation for 2.0. The
+   internal workings have been shown to be not thread safe during construction
+   for multi-lambda statements, and the overall complexity of the feature has
+   proven to be mostly impractical outside of a particular narrow use case
+   in the ORM.
+
 
 Python functions, typically expressed as lambdas, may be used to generate
 SQL expressions which are cacheable based on the Python code location of
@@ -1480,11 +1482,15 @@ to also having closure variables, which are significant to the whole
 approach::
 
     from sqlalchemy import lambda_stmt
+    import threading
+
+    mutex = threading.Lock()
 
     def run_my_statement(connection, parameter):
-        stmt = lambda_stmt(lambda: select(table))
-        stmt += lambda s: s.where(table.c.col == parameter)
-        stmt += lambda s: s.order_by(table.c.id)
+        with mutex:
+            stmt = lambda_stmt(lambda: select(table))
+            stmt += lambda s: s.where(table.c.col == parameter)
+            stmt += lambda s: s.order_by(table.c.id)
 
         return connection.execute(stmt)
 
@@ -1515,15 +1521,26 @@ objects will run and analyze the given lambda in order to calculate how
 it should be cached on each run, trying to detect any potential problems.
 Basic guidelines include:
 
+* **For multi-threaded applications, a mutex is required when building up
+  statements among multiple lambdas** -
+  this is a discovered limitation in the implementation; while SQLAlchemy
+  developers hope to repair it, code examples are illustrating this
+  usage for now until it can be fixed.
+
 * **Any kind of statement is supported** - while it's expected that
   :func:`_sql.select` constructs are the prime use case for :func:`_sql.lambda_stmt`,
   DML statements such as :func:`_sql.insert` and :func:`_sql.update` are
   equally usable::
 
+    import threading
+
+    mutex = threading.Lock()
+
     def upd(id_, newname):
-        stmt = lambda_stmt(lambda: users.update())
-        stmt += lambda s: s.values(name=newname)
-        stmt += lambda s: s.where(users.c.id==id_)
+        with mutex:
+            stmt = lambda_stmt(lambda: users.update())
+            stmt += lambda s: s.values(name=newname)
+            stmt += lambda s: s.where(users.c.id==id_)
         return stmt
 
     with engine.begin() as conn:
@@ -1535,15 +1552,19 @@ Basic guidelines include:
   can accommodate ORM functionality completely and used directly with
   :meth:`_orm.Session.execute`::
 
+    import threading
+
+    mutex = threading.Lock()
+
     def select_user(session, name):
-        stmt = lambda_stmt(lambda: select(User))
-        stmt += lambda s: s.where(User.name == name)
+        with mutex:
+            stmt = lambda_stmt(lambda: select(User))
+            stmt += lambda s: s.where(User.name == name)
 
         row = session.execute(stmt).first()
         return row
 
   ..
-
 * **Bound parameters are automatically accommodated** - in contrast to SQLAlchemy's
   previous "baked query" system, the lambda SQL system accommodates for
   Python literal values which become SQL bound parameters automatically.
