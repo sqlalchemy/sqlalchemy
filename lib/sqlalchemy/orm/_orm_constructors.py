@@ -724,10 +724,9 @@ def with_loader_criteria(
      accepts a target class as an argument, when the given class is
      a base with many different mapped subclasses.
 
-     .. note:: when the SQL expression is a lambda, **pickling is not
-        supported**.  Set
-        :paramref:`_orm.with_loader_criteria.propagate_to_loaders`
-        to ``False`` to prevent the object from being applied to instances.
+     .. note:: To support pickling, use a module-level Python function to
+        produce the SQL expression instead of a lambda or a fixed SQL
+        expression, which tend to not be picklable.
 
     :param include_aliases: if True, apply the rule to :func:`_orm.aliased`
      constructs as well.

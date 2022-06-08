@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8109
+
+    Fixed issue where a :func:`_orm.with_loader_criteria` option could not be
+    pickled, as is necessary when it is carried along for propagation to lazy
+    loaders in conjunction with a caching scheme. Currently, the only form that
+    is supported as picklable is to pass the "where criteria" as a fixed
+    module-level callable function that produces a SQL expression. An ad-hoc
+    "lambda" can't be pickled, and a SQL expression object is usually not fully
+    picklable directly.
+

@@ -1138,6 +1138,8 @@ class _WrapUserEntity:
 
     """
 
+    __slots__ = ("subject",)
+
     def __init__(self, subject):
         self.subject = subject
 
@@ -1171,6 +1173,7 @@ class LoaderCriteriaOption(CriteriaOption):
         "entity",
         "deferred_where_criteria",
         "where_criteria",
+        "_where_crit_orig",
         "include_aliases",
         "propagate_to_loaders",
     )
@@ -1189,6 +1192,8 @@ class LoaderCriteriaOption(CriteriaOption):
     deferred_where_criteria: bool
     include_aliases: bool
     propagate_to_loaders: bool
+
+    _where_crit_orig: Any
 
     def __init__(
         self,
@@ -1210,6 +1215,7 @@ class LoaderCriteriaOption(CriteriaOption):
             self.root_entity = None
             self.entity = entity
 
+        self._where_crit_orig = where_criteria
         if callable(where_criteria):
             if self.root_entity is not None:
                 wrap_entity = self.root_entity
@@ -1234,6 +1240,28 @@ class LoaderCriteriaOption(CriteriaOption):
 
         self.include_aliases = include_aliases
         self.propagate_to_loaders = propagate_to_loaders
+
+    @classmethod
+    def _unreduce(
+        cls, entity, where_criteria, include_aliases, propagate_to_loaders
+    ):
+        return LoaderCriteriaOption(
+            entity,
+            where_criteria,
+            include_aliases=include_aliases,
+            propagate_to_loaders=propagate_to_loaders,
+        )
+
+    def __reduce__(self):
+        return (
+            LoaderCriteriaOption._unreduce,
+            (
+                self.entity.class_ if self.entity else None,
+                self._where_crit_orig,
+                self.include_aliases,
+                self.propagate_to_loaders,
+            ),
+        )
 
     def _all_mappers(self) -> Iterator[Mapper[Any]]:
 
