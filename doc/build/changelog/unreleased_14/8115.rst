@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 8115
+
+    Repaired a deprecation warning class decorator that was preventing key
+    objects such as :class:`_engine.Connection` from having a proper
+    ``__weakref__`` attribute, causing operations like Python standard library
+    ``inspect.getmembers()`` to fail.
+
