@@ -10,6 +10,8 @@ unpickling.
 """
 
 from . import fixtures
+from ..schema import Column
+from ..types import String
 
 
 class User(fixtures.ComparableEntity):
@@ -49,6 +51,14 @@ class Screen(object):
     def __init__(self, obj, parent=None):
         self.obj = obj
         self.parent = parent
+
+
+class Mixin(object):
+    email_address = Column(String)
+
+
+class AddressWMixin(Mixin, fixtures.ComparableEntity):
+    pass
 
 
 class Foo(object):
