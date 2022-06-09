@@ -988,13 +988,15 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if not parameters:
             self.compiled_parameters = [
                 compiled.construct_params(
-                    extracted_parameters=extracted_parameters
+                    extracted_parameters=extracted_parameters,
+                    escape_names=False,
                 )
             ]
         else:
             self.compiled_parameters = [
                 compiled.construct_params(
                     m,
+                    escape_names=False,
                     _group_number=grp,
                     extracted_parameters=extracted_parameters,
                 )

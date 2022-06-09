@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8113
+
+    Adjusted the fix made for :ticket:`8056` which adjusted the escaping of
+    bound parameter names with special characters such that the escaped names
+    were translated after the SQL compilation step, which broke a published
+    recipe on the FAQ illustrating how to merge parameter names into the string
+    output of a compiled SQL string. The change restores the escaped names that
+    come from ``compiled.params`` and adds a conditional parameter to
+    :meth:`.SQLCompiler.construct_params` named ``escape_names`` that defaults
+    to ``True``, restoring the old behavior by default.

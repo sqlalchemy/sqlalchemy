@@ -490,7 +490,9 @@ class Compiled(object):
 
         return self.string or ""
 
-    def construct_params(self, params=None, extracted_parameters=None):
+    def construct_params(
+        self, params=None, extracted_parameters=None, escape_names=True
+    ):
         """Return the bind params for this compiled object.
 
         :param params: a dict of string/object pairs whose values will
@@ -932,8 +934,11 @@ class SQLCompiler(Compiled):
         _group_number=None,
         _check=True,
         extracted_parameters=None,
+        escape_names=True,
     ):
         """return a dictionary of bind parameter keys and values"""
+
+        has_escaped_names = escape_names and bool(self.escaped_bind_names)
 
         if extracted_parameters:
             # related the bound parameters collected in the original cache key
@@ -965,10 +970,16 @@ class SQLCompiler(Compiled):
         if params:
             pd = {}
             for bindparam, name in self.bind_names.items():
+                escaped_name = (
+                    self.escaped_bind_names.get(name, name)
+                    if has_escaped_names
+                    else name
+                )
+
                 if bindparam.key in params:
-                    pd[name] = params[bindparam.key]
+                    pd[escaped_name] = params[bindparam.key]
                 elif name in params:
-                    pd[name] = params[name]
+                    pd[escaped_name] = params[name]
 
                 elif _check and bindparam.required:
                     if _group_number:
@@ -993,13 +1004,19 @@ class SQLCompiler(Compiled):
                         value_param = bindparam
 
                     if bindparam.callable:
-                        pd[name] = value_param.effective_value
+                        pd[escaped_name] = value_param.effective_value
                     else:
-                        pd[name] = value_param.value
+                        pd[escaped_name] = value_param.value
             return pd
         else:
             pd = {}
             for bindparam, name in self.bind_names.items():
+                escaped_name = (
+                    self.escaped_bind_names.get(name, name)
+                    if has_escaped_names
+                    else name
+                )
+
                 if _check and bindparam.required:
                     if _group_number:
                         raise exc.InvalidRequestError(
@@ -1021,9 +1038,9 @@ class SQLCompiler(Compiled):
                     value_param = bindparam
 
                 if bindparam.callable:
-                    pd[name] = value_param.effective_value
+                    pd[escaped_name] = value_param.effective_value
                 else:
-                    pd[name] = value_param.value
+                    pd[escaped_name] = value_param.value
             return pd
 
     @util.memoized_instancemethod
@@ -1123,7 +1140,7 @@ class SQLCompiler(Compiled):
         """
 
         if parameters is None:
-            parameters = self.construct_params()
+            parameters = self.construct_params(escape_names=False)
 
         expanded_parameters = {}
         if self.positional:
@@ -4317,7 +4334,9 @@ class DDLCompiler(Compiled):
     def type_compiler(self):
         return self.dialect.type_compiler
 
-    def construct_params(self, params=None, extracted_parameters=None):
+    def construct_params(
+        self, params=None, extracted_parameters=None, escape_names=True
+    ):
         return None
 
     def visit_ddl(self, ddl, **kwargs):
