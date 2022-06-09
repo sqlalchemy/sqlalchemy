@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8098
+
+    Fixed multiple observed race conditions related to :func:`.lambda_stmt`,
+    including an initial "dogpile" issue when a new Python code object is
+    initially analyzed among multiple simultaneous threads which created both a
+    performance issue as well as some internal corruption of state.
+    Additionally repaired observed race condition which could occur when
+    "cloning" an expression construct that is also in the process of being
+    compiled or otherwise accessed in a different thread due to memoized
+    attributes altering the ``__dict__`` while iterated, for Python versions
+    prior to 3.10; in particular the lambda SQL construct is sensitive to this
+    as it holds onto a single statement object persistently. The iteration has
+    been refined to use ``dict.copy()`` with or without an additional iteration
+    instead.

@@ -559,8 +559,9 @@ class Generative(HasMemoized):
         cls = self.__class__
         s = cls.__new__(cls)
         if skip:
+            # ensure this iteration remains atomic
             s.__dict__ = {
-                k: v for k, v in self.__dict__.items() if k not in skip
+                k: v for k, v in self.__dict__.copy().items() if k not in skip
             }
         else:
             s.__dict__ = self.__dict__.copy()
