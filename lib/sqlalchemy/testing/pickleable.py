@@ -14,6 +14,8 @@ unpickling.
 from __future__ import annotations
 
 from . import fixtures
+from ..schema import Column
+from ..types import String
 
 
 class User(fixtures.ComparableEntity):
@@ -53,6 +55,14 @@ class Screen:
     def __init__(self, obj, parent=None):
         self.obj = obj
         self.parent = parent
+
+
+class Mixin:
+    email_address = Column(String)
+
+
+class AddressWMixin(Mixin, fixtures.ComparableEntity):
+    pass
 
 
 class Foo:

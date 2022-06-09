@@ -1256,7 +1256,7 @@ class LoaderCriteriaOption(CriteriaOption):
         return (
             LoaderCriteriaOption._unreduce,
             (
-                self.entity.class_ if self.entity else None,
+                self.entity.class_ if self.entity else self.root_entity,
                 self._where_crit_orig,
                 self.include_aliases,
                 self.propagate_to_loaders,
