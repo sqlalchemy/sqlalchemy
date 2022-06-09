@@ -1,6 +1,9 @@
+from sqlalchemy import testing
+from sqlalchemy.exc import SADeprecationWarning
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
+from sqlalchemy.util.deprecations import _decorate_cls_with_warning
 from sqlalchemy.util.deprecations import warn_deprecated_limited
 from sqlalchemy.util.langhelpers import _hash_limit_string
 
@@ -34,3 +37,46 @@ class WarnDeprecatedLimitedTest(fixtures.TestBase):
 
         eq_(len(printouts), occurrences)
         eq_(len(messages), cap)
+
+
+class ClsWarningTest(fixtures.TestBase):
+    @testing.fixture
+    def dep_cls_fixture(self):
+        class Connectable(object):
+            """a docstring"""
+
+            some_member = "foo"
+
+        Connectable = _decorate_cls_with_warning(
+            Connectable,
+            None,
+            SADeprecationWarning,
+            "a message",
+            "2.0",
+            "another message",
+        )
+
+        return Connectable
+
+    def test_dep_inspectable(self, dep_cls_fixture):
+        """test #8115"""
+
+        import inspect
+
+        class PlainClass(object):
+            some_member = "bar"
+
+        pc_keys = dict(inspect.getmembers(PlainClass()))
+        insp_keys = dict(inspect.getmembers(dep_cls_fixture()))
+
+        assert set(insp_keys).intersection(
+            (
+                "__class__",
+                "__doc__",
+                "__eq__",
+                "__dict__",
+                "__weakref__",
+                "some_member",
+            )
+        )
+        eq_(set(pc_keys), set(insp_keys))

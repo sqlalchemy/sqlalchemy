@@ -356,6 +356,7 @@ def _decorate_cls_with_warning(
             clsdict = dict(cls.__dict__)
             clsdict["__doc__"] = doc
             clsdict.pop("__dict__", None)
+            clsdict.pop("__weakref__", None)
             cls = type(cls.__name__, cls.__bases__, clsdict)
             if constructor is not None:
                 constructor_fn = clsdict[constructor]
