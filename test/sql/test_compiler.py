@@ -3752,9 +3752,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         """general bind param escape unit tests added as a result of
         #8053.
 
-        However, note that the final application of an escaped param name
+        The final application of an escaped param name
         was moved out of compiler and into DefaultExecutionContext in
         related issue #8056.
+
+        However in #8113 we made this conditional to suit usage recipes
+        posted in the FAQ.
+
 
         """
 
@@ -3788,14 +3792,33 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         compiled = t.insert().compile(
             dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
         )
-        params = compiled.construct_params({"_id": 1, "_data": one})
 
+        # not escaped
+        params = compiled.construct_params(
+            {"_id": 1, "_data": one}, escape_names=False
+        )
         eq_(params, {"_id": 1, "_data": one})
+
+        # escaped by default
+        params = compiled.construct_params({"_id": 1, "_data": one})
+        eq_(params, {'"_id"': 1, '"_data"': one})
+
+        # escaped here as well
+        eq_(compiled.params, {'"_data"': None, '"_id"': None})
+
+        # bind processors aren't part of this
         eq_(compiled._bind_processors, {"_data": mock.ANY})
 
-        # previously, this was:
-        # eq_(params, {'"_id"': 1, '"_data"': one})
-        # eq_(compiled._bind_processors, {'"_data"': mock.ANY})
+        dialect.paramstyle = "pyformat"
+        compiled = t.insert().compile(
+            dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
+        )
+
+        # FAQ recipe works
+        eq_(
+            compiled.string % compiled.params,
+            "INSERT INTO t (_id, _data) VALUES (None, None)",
+        )
 
     def test_expanding_non_expanding_conflict(self):
         """test #8018"""
