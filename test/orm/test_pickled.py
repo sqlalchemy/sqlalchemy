@@ -15,6 +15,7 @@ from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import state as sa_state
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import column_mapped_collection
@@ -41,6 +42,10 @@ from .inheritance._poly_fixtures import Company
 from .inheritance._poly_fixtures import Engineer
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
+
+
+def no_ed_foo(cls):
+    return cls.email_address != "ed@foo.com"
 
 
 class PickleTest(fixtures.MappedTest):
@@ -323,6 +328,46 @@ class PickleTest(fixtures.MappedTest):
         u2 = copy.deepcopy(u1)
         u2.addresses.append(Address())
         eq_(len(u2.addresses), 2)
+
+    @testing.requires.python3
+    @testing.combinations(True, False, argnames="pickle_it")
+    def test_loader_criteria(self, pickle_it):
+        """test #8109"""
+
+        users, addresses = (self.tables.users, self.tables.addresses)
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"addresses": relationship(Address)},
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        with fixture_session(expire_on_commit=False) as sess:
+            u1 = User(name="ed")
+            u1.addresses = [
+                Address(email_address="ed@bar.com"),
+                Address(email_address="ed@foo.com"),
+            ]
+            sess.add(u1)
+            sess.commit()
+
+        with fixture_session(expire_on_commit=False) as sess:
+            # note that non-lambda is not picklable right now as
+            # SQL expressions usually can't be pickled.
+            opt = with_loader_criteria(
+                Address,
+                no_ed_foo,
+            )
+
+            u1 = sess.query(User).options(opt).first()
+
+            if pickle_it:
+                u1 = pickle.loads(pickle.dumps(u1))
+                sess.close()
+                sess.add(u1)
+
+            eq_([ad.email_address for ad in u1.addresses], ["ed@bar.com"])
 
     @testing.requires.non_broken_pickle
     def test_instance_deferred_cols(self):
