@@ -2776,7 +2776,9 @@ class Deferred_InheritanceTest(_deferred_InheritanceTest):
             )
         self.assert_compile(
             q,
-            "SELECT managers.status AS managers_status "
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, managers.status AS managers_status "
             "FROM people JOIN managers ON "
             "people.person_id = managers.person_id ORDER BY people.person_id",
         )

@@ -207,7 +207,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         cloned = cloned._set_column_strategy(
             ("*",),
             {"deferred": True, "instrument": True},
-            {"undefer_pks": True},
         )
         return cloned
 

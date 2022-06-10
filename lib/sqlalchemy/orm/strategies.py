@@ -461,7 +461,6 @@ class DeferredColumnLoader(LoaderStrategy):
             )
             or (
                 loadopt
-                and "undefer_pks" in loadopt.local_opts
                 and set(self.columns).intersection(
                     self.parent._should_undefer_in_wildcard
                 )
