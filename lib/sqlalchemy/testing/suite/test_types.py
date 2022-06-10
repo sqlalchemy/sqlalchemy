@@ -565,8 +565,37 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_literal(self, literal_round_trip):
         literal_round_trip(Integer, [5], [5])
 
-    def test_huge_int(self, integer_round_trip):
-        integer_round_trip(BigInteger, 1376537018368127)
+    def _huge_ints():
+
+        return testing.combinations(
+            2147483649,  # 32 bits
+            2147483648,  # 32 bits
+            2147483647,  # 31 bits
+            2147483646,  # 31 bits
+            -2147483649,  # 32 bits
+            -2147483648,  # 32 interestingly, asyncpg accepts this one as int32
+            -2147483647,  # 31
+            -2147483646,  # 31
+            0,
+            1376537018368127,
+            -1376537018368127,
+            argnames="intvalue",
+        )
+
+    @_huge_ints()
+    def test_huge_int_auto_accommodation(self, connection, intvalue):
+        """test #7909"""
+
+        eq_(
+            connection.scalar(
+                select(intvalue).where(literal(intvalue) == intvalue)
+            ),
+            intvalue,
+        )
+
+    @_huge_ints()
+    def test_huge_int(self, integer_round_trip, intvalue):
+        integer_round_trip(BigInteger, intvalue)
 
     @testing.fixture
     def integer_round_trip(self, metadata, connection):

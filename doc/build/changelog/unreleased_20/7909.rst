@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7909
+
+    The in-place type detection for Python integers, as occurs with an
+    expression such as ``literal(25)``, will now apply value-based adaption as
+    well to accommodate Python large integers, where the datatype determined
+    will be :class:`.BigInteger` rather than :class:`.Integer`. This
+    accommodates for dialects such as that of asyncpg which both sends implicit
+    typing information to the driver as well as is sensitive to numeric scale.
