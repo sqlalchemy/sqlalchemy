@@ -1316,10 +1316,14 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            ignored if native_enum=True.
 
         :param length: Allows specifying a custom length for the VARCHAR
-           when :paramref:`.Enum.native_enum` is False. By default it uses the
-           length of the longest value.
+           when a non-native enumeration datatype is used.  By default it uses
+           the length of the longest value.
 
-           .. versionadded:: 1.3.16
+           .. versionchanged:: 2.0.0 The :paramref:`.Enum.length` parameter
+              is used unconditionally for ``VARCHAR`` rendering regardless of
+              the :paramref:`.Enum.native_enum` parameter, for those backends
+              where ``VARCHAR`` is used for enumerated datatypes.
+
 
         :param schema: Schema name of this type. For types that exist on the
            target database as an independent schema construct (PostgreSQL),
@@ -1419,22 +1423,13 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self._default_length = length = 0
 
         if length_arg is not NO_ARG:
-            if self.native_enum:
-                if not _disable_warnings:
-                    util.warn(
-                        "Enum 'length' argument is currently ignored unless "
-                        "native_enum is specified as False, including for DDL "
-                        "that renders VARCHAR in any case.  This may change "
-                        "in a future release."
-                    )
-            else:
-                if not _disable_warnings and length_arg < length:
-                    raise ValueError(
-                        "When provided, length must be larger or equal"
-                        " than the length of the longest enum value. %s < %s"
-                        % (length_arg, length)
-                    )
-                length = length_arg
+            if not _disable_warnings and length_arg < length:
+                raise ValueError(
+                    "When provided, length must be larger or equal"
+                    " than the length of the longest enum value. %s < %s"
+                    % (length_arg, length)
+                )
+            length = length_arg
 
         self._valid_lookup[None] = self._object_lookup[None] = None
 
