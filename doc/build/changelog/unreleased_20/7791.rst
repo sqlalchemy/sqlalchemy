@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7791
+
+    The :paramref:`.Enum.length` parameter, which sets the length of the
+    ``VARCHAR`` column for non-native enumeration types, is now used
+    unconditionally when emitting DDL for the ``VARCHAR`` datatype, including
+    when the :paramref:`.Enum.native_enum` parameter is set to ``True`` for
+    target backends that continue to use ``VARCHAR``. Previously the parameter
+    would be erroneously ignored in this case. The warning previously emitted
+    for this case is now removed.

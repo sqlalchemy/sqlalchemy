@@ -83,7 +83,6 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -2394,17 +2393,25 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(e1_vc.adapt(ENUM).name, "someotherenum")
         eq_(e1_vc.adapt(ENUM).enums, ["1", "2", "3", "a", "b"])
 
-    def test_adapt_length(self):
+    @testing.combinations(True, False, argnames="native_enum")
+    def test_adapt_length(self, native_enum):
         from sqlalchemy.dialects.postgresql import ENUM
 
-        e1 = Enum("one", "two", "three", length=50, native_enum=False)
-        eq_(e1.adapt(ENUM).length, 50)
+        e1 = Enum("one", "two", "three", length=50, native_enum=native_enum)
+
+        if not native_enum:
+            eq_(e1.adapt(ENUM).length, 50)
+
         eq_(e1.adapt(Enum).length, 50)
+
+        self.assert_compile(e1, "VARCHAR(50)", dialect="default")
 
         e1 = Enum("one", "two", "three")
         eq_(e1.length, 5)
         eq_(e1.adapt(ENUM).length, 5)
         eq_(e1.adapt(Enum).length, 5)
+
+        self.assert_compile(e1, "VARCHAR(5)", dialect="default")
 
     @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):
@@ -2502,32 +2509,20 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_repr_four(self):
-        with expect_warnings(
-            "Enum 'length' argument is currently ignored unless native_enum"
-        ):
-            e = Enum("x", "y", length=255)
-        # length is currently ignored if native_enum is not False
+        e = Enum("x", "y", length=255)
         eq_(
             repr(e),
-            "Enum('x', 'y')",
+            "Enum('x', 'y', length=255)",
         )
 
     def test_length_native(self):
-        with expect_warnings(
-            "Enum 'length' argument is currently ignored unless native_enum"
-        ):
-            e = Enum("x", "y", "long", length=42)
+        e = Enum("x", "y", "long", length=42)
+        eq_(e.length, 42)
 
+        e = Enum("x", "y", "long")
         eq_(e.length, len("long"))
 
-        # no error is raised
-        with expect_warnings(
-            "Enum 'length' argument is currently ignored unless native_enum"
-        ):
-            e = Enum("x", "y", "long", length=1)
-        eq_(e.length, len("long"))
-
-    def test_length_raises(self):
+    def test_length_too_short_raises(self):
         assert_raises_message(
             ValueError,
             "When provided, length must be larger or equal.*",
