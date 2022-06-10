@@ -1782,6 +1782,8 @@ method may be used::
 
 .. versionadded:: 1.4  Added the :meth:`_engine.Connection.exec_driver_sql` method.
 
+.. _dbapi_connections_cursor:
+
 Working with the DBAPI cursor directly
 --------------------------------------
 

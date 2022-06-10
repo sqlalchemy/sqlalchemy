@@ -380,7 +380,7 @@ class EncodingErrorsTest(fixtures.TestBase):
             [
                 mock.call.var(
                     mock.ANY,
-                    None,
+                    mock.ANY,
                     cursor.arraysize,
                     encodingErrors="ignore",
                 )
@@ -411,7 +411,7 @@ class EncodingErrorsTest(fixtures.TestBase):
         else:
             eq_(
                 cursor.mock_calls,
-                [mock.call.var(mock.ANY, None, cursor.arraysize)],
+                [mock.call.var(mock.ANY, mock.ANY, cursor.arraysize)],
             )
 
 
