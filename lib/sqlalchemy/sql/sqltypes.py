@@ -366,6 +366,12 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
     def python_type(self):
         return int
 
+    def _resolve_for_literal(self, value):
+        if value.bit_length() >= 32:
+            return _BIGINTEGER
+        else:
+            return self
+
     def literal_processor(self, dialect):
         def process(value):
             return str(int(value))
@@ -3556,6 +3562,7 @@ MATCHTYPE = MatchType()
 TABLEVALUE = TableValueType()
 DATETIME_TIMEZONE = DateTime(timezone=True)
 TIME_TIMEZONE = Time(timezone=True)
+_BIGINTEGER = BigInteger()
 _DATETIME = DateTime()
 _TIME = Time()
 _STRING = String()
