@@ -257,11 +257,11 @@ class ParseConnectTest(fixtures.TestBase):
                 "larry",
                 "{moe",
                 "localhost",
-                3306,
+                1433,
                 "mydb",
             ),
             (
-                "DRIVER={foob};Server=localhost,3306;"
+                "DRIVER={foob};Server=localhost,1433;"
                 "Database=mydb;UID=larry;"
                 "PWD={{moe}",
             ),
@@ -272,11 +272,11 @@ class ParseConnectTest(fixtures.TestBase):
                 "alice",
                 "{password}",
                 "localhost",
-                3306,
+                1433,
                 "mydb",
             ),
             (
-                "DRIVER={foob};Server=localhost,3306;"
+                "DRIVER={foob};Server=localhost,1433;"
                 "Database=mydb;UID=alice;"
                 "PWD={password}",
             ),
