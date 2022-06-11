@@ -76,7 +76,8 @@ class PyODBCConnector(Connector):
             connectors = [unquote_plus(keys.pop("odbc_connect"))]
         else:
 
-            def check_quote(token: str) -> str:
+            def check_quote(token: Any) -> str:
+                token = str(token)
                 # token is already quoted, so return it as-is
                 if token.startswith("{") and token.endswith("}"):
                     return token
@@ -84,10 +85,7 @@ class PyODBCConnector(Connector):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
 
-            keys = dict(
-                (k, check_quote(v) if type(v) == str else v)
-                for k, v in keys.items()
-            )
+            keys = dict((k, check_quote(v)) for k, v in keys.items())
 
             dsn_connection = "dsn" in keys or (
                 "host" in keys and "database" not in keys
