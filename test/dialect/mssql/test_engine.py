@@ -264,6 +264,20 @@ class ParseConnectTest(fixtures.TestBase):
                 "PWD={{moe}",
             ),
         ),
+        (
+            "issue_8062_extra",
+            (
+                "alice",
+                "{password}",
+                "localhost",
+                "mydb",
+            ),
+            (
+                "DRIVER={foob};Server=localhost;"
+                "Database=mydb;UID=alice;"
+                "PWD={password}",
+            ),
+        ),
         argnames="tokens, connection_string",
         id_="iaa",
     )
