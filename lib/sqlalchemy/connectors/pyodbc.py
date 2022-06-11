@@ -76,11 +76,12 @@ class PyODBCConnector(Connector):
             connectors = [unquote_plus(keys.pop("odbc_connect"))]
         else:
 
-            def check_quote(token: str) -> str:
+            def check_quote(token: Any) -> str:
+                token = str(token)
                 # token is already quoted, so return it as-is
-                if str(token).startswith("{") and str(token).endswith("}"):
+                if token.startswith("{") and token.endswith("}"):
                     return token
-                if ";" in str(token) or str(token).startswith("{"):
+                if ";" in token or token.startswith("{"):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
 
