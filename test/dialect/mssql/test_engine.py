@@ -278,7 +278,7 @@ class ParseConnectTest(fixtures.TestBase):
             (
                 "DRIVER={foob};Server=localhost,1433;"
                 "Database=mydb;UID=alice;"
-                "PWD={password}",
+                "PWD={{password}}}",
             ),
         ),
         argnames="tokens, connection_string",
