@@ -43,6 +43,7 @@ from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
+from .strategy_options import Load
 from .util import _none_set
 from .util import AliasedClass
 from .. import event
@@ -1259,7 +1260,23 @@ class ImmediateLoader(PostLoader):
         populators,
     ):
         def load_immediate(state, dict_, row):
+            if auto_recurse:
+                new_opt = Load(loadopt.path.entity)
+                new_opt.context = (loadopt._recurse(),)
+                state.load_options += (new_opt,)
+
             state.get_impl(self.key).get(state, dict_, flags)
+
+        if loadopt and loadopt.local_opts.get("auto_recurse", False):
+            if not self.parent_property._is_self_referential:
+                raise sa_exc.InvalidRequestError(
+                    f"auto_recurse option on relationship "
+                    f"{self.parent_property} not valid for "
+                    "non-self-referential relationship"
+                )
+            auto_recurse = True
+        else:
+            auto_recurse = False
 
         if self._check_recursive_postload(context, path):
             # this will not emit SQL and will only emit for a many-to-one
@@ -3002,6 +3019,21 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                     loadopt._generate_extra_criteria(context),
                 ),
             )
+
+        if loadopt and loadopt.local_opts.get("auto_recurse", False):
+            if not self.parent_property._is_self_referential:
+                # how could we do more recursion?    auto_recurse is put on
+                # the last option in a chain, then _recurse() will walk
+                # backwards up the path to see where the pattern repeats
+                # and splice it based on that
+                raise sa_exc.InvalidRequestError(
+                    f"auto_recurse option on relationship "
+                    f"{self.parent_property} not valid for "
+                    "non-self-referential relationship"
+                )
+            new_opt = Load(effective_entity)
+            new_opt.context = (loadopt._recurse(),)
+            new_options += (new_opt,)
 
         q = q.options(*new_options)._update_compile_options(
             {"_current_path": effective_path}
