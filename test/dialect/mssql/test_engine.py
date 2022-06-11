@@ -257,11 +257,11 @@ class ParseConnectTest(fixtures.TestBase):
                 "larry",
                 "{moe",
                 "localhost",
-                1433,
+                None,
                 "mydb",
             ),
             (
-                "DRIVER={foob};Server=localhost,1433;"
+                "DRIVER={foob};Server=localhost;"
                 "Database=mydb;UID=larry;"
                 "PWD={{moe}",
             ),
@@ -272,11 +272,11 @@ class ParseConnectTest(fixtures.TestBase):
                 "alice",
                 "{password}",
                 "localhost",
-                1433,
+                None,
                 "mydb",
             ),
             (
-                "DRIVER={foob};Server=localhost,1433;"
+                "DRIVER={foob};Server=localhost;"
                 "Database=mydb;UID=alice;"
                 "PWD={{password}}}",
             ),
@@ -285,7 +285,9 @@ class ParseConnectTest(fixtures.TestBase):
         id_="iaa",
     )
     def test_pyodbc_token_injection(self, tokens, connection_string):
-        u = url.make_url("mssql+pyodbc://%s:%s@%s:%s/%s?driver=foob" % tokens)
+        username, password, hostname, port, database = tokens
+        raw_url = f"mssql+pyodbc://{username}:{password}@{hostname}{':%s' % port if port else ''}/{database}?driver=foob"
+        u = url.make_url(raw_url)
         dialect = pyodbc.dialect()
         connection = dialect.create_connect_args(u)
         eq_(
