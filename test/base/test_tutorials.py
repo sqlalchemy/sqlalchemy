@@ -9,6 +9,7 @@ import sys
 from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import requires
 
 
 class DocTest(fixtures.TestBase):
@@ -88,6 +89,7 @@ class DocTest(fixtures.TestBase):
                 globs.update(test.globs)
                 assert not runner.failures
 
+    @requires.has_json_each
     def test_20_style(self):
         self._run_doctest(
             "tutorial/index.rst",

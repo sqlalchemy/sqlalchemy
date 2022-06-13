@@ -1894,3 +1894,17 @@ class DefaultRequirements(SuiteRequirements):
                 return res is not None
 
         return only_on(["mssql"]) + only_if(check)
+
+    @property
+    def has_json_each(self):
+        def go(config):
+            try:
+                with config.db.connect() as conn:
+                    conn.exec_driver_sql(
+                        """SELECT x.value FROM json_each('["b", "a"]') as x"""
+                    )
+                return True
+            except exc.DBAPIError:
+                return False
+
+        return only_if(go, "json_each is required")
