@@ -70,7 +70,7 @@ SQLAlchemy Documentation
     **SQLAlchemy ORM**
 
     * **ORM Configuration:**
-      :doc:`Mapper Configuration <orm/mapper_config>` |
+      :doc:`Mapped Class Configuration <orm/mapper_config>` |
       :doc:`Relationship Configuration <orm/relationships>`
 
     * **ORM Usage:**

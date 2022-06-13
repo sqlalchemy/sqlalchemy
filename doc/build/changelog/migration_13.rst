@@ -85,7 +85,7 @@ Relationship to AliasedClass replaces the need for non primary mappers
 -----------------------------------------------------------------------
 
 The "non primary mapper" is a :class:`_orm.Mapper` created in the
-:ref:`classical_mapping` style, which acts as an additional mapper against an
+:ref:`orm_imperative_mapping` style, which acts as an additional mapper against an
 already mapped class against a different kind of selectable.  The non primary
 mapper has its roots in the 0.1, 0.2 series of SQLAlchemy where it was
 anticipated that the :class:`_orm.Mapper` object was to be the primary query

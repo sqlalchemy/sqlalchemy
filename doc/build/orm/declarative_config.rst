@@ -174,10 +174,35 @@ using the ``__mapper_args__`` declarative class variable, which is a dictionary
 that is passed as keyword arguments to the :class:`_orm.Mapper` function.
 Some examples:
 
+**Map Specific Primary Key Columns**
+
+The example below illustrates Declarative-level settings for the
+:paramref:`_orm.Mapper.primary_key` parameter, which establishes
+particular columns as part of what the ORM should consider to be a primary
+key for the class, independently of schema-level primary key constraints::
+
+    class GroupUsers(Base):
+        __tablename__ = 'group_users'
+
+        user_id = Column(String(40))
+        group_id = Column(String(40))
+
+        __mapper_args__ = {
+            "primary_key": [user_id, group_id]
+        }
+
+.. seealso::
+
+    :ref:`mapper_primary_key` - further background on ORM mapping of explicit
+    columns as primary key columns
+
 **Version ID Column**
 
-The :paramref:`_orm.Mapper.version_id_col` and
-:paramref:`_orm.Mapper.version_id_generator` parameters::
+The example below illustrates Declarative-level settings for the
+:paramref:`_orm.Mapper.version_id_col` and
+:paramref:`_orm.Mapper.version_id_generator` parameters, which configure
+an ORM-maintained version counter that is updated and checked within the
+:term:`unit of work` flush process::
 
     from datetime import datetime
 
@@ -193,10 +218,16 @@ The :paramref:`_orm.Mapper.version_id_col` and
             "version_id_generator": lambda v: datetime.now(),
         }
 
+.. seealso::
+
+    :ref:`mapper_version_counter` - background on the ORM version counter feature
+
 **Single Table Inheritance**
 
-The :paramref:`_orm.Mapper.polymorphic_on` and
-:paramref:`_orm.Mapper.polymorphic_identity` parameters::
+The example below illustrates Declarative-level settings for the
+:paramref:`_orm.Mapper.polymorphic_on` and
+:paramref:`_orm.Mapper.polymorphic_identity` parameters, which are used when
+configuring a single-table inheritance mapping::
 
     class Person(Base):
         __tablename__ = "person"
@@ -215,14 +246,68 @@ The :paramref:`_orm.Mapper.polymorphic_on` and
             polymorphic_identity="employee",
         )
 
+
+.. seealso::
+
+    :ref:`single_inheritance` - background on the ORM single table inheritance
+    mapping feature.
+
+Constructing mapper arguments dynamically
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The ``__mapper_args__`` dictionary may be generated from a class-bound
 descriptor method rather than from a fixed dictionary by making use of the
-:func:`_orm.declared_attr` construct.   The section :ref:`orm_mixins_toplevel`
-discusses this concept further.
+:func:`_orm.declared_attr` construct.    This is useful to create arguments
+for mappers that are programmatically derived from the table configuration
+or other aspects of the mapped class.    A dynamic ``__mapper_args__``
+attribute will typically be useful when using a Declarative Mixin or
+abstract base class.
+
+For example, to omit from the mapping
+any columns that have a special :attr:`.Column.info` value, a mixin
+can use a ``__mapper_args__`` method that scans for these columns from the
+``cls.__table__`` attribute and passes them to the :paramref:`_orm.Mapper.exclude_properties`
+collection::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import select
+    from sqlalchemy import String
+    from sqlalchemy.orm import declarative_base
+    from sqlalchemy.orm import declared_attr
+
+
+    class ExcludeColsWFlag:
+        @declared_attr
+        def __mapper_args__(cls):
+            return {
+                "exclude_properties": [
+                    column.key for column in cls.__table__.c if
+                    column.info.get("exclude", False)
+                ]
+            }
+
+    Base = declarative_base()
+
+    class SomeClass(ExcludeColsWFlag, Base):
+        __tablename__ = 'some_table'
+
+        id = Column(Integer, primary_key=True)
+        data = Column(String)
+        not_needed = Column(String, info={"exclude": True})
+
+
+Above, the ``ExcludeColsWFlag`` mixin provides a per-class ``__mapper_args__``
+hook that will scan for :class:`.Column` objects that include the key/value
+``'exclude': True`` passed to the :paramref:`.Column.info` parameter, and then
+add their string "key" name to the :paramref:`_orm.Mapper.exclude_properties`
+collection which will prevent the resulting :class:`.Mapper` from considering
+these columns for any SQL operations.
 
 .. seealso::
 
     :ref:`orm_mixins_toplevel`
+
 
 Other Declarative Mapping Directives
 --------------------------------------
