@@ -24,6 +24,11 @@ If your issue is actually a bug, we will open a new bug report with what we need
 
 [Start a new Usage Questions discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
 
+"
+  - type: markdown
+    attributes:
+      value: "
+
 **GUIDELINES FOR REPORTING BUGS**
 
 If you are new to SQLAlchemy bug reports, please review our many examples
