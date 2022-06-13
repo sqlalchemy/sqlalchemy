@@ -380,6 +380,11 @@ class DeferredReflection(object):
         ReflectedOne.prepare(engine_one)
         ReflectedTwo.prepare(engine_two)
 
+    .. seealso::
+
+        :ref:`orm_declarative_reflected_deferred_reflection` - in the
+        :ref:`orm_declarative_table_config_toplevel` section.
+
     """
 
     @classmethod

@@ -1,5 +1,5 @@
 :orphan:
 
-Moved!   :ref:`classical_mapping`
+Moved!   :ref:`orm_imperative_mapping`
 
 

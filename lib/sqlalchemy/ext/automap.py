@@ -9,8 +9,6 @@ r"""Define an extension to the :mod:`sqlalchemy.ext.declarative` system
 which automatically generates mapped classes and relationships from a database
 schema, typically though not necessarily one which is reflected.
 
-.. versionadded:: 0.9.1 Added :mod:`sqlalchemy.ext.automap`.
-
 It is hoped that the :class:`.AutomapBase` system provides a quick
 and modernized solution to the problem that the very famous
 `SQLSoup <https://sqlsoup.readthedocs.io/en/latest/>`_
@@ -20,6 +18,15 @@ at the mapper configuration level, and integrating fully with existing
 Declarative class techniques, :class:`.AutomapBase` seeks to provide
 a well-integrated approach to the issue of expediently auto-generating ad-hoc
 mappings.
+
+.. tip:: The :ref:`automap_toplevel` extension is geared towards a
+   "zero declaration" approach, where a complete ORM model including classes
+   and pre-named relationships can be generated on the fly from a database
+   schema. For applications that still want to use explicit class declarations
+   including explicit relationship definitions in conjunction with reflection
+   of tables, the :class:`.DeferredReflection` class, described at
+   :ref:`orm_declarative_reflected_deferred_reflection`, is a better choice.
+
 
 
 Basic Use
@@ -120,6 +127,9 @@ explicit table declaration::
 
 Specifying Classes Explicitly
 =============================
+
+.. tip:: If explicit classes are expected to be prominent in an application,
+   consider using :class:`.DeferredReflection` instead.
 
 The :mod:`.sqlalchemy.ext.automap` extension allows classes to be defined
 explicitly, in a way similar to that of the :class:`.DeferredReflection` class.

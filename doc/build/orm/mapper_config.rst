@@ -1,13 +1,20 @@
 
 .. _mapper_config_toplevel:
 
-====================
-Mapper Configuration
-====================
+===============================
+ORM Mapped Class Configuration
+===============================
 
-This section describes a variety of configurational patterns that are usable
-with mappers. It assumes you've worked through :ref:`ormtutorial_toplevel` and
-know how to construct and use rudimentary mappers and relationships.
+Detailed reference for ORM configuration, not including
+relationships, which are detailed at
+:ref:`relationship_config_toplevel`.
+
+For a quick look at a typical ORM configuration, start with
+:ref:`orm_quickstart`.
+
+For an introduction to the concept of object relational mapping as implemented
+in SQLAlchemy, it's first introduced in the :ref:`unified_tutorial` at
+:ref:`tutorial_orm_table_metadata`.
 
 
 .. toctree::
@@ -15,6 +22,7 @@ know how to construct and use rudimentary mappers and relationships.
 
     mapping_styles
     declarative_mapping
+    dataclasses
     scalar_mapping
     inheritance
     nonstandard_mappings

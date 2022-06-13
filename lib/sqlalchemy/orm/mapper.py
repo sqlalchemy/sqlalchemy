@@ -205,10 +205,29 @@ class Mapper(
         :param column_prefix: A string which will be prepended
            to the mapped attribute name when :class:`_schema.Column`
            objects are automatically assigned as attributes to the
-           mapped class.  Does not affect explicitly specified
-           column-based properties.
+           mapped class.  Does not affect :class:`.Column` objects that
+           are mapped explicitly in the :paramref:`.mapper.properties`
+           dictionary.
 
-           See the section :ref:`column_prefix` for an example.
+           This parameter is typically useful with imperative mappings
+           that keep the :class:`.Table` object separate.  Below, assuming
+           the ``user_table`` :class:`.Table` object has columns named
+           ``user_id``, ``user_name``, and ``password``::
+
+                class User(Base):
+                    __table__ = user_table
+                    __mapper_args__ = {'column_prefix':'_'}
+
+           The above mapping will assign the ``user_id``, ``user_name``, and
+           ``password`` columns to attributes named ``_user_id``,
+           ``_user_name``, and ``_password`` on the mapped ``User`` class.
+
+           The :paramref:`.mapper.column_prefix` parameter is uncommon in
+           modern use. For dealing with reflected tables, a more flexible
+           approach to automating a naming scheme is to intercept the
+           :class:`.Column` objects as they are reflected; see the section
+           :ref:`mapper_automated_reflection_schemes` for notes on this usage
+           pattern.
 
         :param concrete: If True, indicates this mapper should use concrete
            table inheritance with its parent mapper.
@@ -496,11 +515,20 @@ class Mapper(
            based on all those :class:`.MapperProperty` instances declared
            in the declared class body.
 
+           .. seealso::
+
+               :ref:`orm_mapping_properties` - in the
+               :ref:`orm_mapping_classes_toplevel`
+
         :param primary_key: A list of :class:`_schema.Column`
            objects which define
            the primary key to be used against this mapper's selectable unit.
            This is normally simply the primary key of the ``local_table``, but
            can be overridden here.
+
+           .. seealso::
+
+                :ref:`mapper_primary_key` - background and example use
 
         :param version_id_col: A :class:`_schema.Column`
            that will be used to keep a running version id of rows

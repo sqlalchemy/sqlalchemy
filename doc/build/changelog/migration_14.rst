@@ -288,7 +288,7 @@ the :class:`_orm.registry` object, and fall into these categories:
         * Declarative Table
         * Imperative Table (Hybrid)
             * :ref:`orm_declarative_dataclasses`
-* :ref:`Imperative (a.k.a. "classical" mapping) <classical_mapping>`
+* :ref:`Imperative (a.k.a. "classical" mapping) <orm_imperative_mapping>`
     * Using :meth:`_orm.registry.map_imperatively`
         * :ref:`orm_imperative_dataclasses`
 

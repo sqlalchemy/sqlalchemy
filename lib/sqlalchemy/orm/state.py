@@ -58,10 +58,12 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
         >>> from sqlalchemy import inspect
         >>> insp = inspect(some_mapped_object)
+        >>> insp.attrs.nickname.history
+        History(added=['new nickname'], unchanged=(), deleted=['nickname'])
 
     .. seealso::
 
-        :ref:`core_inspection_toplevel`
+        :ref:`orm_mapper_inspection_instancestate`
 
     """
 

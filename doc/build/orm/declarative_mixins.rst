@@ -14,6 +14,14 @@ usage of mixin classes, as well as via augmenting the declarative base
 produced by either the :meth:`_orm.registry.generate_base` method
 or :func:`_orm.declarative_base` functions.
 
+When using mixins or abstract base classes with Declarative, a decorator
+known as :func:`_orm.declared_attr` is frequently used.  This decorator
+allows the creation of class methods that produce a parameter or ORM construct that will be
+part of a declarative mapping.  Generating constructs using a callable
+allows for Declarative to get a new copy of a particular kind of object
+each time it calls upon the mixin or abstract base on behalf of a new
+class that's being mapped.
+
 An example of some commonly mixed-in idioms is below::
 
     from sqlalchemy.orm import declarative_mixin, declared_attr
@@ -37,7 +45,11 @@ An example of some commonly mixed-in idioms is below::
 Where above, the class ``MyModel`` will contain an "id" column
 as the primary key, a ``__tablename__`` attribute that derives
 from the name of the class itself, as well as ``__table_args__``
-and ``__mapper_args__`` defined by the ``MyMixin`` mixin class.
+and ``__mapper_args__`` defined by the ``MyMixin`` mixin class.  The
+:func:`_orm.declared_attr` decorator applied to a class method called
+``def __tablename__(cls):`` has the effect of turning the method into a class
+method while also indicating to Declarative that this attribute is significant
+within the mapping.
 
 .. tip::
 

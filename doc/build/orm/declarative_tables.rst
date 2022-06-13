@@ -64,6 +64,11 @@ to produce a :class:`_schema.Table` that is equivalent to::
         Column("nickname", String),
     )
 
+.. seealso::
+
+    :ref:`mapping_columns_toplevel` - contains additional notes on affecting
+    how :class:`_orm.Mapper` interprets incoming :class:`.Column` objects.
+
 .. _orm_declarative_metadata:
 
 Accessing Table and Metadata
@@ -183,36 +188,26 @@ or :func:`_orm.declarative_base`::
 
 .. _orm_declarative_table_adding_columns:
 
-Adding New Columns
-^^^^^^^^^^^^^^^^^^^
+Appending additional columns to an existing Declarative mapped class
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The declarative table configuration allows the addition of new
-:class:`_schema.Column` objects under two scenarios.  The most basic
-is that of simply assigning new :class:`_schema.Column` objects to the
-class::
+A declarative table configuration allows the addition of new
+:class:`_schema.Column` objects an existing mapping after the :class:`.Table`
+metadata has already been generated.
+
+For a declarative class that is declared using a declarative base class,
+the underlying metaclass :class:`.DeclarativeMeta` includes a ``__setattr__()``
+method that will intercept additional :class:`.Column` objects and
+add them to both the :class:`.Table` using :meth:`.Table.append_column`
+as well as to the existing :class:`.Mapper` using :meth:`.Mapper.add_property`::
 
     MyClass.some_new_column = Column("data", Unicode)
 
-The above operation performed against a declarative class that has been
-mapped using the declarative base (note, not the decorator form of declarative)
-will add the above :class:`_schema.Column` to the :class:`_schema.Table`
-using the :meth:`_schema.Table.append_column` method and will also add the
-column to the :class:`_orm.Mapper` to be fully mapped.
-
-.. note:: assignment of new columns to an existing declaratively mapped class
-   will only function correctly if the "declarative base" class is used, which
-   also provides for a metaclass-driven ``__setattr__()`` method which will
-   intercept these operations.   It will **not** work if the declarative
-   decorator provided by
-   :meth:`_orm.registry.mapped` is used, nor will it work for an imperatively
-   mapped class mapped by :meth:`_orm.registry.map_imperatively`.
-
-
-The other scenario where a :class:`_schema.Column` is added on the fly is
-when an inheriting subclass that has no table of its own indicates
-additional columns; these columns will be added to the superclass table.
-The section :ref:`single_inheritance` discusses single table inheritance.
-
+Additional :class:`_schema.Column` objects may also be added to a mapping
+in the specific circumstance of using single table inheritance, where
+additional columns are present on mapped subclasses that have
+no :class:`.Table` of their own.  This is illustrated in the section
+:ref:`single_inheritance`.
 
 .. _orm_imperative_table_configuration:
 
@@ -344,10 +339,15 @@ use a declarative hybrid mapping, passing the
 :paramref:`_schema.Table.autoload_with` parameter to the
 :class:`_schema.Table`::
 
+    from sqlalchemy import create_engine
+    from sqlalchemy import Table
+    from sqlalchemy.orm import declarative_base
+
     engine = create_engine(
         "postgresql+psycopg2://user:pass@hostname/my_existing_database"
     )
 
+    Base = declarative_base()
 
     class MyClass(Base):
         __table__ = Table(
@@ -356,17 +356,47 @@ use a declarative hybrid mapping, passing the
             autoload_with=engine,
         )
 
-A major downside of the above approach however is that it requires the database
+A variant on the above pattern that scales much better is to use the
+:meth:`.MetaData.reflect` method to reflect a full set of :class:`.Table`
+objects at once, then refer to them from the :class:`.MetaData`::
+
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import Table
+    from sqlalchemy.orm import declarative_base
+
+    engine = create_engine(
+        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
+    )
+
+    Base = declarative_base()
+
+    Base.metadata.reflect(engine)
+
+    class MyClass(Base):
+        __table__ = Base.metadata.tables['mytable']
+
+.. seealso::
+
+    :ref:`mapper_automated_reflection_schemes` - further notes on using
+    table reflection with mapped classes
+
+A major downside to the above approach is that the mapped classes cannot
+be declared until the tables have been reflected, which requires the database
 connectivity source to be present while the application classes are being
 declared; it's typical that classes are declared as the modules of an
 application are being imported, but database connectivity isn't available
 until the application starts running code so that it can consume configuration
-information and create an engine.
+information and create an engine.   There are currently two approaches
+to working around this.
+
+.. _orm_declarative_reflected_deferred_reflection:
 
 Using DeferredReflection
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To accommodate this case, a simple extension called the
+To accommodate the use case of declaring mapped classes where reflection of
+table metadata can occur afterwards, a simple extension called the
 :class:`.DeferredReflection` mixin is available, which alters the declarative
 mapping process to be delayed until a special class-level
 :meth:`.DeferredReflection.prepare` method is called, which will perform
@@ -408,17 +438,22 @@ complete until we do so, given an :class:`_engine.Engine`::
 The purpose of the ``Reflected`` class is to define the scope at which
 classes should be reflectively mapped.   The plugin will search among the
 subclass tree of the target against which ``.prepare()`` is called and reflect
-all tables.
+all tables which are named by declared classes; tables in the target database
+that are not part of mappings and are not related to the target tables
+via foreign key constraint will not be reflected.
 
 Using Automap
 ^^^^^^^^^^^^^^
 
-A more automated solution to mapping against an existing database where
-table reflection is to be used is to use the :ref:`automap_toplevel`
-extension.  This extension will generate entire mapped classes from a
-database schema, and allows several hooks for customization including the
-ability to explicitly map some or all classes while still making use of
-reflection to fill in the remaining columns.
+A more automated solution to mapping against an existing database where table
+reflection is to be used is to use the :ref:`automap_toplevel` extension. This
+extension will generate entire mapped classes from a database schema, including
+relationships between classes based on observed foreign key constraints. While
+it includes hooks for customization, such as hooks that allow custom
+class naming and relationship naming schemes, automap is oriented towards an
+expedient zero-configuration style of working. If an application wishes to have
+a fully explicit model that makes use of table reflection, the
+:ref:`orm_declarative_reflected_deferred_reflection` may be preferable.
 
 .. seealso::
 
