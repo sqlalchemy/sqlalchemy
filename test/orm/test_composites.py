@@ -1,3 +1,5 @@
+import dataclasses
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -743,6 +745,33 @@ class PrimaryKeyTest(fixtures.MappedTest):
         sess.commit()
         g2 = sess.query(Graph).filter_by(version=Version(2, None)).one()
         eq_(g.version, g2.version)
+
+
+class PrimaryKeyTestDataclasses(PrimaryKeyTest):
+    @classmethod
+    def setup_mappers(cls):
+        graphs = cls.tables.graphs
+
+        @dataclasses.dataclass
+        class Version:
+            id: int
+            version: int
+
+        cls.classes.Version = Version
+
+        class Graph(cls.Comparable):
+            def __init__(self, version):
+                self.version = version
+
+        cls.mapper_registry.map_imperatively(
+            Graph,
+            graphs,
+            properties={
+                "version": sa.orm.composite(
+                    Version, graphs.c.id, graphs.c.version_id
+                )
+            },
+        )
 
 
 class DefaultsTest(fixtures.MappedTest):

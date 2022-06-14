@@ -3359,7 +3359,7 @@ class Uuid(TypeEngine[_UUID_RETURN]):
 
     __visit_name__ = "uuid"
 
-    collation = None
+    collation: Optional[str] = None
 
     @overload
     def __init__(

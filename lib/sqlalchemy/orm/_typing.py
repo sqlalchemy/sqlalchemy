@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from .attributes import QueryableAttribute
     from .base import PassiveFlag
     from .decl_api import registry as _registry_type
-    from .descriptor_props import _CompositeClassProto
     from .interfaces import InspectionAttr
     from .interfaces import MapperProperty
     from .interfaces import UserDefinedOption
@@ -103,8 +102,11 @@ def is_user_defined_option(
     return not opt._is_core and opt._is_user_defined  # type: ignore
 
 
-def is_composite_class(obj: Any) -> TypeGuard[_CompositeClassProto]:
-    return hasattr(obj, "__composite_values__")
+def is_composite_class(obj: Any) -> bool:
+    # inlining is_dataclass(obj)
+    return hasattr(obj, "__composite_values__") or hasattr(
+        obj, "__dataclass_fields__"
+    )
 
 
 if TYPE_CHECKING:
