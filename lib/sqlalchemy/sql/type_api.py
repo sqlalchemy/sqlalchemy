@@ -22,6 +22,7 @@ from .. import util
 BOOLEANTYPE = None
 INTEGERTYPE = None
 NULLTYPE = None
+NUMERICTYPE = None
 STRINGTYPE = None
 MATCHTYPE = None
 INDEXABLE = None
