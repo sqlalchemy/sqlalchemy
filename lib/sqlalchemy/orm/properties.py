@@ -52,8 +52,10 @@ from ..sql.schema import SchemaConst
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
+from ..util.typing import is_pep593
 from ..util.typing import NoneType
 from ..util.typing import Self
+from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
@@ -569,6 +571,9 @@ class MappedColumn(
         col = self.__clause_element__()
         return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
 
+    def found_in_pep593_annotated(self) -> Any:
+        return self._copy()
+
     def declarative_scan(
         self,
         registry: _RegistryType,
@@ -632,12 +637,19 @@ class MappedColumn(
             if is_fwd_ref(our_type):
                 our_type = de_stringify_annotation(cls, our_type)
 
-            if registry.type_annotation_map:
-                new_sqltype = registry.type_annotation_map.get(our_type)
-            if new_sqltype is None:
-                new_sqltype = sqltypes._type_map_get(our_type)  # type: ignore
+            if is_pep593(our_type):
+                checks = (our_type,) + typing_get_args(our_type)
+            else:
+                checks = (our_type,)
 
-            if new_sqltype is None:
+            for check_type in checks:
+                if registry.type_annotation_map:
+                    new_sqltype = registry.type_annotation_map.get(check_type)
+                if new_sqltype is None:
+                    new_sqltype = sqltypes._type_map_get(check_type)  # type: ignore  # noqa: E501
+                if new_sqltype is not None:
+                    break
+            else:
                 raise sa_exc.ArgumentError(
                     f"Could not locate SQLAlchemy Core "
                     f"type for Python type: {our_type}"

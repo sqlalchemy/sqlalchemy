@@ -396,7 +396,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped["int"] = mapped_column(primary_key=True)
             data_one: Mapped["str"]
 
-    def test_annotated_types_as_keys(self, decl_base: Type[DeclarativeBase]):
+    def test_pep593_types_as_typemap_keys(
+        self, decl_base: Type[DeclarativeBase]
+    ):
         """neat!!!"""
 
         str50 = Annotated[str, 50]
@@ -424,6 +426,138 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_two.type.length, 30)
         is_true(MyClass.__table__.c.data_two.nullable)
         eq_(MyClass.__table__.c.data_three.type.length, 50)
+
+    def test_extract_base_type_from_pep593(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """base type is extracted from an Annotated structure if not otherwise
+        in the type lookup dictionary"""
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[Annotated[Annotated[int, "q"], "t"]] = mapped_column(
+                primary_key=True
+            )
+
+        is_(MyClass.__table__.c.id.type._type_affinity, Integer)
+
+    def test_extract_sqla_from_pep593_not_yet(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        class SomeRelated(decl_base):
+            __tablename__: ClassVar[Optional[str]] = "some_related"
+            id: Mapped["int"] = mapped_column(primary_key=True)
+
+        with expect_raises_message(
+            NotImplementedError,
+            r"Use of the \<class 'sqlalchemy.orm."
+            r"relationships.Relationship'\> construct inside of an Annotated "
+            r"object is not yet supported.",
+        ):
+
+            class MyClass(decl_base):
+                __tablename__ = "my_table"
+
+                id: Mapped["int"] = mapped_column(primary_key=True)
+                data_one: Mapped[Annotated["SomeRelated", relationship()]]
+
+    def test_extract_sqla_from_pep593_plain(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """extraction of mapped_column() from the Annotated type
+
+        https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        strnone = Annotated[str, mapped_column()]  # str -> NOT NULL
+        str30nullable = Annotated[
+            str, mapped_column(String(30), nullable=True)  # nullable -> NULL
+        ]
+        opt_strnone = Optional[strnone]  # Optional[str] -> NULL
+        opt_str30 = Optional[str30nullable]  # nullable -> NULL
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        class MyOtherClass(decl_base):
+            __tablename__ = "my_other_table"
+
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        for cls in MyClass, MyOtherClass:
+            table = cls.__table__
+            assert table is not None
+
+            is_(table.c.id.primary_key, True)
+            is_(table.c.id.table, table)
+
+            eq_(table.c.data_one.type.length, None)
+            eq_(table.c.data_two.type.length, 30)
+            eq_(table.c.data_three.type.length, None)
+
+            is_false(table.c.data_one.nullable)
+            is_true(table.c.data_two.nullable)
+            is_true(table.c.data_three.nullable)
+            is_true(table.c.data_four.nullable)
+
+    def test_extract_sqla_from_pep593_mixin(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """extraction of mapped_column() from the Annotated type
+
+        https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        strnone = Annotated[str, mapped_column()]  # str -> NOT NULL
+        str30nullable = Annotated[
+            str, mapped_column(String(30), nullable=True)  # nullable -> NULL
+        ]
+        opt_strnone = Optional[strnone]  # Optional[str] -> NULL
+        opt_str30 = Optional[str30nullable]  # nullable -> NULL
+
+        class HasPk:
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+
+        class MyClass(HasPk, decl_base):
+            __tablename__ = "my_table"
+
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        table = MyClass.__table__
+        assert table is not None
+
+        is_(table.c.id.primary_key, True)
+        is_(table.c.id.table, table)
+
+        eq_(table.c.data_one.type.length, None)
+        eq_(table.c.data_two.type.length, 30)
+        eq_(table.c.data_three.type.length, None)
+
+        is_false(table.c.data_one.nullable)
+        is_true(table.c.data_two.nullable)
+        is_true(table.c.data_three.nullable)
+        is_true(table.c.data_four.nullable)
 
     def test_unions(self):
         our_type = Numeric(10, 2)
@@ -1087,6 +1221,30 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 address: "Address" = composite(  # type: ignore
                     mapped_column(), mapped_column(), mapped_column("zip")
                 )
+
+    def test_extract_from_pep593(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+
+            address: Mapped[Annotated[Address, "foo"]] = composite(
+                mapped_column(), mapped_column(), mapped_column("zip")
+            )
+
+        self.assert_compile(
+            select(User),
+            'SELECT "user".id, "user".name, "user".street, '
+            '"user".state, "user".zip FROM "user"',
+            dialect="default",
+        )
 
     def test_cls_not_composite_compliant(self, decl_base):
         class Address:

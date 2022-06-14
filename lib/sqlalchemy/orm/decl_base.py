@@ -65,6 +65,7 @@ from ..util import topological
 from ..util.typing import _AnnotationScanType
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
+from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _ClassDict
@@ -885,12 +886,16 @@ class _ClassScanMapperConfig(_MapperConfig):
                             obj,
                         )
                     elif _is_mapped_annotation(annotation, cls):
-                        self._collect_annotation(
+                        generated_obj = self._collect_annotation(
                             name, annotation, is_dataclass_field, True, obj
                         )
                         if obj is None:
                             if not fixed_table:
-                                collected_attributes[name] = MappedColumn()
+                                collected_attributes[name] = (
+                                    generated_obj
+                                    if generated_obj is not None
+                                    else MappedColumn()
+                                )
                         else:
                             collected_attributes[name] = obj
                     else:
@@ -920,7 +925,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                         name, annotation, True, False, obj
                     )
                 else:
-                    self._collect_annotation(
+                    generated_obj = self._collect_annotation(
                         name, annotation, False, None, obj
                     )
                     if (
@@ -928,7 +933,11 @@ class _ClassScanMapperConfig(_MapperConfig):
                         and not fixed_table
                         and _is_mapped_annotation(annotation, cls)
                     ):
-                        collected_attributes[name] = MappedColumn()
+                        collected_attributes[name] = (
+                            generated_obj
+                            if generated_obj is not None
+                            else MappedColumn()
+                        )
                     elif name in clsdict_view:
                         collected_attributes[name] = obj
                     # else if the name is not in the cls.__dict__,
@@ -1022,9 +1031,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         is_dataclass: bool,
         expect_mapped: Optional[bool],
         attr_value: Any,
-    ) -> None:
+    ) -> Any:
         if raw_annotation is None:
-            return
+            return attr_value
 
         is_dataclass = self.is_dataclass_prior_to_mapping
         allow_unmapped = self.allow_unmapped_annotations
@@ -1053,15 +1062,23 @@ class _ClassScanMapperConfig(_MapperConfig):
             expect_mapped=expect_mapped
             and not is_dataclass,  # self.allow_dataclass_fields,
         )
+
         if extracted_mapped_annotation is None:
             # ClassVar can come out here
-            return
+            return attr_value
+        elif attr_value is None:
+            for elem in typing_get_args(extracted_mapped_annotation):
+                # look in Annotated[...] for an ORM construct,
+                # such as Annotated[int, mapped_column(primary_key=True)]
+                if isinstance(elem, _IntrospectsAnnotations):
+                    attr_value = elem.found_in_pep593_annotated()
 
         self.collected_annotations[name] = (
             raw_annotation,
             extracted_mapped_annotation,
             is_dataclass,
         )
+        return attr_value
 
     def _warn_for_decl_attributes(
         self, cls: Type[Any], key: str, c: Any

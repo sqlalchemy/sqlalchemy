@@ -61,8 +61,17 @@ else:
 
 if typing.TYPE_CHECKING or compat.py310:
     from typing import Annotated as Annotated
+    from typing import get_args as get_args
+    from typing import get_origin as get_origin
 else:
     from typing_extensions import Annotated as Annotated  # noqa: F401
+
+    # these are in py38 but don't work with Annotated correctly, so
+    # for 3.8 / 3.9 we use the typing extensions version
+    from typing_extensions import get_args as get_args  # noqa: F401
+    from typing_extensions import (
+        get_origin as get_origin,  # noqa: F401,
+    )
 
 if typing.TYPE_CHECKING or compat.py38:
     from typing import Literal as Literal
@@ -74,6 +83,9 @@ else:
     from typing_extensions import Protocol as Protocol  # noqa: F401
     from typing_extensions import TypedDict as TypedDict  # noqa: F401
     from typing_extensions import Final as Final  # noqa: F401
+
+typing_get_args = get_args
+typing_get_origin = get_origin
 
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()
@@ -138,6 +150,10 @@ def de_stringify_annotation(
         except NameError:
             pass
     return annotation  # type: ignore
+
+
+def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
+    return type_ is not None and typing_get_origin(type_) is Annotated
 
 
 def is_fwd_ref(type_: _AnnotationScanType) -> bool:
