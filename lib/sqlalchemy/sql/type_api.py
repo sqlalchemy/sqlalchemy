@@ -50,6 +50,7 @@ if typing.TYPE_CHECKING:
     from .sqltypes import INTEGERTYPE as INTEGERTYPE  # noqa: F401
     from .sqltypes import MATCHTYPE as MATCHTYPE  # noqa: F401
     from .sqltypes import NULLTYPE as NULLTYPE
+    from .sqltypes import NUMERICTYPE as NUMERICTYPE  # noqa: F401
     from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
     from ..engine.interfaces import Dialect

@@ -459,6 +459,12 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
     __visit_name__ = "numeric"
 
+    if TYPE_CHECKING:
+
+        @util.ro_memoized_property
+        def _type_affinity(self) -> Type[Numeric[_N]]:
+            ...
+
     _default_decimal_return_scale = 10
 
     def __init__(
@@ -3553,6 +3559,7 @@ NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
+NUMERICTYPE: Numeric[decimal.Decimal] = Numeric()
 MATCHTYPE = MatchType()
 TABLEVALUE = TableValueType()
 DATETIME_TIMEZONE = DateTime(timezone=True)
@@ -3610,6 +3617,7 @@ type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
+type_api.NUMERICTYPE = NUMERICTYPE
 type_api.MATCHTYPE = MATCHTYPE
 type_api.INDEXABLE = INDEXABLE = Indexable
 type_api.TABLEVALUE = TABLEVALUE
