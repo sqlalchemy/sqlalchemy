@@ -41,7 +41,7 @@ asking it to reflect the schema and produce mappings::
     engine = create_engine("sqlite:///mydatabase.db")
 
     # reflect the tables
-    Base.prepare(engine, reflect=True)
+    Base.prepare(autoload_with=engine)
 
     # mapped classes are now created with names by default
     # matching that of the table name.
@@ -151,7 +151,7 @@ established based on the table name we use.  If our schema contains tables
 
     # reflect
     engine = create_engine("sqlite:///mydatabase.db")
-    Base.prepare(engine, reflect=True)
+    Base.prepare(autoload_with=engine)
 
     # we still have Address generated from the tablename "address",
     # but User is the same as Base.classes.User now
@@ -215,7 +215,7 @@ scheme for class names and a "pluralizer" for collection names using the
 
     engine = create_engine("sqlite:///mydatabase.db")
 
-    Base.prepare(engine, reflect=True,
+    Base.prepare(autoload_with=engine,
                 classname_for_table=camelize_classname,
                 name_for_collection_relationship=pluralize_collection
         )
@@ -333,7 +333,7 @@ options along to all one-to-many relationships::
     Base = automap_base()
 
     engine = create_engine("sqlite:///mydatabase.db")
-    Base.prepare(engine, reflect=True,
+    Base.prepare(autoload_with=engine,
                 generate_relationship=_gen_relationship)
 
 Many-to-Many relationships
@@ -464,7 +464,7 @@ We can resolve this conflict by using an underscore as follows::
         return name
 
 
-    Base.prepare(engine, reflect=True,
+    Base.prepare(autoload_with=engine,
         name_for_scalar_relationship=name_for_scalar_relationship)
 
 Alternatively, we can change the name on the column side.   The columns
@@ -478,7 +478,7 @@ to a new name::
         __tablename__ = 'table_b'
         _table_a = Column('table_a', ForeignKey('table_a.id'))
 
-    Base.prepare(engine, reflect=True)
+    Base.prepare(autoload_with=engine)
 
 
 Using Automap with Explicit Declarations
@@ -547,7 +547,7 @@ be applied as::
         column_info['key'] = "attr_%s" % column_info['name'].lower()
 
     # run reflection
-    Base.prepare(engine, reflect=True)
+    Base.prepare(autoload_with=engine)
 
 .. versionadded:: 1.4.0b2 the :meth:`_events.DDLEvents.column_reflect` event
    may be applied to a :class:`_schema.MetaData` object.
@@ -743,7 +743,7 @@ class AutomapBase(object):
     are present under the name they were given, e.g.::
 
         Base = automap_base()
-        Base.prepare(engine=some_engine, reflect=True)
+        Base.prepare(autoload_with=some_engine)
 
         User, Address = Base.classes.User, Base.classes.Address
 
