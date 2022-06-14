@@ -1785,3 +1785,17 @@ class DefaultRequirements(SuiteRequirements):
     def uuid_data_type(self):
         """Return databases that support the UUID datatype."""
         return only_on(("postgresql >= 8.3", "mariadb >= 10.7.0"))
+
+    @property
+    def has_json_each(self):
+        def go(config):
+            try:
+                with config.db.connect() as conn:
+                    conn.exec_driver_sql(
+                        """SELECT x.value FROM json_each('["b", "a"]') as x"""
+                    )
+                return True
+            except exc.DBAPIError:
+                return False
+
+        return only_if(go, "json_each is required")
