@@ -1088,6 +1088,31 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     mapped_column(), mapped_column(), mapped_column("zip")
                 )
 
+    def test_cls_not_composite_compliant(self, decl_base):
+        class Address:
+            def __init__(self, street: int, state: str, zip_: str):
+                pass
+
+            street: str
+            state: str
+            zip_: str
+
+        with expect_raises_message(
+            ArgumentError,
+            r"Composite class column arguments must be "
+            r"named unless a dataclass is used",
+        ):
+
+            class User(decl_base):
+                __tablename__ = "user"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: Mapped[str] = mapped_column()
+
+                address: Mapped[Address] = composite(
+                    mapped_column(), mapped_column(), mapped_column("zip")
+                )
+
     def test_fwd_ref_ok_explicit_cls(self, decl_base):
         @dataclasses.dataclass
         class Address:

@@ -35,6 +35,7 @@ import weakref
 
 from . import attributes
 from . import context
+from . import descriptor_props
 from . import exc
 from . import identity
 from . import loading
@@ -3193,8 +3194,15 @@ class Session(_SessionClassMethods, EventTarget):
     ) -> Optional[_O]:
 
         # convert composite types to individual args
-        if is_composite_class(primary_key_identity):
-            primary_key_identity = primary_key_identity.__composite_values__()
+        if (
+            is_composite_class(primary_key_identity)
+            and type(primary_key_identity)
+            in descriptor_props._composite_getters
+        ):
+            getter = descriptor_props._composite_getters[
+                type(primary_key_identity)
+            ]
+            primary_key_identity = getter(primary_key_identity)
 
         mapper: Optional[Mapper[_O]] = inspect(entity)
 

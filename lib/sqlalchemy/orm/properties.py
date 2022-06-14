@@ -537,6 +537,10 @@ class MappedColumn(
         return new
 
     @property
+    def name(self) -> str:
+        return self.column.name
+
+    @property
     def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
         if self.deferred:
             return ColumnProperty(
