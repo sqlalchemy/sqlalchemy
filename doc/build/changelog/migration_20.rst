@@ -163,14 +163,22 @@ C Extensions now ported to Cython
 ---------------------------------
 
 The SQLAlchemy C extensions have been replaced with all new extensions written
-in Cython_.  The move to Cython provides dramatic new advantages with
-literally no downsides:
+in Cython_. While Cython was evaluated back in 2010 when the C extensions were
+first created, the nature and focus of the C extensions in use today has
+changed quite a bit from that time. At the same time, Cython has apparently
+evolved significantly, as has the Python build / distribution toolchain which
+made it feasible for us to revisit it.
+
+The move to Cython provides dramatic new advantages with
+no apparent downsides:
 
 * The Cython extensions that replace specific C extensions have all benchmarked
-  as **faster** than literally **all** the C code that SQLAlchemy previously
-  included. While this seems amazing, it appears to be a product of how highly
-  optimized Cython's routines are compared to a naive C implementation of a
-  function.
+  as **faster**, often slightly, but sometimes significantly, than
+  virtually all the C code that SQLAlchemy previously
+  included. While this seems amazing, it appears to be a product of
+  non-obvious optimizations within Cython's implementation that would not be
+  present in a direct Python to C port of a function, as was particularly the
+  case for many of the custom collection types added to the C extensions.
 
 * Cython extensions are much easier to write, maintain and debug compared to
   raw C code, and in most cases are line-per-line equivalent to the Python
