@@ -9,6 +9,10 @@
 copies of SQL constructs which contain context-specific markers and
 associations.
 
+Note that the :class:`.Annotated` concept as implemented in this module is not
+related in any way to the pep-593 concept of "Annotated".
+
+
 """
 
 from __future__ import annotations

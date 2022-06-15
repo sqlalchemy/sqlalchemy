@@ -49,6 +49,8 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql.elements import BindParameter
+from ..util.typing import is_pep593
+from ..util.typing import typing_get_args
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -342,6 +344,10 @@ class Composite(
         ):
             self._raise_for_required(key, cls)
         argument = extracted_mapped_annotation
+
+        if is_pep593(argument):
+            argument = typing_get_args(argument)[0]
+
         if argument and self.composite_class is None:
             if isinstance(argument, str) or hasattr(
                 argument, "__forward_arg__"

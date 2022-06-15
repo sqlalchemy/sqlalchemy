@@ -140,6 +140,15 @@ class ORMColumnDescription(TypedDict):
 class _IntrospectsAnnotations:
     __slots__ = ()
 
+    def found_in_pep593_annotated(self) -> Any:
+        """return a copy of this object to use in declarative when the
+        object is found inside of an Annotated object."""
+
+        raise NotImplementedError(
+            f"Use of the {self.__class__} construct inside of an "
+            f"Annotated object is not yet supported."
+        )
+
     def declarative_scan(
         self,
         registry: RegistryType,
