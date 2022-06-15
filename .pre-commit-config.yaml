@@ -34,4 +34,12 @@ repos:
     hooks:
     -   id: blacken-docs
         stages: [manual]
+        args: ["--line-length", "79"]
         additional_dependencies: [black==22.3.0]
+
+# Basic RST validator
+-   repo: https://github.com/myint/rstcheck
+    rev: v6.0.0
+    hooks:
+      - id: rstcheck
+        stages: [manual]
