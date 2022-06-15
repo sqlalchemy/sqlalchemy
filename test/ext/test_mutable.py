@@ -4,7 +4,9 @@ import pickle
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import util
@@ -16,6 +18,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.testing import assert_raises
@@ -38,6 +41,10 @@ class Foo(fixtures.BasicEntity):
 
 
 class SubFoo(Foo):
+    pass
+
+
+class Foo2(fixtures.BasicEntity):
     pass
 
 
@@ -100,6 +107,58 @@ class _MutableDictTestFixture(object):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
+
+
+class MiscTest(fixtures.TestBase):
+    @testing.combinations(True, False, argnames="pickleit")
+    def test_pickle_parent_multi_attrs(self, registry, connection, pickleit):
+        """test #8133"""
+
+        local_foo = Table(
+            "lf",
+            registry.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("j1", MutableDict.as_mutable(PickleType)),
+            Column("j2", MutableDict.as_mutable(PickleType)),
+            Column("j3", MutableDict.as_mutable(PickleType)),
+            Column("j4", MutableDict.as_mutable(PickleType)),
+        )
+
+        registry.map_imperatively(Foo2, local_foo)
+        registry.metadata.create_all(connection)
+
+        with Session(connection) as sess:
+
+            data = dict(
+                j1={"a": 1},
+                j2={"b": 2},
+                j3={"c": 3},
+                j4={"d": 4},
+            )
+            lf = Foo2(**data)
+            sess.add(lf)
+            sess.commit()
+
+        all_attrs = {"j1", "j2", "j3", "j4"}
+        for attr in all_attrs:
+            for loads, dumps in picklers():
+                with Session(connection) as sess:
+                    f1 = sess.scalars(select(Foo2)).first()
+                    if pickleit:
+                        f2 = loads(dumps(f1))
+                    else:
+                        f2 = f1
+
+                existing_dict = getattr(f2, attr)
+                existing_dict["q"] = "c"
+                eq_(
+                    inspect(f2).attrs[attr].history,
+                    ([existing_dict], (), ()),
+                )
+                for other_attr in all_attrs.difference([attr]):
+                    a = inspect(f2).attrs[other_attr].history
+                    b = ((), [data[other_attr]], ())
+                    eq_(a, b)
 
 
 class _MutableDictTestBase(_MutableDictTestFixture):

@@ -354,6 +354,7 @@ pickling process of the parent's object-relational state so that the
 :meth:`MutableBase._parents` collection is restored to all ``Point`` objects.
 
 """
+from collections import defaultdict
 import weakref
 
 from .. import event
@@ -496,12 +497,12 @@ class MutableBase(object):
             val = state.dict.get(key, None)
             if val is not None:
                 if "ext.mutable.values" not in state_dict:
-                    state_dict["ext.mutable.values"] = []
-                state_dict["ext.mutable.values"].append(val)
+                    state_dict["ext.mutable.values"] = defaultdict(list)
+                state_dict["ext.mutable.values"][key].append(val)
 
         def unpickle(state, state_dict):
             if "ext.mutable.values" in state_dict:
-                for val in state_dict["ext.mutable.values"]:
+                for val in state_dict["ext.mutable.values"][key]:
                     val._parents[state] = key
 
         event.listen(parent_cls, "load", load, raw=True, propagate=True)
