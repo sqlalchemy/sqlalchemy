@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 8138
+
+    Added literal type rendering for the :class:`_sqltypes.ARRAY` and
+    :class:`_postgresql.ARRAY` datatypes. The generic stringify will render
+    using brackets, e.g. ``[1, 2, 3]`` and the PostgreSQL specific will use the
+    ARRAY literal e.g. ``ARRAY[1, 2, 3]``.   Multiple dimensions and quoting
+    are also taken into account.

@@ -969,12 +969,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def array_type(self):
-        return only_on(
-            [
-                lambda config: against(config, "postgresql")
-                and not against(config, "+pg8000")
-            ]
-        )
+        return only_on([lambda config: against(config, "postgresql")])
 
     @property
     def json_type(self):
@@ -1356,10 +1351,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def postgresql_jsonb(self):
-        return only_on("postgresql >= 9.4") + skip_if(
-            lambda config: config.db.dialect.driver == "pg8000"
-            and config.db.dialect._dbapi_version <= (1, 10, 1)
-        )
+        return only_on("postgresql >= 9.4")
 
     @property
     def native_hstore(self):

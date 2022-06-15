@@ -17,6 +17,7 @@ from ..config import requirements
 from ..schema import Column
 from ..schema import Table
 from ... import and_
+from ... import ARRAY
 from ... import BigInteger
 from ... import bindparam
 from ... import Boolean
@@ -220,6 +221,61 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
 
     def test_null_strings_text(self, connection):
         self._test_null_strings(connection)
+
+
+class ArrayTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    """Add ARRAY test suite, #8138.
+
+    This only works on PostgreSQL right now.
+
+    """
+
+    __requires__ = ("array_type",)
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "array_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("single_dim", ARRAY(Integer)),
+            Column("multi_dim", ARRAY(String, dimensions=2)),
+        )
+
+    def test_array_roundtrip(self, connection):
+        array_table = self.tables.array_table
+
+        connection.execute(
+            array_table.insert(),
+            {
+                "id": 1,
+                "single_dim": [1, 2, 3],
+                "multi_dim": [["one", "two"], ["thr'ee", "réve🐍 illé"]],
+            },
+        )
+        row = connection.execute(
+            select(array_table.c.single_dim, array_table.c.multi_dim)
+        ).first()
+        eq_(row, ([1, 2, 3], [["one", "two"], ["thr'ee", "réve🐍 illé"]]))
+
+    def test_literal_simple(self, literal_round_trip):
+        literal_round_trip(
+            ARRAY(Integer),
+            ([1, 2, 3],),
+            ([1, 2, 3],),
+            support_whereclause=False,
+        )
+
+    def test_literal_complex(self, literal_round_trip):
+        literal_round_trip(
+            ARRAY(String, dimensions=2),
+            ([["one", "two"], ["thr'ee", "réve🐍 illé"]],),
+            ([["one", "two"], ["thr'ee", "réve🐍 illé"]],),
+            support_whereclause=False,
+        )
 
 
 class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
@@ -1779,6 +1835,7 @@ class NativeUUIDTest(UuidTest):
 
 
 __all__ = (
+    "ArrayTest",
     "BinaryTest",
     "UnicodeVarcharTest",
     "UnicodeTextTest",
