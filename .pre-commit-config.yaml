@@ -27,5 +27,11 @@ repos:
           - pygments
 
 
-
-
+# This is disabled by default
+# Run it manually with `pre-commit run --hook-stage manual`
+-   repo: https://github.com/asottile/blacken-docs
+    rev: v1.12.1
+    hooks:
+    -   id: blacken-docs
+        stages: [manual]
+        additional_dependencies: [black==22.3.0]
