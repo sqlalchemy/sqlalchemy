@@ -343,7 +343,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "subquery"})
 
     def selectinload(
-        self: Self_AbstractLoad, attr: _AttrType
+        self: Self_AbstractLoad,
+        attr: _AttrType,
+        recursion_depth: Optional[int] = None,
     ) -> Self_AbstractLoad:
         """Indicate that the given attribute should be loaded using
         SELECT IN eager loading.
@@ -365,7 +367,22 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             query(Order).options(
                 lazyload(Order.items).selectinload(Item.keywords))
 
-        .. versionadded:: 1.2
+        :param recursion_depth: optional int; when set to a positive integer
+         in conjunction with a self-referential relationship,
+         indicates "selectin" loading will continue that many levels deep
+         automatically until no items are found.
+
+         .. note:: The :paramref:`_orm.selectinload.recursion_depth` option
+            currently supports only self-referential relationships.  There
+            is not yet an option to automatically traverse recursive structures
+            with more than one relationship involved.
+
+         .. warning:: This parameter is new and experimental and should be
+            treated as "alpha" status
+
+         .. versionadded:: 2.0 added
+            :paramref:`_orm.selectinload.recursion_depth`
+
 
         .. seealso::
 
@@ -374,7 +391,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             :ref:`selectin_eager_loading`
 
         """
-        return self._set_relationship_strategy(attr, {"lazy": "selectin"})
+        return self._set_relationship_strategy(
+            attr,
+            {"lazy": "selectin"},
+            opts={"recursion_depth": recursion_depth},
+        )
 
     def lazyload(
         self: Self_AbstractLoad, attr: _AttrType
@@ -395,7 +416,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "select"})
 
     def immediateload(
-        self: Self_AbstractLoad, attr: _AttrType
+        self: Self_AbstractLoad,
+        attr: _AttrType,
+        recursion_depth: Optional[int] = None,
     ) -> Self_AbstractLoad:
         """Indicate that the given attribute should be loaded using
         an immediate load with a per-attribute SELECT statement.
@@ -410,6 +433,23 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         This function is part of the :class:`_orm.Load` interface and supports
         both method-chained and standalone operation.
 
+        :param recursion_depth: optional int; when set to a positive integer
+         in conjunction with a self-referential relationship,
+         indicates "selectin" loading will continue that many levels deep
+         automatically until no items are found.
+
+         .. note:: The :paramref:`_orm.immediateload.recursion_depth` option
+            currently supports only self-referential relationships.  There
+            is not yet an option to automatically traverse recursive structures
+            with more than one relationship involved.
+
+         .. warning:: This parameter is new and experimental and should be
+            treated as "alpha" status
+
+         .. versionadded:: 2.0 added
+            :paramref:`_orm.immediateload.recursion_depth`
+
+
         .. seealso::
 
             :ref:`loading_toplevel`
@@ -417,7 +457,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             :ref:`selectin_eager_loading`
 
         """
-        loader = self._set_relationship_strategy(attr, {"lazy": "immediate"})
+        loader = self._set_relationship_strategy(
+            attr,
+            {"lazy": "immediate"},
+            opts={"recursion_depth": recursion_depth},
+        )
         return loader
 
     def noload(self: Self_AbstractLoad, attr: _AttrType) -> Self_AbstractLoad:
@@ -1256,6 +1300,15 @@ class Load(_AbstractLoad):
                     if wildcard_key is _RELATIONSHIP_TOKEN:
                         self.path = load_element.path
                     self.context += (load_element,)
+
+                    # this seems to be effective for selectinloader,
+                    # giving the extra match to one more level deep.
+                    # but does not work for immediateloader, which still
+                    # must add additional options at load time
+                    if load_element.local_opts.get("recursion_depth", False):
+                        r1 = load_element._recurse()
+                        self.context += (r1,)
+
         return self
 
     def __getstate__(self):
@@ -1524,6 +1577,11 @@ class _LoadElement(
         self._shallow_copy_to(s)
         return s
 
+    def _update_opts(self, **kw: Any) -> _LoadElement:
+        new = self._clone()
+        new.local_opts = new.local_opts.union(kw)
+        return new
+
     def __getstate__(self) -> Dict[str, Any]:
         d = self._shallow_to_dict()
         d["path"] = self.path.serialize()
@@ -1690,7 +1748,15 @@ class _LoadElement(
     def __init__(self) -> None:
         raise NotImplementedError()
 
-    def _prepend_path_from(self, parent):
+    def _recurse(self) -> _LoadElement:
+        cloned = self._clone()
+        cloned.path = PathRegistry.coerce(self.path[:] + self.path[-2:])
+
+        return cloned
+
+    def _prepend_path_from(
+        self, parent: Union[Load, _LoadElement]
+    ) -> _LoadElement:
         """adjust the path of this :class:`._LoadElement` to be
         a subpath of that of the given parent :class:`_orm.Load` object's
         path.
@@ -2337,8 +2403,12 @@ def subqueryload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def selectinload(*keys: _AttrType) -> _AbstractLoad:
-    return _generate_from_keys(Load.selectinload, keys, False, {})
+def selectinload(
+    *keys: _AttrType, recursion_depth: Optional[int] = None
+) -> _AbstractLoad:
+    return _generate_from_keys(
+        Load.selectinload, keys, False, {"recursion_depth": recursion_depth}
+    )
 
 
 @loader_unbound_fn
@@ -2347,8 +2417,12 @@ def lazyload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def immediateload(*keys: _AttrType) -> _AbstractLoad:
-    return _generate_from_keys(Load.immediateload, keys, False, {})
+def immediateload(
+    *keys: _AttrType, recursion_depth: Optional[int] = None
+) -> _AbstractLoad:
+    return _generate_from_keys(
+        Load.immediateload, keys, False, {"recursion_depth": recursion_depth}
+    )
 
 
 @loader_unbound_fn

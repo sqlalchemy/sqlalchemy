@@ -393,6 +393,9 @@ class RootRegistry(CreatesToken):
                     f"invalid argument for RootRegistry.__getitem__: {entity}"
                 )
 
+    def _truncate_recursive(self) -> RootRegistry:
+        return self
+
     if not TYPE_CHECKING:
         __getitem__ = _getitem
 
@@ -584,6 +587,17 @@ class PropRegistry(PathRegistry):
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.natural_path)
 
+    def _truncate_recursive(self) -> PropRegistry:
+        earliest = None
+        for i, token in enumerate(reversed(self.path[:-1])):
+            if token is self.prop:
+                earliest = i
+
+        if earliest is None:
+            return self
+        else:
+            return self.coerce(self.path[0 : -(earliest + 1)])  # type: ignore
+
     @property
     def entity_path(self) -> AbstractEntityRegistry:
         assert self.entity is not None
@@ -662,6 +676,9 @@ class AbstractEntityRegistry(CreatesToken):
         else:
             # self.natural_path = parent.natural_path + (entity, )
             self.natural_path = self.path
+
+    def _truncate_recursive(self) -> AbstractEntityRegistry:
+        return self.parent._truncate_recursive()[self.entity]
 
     @property
     def root_entity(self) -> _InternalEntityType[Any]:

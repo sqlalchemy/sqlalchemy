@@ -2663,12 +2663,74 @@ class SelfReferentialTest(fixtures.MappedTest):
             Column("data", String(30)),
         )
 
-    def test_basic(self):
-        nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
+    @classmethod
+    def setup_classes(cls):
+        class Node(cls.Comparable):
             def append(self, node):
                 self.children.append(node)
+
+    @testing.fixture
+    def data_fixture(self):
+        def go(sess):
+            Node = self.classes.Node
+            n1 = Node(data="n1")
+            n1.append(Node(data="n11"))
+            n1.append(Node(data="n12"))
+            n1.append(Node(data="n13"))
+
+            n1.children[0].children = [Node(data="n111"), Node(data="n112")]
+
+            n1.children[1].append(Node(data="n121"))
+            n1.children[1].append(Node(data="n122"))
+            n1.children[1].append(Node(data="n123"))
+            n2 = Node(data="n2")
+            n2.append(Node(data="n21"))
+            n2.children[0].append(Node(data="n211"))
+            n2.children[0].append(Node(data="n212"))
+            sess.add(n1)
+            sess.add(n2)
+            sess.flush()
+            sess.expunge_all()
+            return n1, n2
+
+        return go
+
+    def _full_structure(self):
+        Node = self.classes.Node
+        return [
+            Node(
+                data="n1",
+                children=[
+                    Node(data="n11"),
+                    Node(
+                        data="n12",
+                        children=[
+                            Node(data="n121"),
+                            Node(data="n122"),
+                            Node(data="n123"),
+                        ],
+                    ),
+                    Node(data="n13"),
+                ],
+            ),
+            Node(
+                data="n2",
+                children=[
+                    Node(
+                        data="n21",
+                        children=[
+                            Node(data="n211"),
+                            Node(data="n212"),
+                        ],
+                    )
+                ],
+            ),
+        ]
+
+    def test_basic(self, data_fixture):
+        nodes = self.tables.nodes
+
+        Node = self.classes.Node
 
         self.mapper_registry.map_imperatively(
             Node,
@@ -2680,22 +2742,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             },
         )
         sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        n1.append(Node(data="n13"))
-        n1.children[1].append(Node(data="n121"))
-        n1.children[1].append(Node(data="n122"))
-        n1.children[1].append(Node(data="n123"))
-        n2 = Node(data="n2")
-        n2.append(Node(data="n21"))
-        n2.children[0].append(Node(data="n211"))
-        n2.children[0].append(Node(data="n212"))
-
-        sess.add(n1)
-        sess.add(n2)
-        sess.flush()
-        sess.expunge_all()
+        n1, n2 = data_fixture(sess)
 
         def go():
             d = (
@@ -2705,46 +2752,15 @@ class SelfReferentialTest(fixtures.MappedTest):
                 .all()
             )
             eq_(
-                [
-                    Node(
-                        data="n1",
-                        children=[
-                            Node(data="n11"),
-                            Node(
-                                data="n12",
-                                children=[
-                                    Node(data="n121"),
-                                    Node(data="n122"),
-                                    Node(data="n123"),
-                                ],
-                            ),
-                            Node(data="n13"),
-                        ],
-                    ),
-                    Node(
-                        data="n2",
-                        children=[
-                            Node(
-                                data="n21",
-                                children=[
-                                    Node(data="n211"),
-                                    Node(data="n212"),
-                                ],
-                            )
-                        ],
-                    ),
-                ],
+                self._full_structure(),
                 d,
             )
 
         self.assert_sql_count(testing.db, go, 4)
 
-    def test_lazy_fallback_doesnt_affect_eager(self):
+    def test_lazy_fallback_doesnt_affect_eager(self, data_fixture):
         nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
-            def append(self, node):
-                self.children.append(node)
+        Node = self.classes.Node
 
         self.mapper_registry.map_imperatively(
             Node,
@@ -2756,18 +2772,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             },
         )
         sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        n1.append(Node(data="n13"))
-        n1.children[0].append(Node(data="n111"))
-        n1.children[0].append(Node(data="n112"))
-        n1.children[1].append(Node(data="n121"))
-        n1.children[1].append(Node(data="n122"))
-        n1.children[1].append(Node(data="n123"))
-        sess.add(n1)
-        sess.flush()
-        sess.expunge_all()
+        n1, n2 = data_fixture(sess)
 
         def go():
             allnodes = sess.query(Node).order_by(Node.data).all()
@@ -2785,12 +2790,9 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    def test_with_deferred(self):
+    def test_with_deferred(self, data_fixture):
         nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
-            def append(self, node):
-                self.children.append(node)
+        Node = self.classes.Node
 
         self.mapper_registry.map_imperatively(
             Node,
@@ -2803,39 +2805,55 @@ class SelfReferentialTest(fixtures.MappedTest):
             },
         )
         sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        sess.add(n1)
-        sess.flush()
-        sess.expunge_all()
+        n1, n2 = data_fixture(sess)
 
         def go():
             eq_(
-                Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
+                Node(
+                    data="n1",
+                    children=[
+                        Node(data="n11"),
+                        Node(data="n12"),
+                        Node(data="n13"),
+                    ],
+                ),
                 sess.query(Node).order_by(Node.id).first(),
             )
 
-        self.assert_sql_count(testing.db, go, 6)
+        self.assert_sql_count(testing.db, go, 8)
 
         sess.expunge_all()
 
         def go():
             eq_(
-                Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
+                Node(
+                    data="n1",
+                    children=[
+                        Node(data="n11"),
+                        Node(data="n12"),
+                        Node(data="n13"),
+                    ],
+                ),
                 sess.query(Node)
                 .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
 
-        self.assert_sql_count(testing.db, go, 5)
+        self.assert_sql_count(testing.db, go, 7)
 
         sess.expunge_all()
 
         def go():
             eq_(
-                Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
+                Node(
+                    data="n1",
+                    children=[
+                        Node(data="n11"),
+                        Node(data="n12"),
+                        Node(data="n13"),
+                    ],
+                ),
                 sess.query(Node)
                 .options(
                     undefer(Node.data),
@@ -2844,14 +2862,11 @@ class SelfReferentialTest(fixtures.MappedTest):
                 .first(),
             )
 
-        self.assert_sql_count(testing.db, go, 3)
+        self.assert_sql_count(testing.db, go, 4)
 
-    def test_options(self):
+    def test_options(self, data_fixture):
         nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
-            def append(self, node):
-                self.children.append(node)
+        Node = self.classes.Node
 
         self.mapper_registry.map_imperatively(
             Node,
@@ -2859,16 +2874,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             properties={"children": relationship(Node, order_by=nodes.c.id)},
         )
         sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        n1.append(Node(data="n13"))
-        n1.children[1].append(Node(data="n121"))
-        n1.children[1].append(Node(data="n122"))
-        n1.children[1].append(Node(data="n123"))
-        sess.add(n1)
-        sess.flush()
-        sess.expunge_all()
+        n1, n2 = data_fixture(sess)
 
         def go():
             d = (
@@ -2901,14 +2907,11 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_no_depth(self):
+    def test_no_depth(self, data_fixture):
         """no join depth is set, so no eager loading occurs."""
 
         nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
-            def append(self, node):
-                self.children.append(node)
+        Node = self.classes.Node
 
         self.mapper_registry.map_imperatively(
             Node,
@@ -2916,19 +2919,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             properties={"children": relationship(Node, lazy="selectin")},
         )
         sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        n1.append(Node(data="n13"))
-        n1.children[1].append(Node(data="n121"))
-        n1.children[1].append(Node(data="n122"))
-        n1.children[1].append(Node(data="n123"))
-        n2 = Node(data="n2")
-        n2.append(Node(data="n21"))
-        sess.add(n1)
-        sess.add(n2)
-        sess.flush()
-        sess.expunge_all()
+        n1, n2 = data_fixture(sess)
 
         def go():
             d = (
