@@ -3681,7 +3681,6 @@ class DateTimeTZRangeRoundTripTest(_DateTimeTZRangeTests, _RangeTypeRoundTrip):
 
 
 class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
-    __requires__ = "range_types", "psycopg_only_compatibility"
     __dialect__ = "postgresql"
 
     # operator tests

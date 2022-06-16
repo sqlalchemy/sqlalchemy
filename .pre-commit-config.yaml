@@ -2,12 +2,12 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/python/black
-    rev: 21.12b0
+    rev: 22.3.0
     hooks:
     -   id: black
 
 -   repo: https://github.com/sqlalchemyorg/zimports
-    rev: v0.5.0
+    rev: v0.6.0
     hooks:
     -   id: zimports
 
@@ -18,14 +18,13 @@ repos:
         additional_dependencies:
           - flake8-import-order
           - flake8-builtins
-          - flake8-future-annotations
+          - flake8-future-annotations>=0.0.5
           - flake8-docstrings>=1.6.0
           - flake8-rst-docstrings
           # flake8-rst-docstrings dependency, leaving it here
           # in case it requires a version pin
           - pydocstyle
           - pygments
-
 
 
 

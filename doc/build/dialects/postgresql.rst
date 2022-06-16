@@ -155,7 +155,7 @@ For example:
   )
 
 MultiRange Types
-~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 The new MultiRange column types found in PostgreSQL 14 onwards are
 catered for by the following types:
@@ -186,12 +186,12 @@ mixin:
 
 .. warning::
 
-  The multirange type DDL is currently only supported by the
-  psycopg (a.k.a psycopg3) PostgreSQL DBAPI driver.
+  The multirange type DDL support should work with any PostgreSQL DBAPI
+  driver, however the data types returned may vary.
 
 When instantiating models that use these column types, you should pass
 whatever data type is expected by the DBAPI driver you're using for
-the column type. 
+the column type.
 
 For example:
 
