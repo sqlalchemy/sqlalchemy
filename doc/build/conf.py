@@ -513,7 +513,7 @@ rst_prolog = inspect.cleandoc(
 # All options listed here https://sphinxcontrib-spelling.readthedocs.io/en
 # /latest/customize.html
 spelling_lang = "en_US"
-tokenizer_lang = "en_US"
+spelling_exclude_patterns = ["changelog/*.rst"]
 spelling_filters = [
     "enchant.tokenize.URLFilter",
 ]
@@ -522,6 +522,9 @@ spelling_show_suggestions = True
 spelling_suggestion_limit = 2
 spelling_verbose = False
 spelling_word_list_filename = "spelling_wordlist.txt"
+spelling_lang = "en_US"
+tokenizer_lang = "en_US"
+
 
 # All of the below are true by default
 # spelling_ignore_wiki_words = True

@@ -39,6 +39,10 @@ repos:
       - id: mixed-line-ending
       - id: check-added-large-files
         args: [--maxkb=500]
+      - id: file-contents-sorter
+        args: ["--ignore-case", "--unique"]
+        files: "doc/build/spelling_wordlist.txt"
+
 
 # This is disabled by default
 # Run it manually with `pre-commit run --hook-stage manual`
@@ -47,6 +51,7 @@ repos:
     hooks:
     -   id: blacken-docs
         stages: [manual]
+        # Does not obey pyproject.toml configuration
         args: ["--line-length", "79"]
         additional_dependencies: [black==22.3.0]
 
