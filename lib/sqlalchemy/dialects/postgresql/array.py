@@ -310,41 +310,30 @@ class ARRAY(sqltypes.ARRAY):
     def compare_values(self, x, y):
         return x == y
 
-    def _proc_array(self, arr, itemproc, dim, collection):
-        if dim is None:
-            arr = list(arr)
-        if (
-            dim == 1
-            or dim is None
-            and (
-                # this has to be (list, tuple), or at least
-                # not hasattr('__iter__'), since Py3K strings
-                # etc. have __iter__
-                not arr
-                or not isinstance(arr[0], (list, tuple))
-            )
-        ):
-            if itemproc:
-                return collection(itemproc(x) for x in arr)
-            else:
-                return collection(arr)
-        else:
-            return collection(
-                self._proc_array(
-                    x,
-                    itemproc,
-                    dim - 1 if dim is not None else None,
-                    collection,
-                )
-                for x in arr
-            )
-
     @util.memoized_property
     def _against_native_enum(self):
         return (
             isinstance(self.item_type, sqltypes.Enum)
             and self.item_type.native_enum
         )
+
+    def literal_processor(self, dialect):
+        item_proc = self.item_type.dialect_impl(dialect).literal_processor(
+            dialect
+        )
+        if item_proc is None:
+            return None
+
+        def to_str(elements):
+            return f"ARRAY[{', '.join(elements)}]"
+
+        def process(value):
+            inner = self._apply_item_processor(
+                value, item_proc, self.dimensions, to_str
+            )
+            return inner
+
+        return process
 
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(
@@ -355,7 +344,7 @@ class ARRAY(sqltypes.ARRAY):
             if value is None:
                 return value
             else:
-                return self._proc_array(
+                return self._apply_item_processor(
                     value, item_proc, self.dimensions, list
                 )
 
@@ -370,7 +359,7 @@ class ARRAY(sqltypes.ARRAY):
             if value is None:
                 return value
             else:
-                return self._proc_array(
+                return self._apply_item_processor(
                     value,
                     item_proc,
                     self.dimensions,

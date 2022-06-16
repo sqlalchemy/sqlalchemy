@@ -2964,6 +2964,64 @@ class ARRAY(
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent_with_dispatch(parent)
 
+    def literal_processor(self, dialect):
+        item_proc = self.item_type.dialect_impl(dialect).literal_processor(
+            dialect
+        )
+        if item_proc is None:
+            return None
+
+        def to_str(elements):
+            return f"[{', '.join(elements)}]"
+
+        def process(value):
+            inner = self._apply_item_processor(
+                value, item_proc, self.dimensions, to_str
+            )
+            return inner
+
+        return process
+
+    def _apply_item_processor(self, arr, itemproc, dim, collection_callable):
+        """Helper method that can be used by bind_processor(),
+        literal_processor(), etc. to apply an item processor to elements of
+        an array value, taking into account the 'dimensions' for this
+        array type.
+
+        See the Postgresql ARRAY datatype for usage examples.
+
+        .. versionadded:: 2.0
+
+        """
+
+        if dim is None:
+            arr = list(arr)
+        if (
+            dim == 1
+            or dim is None
+            and (
+                # this has to be (list, tuple), or at least
+                # not hasattr('__iter__'), since Py3K strings
+                # etc. have __iter__
+                not arr
+                or not isinstance(arr[0], (list, tuple))
+            )
+        ):
+            if itemproc:
+                return collection_callable(itemproc(x) for x in arr)
+            else:
+                return collection_callable(arr)
+        else:
+            return collection_callable(
+                self._apply_item_processor(
+                    x,
+                    itemproc,
+                    dim - 1 if dim is not None else None,
+                    collection_callable,
+                )
+                for x in arr
+            )
+
 
 class TupleType(TypeEngine[Tuple[Any, ...]]):
     """represent the composite type of a Tuple."""

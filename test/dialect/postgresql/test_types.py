@@ -19,6 +19,7 @@ from sqlalchemy import Float
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import Numeric
@@ -52,6 +53,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -64,6 +66,7 @@ from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
+from sqlalchemy.types import UserDefinedType
 
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -1229,6 +1232,23 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             dialect=postgresql.psycopg2.dialect(),
             render_postcompile=True,
         )
+
+    def test_array_literal_render_no_inner_render(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "MYTYPE"
+
+        with expect_raises_message(
+            NotImplementedError,
+            r"Don't know how to literal-quote value \[1, 2, 3\]",
+        ):
+            self.assert_compile(
+                select(literal([1, 2, 3], ARRAY(MyType()))),
+                "nothing",
+                literal_binds=True,
+            )
 
     def test_array_in_str_psycopg2_cast(self):
         expr = column("x", postgresql.ARRAY(String(15))).in_(

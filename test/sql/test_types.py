@@ -93,6 +93,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
+from sqlalchemy.types import UserDefinedType
 
 
 def _all_dialect_modules():
@@ -2904,7 +2905,7 @@ class JSONTest(fixtures.TestBase):
         eq_(bindproc(expr.right.value), "'five'")
 
 
-class ArrayTest(fixtures.TestBase):
+class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def _myarray_fixture(self):
         class MyArray(ARRAY):
             pass
@@ -2956,6 +2957,44 @@ class ArrayTest(fixtures.TestBase):
         # but the slice returns the actual type
         assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
         assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
+
+    def test_array_literal_simple(self):
+        self.assert_compile(
+            select(literal([1, 2, 3], ARRAY(Integer))),
+            "SELECT [1, 2, 3] AS anon_1",
+            literal_binds=True,
+            dialect="default",
+        )
+
+    def test_array_literal_complex(self):
+        self.assert_compile(
+            select(
+                literal(
+                    [["one", "two"], ["thr'ee", "réve🐍 illé"]],
+                    ARRAY(String, dimensions=2),
+                )
+            ),
+            "SELECT [['one', 'two'], ['thr''ee', 'réve🐍 illé']] AS anon_1",
+            literal_binds=True,
+            dialect="default",
+        )
+
+    def test_array_literal_render_no_inner_render(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "MYTYPE"
+
+        with expect_raises_message(
+            NotImplementedError,
+            r"Don't know how to literal-quote value \[1, 2, 3\]",
+        ):
+            self.assert_compile(
+                select(literal([1, 2, 3], ARRAY(MyType()))),
+                "nothing",
+                literal_binds=True,
+            )
 
 
 MyCustomType = MyTypeDec = None
