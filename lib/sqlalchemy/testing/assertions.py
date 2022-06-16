@@ -801,7 +801,7 @@ class AssertsExecutionResults:
         return self.assert_sql_execution(db, callable_, *newrules)
 
     def assert_sql_count(self, db, callable_, count):
-        return self.assert_sql_execution(
+        self.assert_sql_execution(
             db, callable_, assertsql.CountStatements(count)
         )
 

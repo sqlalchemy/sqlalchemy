@@ -343,7 +343,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "subquery"})
 
     def selectinload(
-        self: Self_AbstractLoad, attr: _AttrType, auto_recurse: bool = False
+        self: Self_AbstractLoad, attr: _AttrType
     ) -> Self_AbstractLoad:
         """Indicate that the given attribute should be loaded using
         SELECT IN eager loading.
@@ -365,21 +365,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             query(Order).options(
                 lazyload(Order.items).selectinload(Item.keywords))
 
-        :param auto_recurse: boolean; may be set to True when setting the
-         option on a self-referential relationship, which indicates that
-         "selectin" loading will continue an arbitrary number of levels deep
-         until no more items are found.
-
-         .. note:: The :paramref:`_orm.selectinload.auto_recurse` option
-            currently supports only self-referential relationships.  There
-            is not yet an option to automatically traverse recursive structures
-            with more than one relationship involved.
-
-         .. warning:: This parameter is new and experimental and should be
-            treated as "alpha" status
-
-         .. versionadded:: 2.0 added :paramref:`_orm.selectinload.auto_recurse`
-
+        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -388,9 +374,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             :ref:`selectin_eager_loading`
 
         """
-        return self._set_relationship_strategy(
-            attr, {"lazy": "selectin"}, opts={"auto_recurse": auto_recurse}
-        )
+        return self._set_relationship_strategy(attr, {"lazy": "selectin"})
 
     def lazyload(
         self: Self_AbstractLoad, attr: _AttrType
@@ -411,7 +395,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "select"})
 
     def immediateload(
-        self: Self_AbstractLoad, attr: _AttrType, auto_recurse: bool = False
+        self: Self_AbstractLoad, attr: _AttrType
     ) -> Self_AbstractLoad:
         """Indicate that the given attribute should be loaded using
         an immediate load with a per-attribute SELECT statement.
@@ -426,23 +410,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         This function is part of the :class:`_orm.Load` interface and supports
         both method-chained and standalone operation.
 
-        :param auto_recurse: boolean; may be set to True when setting the
-         option on a self-referential relationship, which indicates that
-         "immediate" loading will continue an arbitrary number of levels deep
-         until no more items are found.
-
-         .. note:: The :paramref:`_orm.immediateload.auto_recurse` option
-            currently supports only self-referential relationships.  There
-            is not yet an option to automatically traverse recursive structures
-            with more than one relationship involved.
-
-         .. warning:: This parameter is new and experimental and should be
-            treated as "alpha" status
-
-         .. versionadded:: 2.0 added
-            :paramref:`_orm.immediateload.auto_recurse`
-
-
         .. seealso::
 
             :ref:`loading_toplevel`
@@ -450,9 +417,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             :ref:`selectin_eager_loading`
 
         """
-        loader = self._set_relationship_strategy(
-            attr, {"lazy": "immediate"}, opts={"auto_recurse": auto_recurse}
-        )
+        loader = self._set_relationship_strategy(attr, {"lazy": "immediate"})
         return loader
 
     def noload(self: Self_AbstractLoad, attr: _AttrType) -> Self_AbstractLoad:
@@ -1725,15 +1690,7 @@ class _LoadElement(
     def __init__(self) -> None:
         raise NotImplementedError()
 
-    def _recurse(self) -> _LoadElement:
-        cloned = self._clone()
-        cloned.path = PathRegistry.coerce(self.path[:] + self.path[-2:])
-
-        return cloned
-
-    def _prepend_path_from(
-        self, parent: Union[Load, _LoadElement]
-    ) -> _LoadElement:
+    def _prepend_path_from(self, parent):
         """adjust the path of this :class:`._LoadElement` to be
         a subpath of that of the given parent :class:`_orm.Load` object's
         path.
@@ -2380,12 +2337,8 @@ def subqueryload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def selectinload(
-    *keys: _AttrType, auto_recurse: bool = False
-) -> _AbstractLoad:
-    return _generate_from_keys(
-        Load.selectinload, keys, False, {"auto_recurse": auto_recurse}
-    )
+def selectinload(*keys: _AttrType) -> _AbstractLoad:
+    return _generate_from_keys(Load.selectinload, keys, False, {})
 
 
 @loader_unbound_fn
@@ -2394,12 +2347,8 @@ def lazyload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def immediateload(
-    *keys: _AttrType, auto_recurse: bool = False
-) -> _AbstractLoad:
-    return _generate_from_keys(
-        Load.immediateload, keys, False, {"auto_recurse": auto_recurse}
-    )
+def immediateload(*keys: _AttrType) -> _AbstractLoad:
+    return _generate_from_keys(Load.immediateload, keys, False, {})
 
 
 @loader_unbound_fn
