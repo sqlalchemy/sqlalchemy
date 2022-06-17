@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from typing import Dict
 from typing import Generator
@@ -698,7 +699,7 @@ class AsyncConnection(
         return self.start().__await__()
 
     async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
-        await self.close()
+        await asyncio.shield(self.close())
 
     # START PROXY METHODS AsyncConnection
 
@@ -855,8 +856,11 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         async def __aexit__(
             self, type_: Any, value: Any, traceback: Any
         ) -> None:
-            await self.transaction.__aexit__(type_, value, traceback)
-            await self.conn.close()
+            async def go() -> None:
+                await self.transaction.__aexit__(type_, value, traceback)
+                await self.conn.close()
+
+            await asyncio.shield(go())
 
     def __init__(self, sync_engine: Engine):
         if not sync_engine.dialect.is_async:
@@ -956,7 +960,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
 
         """
 
-        return await greenlet_spawn(self.sync_engine.dispose, close=close)
+        await greenlet_spawn(self.sync_engine.dispose, close=close)
 
     # START PROXY METHODS AsyncEngine
 
