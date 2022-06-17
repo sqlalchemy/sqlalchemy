@@ -408,7 +408,7 @@ which is in the ``public`` (i.e. default) schema will always have the
     from a backend-agnostic perspective
 
     `The Schema Search Path
-    <https://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
+    <https://www.postgresql.org/docs/current/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
     - on the PostgreSQL website.
 
 INSERT/UPDATE...RETURNING
@@ -808,7 +808,7 @@ take full advantage of any indexes you may have created for full text search.
 
 .. seealso::
 
-    `Full Text Search <https://www.postgresql.org/docs/latest/textsearch-controls.html>`_ - in the PostgreSQL documentation
+    `Full Text Search <https://www.postgresql.org/docs/current/textsearch-controls.html>`_ - in the PostgreSQL documentation
 
 
 FROM ONLY ...
@@ -871,7 +871,7 @@ Operator Classes
 
 PostgreSQL allows the specification of an *operator class* for each column of
 an index (see
-https://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
+https://www.postgresql.org/docs/current/interactive/indexes-opclass.html).
 The :class:`.Index` construct allows these to be specified via the
 ``postgresql_ops`` keyword argument::
 
@@ -913,7 +913,7 @@ Index Types
 
 PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well
 as the ability for users to create their own (see
-https://www.postgresql.org/docs/8.3/static/indexes-types.html). These can be
+https://www.postgresql.org/docs/current/static/indexes-types.html). These can be
 specified on :class:`.Index` using the ``postgresql_using`` keyword argument::
 
     Index('my_index', my_table.c.data, postgresql_using='gin')

@@ -4174,8 +4174,8 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 )
             else:
                 # e.g. FOREIGN KEY (a) REFERENCES r (b, c)
-                # paraphrasing https://www.postgresql.org/docs/9.2/static/\
-                # ddl-constraints.html
+                # paraphrasing
+                # https://www.postgresql.org/docs/current/static/ddl-constraints.html
                 raise exc.ArgumentError(
                     "ForeignKeyConstraint number "
                     "of constrained columns must match the number of "
