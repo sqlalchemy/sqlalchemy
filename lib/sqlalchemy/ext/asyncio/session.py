@@ -4,6 +4,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+import asyncio
+
 from . import engine
 from . import result as _result
 from .base import ReversibleProxy
@@ -607,7 +610,7 @@ class AsyncSession(ReversibleProxy):
             :meth:`_asyncio.AsyncSession.close`
 
         """
-        return await greenlet_spawn(self.sync_session.close)
+        await greenlet_spawn(self.sync_session.close)
 
     async def invalidate(self):
         """Close this Session, using connection invalidation.
@@ -625,7 +628,7 @@ class AsyncSession(ReversibleProxy):
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        await self.close()
+        await asyncio.shield(self.close())
 
     def _maker_context_manager(self):
         # no @contextlib.asynccontextmanager until python3.7, gr
@@ -642,8 +645,11 @@ class _AsyncSessionContextManager:
         return self.async_session
 
     async def __aexit__(self, type_, value, traceback):
-        await self.trans.__aexit__(type_, value, traceback)
-        await self.async_session.__aexit__(type_, value, traceback)
+        async def go():
+            await self.trans.__aexit__(type_, value, traceback)
+            await self.async_session.__aexit__(type_, value, traceback)
+
+        await asyncio.shield(go())
 
 
 class AsyncSessionTransaction(ReversibleProxy, StartableContext):

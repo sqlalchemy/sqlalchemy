@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+import asyncio
+
 from . import exc as async_exc
 from .base import ProxyComparable
 from .base import StartableContext
@@ -549,7 +551,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         return self.start().__await__()
 
     async def __aexit__(self, type_, value, traceback):
-        await self.close()
+        await asyncio.shield(self.close())
 
 
 @util.create_proxy_methods(
@@ -600,8 +602,11 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
             return self.conn
 
         async def __aexit__(self, type_, value, traceback):
-            await self.transaction.__aexit__(type_, value, traceback)
-            await self.conn.close()
+            async def go():
+                await self.transaction.__aexit__(type_, value, traceback)
+                await self.conn.close()
+
+            await asyncio.shield(go())
 
     def __init__(self, sync_engine):
         if not sync_engine.dialect.is_async:
@@ -698,7 +703,7 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
 
         """
 
-        return await greenlet_spawn(self.sync_engine.dispose)
+        await greenlet_spawn(self.sync_engine.dispose)
 
 
 class AsyncTransaction(ProxyComparable, StartableContext):
