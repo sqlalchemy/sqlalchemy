@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, schema, mssql
+    :tickets: 8111
+
+    Fixed issue where :class:`.Table` objects that made use of IDENTITY columns
+    with a :class:`.Numeric` datatype would produce errors when attempting to
+    reconcile the "autoincrement" column, preventing construction of the
+    :class:`.Column` from using the :paramref:`.Column.autoincrement` parameter
+    as well as emitting errors when attempting to invoke an :class:`.Insert`
+    construct.
+

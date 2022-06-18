@@ -4540,7 +4540,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _autoincrement_column(self) -> Optional[Column[Any]]:
         def _validate_autoinc(col: Column[Any], autoinc_true: bool) -> bool:
             if col.type._type_affinity is None or not issubclass(
-                col.type._type_affinity, type_api.INTEGERTYPE._type_affinity
+                col.type._type_affinity,
+                (
+                    type_api.INTEGERTYPE._type_affinity,
+                    type_api.NUMERICTYPE._type_affinity,
+                ),
             ):
                 if autoinc_true:
                     raise exc.ArgumentError(
