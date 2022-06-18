@@ -45,7 +45,7 @@ transaction).
 
     .. seealso::
 
-        `Repeatable Read Isolation Level <https://www.postgresql.org/docs/9.1/static/transaction-iso.html#XACT-REPEATABLE-READ>`_ - PostgreSQL's implementation of repeatable read, including a description of the error condition.
+        `Repeatable Read Isolation Level <https://www.postgresql.org/docs/current/static/transaction-iso.html#XACT-REPEATABLE-READ>`_ - PostgreSQL's implementation of repeatable read, including a description of the error condition.
 
 Simple Version Counting
 -----------------------
@@ -141,7 +141,7 @@ some means of generating new identifiers when a row is subject to an INSERT
 as well as with an UPDATE.   For the UPDATE case, typically an update trigger
 is needed, unless the database in question supports some other native
 version identifier.  The PostgreSQL database in particular supports a system
-column called `xmin <https://www.postgresql.org/docs/9.1/static/ddl-system-columns.html>`_
+column called `xmin <https://www.postgresql.org/docs/current/static/ddl-system-columns.html>`_
 which provides UPDATE versioning.  We can make use
 of the PostgreSQL ``xmin`` column to version our ``User``
 class as follows::

@@ -1091,7 +1091,7 @@ class ReflectionTest(
 
         # "ASC NULLS LAST" is implicit default for indexes,
         # and "NULLS FIRST" is implicit default for "DESC".
-        # (https://www.postgresql.org/docs/11/indexes-ordering.html)
+        # (https://www.postgresql.org/docs/current/indexes-ordering.html)
 
         def compile_exprs(exprs):
             return list(map(str, exprs))

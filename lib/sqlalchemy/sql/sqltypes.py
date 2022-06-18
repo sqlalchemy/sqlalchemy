@@ -788,8 +788,8 @@ class DateTime(
     @util.memoized_property
     def _expression_adaptations(self):
 
-        # Based on https://www.postgresql.org/docs/current/\
-        # static/functions-datetime.html.
+        # Based on
+        # https://www.postgresql.org/docs/current/static/functions-datetime.html.
 
         return {
             operators.add: {Interval: self.__class__},
@@ -815,8 +815,8 @@ class Date(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.date]):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on https://www.postgresql.org/docs/current/\
-        # static/functions-datetime.html.
+        # Based on
+        # https://www.postgresql.org/docs/current/static/functions-datetime.html.
 
         return {
             operators.add: {
@@ -863,8 +863,8 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on https://www.postgresql.org/docs/current/\
-        # static/functions-datetime.html.
+        # Based on
+        # https://www.postgresql.org/docs/current/static/functions-datetime.html.
 
         return {
             operators.add: {Date: DateTime, Interval: self.__class__},
@@ -1927,8 +1927,8 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
 class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on https://www.postgresql.org/docs/current/\
-        # static/functions-datetime.html.
+        # Based on
+        # https://www.postgresql.org/docs/current/static/functions-datetime.html.
 
         return {
             operators.add: {

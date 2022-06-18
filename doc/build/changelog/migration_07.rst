@@ -373,8 +373,7 @@ The best introduction to window functions is on PostgreSQL's
 site, where window functions have been supported since
 version 8.4:
 
-https://www.postgresql.org/docs/9.0/static/tutorial-
-window.html
+https://www.postgresql.org/docs/current/static/tutorial-window.html
 
 SQLAlchemy provides a simple construct typically invoked via
 an existing function clause, using the ``over()`` method,

@@ -650,7 +650,7 @@ class Query(
 
         Here is the `PostgreSQL WITH
         RECURSIVE example
-        <https://www.postgresql.org/docs/8.4/static/queries-with.html>`_.
+        <https://www.postgresql.org/docs/current/static/queries-with.html>`_.
         Note that, in this example, the ``included_parts`` cte and the
         ``incl_alias`` alias of it are Core selectables, which
         means the columns are accessed via the ``.c.`` attribute.  The

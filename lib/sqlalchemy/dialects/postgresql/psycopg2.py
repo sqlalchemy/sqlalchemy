@@ -107,7 +107,7 @@ using ``host`` as an additional keyword argument::
 .. seealso::
 
     `PQconnectdbParams \
-    <https://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+    <https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 .. _psycopg2_multi_host:
 
@@ -132,7 +132,7 @@ or all connections are unsuccessful in which case an error is raised.
 .. seealso::
 
     `PQConnString \
-    <https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING>`_
+    <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
 
 Empty DSN Connections / Environment Variable Connections
 ---------------------------------------------------------
