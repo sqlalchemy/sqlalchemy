@@ -97,6 +97,7 @@ LABEL_STYLE_LEGACY_ORM = SelectLabelStyle.LABEL_STYLE_LEGACY_ORM
 
 class QueryContext:
     __slots__ = (
+        "top_level_context",
         "compile_state",
         "query",
         "params",
@@ -136,6 +137,7 @@ class QueryContext:
         _refresh_state = None
         _lazy_loaded_from = None
         _legacy_uniquing = False
+        _sa_top_level_orm_context = None
 
     def __init__(
         self,
@@ -159,6 +161,7 @@ class QueryContext:
         self.loaders_require_buffering = False
         self.loaders_require_uniquing = False
         self.params = params
+        self.top_level_context = load_options._sa_top_level_orm_context
 
         self.propagated_loader_options = tuple(
             # issue 7447.
@@ -193,6 +196,9 @@ class QueryContext:
         self.refresh_state = load_options._refresh_state
         self.yield_per = load_options._yield_per
         self.identity_token = load_options._refresh_identity_token
+
+    def _get_top_level_context(self) -> QueryContext:
+        return self.top_level_context or self
 
 
 _orm_load_exec_options = util.immutabledict(
@@ -327,11 +333,15 @@ class ORMCompileState(CompileState):
             execution_options,
         ) = QueryContext.default_load_options.from_execution_options(
             "_sa_orm_load_options",
-            {"populate_existing", "autoflush", "yield_per"},
+            {
+                "populate_existing",
+                "autoflush",
+                "yield_per",
+                "sa_top_level_orm_context",
+            },
             execution_options,
             statement._execution_options,
         )
-
         # default execution options for ORM results:
         # 1. _result_disable_adapt_to_context=True
         #    this will disable the ResultSetMetadata._adapt_to_context()
@@ -355,6 +365,21 @@ class ORMCompileState(CompileState):
                         "yield_per", load_options._yield_per
                     ),
                 }
+            )
+
+        if (
+            getattr(statement._compile_options, "_current_path", None)
+            and len(statement._compile_options._current_path) > 10
+            and execution_options.get("compiled_cache", True) is not None
+        ):
+            util.warn(
+                "Loader depth for query is excessively deep; caching will "
+                "be disabled for additional loaders.  Consider using the "
+                "recursion_depth feature for deeply nested recursive eager "
+                "loaders."
+            )
+            execution_options = execution_options.union(
+                {"compiled_cache": None}
             )
 
         bind_arguments["clause"] = statement

@@ -43,6 +43,7 @@ from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
+from .strategy_options import Load
 from .util import _none_set
 from .util import AliasedClass
 from .. import event
@@ -830,7 +831,16 @@ class LazyLoader(
             "'%s' is not available due to lazy='%s'" % (self, lazy)
         )
 
-    def _load_for_state(self, state, passive, loadopt=None, extra_criteria=()):
+    def _load_for_state(
+        self,
+        state,
+        passive,
+        loadopt=None,
+        extra_criteria=(),
+        extra_options=(),
+        alternate_effective_path=None,
+        execution_options=util.EMPTY_DICT,
+    ):
         if not state.key and (
             (
                 not self.parent_property.load_on_pending
@@ -929,6 +939,9 @@ class LazyLoader(
             passive,
             loadopt,
             extra_criteria,
+            extra_options,
+            alternate_effective_path,
+            execution_options,
         )
 
     def _get_ident_for_use_get(self, session, state, passive):
@@ -955,6 +968,9 @@ class LazyLoader(
         passive,
         loadopt,
         extra_criteria,
+        extra_options,
+        alternate_effective_path,
+        execution_options,
     ):
         strategy_options = util.preloaded.orm_strategy_options
 
@@ -986,7 +1002,10 @@ class LazyLoader(
         use_get = self.use_get
 
         if state.load_options or (loadopt and loadopt._extra_criteria):
-            effective_path = state.load_path[self.parent_property]
+            if alternate_effective_path is None:
+                effective_path = state.load_path[self.parent_property]
+            else:
+                effective_path = alternate_effective_path[self.parent_property]
 
             opts = state.load_options
 
@@ -997,10 +1016,16 @@ class LazyLoader(
                 )
 
             stmt._with_options = opts
-        else:
+        elif alternate_effective_path is None:
             # this path is used if there are not already any options
             # in the query, but an event may want to add them
             effective_path = state.mapper._path_registry[self.parent_property]
+        else:
+            # added by immediateloader
+            effective_path = alternate_effective_path[self.parent_property]
+
+        if extra_options:
+            stmt._with_options += extra_options
 
         stmt._compile_options += {"_current_path": effective_path}
 
@@ -1009,7 +1034,11 @@ class LazyLoader(
                 self._invoke_raise_load(state, passive, "raise_on_sql")
 
             return loading.load_on_pk_identity(
-                session, stmt, primary_key_identity, load_options=load_options
+                session,
+                stmt,
+                primary_key_identity,
+                load_options=load_options,
+                execution_options=execution_options,
             )
 
         if self._order_by:
@@ -1036,9 +1065,18 @@ class LazyLoader(
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
 
-        execution_options = {
-            "_sa_orm_load_options": load_options,
-        }
+        if execution_options:
+
+            execution_options = util.EMPTY_DICT.merge_with(
+                execution_options,
+                {
+                    "_sa_orm_load_options": load_options,
+                },
+            )
+        else:
+            execution_options = {
+                "_sa_orm_load_options": load_options,
+            }
 
         if (
             self.key in state.dict
@@ -1191,15 +1229,54 @@ class PostLoader(AbstractRelationshipLoader):
 
     __slots__ = ()
 
-    def _check_recursive_postload(self, context, path, join_depth=None):
+    def _setup_for_recursion(self, context, path, loadopt, join_depth=None):
+
         effective_path = (
             context.compile_state.current_path or orm_util.PathRegistry.root
         ) + path
 
+        top_level_context = context._get_top_level_context()
+        execution_options = util.immutabledict(
+            {"sa_top_level_orm_context": top_level_context}
+        )
+
+        if loadopt:
+            recursion_depth = loadopt.local_opts.get("recursion_depth", None)
+            unlimited_recursion = recursion_depth == -1
+        else:
+            recursion_depth = None
+            unlimited_recursion = False
+
+        if recursion_depth is not None:
+            if not self.parent_property._is_self_referential:
+                raise sa_exc.InvalidRequestError(
+                    f"recursion_depth option on relationship "
+                    f"{self.parent_property} not valid for "
+                    "non-self-referential relationship"
+                )
+            recursion_depth = context.execution_options.get(
+                f"_recursion_depth_{id(self)}", recursion_depth
+            )
+
+            if not unlimited_recursion and recursion_depth < 0:
+                return (
+                    effective_path,
+                    False,
+                    execution_options,
+                    recursion_depth,
+                )
+
+            if not unlimited_recursion:
+                execution_options = execution_options.union(
+                    {
+                        f"_recursion_depth_{id(self)}": recursion_depth - 1,
+                    }
+                )
+
         if loading.PostLoad.path_exists(
             context, effective_path, self.parent_property
         ):
-            return True
+            return effective_path, False, execution_options, recursion_depth
 
         path_w_prop = path[self.parent_property]
         effective_path_w_prop = effective_path[self.parent_property]
@@ -1207,11 +1284,21 @@ class PostLoader(AbstractRelationshipLoader):
         if not path_w_prop.contains(context.attributes, "loader"):
             if join_depth:
                 if effective_path_w_prop.length / 2 > join_depth:
-                    return True
+                    return (
+                        effective_path,
+                        False,
+                        execution_options,
+                        recursion_depth,
+                    )
             elif effective_path_w_prop.contains_mapper(self.mapper):
-                return True
+                return (
+                    effective_path,
+                    False,
+                    execution_options,
+                    recursion_depth,
+                )
 
-        return False
+        return effective_path, True, execution_options, recursion_depth
 
     def _immediateload_create_row_processor(
         self,
@@ -1258,10 +1345,14 @@ class ImmediateLoader(PostLoader):
         adapter,
         populators,
     ):
-        def load_immediate(state, dict_, row):
-            state.get_impl(self.key).get(state, dict_, flags)
 
-        if self._check_recursive_postload(context, path):
+        (
+            effective_path,
+            run_loader,
+            execution_options,
+            recursion_depth,
+        ) = self._setup_for_recursion(context, path, loadopt)
+        if not run_loader:
             # this will not emit SQL and will only emit for a many-to-one
             # "use get" load.   the "_RELATED" part means it may return
             # instance even if its expired, since this is a mutually-recursive
@@ -1270,7 +1361,57 @@ class ImmediateLoader(PostLoader):
         else:
             flags = attributes.PASSIVE_OFF | PassiveFlag.NO_RAISE
 
-        populators["delayed"].append((self.key, load_immediate))
+        loading.PostLoad.callable_for_path(
+            context,
+            effective_path,
+            self.parent,
+            self.parent_property,
+            self._load_for_path,
+            loadopt,
+            flags,
+            recursion_depth,
+            execution_options,
+        )
+
+    def _load_for_path(
+        self,
+        context,
+        path,
+        states,
+        load_only,
+        loadopt,
+        flags,
+        recursion_depth,
+        execution_options,
+    ):
+
+        if recursion_depth:
+            new_opt = Load(loadopt.path.entity)
+            new_opt.context = (
+                loadopt,
+                loadopt._recurse(),
+            )
+            alternate_effective_path = path._truncate_recursive()
+            extra_options = (new_opt,)
+        else:
+            new_opt = None
+            alternate_effective_path = path
+            extra_options = ()
+
+        key = self.key
+        lazyloader = self.parent_property._get_strategy((("lazy", "select"),))
+        for state, overwrite in states:
+            dict_ = state.dict
+
+            if overwrite or key not in dict_:
+                value = lazyloader._load_for_state(
+                    state,
+                    flags,
+                    extra_options=extra_options,
+                    alternate_effective_path=alternate_effective_path,
+                    execution_options=execution_options,
+                )
+                state.get_impl(key).set_committed_value(state, dict_, value)
 
 
 @log.class_logger
@@ -1677,24 +1818,6 @@ class SubqueryLoader(PostLoader):
         subq_path = subq_path + path
         rewritten_path = rewritten_path + path
 
-        # if not via query option, check for
-        # a cycle
-        # TODO: why is this here???  this is now handled
-        # by the _check_recursive_postload call
-        if not path.contains(compile_state.attributes, "loader"):
-            if self.join_depth:
-                if (
-                    (
-                        compile_state.current_path.length
-                        if compile_state.current_path
-                        else 0
-                    )
-                    + path.length
-                ) / 2 > self.join_depth:
-                    return
-            elif subq_path.contains_mapper(self.mapper):
-                return
-
         # use the current query being invoked, not the compile state
         # one.  this is so that we get the current parameters.  however,
         # it means we can't use the existing compile state, we have to make
@@ -1814,11 +1937,14 @@ class SubqueryLoader(PostLoader):
                 adapter,
                 populators,
             )
-        # the subqueryloader does a similar check in setup_query() unlike
-        # the other post loaders, however we have this here for consistency
-        elif self._check_recursive_postload(context, path, self.join_depth):
+
+        _, run_loader, _, _ = self._setup_for_recursion(
+            context, path, loadopt, self.join_depth
+        )
+        if not run_loader:
             return
-        elif not isinstance(context.compile_state, ORMSelectCompileState):
+
+        if not isinstance(context.compile_state, ORMSelectCompileState):
             # issue 7505 - subqueryload() in 1.3 and previous would silently
             # degrade for from_statement() without warning. this behavior
             # is restored here
@@ -2787,7 +2913,16 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 adapter,
                 populators,
             )
-        elif self._check_recursive_postload(context, path, self.join_depth):
+
+        (
+            effective_path,
+            run_loader,
+            execution_options,
+            recursion_depth,
+        ) = self._setup_for_recursion(
+            context, path, loadopt, join_depth=self.join_depth
+        )
+        if not run_loader:
             return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
@@ -2806,9 +2941,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         elif not orm_util._entity_isa(path[-1], self.parent):
             return
 
-        selectin_path = (
-            context.compile_state.current_path or orm_util.PathRegistry.root
-        ) + path
+        selectin_path = effective_path
 
         path_w_prop = path[self.parent_property]
 
@@ -2830,10 +2963,20 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             self._load_for_path,
             effective_entity,
             loadopt,
+            recursion_depth,
+            execution_options,
         )
 
     def _load_for_path(
-        self, context, path, states, load_only, effective_entity, loadopt
+        self,
+        context,
+        path,
+        states,
+        load_only,
+        effective_entity,
+        loadopt,
+        recursion_depth,
+        execution_options,
     ):
         if load_only and self.key not in load_only:
             return
@@ -3003,9 +3146,13 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 ),
             )
 
+        if recursion_depth is not None:
+            effective_path = effective_path._truncate_recursive()
+
         q = q.options(*new_options)._update_compile_options(
             {"_current_path": effective_path}
         )
+
         if user_defined_options:
             q = q.options(*user_defined_options)
 
@@ -3034,12 +3181,27 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         if query_info.load_only_child:
             self._load_via_child(
-                our_states, none_states, query_info, q, context
+                our_states,
+                none_states,
+                query_info,
+                q,
+                context,
+                execution_options,
             )
         else:
-            self._load_via_parent(our_states, query_info, q, context)
+            self._load_via_parent(
+                our_states, query_info, q, context, execution_options
+            )
 
-    def _load_via_child(self, our_states, none_states, query_info, q, context):
+    def _load_via_child(
+        self,
+        our_states,
+        none_states,
+        query_info,
+        q,
+        context,
+        execution_options,
+    ):
         uselist = self.uselist
 
         # this sort is really for the benefit of the unit tests
@@ -3057,6 +3219,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                             for key in chunk
                         ]
                     },
+                    execution_options=execution_options,
                 ).unique()
             }
 
@@ -3085,7 +3248,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # collection will be populated
             state.get_impl(self.key).set_committed_value(state, dict_, None)
 
-    def _load_via_parent(self, our_states, query_info, q, context):
+    def _load_via_parent(
+        self, our_states, query_info, q, context, execution_options
+    ):
         uselist = self.uselist
         _empty_result = () if uselist else None
 
@@ -3101,7 +3266,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(
                 context.session.execute(
-                    q, params={"primary_keys": primary_keys}
+                    q,
+                    params={"primary_keys": primary_keys},
+                    execution_options=execution_options,
                 ).unique(),
                 lambda x: x[0],
             ):
