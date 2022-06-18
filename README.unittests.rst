@@ -310,8 +310,13 @@ be used with pytest by using ``--db docker_mssql``.
     >> sqlplus system/tiger@//localhost/XEPDB1 <<EOF
     CREATE USER test_schema IDENTIFIED BY tiger;
     GRANT DBA TO SCOTT;
+    GRANT CREATE TABLE TO scott;
+    GRANT CREATE TABLE TO test_schema;
     GRANT UNLIMITED TABLESPACE TO scott;
     GRANT UNLIMITED TABLESPACE TO test_schema;
+    GRANT CREATE SESSION TO test_schema;
+    CREATE PUBLIC DATABASE LINK test_link CONNECT TO scott IDENTIFIED BY tiger USING 'XEPDB1';
+    CREATE PUBLIC DATABASE LINK test_link2 CONNECT TO test_schema IDENTIFIED BY tiger USING 'XEPDB1';
     EOF
 
     # To stop the container. It will also remove it.

@@ -23,7 +23,7 @@ __all__ = ["Table", "Column"]
 table_options = {}
 
 
-def Table(*args, **kw):
+def Table(*args, **kw) -> schema.Table:
     """A schema.Table wrapper/hook for dialect-specific tweaks."""
 
     test_opts = {k: kw.pop(k) for k in list(kw) if k.startswith("test_")}
@@ -132,6 +132,19 @@ class eq_type_affinity:
 
     def __ne__(self, other):
         return self.target._type_affinity is not other._type_affinity
+
+
+class eq_compile_type:
+    """similar to eq_type_affinity but uses compile"""
+
+    def __init__(self, target):
+        self.target = target
+
+    def __eq__(self, other):
+        return self.target == other.compile()
+
+    def __ne__(self, other):
+        return self.target != other.compile()
 
 
 class eq_clause_element:

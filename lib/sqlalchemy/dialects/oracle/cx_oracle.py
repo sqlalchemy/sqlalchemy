@@ -431,6 +431,7 @@ from . import base as oracle
 from .base import OracleCompiler
 from .base import OracleDialect
 from .base import OracleExecutionContext
+from .types import _OracleDateLiteralRender
 from ... import exc
 from ... import util
 from ...engine import cursor as _cursor
@@ -573,7 +574,7 @@ class _CXOracleDate(oracle._OracleDate):
         return process
 
 
-class _CXOracleTIMESTAMP(oracle._OracleDateLiteralRender, sqltypes.TIMESTAMP):
+class _CXOracleTIMESTAMP(_OracleDateLiteralRender, sqltypes.TIMESTAMP):
     def literal_processor(self, dialect):
         return self._literal_processor_datetime(dialect)
 
@@ -812,6 +813,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             return None
 
     def pre_exec(self):
+        super().pre_exec()
         if not getattr(self.compiled, "_oracle_cx_sql_compiler", False):
             return
 

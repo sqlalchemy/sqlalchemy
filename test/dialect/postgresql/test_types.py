@@ -454,11 +454,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         asserter.assert_(
             # check for table
             RegexSQL(
-                "select relname from pg_class c join pg_namespace.*",
+                "SELECT pg_catalog.pg_class.relname FROM pg_catalog."
+                "pg_class JOIN pg_catalog.pg_namespace.*",
                 dialect="postgresql",
             ),
             # check for enum, just once
-            RegexSQL(r".*SELECT EXISTS ", dialect="postgresql"),
+            RegexSQL(
+                r"SELECT pg_catalog.pg_type.typname .* WHERE "
+                "pg_catalog.pg_type.typname = ",
+                dialect="postgresql",
+            ),
             RegexSQL("CREATE TYPE myenum AS ENUM .*", dialect="postgresql"),
             RegexSQL(r"CREATE TABLE t .*", dialect="postgresql"),
         )
@@ -468,11 +473,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         asserter.assert_(
             RegexSQL(
-                "select relname from pg_class c join pg_namespace.*",
+                "SELECT pg_catalog.pg_class.relname FROM pg_catalog."
+                "pg_class JOIN pg_catalog.pg_namespace.*",
                 dialect="postgresql",
             ),
             RegexSQL("DROP TABLE t", dialect="postgresql"),
-            RegexSQL(r".*SELECT EXISTS ", dialect="postgresql"),
+            RegexSQL(
+                r"SELECT pg_catalog.pg_type.typname .* WHERE "
+                "pg_catalog.pg_type.typname = ",
+                dialect="postgresql",
+            ),
             RegexSQL("DROP TYPE myenum", dialect="postgresql"),
         )
 
@@ -693,23 +703,6 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             assert not connection.dialect.has_type(
                 connection, "fourfivesixtype"
             )
-
-    def test_no_support(self, testing_engine):
-        def server_version_info(self):
-            return (8, 2)
-
-        e = testing_engine()
-        dialect = e.dialect
-        dialect._get_server_version_info = server_version_info
-
-        assert dialect.supports_native_enum
-        e.connect()
-        assert not dialect.supports_native_enum
-
-        # initialize is called again on new pool
-        e.dispose()
-        e.connect()
-        assert not dialect.supports_native_enum
 
     def test_reflection(self, metadata, connection):
         etype = Enum(

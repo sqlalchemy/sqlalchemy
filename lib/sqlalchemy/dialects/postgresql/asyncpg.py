@@ -274,6 +274,10 @@ class AsyncpgOID(OID):
     render_bind_cast = True
 
 
+class AsyncpgCHAR(sqltypes.CHAR):
+    render_bind_cast = True
+
+
 class PGExecutionContext_asyncpg(PGExecutionContext):
     def handle_dbapi_exception(self, e):
         if isinstance(
@@ -823,6 +827,7 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.Enum: AsyncPgEnum,
             OID: AsyncpgOID,
             REGCLASS: AsyncpgREGCLASS,
+            sqltypes.CHAR: AsyncpgCHAR,
         },
     )
     is_async = True

@@ -536,7 +536,7 @@ class DialectKWArgs:
             util.portable_instancemethod(self._kw_reg_for_dialect_cls)
         )
 
-    def _validate_dialect_kwargs(self, kwargs: Any) -> None:
+    def _validate_dialect_kwargs(self, kwargs: Dict[str, Any]) -> None:
         # validate remaining kwargs that they all specify DB prefixes
 
         if not kwargs:

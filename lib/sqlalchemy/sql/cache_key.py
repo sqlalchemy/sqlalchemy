@@ -12,6 +12,7 @@ from itertools import zip_longest
 import typing
 from typing import Any
 from typing import Dict
+from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import MutableMapping
@@ -544,6 +545,43 @@ class CacheKey(NamedTuple):
         }
 
         return target_element.params(translate)
+
+
+def _ad_hoc_cache_key_from_args(
+    tokens: Tuple[Any, ...],
+    traverse_args: Iterable[Tuple[str, InternalTraversal]],
+    args: Iterable[Any],
+) -> Tuple[Any, ...]:
+    """a quick cache key generator used by reflection.flexi_cache."""
+    bindparams: List[BindParameter[Any]] = []
+
+    _anon_map = anon_map()
+
+    tup = tokens
+
+    for (attrname, sym), arg in zip(traverse_args, args):
+        key = sym.name
+        visit_key = key.replace("dp_", "visit_")
+
+        if arg is None:
+            tup += (attrname, None)
+            continue
+
+        meth = getattr(_cache_key_traversal_visitor, visit_key)
+        if meth is CACHE_IN_PLACE:
+            tup += (attrname, arg)
+        elif meth in (
+            CALL_GEN_CACHE_KEY,
+            STATIC_CACHE_KEY,
+            ANON_NAME,
+            PROPAGATE_ATTRS,
+        ):
+            raise NotImplementedError(
+                f"Haven't implemented symbol {meth} for ad-hoc key from args"
+            )
+        else:
+            tup += meth(attrname, arg, None, _anon_map, bindparams)
+    return tup
 
 
 class _CacheKeyTraversal(HasTraversalDispatch):

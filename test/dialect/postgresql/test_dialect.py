@@ -887,18 +887,11 @@ class MiscBackendTest(
         )
 
     @testing.combinations(
-        ((8, 1), False, False),
-        ((8, 1), None, False),
-        ((11, 5), True, False),
-        ((11, 5), False, True),
+        (True, False),
+        (False, True),
     )
-    def test_backslash_escapes_detection(
-        self, version, explicit_setting, expected
-    ):
+    def test_backslash_escapes_detection(self, explicit_setting, expected):
         engine = engines.testing_engine()
-
-        def _server_version(conn):
-            return version
 
         if explicit_setting is not None:
 
@@ -912,11 +905,8 @@ class MiscBackendTest(
                 )
                 dbapi_connection.commit()
 
-        with mock.patch.object(
-            engine.dialect, "_get_server_version_info", _server_version
-        ):
-            with engine.connect():
-                eq_(engine.dialect._backslash_escapes, expected)
+        with engine.connect():
+            eq_(engine.dialect._backslash_escapes, expected)
 
     def test_dbapi_autocommit_attribute(self):
         """all the supported DBAPIs have an .autocommit attribute.  make

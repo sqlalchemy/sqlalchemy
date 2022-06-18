@@ -60,17 +60,4 @@ module = [
 warn_unused_ignores = false
 strict = true
 
-[[tool.mypy.overrides]]
-
-#####################################################################
-# interim list of modules that need some level of type checking to
-# pass
-module = [
-
-    "sqlalchemy.engine.reflection",
-
-]
-
-ignore_errors = true
-warn_unused_ignores = false
 

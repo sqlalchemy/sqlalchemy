@@ -1,3 +1,8 @@
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import decimal
@@ -9,6 +14,9 @@ from .base import _INT_TYPES
 from .base import PGDialect
 from .base import PGExecutionContext
 from .hstore import HSTORE
+from .pg_catalog import _SpaceVector
+from .pg_catalog import INT2VECTOR
+from .pg_catalog import OIDVECTOR
 from ... import exc
 from ... import types as sqltypes
 from ... import util
@@ -66,6 +74,14 @@ class _PsycopgARRAY(PGARRAY):
     render_bind_cast = True
 
 
+class _PsycopgINT2VECTOR(_SpaceVector, INT2VECTOR):
+    pass
+
+
+class _PsycopgOIDVECTOR(_SpaceVector, OIDVECTOR):
+    pass
+
+
 class _PGExecutionContext_common_psycopg(PGExecutionContext):
     def create_server_side_cursor(self):
         # use server-side cursors:
@@ -91,6 +107,8 @@ class _PGDialect_common_psycopg(PGDialect):
             sqltypes.Numeric: _PsycopgNumeric,
             HSTORE: _PsycopgHStore,
             sqltypes.ARRAY: _PsycopgARRAY,
+            INT2VECTOR: _PsycopgINT2VECTOR,
+            OIDVECTOR: _PsycopgOIDVECTOR,
         },
     )
 

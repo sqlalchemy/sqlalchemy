@@ -15,7 +15,9 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
+from typing import Collection
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -324,7 +326,7 @@ class ReflectedColumn(TypedDict):
     nullable: bool
     """column nullability"""
 
-    default: str
+    default: Optional[str]
     """column default expression as a SQL string"""
 
     autoincrement: NotRequired[bool]
@@ -343,11 +345,11 @@ class ReflectedColumn(TypedDict):
     comment: NotRequired[Optional[str]]
     """comment for the column, if present"""
 
-    computed: NotRequired[Optional[ReflectedComputed]]
+    computed: NotRequired[ReflectedComputed]
     """indicates this column is computed at insert (possibly update) time by
     the database."""
 
-    identity: NotRequired[Optional[ReflectedIdentity]]
+    identity: NotRequired[ReflectedIdentity]
     """indicates this column is an IDENTITY column"""
 
     dialect_options: NotRequired[Dict[str, Any]]
@@ -389,6 +391,9 @@ class ReflectedUniqueConstraint(TypedDict):
 
     column_names: List[str]
     """column names which comprise the constraint"""
+
+    duplicates_index: NotRequired[Optional[str]]
+    "Indicates if this unique constraint duplicates an index with this name"
 
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this reflected
@@ -439,7 +444,7 @@ class ReflectedForeignKeyConstraint(TypedDict):
     referred_columns: List[str]
     """referenced column names"""
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this reflected
     object"""
 
@@ -462,9 +467,8 @@ class ReflectedIndex(TypedDict):
     unique: bool
     """whether or not the index has a unique flag"""
 
-    duplicates_constraint: NotRequired[bool]
-    """boolean indicating this index mirrors a unique constraint of the same
-    name"""
+    duplicates_constraint: NotRequired[Optional[str]]
+    "Indicates if this index mirrors a unique constraint with this name"
 
     include_columns: NotRequired[List[str]]
     """columns to include in the INCLUDE clause for supporting databases.
@@ -472,7 +476,7 @@ class ReflectedIndex(TypedDict):
     .. deprecated:: 2.0
 
         Legacy value, will be replaced with
-        ``d["dialect_options"][<dialect name>]["include"]``
+        ``d["dialect_options"]["<dialect name>_include"]``
 
     """
 
@@ -494,7 +498,7 @@ class ReflectedTableComment(TypedDict):
 
     """
 
-    text: str
+    text: Optional[str]
     """text of the comment"""
 
 
@@ -547,6 +551,7 @@ class BindTyping(Enum):
 
 
 VersionInfoType = Tuple[Union[int, str], ...]
+TableKey = Tuple[Optional[str], str]
 
 
 class Dialect(EventTarget):
@@ -1040,7 +1045,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def initialize(self, connection: "Connection") -> None:
+    def initialize(self, connection: Connection) -> None:
         """Called during strategized creation of the dialect with a
         connection.
 
@@ -1060,9 +1065,14 @@ class Dialect(EventTarget):
 
         pass
 
+    if TYPE_CHECKING:
+
+        def _overrides_default(self, method_name: str) -> bool:
+            ...
+
     def get_columns(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1074,13 +1084,40 @@ class Dialect(EventTarget):
         information as a list of dictionaries
         corresponding to the :class:`.ReflectedColumn` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_columns`.
+        """
+
+    def get_multi_columns(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, List[ReflectedColumn]]]:
+        """Return information about columns in all tables in the
+        given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_multi_columns`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_pk_constraint(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1093,13 +1130,41 @@ class Dialect(EventTarget):
         key information as a dictionary corresponding to the
         :class:`.ReflectedPrimaryKeyConstraint` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_pk_constraint`.
+
+        """
+        raise NotImplementedError()
+
+    def get_multi_pk_constraint(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, ReflectedPrimaryKeyConstraint]]:
+        """Return information about primary key constraints in
+        all tables in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_multi_pk_constraint`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
 
         """
         raise NotImplementedError()
 
     def get_foreign_keys(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1111,41 +1176,103 @@ class Dialect(EventTarget):
         key information as a list of dicts corresponding to the
         :class:`.ReflectedForeignKeyConstraint` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_foreign_keys`.
+        """
+
+        raise NotImplementedError()
+
+    def get_multi_foreign_keys(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, List[ReflectedForeignKeyConstraint]]]:
+        """Return information about foreign_keys in all tables
+        in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_multi_foreign_keys`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_table_names(
-        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
-        """Return a list of table names for ``schema``."""
+        """Return a list of table names for ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_table_names`.
+
+        """
 
         raise NotImplementedError()
 
     def get_temp_table_names(
-        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
         """Return a list of temporary table names on the given connection,
         if supported by the underlying backend.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_temp_table_names`.
 
         """
 
         raise NotImplementedError()
 
     def get_view_names(
-        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
-        """Return a list of all view names available in the database.
+        """Return a list of all non-materialized view names available in the
+        database.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_view_names`.
 
         :param schema: schema name to query, if not the default schema.
+
+        """
+
+        raise NotImplementedError()
+
+    def get_materialized_view_names(
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
+    ) -> List[str]:
+        """Return a list of all materialized view names available in the
+        database.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_materialized_view_names`.
+
+        :param schema: schema name to query, if not the default schema.
+
+         .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_sequence_names(
-        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
         """Return a list of all sequence names available in the database.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_sequence_names`.
 
         :param schema: schema name to query, if not the default schema.
 
@@ -1155,26 +1282,40 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_temp_view_names(
-        self, connection: "Connection", schema: Optional[str] = None, **kw: Any
+        self, connection: Connection, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
         """Return a list of temporary view names on the given connection,
         if supported by the underlying backend.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_temp_view_names`.
 
         """
 
         raise NotImplementedError()
 
+    def get_schema_names(self, connection: Connection, **kw: Any) -> List[str]:
+        """Return a list of all schema names available in the database.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_schema_names`.
+        """
+        raise NotImplementedError()
+
     def get_view_definition(
         self,
-        connection: "Connection",
+        connection: Connection,
         view_name: str,
         schema: Optional[str] = None,
         **kw: Any,
     ) -> str:
-        """Return view definition.
+        """Return plain or materialized view definition.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_view_definition`.
 
         Given a :class:`_engine.Connection`, a string
-        `view_name`, and an optional string ``schema``, return the view
+        ``view_name``, and an optional string ``schema``, return the view
         definition.
         """
 
@@ -1182,7 +1323,7 @@ class Dialect(EventTarget):
 
     def get_indexes(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1194,13 +1335,42 @@ class Dialect(EventTarget):
         information as a list of dictionaries corresponding to the
         :class:`.ReflectedIndex` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_indexes`.
+        """
+
+        raise NotImplementedError()
+
+    def get_multi_indexes(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, List[ReflectedIndex]]]:
+        """Return information about indexes in in all tables
+        in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_multi_indexes`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_unique_constraints(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1211,13 +1381,42 @@ class Dialect(EventTarget):
         unique constraint information as a list of dicts corresponding
         to the :class:`.ReflectedUniqueConstraint` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_unique_constraints`.
+        """
+
+        raise NotImplementedError()
+
+    def get_multi_unique_constraints(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, List[ReflectedUniqueConstraint]]]:
+        """Return information about unique constraints in all tables
+        in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_multi_unique_constraints`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_check_constraints(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1228,26 +1427,86 @@ class Dialect(EventTarget):
         check constraint information as a list of dicts corresponding
         to the :class:`.ReflectedCheckConstraint` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_check_constraints`.
+
+        .. versionadded:: 1.1.0
+
+        """
+
+        raise NotImplementedError()
+
+    def get_multi_check_constraints(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, List[ReflectedCheckConstraint]]]:
+        """Return information about check constraints in all tables
+        in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_multi_check_constraints`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
+
         """
 
         raise NotImplementedError()
 
     def get_table_options(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
-    ) -> Optional[Dict[str, Any]]:
-        r"""Return the "options" for the table identified by ``table_name``
-        as a dictionary.
+    ) -> Dict[str, Any]:
+        """Return a dictionary of options specified when ``table_name``
+        was created.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_table_options`.
+        """
+        raise NotImplementedError()
+
+    def get_multi_table_options(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, Dict[str, Any]]]:
+        """Return a dictionary of options specified when the tables in the
+        given schema were created.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_multi_table_options`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
 
         """
-        return None
+        raise NotImplementedError()
 
     def get_table_comment(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1258,11 +1517,40 @@ class Dialect(EventTarget):
         table comment information as a dictionary corresponding to the
         :class:`.ReflectedTableComment` dictionary.
 
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.get_table_comment`.
 
         :raise: ``NotImplementedError`` for dialects that don't support
          comments.
 
         .. versionadded:: 1.2
+
+        """
+
+        raise NotImplementedError()
+
+    def get_multi_table_comment(
+        self,
+        connection: Connection,
+        schema: Optional[str] = None,
+        filter_names: Optional[Collection[str]] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, ReflectedTableComment]]:
+        """Return information about the table comment in all tables
+        in the given ``schema``.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_multi_table_comment`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each object returned by :meth:`Dialect.get_table_names`,
+          :meth:`Dialect.get_view_names` or
+          :meth:`Dialect.get_materialized_view_names` depending on the
+          provided ``kind``. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.0
 
         """
 
@@ -1290,7 +1578,7 @@ class Dialect(EventTarget):
 
     def has_table(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1327,21 +1615,24 @@ class Dialect(EventTarget):
 
     def has_index(
         self,
-        connection: "Connection",
+        connection: Connection,
         table_name: str,
         index_name: str,
         schema: Optional[str] = None,
+        **kw: Any,
     ) -> bool:
         """Check the existence of a particular index name in the database.
 
         Given a :class:`_engine.Connection` object, a string
-        ``table_name`` and string index name, return True if an index of the
-        given name on the given table exists, false otherwise.
+        ``table_name`` and string index name, return ``True`` if an index of
+        the given name on the given table exists, ``False`` otherwise.
 
         The :class:`.DefaultDialect` implements this in terms of the
         :meth:`.Dialect.has_table` and :meth:`.Dialect.get_indexes` methods,
         however dialects can implement a more performant version.
 
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.has_index`.
 
         .. versionadded:: 1.4
 
@@ -1351,7 +1642,7 @@ class Dialect(EventTarget):
 
     def has_sequence(
         self,
-        connection: "Connection",
+        connection: Connection,
         sequence_name: str,
         schema: Optional[str] = None,
         **kw: Any,
@@ -1359,13 +1650,39 @@ class Dialect(EventTarget):
         """Check the existence of a particular sequence in the database.
 
         Given a :class:`_engine.Connection` object and a string
-        `sequence_name`, return True if the given sequence exists in
-        the database, False otherwise.
+        `sequence_name`, return ``True`` if the given sequence exists in
+        the database, ``False`` otherwise.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.has_sequence`.
         """
 
         raise NotImplementedError()
 
-    def _get_server_version_info(self, connection: "Connection") -> Any:
+    def has_schema(
+        self, connection: Connection, schema_name: str, **kw: Any
+    ) -> bool:
+        """Check the existence of a particular schema name in the database.
+
+        Given a :class:`_engine.Connection` object, a string
+        ``schema_name``, return ``True`` if a schema of the
+        given exists, ``False`` otherwise.
+
+        The :class:`.DefaultDialect` implements this by checking
+        the presence of ``schema_name`` among the schemas returned by
+        :meth:`.Dialect.get_schema_names`,
+        however dialects can implement a more performant version.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.has_schema`.
+
+        .. versionadded:: 2.0
+
+        """
+
+        raise NotImplementedError()
+
+    def _get_server_version_info(self, connection: Connection) -> Any:
         """Retrieve the server version info from the given connection.
 
         This is used by the default implementation to populate the
@@ -1376,7 +1693,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def _get_default_schema_name(self, connection: "Connection") -> str:
+    def _get_default_schema_name(self, connection: Connection) -> str:
         """Return the string name of the currently selected schema from
         the given connection.
 
@@ -1481,7 +1798,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_savepoint(self, connection: "Connection", name: str) -> None:
+    def do_savepoint(self, connection: Connection, name: str) -> None:
         """Create a savepoint with the given name.
 
         :param connection: a :class:`_engine.Connection`.
@@ -1492,7 +1809,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def do_rollback_to_savepoint(
-        self, connection: "Connection", name: str
+        self, connection: Connection, name: str
     ) -> None:
         """Rollback a connection to the named savepoint.
 
@@ -1503,9 +1820,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_release_savepoint(
-        self, connection: "Connection", name: str
-    ) -> None:
+    def do_release_savepoint(self, connection: Connection, name: str) -> None:
         """Release the named savepoint on a connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -1514,7 +1829,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_begin_twophase(self, connection: "Connection", xid: Any) -> None:
+    def do_begin_twophase(self, connection: Connection, xid: Any) -> None:
         """Begin a two phase transaction on the given connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -1524,7 +1839,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_prepare_twophase(self, connection: "Connection", xid: Any) -> None:
+    def do_prepare_twophase(self, connection: Connection, xid: Any) -> None:
         """Prepare a two phase transaction on the given connection.
 
         :param connection: a :class:`_engine.Connection`.
@@ -1536,7 +1851,7 @@ class Dialect(EventTarget):
 
     def do_rollback_twophase(
         self,
-        connection: "Connection",
+        connection: Connection,
         xid: Any,
         is_prepared: bool = True,
         recover: bool = False,
@@ -1555,7 +1870,7 @@ class Dialect(EventTarget):
 
     def do_commit_twophase(
         self,
-        connection: "Connection",
+        connection: Connection,
         xid: Any,
         is_prepared: bool = True,
         recover: bool = False,
@@ -1573,7 +1888,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_recover_twophase(self, connection: "Connection") -> List[Any]:
+    def do_recover_twophase(self, connection: Connection) -> List[Any]:
         """Recover list of uncommitted prepared two phase transaction
         identifiers on the given connection.
 

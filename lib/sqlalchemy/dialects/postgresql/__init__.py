@@ -19,31 +19,16 @@ from .array import Any
 from .array import ARRAY
 from .array import array
 from .base import BIGINT
-from .base import BIT
 from .base import BOOLEAN
-from .base import BYTEA
 from .base import CHAR
-from .base import CIDR
-from .base import CreateEnumType
 from .base import DATE
 from .base import DOUBLE_PRECISION
-from .base import DropEnumType
-from .base import ENUM
 from .base import FLOAT
-from .base import INET
 from .base import INTEGER
-from .base import INTERVAL
-from .base import MACADDR
-from .base import MONEY
 from .base import NUMERIC
-from .base import OID
 from .base import REAL
-from .base import REGCLASS
 from .base import SMALLINT
 from .base import TEXT
-from .base import TIME
-from .base import TIMESTAMP
-from .base import TSVECTOR
 from .base import UUID
 from .base import VARCHAR
 from .dml import Insert
@@ -61,7 +46,21 @@ from .ranges import INT8RANGE
 from .ranges import NUMRANGE
 from .ranges import TSRANGE
 from .ranges import TSTZRANGE
-from ...util import compat
+from .types import BIT
+from .types import BYTEA
+from .types import CIDR
+from .types import CreateEnumType
+from .types import DropEnumType
+from .types import ENUM
+from .types import INET
+from .types import INTERVAL
+from .types import MACADDR
+from .types import MONEY
+from .types import OID
+from .types import REGCLASS
+from .types import TIME
+from .types import TIMESTAMP
+from .types import TSVECTOR
 
 # Alias psycopg also as psycopg_async
 psycopg_async = type(
