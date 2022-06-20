@@ -21,15 +21,22 @@ FOLLOWER_IDENT = None
 
 
 class register:
-    def __init__(self):
+    def __init__(self, decorator=None):
         self.fns = {}
+        self.decorator = decorator
 
     @classmethod
     def init(cls, fn):
         return register().for_db("*")(fn)
 
+    @classmethod
+    def init_decorator(cls, decorator):
+        return register(decorator).for_db("*")
+
     def for_db(self, *dbnames):
         def decorate(fn):
+            if self.decorator:
+                fn = self.decorator(fn)
             for dbname in dbnames:
                 self.fns[dbname] = fn
             return self
@@ -66,7 +73,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     if follower_ident:
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
-    update_db_opts(db_url, db_opts)
+    update_db_opts(db_url, db_opts, options)
     db_opts["scope"] = "global"
     eng = engines.testing_engine(db_url, db_opts)
     post_configure_engine(db_url, eng, follower_ident)
@@ -331,10 +338,17 @@ def drop_db(cfg, eng, ident):
     raise NotImplementedError("no DB drop routine for cfg: %s" % (eng.url,))
 
 
-@register.init
-def update_db_opts(db_url, db_opts):
+def _adapt_update_db_opts(fn):
+    insp = util.inspect_getfullargspec(fn)
+    if len(insp.args) == 3:
+        return fn
+    else:
+        return lambda db_url, db_opts, _options: fn(db_url, db_opts)
+
+
+@register.init_decorator(_adapt_update_db_opts)
+def update_db_opts(db_url, db_opts, options):
     """Set database options (db_opts) for a test database that we created."""
-    pass
 
 
 @register.init
@@ -343,7 +357,6 @@ def post_configure_engine(url, engine, follower_ident):
 
     (For the internal dialects, currently only used by sqlite, oracle)
     """
-    pass
 
 
 @register.init
@@ -374,7 +387,6 @@ def run_reap_dbs(url, ident):
     use. For the internal dialects, this is currently only necessary for
     mssql and oracle.
     """
-    pass
 
 
 def reap_dbs(idents_file):

@@ -149,12 +149,6 @@ def setup_options(make_option):
         help="Filename where a single profile run will be dumped",
     )
     make_option(
-        "--postgresql-templatedb",
-        type=str,
-        help="name of template database to use for PostgreSQL "
-        "CREATE DATABASE (defaults to current database)",
-    )
-    make_option(
         "--low-connections",
         action="store_true",
         dest="low_connections",
@@ -219,6 +213,18 @@ def setup_options(make_option):
         dest="mypy_extra_test_paths",
         help="Additional test directories to add to the mypy tests. "
         "This is used only when running mypy tests. Multiple OK",
+    )
+    # db specific options
+    make_option(
+        "--postgresql-templatedb",
+        type=str,
+        help="name of template database to use for PostgreSQL "
+        "CREATE DATABASE (defaults to current database)",
+    )
+    make_option(
+        "--oracledb-thick-mode",
+        action="store_true",
+        help="enables the 'thick mode' when testing with oracle+oracledb",
     )
 
 

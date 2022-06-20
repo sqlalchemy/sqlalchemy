@@ -16,6 +16,7 @@ from ...testing.provision import run_reap_dbs
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import update_db_opts
 
 
 @create_db.for_db("oracle")
@@ -204,3 +205,13 @@ def _oracle_set_default_schema_on_connection(
     cursor = dbapi_connection.cursor()
     cursor.execute("ALTER SESSION SET CURRENT_SCHEMA=%s" % schema_name)
     cursor.close()
+
+
+@update_db_opts.for_db("oracle")
+def _update_db_opts(db_url, db_opts, options):
+    """Set database options (db_opts) for a test database that we created."""
+    if (
+        options.oracledb_thick_mode
+        and sa_url.make_url(db_url).get_driver_name() == "oracledb"
+    ):
+        db_opts["thick_mode"] = True

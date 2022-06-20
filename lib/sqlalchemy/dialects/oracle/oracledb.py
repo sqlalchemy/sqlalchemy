@@ -76,7 +76,7 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
             **kwargs,
         )
 
-        if thick_mode is not None:
+        if self.dbapi is not None and thick_mode is not None:
             kw = thick_mode if isinstance(thick_mode, dict) else {}
             self.dbapi.init_oracle_client(**kw)
 
