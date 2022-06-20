@@ -1900,10 +1900,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
             duplicates = index_d.get("duplicates_constraint")
             if include_columns and not set(columns).issubset(include_columns):
-                util.warn(
-                    "Omitting %s key for (%s), key covers omitted columns."
-                    % (flavor, ", ".join(columns))
-                )
                 continue
             if duplicates:
                 continue
@@ -1954,10 +1950,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
             columns = const_d["column_names"]
             duplicates = const_d.get("duplicates_index")
             if include_columns and not set(columns).issubset(include_columns):
-                util.warn(
-                    "Omitting unique constraint key for (%s), "
-                    "key covers omitted columns." % ", ".join(columns)
-                )
                 continue
             if duplicates:
                 continue

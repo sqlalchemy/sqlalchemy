@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 8102
+
+    The warnings that are emitted regarding reflection of indexes or unique
+    constraints, when the :paramref:`.Table.include_columns` parameter is used
+    to exclude columns that are then found to be part of those constraints,
+    have been removed. When the :paramref:`.Table.include_columns` parameter is
+    used it should be expected that the resulting :class:`.Table` construct
+    will not include constraints that rely upon omitted columns. This change
+    was made in response to :ticket:`8100` which repaired
+    :paramref:`.Table.include_columns` in conjunction with foreign key
+    constraints that rely upon omitted columns, where the use case became
+    clear that omitting such constraints should be expected.

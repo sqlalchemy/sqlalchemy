@@ -375,7 +375,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
                 1,
             )
 
-    @testing.emits_warning(r".*omitted columns")
     def test_include_columns_indexes(self, connection, metadata):
         m = metadata
 
@@ -2302,7 +2301,6 @@ class IncludeColsFksTest(AssertsCompiledSQL, fixtures.TestBase):
         for c in ("a", "c", "d"):
             assert c not in foo.c
 
-    @testing.emits_warning
     @testing.combinations(True, False, argnames="resolve_fks")
     def test_include_cols_skip_fk_col(
         self, connection, tab_w_fks, resolve_fks
