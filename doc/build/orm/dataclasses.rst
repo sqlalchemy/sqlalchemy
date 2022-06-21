@@ -360,7 +360,7 @@ The SQLAlchemy ORM supports mapping an attrs_ class using **Declarative with
 Imperative Table** or **Imperative** mapping. The general form of these two
 styles is fully equivalent to the
 :ref:`orm_declarative_dataclasses_declarative_table` and
-:ref:`orm_declarative_attrs_imperative_table` mapping forms used with
+:ref:`orm_declarative_dataclasses_imperative_table` mapping forms used with
 dataclasses, where the inline attribute directives used by dataclasses or attrs
 are unchanged, and SQLAlchemy's table-oriented instrumentation is applied at
 runtime.
