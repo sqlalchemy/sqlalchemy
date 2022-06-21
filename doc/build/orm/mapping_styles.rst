@@ -511,7 +511,6 @@ as well as specific history on modifications to attributes since the last flush:
 
 
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
-.. _attrs: https://pypi.org/project/attrs/
 
 .. [1] When running under Python 2, a Python 2 "old style" class is the only
        kind of class that isn't compatible.    When running code on Python 2,

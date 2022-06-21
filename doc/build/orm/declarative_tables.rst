@@ -192,7 +192,7 @@ Appending additional columns to an existing Declarative mapped class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A declarative table configuration allows the addition of new
-:class:`_schema.Column` objects an existing mapping after the :class:`.Table`
+:class:`_schema.Column` objects to an existing mapping after the :class:`.Table`
 metadata has already been generated.
 
 For a declarative class that is declared using a declarative base class,
