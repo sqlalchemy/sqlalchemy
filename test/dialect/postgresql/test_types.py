@@ -164,7 +164,9 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(row, ([5], [5], [6], [7], [decimal.Decimal("6.4")]))
 
 
-class NamedTypeTest(fixtures.TestBase, AssertsExecutionResults):
+class NamedTypeTest(
+    AssertsCompiledSQL, fixtures.TestBase, AssertsExecutionResults
+):
     __backend__ = True
 
     __only_on__ = "postgresql > 8.3"
@@ -449,6 +451,7 @@ class NamedTypeTest(fixtures.TestBase, AssertsExecutionResults):
             assert False
 
     @testing.combinations(
+        (Enum("one", "two", "three")),
         (ENUM("one", "two", "three", name=None)),
         (
             DOMAIN(
@@ -460,10 +463,45 @@ class NamedTypeTest(fixtures.TestBase, AssertsExecutionResults):
         argnames="datatype",
     )
     def test_name_required(self, metadata, connection, datatype):
+
         assert_raises(exc.CompileError, datatype.create, connection)
         assert_raises(
             exc.CompileError, datatype.compile, dialect=connection.dialect
         )
+
+    def test_enum_doesnt_construct_ENUM(self):
+        """in 2.0 we made ENUM name required.   check that Enum adapt to
+        ENUM doesnt call this constructor."""
+
+        e1 = Enum("x", "y")
+        eq_(e1.name, None)
+        e2 = e1.adapt(ENUM)
+        eq_(e2.name, None)
+
+        # no name
+        assert_raises(
+            exc.CompileError, e2.compile, dialect=postgresql.dialect()
+        )
+
+    def test_py_enum_name_is_used(self):
+        class MyEnum(_PY_Enum):
+            x = "1"
+            y = "2"
+
+        e1 = Enum(MyEnum)
+        eq_(e1.name, "myenum")
+        e2 = e1.adapt(ENUM)
+
+        # note that by making "name" required, we are now not supporting this:
+        # e2 = ENUM(MyEnum)
+        # they'd need ENUM(MyEnum, name="myenum")
+        # I might be OK with that.   Use of pg.ENUM directly is not as
+        # common and it suggests more explicitness on the part of the
+        # programmer in any case
+
+        eq_(e2.name, "myenum")
+
+        self.assert_compile(e2, "myenum")
 
     def test_enum_unicode_labels(self, connection, metadata):
         t1 = Table(
