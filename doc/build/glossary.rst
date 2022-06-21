@@ -25,6 +25,20 @@ Glossary
 
             :ref:`migration_20_toplevel`
 
+    reflection
+    reflected
+        In SQLAlchemy, this term refers to the feature of querying a database's
+        schema catalogs in order to load information about existing tables,
+        columns, constraints, and other constructs.   SQLAlchemy includes
+        features that can both provide raw data for this information, as well
+        as that it can construct Core/ORM usable :class:`.Table` objects
+        from database schema catalogs automatically.
+
+        .. seealso::
+
+            :ref:`metadata_reflection_toplevel` - complete background on
+            database reflection.
+
 
     imperative
     declarative

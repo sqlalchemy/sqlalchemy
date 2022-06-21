@@ -995,7 +995,7 @@ that we omit the ``employee`` table.
 
 .. seealso::
 
-    :ref:`classical_mapping` - background information on "classical" mappings
+    :ref:`orm_imperative_mapping` - background information on imperative, or "classical" mappings
 
 
 

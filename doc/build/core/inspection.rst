@@ -25,8 +25,18 @@ Below is a listing of many of the most common inspection targets.
   to per attribute state via the :class:`.AttributeState` interface as well
   as the per-flush "history" of any attribute via the :class:`.History`
   object.
+
+  .. seealso::
+
+      :ref:`orm_mapper_inspection_instancestate`
+
 * ``type`` (i.e. a class) - a class given will be checked by the ORM for a
   mapping - if so, a :class:`_orm.Mapper` for that class is returned.
+
+  .. seealso::
+
+      :ref:`orm_mapper_inspection_mapper`
+
 * mapped attribute - passing a mapped attribute to :func:`_sa.inspect`, such
   as ``inspect(MyClass.some_attribute)``, returns a :class:`.QueryableAttribute`
   object, which is the :term:`descriptor` associated with a mapped class.
@@ -35,4 +45,5 @@ Below is a listing of many of the most common inspection targets.
   or :class:`.RelationshipProperty`, via its :attr:`.QueryableAttribute.property`
   attribute.
 * :class:`.AliasedClass` - returns an :class:`.AliasedInsp` object.
+
 
