@@ -1534,10 +1534,19 @@ Overall, the scenario where the
    or again special datatypes such as :class:`_types.JSON`,
    :class:`_types.ARRAY`.
 
+Advanced SQL Function Techniques
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following subsections illustrate more things that can be done with
+SQL functions.  While these techniques are less common and more advanced than
+basic SQL function use, they nonetheless are extremely popular, largely
+as a result of PostgreSQL's emphasis on more complex function forms, including
+table- and column-valued forms that are popular with JSON data.
+
 .. _tutorial_window_functions:
 
 Using Window Functions
-~~~~~~~~~~~~~~~~~~~~~~
+######################
 
 A window function is a special use of a SQL aggregate function which calculates
 the aggregate value over the rows being returned in a group as the individual
@@ -1613,7 +1622,7 @@ Further options for window functions include usage of ranges; see
 .. _tutorial_functions_within_group:
 
 Special Modifiers WITHIN GROUP, FILTER
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+######################################
 
 The "WITHIN GROUP" SQL syntax is used in conjunction with an "ordered set"
 or a "hypothetical set" aggregate
@@ -1653,7 +1662,7 @@ using the :meth:`_functions.FunctionElement.filter` method::
 .. _tutorial_functions_table_valued:
 
 Table-Valued Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~
+#######################
 
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
@@ -1708,7 +1717,7 @@ towards as ``value``, and then selected two of its three rows.
 .. _tutorial_functions_column_valued:
 
 Column Valued Functions - Table Valued Function as a Scalar Column
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##################################################################
 
 A special syntax supported by PostgreSQL and Oracle is that of referring
 towards a function in the FROM clause, which then delivers itself as a
