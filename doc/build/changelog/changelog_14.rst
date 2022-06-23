@@ -15,7 +15,139 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.38
-    :include_notes_from: unreleased_14
+    :released: June 23, 2022
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 8162
+
+        Fixed regression caused by :ticket:`8064` where a particular check for
+        column correspondence was made too liberal, resulting in incorrect
+        rendering for some ORM subqueries such as those using
+        :meth:`.PropComparator.has` or :meth:`.PropComparator.any` in conjunction
+        with joined-inheritance queries that also use legacy aliasing features.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8115
+
+        Repaired a deprecation warning class decorator that was preventing key
+        objects such as :class:`_engine.Connection` from having a proper
+        ``__weakref__`` attribute, causing operations like Python standard library
+        ``inspect.getmembers()`` to fail.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8098
+
+        Fixed multiple observed race conditions related to :func:`.lambda_stmt`,
+        including an initial "dogpile" issue when a new Python code object is
+        initially analyzed among multiple simultaneous threads which created both a
+        performance issue as well as some internal corruption of state.
+        Additionally repaired observed race condition which could occur when
+        "cloning" an expression construct that is also in the process of being
+        compiled or otherwise accessed in a different thread due to memoized
+        attributes altering the ``__dict__`` while iterated, for Python versions
+        prior to 3.10; in particular the lambda SQL construct is sensitive to this
+        as it holds onto a single statement object persistently. The iteration has
+        been refined to use ``dict.copy()`` with or without an additional iteration
+        instead.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8084
+
+        Enhanced the mechanism of :class:`.Cast` and other "wrapping"
+        column constructs to more fully preserve a wrapped :class:`.Label`
+        construct, including that the label name will be preserved in the
+        ``.c`` collection of a :class:`.Subquery`.  The label was already
+        able to render in the SQL correctly on the outside of the construct
+        which it was wrapped inside.
+
+    .. change::
+        :tags: bug, orm, sql
+        :tickets: 8091
+
+        Fixed an issue where :meth:`_sql.GenerativeSelect.fetch` would not
+        be applied when executing a statement using the ORM.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8109
+
+        Fixed issue where a :func:`_orm.with_loader_criteria` option could not be
+        pickled, as is necessary when it is carried along for propagation to lazy
+        loaders in conjunction with a caching scheme. Currently, the only form that
+        is supported as picklable is to pass the "where criteria" as a fixed
+        module-level callable function that produces a SQL expression. An ad-hoc
+        "lambda" can't be pickled, and a SQL expression object is usually not fully
+        picklable directly.
+
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 8100, 8101
+
+        Fixed bugs involving the :paramref:`.Table.include_columns` and the
+        :paramref:`.Table.resolve_fks` parameters on :class:`.Table`; these
+        little-used parameters were apparently not working for columns that refer
+        to foreign key constraints.
+
+        In the first case, not-included columns that refer to foreign keys would
+        still attempt to create a :class:`.ForeignKey` object, producing errors
+        when attempting to resolve the columns for the foreign key constraint
+        within reflection; foreign key constraints that refer to skipped columns
+        are now omitted from the table reflection process in the same way as
+        occurs for :class:`.Index` and :class:`.UniqueConstraint` objects with the
+        same conditions. No warning is produced however, as we likely want to
+        remove the include_columns warnings for all constraints in 2.0.
+
+        In the latter case, the production of table aliases or subqueries would
+        fail on an FK related table not found despite the presence of
+        ``resolve_fks=False``; the logic has been repaired so that if a related
+        table is not found, the :class:`.ForeignKey` object is still proxied to the
+        aliased table or subquery (these :class:`.ForeignKey` objects are normally
+        used in the production of join conditions), but it is sent with a flag that
+        it's not resolvable. The aliased table / subquery will then work normally,
+        with the exception that it cannot be used to generate a join condition
+        automatically, as the foreign key information is missing. This was already
+        the behavior for such foreign key constraints produced using non-reflection
+        methods, such as joining :class:`.Table` objects from different
+        :class:`.MetaData` collections.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8113
+
+        Adjusted the fix made for :ticket:`8056` which adjusted the escaping of
+        bound parameter names with special characters such that the escaped names
+        were translated after the SQL compilation step, which broke a published
+        recipe on the FAQ illustrating how to merge parameter names into the string
+        output of a compiled SQL string. The change restores the escaped names that
+        come from ``compiled.params`` and adds a conditional parameter to
+        :meth:`.SQLCompiler.construct_params` named ``escape_names`` that defaults
+        to ``True``, restoring the old behavior by default.
+
+    .. change::
+        :tags: bug, schema, mssql
+        :tickets: 8111
+
+        Fixed issue where :class:`.Table` objects that made use of IDENTITY columns
+        with a :class:`.Numeric` datatype would produce errors when attempting to
+        reconcile the "autoincrement" column, preventing construction of the
+        :class:`.Column` from using the :paramref:`.Column.autoincrement` parameter
+        as well as emitting errors when attempting to invoke an :class:`.Insert`
+        construct.
+
+
+    .. change::
+        :tags: bug, extensions
+        :tickets: 8133
+
+        Fixed bug in :class:`.Mutable` where pickling and unpickling of an ORM
+        mapped instance would not correctly restore state for mappings that
+        contained multiple :class:`.Mutable`-enabled attributes.
 
 .. changelog::
     :version: 1.4.37

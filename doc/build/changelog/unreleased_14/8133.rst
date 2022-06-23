@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, ext
-    :tickets: 8133
-
-    Fixed bug in :class:`.Mutable` where pickling and unpickling of an ORM
-    mapped instance would not correctly restore state for mappings that
-    contained multiple :class:`.Mutable`-enabled attributes.
