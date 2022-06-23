@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 8162
+
+    Fixed regression caused by :ticket:`8064` where a particular check for
+    column correspondence was made too liberal, resulting in incorrect
+    rendering for some ORM subqueries such as those using
+    :meth:`.PropComparator.has` or :meth:`.PropComparator.any` in conjunction
+    with joined-inheritance queries that also use legacy aliasing features.
