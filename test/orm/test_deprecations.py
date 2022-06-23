@@ -6416,6 +6416,39 @@ class InheritedJoinTest(
     run_setup_mappers = "once"
     __dialect__ = "default"
 
+    def test_join_w_subq_adapt(self):
+        """test #8162"""
+
+        Company, Manager, Engineer = self.classes(
+            "Company", "Manager", "Engineer"
+        )
+
+        sess = fixture_session()
+
+        with _aliased_join_warning():
+            self.assert_compile(
+                sess.query(Engineer)
+                .join(Company, Company.company_id == Engineer.company_id)
+                .outerjoin(Manager, Company.company_id == Manager.company_id)
+                .filter(~Engineer.company.has()),
+                "SELECT engineers.person_id AS engineers_person_id, "
+                "people.person_id AS people_person_id, "
+                "people.company_id AS people_company_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.status AS engineers_status, "
+                "engineers.engineer_name AS engineers_engineer_name, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                "ON people.person_id = engineers.person_id "
+                "JOIN companies ON companies.company_id = people.company_id "
+                "LEFT OUTER JOIN (people AS people_1 JOIN managers AS "
+                "managers_1 ON people_1.person_id = managers_1.person_id) "
+                "ON companies.company_id = people_1.company_id "
+                "WHERE NOT (EXISTS (SELECT 1 FROM companies "
+                "WHERE companies.company_id = people.company_id))",
+                use_default_dialect=True,
+            )
+
     def test_load_only_alias_subclass(self):
         Manager = self.classes.Manager
 
