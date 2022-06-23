@@ -1238,6 +1238,12 @@ def _populate_partial(
 ):
 
     if not isnew:
+        if unloaded:
+            # extra pass, see #8166
+            for key, getter in populators["quick"]:
+                if key in unloaded:
+                    dict_[key] = getter(row)
+
         to_load = context.partials[state]
         for key, populator in populators["existing"]:
             if key in to_load:
