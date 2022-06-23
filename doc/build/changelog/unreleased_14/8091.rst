@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, orm, sql
-    :tickets: 8091
-
-    Fixed an issue where :meth:`_sql.GenerativeSelect.fetch` would not
-    be applied when executing a statement using the ORM.
