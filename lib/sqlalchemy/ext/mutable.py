@@ -502,8 +502,14 @@ class MutableBase:
 
         def unpickle(state, state_dict):
             if "ext.mutable.values" in state_dict:
-                for val in state_dict["ext.mutable.values"][key]:
-                    val._parents[state] = key
+                collection = state_dict["ext.mutable.values"]
+                if isinstance(collection, list):
+                    # legacy format
+                    for val in collection:
+                        val._parents[state] = key
+                else:
+                    for val in state_dict["ext.mutable.values"][key]:
+                        val._parents[state] = key
 
         event.listen(parent_cls, "load", load, raw=True, propagate=True)
         event.listen(
