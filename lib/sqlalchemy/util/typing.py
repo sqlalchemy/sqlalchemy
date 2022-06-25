@@ -19,16 +19,26 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import NotRequired as NotRequired  # noqa: F401
-
 from . import compat
 
-
-# more zimports issues
-if True:
-    from typing_extensions import (  # noqa: F401
-        dataclass_transform as dataclass_transform,
+if True:  # zimports removes the tailing comments
+    from typing_extensions import Annotated as Annotated  # 3.8
+    from typing_extensions import Concatenate as Concatenate  # 3.10
+    from typing_extensions import (
+        dataclass_transform as dataclass_transform,  # 3.11,
     )
+    from typing_extensions import Final as Final  # 3.8
+    from typing_extensions import final as final  # 3.8
+    from typing_extensions import get_args as get_args  # 3.10
+    from typing_extensions import get_origin as get_origin  # 3.10
+    from typing_extensions import Literal as Literal  # 3.8
+    from typing_extensions import NotRequired as NotRequired  # 3.11
+    from typing_extensions import ParamSpec as ParamSpec  # 3.10
+    from typing_extensions import Protocol as Protocol  # 3.8
+    from typing_extensions import SupportsIndex as SupportsIndex  # 3.8
+    from typing_extensions import TypeAlias as TypeAlias  # 3.10
+    from typing_extensions import TypedDict as TypedDict  # 3.8
+    from typing_extensions import TypeGuard as TypeGuard  # 3.10
 
 
 _T = TypeVar("_T", bound=Any)
@@ -46,45 +56,6 @@ if compat.py310:
     from types import NoneType as NoneType
 else:
     NoneType = type(None)  # type: ignore
-
-if compat.py310:
-    from typing import TypeGuard as TypeGuard
-    from typing import TypeAlias as TypeAlias
-else:
-    from typing_extensions import TypeGuard as TypeGuard  # noqa: F401
-    from typing_extensions import TypeAlias as TypeAlias  # noqa: F401
-
-if typing.TYPE_CHECKING or compat.py38:
-    from typing import SupportsIndex as SupportsIndex
-else:
-    from typing_extensions import SupportsIndex as SupportsIndex  # noqa: F401
-
-if typing.TYPE_CHECKING or compat.py310:
-    from typing import Annotated as Annotated
-    from typing import get_args as get_args
-    from typing import get_origin as get_origin
-else:
-    from typing_extensions import Annotated as Annotated  # noqa: F401
-
-    # these are in py38 but don't work with Annotated correctly, so
-    # for 3.8 / 3.9 we use the typing extensions version
-    from typing_extensions import get_args as get_args  # noqa: F401
-    from typing_extensions import (
-        get_origin as get_origin,  # noqa: F401,
-    )
-
-if typing.TYPE_CHECKING or compat.py38:
-    from typing import Literal as Literal
-    from typing import Protocol as Protocol
-    from typing import TypedDict as TypedDict
-    from typing import Final as Final
-    from typing import final as final
-else:
-    from typing_extensions import Literal as Literal  # noqa: F401
-    from typing_extensions import Protocol as Protocol  # noqa: F401
-    from typing_extensions import TypedDict as TypedDict  # noqa: F401
-    from typing_extensions import Final as Final  # noqa: F401
-    from typing_extensions import final as final  # noqa: F401
 
 typing_get_args = get_args
 typing_get_origin = get_origin
@@ -105,13 +76,6 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
 
 # work around https://github.com/microsoft/pyright/issues/3025
 _LiteralStar = Literal["*"]
-
-if typing.TYPE_CHECKING or not compat.py310:
-    from typing_extensions import Concatenate as Concatenate
-    from typing_extensions import ParamSpec as ParamSpec
-else:
-    from typing import Concatenate as Concatenate  # noqa: F401
-    from typing import ParamSpec as ParamSpec  # noqa: F401
 
 
 def de_stringify_annotation(
