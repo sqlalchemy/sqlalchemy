@@ -5210,8 +5210,9 @@ class DDLCompiler(Compiled):
                 "Can't emit DROP CONSTRAINT for constraint %r; "
                 "it has no name" % drop.element
             )
-        return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
+        return "ALTER TABLE %s DROP CONSTRAINT %s%s%s" % (
             self.preparer.format_table(drop.element.table),
+            drop.if_exists and "IF EXISTS " or "",
             formatted_name,
             drop.cascade and " CASCADE" or "",
         )

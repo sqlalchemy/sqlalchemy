@@ -1261,6 +1261,16 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint CASCADE",
         )
 
+    def test_render_drop_constraint_if_exists(self):
+        t, t2 = self._constraint_create_fixture()
+
+        constraint = CheckConstraint("a = 1", name="a1", table=t)
+
+        self.assert_compile(
+            schema.DropConstraint(constraint, if_exists=True),
+            "ALTER TABLE tbl DROP CONSTRAINT IF EXISTS a1",
+        )
+
     def test_render_add_fk_constraint_stringcol(self):
         t, t2 = self._constraint_create_fixture()
 
