@@ -2482,7 +2482,7 @@ class JSON(Indexable, TypeEngine[Any]):
             .. versionadded:: 1.3.11
 
             """
-            return self._binary_w_type(String(), "as_string")
+            return self._binary_w_type(Unicode(), "as_string")
 
         def as_integer(self):
             """Cast an indexed value as integer.
