@@ -2238,15 +2238,21 @@ class OracleDialect(default.DefaultDialect):
             all_objects=all_objects,
         )
 
+        def maybe_int(value):
+            if isinstance(value, float) and value.is_integer():
+                return int(value)
+            else:
+                return value
+
         for row_dict in result:
             table_name = self.normalize_name(row_dict["table_name"])
             orig_colname = row_dict["column_name"]
             colname = self.normalize_name(orig_colname)
             coltype = row_dict["data_type"]
-            precision = row_dict["data_precision"]
+            precision = maybe_int(row_dict["data_precision"])
 
             if coltype == "NUMBER":
-                scale = row_dict["data_scale"]
+                scale = maybe_int(row_dict["data_scale"])
                 if precision is None and scale == 0:
                     coltype = INTEGER()
                 else:
@@ -2266,9 +2272,8 @@ class OracleDialect(default.DefaultDialect):
                     coltype = FLOAT(binary_precision=precision)
 
             elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
-                coltype = self.ischema_names.get(coltype)(
-                    row_dict["char_length"]
-                )
+                char_length = maybe_int(row_dict["char_length"])
+                coltype = self.ischema_names.get(coltype)(char_length)
             elif "WITH TIME ZONE" in coltype:
                 coltype = TIMESTAMP(timezone=True)
             else:
