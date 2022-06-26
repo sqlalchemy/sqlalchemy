@@ -1515,9 +1515,15 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
         self.UTypeTwo = UTypeTwo
         self.UTypeThree = UTypeThree
         self.variant = self.UTypeOne().with_variant(
-            self.UTypeTwo(), "postgresql"
+            self.UTypeTwo(), "postgresql", "mssql"
         )
         self.composite = self.variant.with_variant(self.UTypeThree(), "mysql")
+
+    def test_one_dialect_is_req(self):
+        with expect_raises_message(
+            exc.ArgumentError, "At least one dialect name is required"
+        ):
+            String().with_variant(VARCHAR())
 
     def test_illegal_dupe(self):
         v = self.UTypeOne().with_variant(self.UTypeTwo(), "postgresql")
@@ -1546,6 +1552,9 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             self.variant, "UTYPETWO", dialect=dialects.postgresql.dialect()
+        )
+        self.assert_compile(
+            self.variant, "UTYPETWO", dialect=dialects.mssql.dialect()
         )
 
     def test_to_instance(self):

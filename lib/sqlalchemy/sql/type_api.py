@@ -679,16 +679,17 @@ class TypeEngine(Visitable, Generic[_T]):
 
         """
 
+        if not dialect_names:
+            raise exc.ArgumentError("At least one dialect name is required")
         for dialect_name in dialect_names:
             if dialect_name in self._variant_mapping:
                 raise exc.ArgumentError(
-                    "Dialect '%s' is already present in "
-                    "the mapping for this %r" % (dialect_name, self)
+                    f"Dialect {dialect_name!r} is already present in "
+                    f"the mapping for this {self!r}"
                 )
         new_type = self.copy()
-        if isinstance(type_, type):
-            type_ = type_()
-        elif type_._variant_mapping:
+        type_ = to_instance(type_)
+        if type_._variant_mapping:
             raise exc.ArgumentError(
                 "can't pass a type that already has variants as a "
                 "dialect-level type to with_variant()"
