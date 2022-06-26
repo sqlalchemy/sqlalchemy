@@ -187,7 +187,10 @@ mixin:
 .. warning::
 
   The multirange type DDL support should work with any PostgreSQL DBAPI
-  driver, however the data types returned may vary.
+  driver, however the data types returned may vary. The feature is 
+  currently developed against the psycopg driver, and is known to 
+  work with the range types specific to the `psycopg.types.range`
+  extension module.
 
 When instantiating models that use these column types, you should pass
 whatever data type is expected by the DBAPI driver you're using for
@@ -196,7 +199,8 @@ the column type.
 For example:
 
 .. code-block:: python
-
+  # Note: Multirange type currently only tested against the psycopg
+  # driver, hence the use here.
   from psycopg.types.range import Range
   from pscyopg.types.multirange import Multirange
   from sqlalchemy.dialects.postgresql import TSMULTIRANGE
