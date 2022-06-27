@@ -125,6 +125,7 @@ def mapped_column(
     unique: Optional[bool] = None,
     info: Optional[_InfoType] = None,
     onupdate: Optional[Any] = None,
+    insert_default: Optional[Any] = _NoArg.NO_ARG,
     server_default: Optional[_ServerDefaultType] = None,
     server_onupdate: Optional[FetchedValue] = None,
     quote: Optional[bool] = None,
@@ -292,6 +293,17 @@ def mapped_column(
      ORM declarative process, and is not part of the :class:`_schema.Column`
      itself; instead, it indicates that this column should be "deferred" for
      loading as though mapped by :func:`_orm.deferred`.
+    :param default: This keyword argument, if present, is passed along to the
+     :class:`_schema.Column` constructor as the value of the
+     :paramref:`_schema.Column.default` parameter.  However, as
+     :paramref:`_orm.mapped_column.default` is also consumed as a dataclasses
+     directive, the :paramref:`_orm.mapped_column.insert_default` parameter
+     should be used instead in a dataclasses context.
+    :param insert_default: Passed directly to the
+     :paramref:`_schema.Column.default` parameter; will supersede the value
+     of :paramref:`_orm.mapped_column.default` when present, however
+     :paramref:`_orm.mapped_column.default` will always apply to the
+     constructor default for a dataclasses mapping.
     :param \**kw: All remaining keyword argments are passed through to the
      constructor for the :class:`_schema.Column`.
 
@@ -304,7 +316,11 @@ def mapped_column(
         name=name,
         type_=type_,
         autoincrement=autoincrement,
-        default=default,
+        insert_default=insert_default
+        if insert_default is not _NoArg.NO_ARG
+        else default
+        if default is not _NoArg.NO_ARG
+        else None,
         attribute_options=_AttributeOptions(
             init,
             repr,

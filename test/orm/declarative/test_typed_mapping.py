@@ -559,6 +559,44 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(table.c.data_three.nullable)
         is_true(table.c.data_four.nullable)
 
+    def test_extract_fk_col_from_pep593(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+        element_ref = Annotated[int, mapped_column(ForeignKey("element.id"))]
+
+        class Element(decl_base):
+            __tablename__ = "element"
+
+            id: Mapped[intpk]
+
+        class RefElementOne(decl_base):
+            __tablename__ = "refone"
+
+            id: Mapped[intpk]
+            other_id: Mapped[element_ref]
+
+        class RefElementTwo(decl_base):
+            __tablename__ = "reftwo"
+
+            id: Mapped[intpk]
+            some_id: Mapped[element_ref]
+
+        assert Element.__table__ is not None
+        assert RefElementOne.__table__ is not None
+        assert RefElementTwo.__table__ is not None
+
+        is_true(
+            RefElementOne.__table__.c.other_id.references(
+                Element.__table__.c.id
+            )
+        )
+        is_true(
+            RefElementTwo.__table__.c.some_id.references(
+                Element.__table__.c.id
+            )
+        )
+
     def test_unions(self):
         our_type = Numeric(10, 2)
 

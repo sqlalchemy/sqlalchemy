@@ -2529,7 +2529,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
           by the given string schema name.
 
         """
-
         fk = ForeignKey(
             self._get_colspec(schema=schema),
             use_alter=self.use_alter,

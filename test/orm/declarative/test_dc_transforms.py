@@ -9,9 +9,12 @@ from typing import Set
 from typing import Type
 from unittest import mock
 
+from typing_extensions import Annotated
+
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
@@ -226,6 +229,55 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 data: Mapped[str] = mapped_column(
                     default="d1", default_factory=lambda: "d2"
                 )
+
+    def test_combine_args_from_pep593(self, decl_base: Type[DeclarativeBase]):
+        """test that we can set up column-level defaults separate from
+        dataclass defaults
+
+        """
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+        str30 = Annotated[
+            str, mapped_column(String(30), insert_default=func.foo())
+        ]
+        s_str30 = Annotated[
+            str,
+            mapped_column(String(30), server_default="some server default"),
+        ]
+        user_fk = Annotated[int, mapped_column(ForeignKey("user_account.id"))]
+
+        class User(MappedAsDataclass, decl_base):
+            __tablename__ = "user_account"
+
+            # we need this case for dataclasses that can't derive things
+            # from Annotated yet at the typing level
+            id: Mapped[intpk] = mapped_column(init=False)
+            name_none: Mapped[Optional[str30]] = mapped_column(default=None)
+            name: Mapped[str30] = mapped_column(default="hi")
+            name2: Mapped[s_str30] = mapped_column(default="there")
+            addresses: Mapped[List["Address"]] = relationship(  # noqa: F821
+                back_populates="user", default_factory=list
+            )
+
+        class Address(MappedAsDataclass, decl_base):
+            __tablename__ = "address"
+
+            id: Mapped[intpk] = mapped_column(init=False)
+            email_address: Mapped[str]
+            user_id: Mapped[user_fk] = mapped_column(init=False)
+            user: Mapped["User"] = relationship(
+                back_populates="addresses", default=None
+            )
+
+        is_true(User.__table__.c.id.primary_key)
+        is_true(User.__table__.c.name_none.default.arg.compare(func.foo()))
+        is_true(User.__table__.c.name.default.arg.compare(func.foo()))
+        eq_(User.__table__.c.name2.server_default.arg, "some server default")
+
+        is_true(Address.__table__.c.user_id.references(User.__table__.c.id))
+        u1 = User()
+        eq_(u1.name_none, None)
+        eq_(u1.name, "hi")
+        eq_(u1.name2, "there")
 
     def test_inheritance(self, dc_decl_base: Type[MappedAsDataclass]):
         class Person(dc_decl_base):

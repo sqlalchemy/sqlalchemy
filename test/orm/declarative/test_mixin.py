@@ -20,7 +20,6 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
 from sqlalchemy.orm import has_inherited_table
-from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import synonym
@@ -35,6 +34,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import mapped_column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import classproperty
@@ -159,11 +159,12 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, "testing")
         eq_(obj.foo(), "bar1")
 
-    def test_unique_column(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_unique_column(self, _column):
         class MyMixin:
 
-            id = Column(Integer, primary_key=True)
-            value = Column(String, unique=True)
+            id = _column(Integer, primary_key=True)
+            value = _column(String, unique=True)
 
         class MyModel(Base, MyMixin):
 
@@ -171,10 +172,11 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert MyModel.__table__.c.value.unique
 
-    def test_hierarchical_bases_wbase(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_hierarchical_bases_wbase(self, _column):
         class MyMixinParent:
 
-            id = Column(
+            id = _column(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
 
@@ -183,12 +185,12 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class MyMixin(MyMixinParent):
 
-            baz = Column(String(100), nullable=False, index=True)
+            baz = _column(String(100), nullable=False, index=True)
 
         class MyModel(Base, MyMixin):
 
             __tablename__ = "test"
-            name = Column(String(100), nullable=False, index=True)
+            name = _column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all(testing.db)
         session = fixture_session()
@@ -201,10 +203,11 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
         eq_(obj.baz, "fu")
 
-    def test_hierarchical_bases_wdecorator(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_hierarchical_bases_wdecorator(self, _column):
         class MyMixinParent:
 
-            id = Column(
+            id = _column(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
 
@@ -213,7 +216,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class MyMixin(MyMixinParent):
 
-            baz = Column(String(100), nullable=False, index=True)
+            baz = _column(String(100), nullable=False, index=True)
 
         @mapper_registry.mapped
         class MyModel(MyMixin, object):
@@ -232,22 +235,23 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
         eq_(obj.baz, "fu")
 
-    def test_mixin_overrides_wbase(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_mixin_overrides_wbase(self, _column):
         """test a mixin that overrides a column on a superclass."""
 
         class MixinA:
-            foo = Column(String(50))
+            foo = _column(String(50))
 
         class MixinB(MixinA):
-            foo = Column(Integer)
+            foo = _column(Integer)
 
         class MyModelA(Base, MixinA):
             __tablename__ = "testa"
-            id = Column(Integer, primary_key=True)
+            id = _column(Integer, primary_key=True)
 
         class MyModelB(Base, MixinB):
             __tablename__ = "testb"
-            id = Column(Integer, primary_key=True)
+            id = _column(Integer, primary_key=True)
 
         eq_(MyModelA.__table__.c.foo.type.__class__, String)
         eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
@@ -1120,7 +1124,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return cls.__name__.lower()
 
             __table_args__ = {"mysql_engine": "InnoDB"}
-            timestamp = Column(Integer)
+            timestamp = mapped_column(Integer)
             id = Column(Integer, primary_key=True)
 
         class Generic(Base, CommonMixin):

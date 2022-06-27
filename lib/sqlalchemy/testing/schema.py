@@ -15,8 +15,8 @@ from . import exclusions
 from .. import event
 from .. import schema
 from .. import types as sqltypes
+from ..orm import mapped_column as _orm_mapped_column
 from ..util import OrderedDict
-
 
 __all__ = ["Table", "Column"]
 
@@ -60,15 +60,31 @@ def Table(*args, **kw) -> schema.Table:
     return schema.Table(*args, **kw)
 
 
+def mapped_column(*args, **kw):
+    """An orm.mapped_column wrapper/hook for dialect-specific tweaks."""
+
+    return _schema_column(_orm_mapped_column, args, kw)
+
+
 def Column(*args, **kw):
     """A schema.Column wrapper/hook for dialect-specific tweaks."""
 
+    return _schema_column(schema.Column, args, kw)
+
+
+def _schema_column(factory, args, kw):
     test_opts = {k: kw.pop(k) for k in list(kw) if k.startswith("test_")}
 
     if not config.requirements.foreign_key_ddl.enabled_for_config(config):
         args = [arg for arg in args if not isinstance(arg, schema.ForeignKey)]
 
-    col = schema.Column(*args, **kw)
+    construct = factory(*args, **kw)
+
+    if factory is schema.Column:
+        col = construct
+    else:
+        col = construct.column
+
     if test_opts.get("test_needs_autoincrement", False) and kw.get(
         "primary_key", False
     ):
@@ -94,7 +110,7 @@ def Column(*args, **kw):
                 )
 
             event.listen(col, "after_parent_attach", add_seq, propagate=True)
-    return col
+    return construct
 
 
 class eq_type_affinity:

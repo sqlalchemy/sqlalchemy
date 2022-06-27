@@ -505,18 +505,14 @@ class MappedColumn(
         if attr_opts is not None and attr_opts != _DEFAULT_ATTRIBUTE_OPTIONS:
             if attr_opts.dataclasses_default_factory is not _NoArg.NO_ARG:
                 self._has_dataclass_arguments = True
-                kw["default"] = attr_opts.dataclasses_default_factory
-            elif attr_opts.dataclasses_default is not _NoArg.NO_ARG:
-                kw["default"] = attr_opts.dataclasses_default
 
-            if (
+            elif (
                 attr_opts.dataclasses_init is not _NoArg.NO_ARG
                 or attr_opts.dataclasses_repr is not _NoArg.NO_ARG
             ):
                 self._has_dataclass_arguments = True
 
-        if "default" in kw and kw["default"] is _NoArg.NO_ARG:
-            kw.pop("default")
+        kw["default"] = kw.pop("insert_default", None)
 
         self.deferred = kw.pop("deferred", False)
         self.column = cast("Column[_T]", Column(*arg, **kw))
@@ -525,6 +521,7 @@ class MappedColumn(
             None,
             SchemaConst.NULL_UNSPECIFIED,
         )
+
         util.set_creation_order(self)
 
     def _copy(self: Self, **kw: Any) -> Self:
@@ -630,14 +627,47 @@ class MappedColumn(
         if not self._has_nullable:
             self.column.nullable = nullable
 
+        our_type = de_optionalize_union_types(argument)
+        if is_fwd_ref(our_type):
+            our_type = de_stringify_annotation(cls, our_type)
+
+        use_args_from = None
+        if is_pep593(our_type):
+            our_type_is_pep593 = True
+            for elem in typing_get_args(our_type):
+                if isinstance(elem, MappedColumn):
+                    use_args_from = elem
+                    break
+        else:
+            our_type_is_pep593 = False
+
+        if use_args_from is not None:
+            if use_args_from.column.primary_key:
+                self.column.primary_key = True
+            if use_args_from.column.default is not None:
+                self.column.default = use_args_from.column.default
+            if (
+                use_args_from.column.server_default
+                and self.column.server_default is None
+            ):
+                self.column.server_default = (
+                    use_args_from.column.server_default
+                )
+
+            for const in use_args_from.column.constraints:
+                if not const._type_bound:
+                    new_const = const._copy()
+                    new_const._set_parent(self.column)
+
+            for fk in use_args_from.column.foreign_keys:
+                if not fk.constraint:
+                    new_fk = fk._copy()
+                    new_fk._set_parent(self.column)
+
         if sqltype._isnull and not self.column.foreign_keys:
             new_sqltype = None
-            our_type = de_optionalize_union_types(argument)
 
-            if is_fwd_ref(our_type):
-                our_type = de_stringify_annotation(cls, our_type)
-
-            if is_pep593(our_type):
+            if our_type_is_pep593:
                 checks = (our_type,) + typing_get_args(our_type)
             else:
                 checks = (our_type,)
