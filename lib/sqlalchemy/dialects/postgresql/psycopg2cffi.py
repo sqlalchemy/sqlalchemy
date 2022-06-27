@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+psycopg2cffi
     :name: psycopg2cffi
@@ -44,7 +46,7 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("psycopg2cffi")
 
     @util.memoized_property

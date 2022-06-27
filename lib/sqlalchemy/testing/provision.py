@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import collections
@@ -19,15 +21,22 @@ FOLLOWER_IDENT = None
 
 
 class register:
-    def __init__(self):
+    def __init__(self, decorator=None):
         self.fns = {}
+        self.decorator = decorator
 
     @classmethod
     def init(cls, fn):
         return register().for_db("*")(fn)
 
+    @classmethod
+    def init_decorator(cls, decorator):
+        return register(decorator).for_db("*")
+
     def for_db(self, *dbnames):
         def decorate(fn):
+            if self.decorator:
+                fn = self.decorator(fn)
             for dbname in dbnames:
                 self.fns[dbname] = fn
             return self
@@ -64,7 +73,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     if follower_ident:
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
-    update_db_opts(db_url, db_opts)
+    update_db_opts(db_url, db_opts, options)
     db_opts["scope"] = "global"
     eng = engines.testing_engine(db_url, db_opts)
     post_configure_engine(db_url, eng, follower_ident)
@@ -228,40 +237,17 @@ def drop_all_schema_objects(cfg, eng):
 
     drop_all_schema_objects_pre_tables(cfg, eng)
 
+    drop_views(cfg, eng)
+
+    if config.requirements.materialized_views.enabled:
+        drop_materialized_views(cfg, eng)
+
     inspector = inspect(eng)
-    try:
-        view_names = inspector.get_view_names()
-    except NotImplementedError:
-        pass
-    else:
-        with eng.begin() as conn:
-            for vname in view_names:
-                conn.execute(
-                    ddl._DropView(schema.Table(vname, schema.MetaData()))
-                )
 
+    consider_schemas = (None,)
     if config.requirements.schemas.enabled_for_config(cfg):
-        try:
-            view_names = inspector.get_view_names(schema="test_schema")
-        except NotImplementedError:
-            pass
-        else:
-            with eng.begin() as conn:
-                for vname in view_names:
-                    conn.execute(
-                        ddl._DropView(
-                            schema.Table(
-                                vname,
-                                schema.MetaData(),
-                                schema="test_schema",
-                            )
-                        )
-                    )
-
-    util.drop_all_tables(eng, inspector)
-    if config.requirements.schemas.enabled_for_config(cfg):
-        util.drop_all_tables(eng, inspector, schema=cfg.test_schema)
-        util.drop_all_tables(eng, inspector, schema=cfg.test_schema_2)
+        consider_schemas += (cfg.test_schema, cfg.test_schema_2)
+    util.drop_all_tables(eng, inspector, consider_schemas=consider_schemas)
 
     drop_all_schema_objects_post_tables(cfg, eng)
 
@@ -281,6 +267,59 @@ def drop_all_schema_objects(cfg, eng):
                         )
 
 
+def drop_views(cfg, eng):
+    inspector = inspect(eng)
+
+    try:
+        view_names = inspector.get_view_names()
+    except NotImplementedError:
+        pass
+    else:
+        with eng.begin() as conn:
+            for vname in view_names:
+                conn.execute(
+                    ddl._DropView(schema.Table(vname, schema.MetaData()))
+                )
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        try:
+            view_names = inspector.get_view_names(schema=cfg.test_schema)
+        except NotImplementedError:
+            pass
+        else:
+            with eng.begin() as conn:
+                for vname in view_names:
+                    conn.execute(
+                        ddl._DropView(
+                            schema.Table(
+                                vname,
+                                schema.MetaData(),
+                                schema=cfg.test_schema,
+                            )
+                        )
+                    )
+
+
+def drop_materialized_views(cfg, eng):
+    inspector = inspect(eng)
+
+    mview_names = inspector.get_materialized_view_names()
+
+    with eng.begin() as conn:
+        for vname in mview_names:
+            conn.exec_driver_sql(f"DROP MATERIALIZED VIEW {vname}")
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        mview_names = inspector.get_materialized_view_names(
+            schema=cfg.test_schema
+        )
+        with eng.begin() as conn:
+            for vname in mview_names:
+                conn.exec_driver_sql(
+                    f"DROP MATERIALIZED VIEW {cfg.test_schema}.{vname}"
+                )
+
+
 @register.init
 def create_db(cfg, eng, ident):
     """Dynamically create a database for testing.
@@ -288,19 +327,28 @@ def create_db(cfg, eng, ident):
     Used when a test run will employ multiple processes, e.g., when run
     via `tox` or `pytest -n4`.
     """
-    raise NotImplementedError("no DB creation routine for cfg: %s" % eng.url)
+    raise NotImplementedError(
+        "no DB creation routine for cfg: %s" % (eng.url,)
+    )
 
 
 @register.init
 def drop_db(cfg, eng, ident):
     """Drop a database that we dynamically created for testing."""
-    raise NotImplementedError("no DB drop routine for cfg: %s" % eng.url)
+    raise NotImplementedError("no DB drop routine for cfg: %s" % (eng.url,))
 
 
-@register.init
-def update_db_opts(db_url, db_opts):
+def _adapt_update_db_opts(fn):
+    insp = util.inspect_getfullargspec(fn)
+    if len(insp.args) == 3:
+        return fn
+    else:
+        return lambda db_url, db_opts, _options: fn(db_url, db_opts)
+
+
+@register.init_decorator(_adapt_update_db_opts)
+def update_db_opts(db_url, db_opts, options):
     """Set database options (db_opts) for a test database that we created."""
-    pass
 
 
 @register.init
@@ -309,7 +357,6 @@ def post_configure_engine(url, engine, follower_ident):
 
     (For the internal dialects, currently only used by sqlite, oracle)
     """
-    pass
 
 
 @register.init
@@ -340,7 +387,6 @@ def run_reap_dbs(url, ident):
     use. For the internal dialects, this is currently only necessary for
     mssql and oracle.
     """
-    pass
 
 
 def reap_dbs(idents_file):
@@ -378,7 +424,7 @@ def temp_table_keyword_args(cfg, eng):
     ComponentReflectionTest class in suite/test_reflection.py
     """
     raise NotImplementedError(
-        "no temp table keyword args routine for cfg: %s" % eng.url
+        "no temp table keyword args routine for cfg: %s" % (eng.url,)
     )
 
 

@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .. import config
 from .. import fixtures
 from ..assertions import eq_
@@ -86,7 +88,7 @@ class SequenceTest(fixtures.TablesTest):
         )
 
     def test_nextval_direct(self, connection):
-        r = connection.execute(self.tables.seq_pk.c.id.default)
+        r = connection.scalar(self.tables.seq_pk.c.id.default)
         eq_(r, testing.db.dialect.default_sequence_base)
 
     @requirements.sequences_optional
@@ -137,7 +139,7 @@ class SequenceTest(fixtures.TablesTest):
             schema_translate_map={"alt_schema": config.test_schema}
         )
 
-        r = connection.execute(seq)
+        r = connection.scalar(seq)
         eq_(r, testing.db.dialect.default_sequence_base)
 
 
@@ -192,16 +194,23 @@ class HasSequenceTest(fixtures.TablesTest):
         )
 
     def test_has_sequence(self, connection):
-        eq_(
-            inspect(connection).has_sequence("user_id_seq"),
-            True,
-        )
+        eq_(inspect(connection).has_sequence("user_id_seq"), True)
+
+    def test_has_sequence_cache(self, connection, metadata):
+        insp = inspect(connection)
+        eq_(insp.has_sequence("user_id_seq"), True)
+        ss = Sequence("new_seq", metadata=metadata)
+        eq_(insp.has_sequence("new_seq"), False)
+        ss.create(connection)
+        try:
+            eq_(insp.has_sequence("new_seq"), False)
+            insp.clear_cache()
+            eq_(insp.has_sequence("new_seq"), True)
+        finally:
+            ss.drop(connection)
 
     def test_has_sequence_other_object(self, connection):
-        eq_(
-            inspect(connection).has_sequence("user_id_table"),
-            False,
-        )
+        eq_(inspect(connection).has_sequence("user_id_table"), False)
 
     @testing.requires.schemas
     def test_has_sequence_schema(self, connection):
@@ -213,10 +222,7 @@ class HasSequenceTest(fixtures.TablesTest):
         )
 
     def test_has_sequence_neg(self, connection):
-        eq_(
-            inspect(connection).has_sequence("some_sequence"),
-            False,
-        )
+        eq_(inspect(connection).has_sequence("some_sequence"), False)
 
     @testing.requires.schemas
     def test_has_sequence_schemas_neg(self, connection):
@@ -238,10 +244,7 @@ class HasSequenceTest(fixtures.TablesTest):
 
     @testing.requires.schemas
     def test_has_sequence_remote_not_in_default(self, connection):
-        eq_(
-            inspect(connection).has_sequence("schema_seq"),
-            False,
-        )
+        eq_(inspect(connection).has_sequence("schema_seq"), False)
 
     def test_get_sequence_names(self, connection):
         exp = {"other_seq", "user_id_seq"}

@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 r"""Provides an API for creation of custom ClauseElements and compilers.
 
@@ -229,12 +230,20 @@ A synopsis is as follows:
               raise TypeError("coalesce only supports two arguments on Oracle")
           return "nvl(%s)" % compiler.process(element.clauses, **kw)
 
-* :class:`~sqlalchemy.schema.DDLElement` - The root of all DDL expressions,
-  like CREATE TABLE, ALTER TABLE, etc. Compilation of ``DDLElement``
-  subclasses is issued by a ``DDLCompiler`` instead of a ``SQLCompiler``.
-  ``DDLElement`` also features ``Table`` and ``MetaData`` event hooks via the
-  ``execute_at()`` method, allowing the construct to be invoked during CREATE
-  TABLE and DROP TABLE sequences.
+* :class:`.ExecutableDDLElement` - The root of all DDL expressions,
+  like CREATE TABLE, ALTER TABLE, etc. Compilation of
+  :class:`.ExecutableDDLElement` subclasses is issued by a
+  :class:`.DDLCompiler` instead of a :class:`.SQLCompiler`.
+  :class:`.ExecutableDDLElement` can also be used as an event hook in
+  conjunction with event hooks like :meth:`.DDLEvents.before_create` and
+  :meth:`.DDLEvents.after_create`, allowing the construct to be invoked
+  automatically during CREATE TABLE and DROP TABLE sequences.
+
+  .. seealso::
+
+    :ref:`metadata_ddl_toplevel` - contains examples of associating
+    :class:`.DDL` objects (which are themselves :class:`.ExecutableDDLElement`
+    instances) with :class:`.DDLEvents` event hooks.
 
 * :class:`~sqlalchemy.sql.expression.Executable` - This is a mixin which
   should be used with any expression class that represents a "standalone"

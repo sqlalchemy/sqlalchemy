@@ -25,6 +25,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
@@ -1015,6 +1016,46 @@ class UpdateFromCompileTest(
             checkparams={"addresses_name": "new address", "name": "newname"},
             dialect="mysql",
         )
+
+    def test_update_from_join_unsupported_cases(self):
+        """
+        found_during_typing
+
+        It's unclear how to cleanly guard against this case without producing
+        false positives, particularly due to the support for UPDATE
+        of a CTE.  I'm also not sure of the nature of the failure and why
+        it happens this way.
+
+        """
+        users, addresses = self.tables.users, self.tables.addresses
+
+        j = users.join(addresses)
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Encountered unsupported case when compiling an INSERT or UPDATE "
+            r"statement.  If this is a multi-table "
+            r"UPDATE statement, please provide string-named arguments to the "
+            r"values\(\) method with distinct names; support for multi-table "
+            r"UPDATE statements that "
+            r"target multiple tables for UPDATE is very limited",
+        ):
+            update(j).where(addresses.c.email_address == "e1").values(
+                {users.c.id: 10, addresses.c.email_address: "asdf"}
+            ).compile(dialect=mysql.dialect())
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Encountered unsupported case when compiling an INSERT or UPDATE "
+            r"statement.  If this is a multi-table "
+            r"UPDATE statement, please provide string-named arguments to the "
+            r"values\(\) method with distinct names; support for multi-table "
+            r"UPDATE statements that "
+            r"target multiple tables for UPDATE is very limited",
+        ):
+            update(j).where(addresses.c.email_address == "e1").compile(
+                dialect=mysql.dialect()
+            )
 
     def test_update_from_join_mysql_whereclause(self):
         users, addresses = self.tables.users, self.tables.addresses

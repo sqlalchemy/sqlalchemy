@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+psycopg2
     :name: psycopg2
@@ -105,7 +107,7 @@ using ``host`` as an additional keyword argument::
 .. seealso::
 
     `PQconnectdbParams \
-    <https://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+    <https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 .. _psycopg2_multi_host:
 
@@ -130,7 +132,7 @@ or all connections are unsuccessful in which case an error is raised.
 .. seealso::
 
     `PQConnString \
-    <https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING>`_
+    <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
 
 Empty DSN Connections / Environment Variable Connections
 ---------------------------------------------------------
@@ -203,7 +205,7 @@ performance, primarily with INSERT statements, by multiple orders of magnitude.
 SQLAlchemy internally makes use of these extensions for ``executemany()`` style
 calls, which correspond to lists of parameters being passed to
 :meth:`_engine.Connection.execute` as detailed in :ref:`multiple parameter
-sets <execute_multiple>`.   The ORM also uses this mode internally whenever
+sets <tutorial_multiple_parameters>`.   The ORM also uses this mode internally whenever
 possible.
 
 The two available extensions on the psycopg2 side are the ``execute_values()``
@@ -279,7 +281,7 @@ size defaults to 100.  These can be affected by passing new values to
 
 .. seealso::
 
-    :ref:`execute_multiple` - General information on using the
+    :ref:`tutorial_multiple_parameters` - General information on using the
     :class:`_engine.Connection`
     object to execute statements in such a way as to make
     use of the DBAPI ``.executemany()`` method.
@@ -456,6 +458,8 @@ from .json import JSONB
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
+from ...util import FastIntFlag
+from ...util import parse_user_argument_for_enum
 
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
@@ -478,7 +482,7 @@ class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
         if (
             self._psycopg2_fetched_rows
             and self.compiled
-            and self.compiled.returning
+            and self.compiled.effective_returning
         ):
             # psycopg2 execute_values will provide for a real cursor where
             # cursor.description works correctly. however, it executes the
@@ -519,13 +523,19 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
 
 
-EXECUTEMANY_PLAIN = util.symbol("executemany_plain", canonical=0)
-EXECUTEMANY_BATCH = util.symbol("executemany_batch", canonical=1)
-EXECUTEMANY_VALUES = util.symbol("executemany_values", canonical=2)
-EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
-    "executemany_values_plus_batch",
-    canonical=EXECUTEMANY_BATCH | EXECUTEMANY_VALUES,
-)
+class ExecutemanyMode(FastIntFlag):
+    EXECUTEMANY_PLAIN = 0
+    EXECUTEMANY_BATCH = 1
+    EXECUTEMANY_VALUES = 2
+    EXECUTEMANY_VALUES_PLUS_BATCH = EXECUTEMANY_BATCH | EXECUTEMANY_VALUES
+
+
+(
+    EXECUTEMANY_PLAIN,
+    EXECUTEMANY_BATCH,
+    EXECUTEMANY_VALUES,
+    EXECUTEMANY_VALUES_PLUS_BATCH,
+) = tuple(ExecutemanyMode)
 
 
 class PGDialect_psycopg2(_PGDialect_common_psycopg):
@@ -564,7 +574,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
         # Parse executemany_mode argument, allowing it to be only one of the
         # symbol names
-        self.executemany_mode = util.symbol.parse_user_argument(
+        self.executemany_mode = parse_user_argument_for_enum(
             executemany_mode,
             {
                 EXECUTEMANY_PLAIN: [None],
@@ -603,7 +613,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
         # PGDialect.initialize() checks server version for <= 8.2 and sets
         # this flag to False if so
-        if not self.full_returning:
+        if not self.insert_returning:
             self.insert_executemany_returning = False
             self.executemany_mode = EXECUTEMANY_PLAIN
 
@@ -612,7 +622,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg2
 
         return psycopg2
@@ -666,7 +676,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
             fns.append(on_connect)
 
-        if self.dbapi and self.use_native_uuid:
+        if self.dbapi:
 
             def on_connect(dbapi_conn):
                 extras.register_uuid(None, dbapi_conn)
@@ -712,7 +722,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             self.executemany_mode & EXECUTEMANY_VALUES
             and context
             and context.isinsert
-            and context.compiled.insert_single_values_expr
+            and context.compiled._is_safe_for_fast_insert_values_helper
         ):
             executemany_values = (
                 "(%s)" % context.compiled.insert_single_values_expr
@@ -736,7 +746,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
                 statement,
                 parameters,
                 template=executemany_values,
-                fetch=bool(context.compiled.returning),
+                fetch=bool(context.compiled.effective_returning),
                 **kwargs,
             )
 

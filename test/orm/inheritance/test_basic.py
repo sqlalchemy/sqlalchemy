@@ -391,6 +391,35 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             polymorphic_identity=0,
         )
 
+    def test_polymorphic_on_not_present_col_partial_wpoly(self):
+        """fix for partial with_polymorphic().
+
+        found_during_type_annotation
+
+        """
+        t2, t1 = self.tables.t2, self.tables.t1
+        Parent = self.classes.Parent
+        t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
+
+        def go():
+            t1t2_join_2 = (  # noqa: F841
+                select(t1.c.q).select_from(t1.join(t2)).alias()
+            )
+            self.mapper_registry.map_imperatively(
+                Parent,
+                t2,
+                polymorphic_on=t1t2_join.c.x,
+                with_polymorphic=("*", None),
+                polymorphic_identity=0,
+            )
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "Could not map polymorphic_on column 'x' to the mapped table - "
+            "polymorphic loads will not function properly",
+            go,
+        )
+
     def test_polymorphic_on_not_present_col(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent = self.classes.Parent

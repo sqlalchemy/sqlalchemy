@@ -156,6 +156,50 @@ class CursorResultTest(fixtures.TablesTest):
             rows.append(row)
         eq_(len(rows), 3)
 
+    def test_scalars(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
+        )
+        r = connection.scalars(users.select().order_by(users.c.user_id))
+        eq_(r.all(), [7, 8, 9])
+
+    def test_result_tuples(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
+        )
+        r = connection.execute(
+            users.select().order_by(users.c.user_id)
+        ).tuples()
+        eq_(r.all(), [(7, "jack"), (8, "ed"), (9, "fred")])
+
+    def test_row_tuple(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
+        )
+        r = connection.execute(users.select().order_by(users.c.user_id))
+        eq_([row.t for row in r], [(7, "jack"), (8, "ed"), (9, "fred")])
+
     def test_row_next(self, connection):
         users = self.tables.users
 
@@ -1612,15 +1656,15 @@ class CursorResultTest(fixtures.TablesTest):
 
         eq_(dict(row._mapping), {"a": "av", "b": "bv", "count": "cv"})
 
-        with assertions.expect_raises_message(
+        with assertions.expect_raises(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["a"], "av")
 
         with assertions.expect_raises_message(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["count"], "cv")
 
@@ -3197,8 +3241,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         all_ = result.columns(*columns).all()
         eq_(all_, expected)
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_twice(self, connection):
         users = self.tables.users
@@ -3216,8 +3259,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         )
         eq_(all_, [("jack", 1)])
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_plus_getter(self, connection):
         users = self.tables.users

@@ -16,42 +16,66 @@ from __future__ import annotations
 
 from typing import Any
 from typing import cast
+from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Set
+from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import attributes
 from . import strategy_options
-from .base import SQLCoreOperations
 from .descriptor_props import Composite
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import Synonym
+from .interfaces import _AttributeOptions
+from .interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import Relationship
-from .util import _extract_mapped_subtype
-from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
-from .. import sql
 from .. import util
 from ..sql import coercions
-from ..sql import operators
 from ..sql import roles
 from ..sql import sqltypes
+from ..sql.base import _NoArg
+from ..sql.elements import SQLCoreOperations
 from ..sql.schema import Column
+from ..sql.schema import SchemaConst
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
+from ..util.typing import is_pep593
 from ..util.typing import NoneType
+from ..util.typing import Self
+from ..util.typing import typing_get_args
+
+if TYPE_CHECKING:
+    from ._typing import _IdentityKeyType
+    from ._typing import _InstanceDict
+    from ._typing import _ORMColumnExprArgument
+    from ._typing import _RegistryType
+    from .mapper import Mapper
+    from .session import Session
+    from .state import _InstallLoaderCallableProto
+    from .state import InstanceState
+    from ..sql._typing import _InfoType
+    from ..sql.elements import ColumnElement
+    from ..sql.elements import NamedColumn
+    from ..sql.operators import OperatorType
+    from ..util.typing import _AnnotationScanType
+    from ..util.typing import RODescriptorReference
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
+_NC = TypeVar("_NC", bound="NamedColumn[Any]")
 
 __all__ = [
     "ColumnProperty",
@@ -79,17 +103,22 @@ class ColumnProperty(
     inherit_cache = True
     _links_to_entity = False
 
+    columns: List[NamedColumn[Any]]
+
+    _is_polymorphic_discriminator: bool
+
+    _mapped_by_synonym: Optional[str]
+
+    comparator_factory: Type[PropComparator[_T]]
+
     __slots__ = (
-        "_orig_columns",
         "columns",
         "group",
         "deferred",
         "instrument",
         "comparator_factory",
-        "descriptor",
         "active_history",
         "expire_on_flush",
-        "doc",
         "_creation_order",
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
@@ -100,36 +129,44 @@ class ColumnProperty(
     )
 
     def __init__(
-        self, column: sql.ColumnElement[_T], *additional_columns, **kwargs
+        self,
+        column: _ORMColumnExprArgument[_T],
+        *additional_columns: _ORMColumnExprArgument[Any],
+        attribute_options: Optional[_AttributeOptions] = None,
+        group: Optional[str] = None,
+        deferred: bool = False,
+        raiseload: bool = False,
+        comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+        active_history: bool = False,
+        expire_on_flush: bool = True,
+        info: Optional[_InfoType] = None,
+        doc: Optional[str] = None,
+        _instrument: bool = True,
     ):
-        super(ColumnProperty, self).__init__()
+        super(ColumnProperty, self).__init__(
+            attribute_options=attribute_options
+        )
         columns = (column,) + additional_columns
-        self._orig_columns = [
+        self.columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
         ]
-        self.columns = [
-            _orm_full_deannotate(
-                coercions.expect(roles.LabeledColumnExprRole, c)
-            )
-            for c in columns
-        ]
-        self.parent = self.key = None
-        self.group = kwargs.pop("group", None)
-        self.deferred = kwargs.pop("deferred", False)
-        self.raiseload = kwargs.pop("raiseload", False)
-        self.instrument = kwargs.pop("_instrument", True)
-        self.comparator_factory = kwargs.pop(
-            "comparator_factory", self.__class__.Comparator
+        self.group = group
+        self.deferred = deferred
+        self.raiseload = raiseload
+        self.instrument = _instrument
+        self.comparator_factory = (
+            comparator_factory
+            if comparator_factory is not None
+            else self.__class__.Comparator
         )
-        self.descriptor = kwargs.pop("descriptor", None)
-        self.active_history = kwargs.pop("active_history", False)
-        self.expire_on_flush = kwargs.pop("expire_on_flush", True)
+        self.active_history = active_history
+        self.expire_on_flush = expire_on_flush
 
-        if "info" in kwargs:
-            self.info = kwargs.pop("info")
+        if info is not None:
+            self.info.update(info)
 
-        if "doc" in kwargs:
-            self.doc = kwargs.pop("doc")
+        if doc is not None:
+            self.doc = doc
         else:
             for col in reversed(self.columns):
                 doc = getattr(col, "doc", None)
@@ -138,12 +175,6 @@ class ColumnProperty(
                     break
             else:
                 self.doc = None
-
-        if kwargs:
-            raise TypeError(
-                "%s received unexpected keyword argument(s): %s"
-                % (self.__class__.__name__, ", ".join(sorted(kwargs.keys())))
-            )
 
         util.set_creation_order(self)
 
@@ -155,8 +186,14 @@ class ColumnProperty(
             self.strategy_key += (("raiseload", True),)
 
     def declarative_scan(
-        self, registry, cls, key, annotation, is_dataclass_field
-    ):
+        self,
+        registry: _RegistryType,
+        cls: Type[Any],
+        key: str,
+        annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        is_dataclass_field: bool,
+    ) -> None:
         column = self.columns[0]
         if column.key is None:
             column.key = key
@@ -168,20 +205,23 @@ class ColumnProperty(
         return self
 
     @property
-    def columns_to_assign(self) -> List[Column]:
+    def columns_to_assign(self) -> List[Column[Any]]:
+        # mypy doesn't care about the isinstance here
         return [
-            c
+            c  # type: ignore
             for c in self.columns
             if isinstance(c, Column) and c.table is None
         ]
 
-    def _memoized_attr__renders_in_subqueries(self):
+    def _memoized_attr__renders_in_subqueries(self) -> bool:
         return ("deferred", True) not in self.strategy_key or (
-            self not in self.parent._readonly_props
+            self not in self.parent._readonly_props  # type: ignore
         )
 
     @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__deferred_column_loader(self):
+    def _memoized_attr__deferred_column_loader(
+        self,
+    ) -> _InstallLoaderCallableProto[Any]:
         state = util.preloaded.orm_state
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
@@ -191,7 +231,9 @@ class ColumnProperty(
         )
 
     @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__raise_column_loader(self):
+    def _memoized_attr__raise_column_loader(
+        self,
+    ) -> _InstallLoaderCallableProto[Any]:
         state = util.preloaded.orm_state
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
@@ -200,7 +242,7 @@ class ColumnProperty(
             self.key,
         )
 
-    def __clause_element__(self):
+    def __clause_element__(self) -> roles.ColumnsClauseRole:
         """Allow the ColumnProperty to work in expression before it is turned
         into an instrumented attribute.
         """
@@ -208,7 +250,7 @@ class ColumnProperty(
         return self.expression
 
     @property
-    def expression(self):
+    def expression(self) -> roles.ColumnsClauseRole:
         """Return the primary column or expression for this ColumnProperty.
 
         E.g.::
@@ -229,7 +271,7 @@ class ColumnProperty(
         """
         return self.columns[0]
 
-    def instrument_class(self, mapper):
+    def instrument_class(self, mapper: Mapper[Any]) -> None:
         if not self.instrument:
             return
 
@@ -241,7 +283,7 @@ class ColumnProperty(
             doc=self.doc,
         )
 
-    def do_init(self):
+    def do_init(self) -> None:
         super().do_init()
 
         if len(self.columns) > 1 and set(self.parent.primary_key).issuperset(
@@ -257,32 +299,25 @@ class ColumnProperty(
                 % (self.parent, self.columns[1], self.columns[0], self.key)
             )
 
-    def copy(self):
+    def copy(self) -> ColumnProperty[_T]:
         return ColumnProperty(
+            *self.columns,
             deferred=self.deferred,
             group=self.group,
             active_history=self.active_history,
-            *self.columns,
-        )
-
-    def _getcommitted(
-        self, state, dict_, column, passive=attributes.PASSIVE_OFF
-    ):
-        return state.get_impl(self.key).get_committed_value(
-            state, dict_, passive=passive
         )
 
     def merge(
         self,
-        session,
-        source_state,
-        source_dict,
-        dest_state,
-        dest_dict,
-        load,
-        _recursive,
-        _resolve_conflict_map,
-    ):
+        session: Session,
+        source_state: InstanceState[Any],
+        source_dict: _InstanceDict,
+        dest_state: InstanceState[Any],
+        dest_dict: _InstanceDict,
+        load: bool,
+        _recursive: Dict[Any, object],
+        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
+    ) -> None:
         if not self.instrument:
             return
         elif self.key in source_dict:
@@ -317,9 +352,13 @@ class ColumnProperty(
 
         """
 
-        __slots__ = "__clause_element__", "info", "expressions"
+        if not TYPE_CHECKING:
+            # prevent pylance from being clever about slots
+            __slots__ = "__clause_element__", "info", "expressions"
 
-        def _orm_annotate_column(self, column):
+        prop: RODescriptorReference[ColumnProperty[_PT]]
+
+        def _orm_annotate_column(self, column: _NC) -> _NC:
             """annotate and possibly adapt a column to be returned
             as the mapped-attribute exposed version of the column.
 
@@ -333,7 +372,7 @@ class ColumnProperty(
             """
 
             pe = self._parententity
-            annotations = {
+            annotations: Dict[str, Any] = {
                 "entity_namespace": pe,
                 "parententity": pe,
                 "parentmapper": pe,
@@ -359,22 +398,29 @@ class ColumnProperty(
                 {"compile_state_plugin": "orm", "plugin_subject": pe}
             )
 
-        def _memoized_method___clause_element__(self):
+        if TYPE_CHECKING:
+
+            def __clause_element__(self) -> NamedColumn[_PT]:
+                ...
+
+        def _memoized_method___clause_element__(
+            self,
+        ) -> NamedColumn[_PT]:
             if self.adapter:
                 return self.adapter(self.prop.columns[0], self.prop.key)
             else:
                 return self._orm_annotate_column(self.prop.columns[0])
 
-        def _memoized_attr_info(self):
+        def _memoized_attr_info(self) -> _InfoType:
             """The .info dictionary for this attribute."""
 
             ce = self.__clause_element__()
             try:
-                return ce.info
+                return ce.info  # type: ignore
             except AttributeError:
                 return self.prop.info
 
-        def _memoized_attr_expressions(self):
+        def _memoized_attr_expressions(self) -> Sequence[NamedColumn[Any]]:
             """The full sequence of columns referenced by this
             attribute, adjusted for any aliasing in progress.
 
@@ -391,21 +437,25 @@ class ColumnProperty(
                     self._orm_annotate_column(col) for col in self.prop.columns
                 ]
 
-        def _fallback_getattr(self, key):
+        def _fallback_getattr(self, key: str) -> Any:
             """proxy attribute access down to the mapped column.
 
             this allows user-defined comparison methods to be accessed.
             """
             return getattr(self.__clause_element__(), key)
 
-        def operate(self, op, *other, **kwargs):
-            return op(self.__clause_element__(), *other, **kwargs)
+        def operate(
+            self, op: OperatorType, *other: Any, **kwargs: Any
+        ) -> ColumnElement[Any]:
+            return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
 
-        def reverse_operate(self, op, other, **kwargs):
+        def reverse_operate(
+            self, op: OperatorType, other: Any, **kwargs: Any
+        ) -> ColumnElement[Any]:
             col = self.__clause_element__()
-            return op(col._bind_param(op, other), col, **kwargs)
+            return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
 
-    def __str__(self):
+    def __str__(self) -> str:
         if not self.parent or not self.key:
             return object.__repr__(self)
         return str(self.parent.class_.__name__) + "." + self.key
@@ -413,7 +463,6 @@ class ColumnProperty(
 
 class MappedColumn(
     SQLCoreOperations[_T],
-    operators.ColumnOperators[SQLCoreOperations],
     _IntrospectsAnnotations,
     _MapsColumns[_T],
 ):
@@ -437,52 +486,103 @@ class MappedColumn(
         "foreign_keys",
         "_has_nullable",
         "deferred",
+        "_attribute_options",
+        "_has_dataclass_arguments",
     )
 
     deferred: bool
     column: Column[_T]
     foreign_keys: Optional[Set[ForeignKey]]
+    _attribute_options: _AttributeOptions
 
-    def __init__(self, *arg, **kw):
+    def __init__(self, *arg: Any, **kw: Any):
+        self._attribute_options = attr_opts = kw.pop(
+            "attribute_options", _DEFAULT_ATTRIBUTE_OPTIONS
+        )
+
+        self._has_dataclass_arguments = False
+
+        if attr_opts is not None and attr_opts != _DEFAULT_ATTRIBUTE_OPTIONS:
+            if attr_opts.dataclasses_default_factory is not _NoArg.NO_ARG:
+                self._has_dataclass_arguments = True
+                kw["default"] = attr_opts.dataclasses_default_factory
+            elif attr_opts.dataclasses_default is not _NoArg.NO_ARG:
+                kw["default"] = attr_opts.dataclasses_default
+
+            if (
+                attr_opts.dataclasses_init is not _NoArg.NO_ARG
+                or attr_opts.dataclasses_repr is not _NoArg.NO_ARG
+            ):
+                self._has_dataclass_arguments = True
+
+        if "default" in kw and kw["default"] is _NoArg.NO_ARG:
+            kw.pop("default")
+
         self.deferred = kw.pop("deferred", False)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
-        self._has_nullable = "nullable" in kw
+        self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
+            None,
+            SchemaConst.NULL_UNSPECIFIED,
+        )
         util.set_creation_order(self)
 
-    def _copy(self, **kw):
-        new = self.__class__.__new__(self.__class__)
+    def _copy(self: Self, **kw: Any) -> Self:
+        new = cast(Self, self.__class__.__new__(self.__class__))
         new.column = self.column._copy(**kw)
         new.deferred = self.deferred
         new.foreign_keys = new.column.foreign_keys
         new._has_nullable = self._has_nullable
+        new._attribute_options = self._attribute_options
+        new._has_dataclass_arguments = self._has_dataclass_arguments
         util.set_creation_order(new)
         return new
 
     @property
+    def name(self) -> str:
+        return self.column.name
+
+    @property
     def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
         if self.deferred:
-            return ColumnProperty(self.column, deferred=True)
+            return ColumnProperty(
+                self.column,
+                deferred=True,
+                attribute_options=self._attribute_options,
+            )
         else:
             return None
 
     @property
-    def columns_to_assign(self) -> List[Column]:
+    def columns_to_assign(self) -> List[Column[Any]]:
         return [self.column]
 
-    def __clause_element__(self):
+    def __clause_element__(self) -> Column[_T]:
         return self.column
 
-    def operate(self, op, *other, **kwargs):
-        return op(self.__clause_element__(), *other, **kwargs)
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[Any]:
+        return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
 
-    def reverse_operate(self, op, other, **kwargs):
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> ColumnElement[Any]:
         col = self.__clause_element__()
-        return op(col._bind_param(op, other), col, **kwargs)
+        return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
+
+    def found_in_pep593_annotated(self) -> Any:
+        return self._copy()
 
     def declarative_scan(
-        self, registry, cls, key, annotation, is_dataclass_field
-    ):
+        self,
+        registry: _RegistryType,
+        cls: Type[Any],
+        key: str,
+        annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        is_dataclass_field: bool,
+    ) -> None:
         column = self.column
         if column.key is None:
             column.key = key
@@ -491,53 +591,67 @@ class MappedColumn(
 
         sqltype = column.type
 
-        argument = _extract_mapped_subtype(
-            annotation,
-            cls,
-            key,
-            MappedColumn,
-            sqltype._isnull and not self.column.foreign_keys,
-            is_dataclass_field,
-        )
-        if argument is None:
-            return
+        if extracted_mapped_annotation is None:
+            if sqltype._isnull and not self.column.foreign_keys:
+                self._raise_for_required(key, cls)
+            else:
+                return
 
-        self._init_column_for_annotation(cls, registry, argument)
+        self._init_column_for_annotation(
+            cls, registry, extracted_mapped_annotation
+        )
 
     @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan_for_composite(
-        self, registry, cls, key, param_name, param_annotation
-    ):
+        self,
+        registry: _RegistryType,
+        cls: Type[Any],
+        key: str,
+        param_name: str,
+        param_annotation: _AnnotationScanType,
+    ) -> None:
         decl_base = util.preloaded.orm_decl_base
         decl_base._undefer_column_name(param_name, self.column)
         self._init_column_for_annotation(cls, registry, param_annotation)
 
-    def _init_column_for_annotation(self, cls, registry, argument):
+    def _init_column_for_annotation(
+        self,
+        cls: Type[Any],
+        registry: _RegistryType,
+        argument: _AnnotationScanType,
+    ) -> None:
         sqltype = self.column.type
 
         nullable = False
 
         if hasattr(argument, "__origin__"):
-            nullable = NoneType in argument.__args__
+            nullable = NoneType in argument.__args__  # type: ignore
 
         if not self._has_nullable:
             self.column.nullable = nullable
 
         if sqltype._isnull and not self.column.foreign_keys:
-            sqltype = None
+            new_sqltype = None
             our_type = de_optionalize_union_types(argument)
 
             if is_fwd_ref(our_type):
                 our_type = de_stringify_annotation(cls, our_type)
 
-            if registry.type_annotation_map:
-                sqltype = registry.type_annotation_map.get(our_type)
-            if sqltype is None:
-                sqltype = sqltypes._type_map_get(our_type)
+            if is_pep593(our_type):
+                checks = (our_type,) + typing_get_args(our_type)
+            else:
+                checks = (our_type,)
 
-            if sqltype is None:
+            for check_type in checks:
+                if registry.type_annotation_map:
+                    new_sqltype = registry.type_annotation_map.get(check_type)
+                if new_sqltype is None:
+                    new_sqltype = sqltypes._type_map_get(check_type)  # type: ignore  # noqa: E501
+                if new_sqltype is not None:
+                    break
+            else:
                 raise sa_exc.ArgumentError(
                     f"Could not locate SQLAlchemy Core "
                     f"type for Python type: {our_type}"
                 )
-            self.column.type = sqltype
+            self.column.type = new_sqltype  # type: ignore

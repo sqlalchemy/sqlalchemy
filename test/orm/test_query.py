@@ -45,7 +45,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import Bundle
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defer
@@ -186,6 +185,14 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    def test_single_entity_tuples(self):
+        User = self.classes.User
+        query = fixture_session().query(User).tuples()
+        is_false(query.is_single_entity)
+        row = query.first()
+        assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
+
     def test_multiple_entity_false(self):
         User = self.classes.User
         query = (
@@ -199,6 +206,14 @@ class OnlyReturnTuplesTest(QueryTest):
     def test_multiple_entity_true(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).only_return_tuples(True)
+        is_false(query.is_single_entity)
+        row = query.first()
+        assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
+
+    def test_multiple_entity_true_tuples(self):
+        User = self.classes.User
+        query = fixture_session().query(User.id, User).tuples()
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
@@ -861,6 +876,18 @@ class RowLabelingTest(QueryTest):
 
         assert_row_keys(stmt, expected, coreorm_exec)
 
+    def test_with_only_columns(self, assert_row_keys):
+        """test #8001"""
+
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id, Address.email_address).join_from(User, Address)
+        stmt = stmt.with_only_columns(
+            stmt.selected_columns.id, stmt.selected_columns.email_address
+        )
+
+        assert_row_keys(stmt, ["id", "email_address"], "orm")
+
     def test_explicit_cols_legacy(self):
         User = self.classes.User
 
@@ -1005,34 +1032,14 @@ class RowLabelingTest(QueryTest):
         eq_(row._mapping.keys(), ["id", "name", "id", "name"])
 
     @testing.fixture
-    def uname_fixture(self):
+    def uname_fixture(self, registry):
         class Foo:
             pass
 
-        if False:
-            # this conditional creates the table each time which would
-            # eliminate cross-test memoization issues.  if the tests
-            # are failing without this then there's a memoization issue.
-            # check AnnotatedColumn memoized keys
-            m = MetaData()
-            users = Table(
-                "users",
-                m,
-                Column("id", Integer, primary_key=True),
-                Column(
-                    "name",
-                    String,
-                ),
-            )
-            self.mapper_registry.map_imperatively(
-                Foo, users, properties={"uname": users.c.name}
-            )
-        else:
-            users = self.tables.users
-            clear_mappers()
-            self.mapper_registry.map_imperatively(
-                Foo, users, properties={"uname": users.c.name}
-            )
+        users = self.tables.users
+        registry.map_imperatively(
+            Foo, users, properties={"uname": users.c.name}
+        )
 
         return Foo
 
@@ -2251,6 +2258,22 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             .subquery()
         )
         assert a1.c.users_id is not None
+
+    def test_no_subquery_for_from_statement(self):
+        """
+        found_during_typing
+
+        """
+        User = self.classes.User
+
+        session = fixture_session()
+        q = session.query(User.id).from_statement(text("select * from user"))
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Can't call this method on a Query that uses from_statement\(\)",
+        ):
+            q.subquery()
 
     def test_reduced_subquery(self):
         User = self.classes.User
@@ -3828,7 +3851,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         self.assert_compile(
             s.query(B).filter(B.d.any(D.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
-            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "EXISTS (SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 
@@ -3850,7 +3873,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM "
             "b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
             "JOIN d ON d.id = b_d_1.did WHERE "
-            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "EXISTS (SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 
@@ -3890,7 +3913,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             "FROM b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
             "JOIN d AS d_1 ON d_1.id = b_d_1.did "
             "WHERE EXISTS "
-            "(SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "(SELECT 1 FROM d, b_d WHERE b.id = b_d.bid "
             "AND d.id = b_d.did AND d.id = :id_1)",
         )
 
@@ -6176,12 +6199,6 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             "FROM users GROUP BY name",
         )
 
-    def test_orm_columns_accepts_text(self):
-        from sqlalchemy.orm.base import _orm_columns
-
-        t = text("x")
-        eq_(_orm_columns(t), [t])
-
     def test_order_by_w_eager_one(self):
         User = self.classes.User
         s = fixture_session()
@@ -6388,6 +6405,23 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             Order(description="order 3"),
             Order(description="order 5"),
         ] == o
+
+    def test_invalid_property(self):
+        """Test if with_parent is passed a non-relationship
+
+        found_during_type_annotation
+
+        """
+        User = self.classes.User
+
+        sess = fixture_session()
+        u1 = sess.get(User, 7)
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected relationship property for with_parent\(\), "
+            "got User.name",
+        ):
+            with_parent(u1, User.name)
 
     def test_select_from(self):
         User, Address = self.classes.User, self.classes.Address

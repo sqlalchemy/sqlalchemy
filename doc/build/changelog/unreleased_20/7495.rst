@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7495
+
+    The behavior of :func:`_orm.defer` regarding primary key and "polymorphic
+    discriminator" columns is revised such that these columns are no longer
+    deferrable, either explicitly or when using a wildcard such as
+    ``defer('*')``. Previously, a wildcard deferral would not load
+    PK/polymorphic columns which led to errors in all cases, as the ORM relies
+    upon these columns to produce object identities. The behavior of explicit
+    deferral of primary key columns is unchanged as these deferrals already
+    were implicitly ignored.

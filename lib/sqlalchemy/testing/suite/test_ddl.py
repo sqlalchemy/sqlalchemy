@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import random
 
 from . import testing

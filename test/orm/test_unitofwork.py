@@ -1187,7 +1187,6 @@ class DefaultTest(fixtures.MappedTest):
         self.assert_(h2.foober == h3.foober == h4.foober == "im foober")
         eq_(h5.foober, "im the new foober")
 
-    @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_eager_defaults(self):
         hohoval, default_t, Hoho = (
             self.other.hohoval,
@@ -1214,7 +1213,7 @@ class DefaultTest(fixtures.MappedTest):
         session = fixture_session()
         session.add(h1)
 
-        if testing.db.dialect.implicit_returning:
+        if testing.db.dialect.insert_returning:
             self.sql_count_(1, session.flush)
         else:
             self.sql_count_(2, session.flush)
@@ -3502,7 +3501,10 @@ class NoRowInsertedTest(fixtures.TestBase):
     """
 
     __backend__ = True
-    __requires__ = ("returning",)
+
+    # the test manipulates INSERTS to become UPDATES to simulate
+    # "INSERT that returns no row" so both are needed
+    __requires__ = ("insert_returning", "update_returning")
 
     @testing.fixture
     def null_server_default_fixture(self, registry, connection):

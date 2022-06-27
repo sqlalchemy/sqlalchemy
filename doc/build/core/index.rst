@@ -19,4 +19,6 @@ Language provides a schema-centric usage paradigm.
     future
 
 .. toctree::
-   :hidden:
+    :hidden:
+
+    tutorial

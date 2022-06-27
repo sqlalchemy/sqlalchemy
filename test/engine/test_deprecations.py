@@ -4,13 +4,8 @@ from unittest.mock import Mock
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import event
-from sqlalchemy import exc
-from sqlalchemy import insert
-from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import pool
 from sqlalchemy import select
-from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import reflection
@@ -29,10 +24,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_instance_of
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
-from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing.schema import Table
 
 
 def _string_deprecation_expect():
@@ -87,6 +79,93 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
 
 class CreateEngineTest(fixtures.TestBase):
+    @testing.requires.sqlite
+    def test_dbapi_clsmethod_renamed(self):
+        """The dbapi() class method is renamed to import_dbapi(),
+        so that the .dbapi attribute can be exclusively an instance
+        attribute.
+
+        """
+
+        from sqlalchemy.dialects.sqlite import pysqlite
+        from sqlalchemy.dialects import registry
+
+        canary = mock.Mock()
+
+        class MyDialect(pysqlite.SQLiteDialect_pysqlite):
+            @classmethod
+            def dbapi(cls):
+                canary()
+                return __import__("sqlite3")
+
+        tokens = __name__.split(".")
+
+        global dialect
+        dialect = MyDialect
+
+        registry.register(
+            "mockdialect1.sqlite", ".".join(tokens[0:-1]), tokens[-1]
+        )
+
+        with expect_deprecated(
+            r"The dbapi\(\) classmethod on dialect classes has "
+            r"been renamed to import_dbapi\(\).  Implement an "
+            r"import_dbapi\(\) classmethod directly on class "
+            r".*MyDialect.* to remove this warning; the old "
+            r".dbapi\(\) classmethod may be maintained for backwards "
+            r"compatibility."
+        ):
+            e = create_engine("mockdialect1+sqlite://")
+
+        eq_(canary.mock_calls, [mock.call()])
+        sqlite3 = __import__("sqlite3")
+        is_(e.dialect.dbapi, sqlite3)
+
+    @testing.requires.sqlite
+    def test_no_warning_for_dual_dbapi_clsmethod(self):
+        """The dbapi() class method is renamed to import_dbapi(),
+        so that the .dbapi attribute can be exclusively an instance
+        attribute.
+
+        Dialect classes will likely have both a dbapi() classmethod
+        as well as an import_dbapi() class method to maintain
+        cross-compatibility.  Make sure these updated classes don't get a
+        warning and that the new method is used.
+
+        """
+
+        from sqlalchemy.dialects.sqlite import pysqlite
+        from sqlalchemy.dialects import registry
+
+        canary = mock.Mock()
+
+        class MyDialect(pysqlite.SQLiteDialect_pysqlite):
+            @classmethod
+            def dbapi(cls):
+                canary.dbapi()
+                return __import__("sqlite3")
+
+            @classmethod
+            def import_dbapi(cls):
+                canary.import_dbapi()
+                return __import__("sqlite3")
+
+        tokens = __name__.split(".")
+
+        global dialect
+        dialect = MyDialect
+
+        registry.register(
+            "mockdialect2.sqlite", ".".join(tokens[0:-1]), tokens[-1]
+        )
+
+        # no warning
+        e = create_engine("mockdialect2+sqlite://")
+
+        eq_(canary.mock_calls, [mock.call.import_dbapi()])
+        sqlite3 = __import__("sqlite3")
+        is_(e.dialect.dbapi, sqlite3)
+
     def test_strategy_keyword_mock(self):
         def executor(x, y):
             pass
@@ -195,31 +274,30 @@ def MockDBAPI():  # noqa
     return db
 
 
-class PoolTestBase(fixtures.TestBase):
-    def setup_test(self):
-        pool.clear_managers()
-        self._teardown_conns = []
-
-    def teardown_test(self):
-        for ref in self._teardown_conns:
-            conn = ref()
-            if conn:
-                conn.close()
-
-    @classmethod
-    def teardown_test_class(cls):
-        pool.clear_managers()
-
-    def _queuepool_fixture(self, **kw):
-        dbapi, pool = self._queuepool_dbapi_fixture(**kw)
-        return pool
-
-    def _queuepool_dbapi_fixture(self, **kw):
+class PoolTest(fixtures.TestBase):
+    def test_connection_rec_connection(self):
         dbapi = MockDBAPI()
-        return (
-            dbapi,
-            pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw),
-        )
+        p1 = pool.Pool(creator=lambda: dbapi.connect("foo.db"))
+
+        rec = pool._ConnectionRecord(p1)
+
+        with expect_deprecated(
+            "The _ConnectionRecord.connection attribute is deprecated; "
+            "please use 'driver_connection'"
+        ):
+            is_(rec.connection, rec.dbapi_connection)
+
+    def test_connection_fairy_connection(self):
+        dbapi = MockDBAPI()
+        p1 = pool.QueuePool(creator=lambda: dbapi.connect("foo.db"))
+
+        fairy = p1.connect()
+
+        with expect_deprecated(
+            "The _ConnectionFairy.connection attribute is deprecated; "
+            "please use 'driver_connection'"
+        ):
+            is_(fairy.connection, fairy.dbapi_connection)
 
 
 def select1(db):
@@ -356,55 +434,11 @@ class ImplicitReturningFlagTest(fixtures.TestBase):
     @testing.combinations(True, False, None, argnames="implicit_returning")
     def test_implicit_returning_engine_parameter(self, implicit_returning):
         if implicit_returning is None:
-            e = engines.testing_engine()
+            engines.testing_engine()
         else:
             with assertions.expect_deprecated(ce_implicit_returning):
-                e = engines.testing_engine(
+                engines.testing_engine(
                     options={"implicit_returning": implicit_returning}
                 )
 
-        if implicit_returning is None:
-            eq_(
-                e.dialect.implicit_returning,
-                testing.db.dialect.implicit_returning,
-            )
-        else:
-            eq_(e.dialect.implicit_returning, implicit_returning)
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("id", Integer, primary_key=True),
-            Column("data", String(50)),
-        )
-
-        t2 = Table(
-            "t",
-            MetaData(),
-            Column("id", Integer, primary_key=True),
-            Column("data", String(50)),
-            implicit_returning=False,
-        )
-
-        with e.connect() as conn:
-            stmt = insert(t).values(data="data")
-
-            if implicit_returning:
-                if not testing.requires.returning.enabled:
-                    with expect_raises_message(
-                        exc.CompileError, "RETURNING is not supported"
-                    ):
-                        stmt.compile(conn)
-                else:
-                    eq_(stmt.compile(conn).returning, [t.c.id])
-            elif (
-                implicit_returning is None
-                and testing.db.dialect.implicit_returning
-            ):
-                eq_(stmt.compile(conn).returning, [t.c.id])
-            else:
-                eq_(stmt.compile(conn).returning, [])
-
-            # table setting it to False disables it
-            stmt2 = insert(t2).values(data="data")
-            eq_(stmt2.compile(conn).returning, [])
+            # parameter has no effect

@@ -453,7 +453,7 @@
        :tickets: 4352
 
        The column conflict resolution technique discussed at
-       :ref:`declarative_column_conflicts` is now functional for a :class:`_schema.Column`
+       :ref:`orm_inheritance_column_conflicts` is now functional for a :class:`_schema.Column`
        that is also a primary key column.  Previously, a check for primary key
        columns declared on a single-inheritance subclass would occur before the
        column copy were allowed to pass.

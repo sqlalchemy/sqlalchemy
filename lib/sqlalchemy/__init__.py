@@ -7,14 +7,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import util as _util
 from .engine import AdaptedConnection as AdaptedConnection
-from .engine import BaseCursorResult as BaseCursorResult
 from .engine import BaseRow as BaseRow
 from .engine import BindTyping as BindTyping
-from .engine import BufferedColumnResultProxy as BufferedColumnResultProxy
-from .engine import BufferedColumnRow as BufferedColumnRow
-from .engine import BufferedRowResultProxy as BufferedRowResultProxy
 from .engine import ChunkedIteratorResult as ChunkedIteratorResult
 from .engine import Compiled as Compiled
 from .engine import Connection as Connection
@@ -28,7 +26,6 @@ from .engine import engine_from_config as engine_from_config
 from .engine import ExceptionContext as ExceptionContext
 from .engine import ExecutionContext as ExecutionContext
 from .engine import FrozenResult as FrozenResult
-from .engine import FullyBufferedResultProxy as FullyBufferedResultProxy
 from .engine import Inspector as Inspector
 from .engine import IteratorResult as IteratorResult
 from .engine import make_url as make_url
@@ -58,6 +55,7 @@ from .pool import PoolProxiedConnection as PoolProxiedConnection
 from .pool import QueuePool as QueuePool
 from .pool import SingletonThreadPool as SingleonThreadPool
 from .pool import StaticPool as StaticPool
+from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint
 from .schema import Column as Column
@@ -65,7 +63,9 @@ from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
 from .schema import Constraint as Constraint
 from .schema import DDL as DDL
+from .schema import DDLElement as DDLElement
 from .schema import DefaultClause as DefaultClause
+from .schema import ExecutableDDLElement as ExecutableDDLElement
 from .schema import FetchedValue as FetchedValue
 from .schema import ForeignKey as ForeignKey
 from .schema import ForeignKeyConstraint as ForeignKeyConstraint
@@ -196,7 +196,6 @@ from .sql.expression import tuple_ as tuple_
 from .sql.expression import type_coerce as type_coerce
 from .sql.expression import TypeClause as TypeClause
 from .sql.expression import TypeCoerce as TypeCoerce
-from .sql.expression import typing as typing
 from .sql.expression import UnaryExpression as UnaryExpression
 from .sql.expression import union as union
 from .sql.expression import union_all as union_all
@@ -253,13 +252,15 @@ from .types import TupleType as TupleType
 from .types import TypeDecorator as TypeDecorator
 from .types import Unicode as Unicode
 from .types import UnicodeText as UnicodeText
+from .types import UUID as UUID
+from .types import Uuid as Uuid
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
 
 __version__ = "2.0.0b1"
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
     from . import util as _sa_util
 
     _sa_util.preloaded.import_prefix("sqlalchemy")

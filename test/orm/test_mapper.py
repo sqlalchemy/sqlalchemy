@@ -2,12 +2,15 @@ import logging
 import logging.handlers
 
 import sqlalchemy as sa
+from sqlalchemy import column
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.engine import default
@@ -41,6 +44,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import ComparableMixin
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -129,6 +133,22 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "Class .*User.* already has a primary mapper defined",
         ):
             self.mapper(User, users)
+
+    def test_no_table(self):
+        """test new error condition raised for table=None
+
+        found_during_type_annotation
+
+        """
+
+        User = self.classes.User
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            r"Mapper\[User\(None\)\] has None for a primary table "
+            r"argument and does not specify 'inherits'",
+        ):
+            self.mapper(User, None)
 
     def test_cant_call_legacy_constructor_directly(self):
         users, User = (
@@ -338,6 +358,34 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             User,
             s,
         )
+
+    def test_no_tableclause(self):
+        """It's not tested for a Mapper to have lower-case table() objects
+        as part of its collection of tables, and in particular these objects
+        won't report on constraints or primary keys, which while this doesn't
+        necessarily disqualify them from being part of a mapper, we don't
+        have assumptions figured out right now to accommodate them.
+
+        found_during_type_annotation
+
+        """
+        User = self.classes.User
+        users = self.tables.users
+
+        address = table(
+            "address",
+            column("address_id", Integer),
+            column("user_id", Integer),
+        )
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "ORM mappings can only be made against schema-level Table "
+            "objects, not TableClause; got tableclause 'address'",
+        ):
+            self.mapper_registry.map_imperatively(
+                User, users.join(address, users.c.id == address.c.user_id)
+            )
 
     def test_reconfigure_on_other_mapper(self):
         """A configure trigger on an already-configured mapper
@@ -664,7 +712,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (column_property, (users.c.name,)),
             (relationship, (Address,)),
             (composite, (MyComposite, "id", "name")),
-            (synonym, "foo"),
+            (synonym, ("foo",)),
         ]:
             obj = constructor(info={"x": "y"}, *args)
             eq_(obj.info, {"x": "y"})
@@ -831,7 +879,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     @testing.combinations((True,), (False,))
-    def test_add_column_prop_deannotate(self, autoalias):
+    def test_add_column_prop_adaption(self, autoalias):
+        """test ultimately from #2316 revised for #8064"""
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
 
@@ -892,9 +941,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "users_1.id = addresses.user_id",
             )
 
-    def test_column_prop_deannotate(self):
-        """test that column property deannotates,
-        bringing expressions down to the original mapped columns.
+    def test_column_prop_stays_annotated(self):
+        """test ultimately from #2316 revised for #8064.
+
+        previously column_property() would deannotate the given expression,
+        however this interfered with some compilation sceanrios.
+
+
         """
         User, users = self.classes.User, self.tables.users
         m = self.mapper(User, users)
@@ -906,14 +959,18 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("y", column_property(expr2.scalar_subquery()))
 
         assert User.x.property.columns[0] is not expr
-        assert User.x.property.columns[0].element.left is users.c.name
-        # a deannotate needs to clone the base, in case
-        # the original one referenced annotated elements.
-        assert User.x.property.columns[0].element.right is not expr.right
+
+        assert (
+            User.x.property.columns[0].element.left
+            is User.name.comparator.expr
+        )
+
+        assert User.x.property.columns[0].element.right is expr.right
 
         assert User.y.property.columns[0] is not expr2
         assert (
-            User.y.property.columns[0].element._raw_columns[0] is users.c.name
+            User.y.property.columns[0].element._raw_columns[0]
+            is User.name.expression
         )
         assert User.y.property.columns[0].element._raw_columns[1] is users.c.id
 
@@ -1402,6 +1459,65 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 None,
             ],
         )
+
+    @testing.requires.ctes
+    def test_mapping_to_union_dont_overlimit_pk(self, registry, connection):
+        """test #7842"""
+        Base = registry.generate_base()
+
+        class Node(Base):
+            __tablename__ = "cte_nodes"
+
+            id = Column(Integer, primary_key=True)
+            parent = Column(Integer, ForeignKey("cte_nodes.id"))
+
+            #  so we dont have to deal with NULLS FIRST
+            sort_key = Column(Integer)
+
+        class NodeRel(ComparableEntity, Base):
+            table = select(
+                Node.id, Node.parent, Node.sort_key, literal(0).label("depth")
+            ).cte(recursive=True)
+            __table__ = table.union_all(
+                select(
+                    Node.id,
+                    table.c.parent,
+                    table.c.sort_key,
+                    table.c.depth + literal(1),
+                )
+                .select_from(Node)
+                .join(table, Node.parent == table.c.id)
+            )
+
+            __mapper_args__ = {
+                "primary_key": (__table__.c.id, __table__.c.parent)
+            }
+
+        nt = NodeRel.__table__
+
+        eq_(NodeRel.__mapper__.primary_key, (nt.c.id, nt.c.parent))
+
+        registry.metadata.create_all(connection)
+        with Session(connection) as session:
+            n1, n2, n3, n4 = (
+                Node(id=1, sort_key=1),
+                Node(id=2, parent=1, sort_key=2),
+                Node(id=3, parent=2, sort_key=3),
+                Node(id=4, parent=3, sort_key=4),
+            )
+            session.add_all([n1, n2, n3, n4])
+            session.commit()
+
+            q_rel = select(NodeRel).filter_by(id=4).order_by(NodeRel.sort_key)
+            eq_(
+                session.scalars(q_rel).all(),
+                [
+                    NodeRel(id=4, parent=None),
+                    NodeRel(id=4, parent=1),
+                    NodeRel(id=4, parent=2),
+                    NodeRel(id=4, parent=3),
+                ],
+            )
 
     def test_scalar_pk_arg(self):
         users, Keyword, items, Item, User, keywords = (

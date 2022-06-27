@@ -231,8 +231,43 @@ class MypyPluginTest(fixtures.TestBase):
                     is_re = bool(m.group(2))
                     is_type = bool(m.group(3))
 
-                    expected_msg = re.sub(r"# noqa ?.*", "", m.group(4))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
                     if is_type:
+                        if not is_re:
+                            # the goal here is that we can cut-and-paste
+                            # from vscode -> pylance into the
+                            # EXPECTED_TYPE: line, then the test suite will
+                            # validate that line against what mypy produces
+                            expected_msg = re.sub(
+                                r"([\[\]])",
+                                lambda m: rf"\{m.group(0)}",
+                                expected_msg,
+                            )
+
+                            # note making sure preceding text matches
+                            # with a dot, so that an expect for "Select"
+                            # does not match "TypedSelect"
+                            expected_msg = re.sub(
+                                r"([\w_]+)",
+                                lambda m: rf"(?:.*\.)?{m.group(1)}\*?",
+                                expected_msg,
+                            )
+
+                            expected_msg = re.sub(
+                                "List", "builtins.list", expected_msg
+                            )
+
+                            expected_msg = re.sub(
+                                r"\b(int|str|float|bool)\b",
+                                lambda m: rf"builtins.{m.group(0)}\*?",
+                                expected_msg,
+                            )
+                            # expected_msg = re.sub(
+                            #     r"(Sequence|Tuple|List|Union)",
+                            #     lambda m: fr"typing.{m.group(0)}\*?",
+                            #     expected_msg,
+                            # )
+
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
                     current_assert_messages.append(
@@ -281,7 +316,7 @@ class MypyPluginTest(fixtures.TestBase):
                 for idx, (typ, errmsg) in enumerate(output):
                     if is_re:
                         if re.match(
-                            fr".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa E501
+                            rf".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa: E501
                             errmsg,
                         ):
                             break
@@ -295,7 +330,7 @@ class MypyPluginTest(fixtures.TestBase):
                 del output[idx]
 
             if output:
-                print("messages from mypy that were not consumed:")
+                print(f"{len(output)} messages from mypy were not consumed:")
                 print("\n".join(msg for _, msg in output))
                 assert False, "errors and/or notes remain, see stdout"
 

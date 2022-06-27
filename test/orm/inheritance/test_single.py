@@ -13,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -1934,4 +1935,36 @@ class EagerDefaultEvalTestPolymorphic(EagerDefaultEvalTest):
     def setup_classes(cls):
         super(EagerDefaultEvalTestPolymorphic, cls).setup_classes(
             with_polymorphic="*"
+        )
+
+
+class ColExprTest(AssertsCompiledSQL, fixtures.TestBase):
+    def test_discrim_on_column_prop(self, registry):
+        Base = registry.generate_base()
+
+        class Employee(Base):
+            __tablename__ = "employee"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "employee",
+            }
+
+        class Engineer(Employee):
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class Company(Base):
+            __tablename__ = "company"
+            id = Column(Integer, primary_key=True)
+
+            max_engineer_id = column_property(
+                select(func.max(Engineer.id)).scalar_subquery()
+            )
+
+        self.assert_compile(
+            select(Company.max_engineer_id),
+            "SELECT (SELECT max(employee.id) AS max_1 FROM employee "
+            "WHERE employee.type IN (__[POSTCOMPILE_type_1])) AS anon_1",
         )

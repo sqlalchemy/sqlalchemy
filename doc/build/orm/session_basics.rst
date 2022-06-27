@@ -40,6 +40,7 @@ caveats.  It's intended that usually, you'd re-associate detached objects with
 another :class:`.Session` when you want to work with them again, so that they
 can resume their normal task of representing database state.
 
+.. _session_basics:
 
 Basics of Using a Session
 =========================
@@ -80,6 +81,18 @@ work we've done with the :class:`_orm.Session` includes new data to be
 persisted to the database.  If we were only issuing SELECT calls and did not
 need to write any changes, then the call to :meth:`_orm.Session.commit` would
 be unnecessary.
+
+.. note::
+
+    Note that after :meth:`_orm.Session.commit` is called, either explicitly or
+    when using a context manager, all objects associated with the
+    :class:`.Session` are :term:`expired`, meaning their contents are erased to
+    be re-loaded within the next transaction. If these objects are instead
+    :term:`detached`, they will be non-functional until re-associated with a
+    new :class:`.Session`, unless the :paramref:`.Session.expire_on_commit`
+    parameter is used to disable this behavior. See the
+    section :ref:`session_committing` for more detail.
+
 
 .. _session_begin_commit_rollback_block:
 
@@ -423,47 +436,74 @@ a :term:`2.0-style` :meth:`_orm.Session.execute` call, as well as within the
 committed. It also occurs before a SAVEPOINT is issued when
 :meth:`~.Session.begin_nested` is used.
 
-Regardless of the autoflush setting, a flush can always be forced by issuing
-:meth:`~.Session.flush`::
+A :class:`.Session` flush can be forced at any time by calling the
+:meth:`~.Session.flush` method::
 
     session.flush()
 
-The "flush-on-Query" aspect of the behavior can be disabled by constructing
-:class:`.sessionmaker` with the flag ``autoflush=False``::
+The flush which occurs automatically within the scope of certain methods
+is known as **autoflush**.  Autoflush is defined as a configurable,
+automatic flush call which occurs at the beginning of methods including:
+
+* :meth:`_orm.Session.execute` and other SQL-executing methods
+* When a :class:`_query.Query` is invoked to send SQL to the database
+* Within the :meth:`.Session.merge` method before querying the database
+* When objects are :ref:`refreshed <session_expiring>`
+* When ORM :term:`lazy load` operations occur against unloaded object
+  attributes.
+
+There are also points at which flushes occur **unconditionally**; these
+points are within key transactional boundaries which include:
+
+* Within the process of the :meth:`.Session.commit` method
+* When :meth:`.Session.begin_nested` is called
+* When the :meth:`.Session.prepare` 2PC method is used.
+
+The **autoflush** behavior, as applied to the previous list of items,
+can be disabled by constructing a :class:`.Session` or
+:class:`.sessionmaker` passing the :paramref:`.Session.autoflush` parameter as
+``False``::
 
     Session = sessionmaker(autoflush=False)
 
-Additionally, autoflush can be temporarily disabled by setting the
-``autoflush`` flag at any time::
-
-    mysession = Session()
-    mysession.autoflush = False
-
-More conveniently, it can be turned off within a context managed block using :attr:`.Session.no_autoflush`::
+Additionally, autoflush can be temporarily disabled within the flow
+of using a :class:`.Session` using the
+:attr:`.Session.no_autoflush` context manager::
 
     with mysession.no_autoflush:
         mysession.add(some_object)
         mysession.flush()
 
-The flush process *always* occurs within a transaction (subject
-to the :ref:`isolation level <session_transaction_isolation>`_ of the
-database transaction), which is
-*never* committed automatically; the :meth:`_orm.Session.commit` method
-must be called, or an appropriate context manager which does the same
-thing must be used, in order for the database changes to be committed.
+**To reiterate:** The flush process **always occurs** when transactional
+methods such as :meth:`.Session.commit` and :meth:`.Session.begin_nested` are
+called, regardless of any "autoflush" settings, when the :class:`.Session` has
+remaining pending changes to process.
 
-Any failures during flush will always result in a rollback of
-whatever transaction is present.   In order to continue using that
+As the :class:`.Session` only invokes SQL to the database within the context of
+a :term:`DBAPI` transaction, all "flush" operations themselves only occur within a
+database transaction (subject to the
+:ref:`isolation level <session_transaction_isolation>` of the database
+transaction), provided that the DBAPI is not in
+:ref:`driver level autocommit <dbapi_autocommit>` mode. This means that
+assuming the database connection is providing for :term:`atomicity` within its
+transactional settings, if any individual DML statement inside the flush fails,
+the entire operation will be rolled back.
+
+When a failure occurs within a flush, in order to continue using that
 same :class:`_orm.Session`, an explicit call to :meth:`~.Session.rollback` is
 required after a flush fails, even though the underlying transaction will have
-been rolled back already - this is so that the overall nesting pattern of
-so-called "subtransactions" is consistently maintained.
+been rolled back already (even if the database driver is technically in
+driver-level autocommit mode).  This is so that the overall nesting pattern of
+so-called "subtransactions" is consistently maintained. The FAQ section
+:ref:`faq_session_rollback` contains a more detailed description of this
+behavior.
 
 .. seealso::
 
     :ref:`faq_session_rollback` - further background on why
     :meth:`_orm.Session.rollback` must be called when a flush fails.
 
+.. _session_expiring:
 
 Expiring / Refreshing
 ---------------------
@@ -479,8 +519,8 @@ This means if we emit two separate queries, each for the same row, and get
 a mapped object back, the two queries will have returned the same Python
 object::
 
-  >>> u1 = session.query(User).filter(id=5).first()
-  >>> u2 = session.query(User).filter(id=5).first()
+  >>> u1 = session.scalars(select(User).where(User.id == 5)).one()
+  >>> u2 = session.scalars(select(User).where(User.id == 5)).one()
   >>> u1 is u2
   True
 
@@ -520,7 +560,11 @@ ways to refresh its contents with new data from the current transaction:
   and indicates that it should return objects that are unconditionally
   re-populated from their contents in the database::
 
-    u2 = session.query(User).populate_existing().filter(id=5).first()
+    u2 = session.scalars(
+        select(User)
+        .where(User.id == 5)
+        .execution_options(populate_existing=True)
+    ).one()
 
   ..
 
@@ -667,7 +711,7 @@ values for ``synchronize_session`` are supported:
       automatically.   If the operation is against multiple tables, typically
       individual UPDATE / DELETE statements against the individual tables
       should be used.   Some databases support multiple table UPDATEs.
-      Similar guidelines as those detailed at :ref:`multi_table_updates`
+      Similar guidelines as those detailed at :ref:`tutorial_update_from`
       may be applied.
 
     * The WHERE criteria needed in order to limit the polymorphic identity to
@@ -742,13 +786,23 @@ Committing
 ----------
 
 :meth:`~.Session.commit` is used to commit the current
-transaction, if any.   When there is no transaction in place, the method
-passes silently.
+transaction.   At its core this indicates that it emits ``COMMIT`` on
+all current database connections that have a transaction in progress;
+from a :term:`DBAPI` perspective this means the ``connection.commit()``
+DBAPI method is invoked on each DBAPI connection.
 
-When :meth:`_orm.Session.commit` operates upon the current open transaction,
-it first always issues :meth:`~.Session.flush`
-beforehand to flush any remaining state to the database; this is independent
-of the "autoflush" setting.
+When there is no transaction in place for the :class:`.Session`, indicating
+that no operations were invoked on this :class:`.Session` since the previous
+call to :meth:`.Session.commit`, the method will begin and commit an
+internal-only "logical" transaction, that does not normally affect the database
+unless pending flush changes were detected, but will still invoke event
+handlers and object expiration rules.
+
+The :meth:`_orm.Session.commit` operation unconditionally issues
+:meth:`~.Session.flush` before emitting COMMIT on relevant database
+connections. If no pending changes are detected, then no SQL is emitted to the
+database. This behavior is not configurable and is not affected by the
+:paramref:`.Session.autoflush` parameter.
 
 Subsequent to that, :meth:`_orm.Session.commit` will then COMMIT the actual
 database transaction or transactions, if any, that are in place.
@@ -759,15 +813,6 @@ accessed, either through attribute access or by them being present in the
 result of a SELECT, they receive the most recent state. This behavior may be
 controlled by the :paramref:`_orm.Session.expire_on_commit` flag, which may be
 set to ``False`` when this behavior is undesirable.
-
-.. versionchanged:: 1.4
-
-    The :class:`_orm.Session` object now features deferred "begin" behavior, as
-    described in :ref:`autobegin <session_autobegin>`. If no transaction is
-    begun, methods like :meth:`_orm.Session.commit` and
-    :meth:`_orm.Session.rollback` have no effect.  This behavior would not
-    have been observed prior to 1.4 as under non-autocommit mode, a
-    transaction would always be implicitly present.
 
 .. seealso::
 
@@ -970,7 +1015,7 @@ E.g. **don't do this**::
         def go(self):
             session = Session()
             try:
-                session.query(FooBar).update({"x": 5})
+                session.execute(update(FooBar).values(x=5))
                 session.commit()
             except:
                 session.rollback()
@@ -980,7 +1025,7 @@ E.g. **don't do this**::
         def go(self):
             session = Session()
             try:
-                session.query(Widget).update({"q": 18})
+                session.execute(update(Widget).values(q=18))
                 session.commit()
             except:
                 session.rollback()
@@ -1000,11 +1045,11 @@ transaction automatically::
 
     class ThingOne:
         def go(self, session):
-            session.query(FooBar).update({"x": 5})
+            session.execute(update(FooBar).values(x=5))
 
     class ThingTwo:
         def go(self, session):
-            session.query(Widget).update({"q": 18})
+            session.execute(update(Widget).values(q=18))
 
     def run_my_program():
         with Session() as session:
@@ -1022,7 +1067,7 @@ Is the Session a cache?
 Yeee...no. It's somewhat used as a cache, in that it implements the
 :term:`identity map` pattern, and stores objects keyed to their primary key.
 However, it doesn't do any kind of query caching. This means, if you say
-``session.query(Foo).filter_by(name='bar')``, even if ``Foo(name='bar')``
+``session.scalars(select(Foo).filter_by(name='bar'))``, even if ``Foo(name='bar')``
 is right there, in the identity map, the session has no idea about that.
 It has to issue SQL to the database, get the rows back, and then when it
 sees the primary key in the row, *then* it can look in the local identity

@@ -36,6 +36,6 @@ test/test_schema.db
 /.ipynb_checkpoints/
 *.ipynb
 /querytest.db
-/.mypy_cache
 /.pytest_cache
 /db_idents.txt
+.DS_Store

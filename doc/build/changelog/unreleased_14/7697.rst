@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 7697
-
-    Fixed issue where using a fully qualified path for the classname in
-    :func:`_orm.relationship` that nonetheless contained an incorrect name for
-    path tokens that were not the first token, would fail to raise an
-    informative error and would instead fail randomly at a later step.

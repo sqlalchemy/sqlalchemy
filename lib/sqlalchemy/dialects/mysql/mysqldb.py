@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """
 
@@ -159,7 +161,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("MySQLdb")
 
     def on_connect(self):

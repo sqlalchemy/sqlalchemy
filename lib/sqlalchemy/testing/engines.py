@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 from __future__ import annotations
 
@@ -306,8 +308,11 @@ def testing_engine(
     options=None,
     asyncio=False,
     transfer_staticpool=False,
+    share_pool=False,
+    _sqlite_savepoint=False,
 ):
     if asyncio:
+        assert not _sqlite_savepoint
         from sqlalchemy.ext.asyncio import (
             create_async_engine as create_engine,
         )
@@ -318,9 +323,11 @@ def testing_engine(
     if not options:
         use_reaper = True
         scope = "function"
+        sqlite_savepoint = False
     else:
         use_reaper = options.pop("use_reaper", True)
         scope = options.pop("scope", "function")
+        sqlite_savepoint = options.pop("sqlite_savepoint", False)
 
     url = url or config.db.url
 
@@ -336,12 +343,24 @@ def testing_engine(
 
     engine = create_engine(url, **options)
 
+    if sqlite_savepoint and engine.name == "sqlite":
+        # apply SQLite savepoint workaround
+        @event.listens_for(engine, "connect")
+        def do_connect(dbapi_connection, connection_record):
+            dbapi_connection.isolation_level = None
+
+        @event.listens_for(engine, "begin")
+        def do_begin(conn):
+            conn.exec_driver_sql("BEGIN")
+
     if transfer_staticpool:
         from sqlalchemy.pool import StaticPool
 
         if config.db is not None and isinstance(config.db.pool, StaticPool):
             use_reaper = False
             engine.pool._transfer_from(config.db.pool)
+    elif share_pool:
+        engine.pool = config.db.pool
 
     if scope == "global":
         if asyncio:

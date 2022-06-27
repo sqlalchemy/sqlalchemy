@@ -17,7 +17,7 @@ class User(Base):
     __tablename__ = "user"
 
     id = mapped_column(Integer, primary_key=True)
-    name = mapped_column(String, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     addresses: Mapped[List["Address"]] = relationship(
         "Address", back_populates="user"

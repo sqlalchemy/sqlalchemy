@@ -11,6 +11,7 @@ tutorial.
 .. toctree::
     :maxdepth: 2
 
+    quickstart
     mapper_config
     relationships
     loading_objects
@@ -20,6 +21,6 @@ tutorial.
     examples
 
 .. toctree::
-   :hidden:
+    :hidden:
 
     tutorial

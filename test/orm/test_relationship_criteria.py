@@ -56,6 +56,33 @@ class _Fixtures(_fixtures.FixtureTest):
         return User, Address
 
     @testing.fixture
+    def user_address_custom_strat_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        def go(strat):
+            self.mapper_registry.map_imperatively(
+                User,
+                users,
+                properties={
+                    "addresses": relationship(
+                        self.mapper_registry.map_imperatively(
+                            Address, addresses
+                        ),
+                        lazy=strat,
+                        order_by=Address.id,
+                    )
+                },
+            )
+            return User, Address
+
+        return go
+
+    @testing.fixture
     def order_item_fixture(self):
         Order, Item = self.classes("Order", "Item")
         orders, items, order_items = self.tables(
@@ -219,6 +246,40 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "SELECT count(*) AS count_1 FROM users "
             "WHERE users.name != :name_1",
         )
+
+    @testing.combinations(
+        "select",
+        "joined",
+        "subquery",
+        "selectin",
+        "immediate",
+        argnames="loader_strategy",
+    )
+    def test_loader_strategy_on_refresh(
+        self, loader_strategy, user_address_custom_strat_fixture
+    ):
+        User, Address = user_address_custom_strat_fixture(loader_strategy)
+
+        sess = fixture_session()
+
+        @event.listens_for(sess, "do_orm_execute")
+        def add_criteria(orm_context):
+            orm_context.statement = orm_context.statement.options(
+                with_loader_criteria(
+                    Address,
+                    ~Address.id.in_([5, 3]),
+                )
+            )
+
+        u1 = sess.get(User, 7)
+        u2 = sess.get(User, 8)
+        eq_(u1.addresses, [Address(id=1)])
+        eq_(u2.addresses, [Address(id=2), Address(id=4)])
+
+        for i in range(3):
+            sess.expire_all()
+            eq_(u1.addresses, [Address(id=1)])
+            eq_(u2.addresses, [Address(id=2), Address(id=4)])
 
     def test_criteria_post_replace_legacy(self, user_address_fixture):
         User, Address = user_address_fixture

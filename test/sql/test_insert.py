@@ -24,6 +24,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
@@ -331,10 +332,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         stmt = table1.insert().returning(table1.c.myid)
-        assert_raises_message(
-            exc.CompileError,
-            "RETURNING is not supported by this dialect's statement compiler.",
-            stmt.compile,
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name, description) "
+            "VALUES (:myid, :name, :description) RETURNING mytable.myid",
             dialect=default.DefaultDialect(),
         )
 
@@ -662,6 +663,75 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"name_1": "foo", "foo": None},
         )
 
+    def test_insert_from_select_fn_defaults_compound(self):
+        """test #8073"""
+
+        metadata = MetaData()
+
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default="foo"),
+            Column("bar", Integer, default="bar"),
+        )
+        table1 = self.tables.mytable
+        sel = (
+            select(table1.c.myid)
+            .where(table1.c.name == "foo")
+            .union(select(table1.c.myid).where(table1.c.name == "foo"))
+        )
+        ins = table.insert().from_select(["id"], sel)
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't extend statement for INSERT..FROM SELECT to include "
+            r"additional default-holding column\(s\) 'foo', 'bar'.  "
+            r"Convert the selectable to a subquery\(\) first, or pass "
+            r"include_defaults=False to Insert.from_select\(\) to skip these "
+            r"columns.",
+        ):
+            ins.compile()
+
+    def test_insert_from_select_fn_defaults_compound_subquery(self):
+        """test #8073"""
+
+        metadata = MetaData()
+
+        def foo(ctx):
+            return 12
+
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default="foo"),
+            Column("bar", Integer, default="bar"),
+        )
+        table1 = self.tables.mytable
+        sel = (
+            select(table1.c.myid)
+            .where(table1.c.name == "foo")
+            .union(select(table1.c.myid).where(table1.c.name == "foo"))
+            .subquery()
+        )
+
+        ins = table.insert().from_select(["id"], sel)
+        self.assert_compile(
+            ins,
+            "INSERT INTO sometable (id, foo, bar) SELECT anon_1.myid, "
+            ":foo AS anon_2, :bar AS anon_3 FROM "
+            "(SELECT mytable.myid AS myid FROM mytable "
+            "WHERE mytable.name = :name_1 UNION "
+            "SELECT mytable.myid AS myid FROM mytable "
+            "WHERE mytable.name = :name_2) AS anon_1",
+            checkparams={
+                "foo": None,
+                "bar": None,
+                "name_1": "foo",
+                "name_2": "foo",
+            },
+        )
+
     def test_insert_from_select_dont_mutate_raw_columns(self):
         # test [ticket:3603]
         from sqlalchemy import table
@@ -942,6 +1012,57 @@ class InsertImplicitReturningTest(
             "WHERE mytable.name = %(name_1)s",
             checkparams={"name_1": "foo"},
         )
+
+    @testing.combinations(
+        True, False, argnames="insert_null_still_autoincrements"
+    )
+    @testing.combinations("values", "params", "nothing", argnames="paramtype")
+    def test_explicit_null_implicit_returning_still_renders(
+        self, paramtype, insert_null_still_autoincrements
+    ):
+        """test for future support of #7998 with RETURNING"""
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer, primary_key=True),
+            Column("q", Integer),
+        )
+
+        dialect = postgresql.dialect()
+        dialect.insert_null_pk_still_autoincrements = (
+            insert_null_still_autoincrements
+        )
+
+        if paramtype == "values":
+            # for values present, we now have an extra check for this
+            stmt = t.insert().values(x=None, q=5)
+            if insert_null_still_autoincrements:
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                )
+            else:
+                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = None
+        elif paramtype == "params":
+            # for params, compiler doesnt have the value available to look
+            # at.  we assume non-NULL
+            stmt = t.insert()
+            if insert_null_still_autoincrements:
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                )
+            else:
+                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = {"x": None, "q": 5}
+        elif paramtype == "nothing":
+            # no params, we assume full INSERT.  this kind of compilation
+            # doesn't actually happen during execution since there are always
+            # parameters or values
+            stmt = t.insert()
+            expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            params = None
+
+        self.assert_compile(stmt, expected, params=params, dialect=dialect)
 
     def test_insert_multiple_values(self):
         ins = self.tables.myothertable.insert().values(
@@ -1423,7 +1544,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         stmt = table.insert().return_defaults().values(id=func.foobar())
         compiled = stmt.compile(dialect=sqlite.dialect(), column_keys=["data"])
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [])
+        eq_(compiled.implicit_returning, [])
 
         self.assert_compile(
             stmt,
@@ -1452,7 +1573,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=returning_dialect, column_keys=["data"]
         )
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [table.c.id])
+        eq_(compiled.implicit_returning, [table.c.id])
 
         self.assert_compile(
             stmt,
@@ -1482,7 +1603,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=returning_dialect, column_keys=["data"]
         )
         eq_(compiled.postfetch, [])
-        eq_(compiled.returning, [table.c.id])
+        eq_(compiled.implicit_returning, [table.c.id])
 
         self.assert_compile(
             stmt,

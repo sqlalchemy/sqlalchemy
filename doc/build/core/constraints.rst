@@ -768,8 +768,10 @@ The above schema will produce::
 
 Constraints API
 ---------------
+
 .. autoclass:: Constraint
     :members:
+    :inherited-members:
 
 .. autoclass:: ColumnCollectionMixin
     :members:
@@ -787,6 +789,10 @@ Constraints API
     :inherited-members:
 
 .. autoclass:: ForeignKeyConstraint
+    :members:
+    :inherited-members:
+
+.. autoclass:: HasConditionalDDL
     :members:
     :inherited-members:
 

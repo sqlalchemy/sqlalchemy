@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 from __future__ import annotations
 
@@ -92,6 +94,9 @@ class EvaluatorCompiler:
         )
 
     def visit_tuple(self, clause):
+        return self.visit_clauselist(clause)
+
+    def visit_expression_clauselist(self, clause):
         return self.visit_clauselist(clause)
 
     def visit_clauselist(self, clause):

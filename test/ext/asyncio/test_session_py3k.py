@@ -6,10 +6,12 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
@@ -24,6 +26,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import is_false
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
@@ -66,6 +69,34 @@ class AsyncSessionTest(AsyncFixture):
         binds = {Table: async_engine}
         ss = AsyncSession(binds=binds)
         is_(ss.binds, binds)
+
+    @async_test
+    @testing.combinations((True,), (False,), argnames="use_scalar")
+    @testing.requires.sequences
+    async def test_sequence_execute(
+        self, async_session: AsyncSession, metadata, use_scalar
+    ):
+        seq = Sequence("some_sequence", metadata=metadata)
+
+        sync_connection = (await async_session.connection()).sync_connection
+
+        await (await async_session.connection()).run_sync(metadata.create_all)
+
+        if use_scalar:
+            eq_(
+                await async_session.scalar(seq),
+                sync_connection.dialect.default_sequence_base,
+            )
+        else:
+            with expect_deprecated(
+                r"Using the .execute\(\) method to invoke a "
+                r"DefaultGenerator object is deprecated; please use "
+                r"the .scalar\(\) method."
+            ):
+                eq_(
+                    await async_session.execute(seq),
+                    sync_connection.dialect.default_sequence_base,
+                )
 
 
 class AsyncSessionQueryTest(AsyncFixture):
@@ -202,7 +233,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
         await fn(async_session, trans_on_subject=True, execute_on_subject=True)
 
     @async_test
-    async def test_sessionmaker_block_one(self, async_engine):
+    async def test_orm_sessionmaker_block_one(self, async_engine):
 
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
@@ -226,10 +257,56 @@ class AsyncSessionTransactionTest(AsyncFixture):
             eq_(u1.name, "u1")
 
     @async_test
-    async def test_sessionmaker_block_two(self, async_engine):
+    async def test_orm_sessionmaker_block_two(self, async_engine):
 
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
+
+        async with maker.begin() as session:
+            u1 = User(name="u1")
+            assert session.in_transaction()
+            session.add(u1)
+
+        assert not session.in_transaction()
+
+        async with maker() as session:
+            result = await session.execute(
+                select(User).where(User.name == "u1")
+            )
+
+            u1 = result.scalar_one()
+
+            eq_(u1.name, "u1")
+
+    @async_test
+    async def test_async_sessionmaker_block_one(self, async_engine):
+
+        User = self.classes.User
+        maker = async_sessionmaker(async_engine)
+
+        session = maker()
+
+        async with session.begin():
+            u1 = User(name="u1")
+            assert session.in_transaction()
+            session.add(u1)
+
+        assert not session.in_transaction()
+
+        async with maker() as session:
+            result = await session.execute(
+                select(User).where(User.name == "u1")
+            )
+
+            u1 = result.scalar_one()
+
+            eq_(u1.name, "u1")
+
+    @async_test
+    async def test_async_sessionmaker_block_two(self, async_engine):
+
+        User = self.classes.User
+        maker = async_sessionmaker(async_engine)
 
         async with maker.begin() as session:
             u1 = User(name="u1")
@@ -882,10 +959,17 @@ class OverrideSyncSession(AsyncFixture):
         is_true(isinstance(ass.sync_session, _MySession))
         is_(ass.sync_session_class, _MySession)
 
-    def test_init_sessionmaker(self, async_engine):
+    def test_init_orm_sessionmaker(self, async_engine):
         sm = sessionmaker(
             async_engine, class_=AsyncSession, sync_session_class=_MySession
         )
+        ass = sm()
+
+        is_true(isinstance(ass.sync_session, _MySession))
+        is_(ass.sync_session_class, _MySession)
+
+    def test_init_asyncio_sessionmaker(self, async_engine):
+        sm = async_sessionmaker(async_engine, sync_session_class=_MySession)
         ass = sm()
 
         is_true(isinstance(ass.sync_session, _MySession))

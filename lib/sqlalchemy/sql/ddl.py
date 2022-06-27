@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
+
 """
 Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
@@ -12,10 +14,12 @@ to invoke them for a create/drop call.
 from __future__ import annotations
 
 import typing
+from typing import Any
 from typing import Callable
+from typing import Iterable
 from typing import List
 from typing import Optional
-from typing import Sequence
+from typing import Sequence as typing_Sequence
 from typing import Tuple
 
 from . import roles
@@ -26,14 +30,31 @@ from .elements import ClauseElement
 from .. import exc
 from .. import util
 from ..util import topological
-
+from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from .compiler import Compiled
+    from .compiler import DDLCompiler
+    from .elements import BindParameter
+    from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import SchemaItem
     from .schema import Table
+    from ..engine.base import _CompiledCacheType
+    from ..engine.base import Connection
+    from ..engine.interfaces import _SchemaTranslateMapType
+    from ..engine.interfaces import CacheStats
+    from ..engine.interfaces import Dialect
 
 
-class _DDLCompiles(ClauseElement):
+class BaseDDLElement(ClauseElement):
+    """The root of DDL constructs, including those that are sub-elements
+    within the "create table" and other processes.
+
+    .. versionadded:: 2.0
+
+    """
+
     _hierarchy_supports_caching = False
     """disable cache warnings for all _DDLCompiles subclasses. """
 
@@ -43,22 +64,94 @@ class _DDLCompiles(ClauseElement):
 
         return dialect.ddl_compiler(dialect, self, **kw)
 
-    def _compile_w_cache(self, *arg, **kw):
+    def _compile_w_cache(
+        self,
+        dialect: Dialect,
+        *,
+        compiled_cache: Optional[_CompiledCacheType],
+        column_keys: List[str],
+        for_executemany: bool = False,
+        schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+        **kw: Any,
+    ) -> Tuple[
+        Compiled, Optional[typing_Sequence[BindParameter[Any]]], CacheStats
+    ]:
         raise NotImplementedError()
 
 
-SelfDDLElement = typing.TypeVar("SelfDDLElement", bound="DDLElement")
+class DDLIfCallable(Protocol):
+    def __call__(
+        self,
+        ddl: BaseDDLElement,
+        target: SchemaItem,
+        bind: Optional[Connection],
+        tables: Optional[List[Table]] = None,
+        state: Optional[Any] = None,
+        *,
+        dialect: Dialect,
+        compiler: Optional[DDLCompiler] = ...,
+        checkfirst: bool,
+    ) -> bool:
+        ...
 
 
-class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
-    """Base class for DDL expression constructs.
+class DDLIf(typing.NamedTuple):
+    dialect: Optional[str]
+    callable_: Optional[DDLIfCallable]
+    state: Optional[Any]
+
+    def _should_execute(
+        self,
+        ddl: BaseDDLElement,
+        target: SchemaItem,
+        bind: Optional[Connection],
+        compiler: Optional[DDLCompiler] = None,
+        **kw: Any,
+    ) -> bool:
+        if bind is not None:
+            dialect = bind.dialect
+        elif compiler is not None:
+            dialect = compiler.dialect
+        else:
+            assert False, "compiler or dialect is required"
+
+        if isinstance(self.dialect, str):
+            if self.dialect != dialect.name:
+                return False
+        elif isinstance(self.dialect, (tuple, list, set)):
+            if dialect.name not in self.dialect:
+                return False
+        if self.callable_ is not None and not self.callable_(
+            ddl,
+            target,
+            bind,
+            state=self.state,
+            dialect=dialect,
+            compiler=compiler,
+            **kw,
+        ):
+            return False
+
+        return True
+
+
+SelfExecutableDDLElement = typing.TypeVar(
+    "SelfExecutableDDLElement", bound="ExecutableDDLElement"
+)
+
+
+class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
+    """Base class for standalone executable DDL expression constructs.
 
     This class is the base for the general purpose :class:`.DDL` class,
     as well as the various create/drop clause constructs such as
     :class:`.CreateTable`, :class:`.DropTable`, :class:`.AddConstraint`,
     etc.
 
-    :class:`.DDLElement` integrates closely with SQLAlchemy events,
+    .. versionchanged:: 2.0  :class:`.ExecutableDDLElement` is renamed from
+       :class:`.DDLElement`, which still exists for backwards compatibility.
+
+    :class:`.ExecutableDDLElement` integrates closely with SQLAlchemy events,
     introduced in :ref:`event_toplevel`.  An instance of one is
     itself an event receiving callable::
 
@@ -80,10 +173,8 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
     """
 
-    target = None
-    on = None
-    dialect = None
-    callable_ = None
+    _ddl_if: Optional[DDLIf] = None
+    target: Optional["SchemaItem"] = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -93,29 +184,31 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         )
 
     @_generative
-    def against(self: SelfDDLElement, target) -> SelfDDLElement:
-        """Return a copy of this :class:`_schema.DDLElement` which will include
-        the given target.
+    def against(
+        self: SelfExecutableDDLElement, target: SchemaItem
+    ) -> SelfExecutableDDLElement:
+        """Return a copy of this :class:`_schema.ExecutableDDLElement` which
+        will include the given target.
 
-        This essentially applies the given item to the ``.target`` attribute
-        of the returned :class:`_schema.DDLElement` object.  This target
+        This essentially applies the given item to the ``.target`` attribute of
+        the returned :class:`_schema.ExecutableDDLElement` object. This target
         is then usable by event handlers and compilation routines in order to
         provide services such as tokenization of a DDL string in terms of a
         particular :class:`_schema.Table`.
 
-        When a :class:`_schema.DDLElement` object is established as an event
-        handler for the :meth:`_events.DDLEvents.before_create` or
-        :meth:`_events.DDLEvents.after_create` events, and the event
-        then occurs for a given target such as a :class:`_schema.Constraint`
-        or :class:`_schema.Table`, that target is established with a copy
-        of the :class:`_schema.DDLElement` object using this method, which
-        then proceeds to the :meth:`_schema.DDLElement.execute` method
-        in order to invoke the actual DDL instruction.
+        When a :class:`_schema.ExecutableDDLElement` object is established as
+        an event handler for the :meth:`_events.DDLEvents.before_create` or
+        :meth:`_events.DDLEvents.after_create` events, and the event then
+        occurs for a given target such as a :class:`_schema.Constraint` or
+        :class:`_schema.Table`, that target is established with a copy of the
+        :class:`_schema.ExecutableDDLElement` object using this method, which
+        then proceeds to the :meth:`_schema.ExecutableDDLElement.execute`
+        method in order to invoke the actual DDL instruction.
 
         :param target: a :class:`_schema.SchemaItem` that will be the subject
          of a DDL operation.
 
-        :return: a copy of this :class:`_schema.DDLElement` with the
+        :return: a copy of this :class:`_schema.ExecutableDDLElement` with the
          ``.target`` attribute assigned to the given
          :class:`_schema.SchemaItem`.
 
@@ -125,16 +218,19 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
             processing the DDL string.
 
         """
-
         self.target = target
         return self
 
     @_generative
     def execute_if(
-        self: SelfDDLElement, dialect=None, callable_=None, state=None
-    ) -> SelfDDLElement:
+        self: SelfExecutableDDLElement,
+        dialect: Optional[str] = None,
+        callable_: Optional[DDLIfCallable] = None,
+        state: Optional[Any] = None,
+    ) -> SelfExecutableDDLElement:
         r"""Return a callable that will execute this
-        :class:`_ddl.DDLElement` conditionally within an event handler.
+        :class:`_ddl.ExecutableDDLElement` conditionally within an event
+        handler.
 
         Used to provide a wrapper for event listening::
 
@@ -155,7 +251,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
             DDL('something').execute_if(dialect=('postgresql', 'mysql'))
 
         :param callable\_: A callable, which will be invoked with
-          four positional arguments as well as optional keyword
+          three positional arguments as well as optional keyword
           arguments:
 
             :ddl:
@@ -168,12 +264,21 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
               explicitly.
 
             :bind:
-              The :class:`_engine.Connection` being used for DDL execution
+              The :class:`_engine.Connection` being used for DDL execution.
+              May be None if this construct is being created inline within
+              a table, in which case ``compiler`` will be present.
 
             :tables:
               Optional keyword argument - a list of Table objects which are to
               be created/ dropped within a MetaData.create_all() or drop_all()
               method call.
+
+            :dialect: keyword argument, but always present - the
+              :class:`.Dialect` involved in the operation.
+
+            :compiler: keyword argument.  Will be ``None`` for an engine
+              level DDL invocation, but will refer to a :class:`.DDLCompiler`
+              if this DDL element is being created inline within a table.
 
             :state:
               Optional keyword argument - will be the ``state`` argument
@@ -192,35 +297,30 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
         .. seealso::
 
+            :meth:`.SchemaItem.ddl_if`
+
             :class:`.DDLEvents`
 
             :ref:`event_toplevel`
 
         """
-        self.dialect = dialect
-        self.callable_ = callable_
-        self.state = state
+        self._ddl_if = DDLIf(dialect, callable_, state)
         return self
 
     def _should_execute(self, target, bind, **kw):
-        if isinstance(self.dialect, str):
-            if self.dialect != bind.engine.name:
-                return False
-        elif isinstance(self.dialect, (tuple, list, set)):
-            if bind.engine.name not in self.dialect:
-                return False
-        if self.callable_ is not None and not self.callable_(
-            self, target, bind, state=self.state, **kw
-        ):
-            return False
+        if self._ddl_if is None:
+            return True
+        else:
+            return self._ddl_if._should_execute(self, target, bind, **kw)
 
-        return True
+    def _invoke_with(self, bind):
+        if self._should_execute(self.target, bind):
+            return bind.execute(self)
 
     def __call__(self, target, bind, **kw):
         """Execute the DDL as a ddl_listener."""
 
-        if self._should_execute(target, bind, **kw):
-            return bind.execute(self.against(target))
+        self.against(target)._invoke_with(bind)
 
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
@@ -228,7 +328,11 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         return s
 
 
-class DDL(DDLElement):
+DDLElement = ExecutableDDLElement
+""":class:`.DDLElement` is renamed to :class:`.ExecutableDDLElement`."""
+
+
+class DDL(ExecutableDDLElement):
     """A literal DDL statement.
 
     Specifies literal SQL DDL to be executed by the database.  DDL objects
@@ -271,8 +375,10 @@ class DDL(DDLElement):
 
         :param statement:
           A string or unicode string to be executed.  Statements will be
-          processed with Python's string formatting operator.  See the
-          ``context`` argument and the ``execute_at`` method.
+          processed with Python's string formatting operator using
+          a fixed set of string substitutions, as well as additional
+          substitutions provided by the optional :paramref:`.DDL.context`
+          parameter.
 
           A literal '%' in a statement must be escaped as '%%'.
 
@@ -314,7 +420,7 @@ class DDL(DDLElement):
         )
 
 
-class _CreateDropBase(DDLElement):
+class _CreateDropBase(ExecutableDDLElement):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -330,9 +436,10 @@ class _CreateDropBase(DDLElement):
         if_exists=False,
         if_not_exists=False,
     ):
-        self.element = element
+        self.element = self.target = element
         self.if_exists = if_exists
         self.if_not_exists = if_not_exists
+        self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
     def stringify_dialect(self):
@@ -358,11 +465,19 @@ class CreateSchema(_CreateDropBase):
 
     __visit_name__ = "create_schema"
 
-    def __init__(self, name, quote=None, **kw):
+    def __init__(
+        self,
+        name,
+        quote=None,
+        if_exists=False,
+        if_not_exists=False,
+    ):
         """Create a new :class:`.CreateSchema` construct."""
 
         self.quote = quote
-        super(CreateSchema, self).__init__(name, **kw)
+        self.element = name
+        self.if_exists = if_exists
+        self.if_not_exists = if_not_exists
 
 
 class DropSchema(_CreateDropBase):
@@ -374,12 +489,22 @@ class DropSchema(_CreateDropBase):
 
     __visit_name__ = "drop_schema"
 
-    def __init__(self, name, quote=None, cascade=False, **kw):
+    def __init__(
+        self,
+        name,
+        quote=None,
+        cascade=False,
+        if_exists=False,
+        if_not_exists=False,
+    ):
         """Create a new :class:`.DropSchema` construct."""
 
         self.quote = quote
         self.cascade = cascade
-        super(DropSchema, self).__init__(name, **kw)
+        self.quote = quote
+        self.element = name
+        self.if_exists = if_exists
+        self.if_not_exists = if_not_exists
 
 
 class CreateTable(_CreateDropBase):
@@ -389,9 +514,11 @@ class CreateTable(_CreateDropBase):
 
     def __init__(
         self,
-        element,
-        include_foreign_key_constraints=None,
-        if_not_exists=False,
+        element: Table,
+        include_foreign_key_constraints: Optional[
+            typing_Sequence[ForeignKeyConstraint]
+        ] = None,
+        if_not_exists: bool = False,
     ):
         """Create a :class:`.CreateTable` construct.
 
@@ -427,7 +554,12 @@ class _DropView(_CreateDropBase):
     __visit_name__ = "drop_view"
 
 
-class CreateColumn(_DDLCompiles):
+class CreateConstraint(BaseDDLElement):
+    def __init__(self, element: Constraint):
+        self.element = element
+
+
+class CreateColumn(BaseDDLElement):
     """Represent a :class:`_schema.Column`
     as rendered in a CREATE TABLE statement,
     via the :class:`.CreateTable` construct.
@@ -541,7 +673,7 @@ class DropTable(_CreateDropBase):
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element, if_exists=False):
+    def __init__(self, element: Table, if_exists: bool = False):
         """Create a :class:`.DropTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -661,12 +793,12 @@ class DropColumnComment(_CreateDropBase):
     __visit_name__ = "drop_column_comment"
 
 
-class DDLBase(SchemaVisitor):
+class InvokeDDLBase(SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
 
 
-class SchemaGenerator(DDLBase):
+class SchemaGenerator(InvokeDDLBase):
     def __init__(
         self, dialect, connection, checkfirst=False, tables=None, **kwargs
     ):
@@ -784,15 +916,10 @@ class SchemaGenerator(DDLBase):
             # e.g., don't omit any foreign key constraints
             include_foreign_key_constraints = None
 
-        self.connection.execute(
-            # fmt: off
-            CreateTable(
-                table,
-                include_foreign_key_constraints=  # noqa
-                    include_foreign_key_constraints,  # noqa
-            )
-            # fmt: on
-        )
+        CreateTable(
+            table,
+            include_foreign_key_constraints=include_foreign_key_constraints,
+        )._invoke_with(self.connection)
 
         if hasattr(table, "indexes"):
             for index in table.indexes:
@@ -800,11 +927,11 @@ class SchemaGenerator(DDLBase):
 
         if self.dialect.supports_comments and not self.dialect.inline_comments:
             if table.comment is not None:
-                self.connection.execute(SetTableComment(table))
+                SetTableComment(table)._invoke_with(self.connection)
 
             for column in table.columns:
                 if column.comment is not None:
-                    self.connection.execute(SetColumnComment(column))
+                    SetColumnComment(column)._invoke_with(self.connection)
 
         table.dispatch.after_create(
             table,
@@ -817,20 +944,20 @@ class SchemaGenerator(DDLBase):
     def visit_foreign_key_constraint(self, constraint):
         if not self.dialect.supports_alter:
             return
-        self.connection.execute(AddConstraint(constraint))
+        AddConstraint(constraint)._invoke_with(self.connection)
 
     def visit_sequence(self, sequence, create_ok=False):
         if not create_ok and not self._can_create_sequence(sequence):
             return
-        self.connection.execute(CreateSequence(sequence))
+        CreateSequence(sequence)._invoke_with(self.connection)
 
     def visit_index(self, index, create_ok=False):
         if not create_ok and not self._can_create_index(index):
             return
-        self.connection.execute(CreateIndex(index))
+        CreateIndex(index)._invoke_with(self.connection)
 
 
-class SchemaDropper(DDLBase):
+class SchemaDropper(InvokeDDLBase):
     def __init__(
         self, dialect, connection, checkfirst=False, tables=None, **kwargs
     ):
@@ -964,7 +1091,7 @@ class SchemaDropper(DDLBase):
         if not drop_ok and not self._can_drop_index(index):
             return
 
-        self.connection.execute(DropIndex(index))
+        DropIndex(index)(index, self.connection)
 
     def visit_table(
         self,
@@ -984,7 +1111,7 @@ class SchemaDropper(DDLBase):
             _is_metadata_operation=_is_metadata_operation,
         )
 
-        self.connection.execute(DropTable(table))
+        DropTable(table)._invoke_with(self.connection)
 
         # traverse client side defaults which may refer to server-side
         # sequences. noting that some of these client side defaults may also be
@@ -1009,19 +1136,21 @@ class SchemaDropper(DDLBase):
     def visit_foreign_key_constraint(self, constraint):
         if not self.dialect.supports_alter:
             return
-        self.connection.execute(DropConstraint(constraint))
+        DropConstraint(constraint)._invoke_with(self.connection)
 
     def visit_sequence(self, sequence, drop_ok=False):
 
         if not drop_ok and not self._can_drop_sequence(sequence):
             return
-        self.connection.execute(DropSequence(sequence))
+        DropSequence(sequence)._invoke_with(self.connection)
 
 
 def sort_tables(
-    tables: Sequence["Table"],
+    tables: Iterable["Table"],
     skip_fn: Optional[Callable[["ForeignKeyConstraint"], bool]] = None,
-    extra_dependencies: Optional[Sequence[Tuple["Table", "Table"]]] = None,
+    extra_dependencies: Optional[
+        typing_Sequence[Tuple["Table", "Table"]]
+    ] = None,
 ) -> List["Table"]:
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.
@@ -1082,16 +1211,17 @@ def sort_tables(
     """
 
     if skip_fn is not None:
+        fixed_skip_fn = skip_fn
 
         def _skip_fn(fkc):
             for fk in fkc.elements:
-                if skip_fn(fk):
+                if fixed_skip_fn(fk):
                     return True
             else:
                 return None
 
     else:
-        _skip_fn = None
+        _skip_fn = None  # type: ignore
 
     return [
         t

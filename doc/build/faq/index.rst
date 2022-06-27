@@ -10,6 +10,7 @@ observed questions to well-known issues.
 .. toctree::
     :maxdepth: 2
 
+    installation
     connections
     metadata_schema
     sqlexpressions

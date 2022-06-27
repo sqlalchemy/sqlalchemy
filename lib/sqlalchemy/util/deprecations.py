@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
@@ -13,7 +14,6 @@ from __future__ import annotations
 import re
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import Match
 from typing import Optional
@@ -28,7 +28,6 @@ from . import compat
 from .langhelpers import _hash_limit_string
 from .langhelpers import _warnings_warn
 from .langhelpers import decorator
-from .langhelpers import dynamic_property
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
 from .. import exc
@@ -37,7 +36,7 @@ _T = TypeVar("_T", bound=Any)
 
 
 # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
-_F = TypeVar("_F", bound=Callable[..., Any])
+_F = TypeVar("_F", bound="Callable[..., Any]")
 
 
 def _warn_with_version(
@@ -80,7 +79,7 @@ def warn_deprecated_limited(
 
 
 def deprecated_cls(
-    version: str, message: str, constructor: str = "__init__"
+    version: str, message: str, constructor: Optional[str] = "__init__"
 ) -> Callable[[Type[_T]], Type[_T]]:
     header = ".. deprecated:: %s %s" % (version, (message or ""))
 
@@ -103,7 +102,7 @@ def deprecated_property(
     add_deprecation_to_docstring: bool = True,
     warning: Optional[Type[exc.SADeprecationWarning]] = None,
     enable_warnings: bool = True,
-) -> Callable[[Callable[..., _T]], dynamic_property[_T]]:
+) -> Callable[[Callable[..., Any]], property]:
     """the @deprecated decorator with a @property.
 
     E.g.::
@@ -131,8 +130,8 @@ def deprecated_property(
 
     """
 
-    def decorate(fn: Callable[..., _T]) -> dynamic_property[_T]:
-        return dynamic_property(
+    def decorate(fn: Callable[..., Any]) -> property:
+        return property(
             deprecated(
                 version,
                 message=message,
@@ -289,7 +288,9 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         check_any_kw = spec.varkw
 
-        @decorator
+        # latest mypy has opinions here, not sure if they implemented
+        # Concatenate or something
+        @decorator  # type: ignore
         def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
             for m in check_defaults:
                 if (defaults[m] is None and kwargs[m] is not None) or (
@@ -333,7 +334,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
                     for param, (version, message) in specs.items()
                 },
             )
-        decorated = cast(_F, warned)(fn)
+        decorated = warned(fn)  # type: ignore
         decorated.__doc__ = doc
         return decorated  # type: ignore[no-any-return]
 
@@ -353,7 +354,7 @@ def _sanitize_restructured_text(text: str) -> str:
 
 def _decorate_cls_with_warning(
     cls: Type[_T],
-    constructor: str,
+    constructor: Optional[str],
     wtype: Type[exc.SADeprecationWarning],
     message: str,
     version: str,
@@ -377,6 +378,7 @@ def _decorate_cls_with_warning(
             clsdict = dict(cls.__dict__)
             clsdict["__doc__"] = doc
             clsdict.pop("__dict__", None)
+            clsdict.pop("__weakref__", None)
             cls = type(cls.__name__, cls.__bases__, clsdict)  # type: ignore
             if constructor is not None:
                 constructor_fn = clsdict[constructor]
@@ -419,7 +421,7 @@ def _decorate_with_warning(
     else:
         doc_only = ""
 
-    @decorator
+    @decorator  # type: ignore
     def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
         skip_warning = not enable_warnings or kwargs.pop(
             "_sa_skip_warning", False
@@ -436,9 +438,9 @@ def _decorate_with_warning(
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 
-    decorated = cast(_F, warned)(func)
+    decorated = warned(func)  # type: ignore
     decorated.__doc__ = doc
-    decorated._sa_warn = lambda: _warn_with_version(
+    decorated._sa_warn = lambda: _warn_with_version(  # type: ignore
         message, version, wtype, stacklevel=3
     )
     return decorated  # type: ignore[no-any-return]

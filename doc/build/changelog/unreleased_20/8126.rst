@@ -1,0 +1,25 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 8126
+
+    Added very experimental feature to the :func:`_orm.selectinload` and
+    :func:`_orm.immediateload` loader options called
+    :paramref:`_orm.selectinload.recursion_depth` /
+    :paramref:`_orm.immediateload.recursion_depth` , which allows a single
+    loader option to automatically recurse into self-referential relationships.
+    Is set to an integer indicating depth, and may also be set to -1 to
+    indicate to continue loading until no more levels deep are found.
+    Major internal changes to :func:`_orm.selectinload` and
+    :func:`_orm.immediateload` allow this feature to work while continuing
+    to make correct use of the compilation cache, as well as not using
+    arbitrary recursion, so any level of depth is supported (though would
+    emit that many queries).  This may be useful for
+    self-referential structures that must be loaded fully eagerly, such as when
+    using asyncio.
+
+    A warning is also emitted when loader options are connected together with
+    arbitrary lengths (that is, without using the new ``recursion_depth``
+    option) when excessive recursion depth is detected in related object
+    loading. This operation continues to use huge amounts of memory and
+    performs extremely poorly; the cache is disabled when this condition is
+    detected to protect the cache from being flooded with arbitrary statements.

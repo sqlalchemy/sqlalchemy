@@ -22,6 +22,10 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 Types which are specific to PostgreSQL, or have PostgreSQL-specific
 construction arguments, are as follows:
 
+.. note: where :noindex: is used, indicates a type that is not redefined
+   in the dialect module, just imported from sqltypes.  this avoids warnings
+   in the sphinx build
+
 .. currentmodule:: sqlalchemy.dialects.postgresql
 
 .. autoclass:: aggregate_order_by
@@ -45,8 +49,12 @@ construction arguments, are as follows:
 .. autoclass:: CIDR
 
 
+.. autoclass:: DOMAIN
+    :members: __init__, create, drop
+
 .. autoclass:: DOUBLE_PRECISION
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: ENUM
@@ -80,6 +88,7 @@ construction arguments, are as follows:
 
 .. autoclass:: REAL
     :members: __init__
+    :noindex:
 
 .. autoclass:: REGCLASS
 
@@ -87,6 +96,7 @@ construction arguments, are as follows:
 
 .. autoclass:: UUID
     :members: __init__
+    :noindex:
 
 
 Range Types

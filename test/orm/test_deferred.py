@@ -13,11 +13,14 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
@@ -97,6 +100,32 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.NoSuchColumnError, "Could not locate", q.first
         )
+
+    @testing.combinations(True, False, argnames="use_wildcard")
+    def test_defer_option_primary_key(self, use_wildcard):
+        """test #7495
+
+        defer option on a PK is not useful, so ignore it
+
+        """
+
+        Order, orders = self.classes.Order, self.tables.orders
+
+        self.mapper_registry.map_imperatively(Order, orders)
+
+        if use_wildcard:
+            opt = defer("*")
+        else:
+            opt = defer(Order.id)
+
+        o1 = (
+            fixture_session()
+            .query(Order)
+            .options(opt)
+            .order_by(Order.id)
+            .first()
+        )
+        eq_(o1, Order(id=1))
 
     def test_unsaved(self):
         """Deferred loading does not kick in when just PK cols are set."""
@@ -1018,6 +1047,44 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         self.sql_count_(0, go)
         eq_(item.description, "item 4")
 
+    @testing.combinations(
+        lazyload, joinedload, subqueryload, selectinload, immediateload
+    )
+    def test_defer_star_from_loader(self, opt_class):
+        User = self.classes.User
+        Order = self.classes.Order
+
+        users = self.tables.users
+        orders = self.tables.orders
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"orders": relationship(Order)},
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+        )
+
+        sess = fixture_session()
+
+        stmt = (
+            select(User)
+            .options(opt_class(User.orders).defer("*"))
+            .where(User.id == 9)
+        )
+
+        if opt_class is joinedload:
+            obj = sess.scalars(stmt).unique().one()
+        else:
+            obj = sess.scalars(stmt).one()
+
+        eq_(obj.orders, [Order(id=2), Order(id=4)])
+        assert "description" not in obj.orders[0].__dict__
+
+        eq_(obj.orders[0].description, "order 2")
+
     def test_path_entity(self):
         r"""test the legacy \*addl_attrs argument."""
 
@@ -1581,8 +1648,7 @@ class InheritanceTest(_Polymorphic):
         )
 
     def test_defer_on_wildcard_subclass(self):
-        # pretty much the same as load_only except doesn't
-        # exclude the primary key
+        """test case changed as of #7495"""
         s = fixture_session()
         q = (
             s.query(Manager)
@@ -1591,13 +1657,12 @@ class InheritanceTest(_Polymorphic):
         )
         self.assert_compile(
             q,
-            "SELECT managers.status AS managers_status "
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, managers.status AS managers_status "
             "FROM people JOIN managers ON "
             "people.person_id = managers.person_id ORDER BY people.person_id",
         )
-
-        # note this doesn't apply to "bound" loaders since they don't seem
-        # to have this ".*" feature.
 
     def test_load_only_subclass_of_type(self):
         s = fixture_session()
@@ -1628,16 +1693,18 @@ class InheritanceTest(_Polymorphic):
         )
 
     def test_wildcard_subclass_of_type(self):
+        """fixed as of #7495"""
         s = fixture_session()
         q = s.query(Company).options(
             joinedload(Company.employees.of_type(Manager)).defer("*")
         )
-        # TODO: this is wrong!  there's no employee columns!!
-        # see https://github.com/sqlalchemy/sqlalchemy/issues/7495
         self.assert_compile(
             q,
             "SELECT companies.company_id AS companies_company_id, "
-            "companies.name AS companies_name "
+            "companies.name AS companies_name, "
+            "anon_1.people_person_id AS anon_1_people_person_id, "
+            "anon_1.people_type AS anon_1_people_type, "
+            "anon_1.managers_person_id AS anon_1_managers_person_id "
             "FROM companies LEFT OUTER JOIN "
             "(SELECT people.person_id AS people_person_id, "
             "people.company_id AS people_company_id, "

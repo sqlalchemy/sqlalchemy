@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 import re
 
@@ -152,10 +154,10 @@ class SET(_StringType):
             )
         if self.retrieve_as_bitwise:
             self._bitmap = dict(
-                (value, 2 ** idx) for idx, value in enumerate(self.values)
+                (value, 2**idx) for idx, value in enumerate(self.values)
             )
             self._bitmap.update(
-                (2 ** idx, value) for idx, value in enumerate(self.values)
+                (2**idx, value) for idx, value in enumerate(self.values)
             )
         length = max([len(v) for v in values] + [0])
         kw.setdefault("length", length)
@@ -233,3 +235,12 @@ class SET(_StringType):
     def adapt(self, impltype, **kw):
         kw["retrieve_as_bitwise"] = self.retrieve_as_bitwise
         return util.constructor_copy(self, impltype, *self.values, **kw)
+
+    def __repr__(self):
+        return util.generic_repr(
+            self,
+            to_inspect=[SET, _StringType],
+            additional_kw=[
+                ("retrieve_as_bitwise", False),
+            ],
+        )

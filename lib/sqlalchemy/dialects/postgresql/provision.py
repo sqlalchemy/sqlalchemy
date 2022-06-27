@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import time
 
 from ... import exc

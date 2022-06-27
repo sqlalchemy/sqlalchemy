@@ -130,14 +130,14 @@ Self-Referential Query Strategies
 Querying of self-referential structures works like any other query::
 
     # get all nodes named 'child2'
-    session.query(Node).filter(Node.data=='child2')
+    session.scalars(select(Node).where(Node.data=='child2'))
 
 However extra care is needed when attempting to join along
 the foreign key from one level of the tree to the next.  In SQL,
 a join from a table to itself requires that at least one side of the
 expression be "aliased" so that it can be unambiguously referred to.
 
-Recall from :ref:`ormtutorial_aliases` in the ORM tutorial that the
+Recall from :ref:`orm_queryguide_orm_aliases` in the ORM tutorial that the
 :func:`_orm.aliased` construct is normally used to provide an "alias" of
 an ORM entity.  Joining from ``Node`` to itself using this technique
 looks like:
@@ -147,10 +147,12 @@ looks like:
     from sqlalchemy.orm import aliased
 
     nodealias = aliased(Node)
-    session.query(Node).filter(Node.data=='subchild1').\
-                    join(Node.parent.of_type(nodealias)).\
-                    filter(nodealias.data=="child2").\
-                    all()
+    session.scalars(
+        select(Node)
+        .where(Node.data == "subchild1")
+        .join(Node.parent.of_type(nodealias))
+        .where(nodealias.data == "child2")
+    ).all()
     {opensql}SELECT node.id AS node_id,
             node.parent_id AS node_parent_id,
             node.data AS node_data
@@ -190,7 +192,7 @@ configured via :paramref:`~.relationships.join_depth`:
                         lazy="joined",
                         join_depth=2)
 
-    session.query(Node).all()
+    session.scalars(select(Node)).all()
     {opensql}SELECT node_1.id AS node_1_id,
             node_1.parent_id AS node_1_parent_id,
             node_1.data AS node_1_data,

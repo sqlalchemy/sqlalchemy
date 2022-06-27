@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 
 .. dialect:: mysql+cymysql
@@ -53,7 +55,7 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _cymysqlBIT})
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("cymysql")
 
     def _detect_charset(self, connection):

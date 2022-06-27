@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import warnings
@@ -26,9 +28,13 @@ def setup_filters():
     as we need to delay importing SQLAlchemy until conftest.py has been
     processed.
 
+    NOTE: filters on subclasses of DeprecationWarning or
+    PendingDeprecationWarning have no effect if added here, since pytest
+    will add at each test the following filters
+    ``always::PendingDeprecationWarning`` and ``always::DeprecationWarning``
+    that will take precedence over any added here.
+
     """
-    warnings.filterwarnings("ignore", category=exc.SAPendingDeprecationWarning)
-    warnings.filterwarnings("error", category=exc.SADeprecationWarning)
     warnings.filterwarnings("error", category=exc.SAWarning)
     warnings.filterwarnings("always", category=exc.SATestSuiteWarning)
 

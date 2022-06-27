@@ -50,6 +50,7 @@ from sqlalchemy.testing import combinations
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -117,7 +118,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         ]:
             assert_raises_message(
                 ValueError,
-                "Couldn't parse %s string." % disp,
+                "Invalid isoformat string:",
                 lambda: connection.execute(
                     text("select 'ASDF' as value").columns(value=typ)
                 ).scalar(),
@@ -166,7 +167,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             # 2004-05-21T00:00:00
             storage_format="%(year)04d-%(month)02d-%(day)02d"
             "T%(hour)02d:%(minute)02d:%(second)02d",
-            regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
+            regexp=r"^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
@@ -195,7 +196,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         sqlite_date = sqlite.DATETIME(
             storage_format="%(year)04d%(month)02d%(day)02d"
             "%(hour)02d%(minute)02d%(second)02d",
-            regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})",
+            regexp=r"^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
@@ -856,27 +857,15 @@ class AttachedDBTest(fixtures.TestBase):
             ["foo", "bar"],
         )
 
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("nonexistent", schema="test_schema")
-            ],
-            [],
-        )
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("another_created", schema=None)
-            ],
-            [],
-        )
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("local_only", schema="test_schema")
-            ],
-            [],
-        )
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("nonexistent", schema="test_schema")
+
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("another_created", schema=None)
+
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("local_only", schema="test_schema")
+
         eq_([d["name"] for d in insp.get_columns("local_only")], ["q", "p"])
 
     def test_table_names_present(self):
@@ -2736,7 +2725,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class OnConflictTest(fixtures.TablesTest):
+class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     __only_on__ = ("sqlite >= 3.24.0",)
     __backend__ = True
@@ -2748,6 +2737,13 @@ class OnConflictTest(fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
+        )
+
+        Table(
+            "users_w_key",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), key="name_keyed"),
         )
 
         class SpecialType(sqltypes.TypeDecorator):
@@ -2793,6 +2789,44 @@ class OnConflictTest(fixtures.TablesTest):
         assert_raises(
             ValueError, insert(self.tables.users).on_conflict_do_update
         )
+
+    @testing.combinations("control", "excluded", "dict")
+    def test_set_excluded(self, scenario):
+        """test #8014, sending all of .excluded to set"""
+
+        if scenario == "control":
+            users = self.tables.users
+
+            stmt = insert(users)
+            self.assert_compile(
+                stmt.on_conflict_do_update(set_=stmt.excluded),
+                "INSERT INTO users (id, name) VALUES (?, ?) ON CONFLICT  "
+                "DO UPDATE SET id = excluded.id, name = excluded.name",
+            )
+        else:
+            users_w_key = self.tables.users_w_key
+
+            stmt = insert(users_w_key)
+
+            if scenario == "excluded":
+                self.assert_compile(
+                    stmt.on_conflict_do_update(set_=stmt.excluded),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
+            else:
+                self.assert_compile(
+                    stmt.on_conflict_do_update(
+                        set_={
+                            "id": stmt.excluded.id,
+                            "name_keyed": stmt.excluded.name_keyed,
+                        }
+                    ),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.tables.users

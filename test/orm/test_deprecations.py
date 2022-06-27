@@ -476,7 +476,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         q = sess.query(User)
         with self._expect_implicit_subquery():
-            q = sess.query(User).select_from(q.statement)
+            q = sess.query(User).select_from(User, q.statement)
         self.assert_compile(
             q.filter(User.name == "ed"),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -887,7 +887,13 @@ class InstrumentationTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         attributes.register_attribute(
-            Foo, "attr", uselist=True, typecallable=MyDict, useobject=True
+            Foo,
+            "attr",
+            parententity=object(),
+            comparator=object(),
+            uselist=True,
+            typecallable=MyDict,
+            useobject=True,
         )
 
         f = Foo()
@@ -1345,7 +1351,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = self.mapper_registry.map_imperatively(  # noqa F841
+            m = self.mapper_registry.map_imperatively(  # noqa: F841
                 User,
                 users,
                 non_primary=True,
@@ -1402,7 +1408,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = registry.map_imperatively(  # noqa F841
+            m = registry.map_imperatively(  # noqa: F841
                 User,
                 users,
                 non_primary=True,
@@ -1901,6 +1907,39 @@ class InheritedJoinTest(
 ):
     run_setup_mappers = "once"
     __dialect__ = "default"
+
+    def test_join_w_subq_adapt(self):
+        """test #8162"""
+
+        Company, Manager, Engineer = self.classes(
+            "Company", "Manager", "Engineer"
+        )
+
+        sess = fixture_session()
+
+        with _aliased_join_warning():
+            self.assert_compile(
+                sess.query(Engineer)
+                .join(Company, Company.company_id == Engineer.company_id)
+                .outerjoin(Manager, Company.company_id == Manager.company_id)
+                .filter(~Engineer.company.has()),
+                "SELECT engineers.person_id AS engineers_person_id, "
+                "people.person_id AS people_person_id, "
+                "people.company_id AS people_company_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.status AS engineers_status, "
+                "engineers.engineer_name AS engineers_engineer_name, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                "ON people.person_id = engineers.person_id "
+                "JOIN companies ON companies.company_id = people.company_id "
+                "LEFT OUTER JOIN (people AS people_1 JOIN managers AS "
+                "managers_1 ON people_1.person_id = managers_1.person_id) "
+                "ON companies.company_id = people_1.company_id "
+                "WHERE NOT (EXISTS (SELECT 1 FROM companies "
+                "WHERE companies.company_id = people.company_id))",
+                use_default_dialect=True,
+            )
 
     def test_join_to_selectable(self):
         people, Company, engineers, Engineer = (
@@ -2770,7 +2809,9 @@ class Deferred_InheritanceTest(_deferred_InheritanceTest):
             )
         self.assert_compile(
             q,
-            "SELECT managers.status AS managers_status "
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, managers.status AS managers_status "
             "FROM people JOIN managers ON "
             "people.person_id = managers.person_id ORDER BY people.person_id",
         )

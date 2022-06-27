@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """Classes used in pickling tests, need to be at the module level for
 unpickling.
@@ -12,6 +14,8 @@ unpickling.
 from __future__ import annotations
 
 from . import fixtures
+from ..schema import Column
+from ..types import String
 
 
 class User(fixtures.ComparableEntity):
@@ -51,6 +55,14 @@ class Screen:
     def __init__(self, obj, parent=None):
         self.obj = obj
         self.parent = parent
+
+
+class Mixin:
+    email_address = Column(String)
+
+
+class AddressWMixin(Mixin, fixtures.ComparableEntity):
+    pass
 
 
 class Foo:

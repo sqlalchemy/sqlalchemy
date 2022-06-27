@@ -15,6 +15,8 @@ documentation for an overview of how this module is used.
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import exc as exc
 from . import mapper as mapperlib
 from . import strategy_options as strategy_options
@@ -31,7 +33,6 @@ from ._orm_constructors import deferred as deferred
 from ._orm_constructors import dynamic_loader as dynamic_loader
 from ._orm_constructors import join as join
 from ._orm_constructors import mapped_column as mapped_column
-from ._orm_constructors import MappedColumn as MappedColumn
 from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship
@@ -40,10 +41,15 @@ from ._orm_constructors import synonym as synonym
 from ._orm_constructors import SynonymProperty as SynonymProperty
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
 from ._orm_constructors import with_polymorphic as with_polymorphic
-from .attributes import AttributeEvent as AttributeEvent
+from .attributes import AttributeEventToken as AttributeEventToken
 from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
+from .base import class_mapper as class_mapper
+from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
 from .base import Mapped as Mapped
+from .base import NotExtension as NotExtension
+from .base import ORMDescriptor as ORMDescriptor
+from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
 from .decl_api import as_declarative as as_declarative
@@ -54,6 +60,7 @@ from .decl_api import DeclarativeBaseNoMeta as DeclarativeBaseNoMeta
 from .decl_api import DeclarativeMeta as DeclarativeMeta
 from .decl_api import declared_attr as declared_attr
 from .decl_api import has_inherited_table as has_inherited_table
+from .decl_api import MappedAsDataclass as MappedAsDataclass
 from .decl_api import registry as registry
 from .decl_api import synonym_for as synonym_for
 from .descriptor_props import Composite as Composite
@@ -75,20 +82,18 @@ from .interfaces import InspectionAttrInfo as InspectionAttrInfo
 from .interfaces import MANYTOMANY as MANYTOMANY
 from .interfaces import MANYTOONE as MANYTOONE
 from .interfaces import MapperProperty as MapperProperty
-from .interfaces import NOT_EXTENSION as NOT_EXTENSION
 from .interfaces import ONETOMANY as ONETOMANY
 from .interfaces import PropComparator as PropComparator
 from .interfaces import UserDefinedOption as UserDefinedOption
 from .loading import merge_frozen_result as merge_frozen_result
 from .loading import merge_result as merge_result
-from .mapper import class_mapper as class_mapper
 from .mapper import configure_mappers as configure_mappers
 from .mapper import Mapper as Mapper
 from .mapper import reconstructor as reconstructor
 from .mapper import validates as validates
 from .properties import ColumnProperty as ColumnProperty
+from .properties import MappedColumn as MappedColumn
 from .query import AliasOption as AliasOption
-from .query import FromStatement as FromStatement
 from .query import Query as Query
 from .relationships import foreign as foreign
 from .relationships import Relationship as Relationship
@@ -131,7 +136,7 @@ from .util import with_parent as with_parent
 from .. import util as _sa_util
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
 
     _sa_util.preloaded.import_prefix("sqlalchemy.orm")
     _sa_util.preloaded.import_prefix("sqlalchemy.ext")

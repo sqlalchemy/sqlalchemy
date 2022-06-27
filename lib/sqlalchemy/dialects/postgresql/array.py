@@ -4,15 +4,24 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
+
+from __future__ import annotations
 
 import re
+from typing import Any
+from typing import Optional
+from typing import TypeVar
 
 from ... import types as sqltypes
 from ... import util
-from ...sql import coercions
 from ...sql import expression
 from ...sql import operators
-from ...sql import roles
+from ...sql._typing import _TypeEngineArgument
+
+
+_T = TypeVar("_T", bound=Any)
 
 
 def Any(other, arrexpr, operator=operators.eq):
@@ -33,7 +42,7 @@ def All(other, arrexpr, operator=operators.eq):
     return arrexpr.all(other, operator)
 
 
-class array(expression.ClauseList, expression.ColumnElement):
+class array(expression.ExpressionClauseList[_T]):
 
     """A PostgreSQL ARRAY literal.
 
@@ -90,16 +99,19 @@ class array(expression.ClauseList, expression.ColumnElement):
     inherit_cache = True
 
     def __init__(self, clauses, **kw):
-        clauses = [
-            coercions.expect(roles.ExpressionElementRole, c) for c in clauses
-        ]
 
-        self._type_tuple = [arg.type for arg in clauses]
-        main_type = kw.pop(
-            "type_",
-            self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE,
+        type_arg = kw.pop("type_", None)
+        super(array, self).__init__(operators.comma_op, *clauses, **kw)
+
+        self._type_tuple = [arg.type for arg in self.clauses]
+
+        main_type = (
+            type_arg
+            if type_arg is not None
+            else self._type_tuple[0]
+            if self._type_tuple
+            else sqltypes.NULLTYPE
         )
-        super(array, self).__init__(*clauses, **kw)
 
         if isinstance(main_type, ARRAY):
             self.type = ARRAY(
@@ -234,7 +246,11 @@ class ARRAY(sqltypes.ARRAY):
     comparator_factory = Comparator
 
     def __init__(
-        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+        self,
+        item_type: _TypeEngineArgument[Any],
+        as_tuple: bool = False,
+        dimensions: Optional[int] = None,
+        zero_indexes: bool = False,
     ):
         """Construct an ARRAY.
 
@@ -294,41 +310,30 @@ class ARRAY(sqltypes.ARRAY):
     def compare_values(self, x, y):
         return x == y
 
-    def _proc_array(self, arr, itemproc, dim, collection):
-        if dim is None:
-            arr = list(arr)
-        if (
-            dim == 1
-            or dim is None
-            and (
-                # this has to be (list, tuple), or at least
-                # not hasattr('__iter__'), since Py3K strings
-                # etc. have __iter__
-                not arr
-                or not isinstance(arr[0], (list, tuple))
-            )
-        ):
-            if itemproc:
-                return collection(itemproc(x) for x in arr)
-            else:
-                return collection(arr)
-        else:
-            return collection(
-                self._proc_array(
-                    x,
-                    itemproc,
-                    dim - 1 if dim is not None else None,
-                    collection,
-                )
-                for x in arr
-            )
-
     @util.memoized_property
     def _against_native_enum(self):
         return (
             isinstance(self.item_type, sqltypes.Enum)
             and self.item_type.native_enum
         )
+
+    def literal_processor(self, dialect):
+        item_proc = self.item_type.dialect_impl(dialect).literal_processor(
+            dialect
+        )
+        if item_proc is None:
+            return None
+
+        def to_str(elements):
+            return f"ARRAY[{', '.join(elements)}]"
+
+        def process(value):
+            inner = self._apply_item_processor(
+                value, item_proc, self.dimensions, to_str
+            )
+            return inner
+
+        return process
 
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(
@@ -339,7 +344,7 @@ class ARRAY(sqltypes.ARRAY):
             if value is None:
                 return value
             else:
-                return self._proc_array(
+                return self._apply_item_processor(
                     value, item_proc, self.dimensions, list
                 )
 
@@ -354,7 +359,7 @@ class ARRAY(sqltypes.ARRAY):
             if value is None:
                 return value
             else:
-                return self._proc_array(
+                return self._apply_item_processor(
                     value,
                     item_proc,
                     self.dimensions,

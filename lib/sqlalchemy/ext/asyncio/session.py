@@ -4,16 +4,74 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
+
+from typing import Any
+from typing import Dict
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import NoReturn
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
 from . import engine
-from . import result as _result
 from .base import ReversibleProxy
 from .base import StartableContext
 from .result import _ensure_sync_result
+from .result import AsyncResult
+from .result import AsyncScalarResult
 from ... import util
 from ...orm import object_session
 from ...orm import Session
+from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Protocol
+
+if TYPE_CHECKING:
+    from .engine import AsyncConnection
+    from .engine import AsyncEngine
+    from ...engine import Connection
+    from ...engine import Engine
+    from ...engine import Result
+    from ...engine import Row
+    from ...engine import RowMapping
+    from ...engine import ScalarResult
+    from ...engine.interfaces import _CoreAnyExecuteParams
+    from ...engine.interfaces import _CoreSingleExecuteParams
+    from ...engine.interfaces import _ExecuteOptionsParameter
+    from ...event import dispatcher
+    from ...orm._typing import _IdentityKeyType
+    from ...orm._typing import _O
+    from ...orm.identity import IdentityMap
+    from ...orm.interfaces import ORMOption
+    from ...orm.session import _BindArguments
+    from ...orm.session import _EntityBindKey
+    from ...orm.session import _PKIdentityArgument
+    from ...orm.session import _SessionBind
+    from ...orm.session import _SessionBindKey
+    from ...sql._typing import _InfoType
+    from ...sql.base import Executable
+    from ...sql.elements import ClauseElement
+    from ...sql.selectable import ForUpdateArg
+    from ...sql.selectable import TypedReturnsRows
+
+_AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
+
+_T = TypeVar("_T", bound=Any)
+
+
+class _SyncSessionCallable(Protocol):
+    def __call__(self, session: Session, *arg: Any, **kw: Any) -> Any:
+        ...
+
 
 _EXECUTE_OPTIONS = util.immutabledict({"prebuffer_rows": True})
 _STREAM_OPTIONS = util.immutabledict({"stream_results": True})
@@ -48,7 +106,7 @@ _STREAM_OPTIONS = util.immutabledict({"stream_results": True})
         "info",
     ],
 )
-class AsyncSession(ReversibleProxy):
+class AsyncSession(ReversibleProxy[Session]):
     """Asyncio version of :class:`_orm.Session`.
 
     The :class:`_asyncio.AsyncSession` is a proxy for a traditional
@@ -65,9 +123,15 @@ class AsyncSession(ReversibleProxy):
 
     _is_asyncio = True
 
-    dispatch = None
+    dispatch: dispatcher[Session]
 
-    def __init__(self, bind=None, binds=None, sync_session_class=None, **kw):
+    def __init__(
+        self,
+        bind: Optional[_AsyncSessionBind] = None,
+        binds: Optional[Dict[_SessionBindKey, _AsyncSessionBind]] = None,
+        sync_session_class: Optional[Type[Session]] = None,
+        **kw: Any,
+    ):
         r"""Construct a new :class:`_asyncio.AsyncSession`.
 
         All parameters other than ``sync_session_class`` are passed to the
@@ -86,14 +150,15 @@ class AsyncSession(ReversibleProxy):
           .. versionadded:: 1.4.24
 
         """
-        kw["future"] = True
+        sync_bind = sync_binds = None
+
         if bind:
             self.bind = bind
-            bind = engine._get_sync_engine_or_connection(bind)
+            sync_bind = engine._get_sync_engine_or_connection(bind)
 
         if binds:
             self.binds = binds
-            binds = {
+            sync_binds = {
                 key: engine._get_sync_engine_or_connection(b)
                 for key, b in binds.items()
             }
@@ -102,10 +167,10 @@ class AsyncSession(ReversibleProxy):
             self.sync_session_class = sync_session_class
 
         self.sync_session = self._proxied = self._assign_proxied(
-            self.sync_session_class(bind=bind, binds=binds, **kw)
+            self.sync_session_class(bind=sync_bind, binds=sync_binds, **kw)
         )
 
-    sync_session_class = Session
+    sync_session_class: Type[Session] = Session
     """The class or callable that provides the
     underlying :class:`_orm.Session` instance for a particular
     :class:`_asyncio.AsyncSession`.
@@ -134,9 +199,19 @@ class AsyncSession(ReversibleProxy):
 
     """
 
+    @classmethod
+    def _no_async_engine_events(cls) -> NoReturn:
+        raise NotImplementedError(
+            "asynchronous events are not implemented at this time.  Apply "
+            "synchronous listeners to the AsyncSession.sync_session."
+        )
+
     async def refresh(
-        self, instance, attribute_names=None, with_for_update=None
-    ):
+        self,
+        instance: object,
+        attribute_names: Optional[Iterable[str]] = None,
+        with_for_update: Optional[ForUpdateArg] = None,
+    ) -> None:
         """Expire and refresh the attributes on the given instance.
 
         A query will be issued to the database and all attributes will be
@@ -151,14 +226,16 @@ class AsyncSession(ReversibleProxy):
 
         """
 
-        return await greenlet_spawn(
+        await greenlet_spawn(
             self.sync_session.refresh,
             instance,
             attribute_names=attribute_names,
             with_for_update=with_for_update,
         )
 
-    async def run_sync(self, fn, *arg, **kw):
+    async def run_sync(
+        self, fn: _SyncSessionCallable, *arg: Any, **kw: Any
+    ) -> Any:
         """Invoke the given sync callable passing sync self as the first
         argument.
 
@@ -185,14 +262,41 @@ class AsyncSession(ReversibleProxy):
 
         return await greenlet_spawn(fn, self.sync_session, *arg, **kw)
 
+    @overload
     async def execute(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: TypedReturnsRows[_T],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> Result[_T]:
+        ...
+
+    @overload
+    async def execute(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> Result[Any]:
+        ...
+
+    async def execute(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Result[Any]:
         """Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -219,14 +323,39 @@ class AsyncSession(ReversibleProxy):
         )
         return await _ensure_sync_result(result, self.execute)
 
+    @overload
     async def scalar(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[_T]:
+        ...
+
+    @overload
+    async def scalar(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Any:
+        ...
+
+    async def scalar(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Any:
         """Execute a statement and return a scalar result.
 
         .. seealso::
@@ -235,23 +364,56 @@ class AsyncSession(ReversibleProxy):
 
         """
 
-        result = await self.execute(
+        if execution_options:
+            execution_options = util.immutabledict(execution_options).union(
+                _EXECUTE_OPTIONS
+            )
+        else:
+            execution_options = _EXECUTE_OPTIONS
+
+        result = await greenlet_spawn(
+            self.sync_session.scalar,
             statement,
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
             **kw,
         )
-        return result.scalar()
+        return result
+
+    @overload
+    async def scalars(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> ScalarResult[_T]:
+        ...
+
+    @overload
+    async def scalars(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> ScalarResult[Any]:
+        ...
 
     async def scalars(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> ScalarResult[Any]:
         """Execute a statement and return scalar results.
 
         :return: a :class:`_result.ScalarResult` object
@@ -277,13 +439,16 @@ class AsyncSession(ReversibleProxy):
 
     async def get(
         self,
-        entity,
-        ident,
-        options=None,
-        populate_existing=False,
-        with_for_update=None,
-        identity_token=None,
-    ):
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: Optional[ForUpdateArg] = None,
+        identity_token: Optional[Any] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> Optional[_O]:
+
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -293,7 +458,8 @@ class AsyncSession(ReversibleProxy):
 
 
         """
-        return await greenlet_spawn(
+
+        result_obj = await greenlet_spawn(
             self.sync_session.get,
             entity,
             ident,
@@ -302,17 +468,46 @@ class AsyncSession(ReversibleProxy):
             with_for_update=with_for_update,
             identity_token=identity_token,
         )
+        return result_obj
+
+    @overload
+    async def stream(
+        self,
+        statement: TypedReturnsRows[_T],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncResult[_T]:
+        ...
+
+    @overload
+    async def stream(
+        self,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncResult[Any]:
+        ...
 
     async def stream(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncResult[Any]:
+
         """Execute a statement and return a streaming
-        :class:`_asyncio.AsyncResult` object."""
+        :class:`_asyncio.AsyncResult` object.
+
+        """
 
         if execution_options:
             execution_options = util.immutabledict(execution_options).union(
@@ -329,16 +524,41 @@ class AsyncSession(ReversibleProxy):
             bind_arguments=bind_arguments,
             **kw,
         )
-        return _result.AsyncResult(result)
+        return AsyncResult(result)
+
+    @overload
+    async def stream_scalars(
+        self,
+        statement: TypedReturnsRows[Tuple[_T]],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncScalarResult[_T]:
+        ...
+
+    @overload
+    async def stream_scalars(
+        self,
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncScalarResult[Any]:
+        ...
 
     async def stream_scalars(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> AsyncScalarResult[Any]:
         """Execute a statement and return a stream of scalar results.
 
         :return: an :class:`_asyncio.AsyncScalarResult` object
@@ -362,7 +582,7 @@ class AsyncSession(ReversibleProxy):
         )
         return result.scalars()
 
-    async def delete(self, instance):
+    async def delete(self, instance: object) -> None:
         """Mark an instance as deleted.
 
         The database delete operation occurs upon ``flush()``.
@@ -375,9 +595,15 @@ class AsyncSession(ReversibleProxy):
             :meth:`_orm.Session.delete` - main documentation for delete
 
         """
-        return await greenlet_spawn(self.sync_session.delete, instance)
+        await greenlet_spawn(self.sync_session.delete, instance)
 
-    async def merge(self, instance, load=True, options=None):
+    async def merge(
+        self,
+        instance: _O,
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> _O:
         """Copy the state of a given instance into a corresponding instance
         within this :class:`_asyncio.AsyncSession`.
 
@@ -390,7 +616,7 @@ class AsyncSession(ReversibleProxy):
             self.sync_session.merge, instance, load=load, options=options
         )
 
-    async def flush(self, objects=None):
+    async def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
         """Flush all the object changes to the database.
 
         .. seealso::
@@ -400,7 +626,7 @@ class AsyncSession(ReversibleProxy):
         """
         await greenlet_spawn(self.sync_session.flush, objects=objects)
 
-    def get_transaction(self):
+    def get_transaction(self) -> Optional[AsyncSessionTransaction]:
         """Return the current root transaction in progress, if any.
 
         :return: an :class:`_asyncio.AsyncSessionTransaction` object, or
@@ -415,7 +641,7 @@ class AsyncSession(ReversibleProxy):
         else:
             return None
 
-    def get_nested_transaction(self):
+    def get_nested_transaction(self) -> Optional[AsyncSessionTransaction]:
         """Return the current nested transaction in progress, if any.
 
         :return: an :class:`_asyncio.AsyncSessionTransaction` object, or
@@ -431,7 +657,13 @@ class AsyncSession(ReversibleProxy):
         else:
             return None
 
-    def get_bind(self, mapper=None, clause=None, bind=None, **kw):
+    def get_bind(
+        self,
+        mapper: Optional[_EntityBindKey[_O]] = None,
+        clause: Optional[ClauseElement] = None,
+        bind: Optional[_SessionBind] = None,
+        **kw: Any,
+    ) -> Union[Engine, Connection]:
         """Return a "bind" to which the synchronous proxied :class:`_orm.Session`
         is bound.
 
@@ -467,7 +699,8 @@ class AsyncSession(ReversibleProxy):
 
             from sqlalchemy.ext.asyncio import AsyncSession
             from sqlalchemy.ext.asyncio import create_async_engine
-            from sqlalchemy.orm import Session, sessionmaker
+            from sqlalchemy.ext.asyncio import async_sessionmaker
+            from sqlalchemy.orm import Session
 
             # construct async engines w/ async drivers
             engines = {
@@ -490,8 +723,7 @@ class AsyncSession(ReversibleProxy):
                         ].sync_engine
 
             # apply to AsyncSession using sync_session_class
-            AsyncSessionMaker = sessionmaker(
-                class_=AsyncSession,
+            AsyncSessionMaker = async_sessionmaker(
                 sync_session_class=RoutingSession
             )
 
@@ -503,21 +735,21 @@ class AsyncSession(ReversibleProxy):
         blocking-style code, which will be translated to implicitly async calls
         at the point of invoking IO on the database drivers.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         return self.sync_session.get_bind(
             mapper=mapper, clause=clause, bind=bind, **kw
         )
 
-    async def connection(self, **kw):
+    async def connection(self, **kw: Any) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
         this :class:`.Session` object's transactional state.
 
         This method may also be used to establish execution options for the
         database connection used by the current transaction.
 
-        .. versionadded:: 1.4.24  Added **kw arguments which are passed through
-           to the underlying :meth:`_orm.Session.connection` method.
+        .. versionadded:: 1.4.24  Added \**kw arguments which are passed
+           through to the underlying :meth:`_orm.Session.connection` method.
 
         .. seealso::
 
@@ -533,7 +765,7 @@ class AsyncSession(ReversibleProxy):
             sync_connection
         )
 
-    def begin(self):
+    def begin(self) -> AsyncSessionTransaction:
         """Return an :class:`_asyncio.AsyncSessionTransaction` object.
 
         The underlying :class:`_orm.Session` will perform the
@@ -556,7 +788,7 @@ class AsyncSession(ReversibleProxy):
 
         return AsyncSessionTransaction(self)
 
-    def begin_nested(self):
+    def begin_nested(self) -> AsyncSessionTransaction:
         """Return an :class:`_asyncio.AsyncSessionTransaction` object
         which will begin a "nested" transaction, e.g. SAVEPOINT.
 
@@ -569,15 +801,15 @@ class AsyncSession(ReversibleProxy):
 
         return AsyncSessionTransaction(self, nested=True)
 
-    async def rollback(self):
+    async def rollback(self) -> None:
         """Rollback the current transaction in progress."""
-        return await greenlet_spawn(self.sync_session.rollback)
+        await greenlet_spawn(self.sync_session.rollback)
 
-    async def commit(self):
+    async def commit(self) -> None:
         """Commit the current transaction in progress."""
-        return await greenlet_spawn(self.sync_session.commit)
+        await greenlet_spawn(self.sync_session.commit)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close out the transactional resources and ORM objects used by this
         :class:`_asyncio.AsyncSession`.
 
@@ -607,44 +839,690 @@ class AsyncSession(ReversibleProxy):
         """
         return await greenlet_spawn(self.sync_session.close)
 
-    async def invalidate(self):
+    async def invalidate(self) -> None:
         """Close this Session, using connection invalidation.
 
         For a complete description, see :meth:`_orm.Session.invalidate`.
         """
-        return await greenlet_spawn(self.sync_session.invalidate)
+        await greenlet_spawn(self.sync_session.invalidate)
 
     @classmethod
-    async def close_all(self):
+    async def close_all(self) -> None:
         """Close all :class:`_asyncio.AsyncSession` sessions."""
-        return await greenlet_spawn(self.sync_session.close_all)
+        await greenlet_spawn(self.sync_session.close_all)
 
-    async def __aenter__(self):
+    async def __aenter__(self: _AS) -> _AS:
         return self
 
-    async def __aexit__(self, type_, value, traceback):
+    async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
         await self.close()
 
-    def _maker_context_manager(self):
-        # TODO: can this use asynccontextmanager ??
+    def _maker_context_manager(self: _AS) -> _AsyncSessionContextManager[_AS]:
         return _AsyncSessionContextManager(self)
 
+    # START PROXY METHODS AsyncSession
 
-class _AsyncSessionContextManager:
-    def __init__(self, async_session):
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_proxy_methods.py
+
+    def __contains__(self, instance: object) -> bool:
+        r"""Return True if the instance is associated with this session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        The instance may be pending or persistent within the Session for a
+        result of True.
+
+
+        """  # noqa: E501
+
+        return self._proxied.__contains__(instance)
+
+    def __iter__(self) -> Iterator[object]:
+        r"""Iterate over all pending or persistent instances within this
+        Session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.__iter__()
+
+    def add(self, instance: object, _warn: bool = True) -> None:
+        r"""Place an object in the ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        Its state will be persisted to the database on the next flush
+        operation.
+
+        Repeated calls to ``add()`` will be ignored. The opposite of ``add()``
+        is ``expunge()``.
+
+
+        """  # noqa: E501
+
+        return self._proxied.add(instance, _warn=_warn)
+
+    def add_all(self, instances: Iterable[object]) -> None:
+        r"""Add the given collection of instances to this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.add_all(instances)
+
+    def expire(
+        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+    ) -> None:
+        r"""Expire the attributes on an instance.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        Marks the attributes of an instance as out of date. When an expired
+        attribute is next accessed, a query will be issued to the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
+
+        To expire all objects in the :class:`.Session` simultaneously,
+        use :meth:`Session.expire_all`.
+
+        The :class:`.Session` object's default behavior is to
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire` only makes sense for the specific
+        case that a non-ORM SQL statement was emitted in the current
+        transaction.
+
+        :param instance: The instance to be refreshed.
+        :param attribute_names: optional list of string attribute names
+          indicating a subset of attributes to be expired.
+
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
+
+            :meth:`_orm.Query.populate_existing`
+
+
+        """  # noqa: E501
+
+        return self._proxied.expire(instance, attribute_names=attribute_names)
+
+    def expire_all(self) -> None:
+        r"""Expires all persistent instances within this Session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        When any attributes on a persistent instance is next accessed,
+        a query will be issued using the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
+
+        To expire individual objects and individual attributes
+        on those objects, use :meth:`Session.expire`.
+
+        The :class:`.Session` object's default behavior is to
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire_all` is not usually needed,
+        assuming the transaction is isolated.
+
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
+
+            :meth:`_orm.Query.populate_existing`
+
+
+        """  # noqa: E501
+
+        return self._proxied.expire_all()
+
+    def expunge(self, instance: object) -> None:
+        r"""Remove the `instance` from this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This will free all internal references to the instance.  Cascading
+        will be applied according to the *expunge* cascade rule.
+
+
+        """  # noqa: E501
+
+        return self._proxied.expunge(instance)
+
+    def expunge_all(self) -> None:
+        r"""Remove all object instances from this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is equivalent to calling ``expunge(obj)`` on all objects in this
+        ``Session``.
+
+
+        """  # noqa: E501
+
+        return self._proxied.expunge_all()
+
+    def is_modified(
+        self, instance: object, include_collections: bool = True
+    ) -> bool:
+        r"""Return ``True`` if the given instance has locally
+        modified attributes.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This method retrieves the history for each instrumented
+        attribute on the instance and performs a comparison of the current
+        value to its previously committed value, if any.
+
+        It is in effect a more expensive and accurate
+        version of checking for the given instance in the
+        :attr:`.Session.dirty` collection; a full test for
+        each attribute's net "dirty" status is performed.
+
+        E.g.::
+
+            return session.is_modified(someobject)
+
+        A few caveats to this method apply:
+
+        * Instances present in the :attr:`.Session.dirty` collection may
+          report ``False`` when tested with this method.  This is because
+          the object may have received change events via attribute mutation,
+          thus placing it in :attr:`.Session.dirty`, but ultimately the state
+          is the same as that loaded from the database, resulting in no net
+          change here.
+        * Scalar attributes may not have recorded the previously set
+          value when a new value was applied, if the attribute was not loaded,
+          or was expired, at the time the new value was received - in these
+          cases, the attribute is assumed to have a change, even if there is
+          ultimately no net change against its database value. SQLAlchemy in
+          most cases does not need the "old" value when a set event occurs, so
+          it skips the expense of a SQL call if the old value isn't present,
+          based on the assumption that an UPDATE of the scalar value is
+          usually needed, and in those few cases where it isn't, is less
+          expensive on average than issuing a defensive SELECT.
+
+          The "old" value is fetched unconditionally upon set only if the
+          attribute container has the ``active_history`` flag set to ``True``.
+          This flag is set typically for primary key attributes and scalar
+          object references that are not a simple many-to-one.  To set this
+          flag for any arbitrary mapped column, use the ``active_history``
+          argument with :func:`.column_property`.
+
+        :param instance: mapped instance to be tested for pending changes.
+        :param include_collections: Indicates if multivalued collections
+         should be included in the operation.  Setting this to ``False`` is a
+         way to detect only local-column based properties (i.e. scalar columns
+         or many-to-one foreign keys) that would result in an UPDATE for this
+         instance upon flush.
+
+
+        """  # noqa: E501
+
+        return self._proxied.is_modified(
+            instance, include_collections=include_collections
+        )
+
+    def in_transaction(self) -> bool:
+        r"""Return True if this :class:`_orm.Session` has begun a transaction.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :attr:`_orm.Session.is_active`
+
+
+
+        """  # noqa: E501
+
+        return self._proxied.in_transaction()
+
+    def in_nested_transaction(self) -> bool:
+        r"""Return True if this :class:`_orm.Session` has begun a nested
+        transaction, e.g. SAVEPOINT.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionadded:: 1.4
+
+
+        """  # noqa: E501
+
+        return self._proxied.in_nested_transaction()
+
+    @property
+    def dirty(self) -> Any:
+        r"""The set of all persistent instances considered dirty.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        E.g.::
+
+            some_mapped_object in session.dirty
+
+        Instances are considered dirty when they were modified but not
+        deleted.
+
+        Note that this 'dirty' calculation is 'optimistic'; most
+        attribute-setting or collection modification operations will
+        mark an instance as 'dirty' and place it in this set, even if
+        there is no net change to the attribute's value.  At flush
+        time, the value of each attribute is compared to its
+        previously saved value, and if there's no net change, no SQL
+        operation will occur (this is a more expensive operation so
+        it's only done at flush time).
+
+        To check if an instance has actionable net changes to its
+        attributes, use the :meth:`.Session.is_modified` method.
+
+
+        """  # noqa: E501
+
+        return self._proxied.dirty
+
+    @property
+    def deleted(self) -> Any:
+        r"""The set of all instances marked as 'deleted' within this ``Session``
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.deleted
+
+    @property
+    def new(self) -> Any:
+        r"""The set of all instances marked as 'new' within this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.new
+
+    @property
+    def identity_map(self) -> IdentityMap:
+        r"""Proxy for the :attr:`_orm.Session.identity_map` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.identity_map
+
+    @identity_map.setter
+    def identity_map(self, attr: IdentityMap) -> None:
+        self._proxied.identity_map = attr
+
+    @property
+    def is_active(self) -> Any:
+        r"""True if this :class:`.Session` not in "partial rollback" state.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionchanged:: 1.4 The :class:`_orm.Session` no longer begins
+           a new transaction immediately, so this attribute will be False
+           when the :class:`_orm.Session` is first instantiated.
+
+        "partial rollback" state typically indicates that the flush process
+        of the :class:`_orm.Session` has failed, and that the
+        :meth:`_orm.Session.rollback` method must be emitted in order to
+        fully roll back the transaction.
+
+        If this :class:`_orm.Session` is not in a transaction at all, the
+        :class:`_orm.Session` will autobegin when it is first used, so in this
+        case :attr:`_orm.Session.is_active` will return True.
+
+        Otherwise, if this :class:`_orm.Session` is within a transaction,
+        and that transaction has not been rolled back internally, the
+        :attr:`_orm.Session.is_active` will also return True.
+
+        .. seealso::
+
+            :ref:`faq_session_rollback`
+
+            :meth:`_orm.Session.in_transaction`
+
+
+        """  # noqa: E501
+
+        return self._proxied.is_active
+
+    @property
+    def autoflush(self) -> bool:
+        r"""Proxy for the :attr:`_orm.Session.autoflush` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.autoflush
+
+    @autoflush.setter
+    def autoflush(self, attr: bool) -> None:
+        self._proxied.autoflush = attr
+
+    @property
+    def no_autoflush(self) -> Any:
+        r"""Return a context manager that disables autoflush.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        e.g.::
+
+            with session.no_autoflush:
+
+                some_object = SomeClass()
+                session.add(some_object)
+                # won't autoflush
+                some_object.related_thing = session.query(SomeRelated).first()
+
+        Operations that proceed within the ``with:`` block
+        will not be subject to flushes occurring upon query
+        access.  This is useful when initializing a series
+        of objects which involve existing database queries,
+        where the uncompleted object should not yet be flushed.
+
+
+        """  # noqa: E501
+
+        return self._proxied.no_autoflush
+
+    @property
+    def info(self) -> Any:
+        r"""A user-modifiable dictionary.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        The initial value of this dictionary can be populated using the
+        ``info`` argument to the :class:`.Session` constructor or
+        :class:`.sessionmaker` constructor or factory methods.  The dictionary
+        here is always local to this :class:`.Session` and can be modified
+        independently of all other :class:`.Session` objects.
+
+
+        """  # noqa: E501
+
+        return self._proxied.info
+
+    @classmethod
+    def object_session(cls, instance: object) -> Optional[Session]:
+        r"""Return the :class:`.Session` to which an object belongs.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is an alias of :func:`.object_session`.
+
+
+        """  # noqa: E501
+
+        return Session.object_session(instance)
+
+    @classmethod
+    def identity_key(
+        cls,
+        class_: Optional[Type[Any]] = None,
+        ident: Union[Any, Tuple[Any, ...]] = None,
+        *,
+        instance: Optional[Any] = None,
+        row: Optional[Union[Row[Any], RowMapping]] = None,
+        identity_token: Optional[Any] = None,
+    ) -> _IdentityKeyType[Any]:
+        r"""Return an identity key.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is an alias of :func:`.util.identity_key`.
+
+
+        """  # noqa: E501
+
+        return Session.identity_key(
+            class_=class_,
+            ident=ident,
+            instance=instance,
+            row=row,
+            identity_token=identity_token,
+        )
+
+    # END PROXY METHODS AsyncSession
+
+
+_AS = TypeVar("_AS", bound="AsyncSession")
+
+
+class async_sessionmaker(Generic[_AS]):
+    """A configurable :class:`.AsyncSession` factory.
+
+    The :class:`.async_sessionmaker` factory works in the same way as the
+    :class:`.sessionmaker` factory, to generate new :class:`.AsyncSession`
+    objects when called, creating them given
+    the configurational arguments established here.
+
+    e.g.::
+
+        from sqlalchemy.ext.asyncio import create_async_engine
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+
+        async def main():
+            # an AsyncEngine, which the AsyncSession will use for connection
+            # resources
+            engine = create_async_engine('postgresql+asycncpg://scott:tiger@localhost/')
+
+            AsyncSession = async_sessionmaker(engine)
+
+            async with async_session() as session:
+                session.add(some_object)
+                session.add(some_other_object)
+                await session.commit()
+
+    .. versionadded:: 2.0  :class:`.asyncio_sessionmaker` provides a
+       :class:`.sessionmaker` class that's dedicated to the
+       :class:`.AsyncSession` object, including pep-484 typing support.
+
+    .. seealso::
+
+        :ref:`asyncio_orm` - shows example use
+
+        :class:`.sessionmaker`  - general overview of the
+         :class:`.sessionmaker` architecture
+
+
+        :ref:`session_getting` - introductory text on creating
+        sessions using :class:`.sessionmaker`.
+
+    """  # noqa E501
+
+    class_: Type[_AS]
+
+    def __init__(
+        self,
+        bind: Optional[_AsyncSessionBind] = None,
+        class_: Type[_AS] = AsyncSession,  # type: ignore
+        autoflush: bool = True,
+        expire_on_commit: bool = True,
+        info: Optional[_InfoType] = None,
+        **kw: Any,
+    ):
+        r"""Construct a new :class:`.async_sessionmaker`.
+
+        All arguments here except for ``class_`` correspond to arguments
+        accepted by :class:`.Session` directly. See the
+        :meth:`.AsyncSession.__init__` docstring for more details on
+        parameters.
+
+
+        """
+        kw["bind"] = bind
+        kw["autoflush"] = autoflush
+        kw["expire_on_commit"] = expire_on_commit
+        if info is not None:
+            kw["info"] = info
+        self.kw = kw
+        self.class_ = class_
+
+    def begin(self) -> _AsyncSessionContextManager[_AS]:
+        """Produce a context manager that both provides a new
+        :class:`_orm.AsyncSession` as well as a transaction that commits.
+
+
+        e.g.::
+
+            async def main():
+                Session = async_sessionmaker(some_engine)
+
+                async with Session.begin() as session:
+                    session.add(some_object)
+
+                # commits transaction, closes session
+
+
+        """
+
+        session = self()
+        return session._maker_context_manager()
+
+    def __call__(self, **local_kw: Any) -> _AS:
+        """Produce a new :class:`.AsyncSession` object using the configuration
+        established in this :class:`.async_sessionmaker`.
+
+        In Python, the ``__call__`` method is invoked on an object when
+        it is "called" in the same way as a function::
+
+            AsyncSession = async_sessionmaker(async_engine, expire_on_commit=False)
+            session = AsyncSession()  # invokes sessionmaker.__call__()
+
+        """  # noqa E501
+        for k, v in self.kw.items():
+            if k == "info" and "info" in local_kw:
+                d = v.copy()
+                d.update(local_kw["info"])
+                local_kw["info"] = d
+            else:
+                local_kw.setdefault(k, v)
+        return self.class_(**local_kw)
+
+    def configure(self, **new_kw: Any) -> None:
+        """(Re)configure the arguments for this async_sessionmaker.
+
+        e.g.::
+
+            AsyncSession = async_sessionmaker(some_engine)
+
+            AsyncSession.configure(bind=create_async_engine('sqlite+aiosqlite://'))
+        """  # noqa E501
+
+        self.kw.update(new_kw)
+
+    def __repr__(self) -> str:
+        return "%s(class_=%r, %s)" % (
+            self.__class__.__name__,
+            self.class_.__name__,
+            ", ".join("%s=%r" % (k, v) for k, v in self.kw.items()),
+        )
+
+
+class _AsyncSessionContextManager(Generic[_AS]):
+    __slots__ = ("async_session", "trans")
+
+    async_session: _AS
+    trans: AsyncSessionTransaction
+
+    def __init__(self, async_session: _AS):
         self.async_session = async_session
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> _AS:
         self.trans = self.async_session.begin()
         await self.trans.__aenter__()
         return self.async_session
 
-    async def __aexit__(self, type_, value, traceback):
+    async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
         await self.trans.__aexit__(type_, value, traceback)
         await self.async_session.__aexit__(type_, value, traceback)
 
 
-class AsyncSessionTransaction(ReversibleProxy, StartableContext):
+class AsyncSessionTransaction(
+    ReversibleProxy[SessionTransaction], StartableContext
+):
     """A wrapper for the ORM :class:`_orm.SessionTransaction` object.
 
     This object is provided so that a transaction-holding object
@@ -662,36 +1540,41 @@ class AsyncSessionTransaction(ReversibleProxy, StartableContext):
 
     __slots__ = ("session", "sync_transaction", "nested")
 
-    def __init__(self, session, nested=False):
+    session: AsyncSession
+    sync_transaction: Optional[SessionTransaction]
+
+    def __init__(self, session: AsyncSession, nested: bool = False):
         self.session = session
         self.nested = nested
         self.sync_transaction = None
 
     @property
-    def is_active(self):
+    def is_active(self) -> bool:
         return (
             self._sync_transaction() is not None
             and self._sync_transaction().is_active
         )
 
-    def _sync_transaction(self):
+    def _sync_transaction(self) -> SessionTransaction:
         if not self.sync_transaction:
             self._raise_for_not_started()
         return self.sync_transaction
 
-    async def rollback(self):
+    async def rollback(self) -> None:
         """Roll back this :class:`_asyncio.AsyncTransaction`."""
         await greenlet_spawn(self._sync_transaction().rollback)
 
-    async def commit(self):
+    async def commit(self) -> None:
         """Commit this :class:`_asyncio.AsyncTransaction`."""
 
         await greenlet_spawn(self._sync_transaction().commit)
 
-    async def start(self, is_ctxmanager=False):
+    async def start(
+        self, is_ctxmanager: bool = False
+    ) -> AsyncSessionTransaction:
         self.sync_transaction = self._assign_proxied(
             await greenlet_spawn(
-                self.session.sync_session.begin_nested
+                self.session.sync_session.begin_nested  # type: ignore
                 if self.nested
                 else self.session.sync_session.begin
             )
@@ -700,13 +1583,13 @@ class AsyncSessionTransaction(ReversibleProxy, StartableContext):
             self.sync_transaction.__enter__()
         return self
 
-    async def __aexit__(self, type_, value, traceback):
+    async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
         await greenlet_spawn(
             self._sync_transaction().__exit__, type_, value, traceback
         )
 
 
-def async_object_session(instance):
+def async_object_session(instance: object) -> Optional[AsyncSession]:
     """Return the :class:`_asyncio.AsyncSession` to which the given instance
     belongs.
 
@@ -735,7 +1618,7 @@ def async_object_session(instance):
         return None
 
 
-def async_session(session):
+def async_session(session: Session) -> Optional[AsyncSession]:
     """Return the :class:`_asyncio.AsyncSession` which is proxying the given
     :class:`_orm.Session` object, if any.
 
@@ -748,4 +1631,4 @@ def async_session(session):
     return AsyncSession._retrieve_proxy_for_target(session, regenerate=False)
 
 
-_instance_state._async_provider = async_session
+_instance_state._async_provider = async_session  # type: ignore

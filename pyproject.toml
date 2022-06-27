@@ -12,7 +12,6 @@ target-version = ['py37']
 
 [tool.zimports]
 black-line-length = 79
-keep-unused-type-checking = true
 
 [tool.slotscheck]
 exclude-modules = '^sqlalchemy\.testing'
@@ -20,7 +19,8 @@ exclude-modules = '^sqlalchemy\.testing'
 
 [tool.pytest.ini_options]
 addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-markers"
-python_files = "test/*test_*.py"
+norecursedirs = "examples build doc lib"
+python_files = "test_*.py"
 minversion = "6.2"
 filterwarnings = [
     # NOTE: additional SQLAlchemy specific filters in
@@ -39,69 +39,25 @@ markers = [
 ]
 
 [tool.pyright]
-include = [
-    "lib/sqlalchemy/pool/",
-    "lib/sqlalchemy/event/",
-    "lib/sqlalchemy/events.py",
-    "lib/sqlalchemy/exc.py",
-    "lib/sqlalchemy/log.py",
-    "lib/sqlalchemy/inspection.py",
-    "lib/sqlalchemy/schema.py",
-    "lib/sqlalchemy/types.py",
-    "lib/sqlalchemy/util/",
-]
 
 reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"
-
+reportTypedDictNotRequiredAccess = "warning"
 
 [tool.mypy]
 mypy_path = "./lib/"
 show_error_codes = true
-strict = false
 incremental = true
 
-# disabled checking
+
 [[tool.mypy.overrides]]
-module="sqlalchemy.*"
-ignore_errors = true
-warn_unused_ignores = false
 
-strict = true
-
-# some debate at
-# https://github.com/python/mypy/issues/8754.
-# implicit_reexport = true
-
-# individual packages or even modules should be listed here
-# with strictness-specificity set up.  there's no way we are going to get
-# the whole library 100% strictly typed, so we have to tune this based on
-# the type of module or package we are dealing with
-
-# strict checking
-[[tool.mypy.overrides]]
 module = [
-    "sqlalchemy.pool.*",
-    "sqlalchemy.event.*",
-    "sqlalchemy.events",
-    "sqlalchemy.exc",
-    "sqlalchemy.inspection",
-    "sqlalchemy.schema",
-    "sqlalchemy.types",
+    "sqlalchemy.*"
 ]
-ignore_errors = false
+
+warn_unused_ignores = false
 strict = true
-
-# partial checking, internals can be untyped
-[[tool.mypy.overrides]]
-module="sqlalchemy.util.*"
-ignore_errors = false
-
-# util is for internal use so we can get by without everything
-# being typed
-allow_untyped_defs = true
-check_untyped_defs = false
-allow_untyped_calls = true
 
 

@@ -22,7 +22,7 @@ Cascade behavior is configured using the
 :func:`~sqlalchemy.orm.relationship`::
 
     class Order(Base):
-        __tablename__ = 'order'
+        __tablename__ = "order"
 
         items = relationship("Item", cascade="all, delete-orphan")
         customer = relationship("User", cascade="save-update")
@@ -32,11 +32,11 @@ To set cascades on a backref, the same flag can be used with the
 its arguments back into :func:`~sqlalchemy.orm.relationship`::
 
     class Item(Base):
-        __tablename__ = 'item'
+        __tablename__ = "item"
 
-        order = relationship("Order",
-                        backref=backref("items", cascade="all, delete-orphan")
-                    )
+        order = relationship(
+            "Order", backref=backref("items", cascade="all, delete-orphan")
+        )
 
 .. sidebar:: The Origins of Cascade
 
@@ -122,6 +122,110 @@ for granted; it simplifies code by allowing a single call to
 that :class:`.Session` at once.   While it can be disabled, there
 is usually not a need to do so.
 
+.. _backref_cascade:
+
+Behavior of save-update cascade with bi-directional relationships
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``save-update`` cascade takes place **uni-directionally** in the context of
+a bi-directional relationship, i.e. when using
+:ref:`backref / back_populates <relationships_backref>` to create two separate
+:func:`_orm.relationship` objects which refer to each other.
+
+An object that's not associated with a :class:`_orm.Session`, when assigned to
+an attribute or collection on a parent object that is associated with a
+:class:`_orm.Session`, will be automatically added to that same
+:class:`_orm.Session`. However, the same operation in reverse will not have
+this effect; an object that's not associated with a :class:`_orm.Session`, upon
+which a child object that is associated with a :class:`_orm.Session` is
+assigned, will not result in an automatic addition of that parent object to the
+:class:`_orm.Session`.  The overall subject of this behavior is known
+as "cascade backrefs", and represents a change in behavior that was standardized
+as of SQLAlchemy 2.0.
+
+To illustrate, given a mapping of ``Order`` objects which relate
+bi-directionally to a series of ``Item`` objects via relationships
+``Order.items`` and ``Item.order``::
+
+    mapper_registry.map_imperatively(
+        Order,
+        order_table,
+        properties={"items": relationship(Item, back_populates="order")},
+    )
+
+    mapper_registry.map_imperatively(
+        Item,
+        item_table,
+        properties={"order": relationship(Order, back_populates="items")},
+    )
+
+If an ``Order`` is already associated with a :class:`_orm.Session`, and
+an ``Item`` object is then created and appended to the ``Order.items``
+collection of that ``Order``, the ``Item`` will be automatically cascaded
+into that same :class:`_orm.Session`::
+
+    >>> o1 = Order()
+    >>> session.add(o1)
+    >>> o1 in session
+    True
+
+    >>> i1 = Item()
+    >>> o1.items.append(i1)
+    >>> o1 is i1.order
+    True
+    >>> i1 in session
+    True
+
+Above, the bidirectional nature of ``Order.items`` and ``Item.order`` means
+that appending to ``Order.items`` also assigns to ``Item.order``. At the same
+time, the ``save-update`` cascade allowed for the ``Item`` object to be added
+to the same :class:`_orm.Session` which the parent ``Order`` was already
+associated.
+
+However, if the operation above is performed in the **reverse** direction,
+where ``Item.order`` is assigned rather than appending directly to
+``Order.item``, the cascade operation into the :class:`_orm.Session` will
+**not** take place automatically, even though the object assignments
+``Order.items`` and ``Item.order`` will be in the same state as in the
+previous example::
+
+    >>> o1 = Order()
+    >>> session.add(o1)
+    >>> o1 in session
+    True
+
+    >>> i1 = Item()
+    >>> i1.order = o1
+    >>> i1 in order.items
+    True
+    >>> i1 in session
+    False
+
+In the above case, after the ``Item`` object is created and all the desired
+state is set upon it, it should then be added to the :class:`_orm.Session`
+explicitly::
+
+    >>> session.add(i1)
+
+In older versions of SQLAlchemy, the save-update cascade would occur
+bidirectionally in all cases. It was then made optional using an option known
+as ``cascade_backrefs``. Finally, in SQLAlchemy 1.4 the old behavior was
+deprecated and the ``cascade_backrefs`` option was removed in SQLAlchemy 2.0.
+The rationale is that users generally do not find it intuitive that assigning
+to an attribute on an object, illustrated above as the assignment of
+``i1.order = o1``, would alter the persistence state of that object ``i1`` such
+that it's now pending within a :class:`_orm.Session`, and there would
+frequently be subsequent issues where autoflush would prematurely flush the
+object and cause errors, in those cases where the given object was still being
+constructed and wasn't in a ready state to be flushed. The option to select between
+uni-directional and bi-directional behvaiors was also removed, as this option
+created two slightly different ways of working, adding to the overall learning
+curve of the ORM as well as to the documentation and user support burden.
+
+.. seealso::
+
+    :ref:`change_5150` - background on the change in behavior for
+    "cascade backrefs"
 
 .. _cascade_delete:
 
@@ -219,23 +323,27 @@ The following example adapts that of :ref:`relationships_many_to_many` to
 illustrate the ``cascade="all, delete"`` setting on **one** side of the
 association::
 
-    association_table = Table('association', Base.metadata,
-        Column('left_id', Integer, ForeignKey('left.id')),
-        Column('right_id', Integer, ForeignKey('right.id'))
+    association_table = Table(
+        "association",
+        Base.metadata,
+        Column("left_id", Integer, ForeignKey("left.id")),
+        Column("right_id", Integer, ForeignKey("right.id")),
     )
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
         children = relationship(
             "Child",
             secondary=association_table,
             back_populates="parents",
-            cascade="all, delete"
+            cascade="all, delete",
         )
 
+
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
         parents = relationship(
             "Parent",
@@ -298,18 +406,20 @@ on the relevant ``FOREIGN KEY`` constraint as well::
 
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship(
-            "Child", back_populates="parent",
+            "Child",
+            back_populates="parent",
             cascade="all, delete",
-            passive_deletes=True
+            passive_deletes=True,
         )
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id', ondelete="CASCADE"))
+        parent_id = Column(Integer, ForeignKey("parent.id", ondelete="CASCADE"))
         parent = relationship("Parent", back_populates="children")
 
 The behavior of the above configuration when a parent row is deleted
@@ -448,13 +558,16 @@ on the parent->child side of the relationship, and we can then configure
 ``passive_deletes=True`` on the **other** side of the bidirectional
 relationship as illustrated below::
 
-    association_table = Table('association', Base.metadata,
-        Column('left_id', Integer, ForeignKey('left.id', ondelete="CASCADE")),
-        Column('right_id', Integer, ForeignKey('right.id', ondelete="CASCADE"))
+    association_table = Table(
+        "association",
+        Base.metadata,
+        Column("left_id", Integer, ForeignKey("left.id", ondelete="CASCADE")),
+        Column("right_id", Integer, ForeignKey("right.id", ondelete="CASCADE")),
     )
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
         children = relationship(
             "Child",
@@ -463,14 +576,15 @@ relationship as illustrated below::
             cascade="all, delete",
         )
 
+
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
         parents = relationship(
             "Parent",
             secondary=association_table,
             back_populates="children",
-            passive_deletes=True
+            passive_deletes=True,
         )
 
 Using the above configuration, the deletion of a ``Parent`` object proceeds
@@ -612,12 +726,11 @@ parent collection.  The ``delete-orphan`` cascade accomplishes this, as
 illustrated in the example below::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         # ...
 
-        addresses = relationship(
-            "Address", cascade="all, delete-orphan")
+        addresses = relationship("Address", cascade="all, delete-orphan")
 
     # ...
 
@@ -639,9 +752,8 @@ that this related object is not to shared with any other parent simultaneously::
         # ...
 
         preference = relationship(
-            "Preference", cascade="all, delete-orphan",
-            single_parent=True)
-
+            "Preference", cascade="all, delete-orphan", single_parent=True
+        )
 
 Above, if a hypothetical ``Preference`` object is removed from a ``User``,
 it will be deleted on flush::

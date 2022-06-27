@@ -100,7 +100,44 @@ automatically.
 
     :ref:`postgresql_psycopg`
 
+.. _ticket_7631:
 
+New Conditional DDL for Constraints and Indexes
+------------------------------------------------
+
+A new method :meth:`_schema.Constraint.ddl_if` and :meth:`_schema.Index.ddl_if`
+allows constructs such as :class:`_schema.CheckConstraint`, :class:`_schema.UniqueConstraint`
+and :class:`_schema.Index` to be rendered conditionally for a given
+:class:`_schema.Table`, based on the same kinds of criteria that are accepted
+by the :meth:`_schema.DDLElement.execute_if` method.  In the example below,
+the CHECK constraint and index will only be produced against a PostgreSQL
+backend::
+
+    meta = MetaData()
+
+
+    my_table = Table(
+        "my_table",
+        meta,
+        Column("id", Integer, primary_key=True),
+        Column("num", Integer),
+        Column("data", String),
+        Index("my_pg_index", "data").ddl_if(dialect="postgresql"),
+        CheckConstraint("num > 5").ddl_if(dialect="postgresql"),
+    )
+
+    e1 = create_engine("sqlite://", echo=True)
+    meta.create_all(e1)  # will not generate CHECK and INDEX
+
+
+    e2 = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    meta.create_all(e2)  # will generate CHECK and INDEX
+
+.. seealso::
+
+    :ref:`schema_ddl_ddl_if`
+
+:ticket:`7631`
 
 Behavioral Changes
 ==================
@@ -126,14 +163,22 @@ C Extensions now ported to Cython
 ---------------------------------
 
 The SQLAlchemy C extensions have been replaced with all new extensions written
-in Cython_.  The move to Cython provides dramatic new advantages with
-literally no downsides:
+in Cython_. While Cython was evaluated back in 2010 when the C extensions were
+first created, the nature and focus of the C extensions in use today has
+changed quite a bit from that time. At the same time, Cython has apparently
+evolved significantly, as has the Python build / distribution toolchain which
+made it feasible for us to revisit it.
+
+The move to Cython provides dramatic new advantages with
+no apparent downsides:
 
 * The Cython extensions that replace specific C extensions have all benchmarked
-  as **faster** than literally **all** the C code that SQLAlchemy previously
-  included. While this seems amazing, it appears to be a product of how highly
-  optimized Cython's routines are compared to a naive C implementation of a
-  function.
+  as **faster**, often slightly, but sometimes significantly, than
+  virtually all the C code that SQLAlchemy previously
+  included. While this seems amazing, it appears to be a product of
+  non-obvious optimizations within Cython's implementation that would not be
+  present in a direct Python to C port of a function, as was particularly the
+  case for many of the custom collection types added to the C extensions.
 
 * Cython extensions are much easier to write, maintain and debug compared to
   raw C code, and in most cases are line-per-line equivalent to the Python
@@ -382,6 +427,31 @@ the :meth:`_types.TypeEngine.with_variant` method as follows::
     )
 
 
+.. _change_7086:
+
+``match()`` operator on PostgreSQL uses ``plainto_tsquery()`` rather than ``to_tsquery()``
+------------------------------------------------------------------------------------------
+
+The :meth:`.Operators.match` function now renders
+``col @@ plainto_tsquery(expr)`` on the PostgreSQL backend, rather than
+``col @@ to_tsquery()``.  ``plainto_tsquery()`` accepts plain text whereas
+``to_tsquery()`` accepts specialized query symbols, and is therefore less
+cross-compatible with other backends.
+
+All PostgreSQL search functions and operators are available through use of
+:data:`.func` to generate PostgreSQL-specific functions and
+:meth:`.Operators.bool_op` (a boolean-typed version of :meth:`.Operators.op`)
+to generate arbitrary operators, in the same manner as they are available
+in previous versions.  See the examples at :ref:`postgresql_match`.
+
+Existing SQLAlchemy projects that make use of PG-specific directives within
+:meth:`.Operators.match` should make use of ``func.to_tsquery()`` directly.
+To render SQL in exactly the same form as would be present
+in 1.4, see the version note at :ref:`postgresql_simple_match`.
+
+
+
+:ticket:`7086`
 
 .. _migration_20_overview:
 
@@ -521,8 +591,8 @@ Given the example program below::
 
 The above program uses several patterns that many users will already identify
 as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
-that's part of the :ref:`connectionless execution <dbengine_implicit>`
-system.  When we run the above program against 1.4, it returns a single line::
+that's part of the "connectionless execution" API.  When we run the above
+program against 1.4, it returns a single line::
 
   $ python test3.py
   [(1,)]
@@ -2436,11 +2506,84 @@ explicit use of :meth:`_orm.Session.begin`, which is now solved by 1.4,
 as well as to allow the use of "subtransactions", which are also removed in
 2.0.
 
+.. _migration_20_session_subtransaction:
+
 Session "subtransaction" behavior removed
 ------------------------------------------
 
-See the section :ref:`session_subtransactions` for background on this
-change.
+**Synopsis**
+
+The "subtransaction" pattern that was often used with autocommit mode is
+also deprecated in 1.4.  This pattern allowed the use of the
+:meth:`_orm.Session.begin` method when a transaction were already begun,
+resulting in a construct called a "subtransaction", which was essentially
+a block that would prevent the :meth:`_orm.Session.commit` method from actually
+committing.
+
+**Migration to 2.0**
+
+
+To provide backwards compatibility for applications that make use of this
+pattern, the following context manager or a similar implementation based on
+a decorator may be used::
+
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def transaction(session):
+        if not session.in_transaction():
+            with session.begin():
+                yield
+        else:
+            yield
+
+
+The above context manager may be used in the same way the
+"subtransaction" flag works, such as in the following example::
+
+
+    # method_a starts a transaction and calls method_b
+    def method_a(session):
+        with transaction(session):
+            method_b(session)
+
+    # method_b also starts a transaction, but when
+    # called from method_a participates in the ongoing
+    # transaction.
+    def method_b(session):
+        with transaction(session):
+            session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine)
+
+    # create a Session and call method_a
+    with Session() as session:
+        method_a(session)
+
+To compare towards the preferred idiomatic pattern, the begin block should
+be at the outermost level.  This removes the need for individual functions
+or methods to be concerned with the details of transaction demarcation::
+
+    def method_a(session):
+        method_b(session)
+
+    def method_b(session):
+        session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine)
+
+    # create a Session and call method_a
+    with Session() as session:
+        with session.begin():
+            method_a(session)
+
+**Discussion**
+
+This pattern has been shown to be confusing in real world applications, and it
+is preferable for an application to ensure that the top-most level of database
+operations are performed with a single begin/commit pair.
+
 
 
 2.0 Migration - ORM Extension and Recipe Changes

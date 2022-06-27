@@ -350,9 +350,10 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             inherits=Person,
             polymorphic_identity="engineer",
             properties={
+                "company": relationship(Company, viewonly=True),
                 "machines": relationship(
                     Machine, order_by=machines.c.machine_id
-                )
+                ),
             },
         )
 

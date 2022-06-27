@@ -6,11 +6,13 @@ from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal_column
@@ -29,6 +31,7 @@ from sqlalchemy import true
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.sql import Alias
 from sqlalchemy.sql import annotation
@@ -87,6 +90,153 @@ class SelectableTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
     __dialect__ = "default"
+
+    @testing.combinations(
+        (
+            (table1.c.col1, table1.c.col2),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            (table1,),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+                {
+                    "name": "col3",
+                    "type": table1.c.col3.type,
+                    "expr": table1.c.col3,
+                },
+                {
+                    "name": "colx",
+                    "type": table1.c.colx.type,
+                    "expr": table1.c.colx,
+                },
+            ],
+        ),
+        (
+            (func.count(table1.c.col1),),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                }
+            ],
+        ),
+        (
+            (func.count(table1.c.col1), func.count(table1.c.col2)),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+                {
+                    "name": "count_1",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col2)
+                    ),
+                },
+            ],
+        ),
+    )
+    def test_core_column_descriptions(self, cols, expected):
+        stmt = select(*cols)
+        # reverse eq_ is so eq_clause_element works
+        eq_(expected, stmt.column_descriptions)
+
+    @testing.combinations(insert, update, delete, argnames="dml_construct")
+    @testing.combinations(
+        (
+            table1,
+            (table1.c.col1, table1.c.col2),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            table1,
+            (func.count(table1.c.col1),),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": None,
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+            ],
+        ),
+        (
+            table1,
+            None,
+            {"name": "table1", "table": table1},
+            [],
+        ),
+        (
+            table1.alias("some_alias"),
+            None,
+            {
+                "name": "some_alias",
+                "table": testing.eq_clause_element(table1.alias("some_alias")),
+            },
+            [],
+        ),
+        (
+            table1.join(table2),
+            None,
+            {
+                "name": None,
+                "table": testing.eq_clause_element(table1.join(table2)),
+            },
+            [],
+        ),
+        argnames="entity, cols, expected_entity, expected_returning",
+    )
+    def test_dml_descriptions(
+        self, dml_construct, entity, cols, expected_entity, expected_returning
+    ):
+        stmt = dml_construct(entity)
+        if cols:
+            stmt = stmt.returning(*cols)
+
+        eq_(stmt.entity_description, expected_entity)
+        eq_(expected_returning, stmt.returning_column_descriptions)
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
@@ -281,6 +431,24 @@ class SelectableTest(
                 "unique names for explicit labels.",
             ):
                 select(stmt.subquery()).compile()
+
+    def test_correlate_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate",
+        ):
+            stmt.correlate(None, table2)
+
+    def test_correlate_except_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate_except",
+        ):
+            stmt.correlate_except(None, table2)
 
     def test_select_label_grouped_still_corresponds(self):
         label = select(table1.c.col1).label("foo")
@@ -608,6 +776,28 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_reduce_cols_odd_expressions(self):
+        """test util.reduce_columns() works with text, non-col expressions
+        in a SELECT.
+
+        found_during_type_annotation
+
+        """
+
+        stmt = select(
+            table1.c.col1,
+            table1.c.col3 * 5,
+            text("some_expr"),
+            table2.c.col2,
+            func.foo(),
+        ).join(table2)
+        self.assert_compile(
+            stmt.reduce_columns(only_synonyms=False),
+            "SELECT table1.col1, table1.col3 * :col3_1 AS anon_1, "
+            "some_expr, foo() AS foo_1 FROM table1 JOIN table2 "
+            "ON table1.col1 = table2.col2",
+        )
+
     def test_with_only_generative_no_list(self):
         s1 = table1.select().scalar_subquery()
 
@@ -626,7 +816,7 @@ class SelectableTest(
             [table1.join(table2)],
             [table1],
         ),
-        ([table1], [table2], [table1, table2], [table1]),
+        ([table1], [table2], [table2, table1], [table1]),
         (
             [table1.c.col1, table2.c.col1],
             [],
@@ -734,8 +924,8 @@ class SelectableTest(
         stmt = select(t1, t2, t3, t4).select_from(j2)
         self.assert_compile(
             stmt,
-            "SELECT t1.a, t2.b, t3.c, t4.d FROM t3, "
-            "t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) ON t4.d = t2.b",
+            "SELECT t1.a, t2.b, t3.c, t4.d FROM "
+            "t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) ON t4.d = t2.b, t3",
         )
 
         stmt = select(t1).select_from(t3).select_from(j2)
@@ -1288,21 +1478,67 @@ class SelectableTest(
         assert j4.corresponding_column(j2.c.aid) is j4.c.aid
         assert j4.corresponding_column(a.c.id) is j4.c.id
 
-    def test_two_metadata_join_raises(self):
+    @testing.combinations(True, False)
+    def test_two_metadata_join_raises(self, include_a_joining_table):
+        """test case from 2008 enhanced as of #8101, more specific failure
+        modes for non-resolvable FKs
+
+        """
         m = MetaData()
         m2 = MetaData()
 
         t1 = Table("t1", m, Column("id", Integer), Column("id2", Integer))
-        t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
+
+        if include_a_joining_table:
+            t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
+
         t3 = Table("t3", m2, Column("id", Integer, ForeignKey("t1.id2")))
 
-        s = (
-            select(t2, t3)
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            .subquery()
-        )
+        with expect_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 't3.id'",
+        ):
+            t3.join(t1)
 
-        assert_raises(exc.NoReferencedTableError, s.join, t1)
+        if include_a_joining_table:
+            s = (
+                select(t2, t3)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery()
+            )
+        else:
+            s = (
+                select(t3)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery()
+            )
+
+        with expect_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 'anon_1.t3_id' could not "
+            "find table 't1' with which to generate a foreign key to target "
+            "column 'id2'",
+        ):
+            select(s.join(t1)),
+
+        # manual join is OK.  using select().join() here is also exercising
+        # that join() does not need to resolve FKs if we provided the
+        # ON clause
+        if include_a_joining_table:
+            self.assert_compile(
+                select(s).join(
+                    t1, and_(s.c.t2_id == t1.c.id, s.c.t3_id == t1.c.id)
+                ),
+                "SELECT anon_1.t2_id, anon_1.t3_id FROM (SELECT "
+                "t2.id AS t2_id, t3.id AS t3_id FROM t2, t3) AS anon_1 "
+                "JOIN t1 ON anon_1.t2_id = t1.id AND anon_1.t3_id = t1.id",
+            )
+        else:
+            self.assert_compile(
+                select(s).join(t1, s.c.t3_id == t1.c.id),
+                "SELECT anon_1.t3_id FROM (SELECT t3.id AS t3_id FROM t3) "
+                "AS anon_1 JOIN t1 ON anon_1.t3_id = t1.id",
+            )
 
     def test_multi_label_chain_naming_col(self):
         # See [ticket:2167] for this one.

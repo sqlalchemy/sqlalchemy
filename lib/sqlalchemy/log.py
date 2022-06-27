@@ -29,8 +29,19 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
+from .util import py311
 from .util import py38
 from .util.typing import Literal
+
+
+if py38:
+    STACKLEVEL = True
+    # needed as of py3.11.0b1
+    # #8019
+    STACKLEVEL_OFFSET = 2 if py311 else 1
+else:
+    STACKLEVEL = False
+    STACKLEVEL_OFFSET = 0
 
 _IT = TypeVar("_IT", bound="Identified")
 
@@ -64,10 +75,10 @@ def _qual_logger_name_for_cls(cls: Type["Identified"]) -> str:
 
 def class_logger(cls: Type[_IT]) -> Type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
-    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
         logging.DEBUG
     )
-    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
         logging.INFO
     )
     cls.logger = logger
@@ -191,8 +202,11 @@ class InstanceLogger:
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
-            if py38:
-                kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
+
+            if STACKLEVEL:
+                kwargs["stacklevel"] = (
+                    kwargs.get("stacklevel", 1) + STACKLEVEL_OFFSET
+                )
 
             self.logger._log(level, msg, args, **kwargs)
 
@@ -225,7 +239,7 @@ def instance_logger(
     else:
         name = _qual_logger_name_for_cls(instance.__class__)
 
-    instance._echo = echoflag
+    instance._echo = echoflag  # type: ignore
 
     logger: Union[logging.Logger, InstanceLogger]
 
@@ -239,7 +253,7 @@ def instance_logger(
         # levels by calling logger._log()
         logger = InstanceLogger(echoflag, name)
 
-    instance.logger = logger
+    instance.logger = logger  # type: ignore
 
 
 class echo_property:
@@ -255,19 +269,19 @@ class echo_property:
 
     @overload
     def __get__(
-        self, instance: "Literal[None]", owner: "echo_property"
-    ) -> "echo_property":
+        self, instance: Literal[None], owner: Type[Identified]
+    ) -> echo_property:
         ...
 
     @overload
     def __get__(
-        self, instance: Identified, owner: "echo_property"
+        self, instance: Identified, owner: Type[Identified]
     ) -> _EchoFlagType:
         ...
 
     def __get__(
-        self, instance: Optional[Identified], owner: "echo_property"
-    ) -> Union["echo_property", _EchoFlagType]:
+        self, instance: Optional[Identified], owner: Type[Identified]
+    ) -> Union[echo_property, _EchoFlagType]:
         if instance is None:
             return self
         else:

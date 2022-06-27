@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: mysql+asyncmy
     :name: asyncmy
@@ -288,7 +290,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
     is_async = True
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
 
     @classmethod

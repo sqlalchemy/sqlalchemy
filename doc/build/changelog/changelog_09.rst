@@ -1920,7 +1920,7 @@
     .. change::
         :tags: feature, sql
 
-        Added :paramref:`.MetaData.reflect.**dialect_kwargs`
+        Added :paramref:`.MetaData.reflect.dialect_kwargs`
         to support dialect-level reflection options for all :class:`_schema.Table`
         objects reflected.
 

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.engine import url
+from sqlalchemy.engine import default
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_raises_message_context_ok
@@ -165,10 +165,8 @@ class PrePingMockTest(fixtures.TestBase):
     def setup_test(self):
         self.dbapi = MockDBAPI()
 
-    def _pool_fixture(self, pre_ping, pool_kw=None):
-        dialect = url.make_url(
-            "postgresql+psycopg2://foo:bar@localhost/test"
-        ).get_dialect()()
+    def _pool_fixture(self, pre_ping, setup_disconnect=True, pool_kw=None):
+        dialect = default.DefaultDialect()
         dialect.dbapi = self.dbapi
         _pool = pool.QueuePool(
             creator=lambda: self.dbapi.connect("foo.db"),
@@ -177,9 +175,10 @@ class PrePingMockTest(fixtures.TestBase):
             **(pool_kw if pool_kw else {}),
         )
 
-        dialect.is_disconnect = lambda e, conn, cursor: isinstance(
-            e, MockDisconnect
-        )
+        if setup_disconnect:
+            dialect.is_disconnect = lambda e, conn, cursor: isinstance(
+                e, MockDisconnect
+            )
         return _pool
 
     def teardown_test(self):
@@ -247,6 +246,29 @@ class PrePingMockTest(fixtures.TestBase):
 
     def test_connect_across_restart(self):
         pool = self._pool_fixture(pre_ping=True)
+
+        conn = pool.connect()
+        stale_connection = conn.dbapi_connection
+        conn.close()
+
+        self.dbapi.shutdown("execute")
+        self.dbapi.restart()
+
+        conn = pool.connect()
+        cursor = conn.cursor()
+        cursor.execute("hi")
+
+        stale_cursor = stale_connection.cursor()
+        assert_raises(MockDisconnect, stale_cursor.execute, "hi")
+
+    def test_handle_error_sets_disconnect(self):
+        pool = self._pool_fixture(pre_ping=True, setup_disconnect=False)
+
+        @event.listens_for(pool._dialect, "handle_error")
+        def setup_disconnect(ctx):
+            assert isinstance(ctx.sqlalchemy_exception, exc.DBAPIError)
+            assert isinstance(ctx.original_exception, MockDisconnect)
+            ctx.is_disconnect = True
 
         conn = pool.connect()
         stale_connection = conn.dbapi_connection
@@ -1023,6 +1045,23 @@ class RealReconnectTest(fixtures.TestBase):
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.invalidated
 
+    def test_detach_invalidated(self):
+        with self.engine.connect() as conn:
+            conn.invalidate()
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Can't detach an invalidated Connection",
+            ):
+                conn.detach()
+
+    def test_detach_closed(self):
+        with self.engine.connect() as conn:
+            pass
+        with expect_raises_message(
+            exc.ResourceClosedError, "This Connection is closed"
+        ):
+            conn.detach()
+
     @testing.requires.independent_connections
     def test_multiple_invalidate(self):
         c1 = self.engine.connect()
@@ -1078,7 +1117,22 @@ class RealReconnectTest(fixtures.TestBase):
             conn.begin()
             trans2 = conn.begin_nested()
             conn.invalidate()
+
+            # this passes silently, as it will often be involved
+            # in error catching schemes
             trans2.rollback()
+
+            # still invalid though
+            with expect_raises(exc.PendingRollbackError):
+                conn.begin_nested()
+
+    def test_no_begin_on_invalid(self):
+        with self.engine.connect() as conn:
+            conn.begin()
+            conn.invalidate()
+
+            with expect_raises(exc.PendingRollbackError):
+                conn.commit()
 
     def test_invalidate_twice(self):
         with self.engine.connect() as conn:
@@ -1306,10 +1360,6 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             self.meta.drop_all(conn)
         self.engine.dispose()
 
-    @testing.crashes(
-        "oracle",
-        "cx_oracle 6 doesn't allow a close like this due to open cursors",
-    )
     @testing.fails_if(
         [
             "+mysqlconnector",

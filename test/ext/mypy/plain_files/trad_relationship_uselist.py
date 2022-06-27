@@ -87,47 +87,59 @@ class Address(Base):
         User, collection_class=attribute_mapped_collection("name")
     )
 
+    # pylance rejects this however.  cannot get both to work at the same
+    # time.
+    # if collection_class is cast() to mutablemapping, then pylance seems
+    # OK.  cannot make sense of the errors or what would the official way to
+    # do these things would be.  pylance keeps changing and newly breaking
+    # things, never know what's a bug, what's a "known limitation", and what's
+    # "you need to learn more".   I can't imagine most programmers being able
+    # to navigate this stuff
+    # user_style_ten_typed_mapping: Mapped[MutableMapping[str, User]] = relationship(
+    #      User, collection_class=attribute_mapped_collection("name")
+    # )
+
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[trad_relationship_uselist.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[trad_relationship_uselist.Address\]\]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*\[trad_relationship_uselist.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[trad_relationship_uselist.Address\]\]
     reveal_type(User.addresses_style_two)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*\[Any\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(User.addresses_style_three)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*\[trad_relationship_uselist.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(User.addresses_style_three_cast)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[Any\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(User.addresses_style_four)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_one)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*?\]
     reveal_type(Address.user_style_one_typed)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_two)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*?\]
     reveal_type(Address.user_style_two_typed)
 
     # reveal_type(Address.user_style_six)
 
     # reveal_type(Address.user_style_seven)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[trad_relationship_uselist.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_eight)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[trad_relationship_uselist.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_nine)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_ten)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.dict\*\[builtins.str, trad_relationship_uselist.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.dict\*?\[builtins.str, trad_relationship_uselist.User\]\]
     reveal_type(Address.user_style_ten_typed)

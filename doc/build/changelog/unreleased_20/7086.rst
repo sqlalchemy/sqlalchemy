@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 7086
+
+    The :meth:`.Operators.match` operator now uses ``plainto_tsquery()`` for
+    PostgreSQL full text search, rather than ``to_tsquery()``. The rationale
+    for this change is to provide better cross-compatibility with match on
+    other database backends.    Full support for all PostgreSQL full text
+    functions remains available through the use of :data:`.func` in
+    conjunction with :meth:`.Operators.bool_op` (an improved version of
+    :meth:`.Operators.op` for boolean operators).
+
+    .. seealso::
+
+        :ref:`change_7086`

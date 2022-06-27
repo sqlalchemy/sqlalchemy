@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7744
+
+    Improved the construction of SQL binary expressions to allow for very long
+    expressions against the same associative operator without special steps
+    needed in order to avoid high memory use and excess recursion depth. A
+    particular binary operation ``A op B`` can now be joined against another
+    element ``op C`` and the resulting structure will be "flattened" so that
+    the representation as well as SQL compilation does not require recursion.
+
+    One effect of this change is that string concatenation expressions which
+    use SQL functions come out as "flat", e.g. MySQL will now render
+    ``concat('x', 'y', 'z', ...)``` rather than nesting together two-element
+    functions like ``concat(concat('x', 'y'), 'z')``.  Third-party dialects
+    which override the string concatenation operator will need to implement
+    a new method ``def visit_concat_op_expression_clauselist()`` to
+    accompany the existing ``def visit_concat_op_binary()`` method.

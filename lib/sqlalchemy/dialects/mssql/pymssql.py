@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """
 .. dialect:: mssql+pymssql
@@ -77,7 +79,7 @@ class MSDialect_pymssql(MSDialect):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         module = __import__("pymssql")
         # pymmsql < 2.1.1 doesn't have a Binary method.  we use string
         client_ver = tuple(int(x) for x in module.__version__.split("."))
@@ -106,7 +108,7 @@ class MSDialect_pymssql(MSDialect):
         port = opts.pop("port", None)
         if port and "host" in opts:
             opts["host"] = "%s:%s" % (opts["host"], port)
-        return [[], opts]
+        return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
         for msg in (

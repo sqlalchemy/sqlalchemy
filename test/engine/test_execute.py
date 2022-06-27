@@ -3,9 +3,11 @@
 import collections.abc as collections_abc
 from contextlib import contextmanager
 from contextlib import nullcontext
+import copy
 from io import StringIO
 import re
 import threading
+from unittest import mock
 from unittest.mock import call
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -50,8 +52,6 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
-from sqlalchemy.testing import mock
-from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -273,6 +273,56 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
+    def test_raw_tuple_params(self, connection):
+        """test #7820
+
+        There was an apparent improvement in the distill params
+        methodology used in exec_driver_sql which allows raw tuples to
+        pass through.  In 1.4 there seems to be a _distill_cursor_params()
+        function that says it can handle this kind of parameter, but it isn't
+        used and when I tried to substitute it in for exec_driver_sql(),
+        things still fail.
+
+        In any case, add coverage here for the use case of passing
+        direct tuple params to exec_driver_sql including as the first
+        param, to note that it isn't mis-interpreted the way it is
+        in 1.x.
+
+        """
+
+        with patch.object(connection.dialect, "do_execute") as do_exec:
+            connection.exec_driver_sql(
+                "UPDATE users SET user_name = 'query_one' WHERE "
+                "user_id = %s OR user_id IN %s",
+                (3, (1, 2)),
+            )
+
+            connection.exec_driver_sql(
+                "UPDATE users SET user_name = 'query_two' WHERE "
+                "user_id IN %s OR user_id = %s",
+                ((1, 2), 3),
+            )
+
+        eq_(
+            do_exec.mock_calls,
+            [
+                call(
+                    mock.ANY,
+                    "UPDATE users SET user_name = 'query_one' "
+                    "WHERE user_id = %s OR user_id IN %s",
+                    connection.dialect.execute_sequence_format((3, (1, 2))),
+                    mock.ANY,
+                ),
+                call(
+                    mock.ANY,
+                    "UPDATE users SET user_name = 'query_two' "
+                    "WHERE user_id IN %s OR user_id = %s",
+                    connection.dialect.execute_sequence_format(((1, 2), 3)),
+                    mock.ANY,
+                ),
+            ],
+        )
+
     def test_non_dict_mapping(self, connection):
         """ensure arbitrary Mapping works for execute()"""
 
@@ -355,7 +405,6 @@ class ExecuteTest(fixtures.TablesTest):
                     )
                 )
             )
-
             assert_raises_message(
                 TypeError,
                 "I'm not a DBAPI error",
@@ -379,6 +428,8 @@ class ExecuteTest(fixtures.TablesTest):
         # have any special behaviors
         with patch.object(
             testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
+        ), patch.object(
+            testing.db.dialect, "loaded_dbapi", Mock(Error=DBAPIError)
         ), patch.object(
             testing.db.dialect, "is_disconnect", lambda *arg: False
         ), patch.object(
@@ -436,15 +487,6 @@ class ExecuteTest(fixtures.TablesTest):
                     conn.execute,
                     obj,
                 )
-
-    def test_subquery_exec_warning(self):
-        for obj in (select(1).alias(), select(1).subquery()):
-            with testing.db.connect() as conn:
-                with expect_deprecated(
-                    "Executing a subquery object is deprecated and will "
-                    "raise ObjectNotExecutableError"
-                ):
-                    eq_(conn.execute(obj).scalar(), 1)
 
     def test_stmt_exception_bytestring_raised(self):
         name = "méil"
@@ -519,6 +561,10 @@ class ExecuteTest(fixtures.TablesTest):
     @testing.fails_on(
         "oracle+cx_oracle",
         "cx_oracle exception seems to be having some issue with pickling",
+    )
+    @testing.fails_on(
+        "oracle+oracledb",
+        "oracledb exception seems to be having some issue with pickling",
     )
     def test_stmt_exception_pickleable_plus_dbapi(self):
         raw = testing.db.raw_connection()
@@ -2225,6 +2271,30 @@ class EngineEventsTest(fixtures.TestBase):
 
         eq_(canary.mock_calls, [call(eng), call(eng)])
 
+    @testing.requires.ad_hoc_engines
+    @testing.combinations(True, False, argnames="close")
+    def test_close_parameter(self, testing_engine, close):
+        eng = testing_engine(
+            options=dict(pool_size=1, max_overflow=0, poolclass=QueuePool)
+        )
+
+        conn = eng.connect()
+        dbapi_conn_one = conn.connection.dbapi_connection
+        conn.close()
+
+        eng_copy = copy.copy(eng)
+        eng_copy.dispose(close=close)
+        copy_conn = eng_copy.connect()
+        dbapi_conn_two = copy_conn.connection.dbapi_connection
+
+        is_not(dbapi_conn_one, dbapi_conn_two)
+
+        conn = eng.connect()
+        if close:
+            is_not(dbapi_conn_one, conn.connection.dbapi_connection)
+        else:
+            is_(dbapi_conn_one, conn.connection.dbapi_connection)
+
     def test_retval_flag(self):
         canary = []
 
@@ -2283,6 +2353,40 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(
             conn_tracker.mock_calls,
             [call(c2, {"c1": "opt_c1"}), call(c4, {"c3": "opt_c3"})],
+        )
+
+    def test_execution_options_modify_inplace(self):
+        engine = engines.testing_engine()
+
+        @event.listens_for(engine, "set_engine_execution_options")
+        def engine_tracker(conn, opt):
+            opt["engine_tracked"] = True
+
+        @event.listens_for(engine, "set_connection_execution_options")
+        def conn_tracker(conn, opt):
+            opt["conn_tracked"] = True
+
+        with mock.patch.object(
+            engine.dialect, "set_connection_execution_options"
+        ) as conn_opt, mock.patch.object(
+            engine.dialect, "set_engine_execution_options"
+        ) as engine_opt:
+            e2 = engine.execution_options(e1="opt_e1")
+            c1 = engine.connect()
+            c2 = c1.execution_options(c1="opt_c1")
+
+        is_not(e2, engine)
+        is_(c1, c2)
+
+        eq_(e2._execution_options, {"e1": "opt_e1", "engine_tracked": True})
+        eq_(c2._execution_options, {"c1": "opt_c1", "conn_tracked": True})
+        eq_(
+            engine_opt.mock_calls,
+            [mock.call(e2, {"e1": "opt_e1", "engine_tracked": True})],
+        )
+        eq_(
+            conn_opt.mock_calls,
+            [mock.call(c1, {"c1": "opt_c1", "conn_tracked": True})],
         )
 
     @testing.requires.sequences
@@ -2934,6 +3038,21 @@ class HandleErrorTest(fixtures.TestBase):
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
+    def test_handle_error_not_on_connection(self, connection):
+
+        with expect_raises_message(
+            tsa.exc.InvalidRequestError,
+            r"The handle_error\(\) event hook as of SQLAlchemy 2.0 is "
+            r"established "
+            r"on the Dialect, and may only be applied to the Engine as a "
+            r"whole or to a specific Dialect as a whole, not on a "
+            r"per-Connection basis.",
+        ):
+
+            @event.listens_for(connection, "handle_error")
+            def handle_error(ctx):
+                pass
+
     @testing.only_on("sqlite+pysqlite")
     def test_cursor_close_resultset_failed_connectionless(self):
         engine = engines.testing_engine()
@@ -2949,7 +3068,7 @@ class HandleErrorTest(fixtures.TestBase):
             the_conn.append(connection)
 
         with mock.patch(
-            "sqlalchemy.engine.cursor.BaseCursorResult.__init__",
+            "sqlalchemy.engine.cursor.CursorResult.__init__",
             Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
         ):
             with engine.connect() as conn:
@@ -2985,7 +3104,7 @@ class HandleErrorTest(fixtures.TestBase):
         conn = engine.connect()
 
         with mock.patch(
-            "sqlalchemy.engine.cursor.BaseCursorResult.__init__",
+            "sqlalchemy.engine.cursor.CursorResult.__init__",
             Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
         ):
             assert_raises(

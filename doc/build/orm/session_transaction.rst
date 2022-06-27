@@ -106,7 +106,7 @@ first::
 
 Similarly, the :class:`_orm.sessionmaker` can be used in the same way::
 
-    Session = sesssionmaker(engine)
+    Session = sessionmaker(engine)
 
     with Session() as session:
         with session.begin():
@@ -343,8 +343,8 @@ point at which the "begin" operation occurs.  To suit this, the
     session = Session()
     session.begin()
     try:
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
+        item1 = session.get(Item, 1)
+        item2 = session.get(Item, 2)
         item1.foo = 'bar'
         item2.bar = 'foo'
         session.commit()
@@ -357,8 +357,8 @@ The above pattern is more idiomatically invoked using a context manager::
     Session = sessionmaker(bind=engine)
     session = Session()
     with session.begin():
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
+        item1 = session.get(Item, 1)
+        item2 = session.get(Item, 2)
         item1.foo = 'bar'
         item2.bar = 'foo'
 

@@ -166,7 +166,7 @@ is generally only significant when SQLAlchemy is rendering SQL in
 order to load or represent this relationship. That is, it's used in
 the SQL statement that's emitted in order to perform a per-attribute
 lazy load, or when a join is constructed at query time, such as via
-:meth:`_query.Query.join`, or via the eager "joined" or "subquery" styles of
+:meth:`Select.join`, or via the eager "joined" or "subquery" styles of
 loading.   When in-memory objects are being manipulated, we can place
 any ``Address`` object we'd like into the ``boston_addresses``
 collection, regardless of what the value of the ``.city`` attribute
@@ -264,21 +264,13 @@ Using custom operators in join conditions
 Another use case for relationships is the use of custom operators, such
 as PostgreSQL's "is contained within" ``<<`` operator when joining with
 types such as :class:`_postgresql.INET` and :class:`_postgresql.CIDR`.
-For custom operators we use the :meth:`.Operators.op` function::
+For custom boolean operators we use the :meth:`.Operators.bool_op` function::
 
-    inet_column.op("<<")(cidr_column)
+    inet_column.bool_op("<<")(cidr_column)
 
-However, if we construct a :paramref:`_orm.relationship.primaryjoin` using this
-operator, :func:`_orm.relationship` will still need more information.  This is because
-when it examines our primaryjoin condition, it specifically looks for operators
-used for **comparisons**, and this is typically a fixed list containing known
-comparison operators such as ``==``, ``<``, etc.   So for our custom operator
-to participate in this system, we need it to register as a comparison operator
-using the :paramref:`~.Operators.op.is_comparison` parameter::
-
-    inet_column.op("<<", is_comparison=True)(cidr_column)
-
-A complete example::
+A comparison like the above may be used directly with
+:paramref:`_orm.relationship.primaryjoin` when constructing
+a :func:`_orm.relationship`::
 
     class IPA(Base):
         __tablename__ = 'ip_address'
@@ -287,7 +279,7 @@ A complete example::
         v4address = Column(INET)
 
         network = relationship("Network",
-                            primaryjoin="IPA.v4address.op('<<', is_comparison=True)"
+                            primaryjoin="IPA.v4address.bool_op('<<')"
                                 "(foreign(Network.v4representation))",
                             viewonly=True
                         )
@@ -299,16 +291,12 @@ A complete example::
 
 Above, a query such as::
 
-    session.query(IPA).join(IPA.network)
+    select(IPA).join(IPA.network)
 
 Will render as::
 
     SELECT ip_address.id AS ip_address_id, ip_address.v4address AS ip_address_v4address
     FROM ip_address JOIN network ON ip_address.v4address << network.v4representation
-
-.. versionadded:: 0.9.2 - Added the :paramref:`.Operators.op.is_comparison`
-   flag to assist in the creation of :func:`_orm.relationship` constructs using
-   custom operators.
 
 .. _relationship_custom_operator_sql_function:
 
@@ -700,7 +688,7 @@ directly.  A query from ``A`` to ``D`` looks like:
 
 .. sourcecode:: python+sql
 
-    sess.query(A).join(A.d).all()
+    sess.scalars(select(A).join(A.d)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (
@@ -801,7 +789,7 @@ With the above mapping, a simple join looks like:
 
 .. sourcecode:: python+sql
 
-    sess.query(A).join(A.b).all()
+    sess.scalars(select(A).join(A.b)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
@@ -827,7 +815,7 @@ A query using the above ``A.b`` relationship will render a subquery:
 
 .. sourcecode:: python+sql
 
-    sess.query(A).join(A.b).all()
+    sess.scalars(select(A).join(A.b)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
@@ -838,10 +826,11 @@ so in terms of ``B_viacd_subquery`` rather than ``B`` directly:
 
 .. sourcecode:: python+sql
 
-    (
-      sess.query(A).join(A.b).
-      filter(B_viacd_subquery.some_b_column == "some b").
-      order_by(B_viacd_subquery.id)
+    sess.scalars(
+        select(A)
+        .join(A.b)
+        .where(B_viacd_subquery.some_b_column == "some b")
+        .order_by(B_viacd_subquery.id)
     ).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
@@ -890,8 +879,8 @@ ten items for each collection::
 We can use the above ``partitioned_bs`` relationship with most of the loader
 strategies, such as :func:`.selectinload`::
 
-    for a1 in s.query(A).options(selectinload(A.partitioned_bs)):
-        print(a1.partitioned_bs)   # <-- will be no more than ten objects
+    for a1 in session.scalars(select(A).options(selectinload(A.partitioned_bs))):
+        print(a1.partitioned_bs)  # <-- will be no more than ten objects
 
 Where above, the "selectinload" query looks like:
 

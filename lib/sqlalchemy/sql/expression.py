@@ -43,7 +43,6 @@ from ._elements_constructors import text as text
 from ._elements_constructors import true as true
 from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
-from ._elements_constructors import typing as typing
 from ._elements_constructors import within_group as within_group
 from ._selectable_constructors import alias as alias
 from ._selectable_constructors import cte as cte
@@ -82,6 +81,7 @@ from .elements import ClauseList as ClauseList
 from .elements import CollectionAggregate as CollectionAggregate
 from .elements import ColumnClause as ColumnClause
 from .elements import ColumnElement as ColumnElement
+from .elements import ExpressionClauseList as ExpressionClauseList
 from .elements import Extract as Extract
 from .elements import False_ as False_
 from .elements import FunctionFilter as FunctionFilter

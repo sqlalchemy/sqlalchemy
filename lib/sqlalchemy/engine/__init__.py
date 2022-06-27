@@ -25,16 +25,12 @@ from .base import Transaction as Transaction
 from .base import TwoPhaseTransaction as TwoPhaseTransaction
 from .create import create_engine as create_engine
 from .create import engine_from_config as engine_from_config
-from .cursor import BaseCursorResult as BaseCursorResult
-from .cursor import BufferedColumnResultProxy as BufferedColumnResultProxy
-from .cursor import BufferedColumnRow as BufferedColumnRow
-from .cursor import BufferedRowResultProxy as BufferedRowResultProxy
 from .cursor import CursorResult as CursorResult
-from .cursor import FullyBufferedResultProxy as FullyBufferedResultProxy
 from .cursor import ResultProxy as ResultProxy
 from .interfaces import AdaptedConnection as AdaptedConnection
 from .interfaces import BindTyping as BindTyping
 from .interfaces import Compiled as Compiled
+from .interfaces import ConnectArgsType as ConnectArgsType
 from .interfaces import CreateEnginePlugin as CreateEnginePlugin
 from .interfaces import Dialect as Dialect
 from .interfaces import ExceptionContext as ExceptionContext
@@ -42,6 +38,8 @@ from .interfaces import ExecutionContext as ExecutionContext
 from .interfaces import TypeCompiler as TypeCompiler
 from .mock import create_mock_engine as create_mock_engine
 from .reflection import Inspector as Inspector
+from .reflection import ObjectKind as ObjectKind
+from .reflection import ObjectScope as ObjectScope
 from .result import ChunkedIteratorResult as ChunkedIteratorResult
 from .result import FrozenResult as FrozenResult
 from .result import IteratorResult as IteratorResult
@@ -50,6 +48,7 @@ from .result import MergedResult as MergedResult
 from .result import Result as Result
 from .result import result_tuple as result_tuple
 from .result import ScalarResult as ScalarResult
+from .result import TupleResult as TupleResult
 from .row import BaseRow as BaseRow
 from .row import Row as Row
 from .row import RowMapping as RowMapping

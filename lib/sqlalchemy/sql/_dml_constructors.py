@@ -7,12 +7,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .dml import Delete
 from .dml import Insert
 from .dml import Update
 
+if TYPE_CHECKING:
+    from ._typing import _DMLTableArgument
 
-def insert(table):
+
+def insert(table: _DMLTableArgument) -> Insert:
     """Construct an :class:`_expression.Insert` object.
 
     E.g.::
@@ -29,9 +34,6 @@ def insert(table):
     :class:`_schema.Table`.
 
     .. seealso::
-
-        :ref:`coretutorial_insert_expressions` - in the
-        :ref:`1.x tutorial <sqlexpression_toplevel>`
 
         :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
@@ -74,15 +76,13 @@ def insert(table):
 
     .. seealso::
 
-        :ref:`coretutorial_insert_expressions` - SQL Expression Tutorial
-
-        :ref:`inserts_and_updates` - SQL Expression Tutorial
+        :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
     """
     return Insert(table)
 
 
-def update(table):
+def update(table: _DMLTableArgument) -> Update:
     r"""Construct an :class:`_expression.Update` object.
 
     E.g.::
@@ -99,102 +99,21 @@ def update(table):
     :meth:`_expression.TableClause.update` method on
     :class:`_schema.Table`.
 
-    .. seealso::
-
-        :ref:`inserts_and_updates` - in the
-        :ref:`1.x tutorial <sqlexpression_toplevel>`
-
-        :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
-
-
-
     :param table: A :class:`_schema.Table`
      object representing the database
      table to be updated.
 
-    :param whereclause: Optional SQL expression describing the ``WHERE``
-     condition of the ``UPDATE`` statement; is equivalent to using the
-     more modern :meth:`~Update.where()` method to specify the ``WHERE``
-     clause.
-
-    :param values:
-      Optional dictionary which specifies the ``SET`` conditions of the
-      ``UPDATE``.  If left as ``None``, the ``SET``
-      conditions are determined from those parameters passed to the
-      statement during the execution and/or compilation of the
-      statement.   When compiled standalone without any parameters,
-      the ``SET`` clause generates for all columns.
-
-      Modern applications may prefer to use the generative
-      :meth:`_expression.Update.values` method to set the values of the
-      UPDATE statement.
-
-    :param inline:
-      if True, SQL defaults present on :class:`_schema.Column` objects via
-      the ``default`` keyword will be compiled 'inline' into the statement
-      and not pre-executed.  This means that their values will not
-      be available in the dictionary returned from
-      :meth:`_engine.CursorResult.last_updated_params`.
-
-    :param preserve_parameter_order: if True, the update statement is
-      expected to receive parameters **only** via the
-      :meth:`_expression.Update.values` method,
-      and they must be passed as a Python
-      ``list`` of 2-tuples. The rendered UPDATE statement will emit the SET
-      clause for each referenced column maintaining this order.
-
-      .. versionadded:: 1.0.10
-
-      .. seealso::
-
-        :ref:`updates_order_parameters` - illustrates the
-        :meth:`_expression.Update.ordered_values` method.
-
-    If both ``values`` and compile-time bind parameters are present, the
-    compile-time bind parameters override the information specified
-    within ``values`` on a per-key basis.
-
-    The keys within ``values`` can be either :class:`_schema.Column`
-    objects or their string identifiers (specifically the "key" of the
-    :class:`_schema.Column`, normally but not necessarily equivalent to
-    its "name").  Normally, the
-    :class:`_schema.Column` objects used here are expected to be
-    part of the target :class:`_schema.Table` that is the table
-    to be updated.  However when using MySQL, a multiple-table
-    UPDATE statement can refer to columns from any of
-    the tables referred to in the WHERE clause.
-
-    The values referred to in ``values`` are typically:
-
-    * a literal data value (i.e. string, number, etc.)
-    * a SQL expression, such as a related :class:`_schema.Column`,
-      a scalar-returning :func:`_expression.select` construct,
-      etc.
-
-    When combining :func:`_expression.select` constructs within the
-    values clause of an :func:`_expression.update`
-    construct, the subquery represented
-    by the :func:`_expression.select` should be *correlated* to the
-    parent table, that is, providing criterion which links the table inside
-    the subquery to the outer table being updated::
-
-        users.update().values(
-                name=select(addresses.c.email_address).\
-                        where(addresses.c.user_id==users.c.id).\
-                        scalar_subquery()
-            )
 
     .. seealso::
 
-        :ref:`inserts_and_updates` - SQL Expression
-        Language Tutorial
+        :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
 
 
     """
     return Update(table)
 
 
-def delete(table):
+def delete(table: _DMLTableArgument) -> Delete:
     r"""Construct :class:`_expression.Delete` object.
 
     E.g.::
@@ -210,24 +129,12 @@ def delete(table):
     :meth:`_expression.TableClause.delete` method on
     :class:`_schema.Table`.
 
-    .. seealso::
+    :param table: The table to delete rows from.
 
-        :ref:`inserts_and_updates` - in the
-        :ref:`1.x tutorial <sqlexpression_toplevel>`
+    .. seealso::
 
         :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
 
-
-    :param table: The table to delete rows from.
-
-    :param whereclause: Optional SQL expression describing the ``WHERE``
-     condition of the ``DELETE`` statement; is equivalent to using the
-     more modern :meth:`~Delete.where()` method to specify the ``WHERE``
-     clause.
-
-    .. seealso::
-
-        :ref:`deletes` - SQL Expression Tutorial
 
     """
     return Delete(table)

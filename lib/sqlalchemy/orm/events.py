@@ -4,12 +4,17 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 """ORM event interfaces.
 
 """
 from __future__ import annotations
 
+from typing import Any
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
 import weakref
 
 from . import instrumentation
@@ -25,6 +30,10 @@ from .. import event
 from .. import exc
 from .. import util
 from ..util.compat import inspect_getfullargspec
+
+if TYPE_CHECKING:
+    from ._typing import _O
+    from .instrumentation import ClassManager
 
 
 class InstrumentationEvents(event.Events):
@@ -53,7 +62,7 @@ class InstrumentationEvents(event.Events):
     _dispatch_target = instrumentation.InstrumentationFactory
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         if isinstance(target, type):
             return _InstrumentationEventsHold(target)
         else:
@@ -194,7 +203,7 @@ class InstanceEvents(event.Events):
 
     @classmethod
     @util.preload_module("sqlalchemy.orm")
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         orm = util.preloaded.orm
 
         if isinstance(target, instrumentation.ClassManager):
@@ -213,7 +222,7 @@ class InstanceEvents(event.Events):
             if issubclass(target, mapperlib.Mapper):
                 return instrumentation.ClassManager
             else:
-                manager = instrumentation.manager_of_class(target)
+                manager = instrumentation.opt_manager_of_class(target)
                 if manager:
                     return manager
                 else:
@@ -612,8 +621,8 @@ class _EventsHold(event.RefCollection):
 class _InstanceEventsHold(_EventsHold):
     all_holds = weakref.WeakKeyDictionary()
 
-    def resolve(self, class_):
-        return instrumentation.manager_of_class(class_)
+    def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
+        return instrumentation.opt_manager_of_class(class_)
 
     class HoldInstanceEvents(_EventsHold.HoldEvents, InstanceEvents):
         pass
@@ -696,7 +705,7 @@ class MapperEvents(event.Events):
 
     @classmethod
     @util.preload_module("sqlalchemy.orm")
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         orm = util.preloaded.orm
 
         if target is orm.mapper:
@@ -1324,7 +1333,7 @@ class _MapperEventsHold(_EventsHold):
 _sessionevents_lifecycle_event_names = set()
 
 
-class SessionEvents(event.Events):
+class SessionEvents(event.Events[Session]):
     """Define events specific to :class:`.Session` lifecycle.
 
     e.g.::
@@ -1374,7 +1383,7 @@ class SessionEvents(event.Events):
         return fn
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         if isinstance(target, scoped_session):
 
             target = target.session_factory
@@ -1396,12 +1405,21 @@ class SessionEvents(event.Events):
                 return target
         elif isinstance(target, Session):
             return target
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
         else:
             # allows alternate SessionEvents-like-classes to be consulted
-            return event.Events._accept_with(target)
+            return event.Events._accept_with(target, identifier)
 
     @classmethod
-    def _listen(cls, event_key, raw=False, restore_load_context=False, **kw):
+    def _listen(
+        cls,
+        event_key: Any,
+        *,
+        raw: bool = False,
+        restore_load_context: bool = False,
+        **kw: Any,
+    ) -> None:
         is_instance_event = (
             event_key.identifier in _sessionevents_lifecycle_event_names
         )
@@ -2245,7 +2263,7 @@ class AttributeEvents(event.Events):
         return dispatch
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(cls, target, identifier):
         # TODO: coverage
         if isinstance(target, interfaces.MapperProperty):
             return getattr(target.parent.class_, target.key)

@@ -7,7 +7,16 @@
 
 from __future__ import annotations
 
+import inspect
+import typing
 from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Type
 from typing import Union
 
 from . import base
@@ -20,6 +29,64 @@ from .. import util
 from ..pool import _AdhocProxiedConnection
 from ..pool import ConnectionPoolEntry
 from ..sql import compiler
+
+if typing.TYPE_CHECKING:
+    from .base import Engine
+    from .interfaces import _ExecuteOptions
+    from .interfaces import _IsolationLevel
+    from .interfaces import _ParamStyle
+    from .url import URL
+    from ..log import _EchoFlagType
+    from ..pool import _CreatorFnType
+    from ..pool import _CreatorWRecFnType
+    from ..pool import _ResetStyleArgType
+    from ..pool import Pool
+    from ..util.typing import Literal
+
+
+@overload
+def create_engine(
+    url: Union[str, URL],
+    *,
+    connect_args: Dict[Any, Any] = ...,
+    convert_unicode: bool = ...,
+    creator: Union[_CreatorFnType, _CreatorWRecFnType] = ...,
+    echo: _EchoFlagType = ...,
+    echo_pool: _EchoFlagType = ...,
+    enable_from_linting: bool = ...,
+    execution_options: _ExecuteOptions = ...,
+    future: Literal[True],
+    hide_parameters: bool = ...,
+    implicit_returning: Literal[True] = ...,
+    isolation_level: _IsolationLevel = ...,
+    json_deserializer: Callable[..., Any] = ...,
+    json_serializer: Callable[..., Any] = ...,
+    label_length: Optional[int] = ...,
+    listeners: Any = ...,
+    logging_name: str = ...,
+    max_identifier_length: Optional[int] = ...,
+    max_overflow: int = ...,
+    module: Optional[Any] = ...,
+    paramstyle: Optional[_ParamStyle] = ...,
+    pool: Optional[Pool] = ...,
+    poolclass: Optional[Type[Pool]] = ...,
+    pool_logging_name: str = ...,
+    pool_pre_ping: bool = ...,
+    pool_size: int = ...,
+    pool_recycle: int = ...,
+    pool_reset_on_return: Optional[_ResetStyleArgType] = ...,
+    pool_timeout: float = ...,
+    pool_use_lifo: bool = ...,
+    plugins: List[str] = ...,
+    query_cache_size: int = ...,
+    **kwargs: Any,
+) -> Engine:
+    ...
+
+
+@overload
+def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine:
+    ...
 
 
 @util.deprecated_params(
@@ -46,7 +113,7 @@ from ..sql import compiler
         "is deprecated and will be removed in a future release. ",
     ),
 )
-def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
+def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
     """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the :ref:`URL <database_urls>` as the
@@ -199,18 +266,12 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
-    :param implicit_returning=True:  Legacy flag that when set to ``False``
-        will disable the use of ``RETURNING`` on supporting backends where it
-        would normally be used to fetch newly generated primary key values for
-        single-row INSERT statements that do not otherwise specify a RETURNING
-        clause.  This behavior applies primarily to the PostgreSQL, Oracle,
-        SQL Server backends.
+    :param implicit_returning=True:  Legacy parameter that may only be set
+        to True. In SQLAlchemy 2.0, this parameter does nothing. In order to
+        disable "implicit returning" for statements invoked by the ORM,
+        configure this on a per-table basis using the
+        :paramref:`.Table.implicit_returning` parameter.
 
-        .. warning:: this flag originally allowed the "implicit returning"
-           feature to be *enabled* back when it was very new and there was not
-           well-established database support.  In modern SQLAlchemy, this flag
-           should **always be set to True**.  Some SQLAlchemy features will
-           fail to function properly if this flag is set to ``False``.
 
     :param isolation_level: optional string name of an isolation level
         which will be set on all new connections unconditionally.
@@ -452,7 +513,8 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     if "strategy" in kwargs:
         strat = kwargs.pop("strategy")
         if strat == "mock":
-            return create_mock_engine(url, **kwargs)
+            # this case is deprecated
+            return create_mock_engine(url, **kwargs)  # type: ignore
         else:
             raise exc.ArgumentError("unknown strategy: %r" % strat)
 
@@ -472,14 +534,14 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
 
     if kwargs.pop("_coerce_config", False):
 
-        def pop_kwarg(key, default=None):
+        def pop_kwarg(key: str, default: Optional[Any] = None) -> Any:
             value = kwargs.pop(key, default)
             if key in dialect_cls.engine_config_types:
                 value = dialect_cls.engine_config_types[key](value)
             return value
 
     else:
-        pop_kwarg = kwargs.pop
+        pop_kwarg = kwargs.pop  # type: ignore
 
     dialect_args = {}
     # consume dialect arguments from kwargs
@@ -490,10 +552,29 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     dbapi = kwargs.pop("module", None)
     if dbapi is None:
         dbapi_args = {}
-        for k in util.get_func_kwargs(dialect_cls.dbapi):
+
+        if "import_dbapi" in dialect_cls.__dict__:
+            dbapi_meth = dialect_cls.import_dbapi
+
+        elif hasattr(dialect_cls, "dbapi") and inspect.ismethod(
+            dialect_cls.dbapi
+        ):
+            util.warn_deprecated(
+                "The dbapi() classmethod on dialect classes has been "
+                "renamed to import_dbapi().  Implement an import_dbapi() "
+                f"classmethod directly on class {dialect_cls} to remove this "
+                "warning; the old .dbapi() classmethod may be maintained for "
+                "backwards compatibility.",
+                "2.0",
+            )
+            dbapi_meth = dialect_cls.dbapi
+        else:
+            dbapi_meth = dialect_cls.import_dbapi
+
+        for k in util.get_func_kwargs(dbapi_meth):
             if k in kwargs:
                 dbapi_args[k] = pop_kwarg(k)
-        dbapi = dialect_cls.dbapi(**dbapi_args)
+        dbapi = dbapi_meth(**dbapi_args)
 
     dialect_args["dbapi"] = dbapi
 
@@ -509,18 +590,23 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     dialect = dialect_cls(**dialect_args)
 
     # assemble connection arguments
-    (cargs, cparams) = dialect.create_connect_args(u)
+    (cargs_tup, cparams) = dialect.create_connect_args(u)
     cparams.update(pop_kwarg("connect_args", {}))
-    cargs = list(cargs)  # allow mutability
+    cargs = list(cargs_tup)  # allow mutability
 
     # look for existing pool or create
     pool = pop_kwarg("pool", None)
     if pool is None:
 
-        def connect(connection_record=None):
+        def connect(
+            connection_record: Optional[ConnectionPoolEntry] = None,
+        ) -> DBAPIConnection:
             if dialect._has_events:
                 for fn in dialect.dispatch.do_connect:
-                    connection = fn(dialect, connection_record, cargs, cparams)
+                    connection = cast(
+                        DBAPIConnection,
+                        fn(dialect, connection_record, cargs, cparams),
+                    )
                     if connection is not None:
                         return connection
             return dialect.connect(*cargs, **cparams)
@@ -596,7 +682,11 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
         do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
 
-            def on_connect(dbapi_connection, connection_record):
+            def on_connect(
+                dbapi_connection: DBAPIConnection,
+                connection_record: ConnectionPoolEntry,
+            ) -> None:
+                assert do_on_connect is not None
                 do_on_connect(dbapi_connection)
 
             event.listen(pool, "connect", on_connect)
@@ -608,7 +698,7 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
         def first_connect(
             dbapi_connection: DBAPIConnection,
             connection_record: ConnectionPoolEntry,
-        ):
+        ) -> None:
             c = base.Connection(
                 engine,
                 connection=_AdhocProxiedConnection(
@@ -654,7 +744,9 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     return engine
 
 
-def engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
+def engine_from_config(
+    configuration: Dict[str, Any], prefix: str = "sqlalchemy.", **kwargs: Any
+) -> Engine:
     """Create a new Engine instance using a configuration dictionary.
 
     The dictionary is typically produced from a config file.

@@ -1,9 +1,6 @@
-try:
-    # installed by bootstrap.py
-    import sqla_plugin_base as plugin_base
-except ImportError:
-    # assume we're a package, use traditional import
-    from . import plugin_base
+# mypy: ignore-errors
+
+from __future__ import annotations
 
 import argparse
 import collections
@@ -16,6 +13,13 @@ import re
 import uuid
 
 import pytest
+
+try:
+    # installed by bootstrap.py
+    import sqla_plugin_base as plugin_base
+except ImportError:
+    # assume we're a package, use traditional import
+    from . import plugin_base
 
 
 def pytest_addoption(parser):
@@ -565,6 +569,10 @@ def _pytest_fn_decorator(target):
     from sqlalchemy.util.compat import inspect_getfullargspec
 
     def _exec_code_in_env(code, env, fn_name):
+        # note this is affected by "from __future__ import annotations" at
+        # the top; exec'ed code will use non-evaluated annotations
+        # which allows us to be more flexible with code rendering
+        # in format_argpsec_plus()
         exec(code, env)
         return env[fn_name]
 
@@ -733,13 +741,18 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                 fn._sa_parametrize.append((argnames, pytest_params))
                 return fn
             else:
+                _fn_argnames = inspect.getfullargspec(fn).args[1:]
                 if argnames is None:
-                    _argnames = inspect.getfullargspec(fn).args[1:]
+                    _argnames = _fn_argnames
                 else:
                     _argnames = re.split(r", *", argnames)
 
                 if has_exclusions:
-                    _argnames += ["_exclusions"]
+                    existing_exl = sum(
+                        1 for n in _fn_argnames if n.startswith("_exclusions")
+                    )
+                    current_exclusion_name = f"_exclusions_{existing_exl}"
+                    _argnames += [current_exclusion_name]
 
                     @_pytest_fn_decorator
                     def check_exclusions(fn, *args, **kw):
@@ -747,13 +760,10 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                         if _exclusions:
                             exlu = exclusions.compound().add(*_exclusions)
                             fn = exlu(fn)
-                        return fn(*args[0:-1], **kw)
-
-                    def process_metadata(spec):
-                        spec.args.append("_exclusions")
+                        return fn(*args[:-1], **kw)
 
                     fn = check_exclusions(
-                        fn, add_positional_parameters=("_exclusions",)
+                        fn, add_positional_parameters=(current_exclusion_name,)
                     )
 
                 return pytest.mark.parametrize(_argnames, pytest_params)(fn)

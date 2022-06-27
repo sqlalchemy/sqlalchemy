@@ -349,8 +349,9 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users, "
-            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+            "FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_1, users",
         )
 
         self.assert_compile(
@@ -492,7 +493,7 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Column expression or FROM clause expected, got "
+            "Column expression, FROM clause, or other .* expected, got "
             "<sqlalchemy.sql.selectable.Select .*> object resolved from "
             "<AliasedClass .* User> object. To create a FROM clause from "
             "a <class 'sqlalchemy.sql.selectable.Select'> object",
@@ -771,8 +772,9 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(u2),
-            "SELECT users_1.id, users_1.name FROM users AS users_1, "
-            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+            "SELECT users_1.id, users_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_1, users AS users_1",
         )
 
     def test_multiple_entities(self):
@@ -863,8 +865,8 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q.filter(User.name == "ed"),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users, (SELECT users.id AS id, users.name AS name FROM "
-            "users) AS anon_1 WHERE users.name = :name_1",
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1, users WHERE users.name = :name_1",
         )
 
     def test_anonymous_expression_oldstyle(self):
@@ -2818,10 +2820,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .filter(ag1.email_address > 5),
             "SELECT users.id "
             "AS users_id, users.name AS users_name, addresses.email_address "
-            "AS addresses_email_address FROM addresses, users JOIN "
+            "AS addresses_email_address FROM users JOIN "
             "(SELECT addresses.id AS id, sum(length(addresses.email_address)) "
             "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
-            "anon_1 ON users.id = addresses.user_id "
+            "anon_1 ON users.id = addresses.user_id, addresses "
             "WHERE addresses.email_address > :email_address_1",
         )
 
@@ -2948,9 +2950,10 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(ualias).select_from(ua).filter(ualias.id > ua.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
-            "FROM users AS users_1, ("
+            "FROM ("
             "SELECT users.id AS id, users.name AS name FROM users "
-            "WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
+            "WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1, "
+            "users AS users_1 "
             "WHERE users_1.id > anon_1.id",
             check_post_param={"id_1": [7, 8]},
         )

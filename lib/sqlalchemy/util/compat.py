@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Handle Python version/platform incompatibilities."""
 
@@ -19,11 +20,14 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
+from typing import Type
 
 
 py311 = sys.version_info >= (3, 11)
@@ -139,17 +143,17 @@ def _formatannotation(annotation, base_module=None):
     """vendored from python 3.7"""
 
     if isinstance(annotation, str):
-        return f'"{annotation}"'
+        return annotation
 
     if getattr(annotation, "__module__", None) == "typing":
-        return f'"{repr(annotation).replace("typing.", "").replace("~", "")}"'
+        return repr(annotation).replace("typing.", "").replace("~", "")
     if isinstance(annotation, type):
         if annotation.__module__ in ("builtins", base_module):
             return repr(annotation.__qualname__)
         return annotation.__module__ + "." + annotation.__qualname__
     elif isinstance(annotation, typing.TypeVar):
-        return f'"{repr(annotation).replace("~", "")}"'
-    return f'"{repr(annotation).replace("~", "")}"'
+        return repr(annotation).replace("~", "")
+    return repr(annotation).replace("~", "")
 
 
 def inspect_formatargspec(
@@ -224,9 +228,13 @@ def inspect_formatargspec(
     return result
 
 
-def dataclass_fields(cls):
+def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated
-    with a class."""
+    with a class as an already processed dataclass.
+
+    The class must **already be a dataclass** for Field objects to be returned.
+
+    """
 
     if dataclasses.is_dataclass(cls):
         return dataclasses.fields(cls)
@@ -234,12 +242,17 @@ def dataclass_fields(cls):
         return []
 
 
-def local_dataclass_fields(cls):
+def local_dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated with
-    a class, excluding those that originate from a superclass."""
+    an already processed dataclass, excluding those that originate from a
+    superclass.
+
+    The class must **already be a dataclass** for Field objects to be returned.
+
+    """
 
     if dataclasses.is_dataclass(cls):
-        super_fields = set()
+        super_fields: Set[dataclasses.Field[Any]] = set()
         for sup in cls.__bases__:
             super_fields.update(dataclass_fields(sup))
         return [f for f in dataclasses.fields(cls) if f not in super_fields]

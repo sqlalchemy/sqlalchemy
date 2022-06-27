@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 r"""
 .. dialect:: mysql+mysqlconnector
@@ -77,7 +79,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _myconnpyBIT})
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         from mysql import connector
 
         return connector

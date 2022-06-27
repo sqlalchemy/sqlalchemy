@@ -4,15 +4,11 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
-"""Testing extensions.
 
-this module is designed to work as a testing-framework-agnostic library,
-created so that multiple test frameworks can be supported at once
-(mostly so that we can migrate to new ones). The current target
-is pytest.
+from __future__ import annotations
 
-"""
 import abc
 import configparser
 import logging
@@ -22,6 +18,15 @@ import sys
 from typing import Any
 
 from sqlalchemy.testing import asyncio
+
+"""Testing extensions.
+
+this module is designed to work as a testing-framework-agnostic library,
+created so that multiple test frameworks can be supported at once
+(mostly so that we can migrate to new ones). The current target
+is pytest.
+
+"""
 
 # flag which indicates we are in the SQLAlchemy testing suite,
 # and not that of Alembic or a third party dialect.
@@ -144,12 +149,6 @@ def setup_options(make_option):
         help="Filename where a single profile run will be dumped",
     )
     make_option(
-        "--postgresql-templatedb",
-        type=str,
-        help="name of template database to use for PostgreSQL "
-        "CREATE DATABASE (defaults to current database)",
-    )
-    make_option(
         "--low-connections",
         action="store_true",
         dest="low_connections",
@@ -162,14 +161,6 @@ def setup_options(make_option):
         dest="write_idents",
         help="write out generated follower idents to <file>, "
         "when -n<num> is used",
-    )
-    make_option(
-        "--reversetop",
-        action="store_true",
-        dest="reversetop",
-        default=False,
-        help="Use a random-ordering set implementation in the ORM "
-        "(helps reveal dependency issues)",
     )
     make_option(
         "--requirements",
@@ -222,6 +213,18 @@ def setup_options(make_option):
         dest="mypy_extra_test_paths",
         help="Additional test directories to add to the mypy tests. "
         "This is used only when running mypy tests. Multiple OK",
+    )
+    # db specific options
+    make_option(
+        "--postgresql-templatedb",
+        type=str,
+        help="name of template database to use for PostgreSQL "
+        "CREATE DATABASE (defaults to current database)",
+    )
+    make_option(
+        "--oracledb-thick-mode",
+        action="store_true",
+        help="enables the 'thick mode' when testing with oracle+oracledb",
     )
 
 
@@ -470,14 +473,6 @@ def _prep_testing_database(options, file_config):
 
         for cfg in config.Config.all_configs():
             provision.drop_all_schema_objects(cfg, cfg.db)
-
-
-@post
-def _reverse_topological(options, file_config):
-    if options.reversetop:
-        from sqlalchemy.orm.util import randomize_unitofwork
-
-        randomize_unitofwork()
 
 
 @post

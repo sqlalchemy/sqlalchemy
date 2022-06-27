@@ -8,14 +8,40 @@
 
 from __future__ import annotations
 
+import typing
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import Union
+
+from .base import Connection
 from .base import Engine
 from .interfaces import ConnectionEventsTarget
+from .interfaces import DBAPIConnection
+from .interfaces import DBAPICursor
 from .interfaces import Dialect
 from .. import event
 from .. import exc
+from ..util.typing import Literal
+
+if typing.TYPE_CHECKING:
+    from .interfaces import _CoreMultiExecuteParams
+    from .interfaces import _CoreSingleExecuteParams
+    from .interfaces import _DBAPIAnyExecuteParams
+    from .interfaces import _DBAPIMultiExecuteParams
+    from .interfaces import _DBAPISingleExecuteParams
+    from .interfaces import _ExecuteOptions
+    from .interfaces import ExceptionContext
+    from .interfaces import ExecutionContext
+    from .result import Result
+    from ..pool import ConnectionPoolEntry
+    from ..sql import Executable
+    from ..sql.elements import BindParameter
 
 
-class ConnectionEvents(event.Events):
+class ConnectionEvents(event.Events[ConnectionEventsTarget]):
     """Available events for
     :class:`_engine.Connection` and :class:`_engine.Engine`.
 
@@ -96,20 +122,39 @@ class ConnectionEvents(event.Events):
     _dispatch_target = ConnectionEventsTarget
 
     @classmethod
-    def _listen(cls, event_key, retval=False):
+    def _accept_with(
+        cls,
+        target: Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]],
+        identifier: str,
+    ) -> Optional[Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]]]:
+        default_dispatch = super()._accept_with(target, identifier)
+        if default_dispatch is None and hasattr(
+            target, "_no_async_engine_events"
+        ):
+            target._no_async_engine_events()  # type: ignore
+
+        return default_dispatch
+
+    @classmethod
+    def _listen(
+        cls,
+        event_key: event._EventKey[ConnectionEventsTarget],
+        *,
+        retval: bool = False,
+        **kw: Any,
+    ) -> None:
         target, identifier, fn = (
             event_key.dispatch_target,
             event_key.identifier,
             event_key._listen_fn,
         )
-
         target._has_events = True
 
         if not retval:
             if identifier == "before_execute":
                 orig_fn = fn
 
-                def wrap_before_execute(
+                def wrap_before_execute(  # type: ignore
                     conn, clauseelement, multiparams, params, execution_options
                 ):
                     orig_fn(
@@ -125,7 +170,7 @@ class ConnectionEvents(event.Events):
             elif identifier == "before_cursor_execute":
                 orig_fn = fn
 
-                def wrap_before_cursor_execute(
+                def wrap_before_cursor_execute(  # type: ignore
                     conn, cursor, statement, parameters, context, executemany
                 ):
                     orig_fn(
@@ -142,7 +187,6 @@ class ConnectionEvents(event.Events):
         elif retval and identifier not in (
             "before_execute",
             "before_cursor_execute",
-            "handle_error",
         ):
             raise exc.ArgumentError(
                 "Only the 'before_execute', "
@@ -163,8 +207,15 @@ class ConnectionEvents(event.Events):
         ),
     )
     def before_execute(
-        self, conn, clauseelement, multiparams, params, execution_options
-    ):
+        self,
+        conn: Connection,
+        clauseelement: Executable,
+        multiparams: _CoreMultiExecuteParams,
+        params: _CoreSingleExecuteParams,
+        execution_options: _ExecuteOptions,
+    ) -> Optional[
+        Tuple[Executable, _CoreMultiExecuteParams, _CoreSingleExecuteParams]
+    ]:
         """Intercept high level execute() events, receiving uncompiled
         SQL constructs and other objects prior to rendering into SQL.
 
@@ -214,13 +265,13 @@ class ConnectionEvents(event.Events):
     )
     def after_execute(
         self,
-        conn,
-        clauseelement,
-        multiparams,
-        params,
-        execution_options,
-        result,
-    ):
+        conn: Connection,
+        clauseelement: Executable,
+        multiparams: _CoreMultiExecuteParams,
+        params: _CoreSingleExecuteParams,
+        execution_options: _ExecuteOptions,
+        result: Result[Any],
+    ) -> None:
         """Intercept high level execute() events after execute.
 
 
@@ -244,8 +295,14 @@ class ConnectionEvents(event.Events):
         """
 
     def before_cursor_execute(
-        self, conn, cursor, statement, parameters, context, executemany
-    ):
+        self,
+        conn: Connection,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: Optional[ExecutionContext],
+        executemany: bool,
+    ) -> Optional[Tuple[str, _DBAPIAnyExecuteParams]]:
         """Intercept low-level cursor execute() events before execution,
         receiving the string SQL statement and DBAPI-specific parameter list to
         be invoked against a cursor.
@@ -286,8 +343,14 @@ class ConnectionEvents(event.Events):
         """
 
     def after_cursor_execute(
-        self, conn, cursor, statement, parameters, context, executemany
-    ):
+        self,
+        conn: Connection,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: Optional[ExecutionContext],
+        executemany: bool,
+    ) -> None:
         """Intercept low-level cursor execute() events after execution.
 
         :param conn: :class:`_engine.Connection` object
@@ -305,9 +368,339 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def handle_error(self, exception_context):
+    @event._legacy_signature(
+        "2.0", ["conn", "branch"], converter=lambda conn: (conn, False)
+    )
+    def engine_connect(self, conn: Connection) -> None:
+        """Intercept the creation of a new :class:`_engine.Connection`.
+
+        This event is called typically as the direct result of calling
+        the :meth:`_engine.Engine.connect` method.
+
+        It differs from the :meth:`_events.PoolEvents.connect` method, which
+        refers to the actual connection to a database at the DBAPI level;
+        a DBAPI connection may be pooled and reused for many operations.
+        In contrast, this event refers only to the production of a higher level
+        :class:`_engine.Connection` wrapper around such a DBAPI connection.
+
+        It also differs from the :meth:`_events.PoolEvents.checkout` event
+        in that it is specific to the :class:`_engine.Connection` object,
+        not the
+        DBAPI connection that :meth:`_events.PoolEvents.checkout` deals with,
+        although
+        this DBAPI connection is available here via the
+        :attr:`_engine.Connection.connection` attribute.
+        But note there can in fact
+        be multiple :meth:`_events.PoolEvents.checkout`
+        events within the lifespan
+        of a single :class:`_engine.Connection` object, if that
+        :class:`_engine.Connection`
+        is invalidated and re-established.
+
+        :param conn: :class:`_engine.Connection` object.
+
+        .. seealso::
+
+            :meth:`_events.PoolEvents.checkout`
+            the lower-level pool checkout event
+            for an individual DBAPI connection
+
+        """
+
+    def set_connection_execution_options(
+        self, conn: Connection, opts: Dict[str, Any]
+    ) -> None:
+        """Intercept when the :meth:`_engine.Connection.execution_options`
+        method is called.
+
+        This method is called after the new :class:`_engine.Connection`
+        has been
+        produced, with the newly updated execution options collection, but
+        before the :class:`.Dialect` has acted upon any of those new options.
+
+        Note that this method is not called when a new
+        :class:`_engine.Connection`
+        is produced which is inheriting execution options from its parent
+        :class:`_engine.Engine`; to intercept this condition, use the
+        :meth:`_events.ConnectionEvents.engine_connect` event.
+
+        :param conn: The newly copied :class:`_engine.Connection` object
+
+        :param opts: dictionary of options that were passed to the
+         :meth:`_engine.Connection.execution_options` method.
+         This dictionary may be modified in place to affect the ultimate
+         options which take effect.
+
+         .. versionadded:: 2.0 the ``opts`` dictionary may be modified
+            in place.
+
+
+        .. seealso::
+
+            :meth:`_events.ConnectionEvents.set_engine_execution_options`
+            - event
+            which is called when :meth:`_engine.Engine.execution_options`
+            is called.
+
+
+        """
+
+    def set_engine_execution_options(
+        self, engine: Engine, opts: Dict[str, Any]
+    ) -> None:
+        """Intercept when the :meth:`_engine.Engine.execution_options`
+        method is called.
+
+        The :meth:`_engine.Engine.execution_options` method produces a shallow
+        copy of the :class:`_engine.Engine` which stores the new options.
+        That new
+        :class:`_engine.Engine` is passed here.
+        A particular application of this
+        method is to add a :meth:`_events.ConnectionEvents.engine_connect`
+        event
+        handler to the given :class:`_engine.Engine`
+        which will perform some per-
+        :class:`_engine.Connection` task specific to these execution options.
+
+        :param conn: The newly copied :class:`_engine.Engine` object
+
+        :param opts: dictionary of options that were passed to the
+         :meth:`_engine.Connection.execution_options` method.
+         This dictionary may be modified in place to affect the ultimate
+         options which take effect.
+
+         .. versionadded:: 2.0 the ``opts`` dictionary may be modified
+            in place.
+
+        .. seealso::
+
+            :meth:`_events.ConnectionEvents.set_connection_execution_options`
+            - event
+            which is called when :meth:`_engine.Connection.execution_options`
+            is
+            called.
+
+        """
+
+    def engine_disposed(self, engine: Engine) -> None:
+        """Intercept when the :meth:`_engine.Engine.dispose` method is called.
+
+        The :meth:`_engine.Engine.dispose` method instructs the engine to
+        "dispose" of it's connection pool (e.g. :class:`_pool.Pool`), and
+        replaces it with a new one.  Disposing of the old pool has the
+        effect that existing checked-in connections are closed.  The new
+        pool does not establish any new connections until it is first used.
+
+        This event can be used to indicate that resources related to the
+        :class:`_engine.Engine` should also be cleaned up,
+        keeping in mind that the
+        :class:`_engine.Engine`
+        can still be used for new requests in which case
+        it re-acquires connection resources.
+
+        .. versionadded:: 1.0.5
+
+        """
+
+    def begin(self, conn: Connection) -> None:
+        """Intercept begin() events.
+
+        :param conn: :class:`_engine.Connection` object
+
+        """
+
+    def rollback(self, conn: Connection) -> None:
+        """Intercept rollback() events, as initiated by a
+        :class:`.Transaction`.
+
+        Note that the :class:`_pool.Pool` also "auto-rolls back"
+        a DBAPI connection upon checkin, if the ``reset_on_return``
+        flag is set to its default value of ``'rollback'``.
+        To intercept this
+        rollback, use the :meth:`_events.PoolEvents.reset` hook.
+
+        :param conn: :class:`_engine.Connection` object
+
+        .. seealso::
+
+            :meth:`_events.PoolEvents.reset`
+
+        """
+
+    def commit(self, conn: Connection) -> None:
+        """Intercept commit() events, as initiated by a
+        :class:`.Transaction`.
+
+        Note that the :class:`_pool.Pool` may also "auto-commit"
+        a DBAPI connection upon checkin, if the ``reset_on_return``
+        flag is set to the value ``'commit'``.  To intercept this
+        commit, use the :meth:`_events.PoolEvents.reset` hook.
+
+        :param conn: :class:`_engine.Connection` object
+        """
+
+    def savepoint(self, conn: Connection, name: str) -> None:
+        """Intercept savepoint() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param name: specified name used for the savepoint.
+
+        """
+
+    def rollback_savepoint(
+        self, conn: Connection, name: str, context: None
+    ) -> None:
+        """Intercept rollback_savepoint() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param name: specified name used for the savepoint.
+        :param context: not used
+
+        """
+        # TODO: deprecate "context"
+
+    def release_savepoint(
+        self, conn: Connection, name: str, context: None
+    ) -> None:
+        """Intercept release_savepoint() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param name: specified name used for the savepoint.
+        :param context: not used
+
+        """
+        # TODO: deprecate "context"
+
+    def begin_twophase(self, conn: Connection, xid: Any) -> None:
+        """Intercept begin_twophase() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param xid: two-phase XID identifier
+
+        """
+
+    def prepare_twophase(self, conn: Connection, xid: Any) -> None:
+        """Intercept prepare_twophase() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param xid: two-phase XID identifier
+        """
+
+    def rollback_twophase(
+        self, conn: Connection, xid: Any, is_prepared: bool
+    ) -> None:
+        """Intercept rollback_twophase() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param xid: two-phase XID identifier
+        :param is_prepared: boolean, indicates if
+         :meth:`.TwoPhaseTransaction.prepare` was called.
+
+        """
+
+    def commit_twophase(
+        self, conn: Connection, xid: Any, is_prepared: bool
+    ) -> None:
+        """Intercept commit_twophase() events.
+
+        :param conn: :class:`_engine.Connection` object
+        :param xid: two-phase XID identifier
+        :param is_prepared: boolean, indicates if
+         :meth:`.TwoPhaseTransaction.prepare` was called.
+
+        """
+
+
+class DialectEvents(event.Events[Dialect]):
+    """event interface for execution-replacement functions.
+
+    These events allow direct instrumentation and replacement
+    of key dialect functions which interact with the DBAPI.
+
+    .. note::
+
+        :class:`.DialectEvents` hooks should be considered **semi-public**
+        and experimental.
+        These hooks are not for general use and are only for those situations
+        where intricate re-statement of DBAPI mechanics must be injected onto
+        an existing dialect.  For general-use statement-interception events,
+        please use the :class:`_events.ConnectionEvents` interface.
+
+    .. seealso::
+
+        :meth:`_events.ConnectionEvents.before_cursor_execute`
+
+        :meth:`_events.ConnectionEvents.before_execute`
+
+        :meth:`_events.ConnectionEvents.after_cursor_execute`
+
+        :meth:`_events.ConnectionEvents.after_execute`
+
+
+    .. versionadded:: 0.9.4
+
+    """
+
+    _target_class_doc = "SomeEngine"
+    _dispatch_target = Dialect
+
+    @classmethod
+    def _listen(  # type: ignore
+        cls,
+        event_key: event._EventKey[Dialect],
+        *,
+        retval: bool = False,
+        **kw: Any,
+    ) -> None:
+        target = event_key.dispatch_target
+
+        target._has_events = True
+        event_key.base_listen()
+
+    @classmethod
+    def _accept_with(
+        cls,
+        target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
+        identifier: str,
+    ) -> Optional[Union[Dialect, Type[Dialect]]]:
+
+        if isinstance(target, type):
+            if issubclass(target, Engine):
+                return Dialect
+            elif issubclass(target, Dialect):
+                return target
+        elif isinstance(target, Engine):
+            return target.dialect
+        elif isinstance(target, Dialect):
+            return target
+        elif isinstance(target, Connection) and identifier == "handle_error":
+            raise exc.InvalidRequestError(
+                "The handle_error() event hook as of SQLAlchemy 2.0 is "
+                "established on the Dialect, and may only be applied to the "
+                "Engine as a whole or to a specific Dialect as a whole, "
+                "not on a per-Connection basis."
+            )
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
+        else:
+            return None
+
+    def handle_error(
+        self, exception_context: ExceptionContext
+    ) -> Optional[BaseException]:
         r"""Intercept all exceptions processed by the
-        :class:`_engine.Connection`.
+        :class:`_engine.Dialect`, typically but not limited to those
+        emitted within the scope of a :class:`_engine.Connection`.
+
+        .. versionchanged:: 2.0 the :meth:`.DialectEvents.handle_error` event
+           is moved to the :class:`.DialectEvents` class, moved from the
+           :class:`.ConnectionEvents` class, so that it may also participate in
+           the "pre ping" operation configured with the
+           :paramref:`_sa.create_engine.pool_pre_ping` parameter. The event
+           remains registered by using the :class:`_engine.Engine` as the event
+           target, however note that using the :class:`_engine.Connection` as
+           an event target for :meth:`.DialectEvents.handle_error` is no longer
+           supported.
 
         This includes all exceptions emitted by the DBAPI as well as
         within SQLAlchemy's statement invocation process, including
@@ -330,27 +723,26 @@ class ConnectionEvents(event.Events):
 
         * read-only, low-level exception handling for logging and
           debugging purposes
-        * exception re-writing
+        * Establishing whether a DBAPI connection error message indicates
+          that the database connection needs to be reconnected, including
+          for the "pre_ping" handler used by **some** dialects
         * Establishing or disabling whether a connection or the owning
           connection pool is invalidated or expired in response to a
-          specific exception [1]_.
+          specific exception
+        * exception re-writing
 
         The hook is called while the cursor from the failed operation
         (if any) is still open and accessible.   Special cleanup operations
         can be called on this cursor; SQLAlchemy will attempt to close
         this cursor subsequent to this hook being invoked.
 
-        .. note::
-
-            .. [1] The pool "pre_ping" handler enabled using the
-                :paramref:`_sa.create_engine.pool_pre_ping` parameter does
-                **not** consult this event before deciding if the "ping"
-                returned false, as opposed to receiving an unhandled error.
-                For this use case, the :ref:`legacy recipe based on
-                engine_connect() may be used
-                <pool_disconnects_pessimistic_custom>`.  A future API allow
-                more comprehensive customization of the "disconnect"
-                detection mechanism across all functions.
+        As of SQLAlchemy 2.0, the "pre_ping" handler enabled using the
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter will also
+        participate in the :meth:`.handle_error` process, **for those dialects
+        that rely upon disconnect codes to detect database liveness**. Note
+        that some dialects such as psycopg, psycopg2, and most MySQL dialects
+        make use of a native ``ping()`` method supplied by the DBAPI which does
+        not make use of disconnect codes.
 
         A handler function has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
@@ -367,7 +759,7 @@ class ConnectionEvents(event.Events):
                     raise MySpecialException("failed operation")
 
         .. warning::  Because the
-           :meth:`_events.ConnectionEvents.handle_error`
+           :meth:`_events.DialectEvents.handle_error`
            event specifically provides for exceptions to be re-thrown as
            the ultimate exception raised by the failed statement,
            **stack traces will be misleading** if the user-defined event
@@ -407,312 +799,20 @@ class ConnectionEvents(event.Events):
         :param context: an :class:`.ExceptionContext` object.  See this
          class for details on all available members.
 
-        .. versionadded:: 0.9.7 Added the
-            :meth:`_events.ConnectionEvents.handle_error` hook.
-
-        .. versionchanged:: 1.1 The :meth:`.handle_error` event will now
-           receive all exceptions that inherit from ``BaseException``,
-           including ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
-           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case and
-           the default for
-           :attr:`.ExceptionContext.invalidate_pool_on_disconnect` is
-           ``False``.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
-           invoked when an :class:`_engine.Engine` fails during the initial
-           call to :meth:`_engine.Engine.connect`, as well as when a
-           :class:`_engine.Connection` object encounters an error during a
-           reconnect operation.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
-           not fired off when a dialect makes use of the
-           ``skip_user_error_events`` execution option.   This is used
-           by dialects which intend to catch SQLAlchemy-specific exceptions
-           within specific operations, such as when the MySQL dialect detects
-           a table not present within the ``has_table()`` dialect method.
-           Prior to 1.0.0, code which implements :meth:`.handle_error` needs
-           to ensure that exceptions thrown in these scenarios are re-raised
-           without modification.
-
-        """
-
-    @event._legacy_signature(
-        "2.0", ["conn", "branch"], converter=lambda conn: (conn, False)
-    )
-    def engine_connect(self, conn):
-        """Intercept the creation of a new :class:`_engine.Connection`.
-
-        This event is called typically as the direct result of calling
-        the :meth:`_engine.Engine.connect` method.
-
-        It differs from the :meth:`_events.PoolEvents.connect` method, which
-        refers to the actual connection to a database at the DBAPI level;
-        a DBAPI connection may be pooled and reused for many operations.
-        In contrast, this event refers only to the production of a higher level
-        :class:`_engine.Connection` wrapper around such a DBAPI connection.
-
-        It also differs from the :meth:`_events.PoolEvents.checkout` event
-        in that it is specific to the :class:`_engine.Connection` object,
-        not the
-        DBAPI connection that :meth:`_events.PoolEvents.checkout` deals with,
-        although
-        this DBAPI connection is available here via the
-        :attr:`_engine.Connection.connection` attribute.
-        But note there can in fact
-        be multiple :meth:`_events.PoolEvents.checkout`
-        events within the lifespan
-        of a single :class:`_engine.Connection` object, if that
-        :class:`_engine.Connection`
-        is invalidated and re-established.
-
-        :param conn: :class:`_engine.Connection` object.
 
         .. seealso::
 
-            :meth:`_events.PoolEvents.checkout`
-            the lower-level pool checkout event
-            for an individual DBAPI connection
+            :ref:`pool_new_disconnect_codes`
 
         """
 
-    def set_connection_execution_options(self, conn, opts):
-        """Intercept when the :meth:`_engine.Connection.execution_options`
-        method is called.
-
-        This method is called after the new :class:`_engine.Connection`
-        has been
-        produced, with the newly updated execution options collection, but
-        before the :class:`.Dialect` has acted upon any of those new options.
-
-        Note that this method is not called when a new
-        :class:`_engine.Connection`
-        is produced which is inheriting execution options from its parent
-        :class:`_engine.Engine`; to intercept this condition, use the
-        :meth:`_events.ConnectionEvents.engine_connect` event.
-
-        :param conn: The newly copied :class:`_engine.Connection` object
-
-        :param opts: dictionary of options that were passed to the
-         :meth:`_engine.Connection.execution_options` method.
-
-        .. versionadded:: 0.9.0
-
-        .. seealso::
-
-            :meth:`_events.ConnectionEvents.set_engine_execution_options`
-            - event
-            which is called when :meth:`_engine.Engine.execution_options`
-            is called.
-
-
-        """
-
-    def set_engine_execution_options(self, engine, opts):
-        """Intercept when the :meth:`_engine.Engine.execution_options`
-        method is called.
-
-        The :meth:`_engine.Engine.execution_options` method produces a shallow
-        copy of the :class:`_engine.Engine` which stores the new options.
-        That new
-        :class:`_engine.Engine` is passed here.
-        A particular application of this
-        method is to add a :meth:`_events.ConnectionEvents.engine_connect`
-        event
-        handler to the given :class:`_engine.Engine`
-        which will perform some per-
-        :class:`_engine.Connection` task specific to these execution options.
-
-        :param conn: The newly copied :class:`_engine.Engine` object
-
-        :param opts: dictionary of options that were passed to the
-         :meth:`_engine.Connection.execution_options` method.
-
-        .. versionadded:: 0.9.0
-
-        .. seealso::
-
-            :meth:`_events.ConnectionEvents.set_connection_execution_options`
-            - event
-            which is called when :meth:`_engine.Connection.execution_options`
-            is
-            called.
-
-        """
-
-    def engine_disposed(self, engine):
-        """Intercept when the :meth:`_engine.Engine.dispose` method is called.
-
-        The :meth:`_engine.Engine.dispose` method instructs the engine to
-        "dispose" of it's connection pool (e.g. :class:`_pool.Pool`), and
-        replaces it with a new one.  Disposing of the old pool has the
-        effect that existing checked-in connections are closed.  The new
-        pool does not establish any new connections until it is first used.
-
-        This event can be used to indicate that resources related to the
-        :class:`_engine.Engine` should also be cleaned up,
-        keeping in mind that the
-        :class:`_engine.Engine`
-        can still be used for new requests in which case
-        it re-acquires connection resources.
-
-        .. versionadded:: 1.0.5
-
-        """
-
-    def begin(self, conn):
-        """Intercept begin() events.
-
-        :param conn: :class:`_engine.Connection` object
-
-        """
-
-    def rollback(self, conn):
-        """Intercept rollback() events, as initiated by a
-        :class:`.Transaction`.
-
-        Note that the :class:`_pool.Pool` also "auto-rolls back"
-        a DBAPI connection upon checkin, if the ``reset_on_return``
-        flag is set to its default value of ``'rollback'``.
-        To intercept this
-        rollback, use the :meth:`_events.PoolEvents.reset` hook.
-
-        :param conn: :class:`_engine.Connection` object
-
-        .. seealso::
-
-            :meth:`_events.PoolEvents.reset`
-
-        """
-
-    def commit(self, conn):
-        """Intercept commit() events, as initiated by a
-        :class:`.Transaction`.
-
-        Note that the :class:`_pool.Pool` may also "auto-commit"
-        a DBAPI connection upon checkin, if the ``reset_on_return``
-        flag is set to the value ``'commit'``.  To intercept this
-        commit, use the :meth:`_events.PoolEvents.reset` hook.
-
-        :param conn: :class:`_engine.Connection` object
-        """
-
-    def savepoint(self, conn, name):
-        """Intercept savepoint() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param name: specified name used for the savepoint.
-
-        """
-
-    def rollback_savepoint(self, conn, name, context):
-        """Intercept rollback_savepoint() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param name: specified name used for the savepoint.
-        :param context: not used
-
-        """
-        # TODO: deprecate "context"
-
-    def release_savepoint(self, conn, name, context):
-        """Intercept release_savepoint() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param name: specified name used for the savepoint.
-        :param context: not used
-
-        """
-        # TODO: deprecate "context"
-
-    def begin_twophase(self, conn, xid):
-        """Intercept begin_twophase() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param xid: two-phase XID identifier
-
-        """
-
-    def prepare_twophase(self, conn, xid):
-        """Intercept prepare_twophase() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param xid: two-phase XID identifier
-        """
-
-    def rollback_twophase(self, conn, xid, is_prepared):
-        """Intercept rollback_twophase() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param xid: two-phase XID identifier
-        :param is_prepared: boolean, indicates if
-         :meth:`.TwoPhaseTransaction.prepare` was called.
-
-        """
-
-    def commit_twophase(self, conn, xid, is_prepared):
-        """Intercept commit_twophase() events.
-
-        :param conn: :class:`_engine.Connection` object
-        :param xid: two-phase XID identifier
-        :param is_prepared: boolean, indicates if
-         :meth:`.TwoPhaseTransaction.prepare` was called.
-
-        """
-
-
-class DialectEvents(event.Events):
-    """event interface for execution-replacement functions.
-
-    These events allow direct instrumentation and replacement
-    of key dialect functions which interact with the DBAPI.
-
-    .. note::
-
-        :class:`.DialectEvents` hooks should be considered **semi-public**
-        and experimental.
-        These hooks are not for general use and are only for those situations
-        where intricate re-statement of DBAPI mechanics must be injected onto
-        an existing dialect.  For general-use statement-interception events,
-        please use the :class:`_events.ConnectionEvents` interface.
-
-    .. seealso::
-
-        :meth:`_events.ConnectionEvents.before_cursor_execute`
-
-        :meth:`_events.ConnectionEvents.before_execute`
-
-        :meth:`_events.ConnectionEvents.after_cursor_execute`
-
-        :meth:`_events.ConnectionEvents.after_execute`
-
-
-    .. versionadded:: 0.9.4
-
-    """
-
-    _target_class_doc = "SomeEngine"
-    _dispatch_target = Dialect
-
-    @classmethod
-    def _listen(cls, event_key, retval=False):
-        target = event_key.dispatch_target
-
-        target._has_events = True
-        event_key.base_listen()
-
-    @classmethod
-    def _accept_with(cls, target):
-        if isinstance(target, type):
-            if issubclass(target, Engine):
-                return Dialect
-            elif issubclass(target, Dialect):
-                return target
-        elif isinstance(target, Engine):
-            return target.dialect
-        else:
-            return target
-
-    def do_connect(self, dialect, conn_rec, cargs, cparams):
+    def do_connect(
+        self,
+        dialect: Dialect,
+        conn_rec: ConnectionPoolEntry,
+        cargs: Tuple[Any, ...],
+        cparams: Dict[str, Any],
+    ) -> Optional[DBAPIConnection]:
         """Receive connection arguments before a connection is made.
 
         This event is useful in that it allows the handler to manipulate the
@@ -745,7 +845,13 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_executemany(self, cursor, statement, parameters, context):
+    def do_executemany(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        context: ExecutionContext,
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have executemany() called.
 
         Return the value True to halt further events from invoking,
@@ -754,7 +860,9 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_execute_no_params(self, cursor, statement, context):
+    def do_execute_no_params(
+        self, cursor: DBAPICursor, statement: str, context: ExecutionContext
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have execute() with no parameters called.
 
         Return the value True to halt further events from invoking,
@@ -763,7 +871,13 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_execute(self, cursor, statement, parameters, context):
+    def do_execute(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPISingleExecuteParams,
+        context: ExecutionContext,
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have execute() called.
 
         Return the value True to halt further events from invoking,
@@ -773,8 +887,13 @@ class DialectEvents(event.Events):
         """
 
     def do_setinputsizes(
-        self, inputsizes, cursor, statement, parameters, context
-    ):
+        self,
+        inputsizes: Dict[BindParameter[Any], Any],
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: ExecutionContext,
+    ) -> None:
         """Receive the setinputsizes dictionary for possible modification.
 
         This event is emitted in the case where the dialect makes use of the

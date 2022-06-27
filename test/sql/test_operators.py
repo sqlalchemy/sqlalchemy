@@ -5,6 +5,7 @@ import pickle
 
 from sqlalchemy import and_
 from sqlalchemy import between
+from sqlalchemy import bindparam
 from sqlalchemy import exc
 from sqlalchemy import Integer
 from sqlalchemy import join
@@ -164,6 +165,21 @@ class DefaultColumnComparatorTest(
     def _loop_test(self, operator, *arg):
         loop = LoopOperate()
         is_(operator(loop, *arg), operator)
+
+    @testing.combinations(
+        operators.add,
+        operators.and_,
+        operators.or_,
+        operators.mul,
+        argnames="op",
+    )
+    def test_nonsensical_negations(self, op):
+
+        opstring = compiler.OPERATORS[op]
+        self.assert_compile(
+            select(~op(column("x"), column("q"))),
+            f"SELECT NOT (x{opstring}q) AS anon_1",
+        )
 
     def test_null_true_false_is_sanity_checks(self):
 
@@ -325,6 +341,175 @@ class DefaultColumnComparatorTest(
                 NotImplementedError,
                 "Operator 'contains' is not supported on this expression",
                 lambda: "foo" in col,
+            )
+
+
+class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.combinations(True, False, argnames="reverse")
+    @testing.combinations(True, False, argnames="negate")
+    def test_associatives_mismatched_type(self, reverse, negate):
+        """test we get two separate exprs if the types dont match, operator
+        is not lost.
+
+        the expressions here don't generally make sense from a SQL
+        perspective, we are checking just that the operators / parenthesis /
+        negation works out in the SQL string to reasonably correspond to
+        what the Python structures look like.
+
+        """
+
+        expr1 = column("i1", Integer) + column("i2", Integer)
+
+        expr2 = column("d1", String) + column("d2", String)
+
+        if reverse:
+            expr = expr2 + expr1
+
+            self.assert_compile(
+                select(expr), "SELECT (d1 || d2) + i1 + i2 AS anon_1"
+            )
+        else:
+            expr = expr1 + expr2
+
+            self.assert_compile(
+                select(expr), "SELECT i1 + i2 + d1 || d2 AS anon_1"
+            )
+
+    @testing.combinations(
+        operators.add,
+        operators.and_,
+        operators.or_,
+        operators.mul,
+        argnames="op",
+    )
+    @testing.combinations(True, False, argnames="reverse")
+    @testing.combinations(True, False, argnames="negate")
+    def test_associatives(self, op, reverse, negate):
+        t1 = table("t", column("q"), column("p"))
+
+        num = 500
+
+        expr = op(t1.c.q, t1.c.p)
+
+        if reverse:
+            for i in range(num - 1, -1, -1):
+                expr = op(column(f"d{i}"), expr)
+        else:
+            for i in range(num):
+                expr = op(expr, column(f"d{i}"))
+
+        opstring = compiler.OPERATORS[op]
+        exprs = opstring.join(f"d{i}" for i in range(num))
+
+        if negate:
+            self.assert_compile(
+                select(~expr),
+                f"SELECT NOT (t.q{opstring}t.p{opstring}{exprs}) "
+                "AS anon_1 FROM t"
+                if not reverse
+                else f"SELECT NOT ({exprs}{opstring}t.q{opstring}t.p) "
+                "AS anon_1 FROM t",
+            )
+        else:
+            self.assert_compile(
+                select(expr),
+                f"SELECT t.q{opstring}t.p{opstring}{exprs} AS anon_1 FROM t"
+                if not reverse
+                else f"SELECT {exprs}{opstring}t.q{opstring}t.p "
+                f"AS anon_1 FROM t",
+            )
+
+    @testing.combinations(
+        operators.gt,
+        operators.eq,
+        operators.le,
+        operators.sub,
+        argnames="op",
+    )
+    @testing.combinations(True, False, argnames="reverse")
+    @testing.combinations(True, False, argnames="negate")
+    def test_non_associatives(self, op, reverse, negate):
+        """similar tests as test_associatives but for non-assoc
+        operators.
+
+        the expressions here don't generally make sense from a SQL
+        perspective, we are checking just that the operators / parenthesis /
+        negation works out in the SQL string to reasonably correspond to
+        what the Python structures look like.
+
+        """
+        t1 = table("t", column("q"), column("p"))
+
+        num = 5
+
+        expr = op(t1.c.q, t1.c.p)
+
+        if reverse:
+            for i in range(num - 1, -1, -1):
+                expr = op(column(f"d{i}"), expr)
+        else:
+            for i in range(num):
+                expr = op(expr, column(f"d{i}"))
+
+        opstring = compiler.OPERATORS[op]
+
+        if negate:
+            negate_op = {
+                operators.gt: operators.le,
+                operators.eq: operators.ne,
+                operators.le: operators.gt,
+            }.get(op, None)
+
+            if negate_op:
+                negate_opstring = compiler.OPERATORS[negate_op]
+                if reverse:
+                    str_expr = (
+                        f"d0{negate_opstring}(d1{opstring}(d2{opstring}"
+                        f"(d3{opstring}(d4{opstring}(t.q{opstring}t.p)))))"
+                    )
+                else:
+                    str_expr = (
+                        f"(((((t.q{opstring}t.p){opstring}d0){opstring}d1)"
+                        f"{opstring}d2){opstring}d3){negate_opstring}d4"
+                    )
+            else:
+                if reverse:
+                    str_expr = (
+                        f"NOT (d0{opstring}(d1{opstring}(d2{opstring}"
+                        f"(d3{opstring}(d4{opstring}(t.q{opstring}t.p))))))"
+                    )
+                else:
+                    str_expr = (
+                        f"NOT ((((((t.q{opstring}t.p){opstring}d0)"
+                        f"{opstring}d1){opstring}d2){opstring}d3){opstring}d4)"
+                    )
+
+            self.assert_compile(
+                select(~expr),
+                f"SELECT {str_expr} AS anon_1 FROM t"
+                if not reverse
+                else f"SELECT {str_expr} AS anon_1 FROM t",
+            )
+        else:
+
+            if reverse:
+                str_expr = (
+                    f"d0{opstring}(d1{opstring}(d2{opstring}"
+                    f"(d3{opstring}(d4{opstring}(t.q{opstring}t.p)))))"
+                )
+            else:
+                str_expr = (
+                    f"(((((t.q{opstring}t.p){opstring}d0)"
+                    f"{opstring}d1){opstring}d2){opstring}d3){opstring}d4"
+                )
+
+            self.assert_compile(
+                select(expr),
+                f"SELECT {str_expr} AS anon_1 FROM t"
+                if not reverse
+                else f"SELECT {str_expr} AS anon_1 FROM t",
             )
 
 
@@ -2677,7 +2862,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_match_4(self):
         self.assert_compile(
             self.table1.c.myid.match("somstr"),
-            "mytable.myid @@ to_tsquery(%(myid_1)s)",
+            "mytable.myid @@ plainto_tsquery(%(myid_1)s)",
             dialect=postgresql.dialect(),
         )
 
@@ -2696,7 +2881,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_boolean_inversion_postgresql(self):
         self.assert_compile(
             ~self.table1.c.myid.match("somstr"),
-            "NOT mytable.myid @@ to_tsquery(%(myid_1)s)",
+            "NOT mytable.myid @@ plainto_tsquery(%(myid_1)s)",
             dialect=postgresql.dialect(),
         )
 
@@ -2954,7 +3139,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_contains_concat(self):
         self.assert_compile(
             column("x").contains("y"),
-            "x LIKE concat(concat('%%', %s), '%%')",
+            "x LIKE concat('%%', %s, '%%')",
             checkparams={"x_1": "y"},
             dialect=mysql.dialect(),
         )
@@ -2962,7 +3147,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_contains_concat(self):
         self.assert_compile(
             ~column("x").contains("y"),
-            "x NOT LIKE concat(concat('%%', %s), '%%')",
+            "x NOT LIKE concat('%%', %s, '%%')",
             checkparams={"x_1": "y"},
             dialect=mysql.dialect(),
         )
@@ -2970,7 +3155,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_contains_literal_concat(self):
         self.assert_compile(
             column("x").contains(literal_column("y")),
-            "x LIKE concat(concat('%%', y), '%%')",
+            "x LIKE concat('%%', y, '%%')",
             checkparams={},
             dialect=mysql.dialect(),
         )
@@ -2978,7 +3163,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_contains_text_concat(self):
         self.assert_compile(
             column("x").contains(text("y")),
-            "x LIKE concat(concat('%%', y), '%%')",
+            "x LIKE concat('%%', y, '%%')",
             checkparams={},
             dialect=mysql.dialect(),
         )
@@ -3244,11 +3429,20 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class CustomOpTest(fixtures.TestBase):
-    def test_is_comparison(self):
+    def test_is_comparison_legacy(self):
         c = column("x")
         c2 = column("y")
         op1 = c.op("$", is_comparison=True)(c2).operator
         op2 = c.op("$", is_comparison=False)(c2).operator
+
+        assert operators.is_comparison(op1)
+        assert not operators.is_comparison(op2)
+
+    def test_is_comparison_bool_op(self):
+        c = column("x")
+        c2 = column("y")
+        op1 = c.bool_op("$")(c2).operator
+        op2 = c.op("$")(c2).operator
 
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
@@ -3605,13 +3799,31 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             t.c.data + all_(t.c.arrval), "tab1.data + ALL (tab1.arrval)"
         )
 
+    @testing.combinations("all", "any", argnames="op")
+    def test_any_all_bindparam_coercion(self, t_fixture, op):
+        """test #7979"""
+        t = t_fixture
+
+        if op == "all":
+            expr = t.c.arrval.all(bindparam("param"))
+            expected = "%(param)s = ALL (tab1.arrval)"
+        elif op == "any":
+            expr = t.c.arrval.any(bindparam("param"))
+            expected = "%(param)s = ANY (tab1.arrval)"
+        else:
+            assert False
+
+        is_(expr.left.type._type_affinity, Integer)
+
+        self.assert_compile(expr, expected, dialect="postgresql")
+
     def test_any_array_comparator_accessor(self, t_fixture):
         t = t_fixture
 
         self.assert_compile(
             t.c.arrval.any(5, operator.gt),
-            ":param_1 > ANY (tab1.arrval)",
-            checkparams={"param_1": 5},
+            ":arrval_1 > ANY (tab1.arrval)",
+            checkparams={"arrval_1": 5},
         )
 
     def test_any_array_comparator_negate_accessor(self, t_fixture):
@@ -3619,8 +3831,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             ~t.c.arrval.any(5, operator.gt),
-            "NOT (:param_1 > ANY (tab1.arrval))",
-            checkparams={"param_1": 5},
+            "NOT (:arrval_1 > ANY (tab1.arrval))",
+            checkparams={"arrval_1": 5},
         )
 
     def test_all_array_comparator_accessor(self, t_fixture):
@@ -3628,8 +3840,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             t.c.arrval.all(5, operator.gt),
-            ":param_1 > ALL (tab1.arrval)",
-            checkparams={"param_1": 5},
+            ":arrval_1 > ALL (tab1.arrval)",
+            checkparams={"arrval_1": 5},
         )
 
     def test_all_array_comparator_negate_accessor(self, t_fixture):
@@ -3637,8 +3849,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             ~t.c.arrval.all(5, operator.gt),
-            "NOT (:param_1 > ALL (tab1.arrval))",
-            checkparams={"param_1": 5},
+            "NOT (:arrval_1 > ALL (tab1.arrval))",
+            checkparams={"arrval_1": 5},
         )
 
     def test_any_array_expression(self, t_fixture):

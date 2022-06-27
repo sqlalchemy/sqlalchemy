@@ -1347,6 +1347,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
 
 class ServerVersioningTest(fixtures.MappedTest):
     run_define_tables = "each"
+
     __backend__ = True
 
     @classmethod
@@ -1432,7 +1433,7 @@ class ServerVersioningTest(fixtures.MappedTest):
                 lambda ctx: [{"value": "f1"}],
             )
         ]
-        if not testing.db.dialect.implicit_returning:
+        if not testing.db.dialect.insert_returning:
             # DBs without implicit returning, we must immediately
             # SELECT for the new version id
             statements.append(
@@ -1460,34 +1461,46 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         f1.value = "f2"
 
-        statements = [
-            # note that the assertsql tests the rule against
-            # "default" - on a "returning" backend, the statement
-            # includes "RETURNING"
-            CompiledSQL(
-                "UPDATE version_table SET version_id=2, value=:value "
-                "WHERE version_table.id = :version_table_id AND "
-                "version_table.version_id = :version_table_version_id",
-                lambda ctx: [
-                    {
-                        "version_table_id": 1,
-                        "version_table_version_id": 1,
-                        "value": "f2",
-                    }
-                ],
-            )
-        ]
-        if not testing.db.dialect.implicit_returning:
+        if testing.db.dialect.update_returning:
+            statements = [
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id "
+                    "RETURNING version_table.version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 1,
+                            "version_table_version_id": 1,
+                            "value": "f2",
+                        }
+                    ],
+                    enable_returning=True,
+                )
+            ]
+        else:
             # DBs without implicit returning, we must immediately
             # SELECT for the new version id
-            statements.append(
+            statements = [
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 1,
+                            "version_table_version_id": 1,
+                            "value": "f2",
+                        }
+                    ],
+                ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
                     "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 1}],
-                )
-            )
+                ),
+            ]
         with conditional_sane_rowcount_warnings(
             update=True, only_returning=True
         ):
@@ -1512,8 +1525,9 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         eq_(f1.version_id, 2)
 
+    @testing.requires.sane_rowcount_w_returning
     @testing.requires.updateable_autoincrement_pks
-    @testing.requires.returning
+    @testing.requires.update_returning
     def test_sql_expr_w_mods_bump(self):
         sess = self._fixture()
 
@@ -1544,72 +1558,111 @@ class ServerVersioningTest(fixtures.MappedTest):
         f2.value = "f2a"
         f3.value = "f3a"
 
-        statements = [
-            # note that the assertsql tests the rule against
-            # "default" - on a "returning" backend, the statement
-            # includes "RETURNING"
-            CompiledSQL(
-                "UPDATE version_table SET version_id=2, value=:value "
-                "WHERE version_table.id = :version_table_id AND "
-                "version_table.version_id = :version_table_version_id",
-                lambda ctx: [
-                    {
-                        "version_table_id": 1,
-                        "version_table_version_id": 1,
-                        "value": "f1a",
-                    }
-                ],
-            ),
-            CompiledSQL(
-                "UPDATE version_table SET version_id=2, value=:value "
-                "WHERE version_table.id = :version_table_id AND "
-                "version_table.version_id = :version_table_version_id",
-                lambda ctx: [
-                    {
-                        "version_table_id": 2,
-                        "version_table_version_id": 1,
-                        "value": "f2a",
-                    }
-                ],
-            ),
-            CompiledSQL(
-                "UPDATE version_table SET version_id=2, value=:value "
-                "WHERE version_table.id = :version_table_id AND "
-                "version_table.version_id = :version_table_version_id",
-                lambda ctx: [
-                    {
-                        "version_table_id": 3,
-                        "version_table_version_id": 1,
-                        "value": "f3a",
-                    }
-                ],
-            ),
-        ]
-        if not testing.db.dialect.implicit_returning:
-            # DBs without implicit returning, we must immediately
+        if testing.db.dialect.update_returning:
+            statements = [
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id "
+                    "RETURNING version_table.version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 1,
+                            "version_table_version_id": 1,
+                            "value": "f1a",
+                        }
+                    ],
+                    enable_returning=True,
+                ),
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id "
+                    "RETURNING version_table.version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 2,
+                            "version_table_version_id": 1,
+                            "value": "f2a",
+                        }
+                    ],
+                    enable_returning=True,
+                ),
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id "
+                    "RETURNING version_table.version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 3,
+                            "version_table_version_id": 1,
+                            "value": "f3a",
+                        }
+                    ],
+                    enable_returning=True,
+                ),
+            ]
+        else:
+            # DBs without update returning, we must immediately
             # SELECT for the new version id
-            statements.extend(
-                [
-                    CompiledSQL(
-                        "SELECT version_table.version_id "
-                        "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :pk_1",
-                        lambda ctx: [{"pk_1": 1}],
-                    ),
-                    CompiledSQL(
-                        "SELECT version_table.version_id "
-                        "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :pk_1",
-                        lambda ctx: [{"pk_1": 2}],
-                    ),
-                    CompiledSQL(
-                        "SELECT version_table.version_id "
-                        "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :pk_1",
-                        lambda ctx: [{"pk_1": 3}],
-                    ),
-                ]
-            )
+            statements = [
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 1,
+                            "version_table_version_id": 1,
+                            "value": "f1a",
+                        }
+                    ],
+                ),
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 2,
+                            "version_table_version_id": 1,
+                            "value": "f2a",
+                        }
+                    ],
+                ),
+                CompiledSQL(
+                    "UPDATE version_table SET version_id=2, value=:value "
+                    "WHERE version_table.id = :version_table_id AND "
+                    "version_table.version_id = :version_table_version_id",
+                    lambda ctx: [
+                        {
+                            "version_table_id": 3,
+                            "version_table_version_id": 1,
+                            "value": "f3a",
+                        }
+                    ],
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :pk_1",
+                    lambda ctx: [{"pk_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :pk_1",
+                    lambda ctx: [{"pk_1": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT version_table.version_id "
+                    "AS version_table_version_id "
+                    "FROM version_table WHERE version_table.id = :pk_1",
+                    lambda ctx: [{"pk_1": 3}],
+                ),
+            ]
+
         with conditional_sane_rowcount_warnings(
             update=True, only_returning=True
         ):
@@ -1638,6 +1691,7 @@ class ServerVersioningTest(fixtures.MappedTest):
         with conditional_sane_rowcount_warnings(delete=True):
             self.assert_sql_execution(testing.db, sess.flush, *statements)
 
+    @testing.requires.independent_connections
     @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_expire_on_commit(self):
         sess = self._fixture()
@@ -1662,6 +1716,7 @@ class ServerVersioningTest(fixtures.MappedTest):
             sess.commit,
         )
 
+    @testing.requires.independent_connections
     @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_noexpire_on_commit(self):
         sess = self._fixture(expire_on_commit=False)
@@ -2006,3 +2061,55 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
             f1.value = "f2"
             f1.version_id = 2
             s1.flush()
+
+
+class QuotedBindVersioningTest(fixtures.MappedTest):
+    """test for #8056"""
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "version_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            # will need parameter quoting for Oracle and PostgreSQL
+            # dont use 'key' to make sure no the awkward name is definitely
+            # in the params
+            Column("_version%id", Integer, nullable=False),
+            Column("value", String(40), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Foo = cls.classes.Foo
+        vt = cls.tables.version_table
+        cls.mapper_registry.map_imperatively(
+            Foo,
+            vt,
+            version_id_col=vt.c["_version%id"],
+            properties={"version": vt.c["_version%id"]},
+        )
+
+    def test_round_trip(self, fixture_session):
+        Foo = self.classes.Foo
+
+        f1 = Foo(value="v1")
+        fixture_session.add(f1)
+        fixture_session.commit()
+
+        f1.value = "v2"
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            fixture_session.commit()
+
+        eq_(f1.version, 2)

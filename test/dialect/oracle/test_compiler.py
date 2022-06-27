@@ -28,6 +28,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import union
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
+from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.engine import default
 from sqlalchemy.sql import column
 from sqlalchemy.sql import ddl
@@ -105,6 +106,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             bindparam("uid", expanding=True),
             "(__[POSTCOMPILE_uid])",
             dialect=cx_oracle.dialect(),
+        )
+        self.assert_compile(
+            bindparam("uid", expanding=True),
+            "(__[POSTCOMPILE_uid])",
+            dialect=oracledb.dialect(),
         )
 
     def test_cte(self):

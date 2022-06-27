@@ -75,6 +75,18 @@ class _UnpickleDispatch:
 class _DispatchCommon(Generic[_ET]):
     __slots__ = ()
 
+    _instance_cls: Optional[Type[_ET]]
+
+    def _join(self, other: _DispatchCommon[_ET]) -> _JoinedDispatcher[_ET]:
+        raise NotImplementedError()
+
+    def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]:
+        raise NotImplementedError()
+
+    @property
+    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
+        raise NotImplementedError()
+
 
 class _Dispatch(_DispatchCommon[_ET]):
     """Mirror the event listening definitions of an Events class with
@@ -96,9 +108,11 @@ class _Dispatch(_DispatchCommon[_ET]):
 
     """
 
-    # In one ORM edge case, an attribute is added to _Dispatch,
-    # so __dict__ is used in just that case and potentially others.
+    # "active_history" is an ORM case we add here.   ideally a better
+    # system would be in place for ad-hoc attributes.
     __slots__ = "_parent", "_instance_cls", "__dict__", "_empty_listeners"
+
+    _active_history: bool
 
     _empty_listener_reg: MutableMapping[
         Type[_ET], Dict[str, _EmptyListener[_ET]]
@@ -169,7 +183,7 @@ class _Dispatch(_DispatchCommon[_ET]):
         instance_cls = instance.__class__
         return self._for_class(instance_cls)
 
-    def _join(self, other: _Dispatch[_ET]) -> _JoinedDispatcher[_ET]:
+    def _join(self, other: _DispatchCommon[_ET]) -> _JoinedDispatcher[_ET]:
         """Create a 'join' of this :class:`._Dispatch` and another.
 
         This new dispatcher will dispatch events to both
@@ -236,7 +250,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]]
+        cls, target: Union[_ET, Type[_ET]], identifier: str
     ) -> Optional[Union[_ET, Type[_ET]]]:
         raise NotImplementedError()
 
@@ -244,6 +258,7 @@ class _HasEventsDispatch(Generic[_ET]):
     def _listen(
         cls,
         event_key: _EventKey[_ET],
+        *,
         propagate: bool = False,
         insert: bool = False,
         named: bool = False,
@@ -307,7 +322,7 @@ class _HasEventsDispatch(Generic[_ET]):
             assert dispatch_target_cls is not None
             if (
                 hasattr(dispatch_target_cls, "__slots__")
-                and "_slots_dispatch" in dispatch_target_cls.__slots__  # type: ignore  # noqa E501
+                and "_slots_dispatch" in dispatch_target_cls.__slots__  # type: ignore  # noqa: E501
             ):
                 dispatch_target_cls.dispatch = slots_dispatcher(cls)
             else:
@@ -319,7 +334,7 @@ class Events(_HasEventsDispatch[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]]
+        cls, target: Union[_ET, Type[_ET]], identifier: str
     ) -> Optional[Union[_ET, Type[_ET]]]:
         def dispatch_is(*types: Type[Any]) -> bool:
             return all(isinstance(target.dispatch, t) for t in types)
@@ -349,6 +364,7 @@ class Events(_HasEventsDispatch[_ET]):
     def _listen(
         cls,
         event_key: _EventKey[_ET],
+        *,
         propagate: bool = False,
         insert: bool = False,
         named: bool = False,
@@ -372,11 +388,13 @@ class _JoinedDispatcher(_DispatchCommon[_ET]):
 
     __slots__ = "local", "parent", "_instance_cls"
 
-    local: _Dispatch[_ET]
-    parent: _Dispatch[_ET]
+    local: _DispatchCommon[_ET]
+    parent: _DispatchCommon[_ET]
     _instance_cls: Optional[Type[_ET]]
 
-    def __init__(self, local: _Dispatch[_ET], parent: _Dispatch[_ET]):
+    def __init__(
+        self, local: _DispatchCommon[_ET], parent: _DispatchCommon[_ET]
+    ):
         self.local = local
         self.parent = parent
         self._instance_cls = self.local._instance_cls
@@ -416,7 +434,7 @@ class dispatcher(Generic[_ET]):
         ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _Dispatch[_ET]:
+    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]:
         ...
 
     def __get__(self, obj: Any, cls: Type[Any]) -> Any:

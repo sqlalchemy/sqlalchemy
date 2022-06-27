@@ -198,7 +198,6 @@ class PoolTest(PoolTestBase):
         assert not r1.dbapi_connection
         c1 = r1.get_connection()
         is_(c1, r1.dbapi_connection)
-        is_(c1, r1.connection)
         is_(c1, r1.driver_connection)
 
     def test_rec_close_reopen(self):
@@ -319,13 +318,11 @@ class PoolTest(PoolTestBase):
 
         is_not_none(rec.dbapi_connection)
 
-        is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, rec.dbapi_connection)
 
         fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
-        is_(fairy.connection, fairy.dbapi_connection)
         is_(fairy.driver_connection, fairy.dbapi_connection)
 
         is_(fairy.dbapi_connection, rec.dbapi_connection)
@@ -349,31 +346,15 @@ class PoolTest(PoolTestBase):
         assert rec.dbapi_connection is not None
         is_not_none(rec.dbapi_connection)
 
-        is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, mock_dc)
 
         fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
-        is_(fairy.connection, fairy.dbapi_connection)
         is_(fairy.driver_connection, mock_dc)
 
         is_(fairy.dbapi_connection, rec.dbapi_connection)
         is_(fairy.driver_connection, mock_dc)
-
-    def test_connection_setter(self):
-        dbapi = MockDBAPI()
-        p1 = pool.Pool(creator=lambda: dbapi.connect("foo.db"))
-
-        rec = pool._ConnectionRecord(p1)
-
-        is_not_none(rec.dbapi_connection)
-
-        is_(rec.connection, rec.dbapi_connection)
-        rec.connection = 42
-        is_(rec.connection, rec.dbapi_connection)
-        rec.dbapi_connection = 99
-        is_(rec.connection, rec.dbapi_connection)
 
 
 class PoolDialectTest(PoolTestBase):
@@ -1682,7 +1663,7 @@ class QueuePoolTest(PoolTestBase):
 
         dialect = Mock()
         dialect.is_disconnect = lambda *arg, **kw: True
-        dialect.dbapi.Error = Error
+        dialect.dbapi.Error = dialect.loaded_dbapi.Error = Error
 
         pools = []
 

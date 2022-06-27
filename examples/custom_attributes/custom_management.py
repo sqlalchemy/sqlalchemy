@@ -17,13 +17,16 @@ from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy import Text
 from sqlalchemy.ext.instrumentation import InstrumentationManager
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry as _reg
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import del_attribute
 from sqlalchemy.orm.attributes import get_attribute
 from sqlalchemy.orm.attributes import set_attribute
 from sqlalchemy.orm.instrumentation import is_instrumented
+
+
+registry = _reg()
 
 
 class MyClassState(InstrumentationManager):
@@ -97,9 +100,9 @@ if __name__ == "__main__":
     class B(MyClass):
         pass
 
-    mapper(A, table1, properties={"bs": relationship(B)})
+    registry.map_imperatively(A, table1, properties={"bs": relationship(B)})
 
-    mapper(B, table2)
+    registry.map_imperatively(B, table2)
 
     a1 = A(name="a1", bs=[B(name="b1"), B(name="b2")])
 

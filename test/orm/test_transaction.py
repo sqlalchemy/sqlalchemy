@@ -1267,6 +1267,8 @@ class AutoExpireTest(_LocalFixture):
         assert u1_state not in s._deleted
         del u1
         gc_collect()
+        gc_collect()
+        gc_collect()
         assert u1_state.obj() is None
 
         s.rollback()
@@ -2346,10 +2348,10 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
 class JoinIntoAnExternalTransactionFixture:
     """Test the "join into an external transaction" examples"""
 
-    __leave_connections_for_teardown__ = True
-
     def setup_test(self):
-        self.engine = testing.db
+        self.engine = engines.testing_engine(
+            options={"use_reaper": False, "sqlite_savepoint": True}
+        )
         self.connection = self.engine.connect()
 
         self.metadata = MetaData()
@@ -2410,7 +2412,7 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         # bind an individual Session to the connection
         self.session = Session(bind=self.connection)
 
-        if testing.requires.savepoints.enabled:
+        if testing.requires.compat_savepoints.enabled:
             self.nested = self.connection.begin_nested()
 
             @event.listens_for(self.session, "after_transaction_end")
@@ -2427,7 +2429,7 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         if self.trans.is_active:
             self.trans.rollback()
 
-    @testing.requires.savepoints
+    @testing.requires.compat_savepoints
     def test_something_with_context_managers(self):
         A = self.A
 
@@ -2478,7 +2480,7 @@ class LegacyJoinIntoAnExternalTransactionTest(
         # bind an individual Session to the connection
         self.session = Session(bind=self.connection)
 
-        if testing.requires.savepoints.enabled:
+        if testing.requires.compat_savepoints.enabled:
             # start the session in a SAVEPOINT...
             self.session.begin_nested()
 

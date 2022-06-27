@@ -31,7 +31,7 @@ E.g.::
     # execute and results
     result = session.execute(stmt)
 
-    print(result.scalars.all())
+    print(result.scalars().all())
 
 To run, both SQLAlchemy and dogpile.cache must be
 installed or on the current PYTHONPATH. The demo will create a local

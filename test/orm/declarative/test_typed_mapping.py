@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 from decimal import Decimal
+from typing import ClassVar
 from typing import Dict
 from typing import Generic
 from typing import List
@@ -9,6 +10,7 @@ from typing import Set
 from typing import Type
 from typing import TypeVar
 from typing import Union
+import uuid
 
 from sqlalchemy import BIGINT
 from sqlalchemy import Column
@@ -22,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import types
 from sqlalchemy import VARCHAR
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import as_declarative
@@ -67,7 +70,9 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         class Tab(Base["Tab"]):
             __tablename__ = "foo"
-            a = Column(Integer, primary_key=True)
+
+            # old mypy plugin use
+            a: int = Column(Integer, primary_key=True)
 
         eq_(Tab.foo, 1)
         is_(Tab.__table__, inspect(Tab).local_table)
@@ -110,6 +115,36 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data = mapped_column()
 
+    @testing.combinations("key", "name", "both", argnames="case")
+    @testing.combinations(True, False, argnames="deferred")
+    @testing.combinations(True, False, argnames="use_add_property")
+    def test_separate_name(self, decl_base, case, deferred, use_add_property):
+        if case == "key":
+            args = {"key": "data_"}
+        elif case == "name":
+            args = {"name": "data_"}
+        else:
+            args = {"name": "data_", "key": "data_"}
+
+        if deferred:
+            args["deferred"] = True
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if not use_add_property:
+                data: Mapped[str] = mapped_column(**args)
+
+        if use_add_property:
+            args["type_"] = String()
+            A.data = mapped_column(**args)
+
+        assert not hasattr(A, "data_")
+        is_(A.data.property.expression, A.__table__.c.data_)
+        eq_(A.__table__.c.data_.key, "data_")
+
     def test_construct_rhs(self, decl_base):
         class User(decl_base):
             __tablename__ = "users"
@@ -143,6 +178,133 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "users"
 
             id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            data: Mapped[Optional[str]]
+            x: Mapped[int]
+            y: Mapped[int]
+            created_at: Mapped[datetime.datetime]
+
+        self.assert_compile(
+            select(User),
+            "SELECT users.id, users.name, users.data, users.x, "
+            "users.y, users.created_at FROM users",
+        )
+        eq_(User.__mapper__.primary_key, (User.__table__.c.id,))
+        is_false(User.__table__.c.id.nullable)
+        is_false(User.__table__.c.name.nullable)
+        is_true(User.__table__.c.data.nullable)
+        assert isinstance(User.__table__.c.created_at.type, DateTime)
+
+    def test_i_have_a_classvar_on_my_class(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: ClassVar[int]
+
+        m1 = MyClass(id=1, data=5)
+        assert "status" not in inspect(m1).mapper.attrs
+
+    def test_i_have_plain_or_column_attrs_on_my_class_w_values(
+        self, decl_base
+    ):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            old_column: str = Column(String)
+
+            # we assume this is intentional
+            status: int = 5
+
+        # it's mapped too
+        assert "old_column" in inspect(MyClass).attrs
+
+    def test_i_have_plain_attrs_on_my_class_disallowed(self, decl_base):
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r'Type annotation for "MyClass.status" should use the syntax '
+            r'"Mapped\[int\]".  To leave the attribute unmapped, use '
+            r"ClassVar\[int\], assign a value to the attribute, or "
+            r"set __allow_unmapped__ = True on the class.",
+        ):
+
+            class MyClass(decl_base):
+                __tablename__ = "mytable"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str] = mapped_column(default="some default")
+
+                # we assume this is not intentional.  because I made the
+                # same mistake myself :)
+                status: int
+
+    def test_i_have_plain_attrs_on_my_class_allowed(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+            __allow_unmapped__ = True
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
+
+    def test_allow_unmapped_on_mixin(self, decl_base):
+        class AllowsUnmapped:
+            __allow_unmapped__ = True
+
+        class MyClass(AllowsUnmapped, decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
+
+    def test_allow_unmapped_on_base(self):
+        class Base(DeclarativeBase):
+            __allow_unmapped__ = True
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            status: int
+
+    def test_column_default(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+        mc = MyClass()
+        assert "data" not in mc.__dict__
+
+        eq_(MyClass.__table__.c.data.default.arg, "some default")
+
+    def test_anno_w_fixed_table(self, decl_base):
+        users = Table(
+            "users",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("created_at", DateTime),
+        )
+
+        class User(decl_base):
+            __table__ = users
+
+            id: Mapped[int]
             name: Mapped[str]
             data: Mapped[Optional[str]]
             x: Mapped[int]
@@ -234,7 +396,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped["int"] = mapped_column(primary_key=True)
             data_one: Mapped["str"]
 
-    def test_annotated_types_as_keys(self, decl_base: Type[DeclarativeBase]):
+    def test_pep593_types_as_typemap_keys(
+        self, decl_base: Type[DeclarativeBase]
+    ):
         """neat!!!"""
 
         str50 = Annotated[str, 50]
@@ -262,6 +426,138 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_two.type.length, 30)
         is_true(MyClass.__table__.c.data_two.nullable)
         eq_(MyClass.__table__.c.data_three.type.length, 50)
+
+    def test_extract_base_type_from_pep593(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """base type is extracted from an Annotated structure if not otherwise
+        in the type lookup dictionary"""
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[Annotated[Annotated[int, "q"], "t"]] = mapped_column(
+                primary_key=True
+            )
+
+        is_(MyClass.__table__.c.id.type._type_affinity, Integer)
+
+    def test_extract_sqla_from_pep593_not_yet(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        class SomeRelated(decl_base):
+            __tablename__: ClassVar[Optional[str]] = "some_related"
+            id: Mapped["int"] = mapped_column(primary_key=True)
+
+        with expect_raises_message(
+            NotImplementedError,
+            r"Use of the \<class 'sqlalchemy.orm."
+            r"relationships.Relationship'\> construct inside of an Annotated "
+            r"object is not yet supported.",
+        ):
+
+            class MyClass(decl_base):
+                __tablename__ = "my_table"
+
+                id: Mapped["int"] = mapped_column(primary_key=True)
+                data_one: Mapped[Annotated["SomeRelated", relationship()]]
+
+    def test_extract_sqla_from_pep593_plain(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """extraction of mapped_column() from the Annotated type
+
+        https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        strnone = Annotated[str, mapped_column()]  # str -> NOT NULL
+        str30nullable = Annotated[
+            str, mapped_column(String(30), nullable=True)  # nullable -> NULL
+        ]
+        opt_strnone = Optional[strnone]  # Optional[str] -> NULL
+        opt_str30 = Optional[str30nullable]  # nullable -> NULL
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        class MyOtherClass(decl_base):
+            __tablename__ = "my_other_table"
+
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        for cls in MyClass, MyOtherClass:
+            table = cls.__table__
+            assert table is not None
+
+            is_(table.c.id.primary_key, True)
+            is_(table.c.id.table, table)
+
+            eq_(table.c.data_one.type.length, None)
+            eq_(table.c.data_two.type.length, 30)
+            eq_(table.c.data_three.type.length, None)
+
+            is_false(table.c.data_one.nullable)
+            is_true(table.c.data_two.nullable)
+            is_true(table.c.data_three.nullable)
+            is_true(table.c.data_four.nullable)
+
+    def test_extract_sqla_from_pep593_mixin(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """extraction of mapped_column() from the Annotated type
+
+        https://twitter.com/zzzeek/status/1536693554621341697"""
+
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        strnone = Annotated[str, mapped_column()]  # str -> NOT NULL
+        str30nullable = Annotated[
+            str, mapped_column(String(30), nullable=True)  # nullable -> NULL
+        ]
+        opt_strnone = Optional[strnone]  # Optional[str] -> NULL
+        opt_str30 = Optional[str30nullable]  # nullable -> NULL
+
+        class HasPk:
+            id: Mapped[intpk]
+
+            data_one: Mapped[strnone]
+            data_two: Mapped[str30nullable]
+
+        class MyClass(HasPk, decl_base):
+            __tablename__ = "my_table"
+
+            data_three: Mapped[opt_strnone]
+            data_four: Mapped[opt_str30]
+
+        table = MyClass.__table__
+        assert table is not None
+
+        is_(table.c.id.primary_key, True)
+        is_(table.c.id.table, table)
+
+        eq_(table.c.data_one.type.length, None)
+        eq_(table.c.data_two.type.length, 30)
+        eq_(table.c.data_three.type.length, None)
+
+        is_false(table.c.data_one.nullable)
+        is_true(table.c.data_two.nullable)
+        is_true(table.c.data_three.nullable)
+        is_true(table.c.data_four.nullable)
 
     def test_unions(self):
         our_type = Numeric(10, 2)
@@ -404,6 +700,23 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT users.data, users.id FROM users",
         )
 
+    @testing.combinations(
+        (str, types.String),
+        (Decimal, types.Numeric),
+        (float, types.Float),
+        (datetime.datetime, types.DateTime),
+        (uuid.UUID, types.Uuid),
+        argnames="pytype,sqltype",
+    )
+    def test_datatype_lookups(self, decl_base, pytype, sqltype):
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            data: Mapped[pytype]
+
+        assert isinstance(MyClass.__table__.c.data.type, sqltype)
+
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
@@ -420,6 +733,32 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         # ordering of cols is TODO
         eq_(A.__table__.c.keys(), ["id", "y", "name", "x"])
+
+        self.assert_compile(select(A), "SELECT a.id, a.y, a.name, a.x FROM a")
+
+    def test_mapped_column_omit_fn_fixed_table(self, decl_base):
+        class MixinOne:
+            name: Mapped[str]
+            x: Mapped[int]
+            y: Mapped[int]
+
+        a = Table(
+            "a",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+        class A(MixinOne, decl_base):
+            __table__ = a
+            id: Mapped[int]
+
+        self.assert_compile(
+            select(A), "SELECT a.id, a.name, a.data, a.x, a.y FROM a"
+        )
 
     def test_mc_duplication_plain(self, decl_base):
         class MixinOne:
@@ -583,7 +922,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[List["B"]] = relationship(  # noqa F821
+            bs: Mapped[List["B"]] = relationship(  # noqa: F821
                 back_populates="a"
             )
 
@@ -660,14 +999,16 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs_list: Mapped[List["B"]] = relationship(  # noqa F821
+            bs_list: Mapped[List["B"]] = relationship(  # noqa: F821
                 viewonly=True
             )
-            bs_set: Mapped[Set["B"]] = relationship(viewonly=True)  # noqa F821
-            bs_list_warg: Mapped[List["B"]] = relationship(  # noqa F821
+            bs_set: Mapped[Set["B"]] = relationship(  # noqa: F821
+                viewonly=True
+            )
+            bs_list_warg: Mapped[List["B"]] = relationship(  # noqa: F821
                 "B", viewonly=True
             )
-            bs_set_warg: Mapped[Set["B"]] = relationship(  # noqa F821
+            bs_set_warg: Mapped[Set["B"]] = relationship(  # noqa: F821
                 "B", viewonly=True
             )
 
@@ -697,7 +1038,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[Dict[str, "B"]] = relationship()  # noqa F821
+            bs: Mapped[Dict[str, "B"]] = relationship()  # noqa: F821
 
         class B(decl_base):
             __tablename__ = "b"
@@ -720,7 +1061,9 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[MappedCollection[str, "B"]] = relationship(  # noqa F821
+            bs: Mapped[
+                MappedCollection[str, "B"]  # noqa: F821
+            ] = relationship(
                 collection_class=attribute_mapped_collection("name")
             )
 
@@ -866,7 +1209,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         with expect_raises_message(
             ArgumentError,
             r"Type annotation for \"User.address\" should use the syntax "
-            r"\"Mapped\['Address'\]\" or \"MappedColumn\['Address'\]\"",
+            r"\"Mapped\['Address'\]\"",
         ):
 
             class User(decl_base):
@@ -876,6 +1219,55 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 name: Mapped[str] = mapped_column()
 
                 address: "Address" = composite(  # type: ignore
+                    mapped_column(), mapped_column(), mapped_column("zip")
+                )
+
+    def test_extract_from_pep593(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+
+            address: Mapped[Annotated[Address, "foo"]] = composite(
+                mapped_column(), mapped_column(), mapped_column("zip")
+            )
+
+        self.assert_compile(
+            select(User),
+            'SELECT "user".id, "user".name, "user".street, '
+            '"user".state, "user".zip FROM "user"',
+            dialect="default",
+        )
+
+    def test_cls_not_composite_compliant(self, decl_base):
+        class Address:
+            def __init__(self, street: int, state: str, zip_: str):
+                pass
+
+            street: str
+            state: str
+            zip_: str
+
+        with expect_raises_message(
+            ArgumentError,
+            r"Composite class column arguments must be "
+            r"named unless a dataclass is used",
+        ):
+
+            class User(decl_base):
+                __tablename__ = "user"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: Mapped[str] = mapped_column()
+
+                address: Mapped[Address] = composite(
                     mapped_column(), mapped_column(), mapped_column("zip")
                 )
 
@@ -902,6 +1294,45 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             '"user".state, "user".zip FROM "user"',
         )
 
+    def test_name_cols_by_str(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            street: Mapped[str]
+            state: Mapped[str]
+
+            # TODO: this needs to be improved, we should be able to say:
+            # zip_: Mapped[str] = mapped_column("zip")
+            # and it should assign to "zip_" for the attribute. not working
+
+            zip_: Mapped[str] = mapped_column(name="zip", key="zip_")
+
+            address: Mapped["Address"] = composite(
+                Address, "street", "state", "zip_"
+            )
+
+        eq_(
+            User.__mapper__.attrs["address"].props,
+            [
+                User.__mapper__.attrs["street"],
+                User.__mapper__.attrs["state"],
+                User.__mapper__.attrs["zip_"],
+            ],
+        )
+        self.assert_compile(
+            select(User),
+            'SELECT "user".id, "user".name, "user".street, '
+            '"user".state, "user".zip FROM "user"',
+        )
+
     def test_cls_annotated_setup(self, decl_base):
         @dataclasses.dataclass
         class Address:
@@ -918,6 +1349,38 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             address: Mapped[Address] = composite(
                 mapped_column(), mapped_column(), mapped_column("zip")
             )
+
+        decl_base.metadata.create_all(testing.db)
+
+        with fixture_session() as sess:
+            sess.add(
+                User(
+                    name="user 1",
+                    address=Address("123 anywhere street", "NY", "12345"),
+                )
+            )
+            sess.commit()
+
+        with fixture_session() as sess:
+            u1 = sess.scalar(select(User))
+
+            # round trip!
+            eq_(u1.address, Address("123 anywhere street", "NY", "12345"))
+
+    def test_cls_annotated_no_mapped_cols_setup(self, decl_base):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            state: str
+            zip_: str
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+
+            address: Mapped[Address] = composite()
 
         decl_base.metadata.create_all(testing.db)
 
@@ -989,7 +1452,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             name: Mapped[str50]
 
-            employees: Mapped[Set["Person"]] = relationship()  # noqa F821
+            employees: Mapped[Set["Person"]] = relationship()  # noqa: F821
 
         class Person(decl_base):
             __tablename__ = "person"

@@ -268,7 +268,7 @@ class AsyncPgTest(fixtures.TestBase):
         engine = async_testing_engine()
         with mock.patch.object(engine.dialect, methname) as codec_meth:
             conn = await engine.connect()
-            adapted_conn = (await conn.get_raw_connection()).connection
+            adapted_conn = (await conn.get_raw_connection()).dbapi_connection
             await conn.close()
 
         eq_(codec_meth.mock_calls, [mock.call(adapted_conn)])

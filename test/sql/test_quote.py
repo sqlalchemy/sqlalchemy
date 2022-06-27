@@ -252,6 +252,50 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         eq_(repr(name), repr("姓名"))
 
+    def test_literal_column_label_embedded_select_samename_explicit_quote(
+        self,
+    ):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES", True)
+        )
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname_explicit_quote(
+        self,
+    ):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES_", True)
+        )
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_samename(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
+
+        self.assert_compile(
+            select(col).subquery().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES") AS anon_1',
+        )
+
     def test_lower_case_names(self):
         # Create table with quote defaults
         metadata = MetaData()
@@ -954,7 +998,7 @@ class QuotedIdentTest(fixtures.TestBase):
         eq_(q2.quote, False)
 
     def test_coerce_none(self):
-        q1 = quoted_name(None, False)
+        q1 = quoted_name.construct(None, False)
         eq_(q1, None)
 
     def test_apply_map_quoted(self):

@@ -5,7 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Future 2.0 API features.
+"""2.0 API features.
+
+this module is legacy as 2.0 APIs are now standard.
 
 """
 from .engine import Connection as Connection

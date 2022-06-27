@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """The internals for the unit of work system.
 
@@ -15,12 +17,27 @@ organizes them in order of dependency, and executes.
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Set
+from typing import TYPE_CHECKING
+
 from . import attributes
 from . import exc as orm_exc
 from . import util as orm_util
 from .. import event
 from .. import util
 from ..util import topological
+
+
+if TYPE_CHECKING:
+    from .dependency import DependencyProcessor
+    from .interfaces import MapperProperty
+    from .mapper import Mapper
+    from .session import Session
+    from .session import SessionTransaction
+    from .state import InstanceState
 
 
 def track_cascade_events(descriptor, prop):
@@ -131,7 +148,13 @@ def track_cascade_events(descriptor, prop):
 
 
 class UOWTransaction:
-    def __init__(self, session):
+    session: Session
+    transaction: SessionTransaction
+    attributes: Dict[str, Any]
+    deps: util.defaultdict[Mapper[Any], Set[DependencyProcessor]]
+    mappers: util.defaultdict[Mapper[Any], Set[InstanceState[Any]]]
+
+    def __init__(self, session: Session):
         self.session = session
 
         # dictionary used by external actors to
@@ -275,13 +298,13 @@ class UOWTransaction:
 
     def register_object(
         self,
-        state,
-        isdelete=False,
-        listonly=False,
-        cancel_delete=False,
-        operation=None,
-        prop=None,
-    ):
+        state: InstanceState[Any],
+        isdelete: bool = False,
+        listonly: bool = False,
+        cancel_delete: bool = False,
+        operation: Optional[str] = None,
+        prop: Optional[MapperProperty] = None,
+    ) -> bool:
         if not self.session._contains_state(state):
             # this condition is normal when objects are registered
             # as part of a relationship cascade operation.  it should
@@ -408,7 +431,7 @@ class UOWTransaction:
             [a for a in self.postsort_actions.values() if not a.disabled]
         ).difference(cycles)
 
-    def execute(self):
+    def execute(self) -> None:
         postsort_actions = self._generate_actions()
 
         postsort_actions = sorted(
@@ -435,7 +458,7 @@ class UOWTransaction:
             for rec in topological.sort(self.dependencies, postsort_actions):
                 rec.execute(self)
 
-    def finalize_flush_changes(self):
+    def finalize_flush_changes(self) -> None:
         """Mark processed objects as clean / deleted after a successful
         flush().
 

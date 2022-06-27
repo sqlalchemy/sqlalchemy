@@ -13,7 +13,7 @@ This behavior can be configured at mapper construction time using the
 function, as well as by using options with the :class:`_query.Query` object.
 
 The loading of relationships falls into three categories; **lazy** loading,
-**eager** loading, and **no** loading. Lazy loading refers to objects are returned
+**eager** loading, and **no** loading. Lazy loading refers to objects that are returned
 from a query without the related
 objects loaded at first.  When the given collection or reference is
 first accessed on a particular object, an additional SELECT statement

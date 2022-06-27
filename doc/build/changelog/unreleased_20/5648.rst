@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, engine
+    :tickets: 5648
+
+    The :meth:`.DialectEvents.handle_error` event is now moved to the
+    :class:`.DialectEvents` suite from the :class:`.EngineEvents` suite, and
+    now participates in the connection pool "pre ping" event for those dialects
+    that make use of disconnect codes in order to detect if the database is
+    live. This allows end-user code to alter the state of "pre ping". Note that
+    this does not include dialects which contain a native "ping" method such as
+    that of psycopg2 or most MySQL dialects.

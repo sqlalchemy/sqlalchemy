@@ -4,12 +4,14 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 import datetime
 
 from ... import exc
-from ... import types as sqltypes
 from ... import util
+from ...sql import sqltypes
 
 
 class _NumericType:

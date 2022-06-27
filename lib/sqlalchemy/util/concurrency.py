@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
+
 from __future__ import annotations
 
 import asyncio  # noqa
@@ -12,7 +14,7 @@ import typing
 have_greenlet = False
 greenlet_error = None
 try:
-    import greenlet  # type: ignore # noqa F401
+    import greenlet  # type: ignore # noqa: F401
 except ImportError as e:
     greenlet_error = str(e)
     pass
@@ -25,9 +27,9 @@ else:
     from ._concurrency_py3k import AsyncAdaptedLock as AsyncAdaptedLock
     from ._concurrency_py3k import (
         _util_async_run as _util_async_run,
-    )  # noqa F401
+    )  # noqa: F401
     from ._concurrency_py3k import (
-        _util_async_run_coroutine_function as _util_async_run_coroutine_function,  # noqa F401, E501
+        _util_async_run_coroutine_function as _util_async_run_coroutine_function,  # noqa: F401, E501
     )
 
 if not typing.TYPE_CHECKING and not have_greenlet:
@@ -45,23 +47,23 @@ if not typing.TYPE_CHECKING and not have_greenlet:
             else ""
         )
 
-    def is_exit_exception(e):  # noqa F811
+    def is_exit_exception(e):  # noqa: F811
         return not isinstance(e, Exception)
 
-    def await_only(thing):  # type: ignore # noqa F811
+    def await_only(thing):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def await_fallback(thing):  # type: ignore # noqa F81
+    def await_fallback(thing):  # type: ignore  # noqa: F811
         return thing
 
-    def greenlet_spawn(fn, *args, **kw):  # type: ignore # noqa F81
+    def greenlet_spawn(fn, *args, **kw):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def AsyncAdaptedLock(*args, **kw):  # type: ignore # noqa F81
+    def AsyncAdaptedLock(*args, **kw):  # type: ignore  # noqa: F811
         _not_implemented()
 
-    def _util_async_run(fn, *arg, **kw):  # type: ignore # noqa F81
+    def _util_async_run(fn, *arg, **kw):  # type: ignore  # noqa: F811
         return fn(*arg, **kw)
 
-    def _util_async_run_coroutine_function(fn, *arg, **kw):  # type: ignore # noqa F81
+    def _util_async_run_coroutine_function(fn, *arg, **kw):  # type: ignore  # noqa: F811,E501
         _not_implemented()

@@ -34,6 +34,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import Optional
 from typing import overload
 from typing import Type
 from typing import TypeVar
@@ -43,6 +44,9 @@ from . import exc
 from .util.typing import Literal
 
 _T = TypeVar("_T", bound=Any)
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+_IN = TypeVar("_IN", bound="Inspectable[Any]")
 
 _registrars: Dict[type, Union[Literal[True], Callable[[Any], Any]]] = {}
 
@@ -53,11 +57,22 @@ class Inspectable(Generic[_T]):
     This allows typing to set up a linkage between an object that
     can be inspected and the type of inspection it returns.
 
+    Unfortunately we cannot at the moment get all classes that are
+    returned by inspection to suit this interface as we get into
+    MRO issues.
+
     """
+
+    __slots__ = ()
 
 
 @overload
-def inspect(subject: Inspectable[_T], raiseerr: bool = True) -> _T:
+def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN:
+    ...
+
+
+@overload
+def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]:
     ...
 
 
@@ -108,9 +123,9 @@ def inspect(subject: Any, raiseerr: bool = True) -> Any:
 
 
 def _inspects(
-    *types: type,
-) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    def decorate(fn_or_cls: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    *types: Type[Any],
+) -> Callable[[_F], _F]:
+    def decorate(fn_or_cls: _F) -> _F:
         for type_ in types:
             if type_ in _registrars:
                 raise AssertionError(
@@ -122,7 +137,10 @@ def _inspects(
     return decorate
 
 
-def _self_inspects(cls: Type[_T]) -> Type[_T]:
+_TT = TypeVar("_TT", bound="Type[Any]")
+
+
+def _self_inspects(cls: _TT) -> _TT:
     if cls in _registrars:
         raise AssertionError("Type %s is already " "registered" % cls)
     _registrars[cls] = True

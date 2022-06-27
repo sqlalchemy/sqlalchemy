@@ -1186,6 +1186,37 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_recursive_dml_syntax(self):
+        orders = table(
+            "orders",
+            column("region"),
+            column("amount"),
+            column("product"),
+            column("quantity"),
+        )
+
+        upsert = (
+            orders.update()
+            .where(orders.c.region == "Region1")
+            .values(amount=1.0, product="Product1", quantity=1)
+            .returning(*(orders.c._all_columns))
+            .cte("upsert", recursive=True)
+        )
+        stmt = select(upsert)
+
+        # This statement probably makes no sense, just want to see that the
+        # column generation aspect needed by RECURSIVE works (new in 2.0)
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE upsert(region, amount, product, quantity) "
+            "AS (UPDATE orders SET amount=:param_1, product=:param_2, "
+            "quantity=:param_3 WHERE orders.region = :region_1 "
+            "RETURNING orders.region, orders.amount, orders.product, "
+            "orders.quantity) "
+            "SELECT upsert.region, upsert.amount, upsert.product, "
+            "upsert.quantity FROM upsert",
+        )
+
     def test_upsert_from_select(self):
         orders = table(
             "orders",
@@ -1646,6 +1677,27 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s3,
             "WITH baz AS (SELECT foo.id AS id FROM foo) "
             "SELECT bar.id, bar.attr FROM bar WHERE bar.foo_id IN "
+            "(SELECT id FROM baz)",
+        )
+
+    def test_textual_select_stack_correction(self):
+        """test #7798 , regression from #7760"""
+
+        foo = table("foo", column("id"))
+        bar = table("bar", column("id"), column("attr"), column("foo_id"))
+
+        s1 = text("SELECT id FROM foo").columns(foo.c.id)
+        s2 = text(
+            "SELECT bar.id, bar.attr FROM bar WHERE br.id IN "
+            "(SELECT id FROM baz)"
+        ).columns(bar.c.id, bar.c.attr)
+        s3 = bar.insert().from_select(list(s2.selected_columns), s2)
+        s4 = s3.add_cte(s1.cte(name="baz"))
+
+        self.assert_compile(
+            s4,
+            "WITH baz AS (SELECT id FROM foo) INSERT INTO bar (id, attr) "
+            "SELECT bar.id, bar.attr FROM bar WHERE br.id IN "
             "(SELECT id FROM baz)",
         )
 

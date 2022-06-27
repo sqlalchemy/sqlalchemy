@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+pg8000
     :name: pg8000
@@ -91,7 +93,6 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 """  # noqa
 import decimal
 import re
-from uuid import UUID as _python_UUID
 
 from .array import ARRAY as PGARRAY
 from .base import _DECIMAL_TYPES
@@ -103,14 +104,15 @@ from .base import PGCompiler
 from .base import PGDialect
 from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
-from .base import UUID
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
+from .pg_catalog import _SpaceVector
+from .pg_catalog import OIDVECTOR
 from ... import exc
-from ... import types as sqltypes
 from ... import util
 from ...engine import processors
+from ...sql import sqltypes
 from ...sql.elements import quoted_name
 
 
@@ -193,30 +195,6 @@ class _PGJSONPathType(JSONPathType):
     # DBAPI type 1009
 
 
-class _PGUUID(UUID):
-    render_bind_cast = True
-
-    def bind_processor(self, dialect):
-        if not self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = _python_UUID(value)
-                return value
-
-            return process
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
-
-
 class _PGEnum(ENUM):
     def get_dbapi_type(self, dbapi):
         return dbapi.UNKNOWN
@@ -267,6 +245,10 @@ class _PGBoolean(sqltypes.Boolean):
 
 class _PGARRAY(PGARRAY):
     render_bind_cast = True
+
+
+class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
+    pass
 
 
 _server_side_id = util.counter()
@@ -389,7 +371,6 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.JSON.JSONIndexType: _PGJSONIndexType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
             sqltypes.JSON.JSONStrIndexType: _PGJSONStrIndexType,
-            UUID: _PGUUID,
             sqltypes.Interval: _PGInterval,
             INTERVAL: _PGInterval,
             sqltypes.DateTime: _PGTimeStamp,
@@ -401,6 +382,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.BigInteger: _PGBigInteger,
             sqltypes.Enum: _PGEnum,
             sqltypes.ARRAY: _PGARRAY,
+            OIDVECTOR: _PGOIDVECTOR,
         },
     )
 
@@ -426,7 +408,7 @@ class PGDialect_pg8000(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pg8000")
 
     def create_connect_args(self, url):

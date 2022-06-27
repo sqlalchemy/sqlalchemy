@@ -133,7 +133,9 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
         reg = registry(metadata=metadata)
 
-        reg.map_declaratively(User)
+        mp = reg.map_declaratively(User)
+        assert mp is inspect(User)
+        assert mp is User.__mapper__
 
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
@@ -176,6 +178,53 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
         user_to_prop = Table(
             "user_to_prop",
             Base.metadata,
+            Column("user_id", Integer, ForeignKey("fooschema.users.id")),
+            Column("prop_id", Integer, ForeignKey("fooschema.props.id")),
+            schema="fooschema",
+        )
+        configure_mappers()
+
+        assert (
+            class_mapper(User).get_property("props").secondary is user_to_prop
+        )
+
+    def test_string_dependency_resolution_schemas_no_base(self):
+        """
+
+        found_during_type_annotation
+
+        """
+
+        reg = registry()
+
+        @reg.mapped
+        class User:
+
+            __tablename__ = "users"
+            __table_args__ = {"schema": "fooschema"}
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            props = relationship(
+                "Prop",
+                secondary="fooschema.user_to_prop",
+                primaryjoin="User.id==fooschema.user_to_prop.c.user_id",
+                secondaryjoin="fooschema.user_to_prop.c.prop_id==Prop.id",
+                backref="users",
+            )
+
+        @reg.mapped
+        class Prop:
+
+            __tablename__ = "props"
+            __table_args__ = {"schema": "fooschema"}
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        user_to_prop = Table(
+            "user_to_prop",
+            reg.metadata,
             Column("user_id", Integer, ForeignKey("fooschema.users.id")),
             Column("prop_id", Integer, ForeignKey("fooschema.props.id")),
             schema="fooschema",
@@ -290,6 +339,51 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
         reg = registry(metadata=metadata)
         reg.mapped(User)
         reg.mapped(Address)
+
+        reg.metadata.create_all(testing.db)
+        u1 = User(
+            name="u1", addresses=[Address(email="one"), Address(email="two")]
+        )
+        with Session(testing.db) as sess:
+            sess.add(u1)
+            sess.commit()
+        with Session(testing.db) as sess:
+            eq_(
+                sess.query(User).all(),
+                [
+                    User(
+                        name="u1",
+                        addresses=[Address(email="one"), Address(email="two")],
+                    )
+                ],
+            )
+
+    def test_map_declaratively(self, metadata):
+        class User(fixtures.ComparableEntity):
+
+            __tablename__ = "users"
+            id = Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column("name", String(50))
+            addresses = relationship("Address", backref="user")
+
+        class Address(fixtures.ComparableEntity):
+
+            __tablename__ = "addresses"
+            id = Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            email = Column("email", String(50))
+            user_id = Column("user_id", Integer, ForeignKey("users.id"))
+
+        reg = registry(metadata=metadata)
+        um = reg.map_declaratively(User)
+        am = reg.map_declaratively(Address)
+
+        is_(User.__mapper__, um)
+        is_(Address.__mapper__, am)
+
         reg.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]

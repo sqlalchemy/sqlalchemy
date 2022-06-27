@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+psycopg
     :name: psycopg (a.k.a. psycopg 3)
@@ -60,18 +62,16 @@ import re
 
 from ._psycopg_common import _PGDialect_common_psycopg
 from ._psycopg_common import _PGExecutionContext_common_psycopg
-from ._psycopg_common import _PsycopgUUID
 from .base import INTERVAL
 from .base import PGCompiler
 from .base import PGIdentifierPreparer
-from .base import UUID
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
 from ... import pool
-from ... import types as sqltypes
 from ... import util
 from ...engine import AdaptedConnection
+from ...sql import sqltypes
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
@@ -116,10 +116,6 @@ class _PGJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
 
 class _PGJSONPathType(JSONPathType):
     pass
-
-
-class _PGUUID(_PsycopgUUID):
-    render_bind_cast = True
 
 
 class _PGInterval(INTERVAL):
@@ -199,7 +195,6 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
             sqltypes.JSON.JSONStrIndexType: _PGJSONStrIndexType,
-            UUID: _PGUUID,
             sqltypes.Interval: _PGInterval,
             INTERVAL: _PGInterval,
             sqltypes.Date: _PGDate,
@@ -261,7 +256,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
 
         # PGDialect.initialize() checks server version for <= 8.2 and sets
         # this flag to False if so
-        if not self.full_returning:
+        if not self.insert_returning:
             self.insert_executemany_returning = False
 
         # HSTORE can't be registered until we have a connection so that
@@ -281,7 +276,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
                 register_hstore(info, connection.connection)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg
 
         return psycopg
@@ -385,12 +380,14 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             != self._psycopg_TransactionStatus.IDLE
         ):
             dbapi_conn.rollback()
-        before = dbapi_conn.autocommit
+        before_autocommit = dbapi_conn.autocommit
         try:
-            self._do_autocommit(dbapi_conn, True)
+            if not before_autocommit:
+                self._do_autocommit(dbapi_conn, True)
             dbapi_conn.execute(command)
         finally:
-            self._do_autocommit(dbapi_conn, before)
+            if not before_autocommit:
+                self._do_autocommit(dbapi_conn, before_autocommit)
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
@@ -592,7 +589,7 @@ class PGDialectAsync_psycopg(PGDialect_psycopg):
     supports_statement_cache = True
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg
         from psycopg.pq import ExecStatus
 

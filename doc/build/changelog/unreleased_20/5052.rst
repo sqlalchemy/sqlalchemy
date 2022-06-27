@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, datatypes
+    :tickets: 5052
+
+    Added modified ISO-8601 rendering (i.e. ISO-8601 with the T converted to a
+    space) when using ``literal_binds`` with the SQL compilers provided by the
+    PostgreSQL, MySQL, MariaDB, MSSQL, Oracle dialects. For Oracle, the ISO
+    format is wrapped inside of an appropriate TO_DATE() function call.
+    Previously this rendering was not implemented for dialect-specific
+    compilation.

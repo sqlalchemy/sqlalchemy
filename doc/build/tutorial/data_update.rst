@@ -101,7 +101,7 @@ that literal values would normally go:
     ...   )
     {opensql}BEGIN (implicit)
     UPDATE user_account SET name=? WHERE user_account.name = ?
-    [...] (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
+    [...] [('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim')]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT{stop}
 
@@ -174,6 +174,7 @@ order to refer to additional tables::
   SET address.email_address=%s, user_account.fullname=%s
   WHERE user_account.id = address.user_id AND address.email_address = %s
 
+.. _tutorial_parameter_ordered_updates:
 
 Parameter Ordered Updates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

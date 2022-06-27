@@ -179,8 +179,9 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             select(table1.alias("t"), text("foo.f"))
             .where(text("foo.f = t.id"))
             .select_from(text("(select f from bar where lala=heyhey) foo")),
-            "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
-            "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
+            "SELECT t.myid, t.name, t.description, foo.f FROM "
+            "(select f from bar where lala=heyhey) foo, "
+            "mytable AS t WHERE foo.f = t.id",
         )
 
     def test_expression_element_role(self):
@@ -688,6 +689,19 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         mapping = self._mapping(s)
         assert x not in mapping
 
+    def test_subquery_accessors(self):
+        t = self._xy_table_fixture()
+
+        s = text("SELECT x from t").columns(t.c.x)
+
+        self.assert_compile(
+            select(s.scalar_subquery()), "SELECT (SELECT x from t) AS anon_1"
+        )
+        self.assert_compile(
+            select(s.subquery()),
+            "SELECT anon_1.x FROM (SELECT x from t) AS anon_1",
+        )
+
     def test_select_label_alt_name_table_alias_column(self):
         t = self._xy_table_fixture()
         x = t.c.x
@@ -714,6 +728,36 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH t AS (select id, name from user) "
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable, t WHERE mytable.myid = t.id",
+        )
+
+    def test_cte_recursive(self):
+        t = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .cte("t", recursive=True)
+        )
+
+        s = select(table1).where(table1.c.myid == t.c.id)
+        self.assert_compile(
+            s,
+            "WITH RECURSIVE t(id, name) AS (select id, name from user) "
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable, t WHERE mytable.myid = t.id",
+        )
+
+    def test_unions(self):
+        s1 = text("select id, name from user where id > 5").columns(
+            id=Integer, name=String
+        )
+        s2 = text("select id, name from user where id < 15").columns(
+            id=Integer, name=String
+        )
+        stmt = union(s1, s2)
+        eq_(stmt.selected_columns.keys(), ["id", "name"])
+        self.assert_compile(
+            stmt,
+            "select id, name from user where id > 5 UNION "
+            "select id, name from user where id < 15",
         )
 
     def test_subquery(self):
@@ -980,7 +1024,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             '"SUM(ABC)_"',
         )
 
-    def test_order_by_literal_col_quoting_one_explict_quote(self):
+    def test_order_by_literal_col_quoting_one_explicit_quote(self):
         col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)", True))
         tbl = table("my_table")
         query = select(col).select_from(tbl).order_by(col)

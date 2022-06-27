@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: mssql+pyodbc
     :name: PyODBC
@@ -179,6 +181,33 @@ at both the pyodbc and engine levels::
         isolation_level="AUTOCOMMIT"
     )
 
+Avoiding sending large string parameters as TEXT/NTEXT
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, for historical reasons, Microsoft's ODBC drivers for SQL Server
+send long string parameters (greater than 4000 SBCS characters or 2000 Unicode
+characters) as TEXT/NTEXT values. TEXT and NTEXT have been deprecated for many
+years and are starting to cause compatibility issues with newer versions of
+SQL_Server/Azure. For example, see `this
+issue <https://github.com/mkleehammer/pyodbc/issues/835>`_.
+
+Starting with ODBC Driver 18 for SQL Server we can override the legacy
+behavior and pass long strings as varchar(max)/nvarchar(max) using the
+``LongAsMax=Yes`` connection string parameter::
+
+    connection_url = sa.engine.URL.create(
+        "mssql+pyodbc",
+        username="scott",
+        password="tiger",
+        host="mssqlserver.example.com",
+        database="mydb",
+        query={
+            "driver": "ODBC Driver 18 for SQL Server",
+            "LongAsMax": "Yes",
+        },
+    )
+
+
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
 
@@ -283,6 +312,7 @@ import decimal
 import re
 import struct
 
+from .base import _MSDateTime
 from .base import BINARY
 from .base import DATETIMEOFFSET
 from .base import MSDialect
@@ -420,7 +450,7 @@ class _ODBCDateTimeBindProcessor:
         return process
 
 
-class _ODBCDateTime(_ODBCDateTimeBindProcessor, sqltypes.DateTime):
+class _ODBCDateTime(_ODBCDateTimeBindProcessor, _MSDateTime):
     pass
 
 
@@ -492,6 +522,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     # mssql still has problems with this on Linux
     supports_sane_rowcount_returning = False
 
+    favor_returning_over_lastrowid = True
+
     execution_ctx_cls = MSExecutionContext_pyodbc
 
     colspecs = util.update_copy(
@@ -538,7 +570,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
             return super(MSDialect_pyodbc, self)._get_server_version_info(
-                connection, allow_chars=False
+                connection
             )
         else:
             version = []

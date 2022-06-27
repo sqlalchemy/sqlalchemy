@@ -4,9 +4,12 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 from . import base  # noqa
 from . import cx_oracle  # noqa
+from . import oracledb  # noqa
 from .base import BFILE
 from .base import BINARY_DOUBLE
 from .base import BINARY_FLOAT

@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 from itertools import zip_longest
 
 from .array import ARRAY
@@ -93,7 +95,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     Defines an EXCLUDE constraint as described in the `PostgreSQL
     documentation`__.
 
-    __ https://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+    __ https://www.postgresql.org/docs/current/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
     """  # noqa
 

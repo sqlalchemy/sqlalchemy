@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import datetime
 
 from .. import engines

@@ -100,8 +100,9 @@ class InsertExecTest(fixtures.TablesTest):
 
             # verify implicit_returning is working
             if (
-                connection.dialect.implicit_returning
+                connection.dialect.insert_returning
                 and table_.implicit_returning
+                and not connection.dialect.postfetch_lastrowid
             ):
                 ins = table_.insert()
                 comp = ins.compile(connection, column_keys=list(values))
@@ -146,7 +147,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -173,7 +174,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -200,7 +201,7 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -223,7 +224,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.sequences
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -251,7 +252,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.sequences
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -277,7 +278,7 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -299,7 +300,7 @@ class InsertExecTest(fixtures.TablesTest):
 
     @testing.requires.supports_autoincrement_w_composite_pk
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -338,6 +339,7 @@ class InsertExecTest(fixtures.TablesTest):
             self.metadata,
             Column("x", Integer, primary_key=True),
             Column("y", Integer),
+            implicit_returning=False,
         )
         t.create(connection)
         with mock.patch.object(
@@ -403,12 +405,16 @@ class InsertExecTest(fixtures.TablesTest):
         eq_(r.inserted_primary_key, (None,))
 
     @testing.requires.empty_inserts
-    @testing.requires.returning
-    def test_no_inserted_pk_on_returning(self, connection):
+    @testing.requires.insert_returning
+    def test_no_inserted_pk_on_returning(
+        self, connection, close_result_when_finished
+    ):
         users = self.tables.users
         result = connection.execute(
             users.insert().returning(users.c.user_id, users.c.user_name)
         )
+        close_result_when_finished(result)
+
         assert_raises_message(
             exc.InvalidRequestError,
             r"Can't call inserted_primary_key when returning\(\) is used.",
@@ -421,7 +427,7 @@ class InsertExecTest(fixtures.TablesTest):
 class TableInsertTest(fixtures.TablesTest):
 
     """test for consistent insert behavior across dialects
-    regarding the inline() method, lower-case 't' tables.
+    regarding the inline() method, values() method, lower-case 't' tables.
 
     """
 
@@ -479,8 +485,12 @@ class TableInsertTest(fixtures.TablesTest):
         returning=None,
         inserted_primary_key=False,
         table=None,
+        parameters=None,
     ):
-        r = connection.execute(stmt)
+        if parameters is not None:
+            r = connection.execute(stmt, parameters)
+        else:
+            r = connection.execute(stmt)
 
         if returning:
             returned = r.first()
@@ -562,7 +572,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=(1,),
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_uppercase_direct_params_returning(self, connection):
         t = self.tables.foo
         self._test(
@@ -595,7 +605,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=(),
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_direct_params_returning(self, connection):
         t = self._fixture()
         self._test(
@@ -644,4 +654,39 @@ class TableInsertTest(fixtures.TablesTest):
             t.insert().inline().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=(),
+        )
+
+    @testing.requires.database_discards_null_for_autoincrement
+    def test_explicit_null_pk_values_db_ignores_it(self, connection):
+        """test new use case in #7998"""
+
+        # NOTE: this use case uses cursor.lastrowid on SQLite, MySQL, MariaDB,
+        # however when SQLAlchemy 2.0 adds support for RETURNING to SQLite
+        # and MariaDB, it should work there as well.
+
+        t = self.tables.foo_no_seq
+        self._test(
+            connection,
+            t.insert().values(id=None, data="data", x=5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            inserted_primary_key=(testing.db.dialect.default_sequence_base,),
+            table=t,
+        )
+
+    @testing.requires.database_discards_null_for_autoincrement
+    def test_explicit_null_pk_params_db_ignores_it(self, connection):
+        """test new use case in #7998"""
+
+        # NOTE: this use case uses cursor.lastrowid on SQLite, MySQL, MariaDB,
+        # however when SQLAlchemy 2.0 adds support for RETURNING to SQLite
+        # and MariaDB, it should work there as well.
+
+        t = self.tables.foo_no_seq
+        self._test(
+            connection,
+            t.insert(),
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            inserted_primary_key=(testing.db.dialect.default_sequence_base,),
+            table=t,
+            parameters=dict(id=None, data="data", x=5),
         )

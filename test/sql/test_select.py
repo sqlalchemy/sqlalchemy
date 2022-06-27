@@ -61,7 +61,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_old_bracket_style_fail(self):
         with expect_raises_message(
             exc.ArgumentError,
-            r"Column expression or FROM clause expected, "
+            r"Column expression, FROM clause, or other columns clause .*"
             r".*Did you mean to say",
         ):
             select([table1.c.myid])

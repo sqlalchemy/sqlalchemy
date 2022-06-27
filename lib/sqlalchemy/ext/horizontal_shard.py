@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 """Horizontal sharding support.
 
@@ -252,5 +253,4 @@ def execute_and_instances(orm_context):
         for shard_id in session.execute_chooser(orm_context):
             result_ = iter_for_shard(shard_id, load_options, update_options)
             partial.append(result_)
-
         return partial[0].merge(*partial[1:])

@@ -1,8 +1,13 @@
+# mypy: ignore-errors
+
 from ... import create_engine
 from ... import exc
+from ... import inspect
 from ...engine import url as sa_url
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db
+from ...testing.provision import drop_all_schema_objects_post_tables
+from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
@@ -11,6 +16,7 @@ from ...testing.provision import run_reap_dbs
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import update_db_opts
 
 
 @create_db.for_db("oracle")
@@ -26,6 +32,10 @@ def _oracle_create_db(cfg, eng, ident):
         conn.exec_driver_sql("grant unlimited tablespace to %s" % ident)
         conn.exec_driver_sql("grant unlimited tablespace to %s_ts1" % ident)
         conn.exec_driver_sql("grant unlimited tablespace to %s_ts2" % ident)
+        # these are needed to create materialized views
+        conn.exec_driver_sql("grant create table to %s" % ident)
+        conn.exec_driver_sql("grant create table to %s_ts1" % ident)
+        conn.exec_driver_sql("grant create table to %s_ts2" % ident)
 
 
 @configure_follower.for_db("oracle")
@@ -44,6 +54,30 @@ def _ora_drop_ignore(conn, dbname):
         return False
 
 
+@drop_all_schema_objects_pre_tables.for_db("oracle")
+def _ora_drop_all_schema_objects_pre_tables(cfg, eng):
+    _purge_recyclebin(eng)
+    _purge_recyclebin(eng, cfg.test_schema)
+
+
+@drop_all_schema_objects_post_tables.for_db("oracle")
+def _ora_drop_all_schema_objects_post_tables(cfg, eng):
+
+    with eng.begin() as conn:
+        for syn in conn.dialect._get_synonyms(conn, None, None, None):
+            conn.exec_driver_sql(f"drop synonym {syn['synonym_name']}")
+
+        for syn in conn.dialect._get_synonyms(
+            conn, cfg.test_schema, None, None
+        ):
+            conn.exec_driver_sql(
+                f"drop synonym {cfg.test_schema}.{syn['synonym_name']}"
+            )
+
+        for tmp_table in inspect(conn).get_temp_table_names():
+            conn.exec_driver_sql(f"drop table {tmp_table}")
+
+
 @drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
     with eng.begin() as conn:
@@ -58,13 +92,10 @@ def _oracle_drop_db(cfg, eng, ident):
 
 
 @stop_test_class_outside_fixtures.for_db("oracle")
-def stop_test_class_outside_fixtures(config, db, cls):
+def _ora_stop_test_class_outside_fixtures(config, db, cls):
 
     try:
-        with db.begin() as conn:
-            # run magic command to get rid of identity sequences
-            # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa E501
-            conn.exec_driver_sql("purge recyclebin")
+        _purge_recyclebin(db)
     except exc.DatabaseError as err:
         log.warning("purge recyclebin command failed: %s", err)
 
@@ -81,6 +112,22 @@ def stop_test_class_outside_fixtures(config, db, cls):
             cx_oracle_conn.stmtcachesize = 0
             cx_oracle_conn.stmtcachesize = sc
     _all_conns.clear()
+
+
+def _purge_recyclebin(eng, schema=None):
+    with eng.begin() as conn:
+        if schema is None:
+            # run magic command to get rid of identity sequences
+            # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa: E501
+            conn.exec_driver_sql("purge recyclebin")
+        else:
+            # per user: https://community.oracle.com/tech/developers/discussion/2255402/how-to-clear-dba-recyclebin-for-a-particular-user  # noqa: E501
+            for owner, object_name, type_ in conn.exec_driver_sql(
+                "select owner, object_name,type from "
+                "dba_recyclebin where owner=:schema and type='TABLE'",
+                {"schema": conn.dialect.denormalize_name(schema)},
+            ).all():
+                conn.exec_driver_sql(f'purge {type_} {owner}."{object_name}"')
 
 
 _all_conns = set()
@@ -158,3 +205,13 @@ def _oracle_set_default_schema_on_connection(
     cursor = dbapi_connection.cursor()
     cursor.execute("ALTER SESSION SET CURRENT_SCHEMA=%s" % schema_name)
     cursor.close()
+
+
+@update_db_opts.for_db("oracle")
+def _update_db_opts(db_url, db_opts, options):
+    """Set database options (db_opts) for a test database that we created."""
+    if (
+        options.oracledb_thick_mode
+        and sa_url.make_url(db_url).get_driver_name() == "oracledb"
+    ):
+        db_opts["thick_mode"] = True

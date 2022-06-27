@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
@@ -123,10 +125,14 @@ class InsertBehaviorTest(fixtures.TablesTest):
         # case, the row had to have been consumed at least.
         assert not r.returns_rows or r.fetchone() is None
 
-    @requirements.returning
+    @requirements.insert_returning
     def test_autoclose_on_insert_implicit_returning(self, connection):
         r = connection.execute(
-            self.tables.autoinc_pk.insert(), dict(data="some data")
+            # return_defaults() ensures RETURNING will be used,
+            # new in 2.0 as sqlite/mariadb offer both RETURNING and
+            # cursor.lastrowid
+            self.tables.autoinc_pk.insert().return_defaults(),
+            dict(data="some data"),
         )
         assert r._soft_closed
         assert not r.closed
@@ -293,7 +299,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
 class ReturningTest(fixtures.TablesTest):
     run_create_tables = "each"
-    __requires__ = "returning", "autoincrement_insert"
+    __requires__ = "insert_returning", "autoincrement_insert"
     __backend__ = True
 
     def _assert_round_trip(self, table, conn):

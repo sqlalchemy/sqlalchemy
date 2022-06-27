@@ -18,10 +18,13 @@ SQLAlchemy connection pool.
 """
 
 from . import events
-from .base import _AdhocProxiedConnection
-from .base import _ConnectionFairy
+from .base import _AdhocProxiedConnection as _AdhocProxiedConnection
+from .base import _ConnectionFairy as _ConnectionFairy
 from .base import _ConnectionRecord
+from .base import _CreatorFnType as _CreatorFnType
+from .base import _CreatorWRecFnType as _CreatorWRecFnType
 from .base import _finalize_fairy
+from .base import _ResetStyleArgType as _ResetStyleArgType
 from .base import ConnectionPoolEntry as ConnectionPoolEntry
 from .base import ManagesConnection as ManagesConnection
 from .base import Pool as Pool

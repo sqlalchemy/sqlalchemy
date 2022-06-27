@@ -3,9 +3,12 @@ from unittest.mock import call
 from unittest.mock import Mock
 
 import sqlalchemy as sa
+from sqlalchemy import bindparam
 from sqlalchemy import delete
 from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
@@ -42,6 +45,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -235,6 +239,115 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 * num_opts
             ),
         )
+
+    def test_override_parameters_scalar(self):
+        """test that session.scalar() maintains the 'scalar-ness' of the
+        result when using re-execute events.
+
+        This got more complicated when the session.scalar(Sequence("my_seq"))
+        use case needed to keep working and returning a scalar result.
+
+        """
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            return ctx.invoke_statement(params={"id": 7})
+
+        orig_params = {"id": 18}
+        with self.sql_execution_asserter() as asserter:
+            result = sess.scalar(
+                select(User).where(User.id == bindparam("id")), orig_params
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users WHERE users.id = :id",
+                [{"id": 7}],
+            )
+        )
+        eq_(result, User(id=7))
+        # orig params weren't mutated
+        eq_(orig_params, {"id": 18})
+
+    def test_override_parameters_executesingle(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            return ctx.invoke_statement(params={"name": "overridden"})
+
+        orig_params = {"id": 18, "name": "original"}
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(insert(User), orig_params)
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [{"id": 18, "name": "overridden"}],
+            )
+        )
+        # orig params weren't mutated
+        eq_(orig_params, {"id": 18, "name": "original"})
+
+    def test_override_parameters_executemany(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            return ctx.invoke_statement(
+                params=[{"name": "overridden1"}, {"name": "overridden2"}]
+            )
+
+        orig_params = [
+            {"id": 18, "name": "original1"},
+            {"id": 19, "name": "original2"},
+        ]
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(insert(User), orig_params)
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [
+                    {"id": 18, "name": "overridden1"},
+                    {"id": 19, "name": "overridden2"},
+                ],
+            )
+        )
+        # orig params weren't mutated
+        eq_(
+            orig_params,
+            [{"id": 18, "name": "original1"}, {"id": 19, "name": "original2"}],
+        )
+
+    def test_override_parameters_executemany_mismatch(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            return ctx.invoke_statement(
+                params=[{"name": "overridden1"}, {"name": "overridden2"}]
+            )
+
+        orig_params = [
+            {"id": 18, "name": "original1"},
+            {"id": 19, "name": "original2"},
+            {"id": 20, "name": "original3"},
+        ]
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't apply executemany parameters to statement; number "
+            r"of parameter sets passed to Session.execute\(\) \(3\) does "
+            r"not match number of parameter sets given to "
+            r"ORMExecuteState.invoke_statement\(\) \(2\)",
+        ):
+            sess.execute(insert(User), orig_params)
 
     def test_chained_events_one(self):
 
@@ -3298,7 +3411,7 @@ class RefreshFlushInReturningTest(fixtures.MappedTest):
         s.add(t1)
         s.flush()
 
-        if testing.requires.returning.enabled:
+        if testing.requires.insert_returning.enabled:
             # ordering is deterministic in this test b.c. the routine
             # appends the "returning" params before the "prefetch"
             # ones.  if there were more than one attribute in each category,

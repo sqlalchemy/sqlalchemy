@@ -1,3 +1,10 @@
+# Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 import decimal
 
 from .array import ARRAY as PGARRAY
@@ -6,8 +13,10 @@ from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
 from .base import PGDialect
 from .base import PGExecutionContext
-from .base import UUID
 from .hstore import HSTORE
+from .pg_catalog import _SpaceVector
+from .pg_catalog import INT2VECTOR
+from .pg_catalog import OIDVECTOR
 from ... import exc
 from ... import types as sqltypes
 from ... import util
@@ -61,23 +70,16 @@ class _PsycopgHStore(HSTORE):
             )
 
 
-class _PsycopgUUID(UUID):
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
-
-
 class _PsycopgARRAY(PGARRAY):
     render_bind_cast = True
+
+
+class _PsycopgINT2VECTOR(_SpaceVector, INT2VECTOR):
+    pass
+
+
+class _PsycopgOIDVECTOR(_SpaceVector, OIDVECTOR):
+    pass
 
 
 class _PGExecutionContext_common_psycopg(PGExecutionContext):
@@ -104,8 +106,9 @@ class _PGDialect_common_psycopg(PGDialect):
         {
             sqltypes.Numeric: _PsycopgNumeric,
             HSTORE: _PsycopgHStore,
-            UUID: _PsycopgUUID,
             sqltypes.ARRAY: _PsycopgARRAY,
+            INT2VECTOR: _PsycopgINT2VECTOR,
+            OIDVECTOR: _PsycopgOIDVECTOR,
         },
     )
 
@@ -113,14 +116,12 @@ class _PGDialect_common_psycopg(PGDialect):
         self,
         client_encoding=None,
         use_native_hstore=True,
-        use_native_uuid=True,
         **kwargs,
     ):
         PGDialect.__init__(self, **kwargs)
         if not use_native_hstore:
             self._has_native_hstore = False
         self.use_native_hstore = use_native_hstore
-        self.use_native_uuid = use_native_uuid
         self.client_encoding = client_encoding
 
     def create_connect_args(self, url):
@@ -170,15 +171,17 @@ class _PGDialect_common_psycopg(PGDialect):
 
     def do_ping(self, dbapi_connection):
         cursor = None
+        before_autocommit = dbapi_connection.autocommit
         try:
-            self._do_autocommit(dbapi_connection, True)
+            if not before_autocommit:
+                self._do_autocommit(dbapi_connection, True)
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute(self._dialect_specific_select_one)
             finally:
                 cursor.close()
-                if not dbapi_connection.closed:
-                    self._do_autocommit(dbapi_connection, False)
+                if not before_autocommit and not dbapi_connection.closed:
+                    self._do_autocommit(dbapi_connection, before_autocommit)
         except self.dbapi.Error as err:
             if self.is_disconnect(err, dbapi_connection, cursor):
                 return False

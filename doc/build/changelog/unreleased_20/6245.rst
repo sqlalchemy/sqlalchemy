@@ -1,0 +1,13 @@
+.. change::
+    :tags: oracle, feature
+    :tickets: 6245
+
+    Full "RETURNING" support is implemented for the cx_Oracle dialect, meaning
+    multiple RETURNING rows are now recived for DML statements that produce
+    more than one row for RETURNING.
+
+
+.. change::
+    :tags: oracle
+
+    cx_Oracle 7 is now the minimum version for cx_Oracle.

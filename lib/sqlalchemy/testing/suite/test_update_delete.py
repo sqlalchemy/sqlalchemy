@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from .. import fixtures
 from ..assertions import eq_
 from ..schema import Column
@@ -8,6 +10,7 @@ from ... import String
 
 class SimpleUpdateDeleteTest(fixtures.TablesTest):
     run_deletes = "each"
+    __requires__ = ("sane_rowcount",)
     __backend__ = True
 
     @classmethod

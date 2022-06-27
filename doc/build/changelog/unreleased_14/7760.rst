@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7760
-
-    Fixed issue where the :meth:`.HasCTE.add_cte` method as called upon a
-    :class:`.TextualSelect` instance was not being accommodated by the SQL
-    compiler. The fix additionally adds more "SELECT"-like compiler behavior to
-    :class:`.TextualSelect` including that DML CTEs such as UPDATE and INSERT
-    may be accommodated.

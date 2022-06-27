@@ -29,6 +29,10 @@ valid with MySQL are importable from the top level dialect::
 Types which are specific to MySQL, or have MySQL-specific
 construction arguments, are as follows:
 
+.. note: where :noindex: is used, indicates a type that is not redefined
+   in the dialect module, just imported from sqltypes.  this avoids warnings
+   in the sphinx build
+
 .. currentmodule:: sqlalchemy.dialects.mysql
 
 .. autoclass:: BIGINT
@@ -36,6 +40,7 @@ construction arguments, are as follows:
 
 
 .. autoclass:: BINARY
+    :noindex:
     :members: __init__
 
 
@@ -45,10 +50,12 @@ construction arguments, are as follows:
 
 .. autoclass:: BLOB
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: BOOLEAN
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: CHAR
@@ -57,6 +64,7 @@ construction arguments, are as follows:
 
 .. autoclass:: DATE
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: DATETIME
@@ -69,7 +77,7 @@ construction arguments, are as follows:
 
 .. autoclass:: DOUBLE
     :members: __init__
-
+    :noindex:
 
 .. autoclass:: ENUM
     :members: __init__
@@ -131,6 +139,7 @@ construction arguments, are as follows:
 
 .. autoclass:: TEXT
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: TIME
@@ -155,6 +164,7 @@ construction arguments, are as follows:
 
 .. autoclass:: VARBINARY
     :members: __init__
+    :noindex:
 
 
 .. autoclass:: VARCHAR

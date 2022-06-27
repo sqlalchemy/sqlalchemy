@@ -9,7 +9,6 @@ on:
       # branches used to test the workflow
       - "workflow_test_*"
     paths-ignore:
-      - "doc/**"
       - "examples/**"
 
 env:

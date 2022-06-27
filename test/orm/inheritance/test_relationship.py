@@ -858,15 +858,15 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
                 .filter(Child1.left_child2 == c22)
                 .statement,
                 "SELECT child2.id, parent.id AS id_1, parent.cls "
-                "FROM secondary AS secondary_1, parent "
+                "FROM parent "
                 "JOIN child2 ON parent.id = child2.id "
-                "JOIN secondary AS secondary_2 ON parent.id = "
-                "secondary_2.left_id "
+                "JOIN secondary AS secondary_1 ON parent.id = "
+                "secondary_1.left_id "
                 "JOIN (parent AS parent_1 JOIN child1 AS child1_1 "
                 "ON parent_1.id = child1_1.id) ON parent_1.id = "
-                "secondary_2.right_id "
-                "WHERE parent_1.id = secondary_1.right_id "
-                "AND :param_1 = secondary_1.left_id",
+                "secondary_1.right_id, secondary AS secondary_2 "
+                "WHERE parent_1.id = secondary_2.right_id "
+                "AND :param_1 = secondary_2.left_id",
             )
 
         # non aliased version
@@ -876,14 +876,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             .filter(c1.left_child2 == c22)
             .statement,
             "SELECT child2.id, parent.id AS id_1, parent.cls "
-            "FROM secondary AS secondary_1, parent "
+            "FROM parent "
             "JOIN child2 ON parent.id = child2.id "
-            "JOIN secondary AS secondary_2 ON parent.id = secondary_2.left_id "
+            "JOIN secondary AS secondary_1 ON parent.id = secondary_1.left_id "
             "JOIN (parent AS parent_1 JOIN child1 AS child1_1 "
             "ON parent_1.id = child1_1.id) ON parent_1.id = "
-            "secondary_2.right_id "
-            "WHERE parent_1.id = secondary_1.right_id "
-            "AND :param_1 = secondary_1.left_id",
+            "secondary_1.right_id, secondary AS secondary_2 "
+            "WHERE parent_1.id = secondary_2.right_id "
+            "AND :param_1 = secondary_2.left_id",
         )
 
     def test_query_crit_core_workaround(self):
@@ -920,14 +920,15 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT child2.id AS child2_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls "
-            "FROM secondary AS secondary_1, "
+            "FROM "
             "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
-            "secondary_2 ON parent.id = secondary_2.left_id JOIN "
+            "secondary_1 ON parent.id = secondary_1.left_id JOIN "
             "(parent AS parent_1 JOIN child1 AS child1_1 "
             "ON parent_1.id = child1_1.id) "
-            "ON parent_1.id = secondary_2.right_id WHERE "
-            "parent_1.id = secondary_1.right_id AND :param_1 = "
-            "secondary_1.left_id",
+            "ON parent_1.id = secondary_1.right_id, secondary AS secondary_2 "
+            "WHERE "
+            "parent_1.id = secondary_2.right_id AND :param_1 = "
+            "secondary_2.left_id",
         )
 
     def test_eager_join(self):
@@ -2886,7 +2887,7 @@ class BetweenSubclassJoinWExtraJoinedLoad(
         sess = fixture_session()
 
         if autoalias:
-            # eager join is both from Enginer->LastSeen as well as
+            # eager join is both from Engineer->LastSeen as well as
             # Manager->LastSeen.  In the case of Manager->LastSeen,
             # Manager is internally aliased, and comes to JoinedEagerLoader
             # with no "parent" entity but an adapter.

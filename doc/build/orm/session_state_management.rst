@@ -50,7 +50,19 @@ Getting the Current State of an Object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The actual state of any mapped object can be viewed at any time using
-the :func:`_sa.inspect` system::
+the :func:`_sa.inspect` function on a mapped instance; this function will
+return the corresponding :class:`.InstanceState` object which manages the
+internal ORM state for the object.  :class:`.InstanceState` provides, among
+other accessors, boolean attributes indicating the persistence state
+of the object, including:
+
+* :attr:`.InstanceState.transient`
+* :attr:`.InstanceState.pending`
+* :attr:`.InstanceState.persistent`
+* :attr:`.InstanceState.deleted`
+* :attr:`.InstanceState.detached`
+
+E.g.::
 
   >>> from sqlalchemy import inspect
   >>> insp = inspect(my_object)
@@ -59,15 +71,8 @@ the :func:`_sa.inspect` system::
 
 .. seealso::
 
-    :attr:`.InstanceState.transient`
-
-    :attr:`.InstanceState.pending`
-
-    :attr:`.InstanceState.persistent`
-
-    :attr:`.InstanceState.deleted`
-
-    :attr:`.InstanceState.detached`
+  :ref:`orm_mapper_inspection_instancestate` - further examples of
+  :class:`.InstanceState`
 
 .. _session_attributes:
 
@@ -414,7 +419,7 @@ When we talk about expiration of data we are usually talking about an object
 that is in the :term:`persistent` state.   For example, if we load an object
 as follows::
 
-    user = session.query(User).filter_by(name='user1').first()
+    user = session.scalars(select(User).filter_by(name='user1').limit(1)).first()
 
 The above ``User`` object is persistent, and has a series of attributes
 present; if we were to look inside its ``__dict__``, we'd see that state

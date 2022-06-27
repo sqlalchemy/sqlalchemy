@@ -208,6 +208,8 @@ class CoreFixtures:
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
+            (column("z") == column("x")).self_group(),
+            (column("q") == column("x")).self_group(),
             column("z") + column("x"),
             column("z") - column("x"),
             column("x") - column("z"),
@@ -285,6 +287,7 @@ class CoreFixtures:
         ),
         lambda: (
             bindparam("x"),
+            bindparam("x", literal_execute=True),
             bindparam("y"),
             bindparam("x", type_=Integer),
             bindparam("x", type_=String),
@@ -1647,6 +1650,7 @@ class CompareClausesTest(fixtures.TestBase):
 
     def test_compare_binds(self):
         b1 = bindparam("foo", type_=Integer())
+        b1l = bindparam("foo", type_=Integer(), literal_execute=True)
         b2 = bindparam("foo", type_=Integer())
         b3 = bindparam("foo", type_=String())
 
@@ -1657,6 +1661,9 @@ class CompareClausesTest(fixtures.TestBase):
             return 6
 
         b4 = bindparam("foo", type_=Integer(), callable_=c1)
+        b4l = bindparam(
+            "foo", type_=Integer(), callable_=c1, literal_execute=True
+        )
         b5 = bindparam("foo", type_=Integer(), callable_=c2)
         b6 = bindparam("foo", type_=Integer(), callable_=c1)
 
@@ -1676,6 +1683,22 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(b1.compare(b7))
         is_false(b7.compare(b8))
         is_true(b7.compare(b7))
+
+        # cache key
+        def compare_key(left, right, expected):
+            lk = left._generate_cache_key().key
+            rk = right._generate_cache_key().key
+            is_(lk == rk, expected)
+
+        compare_key(b1, b4, True)
+        compare_key(b1, b5, True)
+        compare_key(b8, b5, True)
+        compare_key(b8, b7, True)
+        compare_key(b8, b3, False)
+        compare_key(b1, b1l, False)
+        compare_key(b1, b4l, False)
+        compare_key(b4, b4l, False)
+        compare_key(b7, b4l, False)
 
     def test_compare_tables(self):
         is_true(table_a.compare(table_a_2))

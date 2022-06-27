@@ -11,6 +11,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
@@ -735,12 +736,25 @@ class MiscTest(fixtures.MappedTest):
             pass
 
         manager = instrumentation.register_class(A)
-        attributes.register_attribute(A, "x", uselist=False, useobject=False)
+        attributes.register_attribute(
+            A,
+            "x",
+            comparator=object(),
+            parententity=object(),
+            uselist=False,
+            useobject=False,
+        )
 
         assert instrumentation.manager_of_class(A) is manager
         instrumentation.unregister_class(A)
-        assert instrumentation.manager_of_class(A) is None
+        assert instrumentation.opt_manager_of_class(A) is None
         assert not hasattr(A, "x")
+
+        with expect_raises_message(
+            sa.orm.exc.UnmappedClassError,
+            r"Can't locate an instrumentation manager for class .*A",
+        ):
+            instrumentation.manager_of_class(A)
 
         assert A.__init__ == object.__init__
 

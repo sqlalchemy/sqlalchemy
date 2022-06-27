@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Functions used by compiler.py to determine the parameters rendered
 within INSERT and UPDATE statements.
@@ -13,13 +14,41 @@ from __future__ import annotations
 
 import functools
 import operator
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import List
+from typing import MutableMapping
+from typing import NamedTuple
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import Union
 
 from . import coercions
 from . import dml
 from . import elements
 from . import roles
+from .elements import ColumnClause
+from .schema import default_is_clause_element
+from .schema import default_is_sequence
+from .selectable import Select
+from .selectable import TableClause
 from .. import exc
 from .. import util
+from ..util.typing import Literal
+
+if TYPE_CHECKING:
+    from .compiler import _BindNameForColProtocol
+    from .compiler import SQLCompiler
+    from .dml import _DMLColumnElement
+    from .dml import DMLState
+    from .dml import ValuesBase
+    from .elements import ColumnElement
+    from .schema import _SQLExprDefault
 
 REQUIRED = util.symbol(
     "REQUIRED",
@@ -36,7 +65,36 @@ values present.
 )
 
 
-def _get_crud_params(compiler, stmt, compile_state, **kw):
+def _as_dml_column(c: ColumnElement[Any]) -> ColumnClause[Any]:
+    if not isinstance(c, ColumnClause):
+        raise exc.CompileError(
+            f"Can't create DML statement against column expression {c!r}"
+        )
+    return c
+
+
+class _CrudParams(NamedTuple):
+    single_params: Sequence[
+        Tuple[ColumnElement[Any], str, Optional[Union[str, _SQLExprDefault]]]
+    ]
+    all_multi_params: List[
+        Sequence[
+            Tuple[
+                ColumnClause[Any],
+                str,
+                str,
+            ]
+        ]
+    ]
+
+
+def _get_crud_params(
+    compiler: SQLCompiler,
+    stmt: ValuesBase,
+    compile_state: DMLState,
+    toplevel: bool,
+    **kw: Any,
+) -> _CrudParams:
     """create a set of tuples representing column/string pairs for use
     in an INSERT or UPDATE statement.
 
@@ -47,10 +105,33 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
 
     """
 
+    # note: the _get_crud_params() system was written with the notion in mind
+    # that INSERT, UPDATE, DELETE are always the top level statement and
+    # that there is only one of them.  With the addition of CTEs that can
+    # make use of DML, this assumption is no longer accurate; the DML
+    # statement is not necessarily the top-level "row returning" thing
+    # and it is also theoretically possible (fortunately nobody has asked yet)
+    # to have a single statement with multiple DMLs inside of it via CTEs.
+
+    # the current _get_crud_params() design doesn't accommodate these cases
+    # right now.  It "just works" for a CTE that has a single DML inside of
+    # it, and for a CTE with multiple DML, it's not clear what would happen.
+
+    # overall, the "compiler.XYZ" collections here would need to be in a
+    # per-DML structure of some kind, and DefaultDialect would need to
+    # navigate these collections on a per-statement basis, with additional
+    # emphasis on the "toplevel returning data" statement.  However we
+    # still need to run through _get_crud_params() for all DML as we have
+    # Python / SQL generated column defaults that need to be rendered.
+
+    # if there is user need for this kind of thing, it's likely a post 2.0
+    # kind of change as it would require deep changes to DefaultDialect
+    # as well as here.
+
     compiler.postfetch = []
     compiler.insert_prefetch = []
     compiler.update_prefetch = []
-    compiler.returning = []
+    compiler.implicit_returning = []
 
     # getters - these are normally just column.key,
     # but in the case of mysql multi-table update, the rules for
@@ -59,24 +140,34 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         _column_as_key,
         _getattr_col_key,
         _col_bind_name,
-    ) = getters = _key_getters_for_crud_column(compiler, stmt, compile_state)
+    ) = _key_getters_for_crud_column(compiler, stmt, compile_state)
 
-    compiler._key_getters_for_crud_column = getters
+    compiler._get_bind_name_for_col = _col_bind_name
 
     # no parameters in the statement, no parameters in the
     # compiled params - return binds for all columns
     if compiler.column_keys is None and compile_state._no_parameters:
-        return [
-            (
-                c,
-                compiler.preparer.format_column(c),
-                _create_bind_param(compiler, c, None, required=True),
-            )
-            for c in stmt.table.columns
-        ]
+        return _CrudParams(
+            [
+                (
+                    c,
+                    compiler.preparer.format_column(c),
+                    _create_bind_param(compiler, c, None, required=True),
+                )
+                for c in stmt.table.columns
+            ],
+            [],
+        )
+
+    stmt_parameter_tuples: Optional[
+        List[Tuple[Union[str, ColumnClause[Any]], Any]]
+    ]
+    spd: Optional[MutableMapping[_DMLColumnElement, Any]]
 
     if compile_state._has_multi_parameters:
-        spd = compile_state._multi_parameters[0]
+        mp = compile_state._multi_parameters
+        assert mp is not None
+        spd = mp[0]
         stmt_parameter_tuples = list(spd.items())
     elif compile_state._ordered_values:
         spd = compile_state._dict_parameters
@@ -92,6 +183,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
     if compiler.column_keys is None:
         parameters = {}
     elif stmt_parameter_tuples:
+        assert spd is not None
         parameters = dict(
             (_column_as_key(key), REQUIRED)
             for key in compiler.column_keys
@@ -103,7 +195,9 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         )
 
     # create a list of column assignment clauses as tuples
-    values = []
+    values: List[
+        Tuple[ColumnClause[Any], str, Optional[Union[str, _SQLExprDefault]]]
+    ] = []
 
     if stmt_parameter_tuples is not None:
         _get_stmt_parameter_tuples_params(
@@ -116,11 +210,11 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             kw,
         )
 
-    check_columns = {}
+    check_columns: Dict[str, ColumnClause[Any]] = {}
 
     # special logic that only occurs for multi-table UPDATE
     # statements
-    if compile_state.isupdate and compile_state.is_multitable:
+    if dml.isupdate(compile_state) and compile_state.is_multitable:
         _get_update_multitable_params(
             compiler,
             stmt,
@@ -134,6 +228,10 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         )
 
     if compile_state.isinsert and stmt._select_names:
+        # is an insert from select, is not a multiparams
+
+        assert not compile_state._has_multi_parameters
+
         _scan_insert_from_select_cols(
             compiler,
             stmt,
@@ -144,6 +242,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             _col_bind_name,
             check_columns,
             values,
+            toplevel,
             kw,
         )
     else:
@@ -157,6 +256,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             _col_bind_name,
             check_columns,
             values,
+            toplevel,
             kw,
         )
 
@@ -173,14 +273,17 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             )
 
     if compile_state._has_multi_parameters:
-        values = _extend_values_for_multiparams(
+        # is a multiparams, is not an insert from a select
+        assert not stmt._select_names
+        multi_extended_values = _extend_values_for_multiparams(
             compiler,
             stmt,
             compile_state,
-            values,
-            _column_as_key,
+            cast("Sequence[Tuple[ColumnClause[Any], str, str]]", values),
+            cast("Callable[..., str]", _column_as_key),
             kw,
         )
+        return _CrudParams(values, multi_extended_values)
     elif (
         not values
         and compiler.for_executemany
@@ -192,18 +295,47 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         # insert_executemany_returning mode :)
         values = [
             (
-                stmt.table.columns[0],
+                _as_dml_column(stmt.table.columns[0]),
                 compiler.preparer.format_column(stmt.table.columns[0]),
                 "DEFAULT",
             )
         ]
 
-    return values
+    return _CrudParams(values, [])
+
+
+@overload
+def _create_bind_param(
+    compiler: SQLCompiler,
+    col: ColumnElement[Any],
+    value: Any,
+    process: Literal[True] = ...,
+    required: bool = False,
+    name: Optional[str] = None,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def _create_bind_param(
+    compiler: SQLCompiler,
+    col: ColumnElement[Any],
+    value: Any,
+    **kw: Any,
+) -> str:
+    ...
 
 
 def _create_bind_param(
-    compiler, col, value, process=True, required=False, name=None, **kw
-):
+    compiler: SQLCompiler,
+    col: ColumnElement[Any],
+    value: Any,
+    process: bool = True,
+    required: bool = False,
+    name: Optional[str] = None,
+    **kw: Any,
+) -> Union[str, elements.BindParameter[Any]]:
     if name is None:
         name = col.key
     bindparam = elements.BindParameter(
@@ -211,8 +343,9 @@ def _create_bind_param(
     )
     bindparam._is_crud = True
     if process:
-        bindparam = bindparam._compiler_dispatch(compiler, **kw)
-    return bindparam
+        return bindparam._compiler_dispatch(compiler, **kw)
+    else:
+        return bindparam
 
 
 def _handle_values_anonymous_param(compiler, col, value, name, **kw):
@@ -253,8 +386,14 @@ def _handle_values_anonymous_param(compiler, col, value, name, **kw):
     return value._compiler_dispatch(compiler, **kw)
 
 
-def _key_getters_for_crud_column(compiler, stmt, compile_state):
-    if compile_state.isupdate and compile_state._extra_froms:
+def _key_getters_for_crud_column(
+    compiler: SQLCompiler, stmt: ValuesBase, compile_state: DMLState
+) -> Tuple[
+    Callable[[Union[str, ColumnClause[Any]]], Union[str, Tuple[str, str]]],
+    Callable[[ColumnClause[Any]], Union[str, Tuple[str, str]]],
+    _BindNameForColProtocol,
+]:
+    if dml.isupdate(compile_state) and compile_state._extra_froms:
         # when extra tables are present, refer to the columns
         # in those extra tables as table-qualified, including in
         # dictionaries and when rendering bind param names.
@@ -267,30 +406,36 @@ def _key_getters_for_crud_column(compiler, stmt, compile_state):
             coercions.expect_as_key, roles.DMLColumnRole
         )
 
-        def _column_as_key(key):
+        def _column_as_key(
+            key: Union[ColumnClause[Any], str]
+        ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
-            if hasattr(key, "table") and key.table in _et:
-                return (key.table.name, str_key)
+            if hasattr(key, "table") and key.table in _et:  # type: ignore
+                return (key.table.name, str_key)  # type: ignore
             else:
-                return str_key
+                return str_key  # type: ignore
 
-        def _getattr_col_key(col):
+        def _getattr_col_key(
+            col: ColumnClause[Any],
+        ) -> Union[str, Tuple[str, str]]:
             if col.table in _et:
-                return (col.table.name, col.key)
+                return (col.table.name, col.key)  # type: ignore
             else:
                 return col.key
 
-        def _col_bind_name(col):
+        def _col_bind_name(col: ColumnClause[Any]) -> str:
             if col.table in _et:
+                if TYPE_CHECKING:
+                    assert isinstance(col.table, TableClause)
                 return "%s_%s" % (col.table.name, col.key)
             else:
                 return col.key
 
     else:
-        _column_as_key = functools.partial(
+        _column_as_key = functools.partial(  # type: ignore
             coercions.expect_as_key, roles.DMLColumnRole
         )
-        _getattr_col_key = _col_bind_name = operator.attrgetter("key")
+        _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa: E501
 
     return _column_as_key, _getattr_col_key, _col_bind_name
 
@@ -305,6 +450,7 @@ def _scan_insert_from_select_cols(
     _col_bind_name,
     check_columns,
     values,
+    toplevel,
     kw,
 ):
 
@@ -313,7 +459,7 @@ def _scan_insert_from_select_cols(
         implicit_returning,
         implicit_return_defaults,
         postfetch_lastrowid,
-    ) = _get_returning_modifiers(compiler, stmt, compile_state)
+    ) = _get_returning_modifiers(compiler, stmt, compile_state, toplevel)
 
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt._select_names]
 
@@ -321,7 +467,7 @@ def _scan_insert_from_select_cols(
 
     compiler.stack[-1]["insert_from_select"] = stmt.select
 
-    add_select_cols = []
+    add_select_cols: List[Tuple[ColumnClause[Any], str, _SQLExprDefault]] = []
     if stmt.include_insert_from_select_defaults:
         col_set = set(cols)
         for col in stmt.table.columns:
@@ -341,10 +487,21 @@ def _scan_insert_from_select_cols(
     if add_select_cols:
         values.extend(add_select_cols)
         ins_from_select = compiler.stack[-1]["insert_from_select"]
+        if not isinstance(ins_from_select, Select):
+            raise exc.CompileError(
+                f"Can't extend statement for INSERT..FROM SELECT to include "
+                f"additional default-holding column(s) "
+                f"""{
+                    ', '.join(repr(key) for _, key, _ in add_select_cols)
+                }.  Convert the selectable to a subquery() first, or pass """
+                "include_defaults=False to Insert.from_select() to skip these "
+                "columns."
+            )
         ins_from_select = ins_from_select._generate()
-        ins_from_select._raw_columns = tuple(
-            ins_from_select._raw_columns
-        ) + tuple(expr for col, col_expr, expr in add_select_cols)
+        # copy raw_columns
+        ins_from_select._raw_columns = list(ins_from_select._raw_columns) + [
+            expr for col, col_expr, expr in add_select_cols
+        ]
         compiler.stack[-1]["insert_from_select"] = ins_from_select
 
 
@@ -358,6 +515,7 @@ def _scan_cols(
     _col_bind_name,
     check_columns,
     values,
+    toplevel,
     kw,
 ):
     (
@@ -365,7 +523,7 @@ def _scan_cols(
         implicit_returning,
         implicit_return_defaults,
         postfetch_lastrowid,
-    ) = _get_returning_modifiers(compiler, stmt, compile_state)
+    ) = _get_returning_modifiers(compiler, stmt, compile_state, toplevel)
 
     if compile_state._parameter_ordering:
         parameter_ordering = [
@@ -380,6 +538,17 @@ def _scan_cols(
 
     else:
         cols = stmt.table.columns
+
+    if compile_state.isinsert and not compile_state._has_multi_parameters:
+        # new rules for #7998.  fetch lastrowid or implicit returning
+        # for autoincrement column even if parameter is NULL, for DBs that
+        # override NULL param for primary key (sqlite, mysql/mariadb)
+        autoincrement_col = stmt.table._autoincrement_column
+        insert_null_pk_still_autoincrements = (
+            compiler.dialect.insert_null_pk_still_autoincrements
+        )
+    else:
+        autoincrement_col = insert_null_pk_still_autoincrements = None
 
     for c in cols:
         # scan through every column in the target table
@@ -399,7 +568,10 @@ def _scan_cols(
                 _col_bind_name,
                 implicit_returning,
                 implicit_return_defaults,
+                postfetch_lastrowid,
                 values,
+                autoincrement_col,
+                insert_null_pk_still_autoincrements,
                 kw,
             )
 
@@ -442,11 +614,11 @@ def _scan_cols(
                 # column has a DDL-level default, and is either not a pk
                 # column or we don't need the pk.
                 if implicit_return_defaults and c in implicit_return_defaults:
-                    compiler.returning.append(c)
+                    compiler.implicit_returning.append(c)
                 elif not c.primary_key:
                     compiler.postfetch.append(c)
             elif implicit_return_defaults and c in implicit_return_defaults:
-                compiler.returning.append(c)
+                compiler.implicit_returning.append(c)
             elif (
                 c.primary_key
                 and c is not stmt.table._autoincrement_column
@@ -478,7 +650,10 @@ def _append_param_parameter(
     _col_bind_name,
     implicit_returning,
     implicit_return_defaults,
+    postfetch_lastrowid,
     values,
+    autoincrement_col,
+    insert_null_pk_still_autoincrements,
     kw,
 ):
     value = parameters.pop(col_key)
@@ -488,6 +663,20 @@ def _append_param_parameter(
     )
 
     if coercions._is_literal(value):
+
+        if (
+            insert_null_pk_still_autoincrements
+            and c.primary_key
+            and c is autoincrement_col
+        ):
+            # support use case for #7998, fetch autoincrement cols
+            # even if value was given.
+
+            if postfetch_lastrowid:
+                compiler.postfetch_lastrowid = True
+            elif implicit_returning:
+                compiler.implicit_returning.append(c)
+
         value = _create_bind_param(
             compiler,
             c,
@@ -499,6 +688,19 @@ def _append_param_parameter(
             **kw,
         )
     elif value._is_bind_parameter:
+        if (
+            insert_null_pk_still_autoincrements
+            and value.value is None
+            and c.primary_key
+            and c is autoincrement_col
+        ):
+            # support use case for #7998, fetch autoincrement cols
+            # even if value was given
+            if implicit_returning:
+                compiler.implicit_returning.append(c)
+            elif compiler.dialect.postfetch_lastrowid:
+                compiler.postfetch_lastrowid = True
+
         value = _handle_values_anonymous_param(
             compiler,
             c,
@@ -514,7 +716,7 @@ def _append_param_parameter(
 
         if compile_state.isupdate:
             if implicit_return_defaults and c in implicit_return_defaults:
-                compiler.returning.append(c)
+                compiler.implicit_returning.append(c)
 
             else:
                 compiler.postfetch.append(c)
@@ -522,12 +724,12 @@ def _append_param_parameter(
             if c.primary_key:
 
                 if implicit_returning:
-                    compiler.returning.append(c)
+                    compiler.implicit_returning.append(c)
                 elif compiler.dialect.postfetch_lastrowid:
                     compiler.postfetch_lastrowid = True
 
             elif implicit_return_defaults and c in implicit_return_defaults:
-                compiler.returning.append(c)
+                compiler.implicit_returning.append(c)
 
             else:
                 # postfetch specifically means, "we can SELECT the row we just
@@ -560,7 +762,7 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
                         compiler.process(c.default, **kw),
                     )
                 )
-            compiler.returning.append(c)
+            compiler.implicit_returning.append(c)
         elif c.default.is_clause_element:
             values.append(
                 (
@@ -569,7 +771,7 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
                     compiler.process(c.default.arg.self_group(), **kw),
                 )
             )
-            compiler.returning.append(c)
+            compiler.implicit_returning.append(c)
         else:
             # client side default.  OK we can't use RETURNING, need to
             # do a "prefetch", which in fact fetches the default value
@@ -582,7 +784,7 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
                 )
             )
     elif c is stmt.table._autoincrement_column or c.server_default is not None:
-        compiler.returning.append(c)
+        compiler.implicit_returning.append(c)
     elif not c.nullable:
         # no .default, no .server_default, not autoincrement, we have
         # no indication this primary key column will have any value
@@ -680,7 +882,7 @@ def _append_param_insert_hasdefault(
                 )
             )
             if implicit_return_defaults and c in implicit_return_defaults:
-                compiler.returning.append(c)
+                compiler.implicit_returning.append(c)
             elif not c.primary_key:
                 compiler.postfetch.append(c)
     elif c.default.is_clause_element:
@@ -693,7 +895,7 @@ def _append_param_insert_hasdefault(
         )
 
         if implicit_return_defaults and c in implicit_return_defaults:
-            compiler.returning.append(c)
+            compiler.implicit_returning.append(c)
         elif not c.primary_key:
             # don't add primary key column to postfetch
             compiler.postfetch.append(c)
@@ -707,16 +909,22 @@ def _append_param_insert_hasdefault(
         )
 
 
-def _append_param_insert_select_hasdefault(compiler, stmt, c, values, kw):
+def _append_param_insert_select_hasdefault(
+    compiler: SQLCompiler,
+    stmt: ValuesBase,
+    c: ColumnClause[Any],
+    values: List[Tuple[ColumnClause[Any], str, _SQLExprDefault]],
+    kw: Dict[str, Any],
+) -> None:
 
-    if c.default.is_sequence:
+    if default_is_sequence(c.default):
         if compiler.dialect.supports_sequences and (
             not c.default.optional or not compiler.dialect.sequences_optional
         ):
             values.append(
                 (c, compiler.preparer.format_column(c), c.default.next_value())
             )
-    elif c.default.is_clause_element:
+    elif default_is_clause_element(c.default):
         values.append(
             (c, compiler.preparer.format_column(c), c.default.arg.self_group())
         )
@@ -750,7 +958,7 @@ def _append_param_update(
                 )
             )
             if implicit_return_defaults and c in implicit_return_defaults:
-                compiler.returning.append(c)
+                compiler.implicit_returning.append(c)
             else:
                 compiler.postfetch.append(c)
         else:
@@ -766,7 +974,7 @@ def _append_param_update(
             )
     elif c.server_onupdate is not None:
         if implicit_return_defaults and c in implicit_return_defaults:
-            compiler.returning.append(c)
+            compiler.implicit_returning.append(c)
         else:
             compiler.postfetch.append(c)
     elif (
@@ -774,31 +982,79 @@ def _append_param_update(
         and (stmt._return_defaults_columns or not stmt._return_defaults)
         and c in implicit_return_defaults
     ):
-        compiler.returning.append(c)
+        compiler.implicit_returning.append(c)
+
+
+@overload
+def _create_insert_prefetch_bind_param(
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: Literal[True] = ...,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def _create_insert_prefetch_bind_param(
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: Literal[False],
+    **kw: Any,
+) -> elements.BindParameter[Any]:
+    ...
 
 
 def _create_insert_prefetch_bind_param(
-    compiler, c, process=True, name=None, **kw
-):
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: bool = True,
+    name: Optional[str] = None,
+    **kw: Any,
+) -> Union[elements.BindParameter[Any], str]:
 
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
-    compiler.insert_prefetch.append(c)
+    compiler.insert_prefetch.append(c)  # type: ignore
     return param
+
+
+@overload
+def _create_update_prefetch_bind_param(
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: Literal[True] = ...,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def _create_update_prefetch_bind_param(
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: Literal[False],
+    **kw: Any,
+) -> elements.BindParameter[Any]:
+    ...
 
 
 def _create_update_prefetch_bind_param(
-    compiler, c, process=True, name=None, **kw
-):
+    compiler: SQLCompiler,
+    c: ColumnElement[Any],
+    process: bool = True,
+    name: Optional[str] = None,
+    **kw: Any,
+) -> Union[elements.BindParameter[Any], str]:
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
-    compiler.update_prefetch.append(c)
+    compiler.update_prefetch.append(c)  # type: ignore
     return param
 
 
-class _multiparam_column(elements.ColumnElement):
+class _multiparam_column(elements.ColumnElement[Any]):
     _is_multiparam_column = True
 
     def __init__(self, original, index):
@@ -822,14 +1078,20 @@ class _multiparam_column(elements.ColumnElement):
         )
 
 
-def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
+def _process_multiparam_default_bind(
+    compiler: SQLCompiler,
+    stmt: ValuesBase,
+    c: ColumnClause[Any],
+    index: int,
+    kw: Dict[str, Any],
+) -> str:
     if not c.default:
         raise exc.CompileError(
             "INSERT value for column %s is explicitly rendered as a bound"
             "parameter in the VALUES clause; "
             "a Python-side value or SQL expression is required" % c
         )
-    elif c.default.is_clause_element:
+    elif default_is_clause_element(c.default):
         return compiler.process(c.default.arg.self_group(), **kw)
     elif c.default.is_sequence:
         # these conditions would have been established
@@ -844,9 +1106,13 @@ def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
     else:
         col = _multiparam_column(c, index)
         if isinstance(stmt, dml.Insert):
-            return _create_insert_prefetch_bind_param(compiler, col, **kw)
+            return _create_insert_prefetch_bind_param(
+                compiler, col, process=True, **kw
+            )
         else:
-            return _create_update_prefetch_bind_param(compiler, col, **kw)
+            return _create_update_prefetch_bind_param(
+                compiler, col, process=True, **kw
+            )
 
 
 def _get_update_multitable_params(
@@ -926,18 +1192,26 @@ def _get_update_multitable_params(
 
 
 def _extend_values_for_multiparams(
-    compiler,
-    stmt,
-    compile_state,
-    values,
-    _column_as_key,
-    kw,
-):
-    values_0 = values
-    values = [values]
+    compiler: SQLCompiler,
+    stmt: ValuesBase,
+    compile_state: DMLState,
+    initial_values: Sequence[Tuple[ColumnClause[Any], str, str]],
+    _column_as_key: Callable[..., str],
+    kw: Dict[str, Any],
+) -> List[Sequence[Tuple[ColumnClause[Any], str, str]]]:
+    values_0 = initial_values
+    values = [initial_values]
 
-    for i, row in enumerate(compile_state._multi_parameters[1:]):
-        extension = []
+    mp = compile_state._multi_parameters
+    assert mp is not None
+    for i, row in enumerate(mp[1:]):
+        extension: List[
+            Tuple[
+                ColumnClause[Any],
+                str,
+                str,
+            ]
+        ] = []
 
         row = {_column_as_key(key): v for key, v in row.items()}
 
@@ -1009,10 +1283,16 @@ def _get_stmt_parameter_tuples_params(
             values.append((k, col_expr, v))
 
 
-def _get_returning_modifiers(compiler, stmt, compile_state):
+def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
+    """determines RETURNING strategy, if any, for the statement.
 
+    This is where it's determined what we need to fetch from the
+    INSERT or UPDATE statement after it's invoked.
+
+    """
     need_pks = (
-        compile_state.isinsert
+        toplevel
+        and compile_state.isinsert
         and not stmt._inline
         and (
             not compiler.for_executemany
@@ -1025,19 +1305,57 @@ def _get_returning_modifiers(compiler, stmt, compile_state):
         and not compile_state._has_multi_parameters
     )
 
-    implicit_returning = (
+    # check if we have access to simple cursor.lastrowid.  we can use that
+    # after the INSERT if that's all we need.
+    postfetch_lastrowid = (
         need_pks
-        and compiler.dialect.implicit_returning
-        and stmt.table.implicit_returning
+        and compiler.dialect.postfetch_lastrowid
+        and stmt.table._autoincrement_column is not None
     )
+
+    # see if we want to add RETURNING to an INSERT in order to get
+    # primary key columns back.  This would be instead of postfetch_lastrowid
+    # if that's set.
+    implicit_returning = (
+        # statement itself can veto it
+        need_pks
+        # the dialect can veto it if it just doesnt support RETURNING
+        # with INSERT
+        and compiler.dialect.insert_returning
+        # user-defined implicit_returning on Table can veto it
+        and compile_state._primary_table.implicit_returning
+        # the compile_state can veto it (SQlite uses this to disable
+        # RETURNING for an ON CONFLICT insert, as SQLite does not return
+        # for rows that were updated, which is wrong)
+        and compile_state._supports_implicit_returning
+        and (
+            # since we support MariaDB and SQLite which also support lastrowid,
+            # decide if we should use lastrowid or RETURNING.  for insert
+            # that didnt call return_defaults() and has just one set of
+            # parameters, we can use lastrowid.   this is more "traditional"
+            # and a lot of weird use cases are supported by it.
+            # SQLite lastrowid times 3x faster than returning,
+            # Mariadb lastrowid 2x faster than returning
+            (
+                not postfetch_lastrowid
+                or compiler.dialect.favor_returning_over_lastrowid
+            )
+            or compile_state._has_multi_parameters
+            or stmt._return_defaults
+        )
+    )
+
+    if implicit_returning:
+        postfetch_lastrowid = False
 
     if compile_state.isinsert:
         implicit_return_defaults = implicit_returning and stmt._return_defaults
     elif compile_state.isupdate:
         implicit_return_defaults = (
-            compiler.dialect.implicit_returning
-            and stmt.table.implicit_returning
-            and stmt._return_defaults
+            stmt._return_defaults
+            and compile_state._primary_table.implicit_returning
+            and compile_state._supports_implicit_returning
+            and compiler.dialect.update_returning
         )
     else:
         # this line is unused, currently we are always
@@ -1049,8 +1367,6 @@ def _get_returning_modifiers(compiler, stmt, compile_state):
             implicit_return_defaults = set(stmt.table.c)
         else:
             implicit_return_defaults = set(stmt._return_defaults_columns)
-
-    postfetch_lastrowid = need_pks and compiler.dialect.postfetch_lastrowid
 
     return (
         need_pks,

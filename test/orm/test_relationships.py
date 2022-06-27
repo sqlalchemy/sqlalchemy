@@ -2907,7 +2907,7 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("foo", String(50)),
         )
 
-    def test_join_on_custom_op(self):
+    def test_join_on_custom_op_legacy_is_comparison(self):
         class A(fixtures.BasicEntity):
             pass
 
@@ -2923,6 +2923,33 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                     primaryjoin=self.tables.a.c.foo.op(
                         "&*", is_comparison=True
                     )(foreign(self.tables.b.c.foo)),
+                    viewonly=True,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(B, self.tables.b)
+        self.assert_compile(
+            fixture_session().query(A).join(A.bs),
+            "SELECT a.id AS a_id, a.foo AS a_foo "
+            "FROM a JOIN b ON a.foo &* b.foo",
+        )
+
+    def test_join_on_custom_bool_op(self):
+        class A(fixtures.BasicEntity):
+            pass
+
+        class B(fixtures.BasicEntity):
+            pass
+
+        self.mapper_registry.map_imperatively(
+            A,
+            self.tables.a,
+            properties={
+                "bs": relationship(
+                    B,
+                    primaryjoin=self.tables.a.c.foo.bool_op("&*")(
+                        foreign(self.tables.b.c.foo)
+                    ),
                     viewonly=True,
                 )
             },
@@ -4324,7 +4351,8 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
-            r"both of the same direction symbol\('ONETOMANY'\).  Did you "
+            r"both of the same "
+            r"direction .*RelationshipDirection.ONETOMANY.*.  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers,
         )
@@ -4347,7 +4375,8 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
-            r"both of the same direction symbol\('MANYTOONE'\).  Did you "
+            r"both of the same direction .*RelationshipDirection.MANYTOONE.*."
+            "Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers,
         )
@@ -4367,7 +4396,8 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
         # can't be sure of ordering here
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"both of the same direction symbol\('ONETOMANY'\).  Did you "
+            r"both of the same direction "
+            r".*RelationshipDirection.ONETOMANY.*.  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers,
         )
@@ -4391,7 +4421,8 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
         # can't be sure of ordering here
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"both of the same direction symbol\('MANYTOONE'\).  Did you "
+            r"both of the same direction "
+            r".*RelationshipDirection.MANYTOONE.*.  Did you "
             "mean to set remote_side on the many-to-one side ?",
             configure_mappers,
         )
@@ -6518,9 +6549,9 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
         asserter_.assert_(
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE "
-                "EXISTS (SELECT 1 FROM (SELECT a.id AS aid, b.id AS id "
+                "EXISTS (SELECT 1 FROM b, (SELECT a.id AS aid, b.id AS id "
                 "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
-                "AS anon_1, b WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
+                "AS anon_1 WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
                 params=[],
             )
         )

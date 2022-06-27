@@ -1,0 +1,20 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 7998
+
+    Altered the compilation mechanics of the :class:`_dml.Insert` construct
+    such that the "autoincrement primary key" column value will be fetched via
+    ``cursor.lastrowid`` or RETURNING even if present in the parameter set or
+    within the :meth:`_dml.Insert.values` method as a plain bound value, for
+    single-row INSERT statements on specific backends that are known to
+    generate autoincrementing values even when explicit NULL is passed. This
+    restores a behavior that was in the 1.3 series for both the use case of
+    separate parameter set as well as :meth:`_dml.Insert.values`. In 1.4, the
+    parameter set behavior unintentionally changed to no longer do this, but
+    the :meth:`_dml.Insert.values` method would still fetch autoincrement
+    values up until 1.4.21 where :ticket:`6770` changed the behavior yet again
+    again unintentionally as this use case was never covered.
+
+    The behavior is now defined as "working" to suit the case where databases
+    such as SQLite, MySQL and MariaDB will ignore an explicit NULL primary key
+    value and nonetheless invoke an autoincrement generator.

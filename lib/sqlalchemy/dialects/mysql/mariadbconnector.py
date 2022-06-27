@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """
 
@@ -111,7 +113,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
                 )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("mariadb")
 
     def is_disconnect(self, e, connection, cursor):

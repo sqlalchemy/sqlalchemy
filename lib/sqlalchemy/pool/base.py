@@ -40,9 +40,10 @@ if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
     from ..engine.interfaces import DBAPICursor
     from ..engine.interfaces import Dialect
-    from ..event import _Dispatch
+    from ..event import _DispatchCommon
     from ..event import _ListenerFnType
     from ..event import dispatcher
+    from ..sql._typing import _InfoType
 
 
 class ResetStyle(Enum):
@@ -55,11 +56,7 @@ class ResetStyle(Enum):
 
 _ResetStyleArgType = Union[
     ResetStyle,
-    Literal[True],
-    Literal[None],
-    Literal[False],
-    Literal["commit"],
-    Literal["rollback"],
+    Literal[True, None, False, "commit", "rollback"],
 ]
 reset_rollback, reset_commit, reset_none = list(ResetStyle)
 
@@ -85,7 +82,7 @@ class _ConnDialect:
     def do_close(self, dbapi_connection: DBAPIConnection) -> None:
         dbapi_connection.close()
 
-    def do_ping(self, dbapi_connection: DBAPIConnection) -> None:
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
         raise NotImplementedError(
             "The ping feature requires that a dialect is "
             "passed to the connection pool."
@@ -132,7 +129,7 @@ class Pool(log.Identified, event.EventTarget):
         events: Optional[List[Tuple[_ListenerFnType, str]]] = None,
         dialect: Optional[Union[_ConnDialect, Dialect]] = None,
         pre_ping: bool = False,
-        _dispatch: Optional[_Dispatch[Pool]] = None,
+        _dispatch: Optional[_DispatchCommon[Pool]] = None,
     ):
         """
         Construct a Pool.
@@ -272,7 +269,7 @@ class Pool(log.Identified, event.EventTarget):
 
         # mypy seems to get super confused assigning functions to
         # attributes
-        self._invoke_creator = self._should_wrap_creator(creator)  # type: ignore  # noqa E501
+        self._invoke_creator = self._should_wrap_creator(creator)  # type: ignore  # noqa: E501
 
     @_creator.deleter
     def _creator(self) -> None:
@@ -443,31 +440,29 @@ class ManagesConnection:
 
     """
 
-    @property
-    def driver_connection(self) -> Optional[Any]:
-        """The "driver level" connection object as used by the Python
-        DBAPI or database driver.
+    driver_connection: Optional[Any]
+    """The "driver level" connection object as used by the Python
+    DBAPI or database driver.
 
-        For traditional :pep:`249` DBAPI implementations, this object will
-        be the same object as that of
-        :attr:`.ManagesConnection.dbapi_connection`.   For an asyncio database
-        driver, this will be the ultimate "connection" object used by that
-        driver, such as the ``asyncpg.Connection`` object which will not have
-        standard pep-249 methods.
+    For traditional :pep:`249` DBAPI implementations, this object will
+    be the same object as that of
+    :attr:`.ManagesConnection.dbapi_connection`.   For an asyncio database
+    driver, this will be the ultimate "connection" object used by that
+    driver, such as the ``asyncpg.Connection`` object which will not have
+    standard pep-249 methods.
 
-        .. versionadded:: 1.4.24
+    .. versionadded:: 1.4.24
 
-        .. seealso::
+    .. seealso::
 
-            :attr:`.ManagesConnection.dbapi_connection`
+        :attr:`.ManagesConnection.dbapi_connection`
 
-            :ref:`faq_dbapi_connection`
+        :ref:`faq_dbapi_connection`
 
-        """
-        raise NotImplementedError()
+    """
 
-    @util.dynamic_property
-    def info(self) -> Dict[str, Any]:
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         """Info dictionary associated with the underlying DBAPI connection
         referred to by this :class:`.ManagesConnection` instance, allowing
         user-defined data to be associated with the connection.
@@ -492,8 +487,8 @@ class ManagesConnection:
         """
         raise NotImplementedError()
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+    @util.ro_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         """Persistent info dictionary associated with this
         :class:`.ManagesConnection`.
 
@@ -618,7 +613,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
     dbapi_connection: Optional[DBAPIConnection]
 
     @property
-    def driver_connection(self) -> Optional[Any]:
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self.dbapi_connection is None:
             return None
         else:
@@ -626,27 +621,31 @@ class _ConnectionRecord(ConnectionPoolEntry):
                 self.dbapi_connection
             )
 
-    @property
+    @util.deprecated_property(
+        "2.0",
+        "The _ConnectionRecord.connection attribute is deprecated; "
+        "please use 'driver_connection'",
+    )
     def connection(self) -> Optional[DBAPIConnection]:
         return self.dbapi_connection
 
-    @connection.setter
-    def connection(self, value: DBAPIConnection) -> None:
-        self.dbapi_connection = value
-
     _soft_invalidate_time: float = 0
 
-    @util.memoized_property
-    def info(self) -> Dict[str, Any]:
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         return {}
 
-    @util.memoized_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+    @util.ro_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         return {}
 
     @classmethod
     def checkout(cls, pool: Pool) -> _ConnectionFairy:
-        rec = cast(_ConnectionRecord, pool._do_get())
+        if TYPE_CHECKING:
+            rec = cast(_ConnectionRecord, pool._do_get())
+        else:
+            rec = pool._do_get()
+
         try:
             dbapi_connection = rec.get_connection()
         except Exception as err:
@@ -1048,7 +1047,7 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
     """
 
-    __slots__ = ("dbapi_connection", "_connection_record")
+    __slots__ = ("dbapi_connection", "_connection_record", "_is_valid")
 
     dbapi_connection: DBAPIConnection
     _connection_record: ConnectionPoolEntry
@@ -1060,9 +1059,10 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
     ):
         self.dbapi_connection = dbapi_connection
         self._connection_record = connection_record
+        self._is_valid = True
 
     @property
-    def driver_connection(self) -> Any:
+    def driver_connection(self) -> Any:  # type: ignore[override]  # mypy#4125
         return self._connection_record.driver_connection
 
     @property
@@ -1071,10 +1071,21 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
     @property
     def is_valid(self) -> bool:
-        raise AttributeError("is_valid not implemented by this proxy")
+        """Implement is_valid state attribute.
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+        for the adhoc proxied connection it's assumed the connection is valid
+        as there is no "invalidate" routine.
+
+        """
+        return self._is_valid
+
+    def invalidate(
+        self, e: Optional[BaseException] = None, soft: bool = False
+    ) -> None:
+        self._is_valid = False
+
+    @util.ro_non_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         return self._connection_record.record_info
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
@@ -1140,18 +1151,18 @@ class _ConnectionFairy(PoolProxiedConnection):
     _connection_record: Optional[_ConnectionRecord]
 
     @property
-    def driver_connection(self) -> Optional[Any]:
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self._connection_record is None:
             return None
         return self._connection_record.driver_connection
 
-    @property
+    @util.deprecated_property(
+        "2.0",
+        "The _ConnectionFairy.connection attribute is deprecated; "
+        "please use 'driver_connection'",
+    )
     def connection(self) -> DBAPIConnection:
         return self.dbapi_connection
-
-    @connection.setter
-    def connection(self, value: DBAPIConnection) -> None:
-        self.dbapi_connection = value
 
     @classmethod
     def _checkout(
@@ -1305,17 +1316,17 @@ class _ConnectionFairy(PoolProxiedConnection):
 
     @property
     def is_detached(self) -> bool:
-        return self._connection_record is not None
+        return self._connection_record is None
 
-    @util.memoized_property
-    def info(self) -> Dict[str, Any]:
+    @util.ro_memoized_property
+    def info(self) -> _InfoType:
         if self._connection_record is None:
             return {}
         else:
             return self._connection_record.info
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+    @util.ro_non_memoized_property
+    def record_info(self) -> Optional[_InfoType]:
         if self._connection_record is None:
             return None
         else:

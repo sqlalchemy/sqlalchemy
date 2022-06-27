@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 from unittest import mock
 
@@ -49,6 +51,7 @@ from .config import combinations_list
 from .config import db
 from .config import fixture
 from .config import requirements as requires
+from .config import skip_test
 from .exclusions import _is_excluded
 from .exclusions import _server_version
 from .exclusions import against as _against

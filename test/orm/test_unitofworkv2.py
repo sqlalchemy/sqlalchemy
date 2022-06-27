@@ -2409,7 +2409,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
         s.add_all([t1, t2])
 
-        if testing.db.dialect.implicit_returning:
+        if testing.db.dialect.insert_returning:
             self.assert_sql_execution(
                 testing.db,
                 s.flush,
@@ -2469,7 +2469,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.commit,
             Conditional(
-                testing.db.dialect.implicit_returning,
+                testing.db.dialect.insert_returning,
                 [
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
@@ -2541,7 +2541,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.flush,
             Conditional(
-                testing.db.dialect.implicit_returning,
+                testing.db.dialect.update_returning,
                 [
                     CompiledSQL(
                         "UPDATE test2 SET foo=%(foo)s "
@@ -2633,7 +2633,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
         t4.foo = 8
         t4.bar = text("5 + 7")
 
-        if testing.db.dialect.implicit_returning:
+        if testing.db.dialect.update_returning:
             self.assert_sql_execution(
                 testing.db,
                 s.flush,
@@ -3211,7 +3211,7 @@ class EnsureCacheTest(UOWTest):
 
 class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
     @testing.requires.identity_columns
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_a(self, base, run_test):
         class A(base):
             __tablename__ = "a"
@@ -3224,7 +3224,7 @@ class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
         run_test(A, A())
 
     @testing.requires.sequences_as_server_defaults
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_b(self, base, run_test):
 
         seq = Sequence("x_seq")

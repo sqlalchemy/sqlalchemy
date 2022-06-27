@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ __all__ = ["Table", "Column"]
 table_options = {}
 
 
-def Table(*args, **kw):
+def Table(*args, **kw) -> schema.Table:
     """A schema.Table wrapper/hook for dialect-specific tweaks."""
 
     test_opts = {k: kw.pop(k) for k in list(kw) if k.startswith("test_")}
@@ -38,6 +39,12 @@ def Table(*args, **kw):
             if "test_needs_fk" in test_opts or "test_needs_acid" in test_opts:
                 kw["mysql_engine"] = "InnoDB"
             else:
+                # there are in fact test fixtures that rely upon MyISAM,
+                # due to MySQL / MariaDB having poor FK behavior under innodb,
+                # such as a self-referential table can't be deleted from at
+                # once without attending to per-row dependencies.  We'd need to
+                # add special steps to some fixtures if we want to not
+                # explicitly state MyISAM here
                 kw["mysql_engine"] = "MyISAM"
     elif exclusions.against(config._current, "mariadb"):
         if (
@@ -125,6 +132,19 @@ class eq_type_affinity:
 
     def __ne__(self, other):
         return self.target._type_affinity is not other._type_affinity
+
+
+class eq_compile_type:
+    """similar to eq_type_affinity but uses compile"""
+
+    def __init__(self, target):
+        self.target = target
+
+    def __eq__(self, other):
+        return self.target == other.compile()
+
+    def __ne__(self, other):
+        return self.target != other.compile()
 
 
 class eq_clause_element:

@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 from types import ModuleType
 
 from . import asyncpg  # noqa
@@ -17,31 +19,17 @@ from .array import Any
 from .array import ARRAY
 from .array import array
 from .base import BIGINT
-from .base import BIT
 from .base import BOOLEAN
-from .base import BYTEA
 from .base import CHAR
-from .base import CIDR
-from .base import CreateEnumType
 from .base import DATE
+from .base import DOMAIN
 from .base import DOUBLE_PRECISION
-from .base import DropEnumType
-from .base import ENUM
 from .base import FLOAT
-from .base import INET
 from .base import INTEGER
-from .base import INTERVAL
-from .base import MACADDR
-from .base import MONEY
 from .base import NUMERIC
-from .base import OID
 from .base import REAL
-from .base import REGCLASS
 from .base import SMALLINT
 from .base import TEXT
-from .base import TIME
-from .base import TIMESTAMP
-from .base import TSVECTOR
 from .base import UUID
 from .base import VARCHAR
 from .dml import Insert
@@ -53,6 +41,12 @@ from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
 from .json import JSONB
+from .named_types import CreateDomainType
+from .named_types import CreateEnumType
+from .named_types import DropDomainType
+from .named_types import DropEnumType
+from .named_types import ENUM
+from .named_types import NamedType
 from .ranges import DATEMULTIRANGE
 from .ranges import DATERANGE
 from .ranges import INT4MULTIRANGE
@@ -65,7 +59,18 @@ from .ranges import TSMULTIRANGE
 from .ranges import TSRANGE
 from .ranges import TSTZMULTIRANGE
 from .ranges import TSTZRANGE
-from ...util import compat
+from .types import BIT
+from .types import BYTEA
+from .types import CIDR
+from .types import INET
+from .types import INTERVAL
+from .types import MACADDR
+from .types import MONEY
+from .types import OID
+from .types import REGCLASS
+from .types import TIME
+from .types import TIMESTAMP
+from .types import TSVECTOR
 
 # Alias psycopg also as psycopg_async
 psycopg_async = type(
@@ -102,6 +107,7 @@ __all__ = (
     "INTERVAL",
     "ARRAY",
     "ENUM",
+    "DOMAIN",
     "dialect",
     "array",
     "HSTORE",
@@ -124,6 +130,9 @@ __all__ = (
     "Any",
     "All",
     "DropEnumType",
+    "DropDomainType",
+    "CreateDomainType",
+    "NamedType",
     "CreateEnumType",
     "ExcludeConstraint",
     "aggregate_order_by",

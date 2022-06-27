@@ -157,7 +157,7 @@ class NaturalPKTest(fixtures.MappedTest):
         assert sess.get(User, "jack") is None
         assert sess.get(User, "ed").fullname == "jack"
 
-    @testing.requires.returning
+    @testing.requires.update_returning
     def test_update_to_sql_expr(self):
         users, User = self.tables.users, self.classes.User
 
@@ -169,6 +169,8 @@ class NaturalPKTest(fixtures.MappedTest):
         sess.add(u1)
         sess.flush()
 
+        # note this is the primary key, so you need UPDATE..RETURNING
+        # to catch this
         u1.username = User.username + " jones"
 
         sess.flush()
@@ -270,13 +272,10 @@ class NaturalPKTest(fixtures.MappedTest):
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
-        assert (
-            User(
-                username="jack",
-                addresses=[Address(username="jack"), Address(username="jack")],
-            )
-            == sess.get(User, "jack")
-        )
+        assert User(
+            username="jack",
+            addresses=[Address(username="jack"), Address(username="jack")],
+        ) == sess.get(User, "jack")
 
         u1 = sess.get(User, "jack")
         u1.addresses = []
@@ -1135,13 +1134,10 @@ class NonPKCascadeTest(fixtures.MappedTest):
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
-        assert (
-            User(
-                username="jack",
-                addresses=[Address(username="jack"), Address(username="jack")],
-            )
-            == sess.get(User, u1.id)
-        )
+        assert User(
+            username="jack",
+            addresses=[Address(username="jack"), Address(username="jack")],
+        ) == sess.get(User, u1.id)
         sess.expunge_all()
 
         u1 = sess.get(User, u1.id)

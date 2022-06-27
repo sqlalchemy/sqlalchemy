@@ -52,12 +52,12 @@ See the section :ref:`dialect_toplevel` for information on the various backends 
 
 .. _database_urls:
 
-Database Urls
+Database URLs
 =============
 
 The :func:`_sa.create_engine` function produces an :class:`_engine.Engine` object based
 on a URL.  These URLs follow `RFC-1738
-<https://rfc.net/rfc1738.html>`_, and usually can include username, password,
+<https://www.ietf.org/rfc/rfc1738.txt>`_, and usually can include username, password,
 hostname, database name as well as optional keyword arguments for additional configuration.
 In some cases a file path is accepted, and in others a "data source name" replaces
 the "host" and "database" portions.  The typical form of a database URL is::
@@ -72,8 +72,8 @@ will be imported if available - this default is typically the most widely
 known driver available for that backend.
 
 As the URL is like any other URL, **special characters such as those that may
-be used in the password need to be URL encoded to be parsed correctly.**. Below
-is an example of a URL that includes the password ``"kx%jj5/g"``, where the
+be used in the user and password need to be URL encoded to be parsed correctly.**.
+Below is an example of a URL that includes the password ``"kx%jj5/g"``, where the
 percent sign and slash characters are represented as ``%25`` and ``%2F``,
 respectively::
 
@@ -203,68 +203,6 @@ Engine Creation API
 
 .. autoclass:: sqlalchemy.engine.URL
     :members:
-
-    .. py:attribute:: drivername
-        :annotation: str
-
-        database backend and driver name, such as
-        ``postgresql+psycopg2``
-
-    .. py:attribute::  username
-        :annotation: str
-
-        username string
-
-    .. py:attribute::  password
-        :annotation: str
-
-        password, which is normally a string but may also be any
-        object that has a ``__str__()`` method.
-
-    .. py:attribute::  host
-        :annotation: str
-
-        string hostname
-
-    .. py:attribute::  port
-        :annotation: int
-
-        integer port number
-
-    .. py:attribute::  database
-        :annotation: str
-
-        string database name
-
-    .. py:attribute::  query
-        :annotation: Mapping[str, Union[str, Sequence[str]]]
-
-        an immutable mapping representing the query string.  contains strings
-        for keys and either strings or tuples of strings for values, e.g.::
-
-            >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
-            >>> url.query
-            immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
-
-         To create a mutable copy of this mapping, use the ``dict`` constructor::
-
-            mutable_query_opts = dict(url.query)
-
-        .. seealso::
-
-          :attr:`_engine.URL.normalized_query` - normalizes all values into sequences
-          for consistent processing
-
-          Methods for altering the contents of :attr:`_engine.URL.query`:
-
-          :meth:`_engine.URL.update_query_dict`
-
-          :meth:`_engine.URL.update_query_string`
-
-          :meth:`_engine.URL.update_query_pairs`
-
-          :meth:`_engine.URL.difference_update_query`
 
 Pooling
 =======

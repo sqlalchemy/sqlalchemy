@@ -1,18 +1,24 @@
 from cpython.dict cimport PyDict_New, PyDict_Update, PyDict_Size
 
 
+def _readonly_fn(obj):
+    raise TypeError(
+        "%s object is immutable and/or readonly" % obj.__class__.__name__)
+
+
 def _immutable_fn(obj):
-    raise TypeError("%s object is immutable" % obj.__class__.__name__)
+    raise TypeError(
+        "%s object is immutable" % obj.__class__.__name__)
 
 
-class ImmutableContainer:
+class ReadOnlyContainer:
 
     __slots__ = ()
 
-    def _immutable(self, *a,**kw):
-        _immutable_fn(self)
+    def _readonly(self, *a,**kw):
+        _readonly_fn(self)
 
-    __delitem__ = __setitem__ = __setattr__ = _immutable
+    __delitem__ = __setitem__ = __setattr__ = _readonly
 
 
 class ImmutableDictBase(dict):

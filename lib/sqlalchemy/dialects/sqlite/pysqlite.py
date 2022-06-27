@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 r"""
 .. dialect:: sqlite+pysqlite
@@ -465,7 +467,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     driver = "pysqlite"
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         from sqlite3 import dbapi2 as sqlite
 
         return sqlite

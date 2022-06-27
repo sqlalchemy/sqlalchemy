@@ -1,5 +1,5 @@
-# coding: utf-8
-"""verrrrry basic unicode column name testing"""
+# mypy: ignore-errors
+
 
 from sqlalchemy import desc
 from sqlalchemy import ForeignKey

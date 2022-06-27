@@ -1,0 +1,21 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 7316
+
+    Added a new PostgreSQL :class:`_postgresql.DOMAIN` datatype, which follows
+    the same CREATE TYPE / DROP TYPE behaviors as that of PostgreSQL
+    :class:`_postgresql.ENUM`. Much thanks to David Baumgold for the efforts on
+    this.
+
+    .. seealso::
+
+        :class:`_postgresql.DOMAIN`
+
+.. change::
+    :tags: change, postgresql
+
+    The :paramref:`_postgresql.ENUM.name` parameter for the PostgreSQL-specific
+    :class:`_postgresql.ENUM` datatype is now a required keyword argument. The
+    "name" is necessary in any case in order for the :class:`_postgresql.ENUM`
+    to be usable as an error would be raised at SQL/DDL render time if "name"
+    were not present.

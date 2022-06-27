@@ -23,6 +23,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
@@ -354,7 +355,8 @@ class DefaultObjectTest(fixtures.TestBase):
             assert_raises_message(
                 sa.exc.ArgumentError,
                 r"SQL expression for WHERE/HAVING role expected, "
-                r"got (?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)",
+                r"got (?:Sequence|(?:ScalarElement)ColumnDefault|"
+                r"DefaultClause)\('y'.*\)",
                 t.select().where,
                 const,
             )
@@ -502,14 +504,44 @@ class DefaultRoundTripTest(fixtures.TablesTest):
     def teardown_test(self):
         self.default_generator["x"] = 50
 
-    def test_standalone(self, connection):
+    def test_standalone_via_exec_removed(self, connection):
         t = self.tables.default_test
-        x = connection.execute(t.c.col1.default)
-        y = connection.execute(t.c.col2.default)
-        z = connection.execute(t.c.col3.default)
+
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            connection.execute(t.c.col1.default)
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            connection.execute(t.c.col2.default)
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            connection.execute(t.c.col3.default)
+
+    def test_standalone_default_scalar(self, connection):
+        t = self.tables.default_test
+        x = connection.scalar(t.c.col1.default)
+        y = connection.scalar(t.c.col2.default)
+        z = connection.scalar(t.c.col3.default)
         assert 50 <= x <= 57
         eq_(y, "imthedefault")
         eq_(z, self.f)
+
+    def test_standalone_function_execute(self, connection):
+        ctexec = connection.execute(self.currenttime)
+        assert isinstance(ctexec.scalar(), datetime.date)
+
+    def test_standalone_function_scalar(self, connection):
+        ctexec = connection.scalar(self.currenttime)
+        assert isinstance(ctexec, datetime.date)
 
     def test_insert(self, connection):
         t = self.tables.default_test
@@ -838,7 +870,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
 
 class CTEDefaultTest(fixtures.TablesTest):
-    __requires__ = ("ctes", "returning", "ctes_on_dml")
+    __requires__ = ("ctes", "insert_returning", "ctes_on_dml")
     __backend__ = True
 
     @classmethod
@@ -961,8 +993,11 @@ class PKDefaultTest(fixtures.TestBase):
 
         return go
 
+    @testing.crashes(
+        "+mariadbconnector", "https://jira.mariadb.org/browse/CONPY-206"
+    )
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -1246,7 +1281,7 @@ class SpecialTypePKTest(fixtures.TestBase):
 
             # we don't pre-fetch 'server_default'.
             if "server_default" in kw and (
-                not testing.db.dialect.implicit_returning
+                not testing.db.dialect.insert_returning
                 or not implicit_returning
             ):
                 eq_(r.inserted_primary_key, (None,))
@@ -1289,15 +1324,18 @@ class SpecialTypePKTest(fixtures.TestBase):
     def test_server_default_no_autoincrement(self):
         self._run_test(server_default="1", autoincrement=False)
 
+    @testing.crashes(
+        "+mariadbconnector", "https://jira.mariadb.org/browse/CONPY-206"
+    )
     def test_clause(self):
         stmt = select(cast("INT_1", type_=self.MyInteger)).scalar_subquery()
         self._run_test(default=stmt)
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_no_implicit_returning(self):
         self._run_test(implicit_returning=False)
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_server_default_no_implicit_returning(self):
         self._run_test(server_default="1", autoincrement=False)
 
@@ -1331,7 +1369,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         eq_(r.inserted_primary_key, (None,))
         eq_(list(connection.execute(t.select())), [("key_one", "data")])
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     @testing.provide_metadata
     def test_string_default_on_insert_with_returning(self, connection):
         """With implicit_returning, we get a string PK default back no
@@ -1409,8 +1447,9 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         else:
             eq_(list(connection.execute(t2.select())), [(5, "data")])
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     @testing.provide_metadata
+    @testing.fails_on("sqlite", "sqlite doesn't like our default trick here")
     def test_int_default_on_insert_with_returning(self, connection):
         metadata = self.metadata
         t = Table(

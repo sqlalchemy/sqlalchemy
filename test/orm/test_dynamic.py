@@ -1,10 +1,13 @@
 from sqlalchemy import cast
+from sqlalchemy import Column
 from sqlalchemy import desc
 from sqlalchemy import exc
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -13,6 +16,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import noload
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.session import make_transient_to_detached
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warns_message
@@ -125,6 +129,8 @@ class _DynamicFixture:
 
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
     def test_basic(self):
         User, Address = self._user_address_fixture()
         sess = fixture_session()
@@ -598,10 +604,16 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 )
             },
         )
-        self.mapper_registry.map_imperatively(Item, items)
+        item_mapper = self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
+
         u1 = sess.query(User).first()
+
+        dyn = u1.items
+
+        # test for #7868
+        eq_(dyn._from_obj[0]._annotations["parententity"], item_mapper)
 
         self.assert_compile(
             u1.items,
@@ -612,6 +624,62 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             "WHERE :param_1 = orders.user_id "
             "AND items.id = order_items.item_id",
             use_default_dialect=True,
+        )
+
+    def test_secondary_as_join_complex_entity(self, registry):
+        """integration test for #7868"""
+        Base = registry.generate_base()
+
+        class GrandParent(Base):
+            __tablename__ = "grandparent"
+            id = Column(Integer, primary_key=True)
+
+            grand_children = relationship(
+                "Child", secondary="parent", lazy="dynamic", viewonly=True
+            )
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            grand_parent_id = Column(
+                Integer, ForeignKey("grandparent.id"), nullable=False
+            )
+
+        class Child(Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            type = Column(String)
+            parent_id = Column(
+                Integer, ForeignKey("parent.id"), nullable=False
+            )
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "unknown",
+                "with_polymorphic": "*",
+            }
+
+        class SubChild(Child):
+            __tablename__ = "subchild"
+            id = Column(Integer, ForeignKey("child.id"), primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "sub",
+            }
+
+        gp = GrandParent(id=1)
+        make_transient_to_detached(gp)
+        sess = fixture_session()
+        sess.add(gp)
+        self.assert_compile(
+            gp.grand_children.filter_by(id=1),
+            "SELECT child.id AS child_id, child.type AS child_type, "
+            "child.parent_id AS child_parent_id, subchild.id AS subchild_id "
+            "FROM child LEFT OUTER JOIN subchild "
+            "ON child.id = subchild.id, parent "
+            "WHERE :param_1 = parent.grand_parent_id "
+            "AND parent.id = child.parent_id AND child.id = :id_1",
+            {"id_1": 1},
         )
 
     def test_secondary_doesnt_interfere_w_join_to_fromlist(self):
@@ -659,8 +727,9 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             order.items.join(ItemKeyword),
             "SELECT items.id AS items_id, "
             "items.description AS items_description "
-            "FROM order_items, items "
-            "JOIN item_keywords ON items.id = item_keywords.item_id "
+            "FROM items "
+            "JOIN item_keywords ON items.id = item_keywords.item_id, "
+            "order_items "
             "WHERE :param_1 = order_items.order_id "
             "AND items.id = order_items.item_id",
             use_default_dialect=True,

@@ -811,7 +811,7 @@
 
         .. seealso::
 
-            :ref:`updates_order_parameters`
+            :ref:`tutorial_parameter_ordered_updates`
 
     .. change::
         :tags: bug, orm

@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """High level utilities which build upon other modules here.
 
@@ -13,32 +14,44 @@ from __future__ import annotations
 from collections import deque
 from itertools import chain
 import typing
+from typing import AbstractSet
 from typing import Any
+from typing import Callable
 from typing import cast
+from typing import Collection
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import List
 from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
 from . import coercions
 from . import operators
 from . import roles
 from . import visitors
-from ._typing import _ExecuteParams
-from ._typing import _MultiExecuteParams
-from ._typing import _SingleExecuteParams
-from .annotation import _deep_annotate  # noqa
-from .annotation import _deep_deannotate  # noqa
-from .annotation import _shallow_annotate  # noqa
+from ._typing import is_text_clause
+from .annotation import _deep_annotate as _deep_annotate  # noqa: F401
+from .annotation import _deep_deannotate as _deep_deannotate  # noqa: F401
+from .annotation import _shallow_annotate as _shallow_annotate  # noqa: F401
 from .base import _expand_cloned
 from .base import _from_objects
-from .base import ColumnSet
-from .cache_key import HasCacheKey  # noqa
-from .ddl import sort_tables  # noqa
-from .elements import _find_columns  # noqa
+from .cache_key import HasCacheKey as HasCacheKey  # noqa: F401
+from .ddl import sort_tables as sort_tables  # noqa: F401
+from .elements import _find_columns as _find_columns
 from .elements import _label_reference
 from .elements import _textual_label_reference
 from .elements import BindParameter
+from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Grouping
+from .elements import KeyedColumnElement
 from .elements import Label
 from .elements import Null
 from .elements import UnaryExpression
@@ -50,14 +63,39 @@ from .selectable import Join
 from .selectable import ScalarSelect
 from .selectable import SelectBase
 from .selectable import TableClause
+from .visitors import _ET
 from .. import exc
 from .. import util
+from ..util.typing import Literal
+from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _EquivalentColumnMap
+    from ._typing import _TypeEngineArgument
+    from .elements import BinaryExpression
+    from .elements import TextClause
+    from .selectable import _JoinTargetElement
+    from .selectable import _SelectIterable
+    from .selectable import Selectable
+    from .visitors import _TraverseCallableType
+    from .visitors import ExternallyTraversible
+    from .visitors import ExternalTraversal
+    from ..engine.interfaces import _AnyExecuteParams
+    from ..engine.interfaces import _AnyMultiExecuteParams
+    from ..engine.interfaces import _AnySingleExecuteParams
+    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.row import Row
 
+_CE = TypeVar("_CE", bound="ColumnElement[Any]")
 
-def join_condition(a, b, a_subset=None, consider_as_foreign_keys=None):
+
+def join_condition(
+    a: FromClause,
+    b: FromClause,
+    a_subset: Optional[FromClause] = None,
+    consider_as_foreign_keys: Optional[AbstractSet[ColumnClause[Any]]] = None,
+) -> ColumnElement[bool]:
     """Create a join condition between two tables or selectables.
 
     e.g.::
@@ -88,7 +126,9 @@ def join_condition(a, b, a_subset=None, consider_as_foreign_keys=None):
     )
 
 
-def find_join_source(clauses, join_to):
+def find_join_source(
+    clauses: List[FromClause], join_to: FromClause
+) -> List[int]:
     """Given a list of FROM clauses and a selectable,
     return the first index and element from the list of
     clauses which can be joined against the selectable.  returns
@@ -114,7 +154,9 @@ def find_join_source(clauses, join_to):
     return idx
 
 
-def find_left_clause_that_matches_given(clauses, join_from):
+def find_left_clause_that_matches_given(
+    clauses: Sequence[FromClause], join_from: FromClause
+) -> List[int]:
     """Given a list of FROM clauses and a selectable,
     return the indexes from the list of
     clauses which is derived from the selectable.
@@ -156,7 +198,11 @@ def find_left_clause_that_matches_given(clauses, join_from):
     return liberal_idx
 
 
-def find_left_clause_to_join_from(clauses, join_to, onclause):
+def find_left_clause_to_join_from(
+    clauses: Sequence[FromClause],
+    join_to: _JoinTargetElement,
+    onclause: Optional[ColumnElement[Any]],
+) -> List[int]:
     """Given a list of FROM clauses, a selectable,
     and optional ON clause, return a list of integer indexes from the
     clauses list indicating the clauses that can be joined from.
@@ -185,10 +231,11 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
     for i, f in enumerate(clauses):
         for s in selectables.difference([f]):
             if resolve_ambiguity:
+                assert cols_in_onclause is not None
                 if set(f.c).union(s.c).issuperset(cols_in_onclause):
                     idx.append(i)
                     break
-            elif Join._can_join(f, s) or onclause is not None:
+            elif onclause is not None or Join._can_join(f, s):
                 idx.append(i)
                 break
 
@@ -203,12 +250,17 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
     # onclause was given and none of them resolved, so assume
     # all indexes can match
     if not idx and onclause is not None:
-        return range(len(clauses))
+        return list(range(len(clauses)))
     else:
         return idx
 
 
-def visit_binary_product(fn, expr):
+def visit_binary_product(
+    fn: Callable[
+        [BinaryExpression[Any], ColumnElement[Any], ColumnElement[Any]], None
+    ],
+    expr: ColumnElement[Any],
+) -> None:
     """Produce a traversal of the given expression, delivering
     column comparisons to the given function.
 
@@ -243,19 +295,19 @@ def visit_binary_product(fn, expr):
     a binary comparison is passed as pairs.
 
     """
-    stack = []
+    stack: List[BinaryExpression[Any]] = []
 
-    def visit(element):
+    def visit(element: ClauseElement) -> Iterator[ColumnElement[Any]]:
         if isinstance(element, ScalarSelect):
             # we don't want to dig into correlated subqueries,
             # those are just column elements by themselves
             yield element
         elif element.__visit_name__ == "binary" and operators.is_comparison(
-            element.operator
+            element.operator  # type: ignore
         ):
-            stack.insert(0, element)
-            for l in visit(element.left):
-                for r in visit(element.right):
+            stack.insert(0, element)  # type: ignore
+            for l in visit(element.left):  # type: ignore
+                for r in visit(element.right):  # type: ignore
                     fn(stack[0], l, r)
             stack.pop(0)
             for elem in element.get_children():
@@ -268,21 +320,22 @@ def visit_binary_product(fn, expr):
                     yield e
 
     list(visit(expr))
-    visit = None  # remove gc cycles
+    visit = None  # type: ignore  # remove gc cycles
 
 
 def find_tables(
-    clause,
-    check_columns=False,
-    include_aliases=False,
-    include_joins=False,
-    include_selects=False,
-    include_crud=False,
-):
+    clause: ClauseElement,
+    *,
+    check_columns: bool = False,
+    include_aliases: bool = False,
+    include_joins: bool = False,
+    include_selects: bool = False,
+    include_crud: bool = False,
+) -> List[TableClause]:
     """locate Table objects within the given expression."""
 
-    tables = []
-    _visitors = {}
+    tables: List[TableClause] = []
+    _visitors: Dict[str, _TraverseCallableType[Any]] = {}
 
     if include_selects:
         _visitors["select"] = _visitors["compound_select"] = tables.append
@@ -331,7 +384,7 @@ def unwrap_order_by(clause):
         t = stack.popleft()
         if isinstance(t, ColumnElement) and (
             not isinstance(t, UnaryExpression)
-            or not operators.is_ordering_modifier(t.modifier)
+            or not operators.is_ordering_modifier(t.modifier)  # type: ignore
         ):
             if isinstance(t, Label) and not isinstance(
                 t.element, ScalarSelect
@@ -361,9 +414,14 @@ def unwrap_order_by(clause):
 
 
 def unwrap_label_reference(element):
-    def replace(elem):
-        if isinstance(elem, (_label_reference, _textual_label_reference)):
-            return elem.element
+    def replace(
+        element: ExternallyTraversible, **kw: Any
+    ) -> Optional[ExternallyTraversible]:
+        if isinstance(element, _label_reference):
+            return element.element
+        elif isinstance(element, _textual_label_reference):
+            assert False, "can't unwrap a textual label reference"
+        return None
 
     return visitors.replacement_traverse(element, {}, replace)
 
@@ -403,7 +461,7 @@ def clause_is_present(clause, search):
         return False
 
 
-def tables_from_leftmost(clause):
+def tables_from_leftmost(clause: FromClause) -> Iterator[FromClause]:
     if isinstance(clause, Join):
         for t in tables_from_leftmost(clause.left):
             yield t
@@ -461,7 +519,7 @@ def extract_first_column_annotation(column, annotation_name):
     return None
 
 
-def selectables_overlap(left, right):
+def selectables_overlap(left: FromClause, right: FromClause) -> bool:
     """Return True if left/right have some overlapping selectable"""
 
     return bool(
@@ -505,6 +563,8 @@ class _repr_base:
 
     __slots__ = ("max_chars",)
 
+    max_chars: int
+
     def trunc(self, value: Any) -> str:
         rep = repr(value)
         lenrep = len(rep)
@@ -526,7 +586,7 @@ class _repr_row(_repr_base):
 
     __slots__ = ("row",)
 
-    def __init__(self, row: "Row", max_chars: int = 300):
+    def __init__(self, row: "Row[Any]", max_chars: int = 300):
         self.row = row
         self.max_chars = max_chars
 
@@ -550,12 +610,12 @@ class _repr_params(_repr_base):
 
     def __init__(
         self,
-        params: _ExecuteParams,
+        params: Optional[_AnyExecuteParams],
         batches: int,
         max_chars: int = 300,
         ismulti: Optional[bool] = None,
     ):
-        self.params: _ExecuteParams = params
+        self.params = params
         self.ismulti = ismulti
         self.batches = batches
         self.max_chars = max_chars
@@ -575,7 +635,10 @@ class _repr_params(_repr_base):
             return self.trunc(self.params)
 
         if self.ismulti:
-            multi_params = cast(_MultiExecuteParams, self.params)
+            multi_params = cast(
+                "_AnyMultiExecuteParams",
+                self.params,
+            )
 
             if len(self.params) > self.batches:
                 msg = (
@@ -595,10 +658,18 @@ class _repr_params(_repr_base):
                 return self._repr_multi(multi_params, typ)
         else:
             return self._repr_params(
-                cast(_SingleExecuteParams, self.params), typ
+                cast(
+                    "_AnySingleExecuteParams",
+                    self.params,
+                ),
+                typ,
             )
 
-    def _repr_multi(self, multi_params: _MultiExecuteParams, typ) -> str:
+    def _repr_multi(
+        self,
+        multi_params: _AnyMultiExecuteParams,
+        typ: int,
+    ) -> str:
         if multi_params:
             if isinstance(multi_params[0], list):
                 elem_type = self._LIST
@@ -622,25 +693,32 @@ class _repr_params(_repr_base):
         else:
             return "(%s)" % elements
 
-    def _repr_params(self, params: _SingleExecuteParams, typ: int) -> str:
+    def _repr_params(
+        self,
+        params: _AnySingleExecuteParams,
+        typ: int,
+    ) -> str:
         trunc = self.trunc
         if typ is self._DICT:
             return "{%s}" % (
                 ", ".join(
                     "%r: %s" % (key, trunc(value))
-                    for key, value in params.items()
+                    for key, value in cast(
+                        "_CoreSingleExecuteParams", params
+                    ).items()
                 )
             )
         elif typ is self._TUPLE:
+            seq_params = cast("Sequence[Any]", params)
             return "(%s%s)" % (
-                ", ".join(trunc(value) for value in params),
-                "," if len(params) == 1 else "",
+                ", ".join(trunc(value) for value in seq_params),
+                "," if len(seq_params) == 1 else "",
             )
         else:
             return "[%s]" % (", ".join(trunc(value) for value in params))
 
 
-def adapt_criterion_to_null(crit, nulls):
+def adapt_criterion_to_null(crit: _CE, nulls: Collection[Any]) -> _CE:
     """given criterion containing bind params, convert selected elements
     to IS NULL.
 
@@ -667,11 +745,15 @@ def adapt_criterion_to_null(crit, nulls):
     return visitors.cloned_traverse(crit, {}, {"binary": visit_binary})
 
 
-def splice_joins(left, right, stop_on=None):
+def splice_joins(
+    left: Optional[FromClause],
+    right: Optional[FromClause],
+    stop_on: Optional[FromClause] = None,
+) -> Optional[FromClause]:
     if left is None:
         return right
 
-    stack = [(right, None)]
+    stack: List[Tuple[Optional[FromClause], Optional[Join]]] = [(right, None)]
 
     adapter = ClauseAdapter(left)
     ret = None
@@ -684,6 +766,7 @@ def splice_joins(left, right, stop_on=None):
         else:
             right = adapter.traverse(right)
         if prevright is not None:
+            assert right is not None
             prevright.left = right
         if ret is None:
             ret = right
@@ -691,7 +774,29 @@ def splice_joins(left, right, stop_on=None):
     return ret
 
 
-def reduce_columns(columns, *clauses, **kw):
+@overload
+def reduce_columns(
+    columns: Iterable[ColumnElement[Any]],
+    *clauses: Optional[ClauseElement],
+    **kw: bool,
+) -> Sequence[ColumnElement[Any]]:
+    ...
+
+
+@overload
+def reduce_columns(
+    columns: _SelectIterable,
+    *clauses: Optional[ClauseElement],
+    **kw: bool,
+) -> Sequence[Union[ColumnElement[Any], TextClause]]:
+    ...
+
+
+def reduce_columns(
+    columns: _SelectIterable,
+    *clauses: Optional[ClauseElement],
+    **kw: bool,
+) -> Collection[Union[ColumnElement[Any], TextClause]]:
     r"""given a list of columns, return a 'reduced' set based on natural
     equivalents.
 
@@ -714,12 +819,15 @@ def reduce_columns(columns, *clauses, **kw):
     ignore_nonexistent_tables = kw.pop("ignore_nonexistent_tables", False)
     only_synonyms = kw.pop("only_synonyms", False)
 
-    columns = util.ordered_column_set(columns)
+    column_set = util.OrderedSet(columns)
+    cset_no_text: util.OrderedSet[ColumnElement[Any]] = column_set.difference(
+        c for c in column_set if is_text_clause(c)  # type: ignore
+    )
 
     omit = util.column_set()
-    for col in columns:
+    for col in cset_no_text:
         for fk in chain(*[c.foreign_keys for c in col.proxy_set]):
-            for c in columns:
+            for c in cset_no_text:
                 if c is col:
                     continue
                 try:
@@ -749,10 +857,12 @@ def reduce_columns(columns, *clauses, **kw):
         def visit_binary(binary):
             if binary.operator == operators.eq:
                 cols = util.column_set(
-                    chain(*[c.proxy_set for c in columns.difference(omit)])
+                    chain(
+                        *[c.proxy_set for c in cset_no_text.difference(omit)]
+                    )
                 )
                 if binary.left in cols and binary.right in cols:
-                    for c in reversed(columns):
+                    for c in reversed(cset_no_text):
                         if c.shares_lineage(binary.right) and (
                             not only_synonyms or c.name == binary.left.name
                         ):
@@ -763,7 +873,7 @@ def reduce_columns(columns, *clauses, **kw):
             if clause is not None:
                 visitors.traverse(clause, {}, {"binary": visit_binary})
 
-    return ColumnSet(columns.difference(omit))
+    return column_set.difference(omit)
 
 
 def criterion_as_pairs(
@@ -824,7 +934,7 @@ def criterion_as_pairs(
                 elif binary.right.references(binary.left):
                     pairs.append((binary.left, binary.right))
 
-    pairs = []
+    pairs: List[Tuple[ColumnElement[Any], ColumnElement[Any]]] = []
     visitors.traverse(expression, {}, {"binary": visit_binary})
     return pairs
 
@@ -858,13 +968,13 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
     def __init__(
         self,
-        selectable,
-        equivalents=None,
-        include_fn=None,
-        exclude_fn=None,
-        adapt_on_names=False,
-        anonymize_labels=False,
-        adapt_from_selectables=None,
+        selectable: Selectable,
+        equivalents: Optional[_EquivalentColumnMap] = None,
+        include_fn: Optional[Callable[[ClauseElement], bool]] = None,
+        exclude_fn: Optional[Callable[[ClauseElement], bool]] = None,
+        adapt_on_names: bool = False,
+        anonymize_labels: bool = False,
+        adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
     ):
         self.__traverse_options__ = {
             "stop_on": [selectable],
@@ -876,6 +986,29 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         self.equivalents = util.column_dict(equivalents or {})
         self.adapt_on_names = adapt_on_names
         self.adapt_from_selectables = adapt_from_selectables
+
+    if TYPE_CHECKING:
+
+        @overload
+        def traverse(self, obj: Literal[None]) -> None:
+            ...
+
+        # note this specializes the ReplacingExternalTraversal.traverse()
+        # method to state
+        # that we will return the same kind of ExternalTraversal object as
+        # we were given.  This is probably not 100% true, such as it's
+        # possible for us to swap out Alias for Table at the top level.
+        # Ideally there could be overloads specific to ColumnElement and
+        # FromClause but Mypy is not accepting those as compatible with
+        # the base ReplacingExternalTraversal
+        @overload
+        def traverse(self, obj: _ET) -> _ET:
+            ...
+
+        def traverse(
+            self, obj: Optional[ExternallyTraversible]
+        ) -> Optional[ExternallyTraversible]:
+            ...
 
     def _corresponding_column(
         self, col, require_embedded, _seen=util.EMPTY_SET
@@ -898,8 +1031,12 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         return newcol
 
     @util.preload_module("sqlalchemy.sql.functions")
-    def replace(self, col, _include_singleton_constants=False):
+    def replace(
+        self, col: _ET, _include_singleton_constants: bool = False
+    ) -> Optional[_ET]:
         functions = util.preloaded.sql_functions
+
+        # TODO: cython candidate
 
         if isinstance(col, FromClause) and not isinstance(
             col, functions.FunctionElement
@@ -912,7 +1049,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                             break
                     else:
                         return None
-                return self.selectable
+                return self.selectable  # type: ignore
             elif isinstance(col, Alias) and isinstance(
                 col.element, TableClause
             ):
@@ -923,7 +1060,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 # we are an alias of a table and we are not derived from an
                 # alias of a table (which nonetheless may be the same table
                 # as ours) so, same thing
-                return col
+                return col  # type: ignore
             else:
                 # other cases where we are a selectable and the element
                 # is another join or selectable that contains a table which our
@@ -944,6 +1081,9 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if "adapt_column" in col._annotations:
             col = col._annotations["adapt_column"]
 
+        if TYPE_CHECKING:
+            assert isinstance(col, KeyedColumnElement)
+
         if self.adapt_from_selectables and col not in self.equivalents:
             for adp in self.adapt_from_selectables:
                 if adp.c.corresponding_column(col, False) is not None:
@@ -951,12 +1091,36 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
             else:
                 return None
 
+        if TYPE_CHECKING:
+            assert isinstance(col, KeyedColumnElement)
+
         if self.include_fn and not self.include_fn(col):
             return None
         elif self.exclude_fn and self.exclude_fn(col):
             return None
         else:
-            return self._corresponding_column(col, True)
+            return self._corresponding_column(col, True)  # type: ignore
+
+
+class _ColumnLookup(Protocol):
+    @overload
+    def __getitem__(self, key: None) -> None:
+        ...
+
+    @overload
+    def __getitem__(self, key: ColumnClause[Any]) -> ColumnClause[Any]:
+        ...
+
+    @overload
+    def __getitem__(self, key: ColumnElement[Any]) -> ColumnElement[Any]:
+        ...
+
+    @overload
+    def __getitem__(self, key: _ET) -> _ET:
+        ...
+
+    def __getitem__(self, key: Any) -> Any:
+        ...
 
 
 class ColumnAdapter(ClauseAdapter):
@@ -990,17 +1154,19 @@ class ColumnAdapter(ClauseAdapter):
 
     """
 
+    columns: _ColumnLookup
+
     def __init__(
         self,
-        selectable,
-        equivalents=None,
-        adapt_required=False,
-        include_fn=None,
-        exclude_fn=None,
-        adapt_on_names=False,
-        allow_label_resolve=True,
-        anonymize_labels=False,
-        adapt_from_selectables=None,
+        selectable: Selectable,
+        equivalents: Optional[_EquivalentColumnMap] = None,
+        adapt_required: bool = False,
+        include_fn: Optional[Callable[[ClauseElement], bool]] = None,
+        exclude_fn: Optional[Callable[[ClauseElement], bool]] = None,
+        adapt_on_names: bool = False,
+        allow_label_resolve: bool = True,
+        anonymize_labels: bool = False,
+        adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
     ):
         ClauseAdapter.__init__(
             self,
@@ -1013,7 +1179,7 @@ class ColumnAdapter(ClauseAdapter):
             adapt_from_selectables=adapt_from_selectables,
         )
 
-        self.columns = util.WeakPopulateDict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)  # type: ignore
         if self.include_fn or self.exclude_fn:
             self.columns = self._IncludeExcludeMapping(self, self.columns)
         self.adapt_required = adapt_required
@@ -1039,19 +1205,42 @@ class ColumnAdapter(ClauseAdapter):
         ac = self.__class__.__new__(self.__class__)
         ac.__dict__.update(self.__dict__)
         ac._wrap = adapter
-        ac.columns = util.WeakPopulateDict(ac._locate_col)
+        ac.columns = util.WeakPopulateDict(ac._locate_col)  # type: ignore
         if ac.include_fn or ac.exclude_fn:
             ac.columns = self._IncludeExcludeMapping(ac, ac.columns)
 
         return ac
 
-    def traverse(self, obj):
+    @overload
+    def traverse(self, obj: Literal[None]) -> None:
+        ...
+
+    @overload
+    def traverse(self, obj: _ET) -> _ET:
+        ...
+
+    def traverse(
+        self, obj: Optional[ExternallyTraversible]
+    ) -> Optional[ExternallyTraversible]:
         return self.columns[obj]
+
+    def chain(self, visitor: ExternalTraversal) -> ColumnAdapter:
+        assert isinstance(visitor, ColumnAdapter)
+
+        return super().chain(visitor)
+
+    if TYPE_CHECKING:
+
+        @property
+        def visitor_iterator(self) -> Iterator[ColumnAdapter]:
+            ...
 
     adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
-    def adapt_check_present(self, col):
+    def adapt_check_present(
+        self, col: ColumnElement[Any]
+    ) -> Optional[ColumnElement[Any]]:
         newcol = self.columns[col]
 
         if newcol is col and self._corresponding_column(col, True) is None:
@@ -1059,7 +1248,9 @@ class ColumnAdapter(ClauseAdapter):
 
         return newcol
 
-    def _locate_col(self, col):
+    def _locate_col(
+        self, col: ColumnElement[Any]
+    ) -> Optional[ColumnElement[Any]]:
         # both replace and traverse() are overly complicated for what
         # we are doing here and we would do better to have an inlined
         # version that doesn't build up as much overhead.  the issue is that
@@ -1088,7 +1279,16 @@ class ColumnAdapter(ClauseAdapter):
         if self.adapt_required and c is col:
             return None
 
-        c._allow_label_resolve = self.allow_label_resolve
+        # allow_label_resolve is consumed by one case for joined eager loading
+        # as part of its logic to prevent its own columns from being affected
+        # by .order_by().  Before full typing were applied to the ORM, this
+        # logic would set this attribute on the incoming object (which is
+        # typically a column, but we have a test for it being a non-column
+        # object) if no column were found.  While this seemed to
+        # have no negative effects, this adjustment should only occur on the
+        # new column which is assumed to be local to an adapted selectable.
+        if c is not col:
+            c._allow_label_resolve = self.allow_label_resolve
 
         return c
 
@@ -1099,10 +1299,14 @@ class ColumnAdapter(ClauseAdapter):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.columns = util.WeakPopulateDict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)  # type: ignore
 
 
-def _offset_or_limit_clause(element, name=None, type_=None):
+def _offset_or_limit_clause(
+    element: Union[int, _ColumnExpressionArgument[int]],
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[int]] = None,
+) -> ColumnElement[int]:
     """Convert the given value to an "offset or limit" clause.
 
     This handles incoming integers and converts to an expression; if
@@ -1114,7 +1318,9 @@ def _offset_or_limit_clause(element, name=None, type_=None):
     )
 
 
-def _offset_or_limit_clause_asint_if_possible(clause):
+def _offset_or_limit_clause_asint_if_possible(
+    clause: Optional[Union[int, _ColumnExpressionArgument[int]]]
+) -> Optional[Union[int, _ColumnExpressionArgument[int]]]:
     """Return the offset or limit clause as a simple integer if possible,
     else return the clause.
 
@@ -1122,18 +1328,27 @@ def _offset_or_limit_clause_asint_if_possible(clause):
     if clause is None:
         return None
     if hasattr(clause, "_limit_offset_value"):
-        value = clause._limit_offset_value
+        value = clause._limit_offset_value  # type: ignore
         return util.asint(value)
     else:
         return clause
 
 
-def _make_slice(limit_clause, offset_clause, start, stop):
+def _make_slice(
+    limit_clause: Optional[Union[int, _ColumnExpressionArgument[int]]],
+    offset_clause: Optional[Union[int, _ColumnExpressionArgument[int]]],
+    start: int,
+    stop: int,
+) -> Tuple[Optional[ColumnElement[int]], Optional[ColumnElement[int]]]:
     """Compute LIMIT/OFFSET in terms of slice start/end"""
 
     # for calculated limit/offset, try to do the addition of
     # values to offset in Python, however if a SQL clause is present
     # then the addition has to be on the SQL side.
+
+    # TODO: typing is finding a few gaps in here, see if they can be
+    # closed up
+
     if start is not None and stop is not None:
         offset_clause = _offset_or_limit_clause_asint_if_possible(
             offset_clause
@@ -1142,11 +1357,12 @@ def _make_slice(limit_clause, offset_clause, start, stop):
             offset_clause = 0
 
         if start != 0:
-            offset_clause = offset_clause + start
+            offset_clause = offset_clause + start  # type: ignore
 
         if offset_clause == 0:
             offset_clause = None
         else:
+            assert offset_clause is not None
             offset_clause = _offset_or_limit_clause(offset_clause)
 
         limit_clause = _offset_or_limit_clause(stop - start)
@@ -1161,11 +1377,13 @@ def _make_slice(limit_clause, offset_clause, start, stop):
             offset_clause = 0
 
         if start != 0:
-            offset_clause = offset_clause + start
+            offset_clause = offset_clause + start  # type: ignore
 
         if offset_clause == 0:
             offset_clause = None
         else:
-            offset_clause = _offset_or_limit_clause(offset_clause)
+            offset_clause = _offset_or_limit_clause(
+                offset_clause  # type: ignore
+            )
 
-    return limit_clause, offset_clause
+    return limit_clause, offset_clause  # type: ignore

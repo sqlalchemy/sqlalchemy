@@ -1,0 +1,9 @@
+# This file contains a list of revisions that the SQLAlchemy maintainers
+# consider unimportant for git blame purposes because they are pure refactoring
+# changes and unlikely to be the cause of bugs. You can configure git to use
+# this file by configuring the 'blame.ignoreRevsFile' setting. For example:
+#
+#   $ git config --local blame.ignoreRevsFile .git-blame-ignore-revs
+#
+1e1a38e7801f410f244e4bbb44ec795ae152e04e  # initial blackification
+1e278de4cc9a4181e0747640a960e80efcea1ca9  # follow up mass style changes

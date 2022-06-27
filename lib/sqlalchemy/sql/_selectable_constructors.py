@@ -8,75 +8,93 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Optional
+from typing import overload
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from . import coercions
 from . import roles
-from ._typing import _ColumnsClauseElement
+from ._typing import _ColumnsClauseArgument
+from ._typing import _no_kw
 from .elements import ColumnClause
 from .selectable import Alias
 from .selectable import CompoundSelect
 from .selectable import Exists
+from .selectable import FromClause
 from .selectable import Join
 from .selectable import Lateral
+from .selectable import LateralFromClause
+from .selectable import NamedFromClause
 from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
-from ..util.typing import _LiteralStar
-from ..util.typing import Literal
+
+if TYPE_CHECKING:
+    from ._typing import _FromClauseArgument
+    from ._typing import _OnClauseArgument
+    from ._typing import _SelectStatementForCompoundArgument
+    from ._typing import _T0
+    from ._typing import _T1
+    from ._typing import _T2
+    from ._typing import _T3
+    from ._typing import _T4
+    from ._typing import _T5
+    from ._typing import _T6
+    from ._typing import _T7
+    from ._typing import _T8
+    from ._typing import _T9
+    from ._typing import _TypedColumnClauseArgument as _TCCA
+    from .functions import Function
+    from .selectable import CTE
+    from .selectable import HasCTE
+    from .selectable import ScalarSelect
+    from .selectable import SelectBase
 
 
-def alias(selectable, name=None, flat=False):
-    """Return an :class:`_expression.Alias` object.
+_T = TypeVar("_T", bound=Any)
 
-    An :class:`_expression.Alias` represents any
-    :class:`_expression.FromClause`
-    with an alternate name assigned within SQL, typically using the ``AS``
-    clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
 
-    Similar functionality is available via the
+def alias(
+    selectable: FromClause, name: Optional[str] = None, flat: bool = False
+) -> NamedFromClause:
+    """Return a named alias of the given :class:`.FromClause`.
+
+    For :class:`.Table` and :class:`.Join` objects, the return type is the
+    :class:`_expression.Alias` object. Other kinds of :class:`.NamedFromClause`
+    objects may be returned for other kinds of :class:`.FromClause` objects.
+
+    The named alias represents any :class:`_expression.FromClause` with an
+    alternate name assigned within SQL, typically using the ``AS`` clause when
+    generated, e.g. ``SELECT * FROM table AS aliasname``.
+
+    Equivalent functionality is available via the
     :meth:`_expression.FromClause.alias`
-    method available on all :class:`_expression.FromClause` subclasses.
-    In terms of
-    a SELECT object as generated from the :func:`_expression.select`
-    function, the :meth:`_expression.SelectBase.alias` method returns an
-    :class:`_expression.Alias` or similar object which represents a named,
-    parenthesized subquery.
-
-    When an :class:`_expression.Alias` is created from a
-    :class:`_schema.Table` object,
-    this has the effect of the table being rendered
-    as ``tablename AS aliasname`` in a SELECT statement.
-
-    For :func:`_expression.select` objects, the effect is that of
-    creating a named subquery, i.e. ``(select ...) AS aliasname``.
-
-    The ``name`` parameter is optional, and provides the name
-    to use in the rendered SQL.  If blank, an "anonymous" name
-    will be deterministically generated at compile time.
-    Deterministic means the name is guaranteed to be unique against
-    other constructs used in the same statement, and will also be the
-    same name for each successive compilation of the same statement
-    object.
+    method available on all :class:`_expression.FromClause` objects.
 
     :param selectable: any :class:`_expression.FromClause` subclass,
         such as a table, select statement, etc.
 
     :param name: string name to be assigned as the alias.
-        If ``None``, a name will be deterministically generated
-        at compile time.
+        If ``None``, a name will be deterministically generated at compile
+        time. Deterministic means the name is guaranteed to be unique against
+        other constructs used in the same statement, and will also be the same
+        name for each successive compilation of the same statement object.
 
     :param flat: Will be passed through to if the given selectable
      is an instance of :class:`_expression.Join` - see
-     :meth:`_expression.Join.alias`
-     for details.
+     :meth:`_expression.Join.alias` for details.
 
     """
     return Alias._factory(selectable, name=name, flat=flat)
 
 
-def cte(selectable, name=None, recursive=False):
+def cte(
+    selectable: HasCTE, name: Optional[str] = None, recursive: bool = False
+) -> CTE:
     r"""Return a new :class:`_expression.CTE`,
     or Common Table Expression instance.
 
@@ -88,7 +106,9 @@ def cte(selectable, name=None, recursive=False):
     )
 
 
-def except_(*selects):
+def except_(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
@@ -101,7 +121,9 @@ def except_(*selects):
     return CompoundSelect._create_except(*selects)
 
 
-def except_all(*selects):
+def except_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -114,7 +136,11 @@ def except_all(*selects):
     return CompoundSelect._create_except_all(*selects)
 
 
-def exists(__argument=None):
+def exists(
+    __argument: Optional[
+        Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
+    ] = None,
+) -> Exists:
     """Construct a new :class:`_expression.Exists` construct.
 
     The :func:`_sql.exists` can be invoked by itself to produce an
@@ -150,12 +176,14 @@ def exists(__argument=None):
         :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
         ``EXISTS`` clause.
 
-    """  # noqa E501
+    """  # noqa: E501
 
     return Exists(__argument)
 
 
-def intersect(*selects):
+def intersect(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
@@ -168,7 +196,9 @@ def intersect(*selects):
     return CompoundSelect._create_intersect(*selects)
 
 
-def intersect_all(*selects):
+def intersect_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -182,7 +212,13 @@ def intersect_all(*selects):
     return CompoundSelect._create_intersect_all(*selects)
 
 
-def join(left, right, onclause=None, isouter=False, full=False):
+def join(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    isouter: bool = False,
+    full: bool = False,
+) -> Join:
     """Produce a :class:`_expression.Join` object, given two
     :class:`_expression.FromClause`
     expressions.
@@ -234,7 +270,10 @@ def join(left, right, onclause=None, isouter=False, full=False):
     return Join(left, right, onclause, isouter, full)
 
 
-def lateral(selectable, name=None):
+def lateral(
+    selectable: Union[SelectBase, _FromClauseArgument],
+    name: Optional[str] = None,
+) -> LateralFromClause:
     """Return a :class:`_expression.Lateral` object.
 
     :class:`_expression.Lateral` is an :class:`_expression.Alias`
@@ -251,13 +290,18 @@ def lateral(selectable, name=None):
 
     .. seealso::
 
-        :ref:`lateral_selects` -  overview of usage.
+        :ref:`tutorial_lateral_correlation` -  overview of usage.
 
     """
     return Lateral._factory(selectable, name=name)
 
 
-def outerjoin(left, right, onclause=None, full=False):
+def outerjoin(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    full: bool = False,
+) -> Join:
     """Return an ``OUTER JOIN`` clause element.
 
     The returned object is an instance of :class:`_expression.Join`.
@@ -283,9 +327,129 @@ def outerjoin(left, right, onclause=None, full=False):
     return Join(left, right, onclause, isouter=True, full=full)
 
 
+# START OVERLOADED FUNCTIONS select Select 1-10
+
+# code within this block is **programmatically,
+# statically generated** by tools/generate_tuple_map_overloads.py
+
+
+@overload
+def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
+    ...
+
+
+@overload
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[Tuple[_T0, _T1]]:
+    ...
+
+
+@overload
 def select(
-    *entities: Union[_LiteralStar, Literal[1], _ColumnsClauseElement]
-) -> "Select":
+    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+) -> Select[Tuple[_T0, _T1, _T2]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+    __ent8: _TCCA[_T8],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
+    ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __ent3: _TCCA[_T3],
+    __ent4: _TCCA[_T4],
+    __ent5: _TCCA[_T5],
+    __ent6: _TCCA[_T6],
+    __ent7: _TCCA[_T7],
+    __ent8: _TCCA[_T8],
+    __ent9: _TCCA[_T9],
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
+    ...
+
+
+# END OVERLOADED FUNCTIONS select
+
+
+@overload
+def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+    ...
+
+
+def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -302,8 +466,7 @@ def select(
 
     .. seealso::
 
-        :ref:`coretutorial_selecting` - Core Tutorial description of
-        :func:`_expression.select`.
+        :ref:`tutorial_selecting_data` - in the :ref:`unified_tutorial`
 
     :param \*entities:
       Entities to SELECT from.  For Core usage, this is typically a series
@@ -322,11 +485,15 @@ def select(
       given, as well as ORM-mapped classes.
 
     """
-
+    # the keyword args are a necessary element in order for the typing
+    # to work out w/ the varargs vs. having named "keyword" arguments that
+    # aren't always present.
+    if __kw:
+        raise _no_kw()
     return Select(*entities)
 
 
-def table(name: str, *columns: ColumnClause, **kw: Any) -> "TableClause":
+def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
     """Produce a new :class:`_expression.TableClause`.
 
     The object returned is an instance of
@@ -353,7 +520,12 @@ def table(name: str, *columns: ColumnClause, **kw: Any) -> "TableClause":
     return TableClause(name, *columns, **kw)
 
 
-def tablesample(selectable, sampling, name=None, seed=None):
+def tablesample(
+    selectable: _FromClauseArgument,
+    sampling: Union[float, Function[Any]],
+    name: Optional[str] = None,
+    seed: Optional[roles.ExpressionElementRole[Any]] = None,
+) -> TableSample:
     """Return a :class:`_expression.TableSample` object.
 
     :class:`_expression.TableSample` is an :class:`_expression.Alias`
@@ -399,7 +571,9 @@ def tablesample(selectable, sampling, name=None, seed=None):
     return TableSample._factory(selectable, sampling, name=name, seed=seed)
 
 
-def union(*selects, **kwargs):
+def union(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
@@ -416,10 +590,12 @@ def union(*selects, **kwargs):
       :func:`select`.
 
     """
-    return CompoundSelect._create_union(*selects, **kwargs)
+    return CompoundSelect._create_union(*selects)
 
 
-def union_all(*selects):
+def union_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -435,7 +611,11 @@ def union_all(*selects):
     return CompoundSelect._create_union_all(*selects)
 
 
-def values(*columns, name=None, literal_binds=False) -> "Values":
+def values(
+    *columns: ColumnClause[Any],
+    name: Optional[str] = None,
+    literal_binds: bool = False,
+) -> Values:
     r"""Construct a :class:`_expression.Values` construct.
 
     The column expressions and the actual data for

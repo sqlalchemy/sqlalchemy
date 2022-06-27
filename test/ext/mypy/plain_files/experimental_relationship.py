@@ -8,7 +8,6 @@ from typing import Set
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -42,28 +41,28 @@ class Address(Base):
 
     id = mapped_column(Integer, primary_key=True)
     user_id = mapped_column(ForeignKey("user.id"))
-    email = mapped_column(String, nullable=False)
-    email_name = mapped_column("email_name", String, nullable=False)
+    email: Mapped[str]
+    email_name: Mapped[str] = mapped_column("email_name")
 
     user_style_one: Mapped[User] = relationship()
     user_style_two: Mapped["User"] = relationship()
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
     reveal_type(User.extra)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
     reveal_type(User.extra_name)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
     reveal_type(Address.email)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
     reveal_type(Address.email_name)
 
-    # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[experimental_relationship.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[experimental_relationship.Address\]\]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*\[experimental_relationship.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[experimental_relationship.Address\]\]
     reveal_type(User.addresses_style_two)

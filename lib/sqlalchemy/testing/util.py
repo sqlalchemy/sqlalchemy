@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 from __future__ import annotations
 
@@ -391,36 +393,55 @@ def drop_all_tables_from_metadata(metadata, engine_or_connection):
         go(engine_or_connection)
 
 
-def drop_all_tables(engine, inspector, schema=None, include_names=None):
+def drop_all_tables(
+    engine,
+    inspector,
+    schema=None,
+    consider_schemas=(None,),
+    include_names=None,
+):
 
     if include_names is not None:
         include_names = set(include_names)
 
+    if schema is not None:
+        assert consider_schemas == (
+            None,
+        ), "consider_schemas and schema are mutually exclusive"
+        consider_schemas = (schema,)
+
     with engine.begin() as conn:
-        for tname, fkcs in reversed(
-            inspector.get_sorted_table_and_fkc_names(schema=schema)
+        for table_key, fkcs in reversed(
+            inspector.sort_tables_on_foreign_key_dependency(
+                consider_schemas=consider_schemas
+            )
         ):
-            if tname:
-                if include_names is not None and tname not in include_names:
+            if table_key:
+                if (
+                    include_names is not None
+                    and table_key[1] not in include_names
+                ):
                     continue
                 conn.execute(
-                    DropTable(Table(tname, MetaData(), schema=schema))
+                    DropTable(
+                        Table(table_key[1], MetaData(), schema=table_key[0])
+                    )
                 )
             elif fkcs:
                 if not engine.dialect.supports_alter:
                     continue
-                for tname, fkc in fkcs:
+                for t_key, fkc in fkcs:
                     if (
                         include_names is not None
-                        and tname not in include_names
+                        and t_key[1] not in include_names
                     ):
                         continue
                     tb = Table(
-                        tname,
+                        t_key[1],
                         MetaData(),
                         Column("x", Integer),
                         Column("y", Integer),
-                        schema=schema,
+                        schema=t_key[0],
                     )
                     conn.execute(
                         DropConstraint(

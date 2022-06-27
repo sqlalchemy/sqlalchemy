@@ -26,7 +26,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import true
-from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
@@ -37,6 +36,7 @@ from sqlalchemy.sql import functions
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.sql.functions import FunctionElement
@@ -1394,7 +1394,7 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         `WITH ORDINALITY AS unnested(unnested, ordinality) ON true
         LEFT OUTER JOIN b ON unnested.unnested = b.ref
 
-        """  # noqa 501
+        """  # noqa: 501
 
         a = table("a", column("id"), column("refs"))
         b = table("b", column("id"), column("ref"))
@@ -1424,6 +1424,30 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH ORDINALITY AS unnested(unnested, ordinality) ON true "
             "LEFT OUTER JOIN b ON unnested.unnested = b.ref",
         )
+
+    def test_render_derived_maintains_tableval_type(self):
+        fn = func.json_something()
+
+        tv = fn.table_valued(column("x", String))
+
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+        tv = tv.render_derived()
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+    def test_alias_maintains_tableval_type(self):
+        fn = func.json_something()
+
+        tv = fn.table_valued(column("x", String))
+
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+        tv = tv.alias()
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
 
     def test_star_with_ordinality(self):
         """
@@ -1647,11 +1671,11 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "SELECT result_elem[:result_elem_1] AS field "
-            "FROM json_array_elements("
+            'FROM "check" AS _check, json_array_elements('
             "(SELECT check_inside.response[:response_1] AS anon_1 "
             'FROM "check" AS check_inside '
             "WHERE check_inside.id = _check.id)"
-            ') AS result_elem, "check" AS _check '
+            ") AS result_elem "
             "WHERE result_elem[:result_elem_2] = :param_1",
         )
 

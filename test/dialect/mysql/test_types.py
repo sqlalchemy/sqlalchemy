@@ -537,7 +537,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         )
         return bit_table
 
-    i, j, k, l = 255, 2 ** 32 - 1, 2 ** 63 - 1, 2 ** 64 - 1
+    i, j, k, l = 255, 2**32 - 1, 2**63 - 1, 2**64 - 1
 
     @testing.combinations(
         (([0] * 8), None),
@@ -1309,6 +1309,24 @@ class EnumSetTest(
             ).fetchall(),
             [("", ""), ("", ""), ("two", "two"), (None, None)],
         )
+
+    @testing.combinations(
+        (
+            [""],
+            {"retrieve_as_bitwise": True},
+            "SET('', retrieve_as_bitwise=True)",
+        ),
+        (["a"], {}, "SET('a')"),
+        (["a", "b", "c"], {}, "SET('a', 'b', 'c')"),
+        (
+            ["a", "b", "c"],
+            {"collation": "utf8_bin"},
+            "SET('a', 'b', 'c', collation='utf8_bin')",
+        ),
+        argnames="value,kw,expected",
+    )
+    def test_set_repr(self, value, kw, expected):
+        eq_(repr(mysql.SET(*value, **kw)), expected)
 
 
 def colspec(c):

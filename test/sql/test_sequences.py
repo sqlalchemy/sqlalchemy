@@ -14,6 +14,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
@@ -117,14 +118,25 @@ class SequenceExecTest(fixtures.TestBase):
 
     def test_execute(self, connection):
         s = Sequence("my_sequence")
-        self._assert_seq_result(connection.execute(s))
+        self._assert_seq_result(connection.scalar(s))
 
-    def test_execute_optional(self, connection):
+    def test_execute_deprecated(self, connection):
+
+        s = Sequence("my_sequence", optional=True)
+
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            self._assert_seq_result(connection.execute(s))
+
+    def test_scalar_optional(self, connection):
         """test dialect executes a Sequence, returns nextval, whether
         or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
-        self._assert_seq_result(connection.execute(s))
+        self._assert_seq_result(connection.scalar(s))
 
     def test_execute_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
@@ -206,9 +218,15 @@ class SequenceExecTest(fixtures.TestBase):
     @testing.combinations(
         ("implicit_returning",),
         ("no_implicit_returning",),
-        ("explicit_returning", testing.requires.returning),
-        ("return_defaults_no_implicit_returning", testing.requires.returning),
-        ("return_defaults_implicit_returning", testing.requires.returning),
+        ("explicit_returning", testing.requires.insert_returning),
+        (
+            "return_defaults_no_implicit_returning",
+            testing.requires.insert_returning,
+        ),
+        (
+            "return_defaults_implicit_returning",
+            testing.requires.insert_returning,
+        ),
         argnames="returning",
     )
     @testing.requires.multivalues_inserts
@@ -252,17 +270,17 @@ class SequenceExecTest(fixtures.TestBase):
         ("no_implicit_returning",),
         (
             "explicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         (
             "return_defaults_no_implicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         (
             "return_defaults_implicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         argnames="returning",
@@ -306,7 +324,7 @@ class SequenceExecTest(fixtures.TestBase):
             [(1, "d1"), (2, "d2"), (3, "d3")],
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_inserted_pk_implicit_returning(self, connection, metadata):
         """test inserted_primary_key contains the result when
         pk_col=next_value(), when implicit returning is used."""
@@ -341,7 +359,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         seq.create(testing.db)
         try:
             with testing.db.connect() as conn:
-                values = [conn.execute(seq) for i in range(3)]
+                values = [conn.scalar(seq) for i in range(3)]
                 start = seq.start or testing.db.dialect.default_sequence_base
                 inc = seq.increment or 1
                 eq_(values, list(range(start, start + inc * 3, inc)))
@@ -423,7 +441,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert not self._has_sequence(connection, "s1")
         assert not self._has_sequence(connection, "s2")
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     @testing.requires.supports_sequence_for_autoincrement_column
     @testing.provide_metadata
     def test_freestanding_sequence_via_autoinc(self, connection):
@@ -533,7 +551,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         return go
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -559,7 +577,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )

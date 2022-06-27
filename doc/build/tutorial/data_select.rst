@@ -156,6 +156,20 @@ The above :class:`_engine.Row` has just one element, representing the ``User`` e
     >>> row[0]
     User(id=1, name='spongebob', fullname='Spongebob Squarepants')
 
+A highly recommended convenience method of achieving the same result as above
+is to use the :meth:`_orm.Session.scalars` method to execute the statement
+directly; this method will return a :class:`_result.ScalarResult` object
+that delivers the first "column" of each row at once, in this case,
+instances of the ``User`` class::
+
+    >>> user = session.scalars(select(User)).first()
+    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    [...] (){stop}
+    >>> user
+    User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+
+
 Alternatively, we can select individual columns of an ORM entity as distinct
 elements within result rows, by using the class-bound attributes; when these
 are passed to a construct such as :func:`_sql.select`, they are resolved into
@@ -234,7 +248,7 @@ when referring to arbitrary SQL expressions in a result row by name:
     :ref:`tutorial_order_by_label` - the label names we create may also be
     referred towards in the ORDER BY or GROUP BY clause of the :class:`_sql.Select`.
 
-.. _tutorial_select_arbtrary_text:
+.. _tutorial_select_arbitrary_text:
 
 Selecting with Textual Column Expressions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1036,6 +1050,75 @@ The statement then can return the data for this column like any other:
      ('sandy', 'sandy@squirrelpower.org', 2)]
     {opensql}ROLLBACK{stop}
 
+
+.. _tutorial_lateral_correlation:
+
+LATERAL correlation
+~~~~~~~~~~~~~~~~~~~
+
+LATERAL correlation is a special sub-category of SQL correlation which
+allows a selectable unit to refer to another selectable unit within a
+single FROM clause.  This is an extremely special use case which, while
+part of the SQL standard, is only known to be supported by recent
+versions of PostgreSQL.
+
+Normally, if a SELECT statement refers to
+``table1 JOIN (SELECT ...) AS subquery`` in its FROM clause, the subquery
+on the right side may not refer to the "table1" expression from the left side;
+correlation may only refer to a table that is part of another SELECT that
+entirely encloses this SELECT.  The LATERAL keyword allows us to turn this
+behavior around and allow correlation from the right side JOIN.
+
+SQLAlchemy supports this feature using the :meth:`_expression.Select.lateral`
+method, which creates an object known as :class:`.Lateral`. :class:`.Lateral`
+is in the same family as :class:`.Subquery` and :class:`.Alias`, but also
+includes correlation behavior when the construct is added to the FROM clause of
+an enclosing SELECT. The following example illustrates a SQL query that makes
+use of LATERAL, selecting the "user account / count of email address" data as
+was discussed in the previous section::
+
+    >>> subq = (
+    ...   select(
+    ...       func.count(address_table.c.id).label("address_count"),
+    ...       address_table.c.email_address,
+    ...       address_table.c.user_id,
+    ...    ).
+    ...    where(user_table.c.id == address_table.c.user_id).
+    ...    lateral()
+    ... )
+    >>> stmt = select(
+    ...     user_table.c.name,
+    ...     subq.c.address_count,
+    ...     subq.c.email_address
+    ... ).\
+    ... join_from(user_table, subq).\
+    ... order_by(user_table.c.id, subq.c.email_address)
+    >>> print(stmt)
+    {opensql}SELECT user_account.name, anon_1.address_count, anon_1.email_address
+    FROM user_account
+    JOIN LATERAL (SELECT count(address.id) AS address_count,
+    address.email_address AS email_address, address.user_id AS user_id
+    FROM address
+    WHERE user_account.id = address.user_id) AS anon_1
+    ON user_account.id = anon_1.user_id
+    ORDER BY user_account.id, anon_1.email_address
+
+Above, the right side of the JOIN is a subquery that correlates to the
+``user_account`` table that's on the left side of the join.
+
+When using :meth:`_expression.Select.lateral`, the behavior of
+:meth:`_expression.Select.correlate` and
+:meth:`_expression.Select.correlate_except` methods is applied to the
+:class:`.Lateral` construct as well.
+
+.. seealso::
+
+    :class:`_expression.Lateral`
+
+    :meth:`_expression.Select.lateral`
+
+
+
 .. _tutorial_union:
 
 UNION, UNION ALL and other set operations
@@ -1244,6 +1327,7 @@ clause:
     [('patrick',)]
     {opensql}ROLLBACK{stop}
 
+
 .. _tutorial_functions:
 
 Working with SQL Functions
@@ -1450,10 +1534,19 @@ Overall, the scenario where the
    or again special datatypes such as :class:`_types.JSON`,
    :class:`_types.ARRAY`.
 
+Advanced SQL Function Techniques
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following subsections illustrate more things that can be done with
+SQL functions.  While these techniques are less common and more advanced than
+basic SQL function use, they nonetheless are extremely popular, largely
+as a result of PostgreSQL's emphasis on more complex function forms, including
+table- and column-valued forms that are popular with JSON data.
+
 .. _tutorial_window_functions:
 
 Using Window Functions
-~~~~~~~~~~~~~~~~~~~~~~
+######################
 
 A window function is a special use of a SQL aggregate function which calculates
 the aggregate value over the rows being returned in a group as the individual
@@ -1529,7 +1622,7 @@ Further options for window functions include usage of ranges; see
 .. _tutorial_functions_within_group:
 
 Special Modifiers WITHIN GROUP, FILTER
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+######################################
 
 The "WITHIN GROUP" SQL syntax is used in conjunction with an "ordered set"
 or a "hypothetical set" aggregate
@@ -1563,13 +1656,13 @@ using the :meth:`_functions.FunctionElement.filter` method::
     count(address.email_address) FILTER (WHERE user_account.name = ?) AS anon_2
     FROM user_account JOIN address ON user_account.id = address.user_id
     [...] ('sandy', 'spongebob')
-    [(2, 1)]
-    ROLLBACK
+    {stop}[(2, 1)]
+    {opensql}ROLLBACK
 
 .. _tutorial_functions_table_valued:
 
 Table-Valued Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~
+#######################
 
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
@@ -1600,16 +1693,16 @@ modern versions of SQLite::
 
     >>> onetwothree = func.json_each('["one", "two", "three"]').table_valued("value")
     >>> stmt = select(onetwothree).where(onetwothree.c.value.in_(["two", "three"]))
-    >>> with engine.connect() as conn:  # doctest:+SKIP
+    >>> with engine.connect() as conn:
     ...     result = conn.execute(stmt)
-    ...     print(result.all())
+    ...     result.all()
     {opensql}BEGIN (implicit)
     SELECT anon_1.value
     FROM json_each(?) AS anon_1
     WHERE anon_1.value IN (?, ?)
     [...] ('["one", "two", "three"]', 'two', 'three')
-    [('two',), ('three',)]
-    ROLLBACK
+    {stop}[('two',), ('three',)]
+    {opensql}ROLLBACK{stop}
 
 Above, we used the ``json_each()`` JSON function supported by SQLite and
 PostgreSQL to generate a table valued expression with a single column referred
@@ -1624,7 +1717,7 @@ towards as ``value``, and then selected two of its three rows.
 .. _tutorial_functions_column_valued:
 
 Column Valued Functions - Table Valued Function as a Scalar Column
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##################################################################
 
 A special syntax supported by PostgreSQL and Oracle is that of referring
 towards a function in the FROM clause, which then delivers itself as a
@@ -1657,4 +1750,77 @@ it is usable for custom SQL functions::
 
     :ref:`postgresql_column_valued` - in the :ref:`postgresql_toplevel` documentation.
 
+.. _tutorial_casts:
 
+Data Casts and Type Coercion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In SQL, we often need to indicate the datatype of an expression explicitly,
+either to tell the database what type is expected in an otherwise ambiguous
+expression, or in some cases when we want to convert the implied datatype
+of a SQL expression into something else.   The SQL CAST keyword is used for
+this task, which in SQLAlchemy is provided by the :func:`.cast` function.
+This function accepts a column expression and a data type
+object as arguments, as demonstrated below where we produce a SQL expression
+``CAST(user_account.id AS VARCHAR)`` from the ``user_table.c.id`` column
+object::
+
+    >>> from sqlalchemy import cast
+    >>> stmt = select(cast(user_table.c.id, String))
+    >>> with engine.connect() as conn:
+    ...     result = conn.execute(stmt)
+    ...     result.all()
+    {opensql}BEGIN (implicit)
+    SELECT CAST(user_account.id AS VARCHAR) AS id
+    FROM user_account
+    [...] ()
+    {stop}[('1',), ('2',), ('3',)]
+    {opensql}ROLLBACK{stop}
+
+The :func:`.cast` function not only renders the SQL CAST syntax, it also
+produces a SQLAlchemy column expression that will act as the given datatype on
+the Python side as well. A string expression that is :func:`.cast` to
+:class:`_sqltypes.JSON` will gain JSON subscript and comparison operators, for example::
+
+    >>> from sqlalchemy import JSON
+    >>> print(cast("{'a': 'b'}", JSON)["a"])
+    CAST(:param_1 AS JSON)[:param_2]
+
+
+type_coerce() - a Python-only "cast"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes there is the need to have SQLAlchemy know the datatype of an
+expression, for all the reasons mentioned above, but to not render the CAST
+expression itself on the SQL side, where it may interfere with a SQL operation
+that already works without it.  For this fairly common use case there is
+another function :func:`.type_coerce` which is closely related to
+:func:`.cast`, in that it sets up a Python expression as having a specific SQL
+database type, but does not render the ``CAST`` keyword or datatype on the
+database side.    :func:`.type_coerce` is particularly important when dealing
+with the :class:`_types.JSON` datatype, which typically has an intricate
+relationship with string-oriented datatypes on different platforms and
+may not even be an explicit datatype, such as on SQLite and MariaDB.
+Below, we use :func:`.type_coerce` to deliver a Python structure as a JSON
+string into one of MySQL's JSON functions:
+
+.. sourcecode:: pycon+sql
+
+    >>> import json
+    >>> from sqlalchemy import JSON
+    >>> from sqlalchemy import type_coerce
+    >>> from sqlalchemy.dialects import mysql
+    >>> s = select(
+    ... type_coerce(
+    ...        {'some_key': {'foo': 'bar'}}, JSON
+    ...    )['some_key']
+    ... )
+    >>> print(s.compile(dialect=mysql.dialect()))
+    SELECT JSON_EXTRACT(%s, %s) AS anon_1
+
+Above, MySQL's ``JSON_EXTRACT`` SQL function was invoked
+because we used :func:`.type_coerce` to indicate that our Python dictionary
+should be treated as :class:`_types.JSON`.  The Python ``__getitem__``
+operator, ``['some_key']`` in this case, became available as a result and
+allowed a ``JSON_EXTRACT`` path expression (not shown, however in this
+case it would ultimately be ``'$."some_key"'``) to be rendered.

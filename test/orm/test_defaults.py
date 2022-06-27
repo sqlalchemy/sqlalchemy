@@ -278,7 +278,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
 
         asserter.assert_(
             Conditional(
-                eager and testing.db.dialect.implicit_returning,
+                eager and testing.db.dialect.insert_returning,
                 [
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
@@ -361,7 +361,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
             eq_(t1.bar, 5 + 42)
             eq_(t2.bar, 6 + 42)
 
-        if eager and testing.db.dialect.implicit_returning:
+        if eager and testing.db.dialect.update_returning:
             asserter.assert_(
                 CompiledSQL(
                     "UPDATE test SET foo=%(foo)s "
@@ -462,7 +462,7 @@ class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
 
         asserter.assert_(
             Conditional(
-                testing.db.dialect.implicit_returning,
+                testing.db.dialect.insert_returning,
                 [
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,

@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """
 .. dialect:: sqlite+pysqlcipher
@@ -105,7 +107,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
     pragmas = ("kdf_iter", "cipher", "cipher_page_size", "cipher_use_hmac")
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
             import sqlcipher3 as sqlcipher
         except ImportError:

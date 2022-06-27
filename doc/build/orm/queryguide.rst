@@ -309,6 +309,7 @@ The :class:`_orm.aliased` construct is also central to making use of subqueries
 with the ORM; the sections :ref:`orm_queryguide_subqueries` and
 :ref:`orm_queryguide_join_subqueries` discusses this further.
 
+
 .. _orm_queryguide_selecting_text:
 
 Getting ORM Results from Textual and Core Statements
@@ -490,7 +491,6 @@ and order by criteria based on its exported columns::
 .. seealso::
 
     :ref:`tutorial_orm_union` - in the :ref:`unified_tutorial`
-
 
 .. _orm_queryguide_joins:
 
@@ -1095,6 +1095,104 @@ matching objects locally present in the :class:`_orm.Session`. See the section
 
     >>> conn.close()
     ROLLBACK
+
+.. _queryguide_inspection:
+
+Inspecting entities and columns from ORM-enabled SELECT and DML statements
+==========================================================================
+
+The :func:`_sql.select` construct, as well as the :func:`_sql.insert`, :func:`_sql.update`
+and :func:`_sql.delete` constructs (for the latter DML constructs, as of SQLAlchemy
+1.4.33), all support the ability to inspect the entities in which these
+statements are created against, as well as the columns and datatypes that would
+be returned in a result set.
+
+For a :class:`.Select` object, this information is available from the
+:attr:`.Select.column_descriptions` attribute. This attribute operates in the
+same way as the legacy :attr:`.Query.column_descriptions` attribute. The format
+returned is a list of dictionaries::
+
+    >>> from pprint import pprint
+    >>> user_alias = aliased(User, name='user2')
+    >>> stmt = select(User, User.id, user_alias)
+    >>> pprint(stmt.column_descriptions)
+    [{'aliased': False,
+        'entity': <class 'User'>,
+        'expr': <class 'User'>,
+        'name': 'User',
+        'type': <class 'User'>},
+        {'aliased': False,
+        'entity': <class 'User'>,
+        'expr': <....InstrumentedAttribute object at ...>,
+        'name': 'id',
+        'type': Integer()},
+        {'aliased': True,
+        'entity': <AliasedClass ...; User>,
+        'expr': <AliasedClass ...; User>,
+        'name': 'user2',
+        'type': <class 'User'>}]
+
+
+When :attr:`.Select.column_descriptions` is used with non-ORM objects
+such as plain :class:`.Table` or :class:`.Column` objects, the entries
+will contain basic information about individual columns returned in all
+cases::
+
+    >>> stmt = select(user_table, address_table.c.id)
+    >>> pprint(stmt.column_descriptions)
+    [{'expr': Column('id', Integer(), table=<user_account>, primary_key=True, nullable=False),
+        'name': 'id',
+        'type': Integer()},
+        {'expr': Column('name', String(length=30), table=<user_account>),
+        'name': 'name',
+        'type': String(length=30)},
+        {'expr': Column('fullname', String(), table=<user_account>),
+        'name': 'fullname',
+        'type': String()},
+        {'expr': Column('id', Integer(), table=<address>, primary_key=True, nullable=False),
+        'name': 'id_1',
+        'type': Integer()}]
+
+.. versionchanged:: 1.4.33 The :attr:`.Select.column_descriptions` attribute now returns
+   a value when used against a :class:`.Select` that is not ORM-enabled.  Previously,
+   this would raise ``NotImplementedError``.
+
+
+For :func:`_sql.insert`, :func:`.update` and :func:`.delete` constructs, there are
+two separate attributes. One is :attr:`.UpdateBase.entity_description` which
+returns information about the primary ORM entity and database table which the
+DML construct would be affecting::
+
+    >>> from sqlalchemy import update
+    >>> stmt = update(User).values(name="somename").returning(User.id)
+    >>> pprint(stmt.entity_description)
+    {'entity': <class 'User'>,
+        'expr': <class 'User'>,
+        'name': 'User',
+        'table': Table('user_account', ...),
+        'type': <class 'User'>}
+
+.. tip::  The :attr:`.UpdateBase.entity_description` includes an entry
+   ``"table"`` which is actually the **table to be inserted, updated or
+   deleted** by the statement, which is **not** always the same as the SQL
+   "selectable" to which the class may be mapped. For example, in a
+   joined-table inheritance scenario, ``"table"`` will refer to the local table
+   for the given entity.
+
+The other is :attr:`.UpdateBase.returning_column_descriptions` which
+delivers information about the columns present in the RETURNING collection
+in a manner roughly similar to that of :attr:`.Select.column_descriptions`::
+
+    >>> pprint(stmt.returning_column_descriptions)
+    [{'aliased': False,
+        'entity': <class 'User'>,
+        'expr': <sqlalchemy.orm.attributes.InstrumentedAttribute ...>,
+        'name': 'id',
+        'type': Integer()}]
+
+.. versionadded:: 1.4.33 Added the :attr:`.UpdateBase.entity_description`
+   and :attr:`.UpdateBase.returning_column_descriptions` attributes.
+
 
 .. _queryguide_additional:
 

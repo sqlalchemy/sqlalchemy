@@ -1,0 +1,200 @@
+# Copyright (C) 2013-2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
+import datetime as dt
+from typing import Any
+
+from ...sql import sqltypes
+
+
+_DECIMAL_TYPES = (1231, 1700)
+_FLOAT_TYPES = (700, 701, 1021, 1022)
+_INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
+
+
+class PGUuid(sqltypes.UUID):
+    render_bind_cast = True
+    render_literal_cast = True
+
+
+class BYTEA(sqltypes.LargeBinary[bytes]):
+    __visit_name__ = "BYTEA"
+
+
+class INET(sqltypes.TypeEngine[str]):
+    __visit_name__ = "INET"
+
+
+PGInet = INET
+
+
+class CIDR(sqltypes.TypeEngine[str]):
+    __visit_name__ = "CIDR"
+
+
+PGCidr = CIDR
+
+
+class MACADDR(sqltypes.TypeEngine[str]):
+    __visit_name__ = "MACADDR"
+
+
+PGMacAddr = MACADDR
+
+
+class MONEY(sqltypes.TypeEngine[str]):
+
+    r"""Provide the PostgreSQL MONEY type.
+
+    Depending on driver, result rows using this type may return a
+    string value which includes currency symbols.
+
+    For this reason, it may be preferable to provide conversion to a
+    numerically-based currency datatype using :class:`_types.TypeDecorator`::
+
+        import re
+        import decimal
+        from sqlalchemy import TypeDecorator
+
+        class NumericMoney(TypeDecorator):
+            impl = MONEY
+
+            def process_result_value(self, value: Any, dialect: Any) -> None:
+                if value is not None:
+                    # adjust this for the currency and numeric
+                    m = re.match(r"\$([\d.]+)", value)
+                    if m:
+                        value = decimal.Decimal(m.group(1))
+                return value
+
+    Alternatively, the conversion may be applied as a CAST using
+    the :meth:`_types.TypeDecorator.column_expression` method as follows::
+
+        import decimal
+        from sqlalchemy import cast
+        from sqlalchemy import TypeDecorator
+
+        class NumericMoney(TypeDecorator):
+            impl = MONEY
+
+            def column_expression(self, column: Any):
+                return cast(column, Numeric())
+
+    .. versionadded:: 1.2
+
+    """
+
+    __visit_name__ = "MONEY"
+
+
+class OID(sqltypes.TypeEngine[int]):
+
+    """Provide the PostgreSQL OID type.
+
+    .. versionadded:: 0.9.5
+
+    """
+
+    __visit_name__ = "OID"
+
+
+class REGCLASS(sqltypes.TypeEngine[str]):
+
+    """Provide the PostgreSQL REGCLASS type.
+
+    .. versionadded:: 1.2.7
+
+    """
+
+    __visit_name__ = "REGCLASS"
+
+
+class TIMESTAMP(sqltypes.TIMESTAMP):
+    def __init__(self, timezone=False, precision=None):
+        super(TIMESTAMP, self).__init__(timezone=timezone)
+        self.precision = precision
+
+
+class TIME(sqltypes.TIME):
+    def __init__(self, timezone=False, precision=None):
+        super(TIME, self).__init__(timezone=timezone)
+        self.precision = precision
+
+
+class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
+
+    """PostgreSQL INTERVAL type."""
+
+    __visit_name__ = "INTERVAL"
+    native = True
+
+    def __init__(self, precision=None, fields=None):
+        """Construct an INTERVAL.
+
+        :param precision: optional integer precision value
+        :param fields: string fields specifier.  allows storage of fields
+         to be limited, such as ``"YEAR"``, ``"MONTH"``, ``"DAY TO HOUR"``,
+         etc.
+
+         .. versionadded:: 1.2
+
+        """
+        self.precision = precision
+        self.fields = fields
+
+    @classmethod
+    def adapt_emulated_to_native(cls, interval, **kw):
+        return INTERVAL(precision=interval.second_precision)
+
+    @property
+    def _type_affinity(self):
+        return sqltypes.Interval
+
+    def as_generic(self, allow_nulltype=False):
+        return sqltypes.Interval(native=True, second_precision=self.precision)
+
+    @property
+    def python_type(self):
+        return dt.timedelta
+
+
+PGInterval = INTERVAL
+
+
+class BIT(sqltypes.TypeEngine[int]):
+    __visit_name__ = "BIT"
+
+    def __init__(self, length=None, varying=False):
+        if not varying:
+            # BIT without VARYING defaults to length 1
+            self.length = length or 1
+        else:
+            # but BIT VARYING can be unlimited-length, so no default
+            self.length = length
+        self.varying = varying
+
+
+PGBit = BIT
+
+
+class TSVECTOR(sqltypes.TypeEngine[Any]):
+
+    """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
+    text search type TSVECTOR.
+
+    It can be used to do full text queries on natural language
+    documents.
+
+    .. versionadded:: 0.9.0
+
+    .. seealso::
+
+        :ref:`postgresql_match`
+
+    """
+
+    __visit_name__ = "TSVECTOR"

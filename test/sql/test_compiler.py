@@ -25,6 +25,7 @@ from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import desc
 from sqlalchemy import distinct
+from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import exists
@@ -82,7 +83,6 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
-from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
@@ -97,6 +97,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.schema import pep435_enum
 
 table1 = table(
     "mytable",
@@ -268,18 +269,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             getattr,
             select(table1.c.myid).scalar_subquery(),
             "columns",
-        )
-
-    def test_prefix_constructor(self):
-        class Pref(HasPrefixes):
-            def _generate(self):
-                return self
-
-        assert_raises(
-            exc.ArgumentError,
-            Pref().prefix_with,
-            "some prefix",
-            not_a_dialect=True,
         )
 
     def test_table_select(self):
@@ -562,6 +551,91 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkpositional=(10, 5),
             dialect=dialect,
         )
+
+    @testing.combinations(
+        (
+            select(table1.c.name)
+            .select_from(table1, table2)
+            .where(table1.c.myid == table2.c.otherid),
+            "SELECT mytable.name FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .select_from(table2, table1)
+            .where(table1.c.myid == table2.c.otherid),
+            "SELECT mytable.name FROM myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table2, table1),
+            "SELECT mytable.name FROM myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table2),
+            "SELECT mytable.name FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table3, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM mytable, thirdtable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table1, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable, mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table1, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM mytable, myothertable, thirdtable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table2),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable, myothertable, mytable "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table3, table2)
+            .join_from(table3, table1, table3.c.userid == table1.c.myid),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM thirdtable "
+            "JOIN mytable ON thirdtable.userid = mytable.myid, "
+            "myothertable WHERE mytable.myid = myothertable.otherid",
+        ),
+        (
+            select(table3.c.userid, table1.c.name)
+            .where(table1.c.myid == table2.c.otherid)
+            .select_from(table2, table3)
+            .join_from(table3, table1, table3.c.userid == table1.c.myid),
+            "SELECT thirdtable.userid, mytable.name "
+            "FROM myothertable, thirdtable "
+            "JOIN mytable ON thirdtable.userid = mytable.myid "
+            "WHERE mytable.myid = myothertable.otherid",
+        ),
+    )
+    def test_select_from_ordering(self, stmt, expected):
+        self.assert_compile(stmt, expected)
 
     def test_from_subquery(self):
         """tests placing select statements in the column clause of
@@ -1278,11 +1352,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # don't correlate in a FROM list
         self.assert_compile(
             select(users, s.c.street).select_from(s),
-            "SELECT users.user_id, users.user_name, "
-            "users.password, s.street FROM users, "
-            "(SELECT addresses.street AS street FROM "
-            "addresses, users WHERE addresses.user_id = "
-            "users.user_id) AS s",
+            "SELECT users.user_id, users.user_name, users.password, s.street "
+            "FROM (SELECT addresses.street AS street FROM addresses, users "
+            "WHERE addresses.user_id = users.user_id) AS s, users",
         )
         self.assert_compile(
             table1.select().where(
@@ -3226,7 +3298,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             (exprs[1], "hoho", "hoho(mytable.myid)", "hoho_1"),
             (
                 exprs[2],
-                "_no_label",
+                "name",
                 "CAST(mytable.name AS NUMERIC)",
                 "name",  # due to [ticket:4449]
             ),
@@ -3250,6 +3322,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select(col).select_from(t)
+            eq_(col._proxy_key, key if key != "_no_label" else None)
             eq_(list(s1.subquery().c.keys()), [key])
 
             if lbl:
@@ -3675,6 +3748,97 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             s,
         )
 
+    def test_bind_param_escaping(self):
+        """general bind param escape unit tests added as a result of
+        #8053.
+
+        The final application of an escaped param name
+        was moved out of compiler and into DefaultExecutionContext in
+        related issue #8056.
+
+        However in #8113 we made this conditional to suit usage recipes
+        posted in the FAQ.
+
+
+        """
+
+        SomeEnum = pep435_enum("SomeEnum")
+        one = SomeEnum("one", 1)
+        SomeEnum("two", 2)
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("_id", Integer, primary_key=True),
+            Column("_data", Enum(SomeEnum)),
+        )
+
+        class MyCompiler(compiler.SQLCompiler):
+            def bindparam_string(self, name, **kw):
+                kw["escaped_from"] = name
+                return super(MyCompiler, self).bindparam_string(
+                    '"%s"' % name, **kw
+                )
+
+        dialect = default.DefaultDialect()
+        dialect.statement_compiler = MyCompiler
+
+        self.assert_compile(
+            t.insert(),
+            'INSERT INTO t (_id, _data) VALUES (:"_id", :"_data")',
+            dialect=dialect,
+        )
+
+        compiled = t.insert().compile(
+            dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
+        )
+
+        # not escaped
+        params = compiled.construct_params(
+            {"_id": 1, "_data": one}, escape_names=False
+        )
+        eq_(params, {"_id": 1, "_data": one})
+
+        # escaped by default
+        params = compiled.construct_params({"_id": 1, "_data": one})
+        eq_(params, {'"_id"': 1, '"_data"': one})
+
+        # escaped here as well
+        eq_(compiled.params, {'"_data"': None, '"_id"': None})
+
+        # bind processors aren't part of this
+        eq_(compiled._bind_processors, {"_data": mock.ANY})
+
+        dialect.paramstyle = "pyformat"
+        compiled = t.insert().compile(
+            dialect=dialect, compile_kwargs=dict(compile_keys=("_id", "_data"))
+        )
+
+        # FAQ recipe works
+        eq_(
+            compiled.string % compiled.params,
+            "INSERT INTO t (_id, _data) VALUES (None, None)",
+        )
+
+    def test_expanding_non_expanding_conflict(self):
+        """test #8018"""
+
+        s = select(
+            literal("x").in_(bindparam("q")),
+            bindparam("q"),
+        )
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't reuse bound parameter name 'q' in both 'expanding' "
+            r"\(e.g. within an IN expression\) and non-expanding contexts.  "
+            "If this parameter is to "
+            "receive a list/array value, set 'expanding=True' on "
+            "it for expressions that aren't IN, otherwise use "
+            "a different parameter name.",
+        ):
+            str(s)
+
     def test_unique_binds_no_clone_collision(self):
         """test #6824"""
         bp = bindparam("foo", unique=True)
@@ -3958,7 +4122,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             extracted_parameters=s1_cache_key[1],
         )
 
-    def test_construct_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_params_w_bind_clones_post(self, adapt_before_key):
         """test that a BindParameter that has been cloned after the cache
         key was generated still matches up when construct_params()
         is called with an extracted parameter collection.
@@ -3981,6 +4146,11 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # test #7903 - adapt the statement *before* we make the cache
+        # key also
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4034,7 +4204,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 10},
         )
 
-    def test_construct_duped_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_duped_params_w_bind_clones_post(self, adapt_before_key):
         """same as previous test_construct_params_w_bind_clones_post but
         where the binds have been used
         repeatedly, and the adaption occurs on a per-subquery basis.
@@ -4056,6 +4227,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # variant that exercises #7903
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4138,7 +4313,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         be unique, still matches up when construct_params()
         is called with an extracted parameter collection.
 
-        other ORM feaures like optimized_compare() end up doing something
+        other ORM features like optimized_compare() end up doing something
         like this, such as if there are multiple "has()" or "any()" which would
         have cloned the join condition and changed the values of bound
         parameters.

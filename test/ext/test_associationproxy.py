@@ -1,3 +1,4 @@
+from collections import abc
 import copy
 import pickle
 from unittest.mock import call
@@ -36,6 +37,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -255,6 +257,23 @@ class _CollectionOperations(fixtures.MappedTest):
             },
         )
         cls.mapper_registry.map_imperatively(Child, children_table)
+
+    def test_abc(self):
+        Parent = self.classes.Parent
+
+        p1 = Parent("x")
+
+        collection_class = self.collection_class or list
+
+        for abc_ in (abc.Set, abc.MutableMapping, abc.MutableSequence):
+            if issubclass(collection_class, abc_):
+                break
+        else:
+            abc_ = None
+
+        if abc_:
+            p1 = Parent("x")
+            assert isinstance(p1.children, abc_)
 
     def roundtrip(self, obj):
         if obj not in self.session:
@@ -511,6 +530,10 @@ class CustomDictTest(_CollectionOperations):
         self.assert_(p1._children["a"] == ch)
 
         p1.children["b"] = "proxied"
+
+        eq_(list(p1.children.keys()), ["a", "b"])
+        eq_(list(p1.children.items()), [("a", "regular"), ("b", "proxied")])
+        eq_(list(p1.children.values()), ["regular", "proxied"])
 
         self.assert_("proxied" in list(p1.children.values()))
         self.assert_("b" in p1.children)
@@ -2364,7 +2387,8 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             ValueError,
-            "dictionary update sequence requires " "2-element tuples",
+            "dictionary update sequence element #1 has length 5; "
+            "2 is required",
             a1.elements.update,
             (("B", 3), "elem2"),
         )
@@ -2373,7 +2397,7 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             TypeError,
-            "update expected at most 1 arguments, got 2",
+            "update expected at most 1 arguments?, got 2",
             a1.elements.update,
             (("B", 3), "elem2"),
             (("C", 4), "elem3"),
@@ -3268,7 +3292,7 @@ class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 
         self.assert_compile(
             A.b_data == "foo",
-            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "EXISTS (SELECT 1 FROM b, a WHERE a.id = b.a_id "
             "AND b.data = :data_1)",
         )
 
@@ -3316,7 +3340,7 @@ class SynonymOfProxyTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 
         self.assert_compile(
             A.b_data_syn == "foo",
-            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "EXISTS (SELECT 1 FROM b, a WHERE a.id = b.a_id "
             "AND b.data = :data_1)",
         )
 
@@ -3341,6 +3365,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
             b_data = association_proxy("bs", "value")
             well_behaved_b_data = association_proxy("bs", "well_behaved_value")
+
+            fails_on_class_access = association_proxy(
+                "bs", "fails_on_class_access"
+            )
 
         class B(Base):
             __tablename__ = "b"
@@ -3385,6 +3413,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             def well_behaved_w_expr(cls):
                 return cast(cls.data, Integer)
 
+            @hybrid_property
+            def fails_on_class_access(self):
+                return len(self.data)
+
         class C(Base):
             __tablename__ = "c"
 
@@ -3392,6 +3424,19 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             b_id = Column(ForeignKey("b.id"))
             _b = relationship("B")
             attr = association_proxy("_b", "well_behaved_w_expr")
+
+    def test_msg_fails_on_cls_access(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Association proxy received an unexpected error when trying to "
+            'retreive attribute "B.fails_on_class_access" from '
+            r'class "B": .* no len\(\)',
+        ):
+            a1.fails_on_class_access
 
     def test_get_ambiguous(self):
         A, B = self.classes("A", "B")
@@ -3426,7 +3471,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
         eq_(
             str(A.well_behaved_b_data == 5),
-            "EXISTS (SELECT 1 \nFROM a, b \nWHERE "
+            "EXISTS (SELECT 1 \nFROM b, a \nWHERE "
             "a.id = b.aid AND b.data = :data_1)",
         )
 

@@ -9,15 +9,29 @@
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Collection
+from typing import DefaultDict
+from typing import Iterable
+from typing import Iterator
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import TypeVar
+
 from .. import util
 from ..exc import CircularDependencyError
+
+_T = TypeVar("_T", bound=Any)
 
 __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 
 
-def sort_as_subsets(tuples, allitems):
+def sort_as_subsets(
+    tuples: Collection[Tuple[_T, _T]], allitems: Collection[_T]
+) -> Iterator[Sequence[_T]]:
 
-    edges = util.defaultdict(set)
+    edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
@@ -42,7 +56,11 @@ def sort_as_subsets(tuples, allitems):
         yield output
 
 
-def sort(tuples, allitems, deterministic_order=True):
+def sort(
+    tuples: Collection[Tuple[_T, _T]],
+    allitems: Collection[_T],
+    deterministic_order: bool = True,
+) -> Iterator[_T]:
     """sort the given list of items by dependency.
 
     'tuples' is a list of tuples representing a partial ordering.
@@ -58,11 +76,13 @@ def sort(tuples, allitems, deterministic_order=True):
             yield s
 
 
-def find_cycles(tuples, allitems):
+def find_cycles(
+    tuples: Iterable[Tuple[_T, _T]], allitems: Iterable[_T]
+) -> Set[_T]:
     # adapted from:
     # https://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
 
-    edges = util.defaultdict(set)
+    edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
     for parent, child in tuples:
         edges[parent].add(child)
     nodes_to_test = set(edges)
@@ -98,5 +118,5 @@ def find_cycles(tuples, allitems):
     return output
 
 
-def _gen_edges(edges):
-    return set([(right, left) for left in edges for right in edges[left]])
+def _gen_edges(edges: DefaultDict[_T, Set[_T]]) -> Set[Tuple[_T, _T]]:
+    return {(right, left) for left in edges for right in edges[left]}

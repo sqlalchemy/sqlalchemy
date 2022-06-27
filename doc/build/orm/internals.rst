@@ -16,7 +16,6 @@ sections, are listed here.
 
 .. autoclass:: ClassManager
     :members:
-    :inherited-members:
 
 .. autoclass:: ColumnProperty
     :members:
@@ -37,7 +36,7 @@ sections, are listed here.
 
 .. autodata:: CompositeProperty
 
-.. autoclass:: AttributeEvent
+.. autoclass:: AttributeEventToken
     :members:
 
 .. autoclass:: IdentityMap
@@ -88,7 +87,11 @@ sections, are listed here.
 
             :attr:`.SchemaItem.info`
 
-.. autodata:: NOT_EXTENSION
+.. autoclass:: InspectionAttrExtensionType
+    :members:
+
+.. autoclass:: NotExtension
+    :members:
 
 .. autofunction:: merge_result
 

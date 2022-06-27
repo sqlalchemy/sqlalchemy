@@ -31,6 +31,7 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
@@ -322,7 +323,10 @@ class ExecuteManyMode:
             Column("\u6e2c\u8a66", Integer),
         )
 
-    def test_insert(self, connection):
+    @testing.combinations(
+        "insert", "pg_insert", "pg_insert_on_conflict", argnames="insert_type"
+    )
+    def test_insert(self, connection, insert_type):
         from psycopg2 import extras
 
         values_page_size = connection.dialect.executemany_values_page_size
@@ -342,11 +346,23 @@ class ExecuteManyMode:
         else:
             assert False
 
+        if insert_type == "pg_insert_on_conflict":
+            stmt += " ON CONFLICT DO NOTHING"
+
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
+            if insert_type == "insert":
+                ins_stmt = self.tables.data.insert()
+            elif insert_type == "pg_insert":
+                ins_stmt = pg_insert(self.tables.data)
+            elif insert_type == "pg_insert_on_conflict":
+                ins_stmt = pg_insert(self.tables.data).on_conflict_do_nothing()
+            else:
+                assert False
+
             connection.execute(
-                self.tables.data.insert(),
+                ins_stmt,
                 [
                     {"x": "x1", "y": "y1"},
                     {"x": "x2", "y": "y2"},
@@ -368,11 +384,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -417,11 +433,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -470,11 +486,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -524,10 +540,10 @@ class ExecuteManyMode:
                     mock.call(
                         mock.ANY,
                         stmt,
-                        (
+                        [
                             {"xval": "x1", "yval": "y5"},
                             {"xval": "x3", "yval": "y6"},
-                        ),
+                        ],
                         **expected_kwargs,
                     )
                 ],
@@ -714,11 +730,11 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 mock.call(
                     mock.ANY,
                     "INSERT INTO data (id, x, y, z) VALUES %s",
-                    (
+                    [
                         {"id": 1, "y": "y1", "z": 1},
                         {"id": 2, "y": "y2", "z": 2},
                         {"id": 3, "y": "y3", "z": 3},
-                    ),
+                    ],
                     template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
                     fetch=False,
                     page_size=connection.dialect.executemany_values_page_size,
@@ -871,18 +887,11 @@ class MiscBackendTest(
         )
 
     @testing.combinations(
-        ((8, 1), False, False),
-        ((8, 1), None, False),
-        ((11, 5), True, False),
-        ((11, 5), False, True),
+        (True, False),
+        (False, True),
     )
-    def test_backslash_escapes_detection(
-        self, version, explicit_setting, expected
-    ):
+    def test_backslash_escapes_detection(self, explicit_setting, expected):
         engine = engines.testing_engine()
-
-        def _server_version(conn):
-            return version
 
         if explicit_setting is not None:
 
@@ -896,11 +905,8 @@ class MiscBackendTest(
                 )
                 dbapi_connection.commit()
 
-        with mock.patch.object(
-            engine.dialect, "_get_server_version_info", _server_version
-        ):
-            with engine.connect():
-                eq_(engine.dialect._backslash_escapes, expected)
+        with engine.connect():
+            eq_(engine.dialect._backslash_escapes, expected)
 
     def test_dbapi_autocommit_attribute(self):
         """all the supported DBAPIs have an .autocommit attribute.  make
@@ -1052,6 +1058,23 @@ class MiscBackendTest(
                 dbapi_conn.rollback()
             eq_(val, "off")
 
+    @testing.combinations((True,), (False,), argnames="autocommit")
+    def test_autocommit_pre_ping(self, testing_engine, autocommit):
+        engine = testing_engine(
+            options={
+                "isolation_level": "AUTOCOMMIT"
+                if autocommit
+                else "SERIALIZABLE",
+                "pool_pre_ping": True,
+            }
+        )
+        for i in range(4):
+            with engine.connect() as conn:
+                conn.execute(text("select 1")).scalar()
+
+                dbapi_conn = conn.connection.dbapi_connection
+                eq_(dbapi_conn.autocommit, autocommit)
+
     def test_deferrable_flag_engine(self):
         engine = engines.testing_engine(
             options={
@@ -1082,7 +1105,7 @@ class MiscBackendTest(
                 dbapi_conn.rollback()
             eq_(val, "off")
 
-    @testing.requires.psycopg_compatibility
+    @testing.requires.any_psycopg_compatibility
     def test_psycopg_non_standard_err(self):
         # note that psycopg2 is sometimes called psycopg2cffi
         # depending on platform
@@ -1105,7 +1128,7 @@ class MiscBackendTest(
         assert isinstance(exception, exc.OperationalError)
 
     @testing.requires.no_coverage
-    @testing.requires.psycopg_compatibility
+    @testing.requires.any_psycopg_compatibility
     def test_notice_logging(self):
         log = logging.getLogger("sqlalchemy.dialects.postgresql")
         buf = logging.handlers.BufferingHandler(100)

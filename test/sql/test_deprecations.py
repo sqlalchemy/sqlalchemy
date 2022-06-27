@@ -812,7 +812,7 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_issue_5435_operators_precedence(
         self, _modern, _legacy, _in_precedence
     ):
-        # (modern, legacy, in_precendence)
+        # (modern, legacy, in_precedence)
         # core operators
         assert hasattr(operators, _modern)
         assert hasattr(operators, _legacy)

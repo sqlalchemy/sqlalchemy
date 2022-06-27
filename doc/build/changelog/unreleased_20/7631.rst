@@ -1,0 +1,18 @@
+.. change::
+    :tags: feature, schema
+    :tickets: 7631
+
+    Expanded on the "conditional DDL" system implemented by the
+    :class:`_schema.ExecutableDDLElement` class (renamed from
+    :class:`_schema.DDLElement`) to be directly available on
+    :class:`_schema.SchemaItem` constructs such as :class:`_schema.Index`,
+    :class:`_schema.ForeignKeyConstraint`, etc. such that the conditional logic
+    for generating these elements is included within the default DDL emitting
+    process. This system can also be accommodated by a future release of
+    Alembic to support conditional DDL elements within all schema-management
+    systems.
+
+
+    .. seealso::
+
+        :ref:`ticket_7631`

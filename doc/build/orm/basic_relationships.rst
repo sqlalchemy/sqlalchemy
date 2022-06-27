@@ -7,12 +7,10 @@ A quick walkthrough of the basic relational patterns.
 
 The imports used for each of the following sections is as follows::
 
-    from sqlalchemy import Table, Column, Integer, ForeignKey
-    from sqlalchemy.orm import relationship
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy import Column, ForeignKey, Integer, Table
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
-
 
 .. _relationship_patterns_o2m:
 
@@ -24,28 +22,30 @@ the parent.  :func:`_orm.relationship` is then specified on the parent, as refer
 a collection of items represented by the child::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship("Child")
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
 side is a many to one, specify an additional :func:`_orm.relationship` and connect
 the two using the :paramref:`_orm.relationship.back_populates` parameter::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship("Child", back_populates="parent")
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
         parent = relationship("Parent", back_populates="children")
 
 ``Child`` will get a ``parent`` attribute with many-to-one semantics.
@@ -55,7 +55,7 @@ on a single :func:`_orm.relationship` instead of using
 :paramref:`_orm.relationship.back_populates`::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship("Child", backref="parent")
 
@@ -88,13 +88,14 @@ Many to one places a foreign key in the parent table referencing the child.
 attribute will be created::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
+        child_id = Column(Integer, ForeignKey("child.id"))
         child = relationship("Child")
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
 
 Bidirectional behavior is achieved by adding a second :func:`_orm.relationship`
@@ -102,13 +103,14 @@ and applying the :paramref:`_orm.relationship.back_populates` parameter
 in both directions::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
+        child_id = Column(Integer, ForeignKey("child.id"))
         child = relationship("Child", back_populates="parents")
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
         parents = relationship("Parent", back_populates="child")
 
@@ -116,9 +118,9 @@ Alternatively, the :paramref:`_orm.relationship.backref` parameter
 may be applied to a single :func:`_orm.relationship`, such as ``Parent.child``::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
+        child_id = Column(Integer, ForeignKey("child.id"))
         child = relationship("Child", backref="parents")
 
 .. _relationships_one_to_one:
@@ -143,16 +145,17 @@ a :ref:`many-to-one <relationship_patterns_m2o>` (``Child.parent``)
 relationships::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
 
         # one-to-many collection
         children = relationship("Child", back_populates="parent")
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
 
         # many-to-one scalar
         parent = relationship("Parent", back_populates="children")
@@ -164,17 +167,18 @@ is converted into a scalar relationship using the ``uselist=False`` flag,
 renaming ``Parent.children`` to ``Parent.child`` for clarity::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
 
         # previously one-to-many Parent.children is now
         # one-to-one Parent.child
         child = relationship("Child", back_populates="parent", uselist=False)
 
+
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
 
         # many-to-one side remains, see tip below
         parent = relationship("Parent", back_populates="child")
@@ -212,17 +216,17 @@ in this case the ``uselist`` parameter::
 
     from sqlalchemy.orm import backref
 
+
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
+
 
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
         parent = relationship("Parent", backref=backref("child", uselist=False))
-
-
 
 .. _relationships_many_to_many:
 
@@ -236,19 +240,22 @@ table is indicated by the :paramref:`_orm.relationship.secondary` argument to
 class, so that the :class:`_schema.ForeignKey` directives can locate the
 remote tables with which to link::
 
-    association_table = Table('association', Base.metadata,
-        Column('left_id', ForeignKey('left.id')),
-        Column('right_id', ForeignKey('right.id'))
+    association_table = Table(
+        "association",
+        Base.metadata,
+        Column("left_id", ForeignKey("left.id")),
+        Column("right_id", ForeignKey("right.id")),
     )
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
-        children = relationship("Child",
-                        secondary=association_table)
+        children = relationship("Child", secondary=association_table)
+
 
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
 
 .. tip::
@@ -263,55 +270,64 @@ remote tables with which to link::
     this ensures that duplicate rows won't be persisted within the table regardless
     of issues on the application side::
 
-        association_table = Table('association', Base.metadata,
-            Column('left_id', ForeignKey('left.id'), primary_key=True),
-            Column('right_id', ForeignKey('right.id'), primary_key=True)
+        association_table = Table(
+            "association",
+            Base.metadata,
+            Column("left_id", ForeignKey("left.id"), primary_key=True),
+            Column("right_id", ForeignKey("right.id"), primary_key=True),
         )
 
 For a bidirectional relationship, both sides of the relationship contain a
 collection.  Specify using :paramref:`_orm.relationship.back_populates`, and
 for each :func:`_orm.relationship` specify the common association table::
 
-    association_table = Table('association', Base.metadata,
-        Column('left_id', ForeignKey('left.id'), primary_key=True),
-        Column('right_id', ForeignKey('right.id'), primary_key=True)
+    association_table = Table(
+        "association",
+        Base.metadata,
+        Column("left_id", ForeignKey("left.id"), primary_key=True),
+        Column("right_id", ForeignKey("right.id"), primary_key=True),
     )
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
         children = relationship(
-            "Child",
-            secondary=association_table,
-            back_populates="parents")
+            "Child", secondary=association_table, back_populates="parents"
+        )
+
 
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
         parents = relationship(
-            "Parent",
-            secondary=association_table,
-            back_populates="children")
+            "Parent", secondary=association_table, back_populates="children"
+        )
+
 
 When using the :paramref:`_orm.relationship.backref` parameter instead of
 :paramref:`_orm.relationship.back_populates`, the backref will automatically
 use the same :paramref:`_orm.relationship.secondary` argument for the
 reverse relationship::
 
-    association_table = Table('association', Base.metadata,
-        Column('left_id', ForeignKey('left.id'), primary_key=True),
-        Column('right_id', ForeignKey('right.id'), primary_key=True)
+    association_table = Table(
+        "association",
+        Base.metadata,
+        Column("left_id", ForeignKey("left.id"), primary_key=True),
+        Column("right_id", ForeignKey("right.id"), primary_key=True),
     )
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
-        children = relationship("Child",
-                        secondary=association_table,
-                        backref="parents")
+        children = relationship(
+            "Child", secondary=association_table, backref="parents"
+        )
+
 
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
 
 The :paramref:`_orm.relationship.secondary` argument of
@@ -321,21 +337,21 @@ can define the ``association_table`` at a later point, as long as it's
 available to the callable after all module initialization is complete::
 
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
-        children = relationship("Child",
-                        secondary=lambda: association_table,
-                        backref="parents")
+        children = relationship(
+            "Child",
+            secondary=lambda: association_table,
+            backref="parents",
+        )
 
 With the declarative extension in use, the traditional "string name of the table"
 is accepted as well, matching the name of the table as stored in ``Base.metadata.tables``::
 
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
-        children = relationship("Child",
-                        secondary="association",
-                        backref="parents")
+        children = relationship("Child", secondary="association", backref="parents")
 
 .. warning:: When passed as a Python-evaluable string, the
     :paramref:`_orm.relationship.secondary` argument is interpreted using Python's
@@ -421,39 +437,43 @@ is stored along with each association between ``Parent`` and
 ``Child``::
 
     class Association(Base):
-        __tablename__ = 'association'
-        left_id = Column(ForeignKey('left.id'), primary_key=True)
-        right_id = Column(ForeignKey('right.id'), primary_key=True)
+        __tablename__ = "association"
+        left_id = Column(ForeignKey("left.id"), primary_key=True)
+        right_id = Column(ForeignKey("right.id"), primary_key=True)
         extra_data = Column(String(50))
         child = relationship("Child")
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
         children = relationship("Association")
 
+
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
 
 As always, the bidirectional version makes use of :paramref:`_orm.relationship.back_populates`
 or :paramref:`_orm.relationship.backref`::
 
     class Association(Base):
-        __tablename__ = 'association'
-        left_id = Column(ForeignKey('left.id'), primary_key=True)
-        right_id = Column(ForeignKey('right.id'), primary_key=True)
+        __tablename__ = "association"
+        left_id = Column(ForeignKey("left.id"), primary_key=True)
+        right_id = Column(ForeignKey("right.id"), primary_key=True)
         extra_data = Column(String(50))
         child = relationship("Child", back_populates="parents")
         parent = relationship("Parent", back_populates="children")
 
+
     class Parent(Base):
-        __tablename__ = 'left'
+        __tablename__ = "left"
         id = Column(Integer, primary_key=True)
         children = relationship("Association", back_populates="parent")
 
+
     class Child(Base):
-        __tablename__ = 'right'
+        __tablename__ = "right"
         id = Column(Integer, primary_key=True)
         parents = relationship("Association", back_populates="child")
 
@@ -494,23 +514,25 @@ associated object, and a second to a target attribute.
   after :meth:`.Session.commit`::
 
         class Association(Base):
-            __tablename__ = 'association'
+            __tablename__ = "association"
 
-            left_id = Column(ForeignKey('left.id'), primary_key=True)
-            right_id = Column(ForeignKey('right.id'), primary_key=True)
+            left_id = Column(ForeignKey("left.id"), primary_key=True)
+            right_id = Column(ForeignKey("right.id"), primary_key=True)
             extra_data = Column(String(50))
 
             child = relationship("Child", backref="parent_associations")
             parent = relationship("Parent", backref="child_associations")
 
+
         class Parent(Base):
-            __tablename__ = 'left'
+            __tablename__ = "left"
             id = Column(Integer, primary_key=True)
 
             children = relationship("Child", secondary="association")
 
+
         class Child(Base):
-            __tablename__ = 'right'
+            __tablename__ = "right"
             id = Column(Integer, primary_key=True)
 
   Additionally, just as changes to one relationship aren't reflected in the
@@ -548,6 +570,7 @@ classes using a string name, rather than the class itself::
 
         children = relationship("Child", back_populates="parent")
 
+
     class Child(Base):
         # ...
 
@@ -584,7 +607,7 @@ package, including expression functions like :func:`_sql.desc` and
         children = relationship(
             "Child",
             order_by="desc(Child.email_address)",
-            primaryjoin="Parent.id == Child.parent_id"
+            primaryjoin="Parent.id == Child.parent_id",
         )
 
 For the case where more than one module contains a class of the same name,
@@ -597,7 +620,7 @@ within any of these string expressions::
         children = relationship(
             "myapp.mymodel.Child",
             order_by="desc(myapp.mymodel.Child.email_address)",
-            primaryjoin="myapp.mymodel.Parent.id == myapp.mymodel.Child.parent_id"
+            primaryjoin="myapp.mymodel.Parent.id == myapp.mymodel.Child.parent_id",
         )
 
 The qualified path can be any partial path that removes ambiguity between
@@ -611,7 +634,7 @@ we can specify ``model1.Child`` or ``model2.Child``::
         children = relationship(
             "model1.Child",
             order_by="desc(mymodel1.Child.email_address)",
-            primaryjoin="Parent.id == model1.Child.parent_id"
+            primaryjoin="Parent.id == model1.Child.parent_id",
         )
 
 The :func:`_orm.relationship` construct also accepts Python functions or
@@ -622,9 +645,12 @@ A Python functional approach might look like the following::
 
     from sqlalchemy import desc
 
+
     def _resolve_child_model():
-         from myapplication import Child
-         return Child
+        from myapplication import Child
+
+        return Child
+
 
     class Parent(Base):
         # ...
@@ -632,7 +658,7 @@ A Python functional approach might look like the following::
         children = relationship(
             _resolve_child_model(),
             order_by=lambda: desc(_resolve_child_model().email_address),
-            primaryjoin=lambda: Parent.id == _resolve_child_model().parent_id
+            primaryjoin=lambda: Parent.id == _resolve_child_model().parent_id,
         )
 
 The full list of parameters which accept Python functions/lambdas or strings
@@ -674,23 +700,23 @@ class were available, we could also apply it afterwards::
     # first, module A, where Child has not been created yet,
     # we create a Parent class which knows nothing about Child
 
+
     class Parent(Base):
-        # ...
+        ...
 
 
-    #... later, in Module B, which is imported after module A:
+    # ... later, in Module B, which is imported after module A:
+
 
     class Child(Base):
-        # ...
+        ...
+
 
     from module_a import Parent
 
     # assign the User.addresses relationship as a class variable.  The
     # declarative base class will intercept this and map the relationship.
-    Parent.children = relationship(
-        Child,
-        primaryjoin=Child.parent_id==Parent.id
-    )
+    Parent.children = relationship(Child, primaryjoin=Child.parent_id == Parent.id)
 
 .. note:: assignment of mapped properties to a declaratively mapped class will only
     function correctly if the "declarative base" class is used, which also
@@ -718,13 +744,15 @@ declarative base and its :class:`_orm.registry`.  We can then refer to this
 parameter::
 
     keyword_author = Table(
-        'keyword_author', Base.metadata,
-        Column('author_id', Integer, ForeignKey('authors.id')),
-        Column('keyword_id', Integer, ForeignKey('keywords.id'))
-        )
+        "keyword_author",
+        Base.metadata,
+        Column("author_id", Integer, ForeignKey("authors.id")),
+        Column("keyword_id", Integer, ForeignKey("keywords.id")),
+    )
+
 
     class Author(Base):
-        __tablename__ = 'authors'
+        __tablename__ = "authors"
         id = Column(Integer, primary_key=True)
         keywords = relationship("Keyword", secondary="keyword_author")
 

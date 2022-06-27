@@ -50,9 +50,17 @@ construction arguments, are as follows:
 .. autoclass:: RAW
   :members: __init__
 
+.. _cx_oracle:
 
 cx_Oracle
 ---------
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
+
+.. _oracledb:
+
+python-oracledb
+---------------
+
+.. automodule:: sqlalchemy.dialects.oracle.oracledb
 

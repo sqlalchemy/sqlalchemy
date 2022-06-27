@@ -167,18 +167,12 @@ a new transaction when it is first used that remains in effect for subsequent
 statements, until the DBAPI-level ``connection.commit()`` or
 ``connection.rollback()`` method is invoked.
 
-As discussed at :ref:`autocommit`, there is a library level "autocommit"
-feature which is deprecated in 1.4 that causes :term:`DML` and :term:`DDL`
-executions to commit automatically after individual statements are executed;
-however, outside of this deprecated case, modern use of SQLAlchemy works with
-this transaction in all cases and does not commit any data unless explicitly
-told to commit.
-
-At the ORM level, a similar situation where the ORM
-:class:`_orm.Session` object also presents a legacy "autocommit" operation is
-present; however even if this legacy mode of operation is used, the
-:class:`_orm.Session` still makes use of transactions internally,
-particularly within the :meth:`_orm.Session.flush` process.
+In modern use of SQLAlchemy, a series of SQL statements are always invoked
+within this transactional state, assuming
+:ref:`DBAPI autocommit mode <dbapi_autocommit>` is not enabled (more on that in
+the next section), meaning that no single statement is automatically committed;
+if an operation fails, the effects of all statements within the current
+transaction will be lost.
 
 The implication that this has for the notion of "retrying" a statement is that
 in the default case, when a connection is lost, **the entire transaction is
@@ -188,9 +182,10 @@ SQLAlchemy does not have a transparent "reconnection" feature that works
 mid-transaction, for the case when the database connection has disconnected
 while being used. The canonical approach to dealing with mid-operation
 disconnects is to **retry the entire operation from the start of the
-transaction**, often by using a Python "retry" decorator, or to otherwise
+transaction**, often by using a custom Python decorator that will
+"retry" a particular function several times until it succeeds, or to otherwise
 architect the application in such a way that it is resilient against
-transactions that are dropped.
+transactions that are dropped that then cause operations to fail.
 
 There is also the notion of extensions that can keep track of all of the
 statements that have proceeded within a transaction and then replay them all in
@@ -255,14 +250,14 @@ statement executions::
 
 
   def reconnecting_engine(engine, num_retries, retry_interval):
-      def _run_with_retries(fn, context, cursor, statement, *arg, **kw):
+      def _run_with_retries(fn, context, cursor_obj, statement, *arg, **kw):
           for retry in range(num_retries + 1):
               try:
-                  fn(cursor, statement, context=context, *arg)
+                  fn(cursor_obj, statement, context=context, *arg)
               except engine.dialect.dbapi.Error as raw_dbapi_err:
                   connection = context.root_connection
                   if engine.dialect.is_disconnect(
-                      raw_dbapi_err, connection, cursor
+                      raw_dbapi_err, connection, cursor_obj
                   ):
                       if retry > num_retries:
                           raise

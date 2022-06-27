@@ -9,6 +9,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import CascadeOptions
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
@@ -4217,11 +4218,12 @@ class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
         eq_(s.query(Language).count(), 0)
 
 
-class ViewonlyFlagWarningTest(fixtures.MappedTest):
-    """test for #4993.
+class ViewonlyCascadeUpdate(fixtures.MappedTest):
+    """Test that cascades are trimmed accordingly when viewonly is set.
 
-    In 1.4, this moves to test/orm/test_cascade, deprecation warnings
-    become errors, will then be for #4994.
+    Originally #4993 and #4994 this was raising an error for invalid
+    cascades.  in 2.0 this is simplified to just remove the write
+    cascades, allows the default cascade to be reasonable.
 
     """
 
@@ -4250,21 +4252,17 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             pass
 
     @testing.combinations(
-        ({"delete"}, {"delete"}),
+        ({"delete"}, {"none"}),
         (
             {"all, delete-orphan"},
-            {"delete", "delete-orphan", "merge", "save-update"},
+            {"refresh-expire", "expunge"},
         ),
-        ({"save-update, expunge"}, {"save-update"}),
+        ({"save-update, expunge"}, {"expunge"}),
     )
-    def test_write_cascades(self, setting, settings_that_warn):
+    def test_write_cascades(self, setting, expected):
         Order = self.classes.Order
 
-        assert_raises_message(
-            sa_exc.ArgumentError,
-            'Cascade settings "%s" apply to persistence '
-            "operations" % (", ".join(sorted(settings_that_warn))),
-            relationship,
+        r = relationship(
             Order,
             primaryjoin=(
                 self.tables.users.c.id == foreign(self.tables.orders.c.user_id)
@@ -4272,6 +4270,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             cascade=", ".join(sorted(setting)),
             viewonly=True,
         )
+        eq_(r.cascade, CascadeOptions(expected))
 
     def test_expunge_cascade(self):
         User, Order, orders, users = (
@@ -4424,23 +4423,6 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         )
 
         eq_(umapper.attrs["orders"].cascade, set())
-
-    def test_write_cascade_disallowed_w_viewonly(self):
-
-        Order = self.classes.Order
-
-        assert_raises_message(
-            sa_exc.ArgumentError,
-            'Cascade settings "delete, delete-orphan, merge, save-update" '
-            "apply to persistence operations",
-            relationship,
-            Order,
-            primaryjoin=(
-                self.tables.users.c.id == foreign(self.tables.orders.c.user_id)
-            ),
-            cascade="all, delete, delete-orphan",
-            viewonly=True,
-        )
 
 
 class CollectionCascadesNoBackrefTest(fixtures.TestBase):

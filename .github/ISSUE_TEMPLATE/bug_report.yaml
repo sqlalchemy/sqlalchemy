@@ -8,6 +8,28 @@ body:
   - type: markdown
     attributes:
       value: "
+
+**FOR ALL USERS - PLEASE READ THIS PARAGRAPH AS IT IS HELPS US TO DO OUR WORK MORE EFFICIENTLY:**
+
+The **VAST MAJORITY** of bugs reported are in fact
+**USAGE QUESTIONS, NOT BUGS** for APIs that can take some practice to familiarize with,
+and which are also tailored towards high quality relational designs that
+beginners are sometimes less familiar with.
+
+If you are relatively new to SQLAlchemy, and even if not but the issue is uncertain, PLEASE START A NEW
+[DISCUSSION](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions) INSTEAD, so that we can
+help with your issue.   If you are relatively new to
+SQLAlchemy, there is an approximately **90% chance your issue is not a bug and will be converted to a
+discussion in any case**.
+If your issue is actually a bug, we will open a new bug report with what we need.
+
+[START A NEW USAGE QUESTIONS DISCUSSION HERE](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+
+"
+  - type: markdown
+    attributes:
+      value: "
+
 **GUIDELINES FOR REPORTING BUGS**
 
 If you are new to SQLAlchemy bug reports, please review our many examples

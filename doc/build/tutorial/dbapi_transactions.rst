@@ -115,7 +115,7 @@ where we acquired the :class:`_future.Connection` object:
     [...] ()
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((1, 1), (2, 4))
+    [...] [(1, 1), (2, 4)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -149,7 +149,7 @@ may be referred towards as **begin once**:
     ...     )
     {opensql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((6, 8), (9, 10))
+    [...] [(6, 8), (9, 10)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -179,6 +179,7 @@ purposes.
 
 .. rst-class:: core-header
 
+.. _tutorial_statement_execution:
 
 Basics of Statement Execution
 -----------------------------
@@ -270,7 +271,7 @@ Below we illustrate a variety of ways to access rows.
           y = row.y
 
           # illustrate use with Python f-strings
-          print(f"Row: {row.x} {row.y}")
+          print(f"Row: {row.x} {y}")
 
   ..
 
@@ -374,7 +375,7 @@ be invoked against each parameter set individually:
     ...     conn.commit()
     {opensql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((11, 12), (13, 14))
+    [...] [(11, 12), (13, 14)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -508,7 +509,7 @@ our data:
     ...     session.commit()
     {opensql}BEGIN (implicit)
     UPDATE some_table SET y=? WHERE x=?
-    [...] ((11, 9), (15, 13))
+    [...] [(11, 9), (15, 13)]
     COMMIT{stop}
 
 Above, we invoked an UPDATE statement using the bound-parameter, "executemany"
@@ -524,6 +525,11 @@ The :class:`_orm.Session` obviously has a lot more tricks up its sleeve
 than that, however understanding that it has a :meth:`_orm.Session.execute`
 method that's used the same way as :meth:`_future.Connection.execute` will
 get us started with the examples that follow later.
+
+.. seealso::
+
+    :ref:`session_basics` - presents basic creational and usage patterns with
+    the :class:`_orm.Session` object.
 
 
 

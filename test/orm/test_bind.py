@@ -324,6 +324,21 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
+        (
+            lambda User: update(User)
+            .values(name="not ed")
+            .where(User.name == "ed"),
+            lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
+            "e1",
+        ),
+        (
+            lambda User: insert(User).values(name="not ed"),
+            lambda User: {
+                "clause": mock.ANY,
+                "mapper": inspect(User),
+            },
+            "e1",
+        ),
     )
     def test_bind_through_execute(
         self, statement, expected_get_bind_args, expected_engine_name
@@ -520,7 +535,6 @@ class SessionBindTest(fixtures.MappedTest):
         meta = MetaData()
         test_table.to_metadata(meta)
 
-        assert meta.tables["test_table"].bind is None
         cls.mapper_registry.map_imperatively(Foo, meta.tables["test_table"])
 
     def test_session_bind(self):

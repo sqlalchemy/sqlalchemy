@@ -2,8 +2,10 @@ import inspect as _py_inspect
 import pickle
 
 import sqlalchemy as sa
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
@@ -11,6 +13,7 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import close_all_sessions
@@ -53,9 +56,10 @@ class ExecutionTest(_fixtures.FixtureTest):
     @testing.combinations(
         (True,), (False,), argnames="add_do_orm_execute_event"
     )
+    @testing.combinations((True,), (False,), argnames="use_scalar")
     @testing.requires.sequences
     def test_sequence_execute(
-        self, connection, metadata, add_do_orm_execute_event
+        self, connection, metadata, add_do_orm_execute_event, use_scalar
     ):
         seq = Sequence("some_sequence", metadata=metadata)
         metadata.create_all(connection)
@@ -66,7 +70,18 @@ class ExecutionTest(_fixtures.FixtureTest):
             event.listen(
                 sess, "do_orm_execute", lambda ctx: evt(ctx.statement)
             )
-        eq_(sess.execute(seq), connection.dialect.default_sequence_base)
+
+        if use_scalar:
+            eq_(sess.scalar(seq), connection.dialect.default_sequence_base)
+        else:
+            with assertions.expect_deprecated(
+                r"Using the .execute\(\) method to invoke a "
+                r"DefaultGenerator object is deprecated; please use "
+                r"the .scalar\(\) method."
+            ):
+                eq_(
+                    sess.execute(seq), connection.dialect.default_sequence_base
+                )
         if add_do_orm_execute_event:
             eq_(evt.mock_calls, [mock.call(seq)])
 
@@ -1568,14 +1583,24 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
         assert not s.dirty
 
         user = s.query(User).one()
+
+        # heisenberg the GC a little bit, since #7823 caused a lot more
+        # GC when mappings are set up, larger test suite started failing
+        # on this being gc'ed
+        user_is = user._sa_instance_state
         del user
         gc_collect()
+        gc_collect()
+        gc_collect()
+        assert user_is.obj() is None
+
         assert len(s.identity_map) == 0
 
         user = s.query(User).one()
@@ -1600,6 +1625,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
@@ -1642,6 +1668,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             properties={"addresses": relationship(Address, backref="user")},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
 
@@ -1682,6 +1710,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", address=Address(email_address="ed1")))
         s.commit()
 
@@ -1709,6 +1739,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = Session(testing.db)
 
@@ -1740,6 +1771,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = fixture_session()
 
@@ -1974,7 +2006,7 @@ class SessionInterface(fixtures.MappedTest):
                 if name in blocklist:
                     continue
                 spec = inspect_getfullargspec(getattr(Session, name))
-                if len(spec[0]) > 1 or spec[1]:
+                if len(spec.args) > 1 or spec.varargs or spec.kwonlyargs:
                     ok.add(name)
         return ok
 
@@ -2031,7 +2063,7 @@ class SessionInterface(fixtures.MappedTest):
 
             s = fixture_session()
             s.add(OK())
-            x_raises_(s, "flush", (user_arg,))
+            x_raises_(s, "flush", objects=(user_arg,))
 
         _()
 
@@ -2199,6 +2231,32 @@ class NewStyleExecutionTest(_fixtures.FixtureTest):
             "as this identity map is no longer valid.",
         ):
             result.all()
+
+    @testing.combinations("insert", "update", "delete", argnames="dml_expr")
+    @testing.combinations("core", "orm", argnames="coreorm")
+    def test_dml_execute(self, dml_expr, coreorm):
+        User = self.classes.User
+        users = self.tables.users
+
+        sess = fixture_session()
+
+        if coreorm == "orm":
+            if dml_expr == "insert":
+                stmt = insert(User).values(id=12, name="some user")
+            elif dml_expr == "update":
+                stmt = update(User).values(name="sone name").filter_by(id=15)
+            else:
+                stmt = delete(User).filter_by(id=15)
+        else:
+            if dml_expr == "insert":
+                stmt = insert(users).values(id=12, name="some user")
+            elif dml_expr == "update":
+                stmt = update(users).values(name="sone name").filter_by(id=15)
+            else:
+                stmt = delete(users).filter_by(id=15)
+
+        result = sess.execute(stmt)
+        result.close()
 
     @testing.combinations((True,), (False,), argnames="prebuffered")
     @testing.combinations(("close",), ("expunge_all",), argnames="meth")

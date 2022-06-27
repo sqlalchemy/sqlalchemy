@@ -139,7 +139,7 @@ a :class:`_schema.MetaData` object configured with a default schema name
 
     >>> metadata_obj = MetaData(schema="project")
 
-The :method:`.MetaData.reflect` will then utilize that configured ``.schema``
+The :meth:`.MetaData.reflect` will then utilize that configured ``.schema``
 for reflection::
 
     >>> # uses `schema` configured in metadata_obj

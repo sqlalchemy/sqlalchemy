@@ -5,13 +5,22 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-__all__ = ("mssql", "mysql", "oracle", "postgresql", "sqlite")
+from __future__ import annotations
 
+from typing import Callable
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
 
 from .. import util
 
+if TYPE_CHECKING:
+    from ..engine.interfaces import Dialect
 
-def _auto_fn(name):
+__all__ = ("mssql", "mysql", "oracle", "postgresql", "sqlite")
+
+
+def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
     """default dialect importer.
 
     plugs into the :class:`.PluginLoader`
@@ -33,7 +42,7 @@ def _auto_fn(name):
             module = __import__(
                 "sqlalchemy.dialects.mysql.mariadb"
             ).dialects.mysql.mariadb
-            return module.loader(driver)
+            return module.loader(driver)  # type: ignore
         else:
             module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
             module = getattr(module, dialect)
@@ -42,7 +51,7 @@ def _auto_fn(name):
 
     if hasattr(module, driver):
         module = getattr(module, driver)
-        return lambda: module.dialect
+        return lambda: module.dialect  # type: ignore
     else:
         return None
 
