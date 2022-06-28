@@ -1,0 +1,7 @@
+.. change::
+    :tags: postgresql, usecase
+    :tickets: 7156
+
+    Adds support for PostgreSQL MultiRange types, introduced in PostgreSQL 14.
+    Note that this feature currently only tested with `psycopg` and depends on
+    the `psycopg.types.range` extension module.

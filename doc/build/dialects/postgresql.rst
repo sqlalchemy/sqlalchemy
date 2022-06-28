@@ -170,6 +170,72 @@ For example:
       during=DateTimeRange(datetime(2013, 3, 23), None)
   )
 
+MultiRange Types
+~~~~~~~~~~~~~~~~
+
+The new MultiRange column types found in PostgreSQL 14 onwards are
+catered for by the following types:
+
+.. autoclass:: INT4MULTIRANGE
+
+
+.. autoclass:: INT8MULTIRANGE
+
+
+.. autoclass:: NUMMULTIRANGE
+
+
+.. autoclass:: DATEMULTIRANGE
+
+
+.. autoclass:: TSMULTIRANGE
+
+
+.. autoclass:: TSTZMULTIRANGE
+
+
+The types above get most of their functionality from the following
+mixin:
+
+.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
+    :members:
+
+.. warning::
+
+  The multirange type DDL support should work with any PostgreSQL DBAPI
+  driver, however the data types returned may vary. The feature is
+  currently developed against the psycopg driver, and is known to
+  work with the range types specific to the `psycopg.types.range`
+  extension module.
+
+When instantiating models that use these column types, you should pass
+whatever data type is expected by the DBAPI driver you're using for
+the column type.
+
+For example:
+
+.. code-block:: python
+  # Note: Multirange type currently only tested against the psycopg
+  # driver, hence the use here.
+  from psycopg.types.range import Range
+  from pscyopg.types.multirange import Multirange
+  from sqlalchemy.dialects.postgresql import TSMULTIRANGE
+
+  class RoomBooking(Base):
+
+      __tablename__ = 'room_booking'
+
+      room = Column(Integer(), primary_key=True)
+      during = Column(TSMULTIRANGE())
+
+  booking = RoomBooking(
+      room=101,
+      during=Multirange([
+          Range(datetime(2013, 3, 23), datetime(2014, 3, 22)),
+          Range(datetime(2015, 1, 1), None)
+      ])
+
+
 PostgreSQL Constraint Types
 ---------------------------
 
