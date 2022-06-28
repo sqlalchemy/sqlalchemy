@@ -459,7 +459,14 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         attribute_is_overridden = self._cls_attr_override_checker(self.cls)
 
+        bases = []
+
         for base in cls.__mro__:
+            # collect bases and make sure standalone columns are copied
+            # to be the column they will ultimately be on the class,
+            # so that declared_attr functions use the right columns.
+            # need to do this all the way up the hierarchy first
+            # (see #8190)
 
             class_mapped = (
                 base is not cls
@@ -472,9 +479,34 @@ class _ClassScanMapperConfig(_MapperConfig):
             local_attributes_for_class = self._cls_attr_resolver(base)
 
             if not class_mapped and base is not cls:
-                self._produce_column_copies(
-                    local_attributes_for_class, attribute_is_overridden
+                locally_collected_columns = self._produce_column_copies(
+                    local_attributes_for_class,
+                    attribute_is_overridden,
                 )
+            else:
+                locally_collected_columns = {}
+
+            bases.append(
+                (
+                    base,
+                    class_mapped,
+                    local_attributes_for_class,
+                    locally_collected_columns,
+                )
+            )
+
+        for (
+            base,
+            class_mapped,
+            local_attributes_for_class,
+            locally_collected_columns,
+        ) in bases:
+
+            # this transfer can also take place as we scan each name
+            # for finer-grained control of how collected_attributes is
+            # populated, as this is what impacts column ordering.
+            # however it's simpler to get it out of the way here.
+            dict_.update(locally_collected_columns)
 
             for name, obj, is_dataclass in local_attributes_for_class():
                 if name == "__mapper_args__":
@@ -640,6 +672,7 @@ class _ClassScanMapperConfig(_MapperConfig):
     ):
         cls = self.cls
         dict_ = self.dict_
+        locally_collected_attributes = {}
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
 
@@ -664,7 +697,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                     column_copies[obj] = copy_ = obj._copy()
                     copy_._creation_order = obj._creation_order
                     setattr(cls, name, copy_)
-                    dict_[name] = copy_
+                    locally_collected_attributes[name] = copy_
+        return locally_collected_attributes
 
     def _extract_mappable_attributes(self):
         cls = self.cls

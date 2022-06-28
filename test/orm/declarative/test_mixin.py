@@ -2140,6 +2140,53 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             "> :param_1",
         )
 
+    def test_multilevel_mixin_attr_refers_to_column_copies(self):
+        """test #8190.
+
+        This test is the same idea as test_mixin_attr_refers_to_column_copies
+        but tests the column copies from superclasses.
+
+        """
+        counter = mock.Mock()
+
+        class SomeOtherMixin:
+            status = Column(String)
+
+        class HasAddressCount(SomeOtherMixin):
+            id = Column(Integer, primary_key=True)
+
+            @declared_attr
+            def address_count(cls):
+                counter(cls.id)
+                counter(cls.status)
+                return column_property(
+                    select(func.count(Address.id))
+                    .where(Address.user_id == cls.id)
+                    .where(cls.status == "some status")
+                    .scalar_subquery()
+                )
+
+        class Address(Base):
+            __tablename__ = "address"
+            id = Column(Integer, primary_key=True)
+            user_id = Column(ForeignKey("user.id"))
+
+        class User(Base, HasAddressCount):
+            __tablename__ = "user"
+
+        eq_(counter.mock_calls, [mock.call(User.id), mock.call(User.status)])
+
+        sess = fixture_session()
+        self.assert_compile(
+            sess.query(User).having(User.address_count > 5),
+            "SELECT (SELECT count(address.id) AS count_1 FROM address "
+            'WHERE address.user_id = "user".id AND "user".status = :param_1) '
+            'AS anon_1, "user".status AS user_status, "user".id AS user_id '
+            'FROM "user" HAVING (SELECT count(address.id) AS count_1 '
+            'FROM address WHERE address.user_id = "user".id '
+            'AND "user".status = :param_1) > :param_2',
+        )
+
 
 class AbstractTest(DeclarativeTestBase):
     def test_abstract_boolean(self):
