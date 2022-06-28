@@ -89,6 +89,12 @@ construction arguments, are as follows:
 
 .. autoclass:: REGCLASS
 
+.. autoclass:: TIMESTAMP
+    :members: __init__
+
+.. autoclass:: TIME
+    :members: __init__
+
 .. autoclass:: TSVECTOR
 
 .. autoclass:: UUID

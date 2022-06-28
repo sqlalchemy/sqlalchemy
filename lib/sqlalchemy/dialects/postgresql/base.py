@@ -1682,13 +1682,39 @@ class REGCLASS(sqltypes.TypeEngine):
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
+
+    """Provide the PostgreSQL TIMESTAMP type."""
+
+    __visit_name__ = "TIMESTAMP"
+
     def __init__(self, timezone=False, precision=None):
+        """Construct a TIMESTAMP.
+
+        :param timezone: boolean value if timezone present, default False
+        :param precision: optional integer precision value
+
+         .. versionadded:: 1.4
+
+        """
         super(TIMESTAMP, self).__init__(timezone=timezone)
         self.precision = precision
 
 
 class TIME(sqltypes.TIME):
+
+    """PostgreSQL TIME type."""
+
+    __visit_name__ = "TIME"
+
     def __init__(self, timezone=False, precision=None):
+        """Construct a TIME.
+
+        :param timezone: boolean value if timezone present, default False
+        :param precision: optional integer precision value
+
+         .. versionadded:: 1.4
+
+        """
         super(TIME, self).__init__(timezone=timezone)
         self.precision = precision
 
