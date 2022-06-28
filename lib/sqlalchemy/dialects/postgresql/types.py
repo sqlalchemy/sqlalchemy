@@ -118,6 +118,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
     """Provide the PostgreSQL TIMESTAMP type."""
 
     __visit_name__ = "TIMESTAMP"
+
     def __init__(self, timezone=False, precision=None):
         """Construct a TIMESTAMP.
 
@@ -136,6 +137,7 @@ class TIME(sqltypes.TIME):
     """PostgreSQL TIME type."""
 
     __visit_name__ = "TIME"
+
     def __init__(self, timezone=False, precision=None):
         """Construct a TIME.
 
