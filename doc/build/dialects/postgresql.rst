@@ -71,6 +71,12 @@ construction arguments, are as follows:
 
 .. autoclass:: INET
 
+.. autoclass:: TIMESTAMP
+    :members: __init__
+
+.. autoclass:: TIME
+    :members: __init__
+
 .. autoclass:: INTERVAL
     :members: __init__
 
