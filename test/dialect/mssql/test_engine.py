@@ -474,11 +474,10 @@ class FastExecutemanyTest(fixtures.TestBase):
         use_fastexecutemany,
         apply_setinputsizes_flag,
     ):
-        expect_failure = (
-            apply_setinputsizes_flag
-            and not include_setinputsizes
-            and use_fastexecutemany
-        )
+
+        # changes for issue #8177 have eliminated all current expected
+        # failures, but we'll leave this here in case we need it again
+        expect_failure = False
 
         engine = fe_engine(use_fastexecutemany, apply_setinputsizes_flag)
 

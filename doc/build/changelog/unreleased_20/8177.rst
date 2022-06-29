@@ -1,0 +1,16 @@
+.. change::
+    :tags: mssql, bug
+    :tickets: 8177
+
+    The ``use_setinputsizes`` parameter for the ``mssql+pyodbc`` dialect now
+    defaults to ``True``; this is so that non-unicode string comparisons are
+    bound by pyodbc to pyodbc.SQL_VARCHAR rather than pyodbc.SQL_WVARCHAR,
+    allowing indexes against VARCHAR columns to take effect. In order for the
+    ``fast_executemany=True`` parameter to continue functioning, the
+    ``use_setinputsizes`` mode now skips the ``cursor.setinputsizes()`` call
+    specifically when ``fast_executemany`` is True and the specific method in
+    use is ``cursor.executemany()``, which doesn't support setinputsizes. The
+    change also adds appropriate pyodbc DBAPI typing to values that are typed
+    as :class:`_types.Unicode` or :class:`_types.UnicodeText`, as well as
+    altered the base :class:`_types.JSON` datatype to consider JSON string
+    values as :class:`_types.Unicode` rather than :class:`_types.String`.

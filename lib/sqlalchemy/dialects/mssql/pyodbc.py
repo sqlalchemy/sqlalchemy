@@ -291,18 +291,19 @@ driver in order to use this flag::
 Setinputsizes Support
 -----------------------
 
-The pyodbc ``cursor.setinputsizes()`` method can be used if necessary.  To
-enable this hook, pass ``use_setinputsizes=True`` to :func:`_sa.create_engine`::
+As of version 2.0, the pyodbc ``cursor.setinputsizes()`` method is used by
+default except for .executemany() calls when fast_executemany=True.
 
-    engine = create_engine("mssql+pyodbc://...", use_setinputsizes=True)
-
-The behavior of the hook can then be customized, as may be necessary
+The behavior of setinputsizes can be customized, as may be necessary
 particularly if fast_executemany is in use, via the
 :meth:`.DialectEvents.do_setinputsizes` hook. See that method for usage
 examples.
 
 .. versionchanged:: 1.4.1  The pyodbc dialects will not use setinputsizes
    unless ``use_setinputsizes=True`` is passed.
+
+.. versionchanged:: 2.0  The mssql+pyodbc dialect now defaults to using
+   setinputsizes except for .executemany() calls when fast_executemany=True.
 
 """  # noqa
 
@@ -313,11 +314,16 @@ import re
 import struct
 
 from .base import _MSDateTime
+from .base import _MSUnicode
+from .base import _MSUnicodeText
 from .base import BINARY
 from .base import DATETIMEOFFSET
 from .base import MSDialect
 from .base import MSExecutionContext
 from .base import VARBINARY
+from .json import JSON as _MSJson
+from .json import JSONIndexType as _MSJsonIndexType
+from .json import JSONPathType as _MSJsonPathType
 from ... import exc
 from ... import types as sqltypes
 from ... import util
@@ -466,6 +472,36 @@ class _BINARY_pyodbc(_ms_binary_pyodbc, BINARY):
     pass
 
 
+class _String_pyodbc(sqltypes.String):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_VARCHAR
+
+
+class _Unicode_pyodbc(_MSUnicode):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_WVARCHAR
+
+
+class _UnicodeText_pyodbc(_MSUnicodeText):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_WVARCHAR
+
+
+class _JSON_pyodbc(_MSJson):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_WVARCHAR
+
+
+class _JSONIndexType_pyodbc(_MSJsonIndexType):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_WVARCHAR
+
+
+class _JSONPathType_pyodbc(_MSJsonPathType):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SQL_WVARCHAR
+
+
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
 
@@ -541,11 +577,25 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             VARBINARY: _VARBINARY_pyodbc,
             sqltypes.VARBINARY: _VARBINARY_pyodbc,
             sqltypes.LargeBinary: _VARBINARY_pyodbc,
+            sqltypes.String: _String_pyodbc,
+            sqltypes.Unicode: _Unicode_pyodbc,
+            sqltypes.UnicodeText: _UnicodeText_pyodbc,
+            sqltypes.JSON: _JSON_pyodbc,
+            sqltypes.JSON.JSONIndexType: _JSONIndexType_pyodbc,
+            sqltypes.JSON.JSONPathType: _JSONPathType_pyodbc,
+            # this excludes Enum from the string/VARCHAR thing for now
+            # it looks like Enum's adaptation doesn't really support the
+            # String type itself having a dialect-level impl
+            sqltypes.Enum: sqltypes.Enum,
         },
     )
 
-    def __init__(self, fast_executemany=False, **params):
-        super(MSDialect_pyodbc, self).__init__(**params)
+    def __init__(
+        self, fast_executemany=False, use_setinputsizes=True, **params
+    ):
+        super(MSDialect_pyodbc, self).__init__(
+            use_setinputsizes=use_setinputsizes, **params
+        )
         self.use_scope_identity = (
             self.use_scope_identity
             and self.dbapi
