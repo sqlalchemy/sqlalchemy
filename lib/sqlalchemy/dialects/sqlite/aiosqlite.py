@@ -34,6 +34,14 @@ This dialect should normally be used only with the
 The URL passes through all arguments to the ``pysqlite`` driver, so all
 connection arguments are the same as they are for that of :ref:`pysqlite`.
 
+.. _aiosqlite_udfs:
+
+User-Defined Functions
+----------------------
+
+aiosqlite extends pysqlite to support async, so we can create our own user-defined functions (UDFs)
+in Python and use them directly in SQLite queries as described here: :ref:`pysqlite_udfs`.
+
 
 """  # noqa
 

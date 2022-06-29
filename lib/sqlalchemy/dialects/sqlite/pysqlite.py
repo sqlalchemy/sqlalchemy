@@ -399,6 +399,39 @@ by adding the desired locking mode to our ``"BEGIN"``::
     `sqlite3 module breaks transactions and potentially corrupts data <https://bugs.python.org/issue10740>`_ -
     on the Python bug tracker
 
+.. _pysqlite_udfs:
+
+User-Defined Functions
+----------------------
+
+pysqlite supports a `create_function() <https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.create_function>`_
+method that allows us to create our own user-defined functions (UDFs) in Python and use them directly in SQLite queries.
+These functions are registered with a specific DBAPI Connection.
+
+SQLAlchemy uses connection pooling with file-based SQLite databases, so we need to ensure that the UDF is attached to the
+connection when it is created. That is accomplished with an event listener::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import event
+    from sqlalchemy import text
+
+
+    def udf():
+        return "udf-ok"
+
+
+    engine = create_engine("sqlite:///./db_file")
+
+
+    @event.listens_for(engine, "connect")
+    def connect(conn, rec):
+        conn.create_function("udf", 0, udf)
+
+
+    for i in range(5):
+        with engine.connect() as conn:
+            print(conn.scalar(text("SELECT UDF()")))
+
 
 """  # noqa
 
