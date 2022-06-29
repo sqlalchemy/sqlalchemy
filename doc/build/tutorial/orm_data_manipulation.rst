@@ -314,7 +314,7 @@ dirty::
 However note we are **still in a transaction** and our changes have not
 been pushed to the database's permanent storage.   Since Sandy's last name
 is in fact "Cheeks" not "Squirrel", we will repair this mistake later when
-we roll back the transction.  But first we'll make some more data changes.
+we roll back the transaction.  But first we'll make some more data changes.
 
 
 .. seealso::
