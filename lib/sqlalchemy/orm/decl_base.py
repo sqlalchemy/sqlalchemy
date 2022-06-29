@@ -714,7 +714,14 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         attribute_is_overridden = self._cls_attr_override_checker(self.cls)
 
+        bases = []
+
         for base in cls.__mro__:
+            # collect bases and make sure standalone columns are copied
+            # to be the column they will ultimately be on the class,
+            # so that declared_attr functions use the right columns.
+            # need to do this all the way up the hierarchy first
+            # (see #8190)
 
             class_mapped = (
                 base is not cls
@@ -727,10 +734,34 @@ class _ClassScanMapperConfig(_MapperConfig):
             local_attributes_for_class = self._cls_attr_resolver(base)
 
             if not class_mapped and base is not cls:
-                self._produce_column_copies(
+                locally_collected_columns = self._produce_column_copies(
                     local_attributes_for_class,
                     attribute_is_overridden,
                 )
+            else:
+                locally_collected_columns = {}
+
+            bases.append(
+                (
+                    base,
+                    class_mapped,
+                    local_attributes_for_class,
+                    locally_collected_columns,
+                )
+            )
+
+        for (
+            base,
+            class_mapped,
+            local_attributes_for_class,
+            locally_collected_columns,
+        ) in bases:
+
+            # this transfer can also take place as we scan each name
+            # for finer-grained control of how collected_attributes is
+            # populated, as this is what impacts column ordering.
+            # however it's simpler to get it out of the way here.
+            collected_attributes.update(locally_collected_columns)
 
             for (
                 name,
@@ -738,6 +769,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                 annotation,
                 is_dataclass_field,
             ) in local_attributes_for_class():
+
                 if re.match(r"^__.+__$", name):
                     if name == "__mapper_args__":
                         check_decl = _check_declared_props_nocascade(
@@ -1096,10 +1128,10 @@ class _ClassScanMapperConfig(_MapperConfig):
             [], Iterable[Tuple[str, Any, Any, bool]]
         ],
         attribute_is_overridden: Callable[[str, Any], bool],
-    ) -> None:
+    ) -> Dict[str, Union[Column[Any], MappedColumn[Any]]]:
         cls = self.cls
         dict_ = self.clsdict_view
-        collected_attributes = self.collected_attributes
+        locally_collected_attributes = {}
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
 
@@ -1132,9 +1164,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                                 )
 
                     column_copies[obj] = copy_ = obj._copy()
-                    collected_attributes[name] = copy_
 
+                    locally_collected_attributes[name] = copy_
                     setattr(cls, name, copy_)
+        return locally_collected_attributes
 
     def _extract_mappable_attributes(self) -> None:
         cls = self.cls

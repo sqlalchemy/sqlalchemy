@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, declarative
+    :tickets: 8190
+
+    Fixed issue where a hierarchy of classes set up as an abstract or mixin
+    declarative classes could not declare standalone columns on a superclass
+    that would then be copied correctly to a :class:`_orm.declared_attr`
+    callable that wanted to make use of them on a descendant class.
