@@ -804,6 +804,12 @@ class Result(_WithKeys, ResultInternal):
         :param num: number of rows to fetch each time the buffer is refilled.
          If set to a value below 1, fetches all rows for the next buffer.
 
+        .. seealso::
+
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+
+            :meth:`_engine.Result.partitions`
+
         """
         self._yield_per = num
 
@@ -997,6 +1003,13 @@ class Result(_WithKeys, ResultInternal):
         results, if possible.   Not all drivers support this option and
         the option is silently ignored for those who do not.
 
+        When using the ORM, the :meth:`_engine.Result.partitions` method
+        is typically more effective from a memory perspective when it is
+        combined with use of the :meth:`_engine.Result.yield_per` method,
+        which instructs the ORM loading internals to only build a certain
+        amount of ORM objects from a result at a time before yielding
+        them out.
+
         .. versionadded:: 1.4
 
         :param size: indicate the maximum number of rows to be present
@@ -1006,6 +1019,13 @@ class Result(_WithKeys, ResultInternal):
          specific.
 
         :return: iterator of lists
+
+        .. seealso::
+
+            :paramref:`.Connection.execution_options.stream_results`
+
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+
 
         """
 
