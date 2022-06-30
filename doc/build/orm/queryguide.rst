@@ -1040,10 +1040,10 @@ automatically uses the number sent to :meth:`_engine.Result.yield_per` as the
 number of rows in each partition::
 
     >>> stmt = select(User)
-    {sql} >>> for partition in session.execute(
+    {sql}>>> for partition in session.execute(
     ...          stmt, execution_options={"stream_results": True}
-    ...       ).yield_per(10).partitions():
-    ...     for row in partition:
+    ...      ).yield_per(10).partitions():
+    ...      for row in partition:
     ...         print(row)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account

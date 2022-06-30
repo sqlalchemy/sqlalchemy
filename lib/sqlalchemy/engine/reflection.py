@@ -673,6 +673,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a dict with the table options. The returned keys depend on the
          dialect in use. Each one is prefixed with the dialect name.
 
+        .. seealso:: :meth:`Inspector.get_multi_table_options`
+
         """
         with self._operation_context() as conn:
             return self.dialect.get_table_options(
@@ -721,6 +723,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_table_options`
         """
         with self._operation_context() as conn:
             res = self.dialect.get_multi_table_options(
@@ -831,43 +835,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about columns in ``table_name``.
 
         Given a string ``table_name`` and an optional string ``schema``,
-        return column information as a list of dicts with these keys:
-
-        * ``name`` - the column's name
-
-        * ``type`` - the type of this column; an instance of
-          :class:`~sqlalchemy.types.TypeEngine`
-
-        * ``nullable`` - boolean flag if the column is NULL or NOT NULL
-
-        * ``default`` - the column's server default value - this is returned
-          as a string SQL expression.
-
-        * ``autoincrement`` - indicates that the column is auto incremented -
-          this is returned as a boolean or 'auto'
-
-        * ``comment`` - (optional) the comment on the column. Only some
-          dialects return this key
-
-        * ``computed`` - (optional) when present it indicates that this column
-          is computed by the database. Only some dialects return this key.
-          Returned as a dict with the keys:
-
-          * ``sqltext`` - the expression used to generate this column returned
-            as a string SQL expression
-
-          * ``persisted`` - (optional) boolean that indicates if the column is
-            stored in the table
-
-          .. versionadded:: 1.3.16 - added support for computed reflection.
-
-        * ``identity`` - (optional) when present it indicates that this column
-          is a generated always column. Only some dialects return this key.
-          For a list of keywords on this dict see :class:`_schema.Identity`.
-
-          .. versionadded:: 1.4 - added support for identity column reflection.
-
-        * ``dialect_options`` - (optional) a dict with dialect specific options
+        return column information as a list of :class:`.ReflectedColumn`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -882,6 +850,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         :return: list of dictionaries, each representing the definition of
          a database column.
+
+        .. seealso:: :meth:`Inspector.get_multi_columns`.
 
         """
 
@@ -916,8 +886,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The objects can be filtered by passing the names to use to
         ``filter_names``.
 
-        The column information is as described in
-        :meth:`Inspector.get_columns`.
+        For each table the value is a list of :class:`.ReflectedColumn`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -943,6 +912,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_columns`
         """
 
         with self._operation_context() as conn:
@@ -966,16 +937,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about primary key constraint in ``table_name``.
 
         Given a string ``table_name``, and an optional string `schema`, return
-        primary key information as a dictionary with these keys:
-
-        * ``constrained_columns`` -
-          a list of column names that make up the primary key
-
-        * ``name`` -
-          optional name of the primary key constraint.
-
-        * ``comment`` -
-          optional comment on the primary key constraint.
+        primary key information as a :class:`.ReflectedPrimaryKeyConstraint`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -991,6 +953,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a dictionary representing the definition of
          a primary key constraint.
 
+        .. seealso:: :meth:`Inspector.get_multi_pk_constraint`
         """
         with self._operation_context() as conn:
             return self.dialect.get_pk_constraint(
@@ -1011,8 +974,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The tables can be filtered by passing the names to use to
         ``filter_names``.
 
-        The primary key information is as described in
-        :meth:`Inspector.get_pk_constraint`.
+        For each table the value is a :class:`.ReflectedPrimaryKeyConstraint`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -1038,6 +1000,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_pk_constraint`
         """
         with self._operation_context() as conn:
             return dict(
@@ -1058,26 +1022,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about foreign_keys in ``table_name``.
 
         Given a string ``table_name``, and an optional string `schema`, return
-        foreign key information as a list of dicts with these keys:
-
-        * ``constrained_columns`` -
-          a list of column names that make up the foreign key
-
-        * ``referred_schema`` -
-          the name of the referred schema
-
-        * ``referred_table`` -
-          the name of the referred table
-
-        * ``referred_columns`` -
-          a list of column names in the referred table that correspond to
-          constrained_columns
-
-        * ``name`` -
-          optional name of the foreign key constraint.
-
-        * ``comment`` -
-          optional comment on the foreign key constraint
+        foreign key information as a list of
+        :class:`.ReflectedForeignKeyConstraint`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1093,6 +1039,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a list of dictionaries, each representing the
          a foreign key definition.
 
+        .. seealso:: :meth:`Inspector.get_multi_foreign_keys`
         """
 
         with self._operation_context() as conn:
@@ -1114,8 +1061,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The tables can be filtered by passing the names to use to
         ``filter_names``.
 
-        The foreign key informations as described in
-        :meth:`Inspector.get_foreign_keys`.
+        For each table the value is a list of
+        :class:`.ReflectedForeignKeyConstraint`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -1141,6 +1088,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_foreign_keys`
         """
 
         with self._operation_context() as conn:
@@ -1162,28 +1111,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about indexes in ``table_name``.
 
         Given a string ``table_name`` and an optional string `schema`, return
-        index information as a list of dicts with these keys:
-
-        * ``name`` -
-          the index's name
-
-        * ``column_names`` -
-          list of column names in order
-
-        * ``unique`` -
-          boolean
-
-        * ``column_sorting`` -
-          optional dict mapping column names to tuple of sort keywords,
-          which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``.
-
-          .. versionadded:: 1.3.5
-
-        * ``dialect_options`` -
-          dict of dialect-specific index options.  May not be present
-          for all dialects.
-
-          .. versionadded:: 1.0.0
+        index information as a list of :class:`.ReflectedIndex`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1199,6 +1127,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a list of dictionaries, each representing the
          definition of an index.
 
+        .. seealso:: :meth:`Inspector.get_multi_indexes`
         """
 
         with self._operation_context() as conn:
@@ -1220,11 +1149,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The objects can be filtered by passing the names to use to
         ``filter_names``.
 
-        The foreign key information is as described in
-        :meth:`Inspector.get_foreign_keys`.
-
-        The indexes information as described in
-        :meth:`Inspector.get_indexes`.
+        For each table the value is a list of :class:`.ReflectedIndex`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -1250,6 +1175,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_indexes`
         """
 
         with self._operation_context() as conn:
@@ -1271,16 +1198,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about unique constraints in ``table_name``.
 
         Given a string ``table_name`` and an optional string `schema`, return
-        unique constraint information as a list of dicts with these keys:
-
-        * ``name`` -
-          the unique constraint's name
-
-        * ``column_names`` -
-          list of column names in order
-
-        * ``comment`` -
-          optional comment on the constraint
+        unique constraint information as a list of
+        :class:`.ReflectedUniqueConstraint`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1296,6 +1215,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a list of dictionaries, each representing the
          definition of an unique constraint.
 
+        .. seealso:: :meth:`Inspector.get_multi_unique_constraints`
         """
 
         with self._operation_context() as conn:
@@ -1317,8 +1237,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The tables can be filtered by passing the names to use to
         ``filter_names``.
 
-        The unique constraint information is as described in
-        :meth:`Inspector.get_unique_constraints`.
+        For each table the value is a list of
+        :class:`.ReflectedUniqueConstraint`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -1344,6 +1264,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_unique_constraints`
         """
 
         with self._operation_context() as conn:
@@ -1365,10 +1287,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about the table comment for ``table_name``.
 
         Given a string ``table_name`` and an optional string ``schema``,
-        return table comment information as a dictionary with these keys:
-
-        * ``text`` -
-            text of the comment.
+        return table comment information as a :class:`.ReflectedTableComment`.
 
         Raises ``NotImplementedError`` for a dialect that does not support
         comments.
@@ -1387,6 +1306,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :return: a dictionary, with the table comment.
 
         .. versionadded:: 1.2
+
+        .. seealso:: :meth:`Inspector.get_multi_table_comment`
         """
 
         with self._operation_context() as conn:
@@ -1408,8 +1329,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The objects can be filtered by passing the names to use to
         ``filter_names``.
 
-        The comment information is as described in
-        :meth:`Inspector.get_table_comment`.
+        For each table the value is a :class:`.ReflectedTableComment`.
 
         Raises ``NotImplementedError`` for a dialect that does not support
         comments.
@@ -1438,6 +1358,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_table_comment`
         """
 
         with self._operation_context() as conn:
@@ -1459,22 +1381,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return information about check constraints in ``table_name``.
 
         Given a string ``table_name`` and an optional string `schema`, return
-        check constraint information as a list of dicts with these keys:
-
-        * ``name`` -
-          the check constraint's name
-
-        * ``sqltext`` -
-          the check constraint's SQL expression
-
-        * ``dialect_options`` -
-          may or may not be present; a dictionary with additional
-          dialect-specific options for this CHECK constraint
-
-        * ``comment`` -
-          optional comment on the constraint
-
-          .. versionadded:: 1.3.8
+        check constraint information as a list of
+        :class:`.ReflectedCheckConstraint`.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1492,6 +1400,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         .. versionadded:: 1.1.0
 
+        .. seealso:: :meth:`Inspector.get_multi_check_constraints`
         """
 
         with self._operation_context() as conn:
@@ -1513,8 +1422,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         The tables can be filtered by passing the names to use to
         ``filter_names``.
 
-        The check constraint information is as described in
-        :meth:`Inspector.get_check_constraints`.
+        For each table the value is a list of
+        :class:`.ReflectedCheckConstraint`.
 
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
@@ -1540,6 +1449,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
          The schema is ``None`` if no schema is provided.
 
         .. versionadded:: 2.0
+
+        .. seealso:: :meth:`Inspector.get_check_constraints`
         """
 
         with self._operation_context() as conn:

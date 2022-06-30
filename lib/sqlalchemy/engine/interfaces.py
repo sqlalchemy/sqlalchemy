@@ -304,8 +304,8 @@ class ReflectedComputed(TypedDict):
     """the expression used to generate this column returned
     as a string SQL expression"""
 
-    persisted: bool
-    """indicates if the value is stored or computed on demand"""
+    persisted: NotRequired[bool]
+    """indicates if the value is stored in the table or computed on demand"""
 
 
 class ReflectedColumn(TypedDict):
@@ -324,7 +324,7 @@ class ReflectedColumn(TypedDict):
     """column type represented as a :class:`.TypeEngine` instance."""
 
     nullable: bool
-    """column nullability"""
+    """boolean flag if the column is NULL or NOT NULL"""
 
     default: Optional[str]
     """column default expression as a SQL string"""
@@ -343,14 +343,23 @@ class ReflectedColumn(TypedDict):
     """
 
     comment: NotRequired[Optional[str]]
-    """comment for the column, if present"""
+    """comment for the column, if present.
+    Only some dialects return this key
+    """
 
     computed: NotRequired[ReflectedComputed]
-    """indicates this column is computed at insert (possibly update) time by
-    the database."""
+    """indicates that this column is computed by the database.
+    Only some dialects return this key.
+
+    .. versionadded:: 1.3.16 - added support for computed reflection.
+    """
 
     identity: NotRequired[ReflectedIdentity]
-    """indicates this column is an IDENTITY column"""
+    """indicates this column is an IDENTITY column.
+    Only some dialects return this key.
+
+    .. versionadded:: 1.4 - added support for identity column reflection.
+    """
 
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this reflected
@@ -384,8 +393,10 @@ class ReflectedCheckConstraint(ReflectedConstraint):
     """the check constraint's SQL expression"""
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this reflected
-    object"""
+    """Additional dialect-specific options detected for this check constraint
+
+    .. versionadded:: 1.3.8
+    """
 
 
 class ReflectedUniqueConstraint(ReflectedConstraint):
@@ -398,14 +409,14 @@ class ReflectedUniqueConstraint(ReflectedConstraint):
     """
 
     column_names: List[str]
-    """column names which comprise the constraint"""
+    """column names which comprise the unique constraint"""
 
     duplicates_index: NotRequired[Optional[str]]
     "Indicates if this unique constraint duplicates an index with this name"
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this reflected
-    object"""
+    """Additional dialect-specific options detected for this unique
+    constraint"""
 
 
 class ReflectedPrimaryKeyConstraint(ReflectedConstraint):
@@ -418,11 +429,10 @@ class ReflectedPrimaryKeyConstraint(ReflectedConstraint):
     """
 
     constrained_columns: List[str]
-    """column names which comprise the constraint"""
+    """column names which comprise the primary key"""
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this reflected
-    object"""
+    """Additional dialect-specific options detected for this primary key"""
 
 
 class ReflectedForeignKeyConstraint(ReflectedConstraint):
@@ -435,20 +445,19 @@ class ReflectedForeignKeyConstraint(ReflectedConstraint):
     """
 
     constrained_columns: List[str]
-    """local column names which comprise the constraint"""
+    """local column names which comprise the foreign key"""
 
     referred_schema: Optional[str]
-    """schema name of the table being referenced"""
+    """schema name of the table being referred"""
 
     referred_table: str
-    """name of the table being referenced"""
+    """name of the table being referred"""
 
     referred_columns: List[str]
-    """referenced column names"""
+    """referred column names that correspond to ``constrained_columns``"""
 
     options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this reflected
-    object"""
+    """Additional options detected for this foreign key constraint"""
 
 
 class ReflectedIndex(TypedDict):
@@ -461,7 +470,7 @@ class ReflectedIndex(TypedDict):
     """
 
     name: Optional[str]
-    """constraint name"""
+    """index name"""
 
     column_names: List[str]
     """column names which the index refers towards"""
@@ -478,17 +487,19 @@ class ReflectedIndex(TypedDict):
     .. deprecated:: 2.0
 
         Legacy value, will be replaced with
-        ``d["dialect_options"]["<dialect name>_include"]``
+        ``index_dict["dialect_options"]["<dialect name>_include"]``
 
     """
 
     column_sorting: NotRequired[Dict[str, Tuple[str]]]
     """optional dict mapping column names to tuple of sort keywords,
-    which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``."""
+    which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``.
+
+    .. versionadded:: 1.3.5
+    """
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this reflected
-    object"""
+    """Additional dialect-specific options detected for this index"""
 
 
 class ReflectedTableComment(TypedDict):
