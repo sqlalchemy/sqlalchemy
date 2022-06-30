@@ -1,15 +1,15 @@
 # /home/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -258,18 +258,18 @@ test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect x86_64_linux_cpyt
 
 # TEST: test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute
 
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_mysqldb_dbapiunicode_cextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_mysqldb_dbapiunicode_nocextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_pymysql_dbapiunicode_cextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_pymysql_dbapiunicode_nocextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mssql_pyodbc_dbapiunicode_cextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mssql_pyodbc_dbapiunicode_nocextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_oracle_cx_oracle_dbapiunicode_cextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_oracle_cx_oracle_dbapiunicode_nocextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_postgresql_psycopg2_dbapiunicode_cextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_postgresql_psycopg2_dbapiunicode_nocextensions 47
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_cextensions 46
-test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_nocextensions 46
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_mysqldb_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_mysqldb_dbapiunicode_nocextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_pymysql_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mariadb_pymysql_dbapiunicode_nocextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mssql_pyodbc_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_mssql_pyodbc_dbapiunicode_nocextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_oracle_cx_oracle_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_oracle_cx_oracle_dbapiunicode_nocextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_postgresql_psycopg2_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_postgresql_psycopg2_dbapiunicode_nocextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_cextensions 50
+test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_connection_execute x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_nocextensions 50
 
 # TEST: test.aaa_profiling.test_resultset.ExecutionTest.test_minimal_engine_execute
 

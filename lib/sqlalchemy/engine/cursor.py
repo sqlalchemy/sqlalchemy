@@ -1034,7 +1034,6 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
         growth_factor=5,
         initial_buffer=None,
     ):
-
         self._max_row_buffer = execution_options.get("max_row_buffer", 1000)
 
         if initial_buffer is not None:

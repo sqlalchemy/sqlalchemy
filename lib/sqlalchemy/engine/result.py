@@ -934,7 +934,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
     @_generative
     def yield_per(self: SelfResult, num: int) -> SelfResult:
-        """Configure the row-fetching strategy to fetch num rows at a time.
+        """Configure the row-fetching strategy to fetch ``num`` rows at a time.
 
         This impacts the underlying behavior of the result when iterating over
         the result object, or otherwise making use of  methods such as
@@ -949,16 +949,24 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         conjunction with the
         :paramref:`_engine.Connection.execution_options.stream_results`
         execution option, which will allow the database dialect in use to make
-        use of a server side cursor, if the DBAPI supports it.
+        use of a server side cursor, if the DBAPI supports a specific "server
+        side cursor" mode separate from its default mode of operation.
 
-        Most DBAPIs do not use server side cursors by default, which means  all
-        rows will be fetched upfront from the database regardless of  the
-        :meth:`_engine.Result.yield_per` setting.  However,
-        :meth:`_engine.Result.yield_per` may still be useful in that it batches
-        the SQLAlchemy-side processing of the raw data from the database, and
-        additionally when used for ORM scenarios will batch the conversion of
-        database rows into  ORM entity rows.
+        .. tip::
 
+            Consider using the
+            :paramref:`_engine.Connection.execution_options.yield_per`
+            execution option, which will simultaneously set
+            :paramref:`_engine.Connection.execution_options.stream_results`
+            to ensure the use of server side cursors, as well as automatically
+            invoke the :meth:`_engine.Result.yield_per` method to establish
+            a fixed row buffer size at once.
+
+            The :paramref:`_engine.Connection.execution_options.yield_per`
+            execution option is available for ORM operations, with
+            :class:`_orm.Session`-oriented use described at
+            :ref:`orm_queryguide_yield_per`. The Core-only version which works
+            with :class:`_engine.Connection` is new as of SQLAlchemy 1.4.40.
 
         .. versionadded:: 1.4
 
@@ -967,9 +975,10 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
         .. seealso::
 
-            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+            :ref:`engine_stream_results` - describes Core behavior for
+            :meth:`_engine.Result.yield_per`
 
-            :meth:`_engine.Result.partitions`
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
 
         """
         self._yield_per = num
@@ -1219,24 +1228,29 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
         When using the ORM, the :meth:`_engine.Result.partitions` method
         is typically more effective from a memory perspective when it is
-        combined with use of the :meth:`_engine.Result.yield_per` method,
-        which instructs the ORM loading internals to only build a certain
-        amount of ORM objects from a result at a time before yielding
-        them out.
+        combined with use of the
+        :ref:`yield_per execution option <orm_queryguide_yield_per>`,
+        which instructs both the DBAPI driver to use server side cursors,
+        if available, as well as instructs the ORM loading internals to only
+        build a certain amount of ORM objects from a result at a time before
+        yielding them out.
 
         .. versionadded:: 1.4
 
         :param size: indicate the maximum number of rows to be present
          in each list yielded.  If None, makes use of the value set by
-         :meth:`_engine.Result.yield_per`, if present, otherwise uses the
-         :meth:`_engine.Result.fetchmany` default which may be backend
-         specific.
+         the :meth:`_engine.Result.yield_per`, method, if it were called,
+         or the :paramref:`_engine.Connection.execution_options.yield_per`
+         execution option, which is equivalent in this regard.  If
+         yield_per weren't set, it makes use of the
+         :meth:`_engine.Result.fetchmany` default, which may be backend
+         specific and not well defined.
 
         :return: iterator of lists
 
         .. seealso::
 
-            :paramref:`.Connection.execution_options.stream_results`
+            :ref:`engine_stream_results`
 
             :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
 
@@ -1517,9 +1531,16 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         return MergedResult(self._metadata, (self,) + others)
 
 
+SelfFilterResult = TypeVar("SelfFilterResult", bound="FilterResult[Any]")
+
+
 class FilterResult(ResultInternal[_R]):
     """A wrapper for a :class:`_engine.Result` that returns objects other than
     :class:`_result.Row` objects, such as dictionaries or scalar objects.
+
+    :class:`.FilterResult` is the common base for additional result
+    APIs including :class:`.MappingResult`, :class:`.ScalarResult`
+    and :class:`.AsyncResult`.
 
     """
 
@@ -1534,6 +1555,28 @@ class FilterResult(ResultInternal[_R]):
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
     _real_result: Result[Any]
+
+    @_generative
+    def yield_per(self: SelfFilterResult, num: int) -> SelfFilterResult:
+        """Configure the row-fetching strategy to fetch ``num`` rows at a time.
+
+        The :meth:`_engine.FilterResult.yield_per` method is a pass through
+        to the :meth:`_engine.Result.yield_per` method.  See that method's
+        documentation for usage notes.
+
+        .. versionadded:: 1.4.40 - added :meth:`_engine.FilterResult.yield_per`
+           so that the method is available on all result set implementations
+
+        .. seealso::
+
+            :ref:`engine_stream_results` - describes Core behavior for
+            :meth:`_engine.Result.yield_per`
+
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+
+        """
+        self._real_result = self._real_result.yield_per(num)
+        return self
 
     def _soft_close(self, hard: bool = False) -> None:
         self._real_result._soft_close(hard=hard)

@@ -27,6 +27,7 @@ from ...engine.result import MergedResult
 from ...engine.result import ResultMetaData
 from ...engine.row import Row
 from ...engine.row import RowMapping
+from ...sql.base import _generative
 from ...util.concurrency import greenlet_spawn
 from ...util.typing import Literal
 
@@ -138,6 +139,7 @@ class AsyncResult(AsyncCommon[Row[_TP]]):
         """
         return self._metadata.keys
 
+    @_generative
     def unique(
         self: SelfAsyncResult, strategy: Optional[_UniqueFilterType] = None
     ) -> SelfAsyncResult:

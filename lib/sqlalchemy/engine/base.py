@@ -358,14 +358,85 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
           :class:`_sql.Executable`.
 
           Indicate to the dialect that results should be
-          "streamed" and not pre-buffered, if possible.  This is a limitation
-          of many DBAPIs.  The flag is currently understood within a subset
-          of dialects within the PostgreSQL and MySQL categories, and
-          may be supported by other third party dialects as well.
+          "streamed" and not pre-buffered, if possible.  For backends
+          such as PostgreSQL, MySQL and MariaDB, this indicates the use of
+          a "server side cursor" as opposed to a client side cursor.
+          Other backends such as that of Oracle may already use server
+          side cursors by default.
+
+          The usage of
+          :paramref:`_engine.Connection.execution_options.stream_results` is
+          usually combined with setting a fixed number of rows to to be fetched
+          in batches, to allow for efficient iteration of database rows while
+          at the same time not loading all result rows into memory at once;
+          this can be configured on a :class:`_engine.Result` object using the
+          :meth:`_engine.Result.yield_per` method, after execution has
+          returned a new :class:`_engine.Result`.   If
+          :meth:`_engine.Result.yield_per` is not used,
+          the :paramref:`_engine.Connection.execution_options.stream_results`
+          mode of operation will instead use a dynamically sized buffer
+          which buffers sets of rows at a time, growing on each batch
+          based on a fixed growth size up until a limit which may
+          be configured using the
+          :paramref:`_engine.Connection.execution_options.max_row_buffer`
+          parameter.
+
+          When using the ORM to fetch ORM mapped objects from a result,
+          :meth:`_engine.Result.yield_per` should always be used with
+          :paramref:`_engine.Connection.execution_options.stream_results`,
+          so that the ORM does not fetch all rows into new ORM objects at once.
+
+          For typical use, the
+          :paramref:`_engine.Connection.execution_options.yield_per` execution
+          option should be preferred, which sets up both
+          :paramref:`_engine.Connection.execution_options.stream_results` and
+          :meth:`_engine.Result.yield_per` at once. This option is supported
+          both at a core level by :class:`_engine.Connection` as well as by the
+          ORM :class:`_engine.Session`; the latter is described at
+          :ref:`orm_queryguide_yield_per`.
 
           .. seealso::
 
+            :ref:`engine_stream_results` - background on
+            :paramref:`_engine.Connection.execution_options.stream_results`
+
+            :paramref:`_engine.Connection.execution_options.max_row_buffer`
+
+            :paramref:`_engine.Connection.execution_options.yield_per`
+
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+            describing the ORM version of ``yield_per``
+
+        :param max_row_buffer: Available on: :class:`_engine.Connection`,
+          :class:`_sql.Executable`.  Sets a maximum
+          buffer size to use when the
+          :paramref:`_engine.Connection.execution_options.stream_results`
+          execution option is used on a backend that supports server side
+          cursors.  The default value if not specified is 1000.
+
+          .. seealso::
+
+            :paramref:`_engine.Connection.execution_options.stream_results`
+
             :ref:`engine_stream_results`
+
+
+        :param yield_per: Available on: :class:`_engine.Connection`,
+          :class:`_sql.Executable`.  Integer value applied which will
+          set the :paramref:`_engine.Connection.execution_options.stream_results`
+          execution option and invoke :meth:`_engine.Result.yield_per`
+          automatically at once.  Allows equivalent functionality as
+          is present when using this parameter with the ORM.
+
+          .. versionadded:: 1.4.40
+
+          .. seealso::
+
+            :ref:`engine_stream_results` - background and examples
+            on using server side cursors with Core.
+
+            :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+            describing the ORM version of ``yield_per``
 
         :param schema_translate_map: Available on: :class:`_engine.Connection`,
           :class:`_engine.Engine`, :class:`_sql.Executable`.
@@ -1683,6 +1754,12 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
 
+        if execution_options:
+            yp = execution_options.get("yield_per", None)
+            if yp:
+                execution_options = execution_options.union(
+                    {"stream_results": True, "max_row_buffer": yp}
+                )
         try:
             conn = self._dbapi_connection
             if conn is None:

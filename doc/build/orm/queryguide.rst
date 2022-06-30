@@ -1017,33 +1017,63 @@ Yield Per
 ^^^^^^^^^
 
 The ``yield_per`` execution option is an integer value which will cause the
-:class:`_engine.Result` to yield only a fixed count of rows at a time.  It is
-often useful to use with a result partitioning method such as
-:meth:`_engine.Result.partitions`, e.g.::
+:class:`_engine.Result` to yield only a fixed count of rows at a time.
+When used as an execution option, ``yield_per`` is equivalent to making use
+of both the :paramref:`_engine.Connection.execution_options.stream_results`
+execution option, which selects for server side cursors to be used
+by the backend if supported, and the :meth:`_engine.Result.yield_per` method
+on the returned :class:`_engine.Result` object,
+which establishes a fixed size of rows to be fetched as well as a
+corresponding limit to how many ORM objects will be constructed at once.
+
+.. tip::
+
+    ``yield_per`` is now available as a Core execution option as well,
+    described in detail at :ref:`engine_stream_results`.  This section details
+    the use of ``yield_per`` as an execution option with an ORM
+    :class:`_orm.Session`.  The option behaves as similarly as possible
+    in both contexts.
+
+``yield_per`` when used with the ORM is typically established either
+via the :meth:`.Executable.execution_options` method on the given statement
+or by passing it to the :paramref:`_orm.Session.execute.execution_options`
+parameter of :meth:`_orm.Session.execute` or other similar :class:`_orm.Session`
+method.  In the example below its invoked upon a statement::
 
     >>> stmt = select(User).execution_options(yield_per=10)
-    {sql}>>> for partition in session.execute(stmt).partitions(10):
-    ...     for row in partition:
-    ...         print(row)
+    {sql}>>> for row in session.execute(stmt):
+    ...     print(row)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] (){stop}
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
     ...
 
-For expediency, the :meth:`_engine.Result.yield_per` method may also be used
-with an ORM-enabled result set, which will have the similar effect at result
-fetching time as if the ``yield_per`` execution option were used, with the
-exception that ``stream_results`` option, described below, is not set
-automatically. The :meth:`_engine.Result.partitions` method, if used,
-automatically uses the number sent to :meth:`_engine.Result.yield_per` as the
-number of rows in each partition::
+The above code is mostly equivalent as making use of the
+:paramref:`_engine.Connection.execution_options.stream_results` execution
+option, setting the :paramref:`_engine.Connection.execution_options.max_row_buffer`
+to the given integer size, and then using the :meth:`_engine.Result.yield_per`
+method on the :class:`_engine.Result` returned by the
+:class:`_orm.Session`, as in the following example::
 
-    >>> stmt = select(User)
-    {sql}>>> for partition in session.execute(
-    ...          stmt, execution_options={"stream_results": True}
-    ...      ).yield_per(10).partitions():
-    ...      for row in partition:
+    # equivalent code
+    >>> stmt = select(User).execution_options(stream_results=True, max_row_buffer=10)
+    {sql}>>> for row in session.execute(stmt).yield_per(10):
+    ...     print(row)
+    SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    [...] (){stop}
+    (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
+    ...
+
+``yield_per`` is also commonly used in combination with the
+:meth:`_engine.Result.partitions` method, that will iterate rows in grouped
+partitions. The size of each partition defaults to the integer value passed to
+``yield_per``, as in the below example::
+
+    >>> stmt = select(User).execution_options(yield_per=10)
+    {sql}>>> for partition in session.execute(stmt).partitions():
+    ...     for row in partition:
     ...         print(row)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -1055,20 +1085,17 @@ The purpose of "yield per" is when fetching very large result sets
 (> 10K rows), to batch results in sub-collections and yield them
 out partially, so that the Python interpreter doesn't need to declare
 very large areas of memory which is both time consuming and leads
-to excessive memory use.   The performance from fetching hundreds of
-thousands of rows can often double when a suitable yield-per setting
-(e.g. approximately 1000) is used, even with DBAPIs that buffer
-rows (which are most).
+to excessive memory use.
 
 When ``yield_per`` is used, the
 :paramref:`_engine.Connection.execution_options.stream_results` option is also
 set for the Core execution, so that a streaming / server side cursor will be
-used if the backend supports it [1]_
+used if the backend supports it.
 
 The ``yield_per`` execution option **is not compatible with subqueryload eager
 loading or joinedload eager loading when using collections**.  It is
-potentially compatible with selectinload eager loading, **provided the database
-driver supports multiple, independent cursors** [2]_ .
+potentially compatible with selectinload eager loading, provided the database
+driver supports multiple, independent cursors.
 
 Additionally, the ``yield_per`` execution option is not compatible
 with the :meth:`_engine.Result.unique` method; as this method relies upon
@@ -1081,20 +1108,10 @@ large number of rows.
    :meth:`_engine.Result.unique` filter, at the same time as the ``yield_per``
    execution option is used.
 
-The ``yield_per`` execution option is equvialent to the
-:meth:`_orm.Query.yield_per` method in :term:`1.x style` ORM queries.
+When using the legacy :class:`_orm.Query` object with
+:term:`1.x style` ORM use, the :meth:`_orm.Query.yield_per` method
+will have the same result as that of the ``yield_per`` execution option.
 
-.. [1] currently known are
-   :mod:`_postgresql.psycopg2`,
-   :mod:`_mysql.mysqldb` and
-   :mod:`_mysql.pymysql`.  Other backends will pre buffer
-   all rows.  The memory use of raw database rows is much less than that of an
-   ORM-mapped object, but should still be taken into consideration when
-   benchmarking.
-
-.. [2] the :mod:`_postgresql.psycopg2`
-   and :mod:`_sqlite.pysqlite` drivers are
-   known to work, drivers for MySQL and SQL Server ODBC drivers do not.
 
 .. seealso::
 

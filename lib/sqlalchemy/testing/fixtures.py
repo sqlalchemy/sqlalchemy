@@ -92,11 +92,19 @@ class TestBase:
     @config.fixture()
     def close_result_when_finished(self):
         to_close = []
+        to_consume = []
 
-        def go(result):
+        def go(result, consume=False):
             to_close.append(result)
+            if consume:
+                to_consume.append(result)
 
         yield go
+        for r in to_consume:
+            try:
+                r.all()
+            except:
+                pass
         for r in to_close:
             try:
                 r.close()
