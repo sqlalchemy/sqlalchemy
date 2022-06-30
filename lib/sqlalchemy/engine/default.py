@@ -1445,11 +1445,16 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self.dialect.supports_sane_multi_rowcount
 
     def _setup_result_proxy(self):
+        exec_opt = self.execution_options
+
         if self.is_crud or self.is_text:
             result = self._setup_dml_or_text_result()
+            yp = sr = False
         else:
+            yp = exec_opt.get("yield_per", None)
+            sr = self._is_server_side or exec_opt.get("stream_results", False)
             strategy = self.cursor_fetch_strategy
-            if self._is_server_side and strategy is _cursor._DEFAULT_FETCH:
+            if sr and strategy is _cursor._DEFAULT_FETCH:
                 strategy = _cursor.BufferedRowCursorFetchStrategy(
                     self.cursor, self.execution_options
                 )
@@ -1481,6 +1486,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self._setup_out_parameters(result)
 
         self._soft_closed = result._soft_closed
+
+        if yp:
+            result = result.yield_per(yp)
 
         return result
 

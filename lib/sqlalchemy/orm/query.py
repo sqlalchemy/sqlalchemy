@@ -850,6 +850,10 @@ class Query(
         level. See the section :ref:`orm_queryguide_yield_per` for further
         background on this option.
 
+        .. seealso::
+
+            :ref:`orm_queryguide_yield_per`
+
         """
         self.load_options += {"_yield_per": count}
 

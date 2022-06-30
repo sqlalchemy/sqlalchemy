@@ -38,6 +38,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import Unicode
 from sqlalchemy import union
 from sqlalchemy import util
+from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import aliased
@@ -5406,8 +5407,7 @@ class YieldTest(_fixtures.FixtureTest):
                     if not k.startswith("_")
                 },
                 {
-                    "max_row_buffer": 15,
-                    "stream_results": True,
+                    "yield_per": 15,
                     "foo": "bar",
                     "future_result": True,
                 },
@@ -5435,8 +5435,6 @@ class YieldTest(_fixtures.FixtureTest):
                     if not k.startswith("_")
                 },
                 {
-                    "max_row_buffer": 15,
-                    "stream_results": True,
                     "yield_per": 15,
                     "future_result": True,
                 },
@@ -5444,6 +5442,12 @@ class YieldTest(_fixtures.FixtureTest):
 
         stmt = select(User).execution_options(yield_per=15)
         result = sess.execute(stmt)
+
+        assert isinstance(
+            result.raw.cursor_strategy, _cursor.BufferedRowCursorFetchStrategy
+        )
+        eq_(result.raw.cursor_strategy._max_row_buffer, 15)
+
         eq_(len(result.all()), 4)
 
     def test_no_joinedload_opt(self):

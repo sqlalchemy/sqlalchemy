@@ -12,6 +12,7 @@ from ...engine.result import _NO_ROW
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
 from ...engine.result import MergedResult
+from ...sql.base import _generative
 from ...util.concurrency import greenlet_spawn
 
 
@@ -63,6 +64,7 @@ class AsyncResult(AsyncCommon):
         """
         return self._metadata.keys
 
+    @_generative
     def unique(self, strategy=None):
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncResult`.
@@ -73,7 +75,6 @@ class AsyncResult(AsyncCommon):
 
         """
         self._unique_filter_state = (set(), strategy)
-        return self
 
     def columns(self, *col_expressions):
         r"""Establish the columns that should be returned in each row.

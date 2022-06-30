@@ -286,14 +286,9 @@ class ORMCompileState(CompileState):
         else:
             execution_options = execution_options.union(_orm_load_exec_options)
 
-        if "yield_per" in execution_options or load_options._yield_per:
+        if load_options._yield_per:
             execution_options = execution_options.union(
-                {
-                    "stream_results": True,
-                    "max_row_buffer": execution_options.get(
-                        "yield_per", load_options._yield_per
-                    ),
-                }
+                {"yield_per": load_options._yield_per}
             )
 
         bind_arguments["clause"] = statement

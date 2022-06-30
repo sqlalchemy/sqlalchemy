@@ -86,6 +86,28 @@ class TestBase(object):
         conn.close()
 
     @config.fixture()
+    def close_result_when_finished(self):
+        to_close = []
+        to_consume = []
+
+        def go(result, consume=False):
+            to_close.append(result)
+            if consume:
+                to_consume.append(result)
+
+        yield go
+        for r in to_consume:
+            try:
+                r.all()
+            except:
+                pass
+        for r in to_close:
+            try:
+                r.close()
+            except:
+                pass
+
+    @config.fixture()
     def registry(self, metadata):
         reg = registry(metadata=metadata)
         yield reg

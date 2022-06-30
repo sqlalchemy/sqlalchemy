@@ -44,6 +44,7 @@ from .interfaces import TypeCompiler
 from .mock import create_mock_engine
 from .reflection import Inspector
 from .result import ChunkedIteratorResult
+from .result import FilterResult
 from .result import FrozenResult
 from .result import IteratorResult
 from .result import MappingResult
