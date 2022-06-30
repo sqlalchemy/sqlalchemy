@@ -707,22 +707,23 @@ buffers of the given size, only fetching new rows when the buffer is empty::
         for row in result.yield_per(100):
             _process_row(row)
 
-The ``stream_results`` option is also available with the ORM.  When using the
-ORM, either the :meth:`_engine.Result.yield_per` or :meth:`_engine.Result.partitions`
-methods should be used to set the number of ORM rows to be buffered each time
-while yielding::
+The ``stream_results`` option is also available with the ORM. When using the
+ORM, the :meth:`_engine.Result.yield_per` method should be used to set the
+number of ORM rows to be buffered each time while yielding
+(:meth:`_engine.Result.partitions` uses the "yield per" value by default for
+partition size)::
 
     with orm.Session(engine) as session:
         result = session.execute(
             select(User).order_by(User_id).execution_options(stream_results=True),
         )
-        for partition in result.partitions(100):
+        for partition in result.yield_per(100).partitions():
             _process_rows(partition)
 
 
 .. note:: ORM result sets currently must make use of :meth:`_engine.Result.yield_per`
-   or :meth:`_engine.Result.partitions` in order to achieve streaming ORM results.
-   If either of these methods are not used to set the number of rows to
+   in order to achieve streaming ORM results.
+   If the method is not used to set the number of rows to
    fetch before yielding, the entire result is fetched before rows are yielded.
    This may change in a future release so that the automatic buffer size used
    by :class:`_engine.Connection` takes place for ORM results as well.
@@ -733,6 +734,12 @@ execution option::
 
     for row in session.query(User).yield_per(100):
         # process row
+
+.. seealso::
+
+    :ref:`orm_queryguide_yield_per` - in the :ref:`queryguide_toplevel`
+
+    :meth:`_engine.Result.partitions`
 
 
 .. _dbengine_implicit:

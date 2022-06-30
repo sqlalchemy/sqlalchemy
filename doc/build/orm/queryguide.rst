@@ -1018,14 +1018,17 @@ often useful to use with a result partitioning method such as
     ...
 
 For expediency, the :meth:`_engine.Result.yield_per` method may also be used
-with an ORM-enabled result set, which will have the same effect at result
-fetching time as if the ``yield_per`` execution option were used. The
-:meth:`_engine.Result.partitions` method, if used, automatically uses the
-number sent to :meth:`_engine.Result.yield_per` as the number of rows in each
-partition::
+with an ORM-enabled result set, which will have the similar effect at result
+fetching time as if the ``yield_per`` execution option were used, with the
+exception that ``stream_results`` option, described below, is not set
+automatically. The :meth:`_engine.Result.partitions` method, if used,
+automatically uses the number sent to :meth:`_engine.Result.yield_per` as the
+number of rows in each partition::
 
     >>> stmt = select(User)
-    {sql}>>> for partition in session.execute(stmt).yield_per(10).partitions():
+    {sql} >>> for partition in session.execute(
+    ...          stmt, execution_options={"stream_results": True}
+    ...       ).yield_per(10).partitions():
     ...     for row in partition:
     ...         print(row)
     SELECT user_account.id, user_account.name, user_account.fullname
