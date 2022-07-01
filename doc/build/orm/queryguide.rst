@@ -1078,10 +1078,12 @@ When ``yield_per`` is used, the
 set for the Core execution, so that a streaming / server side cursor will be
 used if the backend supports it.
 
-The ``yield_per`` execution option **is not compatible with subqueryload eager
-loading or joinedload eager loading when using collections**.  It is
-potentially compatible with selectinload eager loading, provided the database
-driver supports multiple, independent cursors.
+The ``yield_per`` execution option **is not compatible** with
+:ref:`"subquery" eager loading <subquery_eager_loading>` loading or
+:ref:`"joined" eager loading <joined_eager_loading>` when using collections. It
+is potentially compatible with :ref:`"select in" eager loading
+<selectin_eager_loading>` , provided the database driver supports multiple,
+independent cursors.
 
 Additionally, the ``yield_per`` execution option is not compatible
 with the :meth:`_engine.Result.unique` method; as this method relies upon
