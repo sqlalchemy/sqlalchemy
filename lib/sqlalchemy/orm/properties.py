@@ -684,4 +684,5 @@ class MappedColumn(
                     f"Could not locate SQLAlchemy Core "
                     f"type for Python type: {our_type}"
                 )
-            self.column.type = new_sqltype  # type: ignore
+
+            self.column.type = sqltypes.to_instance(new_sqltype)

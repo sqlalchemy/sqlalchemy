@@ -39,6 +39,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import MappedCollection
+from sqlalchemy.schema import CreateTable
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
@@ -99,6 +100,32 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         is_(MyClass.__table__.c.data.type, typ)
         is_true(MyClass.__table__.c.id.primary_key)
+
+    @testing.combinations(
+        (BIGINT(),),
+        (BIGINT,),
+        (Integer().with_variant(BIGINT, "default")),
+        (Integer().with_variant(BIGINT(), "default")),
+        (BIGINT().with_variant(String(), "some_other_dialect")),
+    )
+    def test_type_map_varieties(self, typ):
+
+        Base = declarative_base(type_annotation_map={int: typ})
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            x: Mapped[int]
+            y: Mapped[int] = mapped_column()
+            z: Mapped[int] = mapped_column(typ)
+
+        self.assert_compile(
+            CreateTable(MyClass.__table__),
+            "CREATE TABLE mytable (id BIGINT NOT NULL, "
+            "x BIGINT NOT NULL, y BIGINT NOT NULL, z BIGINT NOT NULL, "
+            "PRIMARY KEY (id))",
+        )
 
     def test_required_no_arg(self, decl_base):
         with expect_raises_message(

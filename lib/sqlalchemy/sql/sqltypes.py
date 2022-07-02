@@ -46,7 +46,7 @@ from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
-from .type_api import to_instance
+from .type_api import to_instance as to_instance
 from .type_api import TypeDecorator as TypeDecorator
 from .type_api import TypeEngine as TypeEngine
 from .type_api import TypeEngineMixin

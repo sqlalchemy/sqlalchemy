@@ -41,6 +41,7 @@ from ..util.typing import TypeGuard
 
 # these are back-assigned by sqltypes.
 if typing.TYPE_CHECKING:
+    from ._typing import _TypeEngineArgument
     from .elements import BindParameter
     from .elements import ColumnElement
     from .operators import OperatorType
@@ -54,7 +55,6 @@ if typing.TYPE_CHECKING:
     from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
     from ..engine.interfaces import Dialect
-
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -642,7 +642,9 @@ class TypeEngine(Visitable, Generic[_T]):
         raise NotImplementedError()
 
     def with_variant(
-        self: SelfTypeEngine, type_: TypeEngine[Any], *dialect_names: str
+        self: SelfTypeEngine,
+        type_: _TypeEngineArgument[Any],
+        *dialect_names: str,
     ) -> SelfTypeEngine:
         r"""Produce a copy of this type object that will utilize the given
         type when applied to the dialect of the given name.
