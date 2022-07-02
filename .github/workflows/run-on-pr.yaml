@@ -12,6 +12,9 @@ env:
   # global env to all steps
   TOX_WORKERS: -n2
 
+permissions:
+  contents: read
+
 jobs:
   run-test-amd64:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
