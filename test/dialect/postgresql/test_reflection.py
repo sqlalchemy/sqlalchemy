@@ -21,6 +21,7 @@ from sqlalchemy import SmallInteger
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -39,6 +40,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.assertions import AssertsExecutionResults
+from sqlalchemy.testing.assertions import ComparesIndexes
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import is_
@@ -702,7 +704,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
 
 class ReflectionTest(
-    ReflectionFixtures, AssertsCompiledSQL, fixtures.TestBase
+    ReflectionFixtures, AssertsCompiledSQL, ComparesIndexes, fixtures.TestBase
 ):
     __only_on__ = "postgresql"
     __backend__ = True
@@ -1152,7 +1154,7 @@ class ReflectionTest(
         A_seq.drop(connection)
 
     def test_index_reflection(self, metadata, connection):
-        """Reflecting expression-based indexes should warn"""
+        """Reflecting expression-based indexes works"""
 
         Table(
             "party",
@@ -1160,44 +1162,99 @@ class ReflectionTest(
             Column("id", String(10), nullable=False),
             Column("name", String(20), index=True),
             Column("aname", String(20)),
+            Column("other", String(20)),
         )
         metadata.create_all(connection)
-        connection.exec_driver_sql("create index idx1 on party ((id || name))")
+        connection.exec_driver_sql(
+            """
+            create index idx3 on party
+                (lower(name::text), other, lower(aname::text))
+            """
+        )
+        connection.exec_driver_sql(
+            "create index idx1 on party ((id || name), (other || id::text))"
+        )
         connection.exec_driver_sql(
             "create unique index idx2 on party (id) where name = 'test'"
         )
         connection.exec_driver_sql(
             """
-            create index idx3 on party using btree
-                (lower(name::text), lower(aname::text))
+            create index idx4 on party using btree
+                (name nulls first, lower(other), aname desc)
+                where name != 'foo'
             """
         )
 
-        def go():
-            m2 = MetaData()
-            t2 = Table("party", m2, autoload_with=connection)
-            assert len(t2.indexes) == 2
+        expected = [
+            {
+                "name": "idx1",
+                "column_names": [None, None],
+                "expressions": [
+                    "(id::text || name::text)",
+                    "(other::text || id::text)",
+                ],
+                "unique": False,
+                "include_columns": [],
+                "dialect_options": {"postgresql_include": []},
+            },
+            {
+                "name": "idx2",
+                "column_names": ["id"],
+                "unique": True,
+                "include_columns": [],
+                "dialect_options": {
+                    "postgresql_include": [],
+                    "postgresql_where": "((name)::text = 'test'::text)",
+                },
+            },
+            {
+                "name": "idx3",
+                "column_names": [None, "other", None],
+                "expressions": [
+                    "lower(name::text)",
+                    "other",
+                    "lower(aname::text)",
+                ],
+                "unique": False,
+                "include_columns": [],
+                "dialect_options": {"postgresql_include": []},
+            },
+            {
+                "name": "idx4",
+                "column_names": ["name", None, "aname"],
+                "expressions": ["name", "lower(other::text)", "aname"],
+                "unique": False,
+                "include_columns": [],
+                "dialect_options": {
+                    "postgresql_include": [],
+                    "postgresql_where": "((name)::text <> 'foo'::text)",
+                },
+                "column_sorting": {
+                    "aname": ("desc",),
+                    "name": ("nulls_first",),
+                },
+            },
+            {
+                "name": "ix_party_name",
+                "column_names": ["name"],
+                "unique": False,
+                "include_columns": [],
+                "dialect_options": {"postgresql_include": []},
+            },
+        ]
+        if connection.dialect.server_version_info < (11,):
+            for index in expected:
+                index.pop("include_columns")
+                index["dialect_options"].pop("postgresql_include")
+                if not index["dialect_options"]:
+                    index.pop("dialect_options")
 
-            # Make sure indexes are in the order we expect them in
+        insp = inspect(connection)
+        eq_(insp.get_indexes("party"), expected)
 
-            tmp = [(idx.name, idx) for idx in t2.indexes]
-            tmp.sort()
-            r1, r2 = [idx[1] for idx in tmp]
-            assert r1.name == "idx2"
-            assert r1.unique is True
-            assert r2.unique is False
-            assert [t2.c.id] == r1.columns
-            assert [t2.c.name] == r2.columns
-
-        testing.assert_warnings(
-            go,
-            [
-                "Skipped unsupported reflection of "
-                "expression-based index idx1 of table party",
-                "Skipped unsupported reflection of "
-                "expression-based index idx3 of table party",
-            ],
-        )
+        m2 = MetaData()
+        t2 = Table("party", m2, autoload_with=connection)
+        self.compare_table_index_with_expected(t2, expected, "postgresql")
 
     def test_index_reflection_partial(self, metadata, connection):
         """Reflect the filter definition on partial indexes"""
@@ -1419,13 +1476,24 @@ class ReflectionTest(
             Column("id", Integer, primary_key=True),
             Column("x", ARRAY(Integer)),
             Column("name", String(20)),
+            Column("aname", String(20)),
+            Column("other", Text()),
         )
         metadata.create_all(connection)
         connection.exec_driver_sql("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
-
-        # prior to #5205, this would return:
-        # [{'column_names': ['x', 'name'],
-        #  'name': 'idx1', 'unique': False}]
+        connection.exec_driver_sql(
+            """
+            create index idx3 on t
+                (lower(name::text), other desc nulls last, lower(aname::text))
+                include (id, x)
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            create unique index idx2 on t using btree
+                (lower(other), (id * id)) include (id)
+            """
+        )
 
         ind = connection.dialect.get_indexes(connection, "t", None)
         eq_(
@@ -1437,7 +1505,30 @@ class ReflectionTest(
                     "include_columns": ["name"],
                     "dialect_options": {"postgresql_include": ["name"]},
                     "name": "idx1",
-                }
+                },
+                {
+                    "name": "idx2",
+                    "column_names": [None, None],
+                    "expressions": ["lower(other)", "(id * id)"],
+                    "unique": True,
+                    "include_columns": ["id"],
+                    "dialect_options": {"postgresql_include": ["id"]},
+                },
+                {
+                    "name": "idx3",
+                    "column_names": [None, "other", None],
+                    "expressions": [
+                        "lower(name::text)",
+                        "other",
+                        "lower(aname::text)",
+                    ],
+                    "unique": False,
+                    "include_columns": ["id", "x"],
+                    "dialect_options": {"postgresql_include": ["id", "x"]},
+                    "column_sorting": {
+                        "other": ("desc", "nulls_last"),
+                    },
+                },
             ],
         )
 

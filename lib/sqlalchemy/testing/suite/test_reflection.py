@@ -35,6 +35,7 @@ from ...schema import DDL
 from ...schema import Index
 from ...sql.elements import quoted_name
 from ...sql.schema import BLANK_SCHEMA
+from ...testing import ComparesIndexes
 from ...testing import ComparesTables
 from ...testing import is_false
 from ...testing import is_true
@@ -2254,7 +2255,7 @@ class TableNoColumnsTest(fixtures.TestBase):
         eq_(multi, {(None, "empty_v"): []})
 
 
-class ComponentReflectionTestExtra(fixtures.TestBase):
+class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
     __backend__ = True
 
@@ -2322,9 +2323,10 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
             metadata,
             Column("x", String(30)),
             Column("y", String(30)),
+            Column("z", String(30)),
         )
 
-        Index("t_idx", func.lower(t.c.x), func.lower(t.c.y))
+        Index("t_idx", func.lower(t.c.x), t.c.z, func.lower(t.c.y))
 
         Index("t_idx_2", t.c.x)
 
@@ -2335,19 +2337,49 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         expected = [
             {"name": "t_idx_2", "column_names": ["x"], "unique": False}
         ]
-        if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
-            expected[0]["dialect_options"] = {
-                "%s_include" % connection.engine.name: []
-            }
 
-        with expect_warnings(
-            "Skipped unsupported reflection of expression-based index t_idx"
-        ):
-            eq_(
-                insp.get_indexes("t"),
-                expected,
-            )
+        def completeIndex(entry):
+            if testing.requires.index_reflects_included_columns.enabled:
+                entry["include_columns"] = []
+                entry["dialect_options"] = {
+                    f"{connection.engine.name}_include": []
+                }
+
+        completeIndex(expected[0])
+
+        class filtering_str(str):
+            def __eq__(self, other):
+                # test that lower and x or y are in the string
+                return "lower" in other and ("x" in other or "y" in other)
+
+        if testing.requires.reflect_indexes_with_expressions.enabled:
+            expr_index = {
+                "name": "t_idx",
+                "column_names": [None, "z", None],
+                "expressions": [
+                    filtering_str("lower(x)"),
+                    "z",
+                    filtering_str("lower(y)"),
+                ],
+                "unique": False,
+            }
+            completeIndex(expr_index)
+            expected.insert(0, expr_index)
+            eq_(insp.get_indexes("t"), expected)
+            m2 = MetaData()
+            t2 = Table("t", m2, autoload_with=connection)
+        else:
+            with expect_warnings(
+                "Skipped unsupported reflection of expression-based "
+                "index t_idx"
+            ):
+                eq_(insp.get_indexes("t"), expected)
+                m2 = MetaData()
+                t2 = Table("t", m2, autoload_with=connection)
+
+        self.compare_table_index_with_expected(
+            t2, expected, connection.engine.name
+        )
 
     @testing.requires.index_reflects_included_columns
     def test_reflect_covering_index(self, metadata, connection):

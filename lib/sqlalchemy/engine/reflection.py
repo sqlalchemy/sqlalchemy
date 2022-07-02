@@ -1796,12 +1796,12 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 )
             )
 
-    _index_sort_exprs = [
-        ("asc", operators.asc_op),
-        ("desc", operators.desc_op),
-        ("nulls_first", operators.nulls_first_op),
-        ("nulls_last", operators.nulls_last_op),
-    ]
+    _index_sort_exprs = {
+        "asc": operators.asc_op,
+        "desc": operators.desc_op,
+        "nulls_first": operators.nulls_first_op,
+        "nulls_last": operators.nulls_last_op,
+    }
 
     def _reflect_indexes(
         self,
@@ -1818,6 +1818,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         for index_d in indexes:
             name = index_d["name"]
             columns = index_d["column_names"]
+            expressions = index_d.get("expressions")
             column_sorting = index_d.get("column_sorting", {})
             unique = index_d["unique"]
             flavor = index_d.get("type", "index")
@@ -1830,33 +1831,43 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 continue
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
-            idx_col: Any
-            idx_cols = []
-            for c in columns:
-                try:
-                    idx_col = (
-                        cols_by_orig_name[c]
-                        if c in cols_by_orig_name
-                        else table.c[c]
-                    )
-                except KeyError:
-                    util.warn(
-                        "%s key '%s' was not located in "
-                        "columns for table '%s'" % (flavor, c, table.name)
-                    )
-                    continue
-                c_sorting = column_sorting.get(c, ())
-                for k, op in self._index_sort_exprs:
-                    if k in c_sorting:
-                        idx_col = op(idx_col)
-                idx_cols.append(idx_col)
-
-            sa_schema.Index(
-                name,
-                *idx_cols,
-                _table=table,
-                **dict(list(dialect_options.items()) + [("unique", unique)]),
-            )
+            idx_element: Any
+            idx_elements = []
+            for index, c in enumerate(columns):
+                if c is None:
+                    if not expressions:
+                        util.warn(
+                            f"Skipping {flavor} {name!r} because key "
+                            f"{index+1} reflected as None but no "
+                            "'expressions' were returned"
+                        )
+                        break
+                    idx_element = sql.text(expressions[index])
+                else:
+                    try:
+                        if c in cols_by_orig_name:
+                            idx_element = cols_by_orig_name[c]
+                        else:
+                            idx_element = table.c[c]
+                    except KeyError:
+                        util.warn(
+                            f"{flavor} key {c!r} was not located in "
+                            f"columns for table {table.name!r}"
+                        )
+                        continue
+                    for option in column_sorting.get(c, ()):
+                        if option in self._index_sort_exprs:
+                            op = self._index_sort_exprs[option]
+                            idx_element = op(idx_element)
+                idx_elements.append(idx_element)
+            else:
+                sa_schema.Index(
+                    name,
+                    *idx_elements,
+                    _table=table,
+                    unique=unique,
+                    **dialect_options,
+                )
 
     def _reflect_unique_constraints(
         self,
