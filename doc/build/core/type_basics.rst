@@ -220,17 +220,17 @@ Or some PostgreSQL types::
         Column('elements', postgresql.ARRAY(String))
     )
 
-Each dialect provides the full set of typenames supported by
-that backend within its `__all__` collection, so that a simple
-`import *` or similar will import all supported types as
-implemented for that backend::
+Each dialect provides the full set of database types supported by
+that backend within its own module, so they may all be used
+against the module directly without the need to differentiate between
+which types are specific to that backend or not::
 
-    from sqlalchemy.dialects.postgresql import *
+    from sqlalchemy.dialects import postgresql
 
     t = Table('mytable', metadata,
-               Column('id', INTEGER, primary_key=True),
-               Column('name', VARCHAR(300)),
-               Column('inetaddr', INET)
+               Column('id', postgresql.INTEGER, primary_key=True),
+               Column('name', postgresql.VARCHAR(300)),
+               Column('inetaddr', postgresql.INET)
     )
 
 Where above, the INTEGER and VARCHAR types are ultimately from
