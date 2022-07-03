@@ -13,6 +13,11 @@ Describing Databases with MetaData
 This section discusses the fundamental :class:`_schema.Table`, :class:`_schema.Column`
 and :class:`_schema.MetaData` objects.
 
+.. seealso::
+
+    :ref:`tutorial_working_with_metadata` - tutorial introduction to
+    SQLAlchemy's database metadata concept in the :ref:`unified_tutorial`
+
 A collection of metadata entities is stored in an object aptly named
 :class:`~sqlalchemy.schema.MetaData`::
 
@@ -160,41 +165,41 @@ The usual way to issue CREATE is to use
 that first check for the existence of each individual table, and if not found
 will issue the CREATE statements:
 
-    .. sourcecode:: python+sql
+.. sourcecode:: python+sql
 
-        engine = create_engine('sqlite:///:memory:')
+    engine = create_engine('sqlite:///:memory:')
 
-        metadata_obj = MetaData()
+    metadata_obj = MetaData()
 
-        user = Table('user', metadata_obj,
-            Column('user_id', Integer, primary_key=True),
-            Column('user_name', String(16), nullable=False),
-            Column('email_address', String(60), key='email'),
-            Column('nickname', String(50), nullable=False)
-        )
+    user = Table('user', metadata_obj,
+        Column('user_id', Integer, primary_key=True),
+        Column('user_name', String(16), nullable=False),
+        Column('email_address', String(60), key='email'),
+        Column('nickname', String(50), nullable=False)
+    )
 
-        user_prefs = Table('user_prefs', metadata_obj,
-            Column('pref_id', Integer, primary_key=True),
-            Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
-            Column('pref_name', String(40), nullable=False),
-            Column('pref_value', String(100))
-        )
+    user_prefs = Table('user_prefs', metadata_obj,
+        Column('pref_id', Integer, primary_key=True),
+        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
+        Column('pref_name', String(40), nullable=False),
+        Column('pref_value', String(100))
+    )
 
-        {sql}metadata_obj.create_all(engine)
-        PRAGMA table_info(user){}
-        CREATE TABLE user(
-                user_id INTEGER NOT NULL PRIMARY KEY,
-                user_name VARCHAR(16) NOT NULL,
-                email_address VARCHAR(60),
-                nickname VARCHAR(50) NOT NULL
-        )
-        PRAGMA table_info(user_prefs){}
-        CREATE TABLE user_prefs(
-                pref_id INTEGER NOT NULL PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES user(user_id),
-                pref_name VARCHAR(40) NOT NULL,
-                pref_value VARCHAR(100)
-        )
+    {sql}metadata_obj.create_all(engine)
+    PRAGMA table_info(user){}
+    CREATE TABLE user(
+            user_id INTEGER NOT NULL PRIMARY KEY,
+            user_name VARCHAR(16) NOT NULL,
+            email_address VARCHAR(60),
+            nickname VARCHAR(50) NOT NULL
+    )
+    PRAGMA table_info(user_prefs){}
+    CREATE TABLE user_prefs(
+            pref_id INTEGER NOT NULL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES user(user_id),
+            pref_name VARCHAR(40) NOT NULL,
+            pref_value VARCHAR(100)
+    )
 
 :func:`~sqlalchemy.schema.MetaData.create_all` creates foreign key constraints
 between tables usually inline with the table definition itself, and for this

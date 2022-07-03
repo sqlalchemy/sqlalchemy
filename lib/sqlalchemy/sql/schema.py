@@ -172,10 +172,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     e.g.::
 
-        mytable = Table("mytable", metadata,
-                        Column('mytable_id', Integer, primary_key=True),
-                        Column('value', String(50))
-                   )
+        mytable = Table(
+            "mytable", metadata,
+            Column('mytable_id', Integer, primary_key=True),
+            Column('value', String(50))
+        )
 
     The :class:`_schema.Table`
     object constructs a unique instance of itself based
