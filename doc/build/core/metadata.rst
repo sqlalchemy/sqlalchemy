@@ -16,7 +16,7 @@ and :class:`_schema.MetaData` objects.
 A collection of metadata entities is stored in an object aptly named
 :class:`~sqlalchemy.schema.MetaData`::
 
-    from sqlalchemy import *
+    from sqlalchemy import MetaData
 
     metadata_obj = MetaData()
 
