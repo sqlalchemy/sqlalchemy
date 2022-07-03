@@ -1077,6 +1077,15 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 "B", viewonly=True
             )
 
+            # note this is string annotation
+            b_one_to_one: Mapped["B"] = relationship(  # noqa: F821
+                viewonly=True
+            )
+
+            b_one_to_one_warg: Mapped["B"] = relationship(  # noqa: F821
+                "B", viewonly=True
+            )
+
         class B(decl_base):
             __tablename__ = "b"
             id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1094,8 +1103,35 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(A.__mapper__.attrs["bs_list_warg"].uselist)
         is_true(A.__mapper__.attrs["bs_set_warg"].uselist)
 
+        is_false(A.__mapper__.attrs["b_one_to_one"].uselist)
+        is_false(A.__mapper__.attrs["b_one_to_one_warg"].uselist)
+
         is_false(B.__mapper__.attrs["a"].uselist)
         is_false(B.__mapper__.attrs["a_warg"].uselist)
+
+    def test_one_to_one_example(self, decl_base: Type[DeclarativeBase]):
+        """test example in the relationship docs will derive uselist=False
+        correctly"""
+
+        class Parent(decl_base):
+            __tablename__ = "parent"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            child: Mapped["Child"] = relationship(  # noqa: F821
+                back_populates="parent"
+            )
+
+        class Child(decl_base):
+            __tablename__ = "child"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+            parent: Mapped["Parent"] = relationship(back_populates="child")
+
+        c1 = Child()
+        p1 = Parent(child=c1)
+        is_(p1.child, c1)
+        is_(c1.parent, p1)
 
     def test_collection_class_dict_no_collection(self, decl_base):
         class A(decl_base):

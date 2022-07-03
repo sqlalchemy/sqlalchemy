@@ -38,6 +38,7 @@ from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
@@ -546,6 +547,37 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
             TypeError, "Incompatible collection type: list is not set-like"
         ):
             A()
+
+    def test_one_to_one_example(self, dc_decl_base: Type[MappedAsDataclass]):
+        """test example in the relationship docs will derive uselist=False
+        correctly"""
+
+        class Parent(dc_decl_base):
+            __tablename__ = "parent"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            child: Mapped["Child"] = relationship(  # noqa: F821
+                back_populates="parent", default=None
+            )
+
+        class Child(dc_decl_base):
+            __tablename__ = "child"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            parent_id: Mapped[int] = mapped_column(
+                ForeignKey("parent.id"), init=False
+            )
+            parent: Mapped["Parent"] = relationship(
+                back_populates="child", default=None
+            )
+
+        c1 = Child()
+        p1 = Parent(child=c1)
+        is_(p1.child, c1)
+        is_(c1.parent, p1)
+
+        p2 = Parent()
+        is_(p2.child, None)
 
     def test_replace_operation_works_w_history_etc(
         self, registry: _RegistryType

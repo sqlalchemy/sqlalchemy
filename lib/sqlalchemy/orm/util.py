@@ -1958,8 +1958,12 @@ def _getitem(iterable_query: Query[Any], item: Any) -> Any:
 def _is_mapped_annotation(
     raw_annotation: _AnnotationScanType, cls: Type[Any]
 ) -> bool:
-    annotated = de_stringify_annotation(cls, raw_annotation)
-    return is_origin_of(annotated, "Mapped", module="sqlalchemy.orm")
+    try:
+        annotated = de_stringify_annotation(cls, raw_annotation)
+    except NameError:
+        return False
+    else:
+        return is_origin_of(annotated, "Mapped", module="sqlalchemy.orm")
 
 
 def _cleanup_mapped_str_annotation(annotation: str) -> str:
@@ -1984,7 +1988,10 @@ def _cleanup_mapped_str_annotation(annotation: str) -> str:
 
         # stack: ['Mapped', 'List', 'Address']
         if not re.match(r"""^["'].*["']$""", stack[-1]):
-            stack[-1] = f'"{stack[-1]}"'
+            stripchars = "\"' "
+            stack[-1] = ", ".join(
+                f'"{elem.strip(stripchars)}"' for elem in stack[-1].split(",")
+            )
             # stack: ['Mapped', 'List', '"Address"']
 
             annotation = "[".join(stack) + ("]" * (len(stack) - 1))
@@ -2007,6 +2014,7 @@ def _extract_mapped_subtype(
     Includes error raise scenarios and other options.
 
     """
+
     if raw_annotation is None:
 
         if required:
@@ -2017,9 +2025,19 @@ def _extract_mapped_subtype(
             )
         return None
 
-    annotated = de_stringify_annotation(
-        cls, raw_annotation, _cleanup_mapped_str_annotation
-    )
+    try:
+        annotated = de_stringify_annotation(
+            cls, raw_annotation, _cleanup_mapped_str_annotation
+        )
+    except NameError as ne:
+        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
+            raise sa_exc.ArgumentError(
+                f"Could not interpret annotation {raw_annotation}.  "
+                "Check that it's not using names that might not be imported "
+                "at the module level.  See chained stack trace for more hints."
+            ) from ne
+
+        annotated = raw_annotation  # type: ignore
 
     if is_dataclass_field:
         return annotated

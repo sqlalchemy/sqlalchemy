@@ -1724,11 +1724,12 @@ class Relationship(
                     self.collection_class = collection_class
             else:
                 self.uselist = False
+
             if argument.__args__:  # type: ignore
                 if issubclass(
                     argument.__origin__, typing.Mapping  # type: ignore
                 ):
-                    type_arg = argument.__args__[1]  # type: ignore
+                    type_arg = argument.__args__[-1]  # type: ignore
                 else:
                     type_arg = argument.__args__[0]  # type: ignore
                 if hasattr(type_arg, "__forward_arg__"):
@@ -1742,6 +1743,12 @@ class Relationship(
                 )
         elif hasattr(argument, "__forward_arg__"):
             argument = argument.__forward_arg__  # type: ignore
+
+            # we don't allow the collection class to be a
+            # __forward_arg__ right now, so if we see a forward arg here,
+            # we know there was no collection class either
+            if self.collection_class is None:
+                self.uselist = False
 
         self.argument = argument
 

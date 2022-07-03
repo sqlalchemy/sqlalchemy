@@ -10,6 +10,7 @@ from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
@@ -18,6 +19,8 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -59,6 +62,47 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         o = Order()
         self.assert_(o.description is None)
+
+        q = fixture_session().query(Order).order_by(Order.id)
+
+        def go():
+            result = q.all()
+            o2 = result[2]
+            o2.description
+
+        self.sql_eq_(
+            go,
+            [
+                (
+                    "SELECT orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.isopen AS orders_isopen "
+                    "FROM orders ORDER BY orders.id",
+                    {},
+                ),
+                (
+                    "SELECT orders.description AS orders_description "
+                    "FROM orders WHERE orders.id = :pk_1",
+                    {"pk_1": 3},
+                ),
+            ],
+        )
+
+    def test_basic_w_new_style(self):
+        """sanity check that mapped_column(deferred=True) works"""
+
+        class Base(DeclarativeBase):
+            pass
+
+        class Order(Base):
+            __tablename__ = "orders"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            user_id: Mapped[int]
+            address_id: Mapped[int]
+            isopen: Mapped[bool]
+            description: Mapped[str] = mapped_column(deferred=True)
 
         q = fixture_session().query(Order).order_by(Order.id)
 

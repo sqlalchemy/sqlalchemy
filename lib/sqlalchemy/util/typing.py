@@ -113,8 +113,10 @@ def de_stringify_annotation(
 
         try:
             annotation = eval(annotation, base_globals, None)
-        except NameError:
-            pass
+        except NameError as err:
+            raise NameError(
+                f"Could not de-stringify annotation {annotation}"
+            ) from err
     return annotation  # type: ignore
 
 

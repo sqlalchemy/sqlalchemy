@@ -87,6 +87,10 @@ from .interfaces import PropComparator as PropComparator
 from .interfaces import UserDefinedOption as UserDefinedOption
 from .loading import merge_frozen_result as merge_frozen_result
 from .loading import merge_result as merge_result
+from .mapped_collection import attribute_mapped_collection
+from .mapped_collection import column_mapped_collection
+from .mapped_collection import mapped_collection
+from .mapped_collection import MappedCollection
 from .mapper import configure_mappers as configure_mappers
 from .mapper import Mapper as Mapper
 from .mapper import reconstructor as reconstructor

@@ -463,6 +463,7 @@ class _class_resolver:
         generic_match = re.match(r"(.+)\[(.+)\]", name)
 
         if generic_match:
+            clsarg = generic_match.group(2).strip("'")
             raise exc.InvalidRequestError(
                 f"When initializing mapper {self.prop.parent}, "
                 f'expression "relationship({self.arg!r})" seems to be '
@@ -470,7 +471,7 @@ class _class_resolver:
                 "please state the generic argument "
                 "using an annotation, e.g. "
                 f'"{self.prop.key}: Mapped[{generic_match.group(1)}'
-                f'[{generic_match.group(2)}]] = relationship()"'
+                f"['{clsarg}']] = relationship()\""
             ) from err
         else:
             raise exc.InvalidRequestError(
