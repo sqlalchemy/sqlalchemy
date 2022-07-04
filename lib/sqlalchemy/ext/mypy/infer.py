@@ -14,6 +14,7 @@ from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import Expression
 from mypy.nodes import FuncDef
+from mypy.nodes import LambdaExpr
 from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
 from mypy.nodes import RefExpr
@@ -386,6 +387,10 @@ def _infer_type_from_decl_column(
                 continue
         elif isinstance(column_arg, (StrExpr,)):
             # x = Column("name", String), go to next argument
+            continue
+        elif isinstance(column_arg, (LambdaExpr,)):
+            # x = Column("name", String, default=lambda: uuid.uuid4())
+            # go to next argument
             continue
         else:
             assert False
