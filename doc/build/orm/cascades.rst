@@ -570,6 +570,8 @@ expunge
 from the :class:`.Session` using :meth:`.Session.expunge`, the
 operation should be propagated down to referred objects.
 
+.. _back_populates_cascade:
+
 .. _backref_cascade:
 
 Controlling Cascade on Backrefs

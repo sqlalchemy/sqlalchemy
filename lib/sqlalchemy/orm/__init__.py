@@ -172,18 +172,24 @@ composite = public_factory(CompositeProperty, ".orm.composite")
 
 
 def backref(name, **kwargs):
-    """Create a back reference with explicit keyword arguments, which are the
-    same arguments one can send to :func:`relationship`.
+    """When using the :paramref:`_orm.relationship.backref` parameter,
+    provides specific parameters to be used when the new
+    :func:`_orm.relationship` is generated.
 
-    Used with the ``backref`` keyword argument to :func:`relationship` in
-    place of a string argument, e.g.::
+    E.g.::
 
         'items':relationship(
             SomeItem, backref=backref('parent', lazy='subquery'))
 
+    The :paramref:`_orm.relationship.backref` parameter is generally
+    considered to be legacy; for modern applications, using
+    explicit :func:`_orm.relationship` constructs linked together using
+    the :paramref:`_orm.relationship.back_populates` parameter should be
+    preferred.
+
     .. seealso::
 
-        :ref:`relationships_backref`
+        :ref:`relationships_backref` - background on backrefs
 
     """
 
