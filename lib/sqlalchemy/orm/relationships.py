@@ -311,41 +311,51 @@ class RelationshipProperty(StrategizedProperty):
           the "previous" value of the attribute.
 
         :param backref:
-          Indicates the string name of a property to be placed on the related
-          mapper's class that will handle this relationship in the other
-          direction. The other property will be created automatically
-          when the mappers are configured.  Can also be passed as a
-          :func:`.backref` object to control the configuration of the
-          new relationship.
+          A reference to a string relationship name, or a :func:`_orm.backref`
+          construct, which will be used to automatically generate a new
+          :func:`_orm.relationship` on the related class, which then refers to
+          this one using a bi-directional
+          :paramref:`_orm.relationship.back_populates` configuration.
+
+          In modern Python, explicit use of :func:`_orm.relationship` with
+          :paramref:`_orm.relationship.back_populates` should be preferred, as
+          it is more robust in terms of mapper configuration as well as more
+          conceptually straightforward. It also integrates with new :pep:`484`
+          typing features introduced in SQLAlchemy 2.0 which is not possible
+          with dynamically generated attributes.
 
           .. seealso::
 
-            :ref:`relationships_backref` - Introductory documentation and
-            examples.
+              :ref:`relationships_backref` - notes on using
+              :paramref:`_orm.relationship.backref`
 
-            :paramref:`_orm.relationship.back_populates` - alternative form
-            of backref specification.
+              :ref:`tutorial_orm_related_objects` - in the
+              :ref:`unified_tutorial`, presents an overview of bi-directional
+              relationship configuration and behaviors using
+              :paramref:`_orm.relationship.back_populates`
 
-            :func:`.backref` - allows control over :func:`_orm.relationship`
-            configuration when using :paramref:`_orm.relationship.backref`.
+              :func:`.backref` - allows control over :func:`_orm.relationship`
+              configuration when using :paramref:`_orm.relationship.backref`.
 
 
         :param back_populates:
-          Takes a string name and has the same meaning as
-          :paramref:`_orm.relationship.backref`, except the complementing
-          property is **not** created automatically, and instead must be
-          configured explicitly on the other mapper.  The complementing
-          property should also indicate
-          :paramref:`_orm.relationship.back_populates` to this relationship to
-          ensure proper functioning.
+          Indicates the name of a :func:`_orm.relationship` on the related
+          class that will be synchronized with this one.   It is usually
+          expected that the :func:`_orm.relationship` on the related class
+          also refer to this one.  This allows objects on both sides of
+          each :func:`_orm.relationship` to synchronize in-Python state
+          changes and also provides directives to the :term:`unit of work`
+          flush process how changes along these relationships should
+          be persisted.
 
           .. seealso::
 
-            :ref:`relationships_backref` - Introductory documentation and
-            examples.
+              :ref:`tutorial_orm_related_objects` - in the
+              :ref:`unified_tutorial`, presents an overview of bi-directional
+              relationship configuration and behaviors.
 
-            :paramref:`_orm.relationship.backref` - alternative form
-            of backref specification.
+              :ref:`relationship_patterns` - includes many examples of
+              :paramref:`_orm.relationship.back_populates`.
 
         :param overlaps:
            A string name or comma-delimited set of names of other relationships
