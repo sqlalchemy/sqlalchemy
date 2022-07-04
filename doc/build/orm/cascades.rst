@@ -122,6 +122,8 @@ for granted; it simplifies code by allowing a single call to
 that :class:`.Session` at once.   While it can be disabled, there
 is usually not a need to do so.
 
+.. _back_populates_cascade:
+
 .. _backref_cascade:
 
 Behavior of save-update cascade with bi-directional relationships
@@ -129,7 +131,8 @@ Behavior of save-update cascade with bi-directional relationships
 
 The ``save-update`` cascade takes place **uni-directionally** in the context of
 a bi-directional relationship, i.e. when using
-:ref:`backref / back_populates <relationships_backref>` to create two separate
+the :paramref:`_orm.relationship.back_populates` or :paramref:`_orm.relationship.backref`
+parameters to create two separate
 :func:`_orm.relationship` objects which refer to each other.
 
 An object that's not associated with a :class:`_orm.Session`, when assigned to
