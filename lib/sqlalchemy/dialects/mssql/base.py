@@ -2607,6 +2607,38 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += " PERSISTED"
         return text
 
+    def visit_set_table_comment(self, create):
+        return """
+           execute sp_addextendedproperty 'MS_Description', {0},
+              'schema', 'INFORMATION_SCHEMA', 'table', {1}
+           go
+           """.format(
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String()),
+            self.preparer.format_table(create.element),
+        )
+
+    def visit_drop_table_comment(self, drop):
+        return """
+        execute sp_dropextendedproperty 'MS_Description',
+           'schema', 'INFORMATION_SCHEMA', 'table', {}
+        go
+        """.format(self.preparer.format_table(drop.element))
+
+    """
+    def visit_set_column_comment(self, create):
+        return "COMMENT ON COLUMN %s IS %s" % (
+            self.preparer.format_column(
+                create.element, use_table=True, use_schema=True),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String())
+        )
+
+    def visit_drop_column_comment(self, drop):
+        return "COMMENT ON COLUMN %s IS NULL" % \
+            self.preparer.format_column(drop.element, use_table=True)
+    """
+
     def visit_create_sequence(self, create, **kw):
         prefix = None
         if create.element.data_type is not None:
@@ -3247,6 +3279,16 @@ class MSDialect(default.DefaultDialect):
             return view_def
         else:
             raise exc.NoSuchTableError(f"{owner}.{viewname}")
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        COMMENT_SQL = """
+            SELECT value
+            FROM fn_listextendedproperty ('MS_Description', 'schema', 'INFORMATION_SCHEMA', 'table', '{}', NULL, NULL);
+        """.format(table_name)
+
+        c = connection.execute(sql.text(COMMENT_SQL))
+        return {"text": c.scalar()}
 
     def _temp_table_name_like_pattern(self, tablename):
         # LIKE uses '%' to match zero or more characters and '_' to match any
