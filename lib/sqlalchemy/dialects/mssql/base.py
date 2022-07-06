@@ -3299,14 +3299,13 @@ class MSDialect(default.DefaultDialect):
     def get_table_comment(self, connection, table_name, schema=None, **kw):
         schema_name = schema if schema else self.default_schema_name
         COMMENT_SQL = """
-            SELECT value
-            FROM fn_listextendedproperty ('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL);
+            SELECT com.value
+            FROM fn_listextendedproperty ('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL) as com;
         """.format(schema_name, table_name)
 
-        c = connection.execute(sql.text(COMMENT_SQL))
-        comment = c.scalar()
+        comment = connection.execute(sql.text(COMMENT_SQL)).scalar()
         if comment:
-            return {"text": c.scalar()}
+            return {"text": str(comment, 'UTF-8')}
         else:
             return self._default_or_error(connection, table_name, None, ReflectionDefaults.table_comment, **kw)
 
