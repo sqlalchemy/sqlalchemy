@@ -402,6 +402,18 @@ class Compiled(object):
 
     """
 
+    dml_compile_state = None
+    """Optional :class:`.CompileState` assigned at the same point that
+    .isinsert, .isupdate, or .isdelete is assigned.
+
+    This will normally be the same object as .compile_state, with the
+    exception of cases like the :class:`.ORMFromStatementCompileState`
+    object.
+
+    .. versionadded:: 1.4.40
+
+    """
+
     cache_key = None
     _gen_time = None
 
@@ -3838,6 +3850,8 @@ class SQLCompiler(Compiled):
 
         if toplevel:
             self.isinsert = True
+            if not self.dml_compile_state:
+                self.dml_compile_state = compile_state
             if not self.compile_state:
                 self.compile_state = compile_state
 
@@ -4008,6 +4022,8 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         if toplevel:
             self.isupdate = True
+            if not self.dml_compile_state:
+                self.dml_compile_state = compile_state
             if not self.compile_state:
                 self.compile_state = compile_state
 
@@ -4134,6 +4150,8 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         if toplevel:
             self.isdelete = True
+            if not self.dml_compile_state:
+                self.dml_compile_state = compile_state
             if not self.compile_state:
                 self.compile_state = compile_state
 

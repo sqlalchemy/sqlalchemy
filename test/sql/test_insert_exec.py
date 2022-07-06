@@ -20,6 +20,14 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
+class ExpectExpr:
+    def __init__(self, element):
+        self.element = element
+
+    def __clause_element__(self):
+        return self.element
+
+
 class InsertExecTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -36,13 +44,27 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.requires.multivalues_inserts
-    def test_multivalues_insert(self, connection):
+    @testing.combinations("string", "column", "expect", argnames="keytype")
+    def test_multivalues_insert(self, connection, keytype):
+
         users = self.tables.users
+
+        if keytype == "string":
+            user_id, user_name = "user_id", "user_name"
+        elif keytype == "column":
+            user_id, user_name = users.c.user_id, users.c.user_name
+        elif keytype == "expect":
+            user_id, user_name = ExpectExpr(users.c.user_id), ExpectExpr(
+                users.c.user_name
+            )
+        else:
+            assert False
+
         connection.execute(
             users.insert().values(
                 [
-                    {"user_id": 7, "user_name": "jack"},
-                    {"user_id": 8, "user_name": "ed"},
+                    {user_id: 7, user_name: "jack"},
+                    {user_id: 8, user_name: "ed"},
                 ]
             )
         )

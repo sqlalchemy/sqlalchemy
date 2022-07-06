@@ -2217,21 +2217,45 @@ class LoadFromReturningTest(fixtures.MappedTest):
                 [User(name="jack", age=52), User(name="jill", age=34)],
             )
 
-    def test_load_from_insert(self, connection):
+    @testing.combinations(
+        ("single",),
+        ("multiple", testing.requires.multivalues_inserts),
+        argnames="params",
+    )
+    def test_load_from_insert(self, connection, params):
         User = self.classes.User
 
-        stmt = (
-            insert(User)
-            .values({User.id: 5, User.age: 25, User.name: "spongebob"})
-            .returning(User)
-        )
+        if params == "multiple":
+            values = [
+                {User.id: 5, User.age: 25, User.name: "spongebob"},
+                {User.id: 6, User.age: 30, User.name: "patrick"},
+                {User.id: 7, User.age: 35, User.name: "squidward"},
+            ]
+        elif params == "single":
+            values = {User.id: 5, User.age: 25, User.name: "spongebob"}
+        else:
+            assert False
+
+        stmt = insert(User).values(values).returning(User)
 
         stmt = select(User).from_statement(stmt)
 
         with Session(connection) as sess:
             rows = sess.execute(stmt).scalars().all()
 
-            eq_(
-                rows,
-                [User(name="spongebob", age=25)],
-            )
+            if params == "multiple":
+                eq_(
+                    rows,
+                    [
+                        User(name="spongebob", age=25),
+                        User(name="patrick", age=30),
+                        User(name="squidward", age=35),
+                    ],
+                )
+            elif params == "single":
+                eq_(
+                    rows,
+                    [User(name="spongebob", age=25)],
+                )
+            else:
+                assert False

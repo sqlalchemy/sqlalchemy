@@ -189,6 +189,14 @@ class InsertDMLState(DMLState):
         if statement._multi_values:
             self._process_multi_values(statement)
 
+    @util.memoized_property
+    def _insert_col_keys(self):
+        # this is also done in crud.py -> _key_getters_for_crud_column
+        return [
+            coercions.expect_as_key(roles.DMLColumnRole, col)
+            for col in self._dict_parameters
+        ]
+
 
 @CompileState.plugin_for("default", "update")
 class UpdateDMLState(DMLState):
