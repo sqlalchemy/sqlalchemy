@@ -2608,39 +2608,49 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_set_table_comment(self, create):
+        schema = self.preparer.schema_for_object(create.element)
+        schema_name = schema if schema else self.dialect.default_schema_name
         return """
-           execute sp_addextendedproperty 'MS_Description', {0},
-              'schema', {1}, 'table', {2}
-           go
+           execute sp_addextendedproperty 'MS_Description', {0}, 'schema', '{1}', 'table', '{2}';
            """.format(
             self.sql_compiler.render_literal_value(
-                create.element.comment, sqltypes.String()),
-            self.preparer.quote_schema(self.preparer.schema_for_object(create.element)),
-            self.preparer.format_table(create.element),
+                                            create.element.comment, sqltypes.String()),
+            schema_name,
+            self.preparer.format_table(create.element, use_schema=False),
         )
 
     def visit_drop_table_comment(self, drop):
+        schema = self.preparer.schema_for_object(drop.element)
+        schema_name = schema if schema else self.dialect.default_schema_name
         return """
-        execute sp_dropextendedproperty 'MS_Description',
-           'schema', {0}, 'table', {1}
-        go
+        execute sp_dropextendedproperty 'MS_Description', 'schema', '{0}', 'table', '{1}';
         """.format(
-            self.preparer.quote_schema(self.preparer.schema_for_object(drop.element)),
-            self.preparer.format_table(drop.element))
+            schema_name,
+            self.preparer.format_table(drop.element, use_schema=False))
 
-    """
     def visit_set_column_comment(self, create):
-        return "COMMENT ON COLUMN %s IS %s" % (
-            self.preparer.format_column(
-                create.element, use_table=True, use_schema=True),
+        schema = self.preparer.schema_for_object(create.element.table)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return """
+           execute sp_addextendedproperty 'MS_Description', {0}, 'schema', '{1}', 'table', '{2}', 'column', '{3}';
+           """.format(
             self.sql_compiler.render_literal_value(
-                create.element.comment, sqltypes.String())
+                                            create.element.comment, sqltypes.String()),
+            schema_name,
+            self.preparer.format_table(create.element.table, use_schema=False),
+            self.preparer.format_column(create.element),
         )
 
     def visit_drop_column_comment(self, drop):
-        return "COMMENT ON COLUMN %s IS NULL" % \
-            self.preparer.format_column(drop.element, use_table=True)
-    """
+        schema = self.preparer.schema_for_object(drop.element.table)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return """
+        execute sp_dropextendedproperty 'MS_Description', 'schema', '{0}', 'table', '{1}', 'column', '{2}';
+        """.format(
+            schema_name,
+            self.preparer.format_table(drop.element.table, use_schema=False),
+            self.preparer.format_column(drop.element),
+        )
 
     def visit_create_sequence(self, create, **kw):
         prefix = None
@@ -2834,6 +2844,8 @@ class MSDialect(default.DefaultDialect):
     supports_statement_cache = True
     supports_default_values = True
     supports_empty_insert = False
+
+    supports_comments = True
 
     # supports_native_uuid is partial here, so we implement our
     # own impl type
@@ -3284,12 +3296,12 @@ class MSDialect(default.DefaultDialect):
             raise exc.NoSuchTableError(f"{owner}.{viewname}")
 
     @reflection.cache
-    @_db_plus_owner
-    def get_table_comment(self, connection, table_name, dbname, owner, schema=None, **kw):
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        schema_name = schema if schema else self.default_schema_name
         COMMENT_SQL = """
             SELECT value
             FROM fn_listextendedproperty ('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL);
-        """.format(schema, table_name)
+        """.format(schema_name, table_name)
 
         c = connection.execute(sql.text(COMMENT_SQL))
         comment = c.scalar()
