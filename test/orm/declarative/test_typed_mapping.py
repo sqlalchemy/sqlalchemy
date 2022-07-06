@@ -87,6 +87,25 @@ class DeclarativeBaseTest(fixtures.TestBase):
 class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
+    @testing.combinations(
+        "default", "insert_default", argnames="use_paramname"
+    )
+    @testing.combinations(True, False, argnames="use_none")
+    def test_col_defaults(self, use_paramname, use_none, decl_base):
+        class Foo(decl_base):
+            __tablename__ = "foo"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            data: Mapped[int] = mapped_column(
+                **{use_paramname: None if use_none else 5}
+            )
+
+        if use_none:
+            assert not Foo.__table__.c.data.default
+        else:
+            eq_(Foo.__table__.c.data.default.arg, 5)
+
     def test_legacy_declarative_base(self):
         typ = VARCHAR(50)
         Base = declarative_base(type_annotation_map={str: typ})
