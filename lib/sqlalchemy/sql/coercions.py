@@ -164,6 +164,17 @@ def expect(
 
 @overload
 def expect(
+    role: Type[roles.DMLColumnRole],
+    element: Any,
+    *,
+    as_key: Literal[True] = ...,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def expect(
     role: Type[roles.LiteralValueRole],
     element: Any,
     **kw: Any,
@@ -420,9 +431,11 @@ def expect(
         )
 
 
-def expect_as_key(role, element, **kw):
-    kw["as_key"] = True
-    return expect(role, element, **kw)
+def expect_as_key(
+    role: Type[roles.DMLColumnRole], element: Any, **kw: Any
+) -> str:
+    kw.pop("as_key", None)
+    return expect(role, element, as_key=True, **kw)
 
 
 def expect_col_expression_collection(

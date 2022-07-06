@@ -263,7 +263,7 @@ class DMLState(CompileState):
 
     def _process_select_values(self, statement: ValuesBase) -> None:
         assert statement._select_names is not None
-        parameters = {
+        parameters: MutableMapping[_DMLColumnElement, Any] = {
             coercions.expect(roles.DMLColumnRole, name, as_key=True): Null()
             for name in statement._select_names
         }
@@ -311,6 +311,14 @@ class InsertDMLState(DMLState):
             self._process_values(statement)
         if statement._multi_values:
             self._process_multi_values(statement)
+
+    @util.memoized_property
+    def _insert_col_keys(self) -> List[str]:
+        # this is also done in crud.py -> _key_getters_for_crud_column
+        return [
+            coercions.expect_as_key(roles.DMLColumnRole, col)
+            for col in self._dict_parameters or ()
+        ]
 
 
 @CompileState.plugin_for("default", "update")
