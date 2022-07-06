@@ -1751,15 +1751,12 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 not isinstance(id_column.default, Sequence)
             ):
                 insert_has_identity = True
-                compile_state = self.compiled.compile_state
+                compile_state = self.compiled.dml_compile_state
                 self._enable_identity_insert = (
                     id_column.key in self.compiled_parameters[0]
                 ) or (
                     compile_state._dict_parameters
-                    and (
-                        id_column.key in compile_state._dict_parameters
-                        or id_column in compile_state._dict_parameters
-                    )
+                    and (id_column.key in compile_state._insert_col_keys)
                 )
 
             else:
