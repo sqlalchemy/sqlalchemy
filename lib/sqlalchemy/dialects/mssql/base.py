@@ -2610,20 +2610,23 @@ class MSDDLCompiler(compiler.DDLCompiler):
     def visit_set_table_comment(self, create):
         return """
            execute sp_addextendedproperty 'MS_Description', {0},
-              'schema', 'INFORMATION_SCHEMA', 'table', {1}
+              'schema', {1}, 'table', {2}
            go
            """.format(
             self.sql_compiler.render_literal_value(
                 create.element.comment, sqltypes.String()),
+            self.preparer.quote_schema(self.preparer.schema_for_object(create.element)),
             self.preparer.format_table(create.element),
         )
 
     def visit_drop_table_comment(self, drop):
         return """
         execute sp_dropextendedproperty 'MS_Description',
-           'schema', 'INFORMATION_SCHEMA', 'table', {}
+           'schema', {0}, 'table', {1}
         go
-        """.format(self.preparer.format_table(drop.element))
+        """.format(
+            self.preparer.quote_schema(self.preparer.schema_for_object(drop.element)),
+            self.preparer.format_table(drop.element))
 
     """
     def visit_set_column_comment(self, create):
@@ -3281,14 +3284,19 @@ class MSDialect(default.DefaultDialect):
             raise exc.NoSuchTableError(f"{owner}.{viewname}")
 
     @reflection.cache
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
+    @_db_plus_owner
+    def get_table_comment(self, connection, table_name, dbname, owner, schema=None, **kw):
         COMMENT_SQL = """
             SELECT value
-            FROM fn_listextendedproperty ('MS_Description', 'schema', 'INFORMATION_SCHEMA', 'table', '{}', NULL, NULL);
-        """.format(table_name)
+            FROM fn_listextendedproperty ('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL);
+        """.format(schema, table_name)
 
         c = connection.execute(sql.text(COMMENT_SQL))
-        return {"text": c.scalar()}
+        comment = c.scalar()
+        if comment:
+            return {"text": c.scalar()}
+        else:
+            return self._default_or_error(connection, table_name, None, ReflectionDefaults.table_comment, **kw)
 
     def _temp_table_name_like_pattern(self, tablename):
         # LIKE uses '%' to match zero or more characters and '_' to match any
