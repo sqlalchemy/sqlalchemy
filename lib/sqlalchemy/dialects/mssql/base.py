@@ -1994,9 +1994,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
             )
         )
 
-    def fetch_clause(self, cs, **kwargs):
-        return ""
-
     def limit_clause(self, cs, **kwargs):
         return ""
 
@@ -2028,21 +2025,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if self.dialect._supports_offset_fetch and not self._use_top(select):
             self._check_can_use_fetch_limit(select)
 
-            text = ""
+            return self.fetch_clause(
+                select,
+                fetch_clause=self._get_limit_or_fetch(select),
+                require_offset=True,
+                **kw,
+            )
 
-            if select._offset_clause is not None:
-                offset_str = self.process(select._offset_clause, **kw)
-            else:
-                offset_str = "0"
-            text += "\n OFFSET %s ROWS" % offset_str
-
-            limit = self._get_limit_or_fetch(select)
-
-            if limit is not None:
-                text += "\n FETCH FIRST %s ROWS ONLY" % self.process(
-                    limit, **kw
-                )
-            return text
         else:
             return ""
 

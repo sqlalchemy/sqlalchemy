@@ -704,10 +704,22 @@ class DefaultRequirements(SuiteRequirements):
 
         E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
 
-        Fails on SQL Server
+        Fails on SQL Server and oracle.
+
+        Previously on Oracle, prior to #8221, the ROW_NUMBER subquerying
+        applied to queries allowed the test at
+        suite/test_select.py ->
+        CompoundSelectTest.test_limit_offset_selectable_in_unions
+        to pass, because of the implicit subquerying thus creating a query
+        that was more in line with the syntax
+        illustrated at
+        https://stackoverflow.com/a/6036814/34549.  However, Oracle doesn't
+        support the above (SELECT ..) UNION (SELECT ..) ORDER BY syntax
+        at all.  So those tests are now not supported w/ Oracle as of
+        #8221.
 
         """
-        return fails_if("mssql")
+        return fails_if(["mssql", "oracle>=12"])
 
     @property
     def parens_in_union_contained_select_w_limit_offset(self):

@@ -880,21 +880,22 @@ class ExecuteTest(fixtures.TestBase):
         )
 
         # here, we can't use ORDER BY.
-        eq_(
-            connection.execute(
-                t.select().with_for_update().limit(2)
-            ).fetchall(),
-            [(1, 1), (2, 7)],
-        )
+        # as of #8221, this fails also.  limit w/o order by is useless
+        # in any case.
+        stmt = t.select().with_for_update().limit(2)
+        if testing.against("oracle>=12"):
+            with expect_raises_message(exc.DatabaseError, "ORA-02014"):
+                connection.execute(stmt).fetchall()
+        else:
+            eq_(
+                connection.execute(stmt).fetchall(),
+                [(1, 1), (2, 7)],
+            )
 
         # here, its impossible.  But we'd prefer it to raise ORA-02014
         # instead of issuing a syntax error.
-        assert_raises_message(
-            exc.DatabaseError,
-            "ORA-02014",
-            connection.execute,
-            t.select().with_for_update().limit(2).offset(3),
-        )
+        with expect_raises_message(exc.DatabaseError, "ORA-02014"):
+            connection.execute(t.select().with_for_update().limit(2).offset(3))
 
 
 class UnicodeSchemaTest(fixtures.TestBase):
