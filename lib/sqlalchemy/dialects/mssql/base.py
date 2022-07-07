@@ -2614,9 +2614,13 @@ class MSDDLCompiler(compiler.DDLCompiler):
            execute sp_addextendedproperty 'MS_Description', {0}, 'schema', {1}, 'table', {2};
            """.format(
             self.sql_compiler.render_literal_value(
-                                            create.element.comment, sqltypes.String()),
+                create.element.comment, sqltypes.String()
+            ),
             quoted_name(schema_name, quote=True),
-            quoted_name(self.preparer.format_table(create.element, use_schema=False), quote=True),
+            quoted_name(
+                self.preparer.format_table(create.element, use_schema=False),
+                quote=True,
+            ),
         )
 
     def visit_drop_table_comment(self, drop):
@@ -2626,7 +2630,11 @@ class MSDDLCompiler(compiler.DDLCompiler):
         execute sp_dropextendedproperty 'MS_Description', 'schema', {0}, 'table', {1};
         """.format(
             quoted_name(schema_name, quote=True),
-            quoted_name(self.preparer.format_table(drop.element, use_schema=False), quote=True))
+            quoted_name(
+                self.preparer.format_table(drop.element, use_schema=False),
+                quote=True,
+            ),
+        )
 
     def visit_set_column_comment(self, create):
         schema = self.preparer.schema_for_object(create.element.table)
@@ -2635,10 +2643,18 @@ class MSDDLCompiler(compiler.DDLCompiler):
            execute sp_addextendedproperty 'MS_Description', {0}, 'schema', {1}, 'table', {2}, 'column', {3};
            """.format(
             self.sql_compiler.render_literal_value(
-                                            create.element.comment, sqltypes.String()),
+                create.element.comment, sqltypes.String()
+            ),
             quoted_name(schema_name, quote=True),
-            quoted_name(self.preparer.format_table(create.element.table, use_schema=False), quote=True),
-            quoted_name(self.preparer.format_column(create.element), quote=True),
+            quoted_name(
+                self.preparer.format_table(
+                    create.element.table, use_schema=False
+                ),
+                quote=True,
+            ),
+            quoted_name(
+                self.preparer.format_column(create.element), quote=True
+            ),
         )
 
     def visit_drop_column_comment(self, drop):
@@ -2648,7 +2664,12 @@ class MSDDLCompiler(compiler.DDLCompiler):
         execute sp_dropextendedproperty 'MS_Description', 'schema', {0}, 'table', {1}, 'column', {2};
         """.format(
             quoted_name(schema_name, quote=True),
-            quoted_name(self.preparer.format_table(drop.element.table, use_schema=False), quote=True),
+            quoted_name(
+                self.preparer.format_table(
+                    drop.element.table, use_schema=False
+                ),
+                quote=True,
+            ),
             quoted_name(self.preparer.format_column(drop.element), quote=True),
         )
 
@@ -3301,13 +3322,21 @@ class MSDialect(default.DefaultDialect):
         COMMENT_SQL = """
             SELECT com.value
             FROM fn_listextendedproperty('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL) as com;
-        """.format(schema_name, table_name)
+        """.format(
+            schema_name, table_name
+        )
 
         comment = connection.execute(sql.text(COMMENT_SQL)).scalar()
         if comment:
-            return {"text": str(comment, 'UTF-8')}
+            return {"text": str(comment, "UTF-8")}
         else:
-            return self._default_or_error(connection, table_name, None, ReflectionDefaults.table_comment, **kw)
+            return self._default_or_error(
+                connection,
+                table_name,
+                None,
+                ReflectionDefaults.table_comment,
+                **kw,
+            )
 
     def _temp_table_name_like_pattern(self, tablename):
         # LIKE uses '%' to match zero or more characters and '_' to match any
