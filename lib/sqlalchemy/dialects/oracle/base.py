@@ -255,36 +255,48 @@ impact of this change has been mitigated.
    version of Oracle server (compatibility version < 12.2) is detected.
 
 
-LIMIT/OFFSET Support
---------------------
+LIMIT/OFFSET/FETCH Support
+--------------------------
 
-Oracle has no direct support for LIMIT and OFFSET until version 12c.
-To achieve this behavior across all widely used versions of Oracle starting
-with the 8 series, SQLAlchemy currently makes use of ROWNUM to achieve
-LIMIT/OFFSET; the exact methodology is taken from
-https://blogs.oracle.com/oraclemagazine/on-rownum-and-limiting-results .
+Methods like :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` currently
+use an emulated approach for LIMIT / OFFSET based on window functions, which
+involves creation of a subquery using ``ROW_NUMBER`` that is prone to
+performance issues as well as SQL construction issues for complex statements.
+However, this approach is supported by all Oracle versions.  See notes below.
 
-There is currently a single option to affect its behavior:
+When using Oracle 12c and above, use the :meth:`_sql.Select.fetch` method
+instead; this will render the more modern
+``FETCH FIRST N ROW / OFFSET N ROWS`` syntax.
+
+Notes on LIMIT / OFFSET emulation (when fetch() method cannot be used)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If using :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset`,
+or with the ORM the :meth:`_orm.Query.limit` and :meth:`_orm.Query.offset` methods,
+and the :meth:`_sql.Select.fetch` method **cannot** be used instead, the following
+notes apply:
+
+* SQLAlchemy currently makes use of ROWNUM to achieve
+  LIMIT/OFFSET; the exact methodology is taken from
+  https://blogs.oracle.com/oraclemagazine/on-rownum-and-limiting-results .
 
 * the "FIRST_ROWS()" optimization keyword is not used by default.  To enable
   the usage of this optimization directive, specify ``optimize_limits=True``
   to :func:`_sa.create_engine`.
 
-.. versionchanged:: 1.4
-    The Oracle dialect renders limit/offset integer values using a "post
-    compile" scheme which renders the integer directly before passing the
-    statement to the cursor for execution.   The ``use_binds_for_limits`` flag
-    no longer has an effect.
+  .. versionchanged:: 1.4
+      The Oracle dialect renders limit/offset integer values using a "post
+      compile" scheme which renders the integer directly before passing the
+      statement to the cursor for execution.   The ``use_binds_for_limits`` flag
+      no longer has an effect.
 
-    .. seealso::
+      .. seealso::
 
-        :ref:`change_4808`.
+          :ref:`change_4808`.
 
-Support for changing the row number strategy, which would include one that
-makes use of the ``row_number()`` window function as well as one that makes
-use of the Oracle 12c  "FETCH FIRST N ROW / OFFSET N ROWS" keywords may be
-added in a future release.
-
+* A future release may use ``FETCH FIRST N ROW / OFFSET N ROWS`` automatically
+  when :meth:`_sql.Select.limit`, :meth:`_sql.Select.offset`, :meth:`_orm.Query.limit`,
+  :meth:`_orm.Query.offset` are used.
 
 .. _oracle_returning:
 
