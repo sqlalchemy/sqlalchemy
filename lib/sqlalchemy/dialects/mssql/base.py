@@ -2924,7 +2924,9 @@ class MSDialect(default.DefaultDialect):
     def get_isolation_level(self, dbapi_connection):
         last_error = None
 
-        views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
+        # for compatibility with PDW/Synapse, dm_pdw_nodes_exec_sessions must
+        # be checked first
+        views = ("sys.dm_pdw_nodes_exec_sessions", "sys.dm_exec_sessions")
         for view in views:
             cursor = dbapi_connection.cursor()
             try:
