@@ -756,6 +756,8 @@ the usual ``await`` keywords are necessary, including for the
     async def some_function(some_async_session, some_object):
        # use the AsyncSession directly
        some_async_session.add(some_object)
+       # or as alternative use the AsyncSession via the context-local proxy
+       AsyncScopedSession.add(some_object)
 
        # use the AsyncSession via the context-local proxy
        await AsyncScopedSession.commit()
