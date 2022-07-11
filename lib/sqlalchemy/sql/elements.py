@@ -216,6 +216,7 @@ class ClauseElement(
     _is_lambda_element = False
     _is_singleton_constant = False
     _is_immutable = False
+    _is_star = False
 
     _order_by_label_element = None
 
@@ -1802,6 +1803,10 @@ class TextClause(
     key = _label = None
 
     _allow_label_resolve = False
+
+    @property
+    def _is_star(self):
+        return self.text == "*"
 
     def __init__(self, text, bind=None):
         self._bind = bind
@@ -4794,6 +4799,10 @@ class ColumnClause(
     onupdate = default = server_default = server_onupdate = None
 
     _is_multiparam_column = False
+
+    @property
+    def _is_star(self):
+        return self.is_literal and self.name == "*"
 
     def __init__(self, text, type_=None, is_literal=False, _selectable=None):
         """Produce a :class:`.ColumnClause` object.

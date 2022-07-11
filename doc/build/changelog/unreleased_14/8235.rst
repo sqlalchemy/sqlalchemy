@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8235
+
+    A :func:`_sql.select` construct that is passed a sole '*' argument for
+    ``SELECT *``, either via string, :func:`_sql.text`, or
+    :func:`_sql.literal_column`, will be interpreted as a Core-level SQL
+    statement rather than as an ORM level statement. This is so that the ``*``,
+    when expanded to match any number of columns, will result in all columns
+    returned in the result. the ORM- level interpretation of
+    :func:`_sql.select` needs to know the names and types of all ORM columns up
+    front which can't be achieved when ``'*'`` is used.
+
+    If ``'*`` is used amongst other expressions simultaneously with an ORM
+    statement, an error is raised as this can't be interpreted correctly by the
+    ORM.
