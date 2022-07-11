@@ -219,6 +219,7 @@ class ORMCompileState(CompileState):
             ("_set_base_alias", InternalTraversal.dp_boolean),
             ("_for_refresh_state", InternalTraversal.dp_boolean),
             ("_render_for_subquery", InternalTraversal.dp_boolean),
+            ("_is_star", InternalTraversal.dp_boolean),
         ]
 
         # set to True by default from Query._statement_20(), to indicate
@@ -241,6 +242,7 @@ class ORMCompileState(CompileState):
         _set_base_alias = False
         _for_refresh_state = False
         _render_for_subquery = False
+        _is_star = False
 
     attributes: Dict[Any, Any]
     global_attributes: Dict[Any, Any]
@@ -422,6 +424,8 @@ class ORMCompileState(CompileState):
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
         )
+        if compile_state.compile_options._is_star:
+            return result
 
         querycontext = QueryContext(
             compile_state,
@@ -1023,6 +1027,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self._for_update_arg = query._for_update_arg
 
+        if self.compile_options._is_star and (len(self._entities) != 1):
+            raise sa_exc.CompileError(
+                "Can't generate ORM query that includes multiple expressions "
+                "at the same time as '*'; query for '*' alone if present"
+            )
         for entity in self._entities:
             entity.setup_compile_state(self)
 
@@ -2760,6 +2769,9 @@ class _RawColumnEntity(_ColumnEntity):
         self.expr = column
         self.raw_column_index = raw_column_index
         self.translate_raw_column = raw_column_index is not None
+
+        if column._is_star:
+            compile_state.compile_options += {"_is_star": True}
 
         if not is_current_entities or column._is_text_clause:
             self._label_name = None

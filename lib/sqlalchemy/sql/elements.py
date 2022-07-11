@@ -347,6 +347,7 @@ class ClauseElement(
     _is_lambda_element = False
     _is_singleton_constant = False
     _is_immutable = False
+    _is_star = False
 
     @property
     def _order_by_label_element(self) -> Optional[Label[Any]]:
@@ -2173,6 +2174,10 @@ class TextClause(
     _label: Optional[str] = None
 
     _allow_label_resolve = False
+
+    @property
+    def _is_star(self):
+        return self.text == "*"
 
     def __init__(self, text: str):
         self._bindparams: Dict[str, BindParameter[Any]] = {}
@@ -4534,6 +4539,10 @@ class ColumnClause(
     server_onupdate: Optional[FetchedValue] = None
 
     _is_multiparam_column = False
+
+    @property
+    def _is_star(self):
+        return self.is_literal and self.name == "*"
 
     def __init__(
         self,

@@ -1,17 +1,105 @@
 from sqlalchemy import exc
+from sqlalchemy import literal
+from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from . import _fixtures
 
 # class GetFromIdentityTest(_fixtures.FixtureTest):
 # class LoadOnIdentTest(_fixtures.FixtureTest):
+
+
+class SelectStarTest(_fixtures.FixtureTest):
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    @testing.combinations(
+        "plain", "text", "literal_column", argnames="exprtype"
+    )
+    @testing.combinations("core", "orm", argnames="coreorm")
+    def test_single_star(self, exprtype, coreorm):
+        """test for #8235"""
+        User, Address = self.classes("User", "Address")
+
+        if exprtype == "plain":
+            star = "*"
+        elif exprtype == "text":
+            star = text("*")
+        elif exprtype == "literal_column":
+            star = literal_column("*")
+        else:
+            assert False
+
+        stmt = (
+            select(star)
+            .select_from(User)
+            .join(Address)
+            .where(User.id == 7)
+            .order_by(User.id, Address.id)
+        )
+
+        s = fixture_session()
+
+        if coreorm == "core":
+            result = s.connection().execute(stmt)
+        elif coreorm == "orm":
+            result = s.execute(stmt)
+        else:
+            assert False
+
+        eq_(result.all(), [(7, "jack", 1, 7, "jack@bean.com")])
+
+    @testing.combinations(
+        "plain", "text", "literal_column", argnames="exprtype"
+    )
+    @testing.combinations(
+        lambda User, star: (star, User.id),
+        lambda User, star: (star, User),
+        lambda User, star: (User.id, star),
+        lambda User, star: (User, star),
+        lambda User, star: (literal("some text"), star),
+        lambda User, star: (star, star),
+        lambda User, star: (star, text("some text")),
+        argnames="testcase",
+    )
+    def test_no_star_orm_combinations(self, exprtype, testcase):
+        """test for #8235"""
+        User = self.classes.User
+
+        if exprtype == "plain":
+            star = "*"
+        elif exprtype == "text":
+            star = text("*")
+        elif exprtype == "literal_column":
+            star = literal_column("*")
+        else:
+            assert False
+
+        args = testing.resolve_lambda(testcase, User=User, star=star)
+        stmt = select(*args).select_from(User)
+
+        s = fixture_session()
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't generate ORM query that includes multiple expressions "
+            r"at the same time as '\*';",
+        ):
+            s.execute(stmt)
 
 
 class InstanceProcessorTest(_fixtures.FixtureTest):
