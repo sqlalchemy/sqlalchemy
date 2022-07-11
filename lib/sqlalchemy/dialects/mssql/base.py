@@ -2911,6 +2911,44 @@ class MSDialect(default.DefaultDialect):
         ]
     )
 
+    def get_sql_server_variant(self, dbapi_connection) -> str:
+        """
+        Queries SQL Server system views to determine if the given connection
+        is to a normal SQL Server instance or a PDW-based instance.
+
+        Parameters
+        ------------
+        dbapi_connection -- the underlying DBAPI Connection
+
+        Returns
+        --------
+        A string indicating the server variant, "sql_server" or "pdw"
+        """
+        cursor = dbapi_connection.cursor()
+        edition = "sql_server"
+        error = None
+
+        try:
+            sql = """
+            SELECT COUNT(*) AS n 
+            FROM sys.system_views 
+            WHERE name = 'dm_exec_sessions'
+            """
+            rs = cursor.execute(sql)
+            num_views = int(rs.fetchone()[0])
+            if num_views == 0:
+                edition = "pdw"
+        except self.dbapi.Error as err:
+            error = err
+        finally:
+            cursor.close()
+
+        if error is not None:
+            raise RuntimeError(f"Unable to determine SQL Server edition. "
+                               f" Error: {error}")
+
+        return edition
+
     def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
@@ -2924,15 +2962,16 @@ class MSDialect(default.DefaultDialect):
     def get_isolation_level(self, dbapi_connection):
         last_error = None
 
-        # for compatibility with PDW/Synapse, dm_pdw_nodes_exec_sessions must
-        # be checked first
-        views = ("sys.dm_pdw_nodes_exec_sessions", "sys.dm_exec_sessions")
-        for view in views:
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(
-                    f"""
-                  SELECT CASE transaction_isolation_level
+        edition = self.get_sql_server_variant(dbapi_connection)
+
+        view = "sys.dm_pdw_nodes_exec_sessions" if edition == "pdw" \
+                else "sys.dm_exec_sessions"
+
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                    SELECT CASE transaction_isolation_level
                     WHEN 0 THEN NULL
                     WHEN 1 THEN 'READ UNCOMMITTED'
                     WHEN 2 THEN 'READ COMMITTED'
@@ -2941,27 +2980,27 @@ class MSDialect(default.DefaultDialect):
                     WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
                     FROM {view}
                     where session_id = @@SPID
-                  """
-                )
-                val = cursor.fetchone()[0]
-            except self.dbapi.Error as err:
-                # Python3 scoping rules
-                last_error = err
-                continue
-            else:
-                return val.upper()
-            finally:
-                cursor.close()
+                """
+            )
+            val = cursor.fetchone()[0]
+        except self.dbapi.Error as err:
+            # Python3 scoping rules
+            last_error = err
         else:
+            return val.upper()
+        finally:
+            cursor.close()
+
+        if last_error is not None:
             # note that the NotImplementedError is caught by
             # DefaultDialect, so the warning here is all that displays
             util.warn(
                 "Could not fetch transaction isolation level, "
-                f"tried views: {views}; final error was: {last_error}"
+                f"tried view: {view}; final error was: {last_error}"
             )
             raise NotImplementedError(
                 "Can't fetch isolation level on this particular "
-                f"SQL Server version. tried views: {views}; final "
+                f"SQL Server version. tried view: {view}; final "
                 f"error was: {last_error}"
             )
 
