@@ -16,6 +16,7 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declarative_mixin
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
@@ -52,7 +53,9 @@ class DeclarativeTestBase(
         global Base, mapper_registry
 
         mapper_registry = registry(metadata=MetaData())
-        Base = mapper_registry.generate_base()
+
+        class Base(DeclarativeBase):
+            registry = mapper_registry
 
     def teardown_test(self):
         close_all_sessions()
@@ -62,12 +65,29 @@ class DeclarativeTestBase(
 
 
 class DeclarativeMixinTest(DeclarativeTestBase):
-    def test_init_subclass_works(self, registry):
-        class Base:
-            def __init_subclass__(cls):
-                cls.id = Column(Integer, primary_key=True)
+    @testing.combinations("generate_base", "subclass", argnames="base_type")
+    def test_init_subclass_works(self, registry, base_type):
+        reg = registry
+        if base_type == "generate_base":
 
-        Base = registry.generate_base(cls=Base)
+            class Base:
+                def __init_subclass__(cls):
+                    cls.id = Column(Integer, primary_key=True)
+
+            Base = registry.generate_base(cls=Base)
+        elif base_type == "subclass":
+
+            class Base(DeclarativeBase):
+                registry = reg
+
+                def __init_subclass__(cls):
+                    cls.id = Column(Integer, primary_key=True)
+                    # hmmm what do we think of this.  if DeclarativeBase
+                    # used a full metaclass approach we wouldn't need this.
+                    super().__init_subclass__()
+
+        else:
+            assert False
 
         class Foo(Base):
             __tablename__ = "foo"
@@ -127,10 +147,6 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
 
     def test_declarative_mixin_decorator(self):
-
-        # note we are also making sure an "old style class" in Python 2,
-        # as we are now illustrating in all the docs for mixins, doesn't cause
-        # a problem....
         @declarative_mixin
         class MyMixin:
 
@@ -141,10 +157,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             def foo(self):
                 return "bar" + str(self.id)
 
-        # ...as long as the mapped class itself is "new style", which will
-        # normally be the case for users using declarative_base
         @mapper_registry.mapped
-        class MyModel(MyMixin, object):
+        class MyModel(MyMixin):
 
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)
@@ -645,7 +659,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         lambda: testing.against("oracle"),
         "Test has an empty insert in it at the moment",
     )
-    def test_columns_single_inheritance_conflict_resolution(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_columns_single_inheritance_conflict_resolution(self, _column):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
 
@@ -655,13 +670,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class Person(Base):
             __tablename__ = "person"
-            id = Column(Integer, primary_key=True)
+            id = _column(Integer, primary_key=True)
 
         class Mixin:
             @declared_attr
             def target_id(cls):
                 return cls.__table__.c.get(
-                    "target_id", Column(Integer, ForeignKey("other.id"))
+                    "target_id", _column(Integer, ForeignKey("other.id"))
                 )
 
             @declared_attr
@@ -678,7 +693,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class Other(Base):
             __tablename__ = "other"
-            id = Column(Integer, primary_key=True)
+            id = _column(Integer, primary_key=True)
 
         is_(
             Engineer.target_id.property.columns[0],
@@ -697,7 +712,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         session.commit()
         eq_(session.query(Engineer).first().target, o1)
 
-    def test_columns_joined_table_inheritance(self):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_columns_joined_table_inheritance(self, _column):
         """Test a column on a mixin with an alternate attribute name,
         mapped to a superclass and joined-table inheritance subclass.
         Both tables get the column, in the case of the subclass the two
@@ -706,18 +722,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         """
 
         class MyMixin:
-            foo = Column("foo", Integer)
-            bar = Column("bar_newname", Integer)
+            foo = _column("foo", Integer)
+            bar = _column("bar_newname", Integer)
 
         class General(Base, MyMixin):
             __tablename__ = "test"
-            id = Column(Integer, primary_key=True)
-            type_ = Column(String(50))
+            id = _column(Integer, primary_key=True)
+            type_ = _column(String(50))
             __mapper__args = {"polymorphic_on": type_}
 
         class Specific(General):
             __tablename__ = "sub"
-            id = Column(Integer, ForeignKey("test.id"), primary_key=True)
+            id = _column(Integer, ForeignKey("test.id"), primary_key=True)
             __mapper_args__ = {"polymorphic_identity": "specific"}
 
         assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
