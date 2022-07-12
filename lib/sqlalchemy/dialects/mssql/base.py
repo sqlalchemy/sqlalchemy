@@ -2616,11 +2616,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
             self.sql_compiler.render_literal_value(
                 create.element.comment, sqltypes.String()
             ),
-            quoted_name(schema_name, quote=True),
-            quoted_name(
-                self.preparer.format_table(create.element, use_schema=False),
-                quote=True,
-            ),
+            self.preparer.quote_schema(schema_name),
+            self.preparer.format_table(create.element, use_schema=False),
         )
 
     def visit_drop_table_comment(self, drop):
@@ -2629,11 +2626,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return """
         execute sp_dropextendedproperty 'MS_Description', 'schema', {0}, 'table', {1};
         """.format(
-            quoted_name(schema_name, quote=True),
-            quoted_name(
-                self.preparer.format_table(drop.element, use_schema=False),
-                quote=True,
-            ),
+            self.preparer.quote_schema(schema_name),
+            self.preparer.format_table(drop.element, use_schema=False),
         )
 
     def visit_set_column_comment(self, create):
@@ -2645,16 +2639,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
             self.sql_compiler.render_literal_value(
                 create.element.comment, sqltypes.String()
             ),
-            quoted_name(schema_name, quote=True),
-            quoted_name(
-                self.preparer.format_table(
-                    create.element.table, use_schema=False
-                ),
-                quote=True,
-            ),
-            quoted_name(
-                self.preparer.format_column(create.element), quote=True
-            ),
+            self.preparer.quote_schema(schema_name),
+            self.preparer.format_table(create.element.table, use_schema=False),
+            self.preparer.format_column(create.element),
         )
 
     def visit_drop_column_comment(self, drop):
@@ -2663,14 +2650,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return """
         execute sp_dropextendedproperty 'MS_Description', 'schema', {0}, 'table', {1}, 'column', {2};
         """.format(
-            quoted_name(schema_name, quote=True),
-            quoted_name(
-                self.preparer.format_table(
-                    drop.element.table, use_schema=False
-                ),
-                quote=True,
-            ),
-            quoted_name(self.preparer.format_column(drop.element), quote=True),
+            self.preparer.quote_schema(schema_name),
+            self.preparer.format_table(drop.element.table, use_schema=False),
+            self.preparer.format_column(drop.element),
         )
 
     def visit_create_sequence(self, create, **kw):
@@ -3321,12 +3303,15 @@ class MSDialect(default.DefaultDialect):
         schema_name = schema if schema else self.default_schema_name
         COMMENT_SQL = """
             SELECT com.value
-            FROM fn_listextendedproperty('MS_Description', 'schema', '{0}', 'table', '{1}', NULL, NULL) as com;
-        """.format(
-            schema_name, table_name
-        )
+            FROM fn_listextendedproperty('MS_Description', 'schema', :schema, 'table', :table, NULL, NULL) as com;
+        """
 
-        comment = connection.execute(sql.text(COMMENT_SQL)).scalar()
+        comment = connection.execute(
+            sql.text(COMMENT_SQL).bindparams(
+                sql.bindparam("schema", schema_name, ischema.CoerceUnicode()),
+                sql.bindparam("table", table_name, ischema.CoerceUnicode()),
+            )
+        ).scalar()
         if comment:
             return {"text": str(comment, "UTF-8")}
         else:
