@@ -240,6 +240,11 @@ MySQLdb, MySQL-Client, MySQL-Connector Python, and PyMySQL.   Using it,
 the database connection will return true for the value of
 ``SELECT @@autocommit;``.
 
+There are also more options for isolation level configurations, such as
+"sub-engine" objects linked to a main :class:`.Engine` which each apply
+different isolation level settings.  See the discussion at
+:ref:`dbapi_autocommit` for background.
+
 .. seealso::
 
     :ref:`dbapi_autocommit`

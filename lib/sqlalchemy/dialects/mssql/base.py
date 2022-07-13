@@ -435,7 +435,10 @@ Valid values for ``isolation_level`` include:
 * ``SERIALIZABLE``
 * ``SNAPSHOT`` - specific to SQL Server
 
-.. versionadded:: 1.2 added AUTOCOMMIT isolation level setting
+There are also more options for isolation level configurations, such as
+"sub-engine" objects linked to a main :class:`.Engine` which each apply
+different isolation level settings.  See the discussion at
+:ref:`dbapi_autocommit` for background.
 
 .. seealso::
 
