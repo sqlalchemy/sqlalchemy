@@ -661,7 +661,8 @@ class MutableComposite(MutableBase):
 
             prop = parent.mapper.get_property(key)
             for value, attr_name in zip(
-                self.__composite_values__(), prop._attribute_keys
+                prop._composite_values_from_instance(self),
+                prop._attribute_keys,
             ):
                 setattr(parent.obj(), attr_name, value)
 

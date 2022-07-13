@@ -1,4 +1,5 @@
 import copy
+import dataclasses
 import pickle
 
 from sqlalchemy import event
@@ -94,6 +95,44 @@ class MyPoint(Point):
     def coerce(cls, key, value):
         if isinstance(value, tuple):
             value = Point(*value)
+        return value
+
+
+@dataclasses.dataclass
+class DCPoint(MutableComposite):
+    x: int
+    y: int
+
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        self.changed()
+
+    def __getstate__(self):
+        return self.x, self.y
+
+    def __setstate__(self, state):
+        self.x, self.y = state
+
+
+@dataclasses.dataclass
+class MyDCPoint(MutableComposite):
+    x: int
+    y: int
+
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        self.changed()
+
+    def __getstate__(self):
+        return self.x, self.y
+
+    def __setstate__(self, state):
+        self.x, self.y = state
+
+    @classmethod
+    def coerce(cls, key, value):
+        if isinstance(value, tuple):
+            value = MyDCPoint(*value)
         return value
 
 
@@ -1392,6 +1431,13 @@ class MutableCompositeColumnDefaultTest(
         assert f1 in sess.dirty
 
 
+class MutableDCCompositeColumnDefaultTest(MutableCompositeColumnDefaultTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        return DCPoint
+
+
 class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
@@ -1411,20 +1457,29 @@ class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
             loads(dumps(u1))
 
 
+class MutableDCCompositesUnpickleTest(MutableCompositesUnpickleTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        return DCPoint
+
+
 class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        Point = cls._type_fixture()
+        cls.Point = cls._type_fixture()
 
         cls.mapper_registry.map_imperatively(
-            Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
+            Foo,
+            foo,
+            properties={"data": composite(cls.Point, foo.c.x, foo.c.y)},
         )
 
     def test_in_place_mutation(self):
         sess = fixture_session()
-        d = Point(3, 4)
+        d = self.Point(3, 4)
         f1 = Foo(data=d)
         sess.add(f1)
         sess.commit()
@@ -1432,11 +1487,11 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         f1.data.y = 5
         sess.commit()
 
-        eq_(f1.data, Point(3, 5))
+        eq_(f1.data, self.Point(3, 5))
 
     def test_pickle_of_parent(self):
         sess = fixture_session()
-        d = Point(3, 4)
+        d = self.Point(3, 4)
         f1 = Foo(data=d)
         sess.add(f1)
         sess.commit()
@@ -1457,11 +1512,11 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         f1 = Foo(data=None)
         sess.add(f1)
         sess.commit()
-        eq_(f1.data, Point(None, None))
+        eq_(f1.data, self.Point(None, None))
 
         f1.data.y = 5
         sess.commit()
-        eq_(f1.data, Point(None, 5))
+        eq_(f1.data, self.Point(None, 5))
 
     def test_set_illegal(self):
         f1 = Foo()
@@ -1476,7 +1531,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
     def test_unrelated_flush(self):
         sess = fixture_session()
-        f1 = Foo(data=Point(3, 4), unrelated_data="unrelated")
+        f1 = Foo(data=self.Point(3, 4), unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
         f1.unrelated_data = "unrelated 2"
@@ -1488,7 +1543,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
     def test_dont_reset_on_attr_refresh(self):
         sess = fixture_session()
-        f1 = Foo(data=Point(3, 4), unrelated_data="unrelated")
+        f1 = Foo(data=self.Point(3, 4), unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
 
@@ -1518,6 +1573,13 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
         eq_(f1.data.x, 12)
         eq_(f1.data.y, 15)
+
+
+class MutableDCCompositesTest(MutableCompositesTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        return DCPoint
 
 
 class MutableCompositeCallableTest(_CompositeTestBase, fixtures.MappedTest):
@@ -1561,16 +1623,18 @@ class MutableCompositeCustomCoerceTest(
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        Point = cls._type_fixture()
+        cls.Point = cls._type_fixture()
 
         cls.mapper_registry.map_imperatively(
-            Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
+            Foo,
+            foo,
+            properties={"data": composite(cls.Point, foo.c.x, foo.c.y)},
         )
 
     def test_custom_coerce(self):
         f = Foo()
         f.data = (3, 4)
-        eq_(f.data, Point(3, 4))
+        eq_(f.data, self.Point(3, 4))
 
     def test_round_trip_ok(self):
         sess = fixture_session()
@@ -1580,7 +1644,14 @@ class MutableCompositeCustomCoerceTest(
         sess.add(f)
         sess.commit()
 
-        eq_(f.data, Point(3, 4))
+        eq_(f.data, self.Point(3, 4))
+
+
+class MutableDCCompositeCustomCoerceTest(MutableCompositeCustomCoerceTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        return MyDCPoint
 
 
 class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
@@ -1606,16 +1677,18 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         foo = cls.tables.foo
         subfoo = cls.tables.subfoo
 
-        Point = cls._type_fixture()
+        cls.Point = cls._type_fixture()
 
         cls.mapper_registry.map_imperatively(
-            Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
+            Foo,
+            foo,
+            properties={"data": composite(cls.Point, foo.c.x, foo.c.y)},
         )
         cls.mapper_registry.map_imperatively(SubFoo, subfoo, inherits=Foo)
 
     def test_in_place_mutation_subclass(self):
         sess = fixture_session()
-        d = Point(3, 4)
+        d = self.Point(3, 4)
         f1 = SubFoo(data=d)
         sess.add(f1)
         sess.commit()
@@ -1623,11 +1696,11 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         f1.data.y = 5
         sess.commit()
 
-        eq_(f1.data, Point(3, 5))
+        eq_(f1.data, self.Point(3, 5))
 
     def test_pickle_of_parent_subclass(self):
         sess = fixture_session()
-        d = Point(3, 4)
+        d = self.Point(3, 4)
         f1 = SubFoo(data=d)
         sess.add(f1)
         sess.commit()
@@ -1642,3 +1715,10 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
             sess.add(f2)
             f2.data.y = 12
             assert f2 in sess.dirty
+
+
+class MutableInheritedDCCompositesTest(MutableInheritedCompositesTest):
+    @classmethod
+    def _type_fixture(cls):
+
+        return DCPoint
