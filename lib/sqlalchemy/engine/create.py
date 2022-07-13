@@ -289,19 +289,7 @@ def create_engine(url, **kwargs):
 
         .. seealso::
 
-            :attr:`_engine.Connection.default_isolation_level`
-            - view default level
-
-            :paramref:`.Connection.execution_options.isolation_level`
-            - set per :class:`_engine.Connection` isolation level
-
-            :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
-
-            :ref:`PostgreSQL Transaction Isolation <postgresql_isolation_level>`
-
-            :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
-
-            :ref:`session_transaction_isolation` - for the ORM
+            :ref:`dbapi_autocommit`
 
     :param json_deserializer: for dialects that support the
         :class:`_types.JSON`
