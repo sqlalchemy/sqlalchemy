@@ -148,7 +148,7 @@ Transaction Isolation Level
 ---------------------------
 
 Most SQLAlchemy dialects support setting of transaction isolation level
-using the :paramref:`_sa.create_engine.execution_options` parameter
+using the :paramref:`_sa.create_engine.isolation_level` parameter
 at the :func:`_sa.create_engine` level, and at the :class:`_engine.Connection`
 level via the :paramref:`.Connection.execution_options.isolation_level`
 parameter.
@@ -166,9 +166,7 @@ To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
         "postgresql+pg8000://scott:tiger@localhost/test",
-        execution_options={
-            "isolation_level": "REPEATABLE READ"
-        }
+        isolation_level = "REPEATABLE READ"
     )
 
 To set using per-connection execution options::
@@ -180,6 +178,11 @@ To set using per-connection execution options::
         with conn.begin():
             # ... work with transaction
 
+There are also more options for isolation level configurations, such as
+"sub-engine" objects linked to a main :class:`.Engine` which each apply
+different isolation level settings.  See the discussion at
+:ref:`dbapi_autocommit` for background.
+
 Valid values for ``isolation_level`` on most PostgreSQL dialects include:
 
 * ``READ COMMITTED``
@@ -190,9 +193,9 @@ Valid values for ``isolation_level`` on most PostgreSQL dialects include:
 
 .. seealso::
 
-    :ref:`postgresql_readonly_deferrable`
-
     :ref:`dbapi_autocommit`
+
+    :ref:`postgresql_readonly_deferrable`
 
     :ref:`psycopg2_isolation_level`
 
