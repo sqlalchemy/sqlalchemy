@@ -33,7 +33,7 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
         __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
-        kw = relationship("Keyword", secondary=lambda: userkeywords_table)
+        kw = relationship("Keyword", secondary=lambda: user_keyword_table)
 
         def __init__(self, name):
             self.name = name
@@ -48,8 +48,8 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
             self.keyword = keyword
 
 
-    userkeywords_table = Table(
-        "userkeywords",
+    user_keyword_table = Table(
+        "user_keyword",
         Base.metadata,
         Column("user_id", Integer, ForeignKey("user.id"), primary_key=True),
         Column("keyword_id", Integer, ForeignKey("keyword.id"), primary_key=True),
@@ -79,7 +79,7 @@ value of ``.keyword`` associated with each ``Keyword`` object::
         __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
-        kw = relationship("Keyword", secondary=lambda: userkeywords_table)
+        kw = relationship("Keyword", secondary=lambda: user_keyword_table)
 
         def __init__(self, name):
             self.name = name
@@ -158,48 +158,51 @@ relationship, and is described at :ref:`association_pattern`. Association
 proxies are useful for keeping "association objects" out of the way during
 regular use.
 
-Suppose our ``userkeywords`` table above had additional columns
+Suppose our ``user_keyword`` table above had additional columns
 which we'd like to map explicitly, but in most cases we don't
 require direct access to these attributes.  Below, we illustrate
-a new mapping which introduces the ``UserKeyword`` class, which
-is mapped to the ``userkeywords`` table illustrated earlier.
+a new mapping which introduces the ``UserKeywordAssociation`` class, which
+is mapped to the ``user_keyword`` table illustrated earlier.
 This class adds an additional column ``special_key``, a value which
 we occasionally want to access, but not in the usual case.   We
 create an association proxy on the ``User`` class called
-``keywords``, which will bridge the gap from the ``user_keywords``
+``keywords``, which will bridge the gap from the ``user_keyword_associations``
 collection of ``User`` to the ``.keyword`` attribute present on each
-``UserKeyword``::
+``UserKeywordAssociation``::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import backref, declarative_base, relationship
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
 
     class User(Base):
         __tablename__ = "user"
+
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
 
-        # association proxy of "user_keywords" collection
+        user_keyword_associations = relationship(
+            "UserKeywordAssociation",
+            back_populates="user",
+            cascade="all, delete-orphan",
+        )
+        # association proxy of "user_keyword_associations" collection
         # to "keyword" attribute
-        keywords = association_proxy("user_keywords", "keyword")
+        keywords = association_proxy("user_keyword_associations", "keyword")
 
         def __init__(self, name):
             self.name = name
 
 
-    class UserKeyword(Base):
+    class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
         user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
         keyword_id = Column(Integer, ForeignKey("keyword.id"), primary_key=True)
         special_key = Column(String(50))
 
-        # bidirectional attribute/collection of "user"/"user_keywords"
-        user = relationship(
-            User, backref=backref("user_keywords", cascade="all, delete-orphan")
-        )
+        user = relationship(User, back_populates="user_keyword_associations")
 
         # reference to the "Keyword" object
         keyword = relationship("Keyword")
@@ -223,7 +226,7 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 
 With the above configuration, we can operate upon the ``.keywords`` collection
 of each ``User`` object, each of which exposes a collection of ``Keyword``
-objects that are obtained from the underyling ``UserKeyword`` elements::
+objects that are obtained from the underlying ``UserKeywordAssociation`` elements::
 
 
     >>> user = User("log")
@@ -238,29 +241,29 @@ This example is in contrast to the example illustrated previously at
 a collection of strings, rather than a collection of composed objects.
 In this case, each ``.keywords.append()`` operation is equivalent to::
 
-    >>> user.user_keywords.append(UserKeyword(Keyword("its_heavy")))
+    >>> user.user_keyword_associations.append(UserKeywordAssociation(Keyword("its_heavy")))
 
-The ``UserKeyword`` association object has two attributes that are both
+The ``UserKeywordAssociation`` object has two attributes that are both
 populated within the scope of the ``append()`` operation of the association
 proxy; ``.keyword``, which refers to the
 ``Keyword` object, and ``.user``, which refers to the ``User``.
 The ``.keyword`` attribute is populated first, as the association proxy
-generates a new ``UserKeyword`` object in response to the ``.append()``
+generates a new ``UserKeywordAssociation`` object in response to the ``.append()``
 operation, assigning the given ``Keyword`` instance to the ``.keyword``
-attribute. Then, as the ``UserKeyword`` object is appended to the
-``User.user_keywords`` collection, the ``UserKeyword.user`` attribute,
-configured as ``back_populates`` for ``User.user_keywords``, is initialized
-upon the given ``UserKeyword`` instance to refer to the parent ``User``
+attribute. Then, as the ``UserKeywordAssociation`` object is appended to the
+``User.user_keyword_associations`` collection, the ``UserKeywordAssociation.user`` attribute,
+configured as ``back_populates`` for ``User.user_keyword_associations``, is initialized
+upon the given ``UserKeywordAssociation`` instance to refer to the parent ``User``
 receiving the append operation.  The ``special_key``
 argument above is left at its default value of ``None``.
 
 For those cases where we do want ``special_key`` to have a value, we
-create the ``UserKeyword`` object explicitly.  Below we assign all
+create the ``UserKeywordAssociation`` object explicitly.  Below we assign all
 three attributes, wherein the assignment of ``.user`` during
-construction, has the effect of appending the new ``UserKeyword`` to
-the ``User.user_keywords`` collection (via the relationship)::
+construction, has the effect of appending the new ``UserKeywordAssociation`` to
+the ``User.user_keyword_associations`` collection (via the relationship)::
 
-    >>> UserKeyword(Keyword("its_wood"), user, special_key="my special key")
+    >>> UserKeywordAssociation(Keyword("its_wood"), user, special_key="my special key")
 
 The association proxy returns to us a collection of ``Keyword`` objects represented
 by all these operations::
@@ -285,15 +288,15 @@ arguments to the creation function instead of one, the key and the value. As
 always, this creation function defaults to the constructor of the intermediary
 class, and can be customized using the ``creator`` argument.
 
-Below, we modify our ``UserKeyword`` example such that the ``User.user_keywords``
-collection will now be mapped using a dictionary, where the ``UserKeyword.special_key``
-argument will be used as the key for the dictionary.   We then apply a ``creator``
+Below, we modify our ``UserKeywordAssociation`` example such that the ``User.user_keyword_associations``
+collection will now be mapped using a dictionary, where the ``UserKeywordAssociation.special_key``
+argument will be used as the key for the dictionary.   We also apply a ``creator``
 argument to the ``User.keywords`` proxy so that these values are assigned appropriately
 when new elements are added to the dictionary::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import backref, declarative_base, relationship
+    from sqlalchemy.orm import declarative_base, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
@@ -304,34 +307,36 @@ when new elements are added to the dictionary::
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
 
-        # proxy to 'user_keywords', instantiating UserKeyword
-        # assigning the new key to 'special_key', values to
-        # 'keyword'.
+        # user/user_keyword_associations relationship, mapping
+        # user_keyword_associations with a dictionary against "special_key" as key.
+        user_keyword_associations = relationship(
+            "UserKeywordAssociation",
+            back_populates="user",
+            collection_class=attribute_mapped_collection("special_key"),
+            cascade="all, delete-orphan",
+        )
+        # proxy to 'user_keyword_associations', instantiating
+        # UserKeywordAssociation assigning the new key to 'special_key',
+        # values to 'keyword'.
         keywords = association_proxy(
-            "user_keywords",
+            "user_keyword_associations",
             "keyword",
-            creator=lambda k, v: UserKeyword(special_key=k, keyword=v),
+            creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
         )
 
         def __init__(self, name):
             self.name = name
 
 
-    class UserKeyword(Base):
+    class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
         user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
         keyword_id = Column(Integer, ForeignKey("keyword.id"), primary_key=True)
         special_key = Column(String)
 
-        # bidirectional user/user_keywords relationships, mapping
-        # user_keywords with a dictionary against "special_key" as key.
         user = relationship(
             User,
-            backref=backref(
-                "user_keywords",
-                collection_class=attribute_mapped_collection("special_key"),
-                cascade="all, delete-orphan",
-            ),
+            back_populates="user_keyword_associations",
         )
         keyword = relationship("Keyword")
 
@@ -348,7 +353,7 @@ when new elements are added to the dictionary::
             return "Keyword(%s)" % repr(self.keyword)
 
 We illustrate the ``.keywords`` collection as a dictionary, mapping the
-``UserKeyword.special_key`` value to ``Keyword`` objects::
+``UserKeywordAssociation.special_key`` value to ``Keyword`` objects::
 
     >>> user = User("log")
 
@@ -367,14 +372,14 @@ Given our previous examples of proxying from relationship to scalar
 attribute, proxying across an association object, and proxying dictionaries,
 we can combine all three techniques together to give ``User``
 a ``keywords`` dictionary that deals strictly with the string value
-of ``special_key`` mapped to the string ``keyword``.  Both the ``UserKeyword``
+of ``special_key`` mapped to the string ``keyword``.  Both the ``UserKeywordAssociation``
 and ``Keyword`` classes are entirely concealed.  This is achieved by building
 an association proxy on ``User`` that refers to an association proxy
-present on ``UserKeyword``::
+present on ``UserKeywordAssociation``::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import backref, declarative_base, relationship
+    from sqlalchemy.orm import declarative_base, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
@@ -385,33 +390,32 @@ present on ``UserKeyword``::
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
 
-        # the same 'user_keywords'->'keyword' proxy as in
+        user_keyword_associations = relationship(
+            "UserKeywordAssociation",
+            back_populates="user",
+            collection_class=attribute_mapped_collection("special_key"),
+            cascade="all, delete-orphan",
+        )
+        # the same 'user_keyword_associations'->'keyword' proxy as in
         # the basic dictionary example.
         keywords = association_proxy(
-            "user_keywords",
+            "user_keyword_associations",
             "keyword",
-            creator=lambda k, v: UserKeyword(special_key=k, keyword=v),
+            creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
         )
-
-        # another proxy that is directly column-targeted
-        special_keys = association_proxy("user_keywords", "special_key")
 
         def __init__(self, name):
             self.name = name
 
 
-    class UserKeyword(Base):
+    class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
         user_id = Column(ForeignKey("user.id"), primary_key=True)
         keyword_id = Column(ForeignKey("keyword.id"), primary_key=True)
         special_key = Column(String)
         user = relationship(
             User,
-            backref=backref(
-                "user_keywords",
-                collection_class=attribute_mapped_collection("special_key"),
-                cascade="all, delete-orphan",
-            ),
+            back_populates="user_keyword_associations",
         )
 
         # the relationship to Keyword is now called
@@ -432,7 +436,7 @@ present on ``UserKeyword``::
             self.keyword = keyword
 
 ``User.keywords`` is now a dictionary of string to string, where
-``UserKeyword`` and ``Keyword`` objects are created and removed for us
+``UserKeywordAssociation`` and ``Keyword`` objects are created and removed for us
 transparently using the association proxy. In the example below, we illustrate
 usage of the assignment operator, also appropriately handled by the
 association proxy, to apply a dictionary value to the collection at once::
@@ -451,7 +455,7 @@ association proxy, to apply a dictionary value to the collection at once::
     {'sk1': 'kw1', 'sk3': 'kw3'}
 
     >>> # illustrate un-proxied usage
-    ... print(user.user_keywords['sk3'].kw)
+    ... print(user.user_keyword_associations['sk3'].kw)
     <__main__.Keyword object at 0x12ceb90>
 
 One caveat with our example above is that because ``Keyword`` objects are created
@@ -468,10 +472,10 @@ Querying with Association Proxies
 ---------------------------------
 
 The :class:`.AssociationProxy` features simple SQL construction capabilities
-which work at the class level in a similar way as other ORM-mapped attributes.
-Class-bound attributes such as ``User.keywords`` and ``User.special_keys``
-in the preceding example will provide for a SQL generating construct
-when accessed at the class level.
+which work at the class level in a similar way as other ORM-mapped attributes,
+and provide rudimentary filtering support primarily based on the
+SQL ``EXISTS`` keyword.
+
 
 .. note:: The primary purpose of the association proxy extension is to allow
    for improved persistence and object-access patterns with mapped object
@@ -479,6 +483,54 @@ when accessed at the class level.
    is of limited use and will not replace the need to refer to the underlying
    attributes when constructing SQL queries with JOINs, eager loading
    options, etc.
+
+For this section, assume a class with both an association proxy
+that refers to a column, as well as an association proxy that refers
+to a related object, as in the example mapping below::
+
+    from sqlalchemy import Column, ForeignKey, Integer, String
+    from sqlalchemy.ext.associationproxy import association_proxy
+    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm.collections import attribute_mapped_collection
+
+    Base = declarative_base()
+
+
+    class User(Base):
+        __tablename__ = "user"
+        id = Column(Integer, primary_key=True)
+        name = Column(String(64))
+
+        user_keyword_associations = relationship(
+            "UserKeywordAssociation",
+            cascade="all, delete-orphan",
+        )
+
+        # object-targeted association proxy
+        keywords = association_proxy(
+            "user_keyword_associations",
+            "keyword",
+        )
+
+        # column-targeted association proxy
+        special_keys = association_proxy(
+            "user_keyword_associations", "special_key"
+        )
+
+
+    class UserKeywordAssociation(Base):
+        __tablename__ = "user_keyword"
+        user_id = Column(ForeignKey("user.id"), primary_key=True)
+        keyword_id = Column(ForeignKey("keyword.id"), primary_key=True)
+        special_key = Column(String)
+        keyword = relationship("Keyword")
+
+
+    class Keyword(Base):
+        __tablename__ = "keyword"
+        id = Column(Integer, primary_key=True)
+        keyword = Column("keyword", String(64))
+
 
 The SQL generated takes the form of a correlated subquery against
 the EXISTS SQL operator so that it can be used in a WHERE clause without
