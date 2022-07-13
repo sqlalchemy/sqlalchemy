@@ -48,6 +48,7 @@ from .. import schema
 from .. import sql
 from .. import util
 from ..sql import expression
+from ..sql import operators
 from ..sql.elements import BindParameter
 from ..util.typing import is_pep593
 from ..util.typing import typing_get_args
@@ -69,6 +70,7 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _InfoType
     from ..sql.elements import ClauseList
     from ..sql.elements import ColumnElement
+    from ..sql.operators import OperatorType
     from ..sql.schema import Column
     from ..sql.selectable import Select
     from ..util.typing import _AnnotationScanType
@@ -741,21 +743,46 @@ class Composite(
                 return self.prop._comparable_elements
 
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.eq, other)
+
+        def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.ne, other)
+
+        def __lt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.lt, other)
+
+        def __gt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.gt, other)
+
+        def __le__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.le, other)
+
+        def __ge__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+            return self._compare(operators.ge, other)
+
+        # what might be interesting would be if we create
+        # an instance of the composite class itself with
+        # the columns as data members, then use "hybrid style" comparison
+        # to create these comparisons.  then your Point.__eq__() method could
+        # be where comparison behavior is defined for SQL also.   Likely
+        # not a good choice for default behavior though, not clear how it would
+        # work w/ dataclasses, etc.  also no demand for any of this anyway.
+        def _compare(
+            self, operator: OperatorType, other: Any
+        ) -> ColumnElement[bool]:
             values: Sequence[Any]
             if other is None:
                 values = [None] * len(self.prop._comparable_elements)
             else:
                 values = self.prop._composite_values_from_instance(other)
             comparisons = [
-                a == b for a, b in zip(self.prop._comparable_elements, values)
+                operator(a, b)
+                for a, b in zip(self.prop._comparable_elements, values)
             ]
             if self._adapt_to_entity:
                 assert self.adapter is not None
-                comparisons = [self.adapter(x) for x in comparisons]
-            return sql.and_(*comparisons)
-
-        def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
-            return sql.not_(self.__eq__(other))
+                comparisons = [self.adapter(x) for x in comparisons]  # type: ignore  # noqa: E501
+            return sql.and_(*comparisons)  # type: ignore
 
     def __str__(self) -> str:
         return str(self.parent.class_.__name__) + "." + self.key
