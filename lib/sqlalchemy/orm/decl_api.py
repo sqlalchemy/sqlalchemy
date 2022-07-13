@@ -910,7 +910,8 @@ class registry:
           inter-base relationships.
 
         :param type_annotation_map: optional dictionary of Python types to
-          SQLAlchemy :class:`_types.TypeEngine` classes or instances.  This
+          SQLAlchemy :class:`_types.TypeEngine` classes or instances.
+          The provided dict will update the default type mapping.  This
           is used exclusively by the :class:`_orm.MappedColumn` construct
           to produce column types based on annotations within the
           :class:`_orm.Mapped` type.

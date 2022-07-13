@@ -2188,11 +2188,6 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self._define_constraint_validity(constraint)
         return text
 
-    def visit_drop_table_comment(self, drop):
-        return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
-            drop.element
-        )
-
     def visit_create_enum_type(self, create):
         type_ = create.element
 
