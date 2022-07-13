@@ -1,4 +1,5 @@
 import dataclasses
+import operator
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
@@ -15,6 +16,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
@@ -1290,28 +1292,69 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 },
             )
 
-    def test_comparator_behavior_default(self):
-        self._fixture(False)
-        self._test_comparator_behavior()
+    @testing.combinations(True, False, argnames="custom")
+    @testing.combinations(
+        (operator.lt, "<", ">"),
+        (operator.gt, ">", "<"),
+        (operator.eq, "=", "="),
+        (operator.ne, "!=", "!="),
+        (operator.le, "<=", ">="),
+        (operator.ge, ">=", "<="),
+        argnames="operator, fwd_op, rev_op",
+    )
+    def test_comparator_behavior(self, custom, operator, fwd_op, rev_op):
+        self._fixture(custom)
+        Edge, Point = self.classes("Edge", "Point")
 
-    def test_comparator_behavior_custom(self):
-        self._fixture(True)
-        self._test_comparator_behavior()
+        self.assert_compile(
+            select(Edge).filter(operator(Edge.start, Point(3, 4))),
+            "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
+            f"WHERE edge.x1 {fwd_op} :x1_1 AND edge.y1 {fwd_op} :y1_1",
+            checkparams={"x1_1": 3, "y1_1": 4},
+        )
 
-    def _test_comparator_behavior(self):
-        Edge, Point = (self.classes.Edge, self.classes.Point)
+        self.assert_compile(
+            select(Edge).filter(~operator(Edge.start, Point(3, 4))),
+            "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
+            f"WHERE NOT (edge.x1 {fwd_op} :x1_1 AND edge.y1 {fwd_op} :y1_1)",
+            checkparams={"x1_1": 3, "y1_1": 4},
+        )
 
-        sess = fixture_session()
-        e1 = Edge(Point(3, 4), Point(5, 6))
-        e2 = Edge(Point(14, 5), Point(2, 7))
-        sess.add_all([e1, e2])
-        sess.commit()
+    @testing.combinations(True, False, argnames="custom")
+    @testing.combinations(
+        (operator.lt, "<", ">"),
+        (operator.gt, ">", "<"),
+        (operator.eq, "=", "="),
+        (operator.ne, "!=", "!="),
+        (operator.le, "<=", ">="),
+        (operator.ge, ">=", "<="),
+        argnames="op, fwd_op, rev_op",
+    )
+    def test_comparator_null(self, custom, op, fwd_op, rev_op):
+        self._fixture(custom)
+        Edge, Point = self.classes("Edge", "Point")
 
-        assert sess.query(Edge).filter(Edge.start == Point(3, 4)).one() is e1
-
-        assert sess.query(Edge).filter(Edge.start != Point(3, 4)).first() is e2
-
-        eq_(sess.query(Edge).filter(Edge.start == None).all(), [])  # noqa
+        if op is operator.eq:
+            self.assert_compile(
+                select(Edge).filter(op(Edge.start, None)),
+                "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
+                "WHERE edge.x1 IS NULL AND edge.y1 IS NULL",
+                checkparams={},
+            )
+        elif op is operator.ne:
+            self.assert_compile(
+                select(Edge).filter(op(Edge.start, None)),
+                "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
+                "WHERE edge.x1 IS NOT NULL AND edge.y1 IS NOT NULL",
+                checkparams={},
+            )
+        else:
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                r"Only '=', '!=', .* operators can be used "
+                r"with None/True/False",
+            ):
+                select(Edge).filter(op(Edge.start, None))
 
     def test_default_comparator_factory(self):
         self._fixture(False)
