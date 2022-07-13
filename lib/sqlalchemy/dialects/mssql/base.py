@@ -2862,6 +2862,8 @@ class MSDialect(default.DefaultDialect):
         ),
     ]
 
+    sqlserver_variant = "sqlserver"
+
     def __init__(
         self,
         query_timeout=None,
@@ -2871,6 +2873,7 @@ class MSDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
+        sqlserver_variant="sqlserver",
         **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2892,6 +2895,8 @@ class MSDialect(default.DefaultDialect):
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
 
+        self.sqlserver_variant = sqlserver_variant
+
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
         connection.exec_driver_sql("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
@@ -2911,44 +2916,6 @@ class MSDialect(default.DefaultDialect):
         ]
     )
 
-    def get_sql_server_variant(self, dbapi_connection) -> str:
-        """
-        Queries SQL Server system views to determine if the given connection
-        is to a normal SQL Server instance or a PDW-based instance.
-
-        Parameters
-        ------------
-        dbapi_connection -- the underlying DBAPI Connection
-
-        Returns
-        --------
-        A string indicating the server variant, "sql_server" or "pdw"
-        """
-        cursor = dbapi_connection.cursor()
-        edition = "sql_server"
-        error = None
-
-        try:
-            sql = """
-            SELECT COUNT(*) AS n 
-            FROM sys.system_views 
-            WHERE name = 'dm_exec_sessions'
-            """
-            rs = cursor.execute(sql)
-            num_views = int(rs.fetchone()[0])
-            if num_views == 0:
-                edition = "pdw"
-        except self.dbapi.Error as err:
-            error = err
-        finally:
-            cursor.close()
-
-        if error is not None:
-            raise RuntimeError(f"Unable to determine SQL Server edition. "
-                               f" Error: {error}")
-
-        return edition
-
     def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
@@ -2962,10 +2929,9 @@ class MSDialect(default.DefaultDialect):
     def get_isolation_level(self, dbapi_connection):
         last_error = None
 
-        edition = self.get_sql_server_variant(dbapi_connection)
-
-        view = "sys.dm_pdw_nodes_exec_sessions" if edition == "pdw" \
-                else "sys.dm_exec_sessions"
+        view = "sys.dm_pdw_nodes_exec_sessions" \
+                    if self.sqlserver_variant == "pdw" \
+                    else "sys.dm_exec_sessions"
 
         cursor = dbapi_connection.cursor()
         try:
