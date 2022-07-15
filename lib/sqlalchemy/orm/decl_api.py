@@ -324,6 +324,16 @@ class declared_attr(interfaces._MappedAttribute[_T]):
         fn: _DeclaredAttrDecorated[_T],
         cascading: bool = False,
     ):
+        # suppport
+        # @declared_attr
+        # @classmethod
+        # def foo(cls) -> Mapped[thing]:
+        #    ...
+        # which seems to help typing tools interpret the fn as a classmethod
+        # for situations where needed
+        if isinstance(fn, classmethod):
+            fn = fn.__func__  # type: ignore
+
         self.fget = fn
         self._cascading = cascading
         self.__doc__ = fn.__doc__

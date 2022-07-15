@@ -737,6 +737,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                 locally_collected_columns = self._produce_column_copies(
                     local_attributes_for_class,
                     attribute_is_overridden,
+                    fixed_table,
                 )
             else:
                 locally_collected_columns = {}
@@ -828,9 +829,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # acting like that for now.
 
                     if isinstance(obj, (Column, MappedColumn)):
-                        self._collect_annotation(
-                            name, annotation, is_dataclass_field, True, obj
-                        )
+                        self._collect_annotation(name, annotation, True, obj)
                         # already copied columns to the mapped class.
                         continue
                     elif isinstance(obj, MapperProperty):
@@ -913,23 +912,18 @@ class _ClassScanMapperConfig(_MapperConfig):
                         self._collect_annotation(
                             name,
                             obj._collect_return_annotation(),
-                            False,
                             True,
                             obj,
                         )
                     elif _is_mapped_annotation(annotation, cls):
-                        generated_obj = self._collect_annotation(
-                            name, annotation, is_dataclass_field, True, obj
-                        )
-                        if obj is None:
-                            if not fixed_table:
-                                collected_attributes[name] = (
-                                    generated_obj
-                                    if generated_obj is not None
-                                    else MappedColumn()
-                                )
-                        else:
-                            collected_attributes[name] = obj
+                        # Mapped annotation without any object.
+                        # product_column_copies should have handled this.
+                        # if future support for other MapperProperty,
+                        # then test if this name is already handled and
+                        # otherwise proceed to generate.
+                        if not fixed_table:
+                            assert name in collected_attributes
+                        continue
                     else:
                         # here, the attribute is some other kind of
                         # property that we assume is not part of the
@@ -953,12 +947,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                         obj = obj.fget()
 
                     collected_attributes[name] = obj
-                    self._collect_annotation(
-                        name, annotation, True, False, obj
-                    )
+                    self._collect_annotation(name, annotation, False, obj)
                 else:
                     generated_obj = self._collect_annotation(
-                        name, annotation, False, None, obj
+                        name, annotation, None, obj
                     )
                     if (
                         obj is None
@@ -1060,7 +1052,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         self,
         name: str,
         raw_annotation: _AnnotationScanType,
-        is_dataclass: bool,
         expect_mapped: Optional[bool],
         attr_value: Any,
     ) -> Any:
@@ -1128,6 +1119,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             [], Iterable[Tuple[str, Any, Any, bool]]
         ],
         attribute_is_overridden: Callable[[str, Any], bool],
+        fixed_table: bool,
     ) -> Dict[str, Union[Column[Any], MappedColumn[Any]]]:
         cls = self.cls
         dict_ = self.clsdict_view
@@ -1136,7 +1128,19 @@ class _ClassScanMapperConfig(_MapperConfig):
         # copy mixin columns to the mapped class
 
         for name, obj, annotation, is_dataclass in attributes_for_class():
-            if isinstance(obj, (Column, MappedColumn)):
+            if (
+                not fixed_table
+                and obj is None
+                and _is_mapped_annotation(annotation, cls)
+            ):
+                obj = self._collect_annotation(name, annotation, True, obj)
+                if obj is None:
+                    obj = MappedColumn()
+
+                locally_collected_attributes[name] = obj
+                setattr(cls, name, obj)
+
+            elif isinstance(obj, (Column, MappedColumn)):
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
                     # (like by the InstrumentedAttribute of the
