@@ -753,7 +753,7 @@ The new engine is described at :class:`_future.Engine` which delivers a new
 
 
 
-Migration to 2.0 Step Four - Use the ``future`` flag on Session
+Migration to 2.0 Step Five - Use the ``future`` flag on Session
 ---------------------------------------------------------------
 
 The :class:`_orm.Session` object also features an updated transaction/connection
