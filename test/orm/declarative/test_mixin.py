@@ -1,5 +1,7 @@
 from operator import is_not
 
+from typing_extensions import Annotated
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -21,6 +23,7 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
 from sqlalchemy.orm import has_inherited_table
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import synonym
@@ -1644,6 +1647,93 @@ class DeclarativeMixinPropertyTest(
             .filter(MyOtherModel.prop_hoho == "bar")
             .one(),
             m2,
+        )
+
+    @testing.combinations(
+        "anno",
+        "anno_w_clsmeth",
+        "pep593",
+        "nonanno",
+        "legacy",
+        argnames="clstype",
+    )
+    def test_column_property_col_ref(self, decl_base, clstype):
+
+        if clstype == "anno":
+
+            class SomethingMixin:
+                x: Mapped[int]
+                y: Mapped[int] = mapped_column()
+
+                @declared_attr
+                def x_plus_y(cls) -> Mapped[int]:
+                    return column_property(cls.x + cls.y)
+
+        elif clstype == "anno_w_clsmeth":
+            # this form works better w/ pylance, so support it
+            class SomethingMixin:
+                x: Mapped[int]
+                y: Mapped[int] = mapped_column()
+
+                @declared_attr
+                @classmethod
+                def x_plus_y(cls) -> Mapped[int]:
+                    return column_property(cls.x + cls.y)
+
+        elif clstype == "nonanno":
+
+            class SomethingMixin:
+                x = mapped_column(Integer)
+                y = mapped_column(Integer)
+
+                @declared_attr
+                def x_plus_y(cls) -> Mapped[int]:
+                    return column_property(cls.x + cls.y)
+
+        elif clstype == "pep593":
+            myint = Annotated[int, mapped_column(Integer)]
+
+            class SomethingMixin:
+                x: Mapped[myint]
+                y: Mapped[myint]
+
+                @declared_attr
+                def x_plus_y(cls) -> Mapped[int]:
+                    return column_property(cls.x + cls.y)
+
+        elif clstype == "legacy":
+
+            class SomethingMixin:
+                x = Column(Integer)
+                y = Column(Integer)
+
+                @declared_attr
+                def x_plus_y(cls) -> Mapped[int]:
+                    return column_property(cls.x + cls.y)
+
+        else:
+            assert False
+
+        class Something(SomethingMixin, Base):
+            __tablename__ = "something"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        class SomethingElse(SomethingMixin, Base):
+            __tablename__ = "something_else"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        # use the mixin twice, make sure columns are copied, etc
+        self.assert_compile(
+            select(Something.x_plus_y),
+            "SELECT something.x + something.y AS anon_1 FROM something",
+        )
+
+        self.assert_compile(
+            select(SomethingElse.x_plus_y),
+            "SELECT something_else.x + something_else.y AS anon_1 "
+            "FROM something_else",
         )
 
     def test_doc(self):

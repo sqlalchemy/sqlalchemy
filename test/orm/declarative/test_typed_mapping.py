@@ -815,10 +815,9 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(primary_key=True)
 
-        # ordering of cols is TODO
-        eq_(A.__table__.c.keys(), ["id", "y", "name", "x"])
+        eq_(A.__table__.c.keys(), ["id", "name", "x", "y"])
 
-        self.assert_compile(select(A), "SELECT a.id, a.y, a.name, a.x FROM a")
+        self.assert_compile(select(A), "SELECT a.id, a.name, a.x, a.y FROM a")
 
     def test_mapped_column_omit_fn_fixed_table(self, decl_base):
         class MixinOne:
