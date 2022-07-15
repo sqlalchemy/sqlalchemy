@@ -554,6 +554,57 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
             class MyClass(DeclarativeBase):
                 registry = {"foo": "bar"}
 
+    def test_declarative_base_registry_and_type_map(self):
+        with assertions.expect_raises_message(
+            exc.InvalidRequestError,
+            "Declarative base class has both a 'registry' attribute and a "
+            "type_annotation_map entry.  Per-base type_annotation_maps",
+        ):
+
+            class MyClass(DeclarativeBase):
+                registry = registry()
+                type_annotation_map = {int: Integer}
+
+    @testing.combinations(DeclarativeBase, DeclarativeBaseNoMeta)
+    def test_declarative_base_used_directly(self, base):
+        with assertions.expect_raises_message(
+            exc.InvalidRequestError,
+            f"Cannot use {base.__name__!r} directly as a declarative base",
+        ):
+
+            class MyClass(base):
+                __tablename__ = "foobar"
+                id: int = mapped_column(primary_key=True)
+
+        with assertions.expect_raises_message(
+            exc.InvalidRequestError,
+            f"Cannot use {base.__name__!r} directly as a declarative base",
+        ):
+
+            class MyClass2(base):
+                __table__ = sa.Table(
+                    "foobar",
+                    sa.MetaData(),
+                    sa.Column("id", Integer, primary_key=True),
+                )
+
+    @testing.combinations(DeclarativeBase, DeclarativeBaseNoMeta)
+    def test_declarative_base_fn_ok(self, base):
+        # __tablename__ or __table__ as declared_attr are ok in the base
+        class MyBase1(base):
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__
+
+        class MyBase2(base):
+            @declared_attr
+            def __table__(cls):
+                return sa.Table(
+                    "foobar",
+                    sa.MetaData(),
+                    sa.Column("id", Integer, primary_key=True),
+                )
+
 
 @testing.combinations(
     ("declarative_base_nometa_superclass",),
