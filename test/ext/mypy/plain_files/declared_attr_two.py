@@ -19,17 +19,32 @@ class HasRelatedDataMixin:
 
 
 class User(HasRelatedDataMixin, Base):
-    __tablename__ = "user"
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
+        return "user"
+
+    @declared_attr.directive
+    def __mapper_args__(cls) -> typing.Dict[str, typing.Any]:
+        return {}
+
+    id = mapped_column(Integer, primary_key=True)
+
+
+class Foo(Base):
+    __tablename__: typing.ClassVar[str] = "foo"
+
     id = mapped_column(Integer, primary_key=True)
 
 
 u1 = User()
 
-
-u1.related_data
-
-
 if typing.TYPE_CHECKING:
+
+    # EXPECTED_TYPE: str
+    reveal_type(User.__tablename__)
+
+    # EXPECTED_TYPE: str
+    reveal_type(Foo.__tablename__)
 
     # EXPECTED_TYPE: str
     reveal_type(u1.related_data)

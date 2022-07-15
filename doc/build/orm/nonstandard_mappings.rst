@@ -17,7 +17,7 @@ mapped in the same way as a :class:`_schema.Table`::
 
     from sqlalchemy import Table, Column, Integer, \
             String, MetaData, join, ForeignKey
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import column_property
 
     metadata_obj = MetaData()
@@ -39,7 +39,8 @@ mapped in the same way as a :class:`_schema.Table`::
     # columns.
     user_address_join = join(user_table, address_table)
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        metadata = metadata_obj
 
     # map to it
     class AddressUser(Base):

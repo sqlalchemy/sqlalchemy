@@ -19,31 +19,35 @@ defines a linkage between two different mapped classes, or from a mapped class
 to itself, the latter of which is called a **self-referential** relationship.
 
 To describe the basic idea of :func:`_orm.relationship`, first we'll review
-the mapping in short form, omitting the :class:`_schema.Column` mappings
+the mapping in short form, omitting the :func:`_orm.mapped_column` mappings
 and other directives:
 
 .. sourcecode:: python
 
+
+  from sqlalchemy.orm import Mapped
   from sqlalchemy.orm import relationship
+
   class User(Base):
       __tablename__ = 'user_account'
 
-      # ... Column mappings
+      # ... mapped_column() mappings
 
-      addresses = relationship("Address", back_populates="user")
+      addresses: Mapped[list["Address"]] = relationship(back_populates="user")
 
 
   class Address(Base):
       __tablename__ = 'address'
 
-      # ... Column mappings
+      # ... mapped_column() mappings
 
-      user = relationship("User", back_populates="addresses")
+      user: Mapped["User"] = relationship(back_populates="addresses")
 
 
 Above, the ``User`` class now has an attribute ``User.addresses`` and the
 ``Address`` class has an attribute ``Address.user``.   The
-:func:`_orm.relationship` construct will be used to inspect the table
+:func:`_orm.relationship` construct, in conjunction with the
+:class:`_orm.Mapped` construct to indicate typing behavior, will be used to inspect the table
 relationships between the :class:`_schema.Table` objects that are mapped to the
 ``User`` and ``Address`` classes. As the :class:`_schema.Table` object
 representing the
@@ -567,11 +571,13 @@ the :paramref:`_orm.relationship.lazy` option, e.g.:
 
 .. sourcecode:: python
 
+    from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import relationship
+
     class User(Base):
         __tablename__ = 'user_account'
 
-        addresses = relationship("Address", back_populates="user", lazy="selectin")
+        addresses: Mapped[list["Address"]] = relationship(back_populates="user", lazy="selectin")
 
 Each loader strategy object adds some kind of information to the statement that
 will be used later by the :class:`_orm.Session` when it is deciding how various
@@ -856,20 +862,23 @@ relationship will never try to emit SQL:
 
 .. sourcecode:: python
 
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import relationship
+
     class User(Base):
         __tablename__ = 'user_account'
 
-        # ... Column mappings
+        # ... mapped_column() mappings
 
-        addresses = relationship("Address", back_populates="user", lazy="raise_on_sql")
+        addresses: Mapped[list["Address"]] = relationship(back_populates="user", lazy="raise_on_sql")
 
 
     class Address(Base):
         __tablename__ = 'address'
 
-        # ... Column mappings
+        # ... mapped_column() mappings
 
-        user = relationship("User", back_populates="addresses", lazy="raise_on_sql")
+        user: Mapped["User"] = relationship(back_populates="addresses", lazy="raise_on_sql")
 
 
 Using such a mapping, the application is blocked from lazy loading,

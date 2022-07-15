@@ -28,7 +28,6 @@ which we will be querying from the database.  This structure, known as a
 Python object model, as well as :term:`database metadata` that describes
 real SQL tables that exist, or will exist, in a particular database::
 
-    >>> from typing import List
     >>> from typing import Optional
     >>> from sqlalchemy import ForeignKey
     >>> from sqlalchemy import String
@@ -47,11 +46,11 @@ real SQL tables that exist, or will exist, in a particular database::
     ...     name: Mapped[str] = mapped_column(String(30))
     ...     fullname: Mapped[Optional[str]]
     ...
-    ...     addresses: Mapped[List["Address"]] = relationship(
+    ...     addresses: Mapped[list["Address"]] = relationship(
     ...         back_populates="user", cascade="all, delete-orphan"
     ...     )
     ...
-    ...     def __repr__(self):
+    ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
@@ -63,7 +62,7 @@ real SQL tables that exist, or will exist, in a particular database::
     ...
     ...     user: Mapped["User"] = relationship(back_populates="addresses")
     ...
-    ...     def __repr__(self):
+    ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
 Above, new ORM mapped classes are declared as part of a common base, which is
@@ -101,8 +100,7 @@ While the above classes include an explicitly written ``__repr__()`` method,
 which is used here to illustrate usage of the classes, there is also an
 option for methods such as ``__repr__()``, ``__eq__()`` and others to be
 generated automatically using Python dataclasses.  More on dataclass mapping
-at: (the new 2.0 style dataclass documentation is TODO!  but it will be great
-:) )
+at :ref:`orm_declarative_native_dataclasses`.
 
 More on table metadata and an intro to ORM declared mapping is in the
 Tutorial at :ref:`tutorial_working_with_metadata`.

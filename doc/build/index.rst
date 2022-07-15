@@ -53,6 +53,7 @@ SQLAlchemy Documentation
   .. container::
 
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
+    * :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New 2.0 features and behaviors beyond the 1.x migration
     * :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions
 
 

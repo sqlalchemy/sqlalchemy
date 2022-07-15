@@ -308,9 +308,9 @@ first introduced at :ref:`joined_inheritance`::
 
     class Employee(Base):
         __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
 
         __mapper_args__ = {
             'polymorphic_identity':'employee',
@@ -340,8 +340,8 @@ default using the :paramref:`.mapper.polymorphic_load` parameter::
 
     class Engineer(Employee):
         __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        engineer_info = Column(String(50))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_info = mapped_column(String(50))
         __mapper_args__ = {
             'polymorphic_identity':'engineer',
             'polymorphic_load': 'inline'
@@ -349,8 +349,8 @@ default using the :paramref:`.mapper.polymorphic_load` parameter::
 
     class Manager(Employee):
         __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        manager_data = Column(String(50))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_data = mapped_column(String(50))
         __mapper_args__ = {
             'polymorphic_identity':'manager',
             'polymorphic_load': 'inline'
@@ -446,9 +446,9 @@ using the value ``"selectin"`` on a per-subclass basis::
 
     class Employee(Base):
         __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
 
         __mapper_args__ = {
             'polymorphic_identity': 'employee',
@@ -457,8 +457,8 @@ using the value ``"selectin"`` on a per-subclass basis::
 
     class Engineer(Employee):
         __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        engineer_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_name = mapped_column(String(30))
 
         __mapper_args__ = {
             'polymorphic_load': 'selectin',
@@ -467,8 +467,8 @@ using the value ``"selectin"`` on a per-subclass basis::
 
     class Manager(Employee):
         __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        manager_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
             'polymorphic_load': 'selectin',
@@ -543,8 +543,8 @@ a load of ``Manager`` also fully loads ``VicePresident`` subtypes at the same ti
 
     class Manager(Employee):
         __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        manager_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
             'polymorphic_load': 'selectin',
@@ -552,7 +552,7 @@ a load of ``Manager`` also fully loads ``VicePresident`` subtypes at the same ti
         }
 
     class VicePresident(Manager):
-        vp_info = Column(String(30))
+        vp_info = mapped_column(String(30))
 
         __mapper_args__ = {
             "polymorphic_load": "inline",
@@ -620,16 +620,16 @@ with a ``Company`` object. We'll add a ``company_id`` column to the
 
     class Company(Base):
         __tablename__ = 'company'
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         employees = relationship("Employee",
                         backref='company')
 
     class Employee(Base):
         __tablename__ = 'employee'
-        id = Column(Integer, primary_key=True)
-        type = Column(String(20))
-        company_id = Column(Integer, ForeignKey('company.id'))
+        id = mapped_column(Integer, primary_key=True)
+        type = mapped_column(String(20))
+        company_id = mapped_column(Integer, ForeignKey('company.id'))
         __mapper_args__ = {
             'polymorphic_on':type,
             'polymorphic_identity':'employee',
@@ -637,14 +637,14 @@ with a ``Company`` object. We'll add a ``company_id`` column to the
 
     class Engineer(Employee):
         __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        engineer_info = Column(String(50))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        engineer_info = mapped_column(String(50))
         __mapper_args__ = {'polymorphic_identity':'engineer'}
 
     class Manager(Employee):
         __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        manager_data = Column(String(50))
+        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        manager_data = mapped_column(String(50))
         __mapper_args__ = {'polymorphic_identity':'manager'}
 
 When querying from ``Company`` onto the ``Employee`` relationship, the
@@ -864,7 +864,7 @@ In our example from :ref:`single_inheritance`, the ``Manager`` mapping for examp
 :class:`_schema.Column` specified::
 
     class Manager(Employee):
-        manager_data = Column(String(50))
+        manager_data = mapped_column(String(50))
 
         __mapper_args__ = {
             'polymorphic_identity':'manager'

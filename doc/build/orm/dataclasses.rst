@@ -4,29 +4,389 @@
 Integration with dataclasses and attrs
 ======================================
 
-SQLAlchemy 1.4 has limited support for ORM mappings that are established
-against classes that have already been pre-instrumented using either Python's
-built-in dataclasses_ library or the attrs_ third party integration library.
+SQLAlchemy as of version 2.0 features "native dataclass" integration where
+an :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
+mapping may be turned into a Python dataclass_ by adding a single mixin
+or decorator to mapped classes.
 
-.. tip::  SQLAlchemy 2.0 will include a new dataclass integration feature which
-   allows for a particular class to be mapped and converted into a Python
-   dataclass simultaneously, with full support for SQLAlchemy's declarative
-   syntax.  Within the scope of the 1.4 release, the ``@dataclass`` decorator
-   is used separately as documented in this section.
+.. versionadded:: 2.0 Integrated dataclass creation with ORM Declarative classes
+
+There are also patterns available that allow existing dataclasses to be
+mapped, as well as to map classes instrumented by the
+attrs_ third party integration library.
+
+.. _orm_declarative_native_dataclasses:
+
+Declarative Dataclass Mapping
+-------------------------------
+
+SQLAlchemy :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
+mappings may be augmented with an additional
+mixin class or decorator directive, which will add an additional step to
+the Declarative process after the mapping is complete that will convert
+the mapped class **in-place** into a Python dataclass_, before completing
+the mapping process which applies ORM-specific :term:`instrumentation`
+to the class.   The most prominent behavioral addition this provides is
+generation of an ``__init__()`` method with fine-grained control over
+positional and keyword arguments with or without defaults, as well as
+generation of methods like ``__repr__()`` and ``__eq__()``.
+
+From a :pep:`484` typing perspective, the class is recognized
+as having Dataclass-specific behaviors, most notably  by taking advantage of :pep:`681`
+"Dataclass Transforms", which allows typing tools to consider the class
+as though it were explicitly decorated using the ``@dataclasses.dataclass``
+decorator.
+
+.. note::  Support for :pep:`681` in typing tools as of **July 3, 2022** is
+   limited and is currently known to be supported by Pyright_, but not yet
+   Mypy_.   When :pep:`681` is not supported, typing tools will see the
+   ``__init__()`` constructor provided by the :class:`_orm.DeclarativeBase`
+   superclass, if used, else will see the constructor as untyped.
+
+Dataclass conversion may be added to any Declarative class either by adding the
+:class:`_orm.MappedAsDataclass` mixin to a :class:`_orm.DeclarativeBase` class
+hierarchy, or for decorator mapping by using the
+:meth:`_orm.registry.mapped_as_dataclass` class decorator.
+
+The :class:`_orm.MappedAsDataclass` mixin may be applied either
+to the Declarative ``Base`` class or any superclass, as in the example
+below::
+
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+
+
+    class Base(MappedAsDataclass, DeclarativeBase):
+        """subclasses will be converted to dataclasses"""
+
+    class User(Base):
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+Or may be applied directly to classes that extend from the Declarative base::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+
+
+    class Base(DeclarativeBase):
+        pass
+
+    class User(MappedAsDataclass, Base):
+        """User class will be converted to a dataclass"""
+
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+When using the decorator form, only the :meth:`_orm.registry.mapped_as_dataclass`
+decorator is supported::
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+Class level feature configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Support for dataclasses features is partial.  Currently **supported** are
+the ``init``, ``repr``, ``eq``, ``order`` and ``unsafe_hash`` features.
+Currently **not supported** are the ``frozen``, ``slots``, ``match_args``,
+and ``kw_only`` features.
+
+When using the mixin class form with :class:`_orm.MappedAsDataclass`,
+class configuration arguments are passed as class-level parameters::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+
+
+    class Base(DeclarativeBase):
+        pass
+
+    class User(MappedAsDataclass, Base, repr=False, unsafe_hash=True):
+        """User class will be converted to a dataclass"""
+
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+When using the decorator form with :meth:`_orm.registry.mapped_as_dataclass`,
+class configuration arguments are passed to the decorator directly::
+
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    reg = registry()
+
+
+    @reg.mapped_as_dataclass(unsafe_hash=True)
+    class User:
+        """User class will be converted to a dataclass"""
+
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+For background on dataclass class options, see the dataclasses_ documentation
+at `@dataclasses.dataclass <https://docs.python.org/3/library/dataclasses.html#dataclasses.dataclass>`_.
+
+Attribute Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy native dataclasses differ from normal dataclasses in that
+attributes to be mapped are described using the :class:`_orm.Mapped`
+generic annotation container in all cases.    Mappings follow the same
+forms as those documented at :ref:`orm_declarative_table`, and all
+features of :func:`_orm.mapped_column` and :class:`_orm.Mapped` are supported.
+
+Additionally, ORM attribute configuration constructs including
+:func:`_orm.mapped_column`, :func:`_orm.relationship` and :func:`_orm.composite`
+support **per-attribute field options**, including ``init``, ``default``,
+``default_factory`` and ``repr``.  The names of these arguments is fixed
+as specified in :pep:`681`.   Functionality is equivalent to dataclasses:
+
+* ``init``, as in :paramref:`_orm.mapped_column.init`,
+  :paramref:`_orm.relationship.init`, if False indicates the field should
+  not be part of the ``__init__()`` method
+* ``default``, as in :paramref:`_orm.mapped_column.default`,
+  :paramref:`_orm.relationship.default`
+  indicates a default value for the field as given as a keyword argument
+  in the ``__init__()`` method.
+* ``default_factory``, as in :paramref:`_orm.mapped_column.default_factory`,
+  :paramref:`_orm.relationship.default_factory`, indicates a callable function
+  that will be invoked to generate a new default value for a parameter
+  if not passed explicitly to the ``__init__()`` method.
+* ``repr`` True by default, indicates the field should be part of the generated
+  ``__repr__()`` method
+
+
+Another key difference from dataclasses is that default values for attributes
+**must** be configured using the ``default`` parameter of the ORM construct,
+such as ``mapped_column(default=None)``.   A syntax that resembles dataclass
+syntax which accepts simple Python values as defaults without using
+``@dataclases.field()`` is not supported.
+
+As an example using :func:`_orm.mapped_column`, the mapping below will
+produce an ``__init__()`` method that accepts only the fields ``name`` and
+``fullname``, where ``name`` is required and may be passed positionally,
+and ``fullname`` is optional.  The ``id`` field, which we expect to be
+database-generated, is not part of the constructor at all::
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+        fullname: Mapped[str] = mapped_column(default=None)
+
+    # 'fullname' is optional keyword argument
+    u1 = User('name')
+
+Column Defaults
+~~~~~~~~~~~~~~~
+
+In order to accommodate the name overlap of the ``default`` argument with
+the existing :paramref:`_schema.Column.default` parameter of the  :class:`_schema.Column`
+construct, the :func:`_orm.mapped_column` construct disambiguates the two
+names by adding a new parameter :paramref:`_orm.mapped_column.insert_default`,
+which will be populated directly into the
+:paramref:`_schema.Column.default` parameter of  :class:`_schema.Column`,
+independently of what may be set on
+:paramref:`_orm.mapped_column.default`, which is always used for the
+dataclasses configuration.  For example, to configure a datetime column with
+a :paramref:`_schema.Column.default` set to the ``func.utc_timestamp()`` SQL function,
+but where the parameter is optional in the constructor::
+
+    from datetime import datetime
+
+    from sqlalchemy import func
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        created_at: Mapped[datetime] = mapped_column(
+            insert_default=func.utc_timestamp(),
+            default=None
+        )
+
+With the above mapping, an ``INSERT`` for a new ``User`` object where no
+parameter for ``created_at`` were passed proceeds as:
+
+.. sourcecode:: pycon+sql
+
+    >>> with Session(e) as session:
+    ...    session.add(User())
+    {sql}...    session.commit()
+    BEGIN (implicit)
+    INSERT INTO user_account (created_at) VALUES (utc_timestamp())
+    [generated in 0.00010s] ()
+    COMMIT
+
+
+
+Integration with Annotated
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The approach introduced at :ref:`orm_declarative_mapped_column_pep593` illustrates
+how to use :pep:`593` ``Annotated`` objects to package whole
+:func:`_orm.mapped_column` constructs for re-use.  This feature is supported
+with the dataclasses feature.   One aspect of the feature however requires
+a workaround when working with typing tools, which is that the
+:pep:`681`-specific arguments ``init``, ``default``, ``repr``, and ``default_factory``
+**must** be on the right hand side, packaged into an explicit :func:`_orm.mapped_column`
+construct, in order for the typing tool to interpret the attribute correctly.
+As an example, the approach below will work perfectly fine at runtime,
+however typing tools will consider the ``User()`` construction to be
+invalid, as they do not see the ``init=False`` parameter present::
+
+    from typing import Annotated
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    # typing tools will ignore init=False here
+    intpk = Annotated[int, mapped_column(init=False, primary_key=True)]
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+        id: Mapped[intpk]
+
+    # typing error: Argument missing for parameter "id"
+    u1 = User()
+
+Instead, :func:`_orm.mapped_column` must be present on the right side
+as well with an explicit setting for :paramref:`_orm.mapped_column.init`;
+the other arguments can remain within the ``Annotated`` construct::
+
+    from typing import Annotated
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    intpk = Annotated[int, mapped_column(primary_key=True)]
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+
+        # init=False and other pep-681 arguments must be inline
+        id: Mapped[intpk] = mapped_column(init=False)
+
+
+    u1 = User()
+
+Relationship Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`_orm.Mapped` annotation in combination with
+:func:`_orm.relationship` is used in the same way as described at
+:ref:`relationship_patterns`.    When specifying a collection-based
+:func:`_orm.relationship` as an optional keyword argument, the
+:paramref:`_orm.relationship.default_factory` parameter must be passed and it
+must refer to the collection class that's to be used.  Many-to-one and
+scalar object references may make use of
+:paramref:`_orm.relationship.default` if the default value is to be ``None``::
+
+    from typing import List
+
+    from sqlalchemy import ForeignKey
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import relationship
+
+    reg = registry()
+
+    @reg.mapped_as_dataclass
+    class Parent:
+        __tablename__ = "parent"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        children: Mapped[List["Child"]] = relationship(default_factory=list, back_populates='parent')
+
+
+    @reg.mapped_as_dataclass
+    class Child:
+        __tablename__ = "child"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent: Mapped["Parent"] = relationship(default=None)
+
+The above mapping will generate an empty list for ``Parent.children`` when a
+new ``Parent()`` object is constructed without passing ``children``, and
+similarly a ``None`` value for ``Child.parent`` when a new ``Child()`` object
+is constructed without passsing ``parent``.
+
+While the :paramref:`_orm.relationship.default_factory` can be automatically
+derived from the given collection class of the :func:`_orm.relationship`
+itself, this would break compatibility with dataclasses, as the presence
+of :paramref:`_orm.relationship.default_factory` or
+:paramref:`_orm.relationship.default` is what determines if the parameter is
+to be required or optional when rendered into the ``__init__()`` method.
+
+
 
 .. _orm_declarative_dataclasses:
 
 Applying ORM Mappings to an existing dataclass
 ----------------------------------------------
 
-The dataclasses_ module, added in Python 3.7, provides a ``@dataclass`` class
-decorator to automatically generate boilerplate definitions of common object
-methods including ``__init__()``, ``__repr()__``, and other methods. SQLAlchemy
-supports the application of ORM mappings to a class after it has been processed
-with the ``@dataclass`` decorator, by using either the
+SQLAlchemy's :ref:`native dataclass <orm_declarative_native_dataclasses>`
+support builds upon the previous version of the feature first introduced in
+SQLAlchemy 1.4, which supports the application of ORM mappings to a class after
+it has been processed with the ``@dataclass`` decorator, by using either the
 :meth:`_orm.registry.mapped` class decorator, or the
 :meth:`_orm.registry.map_imperatively` method to apply ORM mappings to the
-class using Imperative.
+class using Imperative. This approach is still viable for applications that are
+using partially or fully imperative mapping forms with dataclasses.
+
+For fully Declarative mapping combined with dataclasses, the
+:ref:`orm_declarative_native_dataclasses` approach should be preferred.
 
 .. versionadded:: 1.4 Added support for direct mapping of Python dataclasses
 
@@ -145,6 +505,11 @@ approach is in the next example.
 Mapping dataclasses using Declarative Mapping
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. deprecated:: 2.0   This approach to Declarative mapping with
+   dataclasses should be considered as legacy.  It will remain supported
+   however is unlikely to offer any advantages against the new
+   approach detailed at :ref:`orm_declarative_native_dataclasses`.
+
 The fully declarative approach requires that :class:`_schema.Column` objects
 are declared as class attributes, which when using dataclasses would conflict
 with the dataclass-level attributes.  An approach to combine these together
@@ -174,11 +539,11 @@ association::
 
         __sa_dataclass_metadata_key__ = "sa"
         id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+            init=False, metadata={"sa": mapped_column(Integer, primary_key=True)}
         )
-        name: str = field(default=None, metadata={"sa": Column(String(50))})
-        fullname: str = field(default=None, metadata={"sa": Column(String(50))})
-        nickname: str = field(default=None, metadata={"sa": Column(String(12))})
+        name: str = field(default=None, metadata={"sa": mapped_column(String(50))})
+        fullname: str = field(default=None, metadata={"sa": mapped_column(String(50))})
+        nickname: str = field(default=None, metadata={"sa": mapped_column(String(12))})
         addresses: List[Address] = field(
             default_factory=list, metadata={"sa": relationship("Address")}
         )
@@ -190,14 +555,86 @@ association::
         __tablename__ = "address"
         __sa_dataclass_metadata_key__ = "sa"
         id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+            init=False, metadata={"sa": mapped_column(Integer, primary_key=True)}
         )
         user_id: int = field(
-            init=False, metadata={"sa": Column(ForeignKey("user.id"))}
+            init=False, metadata={"sa": mapped_column(ForeignKey("user.id"))}
         )
         email_address: str = field(
-            default=None, metadata={"sa": Column(String(50))}
+            default=None, metadata={"sa": mapped_column(String(50))}
         )
+
+.. _orm_declarative_dataclasses_mixin:
+
+Using Declarative Mixins with Dataclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the section :ref:`orm_mixins_toplevel`, Declarative Mixin classes
+are introduced.  One requirement of declarative mixins is that certain
+constructs that can't be easily duplicated must be given as callables,
+using the :class:`_orm.declared_attr` decorator, such as in the
+example at :ref:`orm_declarative_mixins_relationships`::
+
+    class RefTargetMixin:
+        @declared_attr
+        def target_id(cls):
+            return mapped_column("target_id", ForeignKey("target.id"))
+
+        @declared_attr
+        def target(cls):
+            return relationship("Target")
+
+This form is supported within the Dataclasses ``field()`` object by using
+a lambda to indicate the SQLAlchemy construct inside the ``field()``.
+Using :func:`_orm.declared_attr` to surround the lambda is optional.
+If we wanted to produce our ``User`` class above where the ORM fields
+came from a mixin that is itself a dataclass, the form would be::
+
+    @dataclass
+    class UserMixin:
+        __tablename__ = "user"
+
+        __sa_dataclass_metadata_key__ = "sa"
+
+        id: int = field(
+            init=False, metadata={"sa": mapped_column(Integer, primary_key=True)}
+        )
+
+        addresses: List[Address] = field(
+            default_factory=list, metadata={"sa": lambda: relationship("Address")}
+        )
+
+
+    @dataclass
+    class AddressMixin:
+        __tablename__ = "address"
+        __sa_dataclass_metadata_key__ = "sa"
+        id: int = field(
+            init=False, metadata={"sa": mapped_column(Integer, primary_key=True)}
+        )
+        user_id: int = field(
+            init=False, metadata={"sa": lambda: mapped_column(ForeignKey("user.id"))}
+        )
+        email_address: str = field(
+            default=None, metadata={"sa": mapped_column(String(50))}
+        )
+
+
+    @mapper_registry.mapped
+    class User(UserMixin):
+        pass
+
+
+    @mapper_registry.mapped
+    class Address(AddressMixin):
+        pass
+
+.. versionadded:: 1.4.2  Added support for "declared attr" style mixin attributes,
+   namely :func:`_orm.relationship` constructs as well as :class:`_schema.Column`
+   objects with foreign key declarations, to be used within "Dataclasses
+   with Declarative Table" style mappings.
+
+
 
 .. _orm_imperative_dataclasses:
 
@@ -269,77 +706,6 @@ variables::
     })
 
     mapper_registry.map_imperatively(Address, address)
-
-.. _orm_declarative_dataclasses_mixin:
-
-Using Declarative Mixins with Dataclasses
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In the section :ref:`orm_mixins_toplevel`, Declarative Mixin classes
-are introduced.  One requirement of declarative mixins is that certain
-constructs that can't be easily duplicated must be given as callables,
-using the :class:`_orm.declared_attr` decorator, such as in the
-example at :ref:`orm_declarative_mixins_relationships`::
-
-    class RefTargetMixin:
-        @declared_attr
-        def target_id(cls):
-            return Column("target_id", ForeignKey("target.id"))
-
-        @declared_attr
-        def target(cls):
-            return relationship("Target")
-
-This form is supported within the Dataclasses ``field()`` object by using
-a lambda to indicate the SQLAlchemy construct inside the ``field()``.
-Using :func:`_orm.declared_attr` to surround the lambda is optional.
-If we wanted to produce our ``User`` class above where the ORM fields
-came from a mixin that is itself a dataclass, the form would be::
-
-    @dataclass
-    class UserMixin:
-        __tablename__ = "user"
-
-        __sa_dataclass_metadata_key__ = "sa"
-
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
-
-        addresses: List[Address] = field(
-            default_factory=list, metadata={"sa": lambda: relationship("Address")}
-        )
-
-
-    @dataclass
-    class AddressMixin:
-        __tablename__ = "address"
-        __sa_dataclass_metadata_key__ = "sa"
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
-        user_id: int = field(
-            init=False, metadata={"sa": lambda: Column(ForeignKey("user.id"))}
-        )
-        email_address: str = field(
-            default=None, metadata={"sa": Column(String(50))}
-        )
-
-
-    @mapper_registry.mapped
-    class User(UserMixin):
-        pass
-
-
-    @mapper_registry.mapped
-    class Address(AddressMixin):
-        pass
-
-.. versionadded:: 1.4.2  Added support for "declared attr" style mixin attributes,
-   namely :func:`_orm.relationship` constructs as well as :class:`_schema.Column`
-   objects with foreign key declarations, to be used within "Dataclasses
-   with Declarative Table" style mappings.
-
 
 
 .. _orm_declarative_attrs_imperative_table:
@@ -513,5 +879,8 @@ Declarative with Imperative Table.
 
 
 
+.. _dataclass: https://docs.python.org/3/library/dataclasses.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _attrs: https://pypi.org/project/attrs/
+.. _mypy: https://mypy.readthedocs.io/en/stable/
+.. _pyright: https://github.com/microsoft/pyright

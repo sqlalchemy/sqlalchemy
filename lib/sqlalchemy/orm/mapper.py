@@ -353,12 +353,16 @@ class Mapper(
         :param exclude_properties: A list or set of string column names to
           be excluded from mapping.
 
-          See :ref:`include_exclude_cols` for an example.
+          .. seealso::
+
+            :ref:`include_exclude_cols`
 
         :param include_properties: An inclusive list or set of string column
           names to map.
 
-          See :ref:`include_exclude_cols` for an example.
+          .. seealso::
+
+            :ref:`include_exclude_cols`
 
         :param inherits: A mapped class or the corresponding
           :class:`_orm.Mapper`
@@ -542,8 +546,8 @@ class Mapper(
                     )
 
                     __mapper_args__ = {
-                        "polymorphic_on":employee_type,
-                        "polymorphic_identity":"employee"
+                        "polymorphic_on": "employee_type",
+                        "polymorphic_identity": "employee"
                     }
 
           When setting ``polymorphic_on`` to reference an

@@ -57,9 +57,9 @@ mapper options::
     class User(Base):
         __tablename__ = 'user'
 
-        id = Column(Integer, primary_key=True)
-        version_id = Column(Integer, nullable=False)
-        name = Column(String(50), nullable=False)
+        id = mapped_column(Integer, primary_key=True)
+        version_id = mapped_column(Integer, nullable=False)
+        name = mapped_column(String(50), nullable=False)
 
         __mapper_args__ = {
             "version_id_col": version_id
@@ -108,9 +108,9 @@ support a native GUID type, but we illustrate here using a simple string)::
     class User(Base):
         __tablename__ = 'user'
 
-        id = Column(Integer, primary_key=True)
-        version_uuid = Column(String(32), nullable=False)
-        name = Column(String(50), nullable=False)
+        id = mapped_column(Integer, primary_key=True)
+        version_uuid = mapped_column(String(32), nullable=False)
+        name = mapped_column(String(50), nullable=False)
 
         __mapper_args__ = {
             'version_id_col':version_uuid,
@@ -151,9 +151,9 @@ class as follows::
     class User(Base):
         __tablename__ = 'user'
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50), nullable=False)
-        xmin = Column("xmin", String, system=True, server_default=FetchedValue())
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50), nullable=False)
+        xmin = mapped_column("xmin", String, system=True, server_default=FetchedValue())
 
         __mapper_args__ = {
             'version_id_col': xmin,
@@ -224,9 +224,9 @@ at our choosing::
     class User(Base):
         __tablename__ = 'user'
 
-        id = Column(Integer, primary_key=True)
-        version_uuid = Column(String(32), nullable=False)
-        name = Column(String(50), nullable=False)
+        id = mapped_column(Integer, primary_key=True)
+        version_uuid = mapped_column(String(32), nullable=False)
+        name = mapped_column(String(50), nullable=False)
 
         __mapper_args__ = {
             'version_id_col':version_uuid,

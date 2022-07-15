@@ -264,168 +264,212 @@ style is known as
 to declare our user-defined classes and :class:`_schema.Table` metadata
 at once.
 
-Setting up the Registry
-^^^^^^^^^^^^^^^^^^^^^^^
+Establishing a Declarative Base
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When using the ORM, the :class:`_schema.MetaData` collection remains present,
-however it itself is contained within an ORM-only object known as the
-:class:`_orm.registry`.   We create a :class:`_orm.registry` by constructing
-it::
+however it itself is associated with an ORM-only construct commonly referred
+towards as the **Declarative Base**.   The most expedient way to acquire
+a new Declarative Base is to create a new class that subclasses the
+SQLAlchemy :class:`_orm.DeclarativeBase` class::
 
-    >>> from sqlalchemy.orm import registry
-    >>> mapper_registry = registry()
+    >>> from sqlalchemy.orm import DeclarativeBase
+    >>> class Base(DeclarativeBase):
+    ...     pass
 
-The above :class:`_orm.registry`, when constructed, automatically includes
-a :class:`_schema.MetaData` object that will store a collection of
-:class:`_schema.Table` objects::
+Above, the ``Base`` class is what we'll refer towards as the Declarative Base.
+When we make new classes that are subclasses of ``Base``, combined with
+appropriate class-level directives, they will each be established as part of an
+object relational mapping against a particular database table (or tables, in
+advanced usages).
 
-    >>> mapper_registry.metadata
+The Declarative Base, when declared as a new class, refers to a
+:class:`_schema.MetaData` collection that is
+created for us automatically (options exist to use our own :class:`.MetaData`
+object as well); this :class:`.MetaData` is accessible via the ``.metadata``
+class-level attribute.  As we create new mapped classes, they each will reference a
+:class:`.Table` within this :class:`.MetaData` collection::
+
+    >>> Base.metadata
     MetaData()
 
-Instead of declaring :class:`_schema.Table` objects directly, we will now
-declare them indirectly through directives applied to our mapped classes. In
-the most common approach, each mapped class descends from a common base class
-known as the **declarative base**.   We get a new declarative base from the
-:class:`_orm.registry` using the :meth:`_orm.registry.generate_base` method::
+The Declarative Base also refers to a collection called :class:`_orm.registry`, which
+is the central "mapper configuration" unit in the SQLAlchemy ORM.  While
+seldom accessed directly, this object is central to the mapper configuration
+process, as a set of ORM mapped classes will coordinate with each other via
+this registry.   As was the case with :class:`.MetaData`, our Declarative
+Base also created a :class:`_orm.registry` for us (again with options to
+pass our own :class:`_orm.registry`), which we can access
+via the ``.registry`` class variable::
 
-    >>> Base = mapper_registry.generate_base()
+    >>> Base.registry
+    <sqlalchemy.orm.decl_api.registry object at 0x...>
 
-.. tip::
-
-    The steps of creating the :class:`_orm.registry` and "declarative base"
-    classes can be combined into one step using the historically familiar
-    :func:`_orm.declarative_base` function::
-
-        from sqlalchemy.orm import declarative_base
-        Base = declarative_base()
-
-    ..
+:class:`_orm.registry` also provides other mapper configurational patterns,
+including different ways to acquire a Declarative Base object, as well as class
+decorators and class-processing functions which allow user-defined classes to
+be mapped without using any particular base class. Therefore, keep in mind that
+all the ORM patterns here that use "declarative base" can just as easily
+use other patterns based on class decorators or configurational functions.
 
 .. _tutorial_declaring_mapped_classes:
 
 Declaring Mapped Classes
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``Base`` object above is a Python class which will serve as the base class
-for the ORM mapped classes we declare.  We can now define ORM mapped classes
-for the ``user`` and ``address`` table in terms of new classes ``User`` and
-``Address``::
+With the ``Base`` class established, we can now define ORM mapped classes
+for the ``user_account`` and ``address`` tables in terms of new classes ``User`` and
+``Address``.  We illustrate below the most modern form of Declarative, which
+is driven from :pep:`484` type annotations using a special type
+:class:`.Mapped`, which indicates attributes to be mapped as particular
+types::
 
+    >>> from typing import List
+    >>> from typing import Optional
+    >>> from sqlalchemy.orm import Mapped
+    >>> from sqlalchemy.orm import mapped_column
     >>> from sqlalchemy.orm import relationship
+
     >>> class User(Base):
     ...     __tablename__ = 'user_account'
     ...
-    ...     id = Column(Integer, primary_key=True)
-    ...     name = Column(String(30))
-    ...     fullname = Column(String)
+    ...     id: Mapped[int] = mapped_column(primary_key=True)
+    ...     name: Mapped[str] = mapped_column(String(30))
+    ...     fullname: Mapped[Optional[str]]
     ...
-    ...     addresses = relationship("Address", back_populates="user")
+    ...     addresses: Mapped[List["Address"]] = relationship(back_populates="user")
     ...
-    ...     def __repr__(self):
+    ...     def __repr__(self) -> str:
     ...        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
     ...     __tablename__ = 'address'
     ...
-    ...     id = Column(Integer, primary_key=True)
-    ...     email_address = Column(String, nullable=False)
-    ...     user_id = Column(Integer, ForeignKey('user_account.id'))
+    ...     id: Mapped[int] = mapped_column(primary_key=True)
+    ...     email_address: Mapped[str]
+    ...     user_id = mapped_column(ForeignKey('user_account.id'))
     ...
-    ...     user = relationship("User", back_populates="addresses")
+    ...     user: Mapped[User] = relationship(back_populates="addresses")
     ...
-    ...     def __repr__(self):
+    ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-The above two classes are now our mapped classes, and are available for use in
-ORM persistence and query operations, which will be described later. But they
-also include :class:`_schema.Table` objects that were generated as part of the
-declarative mapping process, and are equivalent to the ones that we declared
-directly in the previous Core section.   We can see these
-:class:`_schema.Table` objects from a declarative mapped class using the
-``.__table__`` attribute::
+The two classes above, ``User`` and ``Address``, are now referred towards
+as **ORM Mapped Classes**, and are available for use in
+ORM persistence and query operations, which will be described later.  Details
+about these classes include:
 
-    >>> User.__table__
-    Table('user_account', MetaData(),
-        Column('id', Integer(), table=<user_account>, primary_key=True, nullable=False),
-        Column('name', String(length=30), table=<user_account>),
-        Column('fullname', String(), table=<user_account>), schema=None)
-
-This :class:`_schema.Table` object was generated from the declarative process
-based on the ``.__tablename__`` attribute defined on each of our classes,
-as well as through the use of :class:`_schema.Column` objects assigned
-to class-level attributes within the classes.   These :class:`_schema.Column`
-objects can usually be declared without an explicit "name" field inside
-the constructor, as the Declarative process will name them automatically
-based on the attribute name that was used.
-
-.. seealso::
-
-    :ref:`orm_declarative_mapping` - overview of Declarative class mapping
-
-
-Other Mapped Class Details
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For a few quick explanations for the classes above, note the following
-attributes:
-
-* **the classes have an automatically generated __init__() method** - both classes by default
-  receive an ``__init__()`` method that allows for parameterized construction
-  of the objects.  We are free to provide our own ``__init__()`` method as well.
-  The ``__init__()`` allows us to create instances of ``User`` and ``Address``
-  passing attribute names, most of which above are linked directly to
-  :class:`_schema.Column` objects, as parameter names::
+* Each class refers to a :class:`_schema.Table` object that was generated as
+  part of the declarative mapping process, and are equivalent
+  in structure to the :class:`_schema.Table` objects we constructed
+  directly in the previous Core section.   This :class:`._schema.Table`
+  is available from an attribute added to the class called ``__table__``.
+* To indicate columns in the :class:`_schema.Table`, we use the
+  :func:`_orm.mapped_column` construct, in combination with
+  typing annotations based on the :class:`_orm.Mapped` type.
+* For columns with simple datatypes and no other options, we can indicate a
+  :class:`_orm.Mapped` type annotation alone, using simple Python types like
+  ``int`` and ``str`` to mean :class:`.Integer` and :class:`.String`.
+  Customization of how Python types are interpreted within the Declarative
+  mapping process is very open ended; see the section
+  :ref:`orm_declarative_mapped_column` for background.
+* A column can be declared as "nullable" or "not null" based on the
+  presence of the ``Optional[]`` type annotation; alternatively, the
+  :paramref:`_orm.mapped_column.nullable` parameter may be used instead.
+* Usage of explicit typing annotations is **completely
+  optional**.  We can also use :func:`_orm.mapped_column` without annotations.
+  When using this form, we would use more explicit type objects like
+  :class:`.Integer` and :class:`.String` as well as ``nullable=False``
+  as needed within each :func:`_orm.mapped_column` construct.
+* Two additional attributes, ``User.addresses`` and ``Address.user``, define
+  a different kind of attribute called :func:`_orm.relationship`, which
+  features similar annotation-aware configuration styles as shown.  The
+  :func:`_orm.relationship` construct is discussed more fully at
+  :ref:`tutorial_orm_related_objects`.
+* The classes are automatically given an ``__init__()`` method if we don't
+  declare one of our own.  The default form of this method accepts all
+  attribute names as optional keyword arguments::
 
     >>> sandy = User(name="sandy", fullname="Sandy Cheeks")
 
-  More detail on this method is at :ref:`mapped_class_default_constructor`.
+* The ``__repr__()`` methods are added so that we get a readable string output;
+  there's no requirement for these methods to be here.
 
-  ..
+.. topic::  Where'd the old Declarative go?
 
-* **we provided a __repr__() method** - this is **fully optional**, and is
-  strictly so that our custom classes have a descriptive string representation
-  and is not otherwise required::
+    Users of SQLAlchemy 1.4 or previous will note that the above mapping
+    uses a dramatically different form than before; not only does it use
+    :func:`_orm.mapped_column` instead of :class:`.Column` in the Declarative
+    mapping, it also uses Python type annotations to derive column information.
 
-    >>> sandy
-    User(id=None, name='sandy', fullname='Sandy Cheeks')
+    To provide context for users of the "old" way, Declarative mappings can
+    still be made using :class:`.Column` objects (as well as using the
+    :func:`_orm.declarative_base` function to create the base class) as before,
+    and these forms will continue to be supported with no plans to
+    remove support.  The reason these two facilities
+    are superseded by new constructs is first and foremost to integrate
+    smoothly with :pep:`484` tools, including IDEs such as VSCode and type
+    checkers such as Mypy and Pyright, without the need for plugins. Secondly,
+    deriving the declarations from type annotations is part of SQLAlchemy's
+    integration with Python dataclasses, which can now be
+    :ref:`generated natively <orm_declarative_native_dataclasses>` from mappings.
 
-  ..
+    For users who like the "old" way, but still desire their IDEs to not
+    mistakenly report typing errors for their declarative mappings, the
+    :func:`_orm.mapped_column` construct is a drop-in replacement for
+    :class:`.Column` in an ORM Declarative mapping (note that
+    :func:`_orm.mapped_column` is for ORM Declarative mappings only; it can't
+    be used within a :class:`.Table` construct), and the type annotations are
+    optional. Our mapping above can be written without annotations as::
 
-  An interesting thing to note above is that the ``id`` attribute automatically
-  returns ``None`` when accessed, rather than raising ``AttributeError`` as
-  would be the usual Python behavior for missing attributes.
+        class User(Base):
+          __tablename__ = 'user_account'
 
-* **we also included a bidirectional relationship** - this  is another **fully optional**
-  construct, where we made use of an ORM construct called
-  :func:`_orm.relationship` on both classes, which indicates to the ORM that
-  these ``User`` and ``Address`` classes refer to each other in a :term:`one to
-  many` / :term:`many to one` relationship.  The use of
-  :func:`_orm.relationship` above is so that we may demonstrate its behavior
-  later in this tutorial; it is  **not required** in order to define the
-  :class:`_schema.Table` structure.
+          id = mapped_column(Integer, primary_key=True)
+          name = mapped_column(String(30), nullable=False)
+          fullname = mapped_column(String)
+
+          addresses = relationship("Address", back_populates="user")
+
+          # ... definition continues
+
+    The above class has an advantage over one that uses :class:`.Column`
+    directly, in that the ``User`` class as well as instances of ``User``
+    will indicate the correct typing information to typing tools, without
+    the use of plugins.  :func:`_orm.mapped_column` also allows for additional
+    ORM-specific parameters to configure behaviors such as deferred column loading,
+    which previously needed a separate :func:`_orm.deferred` function to be
+    used with :class:`_schema.Column`.
+
+    There's also an example of converting an old-style Declarative class
+    to the new style, which can be seen at :ref:`whatsnew_20_orm_declarative_typing`
+    in the :ref:`whatsnew_20_toplevel` guide.
+
+.. seealso::
+
+    :ref:`orm_mapping_styles` - full background on different ORM configurational
+    styles.
+
+    :ref:`orm_declarative_mapping` - overview of Declarative class mapping
+
+    :ref:`orm_declarative_table` - detail on how to use
+    :func:`_orm.mapped_column` and :class:`_orm.Mapped` to define the columns
+    within a :class:`_schema.Table` to be mapped when using Declarative.
 
 
-Emitting DDL to the database
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Emitting DDL to the database from an ORM mapping
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This section is named the same as the section :ref:`tutorial_emitting_ddl`
-discussed in terms of Core.   This is because emitting DDL with our
-ORM mapped classes is not any different.  If we wanted to emit DDL
-for the :class:`_schema.Table` objects we've created as part of
-our declaratively mapped classes, we still can use
-:meth:`_schema.MetaData.create_all` as before.
+As our ORM mapped classes refer to :class:`_schema.Table` objects contained
+within a :class:`_schema.MetaData` collection, emitting DDL given the
+Declarative Base uses the same process as that described previously at
+:ref:`tutorial_emitting_ddl`. In our case, we have already generated the
+``user`` and ``address`` tables in our SQLite database. If we had not done so
+already, we would be free to make use of the :class:`_schema.MetaData`
+associated with our ORM Declarative Base class in order to do so, by accessing
+the collection from the ``Base.metadata`` attribute and then using
+:meth:`_schema.MetaData.create_all` as before::
 
-In our case, we have already generated the ``user`` and ``address`` tables
-in our SQLite database.   If we had not done so already, we would be free to
-make use of the :class:`_schema.MetaData` associated with our
-:class:`_orm.registry` and ORM declarative base class in order to do so,
-using :meth:`_schema.MetaData.create_all`::
-
-    # emit CREATE statements given ORM registry
-    mapper_registry.metadata.create_all(engine)
-
-    # the identical MetaData object is also present on the
-    # declarative base
     Base.metadata.create_all(engine)
 
 
@@ -436,20 +480,27 @@ As an alternative approach to the mapping process shown previously
 at :ref:`tutorial_declaring_mapped_classes`, we may also make
 use of the :class:`_schema.Table` objects we created directly in the section
 :ref:`tutorial_core_metadata` in conjunction with
-declarative mapped classes from a :func:`_orm.declarative_base` generated base
+declarative mapped classes from a Declarative Base
 class.
 
-This form is called  :ref:`hybrid table <orm_imperative_table_configuration>`,
-and it consists of assigning to the ``.__table__`` attribute directly, rather
-than having the declarative process generate it::
+This form is called
+:ref:`Declarative with Imperative Table <orm_imperative_table_configuration>`,
+and it consists of assigning a :class:`_schema.Table` object to the
+``.__table__`` attribute directly, rather than having the declarative process
+generate it from the ``.__tablename__`` attribute with separate
+:class:`_orm.Mapped` and/or :func:`_orm.mapped_column` directives. This is
+illustrated below by using our pre-existing ``user_table`` and
+``address_table`` :class:`_schema.Table` objects to map them to new classes
+(**note to readers running code**: these examples are for illustration only
+and should not be run)::
 
-    mapper_registry = registry()
-    Base = mapper_registry.generate_base()
+    class Base(DeclarativeBase):
+        pass
 
     class User(Base):
         __table__ = user_table
 
-        addresses = relationship("Address", back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
         def __repr__(self):
             return f"User({self.name!r}, {self.fullname!r})"
@@ -457,22 +508,14 @@ than having the declarative process generate it::
     class Address(Base):
         __table__ = address_table
 
-        user = relationship("User", back_populates="addresses")
+        user: Mapped["User"] = relationship(back_populates="addresses")
 
         def __repr__(self):
             return f"Address({self.email_address!r})"
 
-.. note:: The above example is an **alternative form** to the mapping that's
-   first illustrated previously at :ref:`tutorial_declaring_mapped_classes`.
-   This example is for illustrative purposes only, and is not part of this
-   tutorial's "doctest" steps, and as such does not need to be run for readers
-   who are executing code examples. The mapping here and the one at
-   :ref:`tutorial_declaring_mapped_classes` produce equivalent mappings, but in
-   general one would use only **one** of these two forms for particular mapped
-   class.
-
-The above two classes are equivalent to those which we declared in the
-previous mapping example.
+The above two classes, ``User`` and ``Address``, are equivalent to those which
+we declared in the previous mapping example using ``__tablename__`` and
+:func:`_orm.mapped_column`.
 
 The traditional "declarative base" approach using ``__tablename__`` to
 automatically generate :class:`_schema.Table` objects remains the most popular

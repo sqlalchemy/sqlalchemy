@@ -2068,11 +2068,11 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
     def test_can_we_access_the_mixin_straight_special_names(self):
         class Mixin:
-            @declared_attr
+            @declared_attr.directive
             def __table_args__(cls):
                 return (1, 2, 3)
 
-            @declared_attr
+            @declared_attr.directive
             def __arbitrary__(cls):
                 return (4, 5, 6)
 
@@ -2083,7 +2083,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         counter = mock.Mock()
 
         class Mixin:
-            @declared_attr
+            @declared_attr.directive
             def __tablename__(cls):
                 counter(cls)
                 return "foo"
@@ -2091,11 +2091,11 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         class Foo(Mixin, Base):
             id = Column(Integer, primary_key=True)
 
-            @declared_attr
+            @declared_attr.directive
             def x(cls):
                 cls.__tablename__
 
-            @declared_attr
+            @declared_attr.directive
             def y(cls):
                 cls.__tablename__
 

@@ -113,6 +113,9 @@ exclude_patterns = ["build", "**/unreleased*/*", "**/*_include.rst"]
 
 autodoc_class_signature = "separated"
 
+# enable "annotation" indicator.  doesn't actually use this
+# link right now, it's just a png image
+zzzeeksphinx_annotation_key = "glossary#annotated-example"
 
 # to use this, we need:
 # 1. fix sphinx-paramlinks to work with "description" typing

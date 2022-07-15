@@ -10,101 +10,98 @@ section will provide an overview of forms that may be used for Declarative
 mapper configuration.
 
 
+.. _orm_explicit_declarative_base:
+
 .. _orm_declarative_generated_base_class:
 
-Using a Generated Base Class
-----------------------------
+Using a Declarative Base Class
+-------------------------------
 
-The most common approach is to generate a "base" class using the
-:func:`_orm.declarative_base` function::
+The most common approach is to generate a "Declarative Base" class by
+subclassing the :class:`_orm.DeclarativeBase` superclass::
 
-    from sqlalchemy.orm import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
 
     # declarative base class
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
+The Declarative Base class may also be created given an existing
+:class:`_orm.registry` by assigning it as a class variable named
+``registry``::
 
-The declarative base class may also be created from an existing
-:class:`_orm.registry`, by using the :meth:`_orm.registry.generate_base`
-method::
-
+    from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import registry
 
     reg = registry()
 
+
     # declarative base class
-    Base = reg.generate_base()
+    class Base(DeclarativeBase):
+        registry = reg
+
+.. versionchanged:: 2.0 The :class:`_orm.DeclarativeBase` superclass supersedes
+   the use of the :func:`_orm.declarative_base` function and
+   :meth:`_orm.registry.generate_base` methods; the superclass approach
+   integrates with :pep:`484` tools without the use of plugins.
+   See :ref:`whatsnew_20_orm_declarative_typing` for migration notes.
 
 With the declarative base class, new mapped classes are declared as subclasses
 of the base::
 
-    from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import declarative_base
+    from datetime import datetime
+    from typing import List
+    from typing import Optional
 
-    # declarative base class
-    Base = declarative_base()
+    from sqlalchemy import Integer, String
+    from sqlalchemy import func
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
 
+    class Base(DeclarativeBase):
+        pass
 
-    # an example mapping using the base
     class User(Base):
         __tablename__ = "user"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
-        fullname = Column(String)
-        nickname = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name: Mapped[str]
+        fullname: Mapped[Optional[str]]
+        nickname: Mapped[Optional[str]] = mapped_column(String(64))
+        create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-Above, the :func:`_orm.declarative_base` function returns a new base class from
-which new classes to be mapped may inherit from, as above a new mapped
-class ``User`` is constructed.
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id = mapped_column(Integer, primary_key=True)
+        user_id = mapped_column(ForeignKey("user.id"))
+        email_address: Mapped[str]
+
+        user: Mapped["User"] = relationship(back_populates="addresses")
+
+Above, the ``Base`` class serves as a base for new classes that are to be
+mapped, as above new mapped classes ``User`` and ``Address`` are constructed.
 
 For each subclass constructed, the body of the class then follows the
-declarative mapping approach which defines both a :class:`_schema.Table`
-as well as a :class:`_orm.Mapper` object behind the scenes which comprise
-a full mapping.
+declarative mapping approach which defines both a :class:`_schema.Table` as
+well as a :class:`_orm.Mapper` object behind the scenes which comprise a full
+mapping.
 
 .. seealso::
 
-    :ref:`orm_declarative_table_config_toplevel`
+    :ref:`orm_declarative_table_config_toplevel` - describes how to specify
+    the components of the mapped :class:`_schema.Table` to be generated,
+    including notes and options on the use of the :func:`_orm.mapped_column`
+    construct and how it interacts with the :class:`_orm.Mapped` annotation
+    type
 
-    :ref:`orm_declarative_mapper_config_toplevel`
-
-
-.. _orm_explicit_declarative_base:
-
-Creating an Explicit Base Non-Dynamically (for use with mypy, similar)
-----------------------------------------------------------------------
-
-SQLAlchemy includes a :ref:`Mypy plugin <mypy_toplevel>` that automatically
-accommodates for the dynamically generated ``Base`` class
-delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
-
-When this plugin is not in use, or when using other :pep:`484` tools which
-may not know how to interpret this class, the declarative base class may
-be produced in a fully explicit fashion using the
-:class:`_orm.DeclarativeMeta` directly as follows::
-
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm.decl_api import DeclarativeMeta
-
-    mapper_registry = registry()
-
-    class Base(metaclass=DeclarativeMeta):
-        __abstract__ = True
-
-        registry = mapper_registry
-        metadata = mapper_registry.metadata
-
-        __init__ = mapper_registry.constructor
-
-The above ``Base`` is equivalent to one created using the
-:meth:`_orm.registry.generate_base` method and will be fully understood by
-type analysis tools without the use of plugins.
-
-.. seealso::
-
-    :ref:`mypy_toplevel` - background on the Mypy plugin which applies the
-    above structure automatically when running Mypy.
+    :ref:`orm_declarative_mapper_config_toplevel` - describes all other
+    aspects of ORM mapper configuration within Declarative including
+    :func:`_orm.relationship` configuration, SQL expressions and
+    :class:`_orm.Mapper` parameters
 
 
 .. _orm_declarative_decorator:
@@ -117,9 +114,13 @@ declarative mapping to a class explicitly, using either an imperative technique
 similar to that of a "classical" mapping, or more succinctly by using
 a decorator.  The :meth:`_orm.registry.mapped` function is a class decorator
 that can be applied to any Python class with no hierarchy in place.  The
-Python class otherwise is configured in declarative style normally::
+Python class otherwise is configured in declarative style normally.
 
-    from sqlalchemy import Column, ForeignKey, Integer, String, Text
+The example below sets up the identical mapping as seen in the
+previous section, using the :meth:`_orm.registry.mapped`
+decorator rather than using the :class:`_orm.DeclarativeBase` superclass::
+
+    from sqlalchemy import mapped_column, ForeignKey, Integer, String, Text
     from sqlalchemy.orm import registry, relationship
 
     mapper_registry = registry()
@@ -129,28 +130,29 @@ Python class otherwise is configured in declarative style normally::
     class User:
         __tablename__ = "user"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name: Mapped[str]
+        fullname: Mapped[Optional[str]]
+        nickname: Mapped[Optional[str]] = mapped_column(String(64))
+        create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-        addresses = relationship("Address", back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
 
     @mapper_registry.mapped
     class Address:
         __tablename__ = "address"
 
-        id = Column(Integer, primary_key=True)
-        user_id = Column(ForeignKey("user.id"))
-        email_address = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        user_id = mapped_column(ForeignKey("user.id"))
+        email_address: Mapped[str]
 
-        user = relationship("User", back_populates="addresses")
+        user: Mapped["User"] = relationship(back_populates="addresses")
 
-Above, the same :class:`_orm.registry` that we'd use to generate a declarative
-base class via its :meth:`_orm.registry.generate_base` method may also apply
-a declarative-style mapping to a class without using a base.   When using
-the above style, the mapping of a particular class will **only** proceed
-if the decorator is applied to that class directly.   For inheritance
-mappings, the decorator should be applied to each subclass::
+When using the above style, the mapping of a particular class will **only**
+proceed if the decorator is applied to that class directly. For inheritance
+mappings (described in detail at :ref:`inheritance_toplevel`), the decorator
+should be applied to each subclass that is to be mapped::
 
     from sqlalchemy.orm import registry
 
@@ -161,8 +163,8 @@ mappings, the decorator should be applied to each subclass::
     class Person:
         __tablename__ = "person"
 
-        person_id = Column(Integer, primary_key=True)
-        type = Column(String, nullable=False)
+        person_id = mapped_column(Integer, primary_key=True)
+        type = mapped_column(String, nullable=False)
 
         __mapper_args__ = {
             "polymorphic_on": type,
@@ -174,16 +176,23 @@ mappings, the decorator should be applied to each subclass::
     class Employee(Person):
         __tablename__ = "employee"
 
-        person_id = Column(ForeignKey("person.person_id"), primary_key=True)
+        person_id = mapped_column(ForeignKey("person.person_id"), primary_key=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
         }
 
-Both the "declarative table" and "imperative table" styles of declarative
-mapping may be used with the above mapping style.
+Both the :ref:`declarative table <orm_declarative_table>` and
+:ref:`imperative table <orm_imperative_table_configuration>`
+table configuration styles may be used with either the Declarative Base
+or decorator styles of Declarative mapping.
 
-The decorator form of mapping is particularly useful when combining a
-SQLAlchemy declarative mapping with other forms of class declaration, notably
-the Python ``dataclasses`` module.  See the next section.
+The decorator form of mapping is useful when combining a
+SQLAlchemy declarative mapping with other class instrumentation systems
+such as dataclasses_ and attrs_, though note that SQLAlchemy 2.0 now features
+dataclasses integration with Declarative Base classes as well.
 
+
+.. _dataclass: https://docs.python.org/3/library/dataclasses.html
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html
+.. _attrs: https://pypi.org/project/attrs/

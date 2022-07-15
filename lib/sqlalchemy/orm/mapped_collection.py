@@ -167,12 +167,21 @@ def mapped_collection(
 
 
 class MappedCollection(Dict[_KT, _VT]):
-    """A basic dictionary-based collection class.
+    """Base for ORM mapped dictionary classes.
 
-    Extends dict with the minimal bag semantics that collection
-    classes require. ``set`` and ``remove`` are implemented in terms
-    of a keying function: any callable that takes an object and
-    returns an object for use as a dictionary key.
+    Extends the ``dict`` type with additional methods needed by SQLAlchemy ORM
+    collection classes. Use of :class:`_orm.MappedCollection` is most directly
+    by using the :func:`.attribute_mapped_collection` or
+    :func:`.column_mapped_collection` class factories.
+    :class:`_orm.MappedCollection` may also serve as the base for user-defined
+    custom dictionary classes.
+
+    .. seealso::
+
+        :ref:`orm_dictionary_collection`
+
+        :ref:`orm_custom_collection`
+
 
     """
 

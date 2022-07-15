@@ -25,14 +25,15 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
 (the many-to-many pattern is described at :ref:`relationships_many_to_many`)::
 
     from sqlalchemy import Column, ForeignKey, Integer, String, Table
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
         kw = relationship("Keyword", secondary=lambda: user_keyword_table)
 
         def __init__(self, name):
@@ -41,8 +42,8 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
 
     class Keyword(Base):
         __tablename__ = "keyword"
-        id = Column(Integer, primary_key=True)
-        keyword = Column("keyword", String(64))
+        id = mapped_column(Integer, primary_key=True)
+        keyword = mapped_column("keyword", String(64))
 
         def __init__(self, keyword):
             self.keyword = keyword
@@ -77,8 +78,8 @@ value of ``.keyword`` associated with each ``Keyword`` object::
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
         kw = relationship("Keyword", secondary=lambda: user_keyword_table)
 
         def __init__(self, name):
@@ -172,16 +173,17 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
 
         user_keyword_associations = relationship(
             "UserKeywordAssociation",
@@ -198,9 +200,9 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 
     class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
-        user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
-        keyword_id = Column(Integer, ForeignKey("keyword.id"), primary_key=True)
-        special_key = Column(String(50))
+        user_id = mapped_column(Integer, ForeignKey("user.id"), primary_key=True)
+        keyword_id = mapped_column(Integer, ForeignKey("keyword.id"), primary_key=True)
+        special_key = mapped_column(String(50))
 
         user = relationship(User, back_populates="user_keyword_associations")
 
@@ -215,8 +217,8 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 
     class Keyword(Base):
         __tablename__ = "keyword"
-        id = Column(Integer, primary_key=True)
-        keyword = Column("keyword", String(64))
+        id = mapped_column(Integer, primary_key=True)
+        keyword = mapped_column("keyword", String(64))
 
         def __init__(self, keyword):
             self.keyword = keyword
@@ -296,16 +298,17 @@ when new elements are added to the dictionary::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
 
         # user/user_keyword_associations relationship, mapping
         # user_keyword_associations with a dictionary against "special_key" as key.
@@ -330,9 +333,9 @@ when new elements are added to the dictionary::
 
     class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
-        user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
-        keyword_id = Column(Integer, ForeignKey("keyword.id"), primary_key=True)
-        special_key = Column(String)
+        user_id = mapped_column(Integer, ForeignKey("user.id"), primary_key=True)
+        keyword_id = mapped_column(Integer, ForeignKey("keyword.id"), primary_key=True)
+        special_key = mapped_column(String)
 
         user = relationship(
             User,
@@ -343,8 +346,8 @@ when new elements are added to the dictionary::
 
     class Keyword(Base):
         __tablename__ = "keyword"
-        id = Column(Integer, primary_key=True)
-        keyword = Column("keyword", String(64))
+        id = mapped_column(Integer, primary_key=True)
+        keyword = mapped_column("keyword", String(64))
 
         def __init__(self, keyword):
             self.keyword = keyword
@@ -379,16 +382,17 @@ present on ``UserKeywordAssociation``::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
 
         user_keyword_associations = relationship(
             "UserKeywordAssociation",
@@ -410,9 +414,9 @@ present on ``UserKeywordAssociation``::
 
     class UserKeywordAssociation(Base):
         __tablename__ = "user_keyword"
-        user_id = Column(ForeignKey("user.id"), primary_key=True)
-        keyword_id = Column(ForeignKey("keyword.id"), primary_key=True)
-        special_key = Column(String)
+        user_id = mapped_column(ForeignKey("user.id"), primary_key=True)
+        keyword_id = mapped_column(ForeignKey("keyword.id"), primary_key=True)
+        special_key = mapped_column(String)
         user = relationship(
             User,
             back_populates="user_keyword_associations",
@@ -429,8 +433,8 @@ present on ``UserKeywordAssociation``::
 
     class Keyword(Base):
         __tablename__ = "keyword"
-        id = Column(Integer, primary_key=True)
-        keyword = Column("keyword", String(64))
+        id = mapped_column(Integer, primary_key=True)
+        keyword = mapped_column("keyword", String(64))
 
         def __init__(self, keyword):
             self.keyword = keyword
@@ -490,10 +494,11 @@ to a related object, as in the example mapping below::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
@@ -593,7 +598,7 @@ Given a mapping as::
 
     class A(Base):
         __tablename__ = "test_a"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         ab = relationship("AB", backref="a", uselist=False)
         b = association_proxy(
             "ab", "b", creator=lambda b: AB(b=b), cascade_scalar_deletes=True
@@ -602,14 +607,14 @@ Given a mapping as::
 
     class B(Base):
         __tablename__ = "test_b"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         ab = relationship("AB", backref="b", cascade="all, delete-orphan")
 
 
     class AB(Base):
         __tablename__ = "test_ab"
-        a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
-        b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
+        a_id = mapped_column(Integer, ForeignKey(A.id), primary_key=True)
+        b_id = mapped_column(Integer, ForeignKey(B.id), primary_key=True)
 
 An assignment to ``A.b`` will generate an ``AB`` object::
 

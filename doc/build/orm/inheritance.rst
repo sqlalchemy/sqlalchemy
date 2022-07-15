@@ -46,9 +46,9 @@ column as well as the identifier for the base class::
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
@@ -83,8 +83,8 @@ columns), as well as a foreign key reference to the parent table::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
-        engineer_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
+        engineer_name = mapped_column(String(30))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -93,8 +93,8 @@ columns), as well as a foreign key reference to the parent table::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
-        manager_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
+        manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -161,17 +161,17 @@ and ``Employee``::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         employees = relationship("Employee", back_populates="company")
 
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="employees")
 
         __mapper_args__ = {
@@ -195,16 +195,16 @@ established between the ``Manager`` and ``Company`` classes::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         managers = relationship("Manager", back_populates="company")
 
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
@@ -214,10 +214,10 @@ established between the ``Manager`` and ``Company`` classes::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
-        manager_name = Column(String(30))
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
+        manager_name = mapped_column(String(30))
 
-        company_id = Column(ForeignKey("company.id"))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="managers")
 
         __mapper_args__ = {
@@ -271,9 +271,9 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(20))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(20))
 
         __mapper_args__ = {
             "polymorphic_on": type,
@@ -282,7 +282,7 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
 
     class Manager(Employee):
-        manager_data = Column(String(50))
+        manager_data = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -290,7 +290,7 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
 
     class Engineer(Employee):
-        engineer_info = Column(String(50))
+        engineer_info = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -312,9 +312,9 @@ comes up when two subclasses want to specify *the same* column, as below::
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(20))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(20))
 
         __mapper_args__ = {
             "polymorphic_on": type,
@@ -326,14 +326,14 @@ comes up when two subclasses want to specify *the same* column, as below::
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
         }
-        start_date = Column(DateTime)
+        start_date = mapped_column(DateTime)
 
 
     class Manager(Employee):
         __mapper_args__ = {
             "polymorphic_identity": "manager",
         }
-        start_date = Column(DateTime)
+        start_date = mapped_column(DateTime)
 
 Above, the ``start_date`` column declared on both ``Engineer`` and ``Manager``
 will result in an error::
@@ -353,9 +353,9 @@ if it already exists::
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(20))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(20))
 
         __mapper_args__ = {
             "polymorphic_on": type,
@@ -371,7 +371,7 @@ if it already exists::
         @declared_attr
         def start_date(cls):
             "Start date column, if not present already."
-            return Employee.__table__.c.get("start_date", Column(DateTime))
+            return Employee.__table__.c.get("start_date", mapped_column(DateTime))
 
 
     class Manager(Employee):
@@ -382,7 +382,7 @@ if it already exists::
         @declared_attr
         def start_date(cls):
             "Start date column, if not present already."
-            return Employee.__table__.c.get("start_date", Column(DateTime))
+            return Employee.__table__.c.get("start_date", mapped_column(DateTime))
 
 Above, when ``Manager`` is mapped, the ``start_date`` column is
 already present on the ``Employee`` class; by returning the existing
@@ -395,9 +395,9 @@ from a reusable mixin class::
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(20))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(20))
 
         __mapper_args__ = {
             "polymorphic_on": type,
@@ -408,7 +408,7 @@ from a reusable mixin class::
     class HasStartDate:
         @declared_attr
         def start_date(cls):
-            return cls.__table__.c.get("start_date", Column(DateTime))
+            return cls.__table__.c.get("start_date", mapped_column(DateTime))
 
 
     class Engineer(HasStartDate, Employee):
@@ -432,17 +432,17 @@ relationship::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         employees = relationship("Employee", back_populates="company")
 
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="employees")
 
         __mapper_args__ = {
@@ -452,7 +452,7 @@ relationship::
 
 
     class Manager(Employee):
-        manager_data = Column(String(50))
+        manager_data = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -460,7 +460,7 @@ relationship::
 
 
     class Engineer(Employee):
-        engineer_info = Column(String(50))
+        engineer_info = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -473,16 +473,16 @@ or subclasses::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         managers = relationship("Manager", back_populates="company")
 
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        type = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        type = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
@@ -491,9 +491,9 @@ or subclasses::
 
 
     class Manager(Employee):
-        manager_name = Column(String(30))
+        manager_name = mapped_column(String(30))
 
-        company_id = Column(ForeignKey("company.id"))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="managers")
 
         __mapper_args__ = {
@@ -502,7 +502,7 @@ or subclasses::
 
 
     class Engineer(Employee):
-        engineer_info = Column(String(50))
+        engineer_info = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -567,16 +567,16 @@ table should not be considered as part of the mapping::
     class Employee(Base):
         __tablename__ = "employee"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
 
 
     class Manager(Employee):
         __tablename__ = "manager"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(50))
 
         __mapper_args__ = {
             "concrete": True,
@@ -586,9 +586,9 @@ table should not be considered as part of the mapping::
     class Engineer(Employee):
         __tablename__ = "engineer"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(50))
 
         __mapper_args__ = {
             "concrete": True,
@@ -641,8 +641,8 @@ almost the same way as we do other forms of inheritance mappings::
 
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
@@ -652,9 +652,9 @@ almost the same way as we do other forms of inheritance mappings::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -664,9 +664,9 @@ almost the same way as we do other forms of inheritance mappings::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -743,9 +743,9 @@ base class with the ``__abstract__`` indicator::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -754,9 +754,9 @@ base class with the ``__abstract__`` indicator::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -797,9 +797,9 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -809,9 +809,9 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(40))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -1020,16 +1020,16 @@ such a configuration is as follows::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         employees = relationship("Employee")
 
 
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        company_id = mapped_column(ForeignKey("company.id"))
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
@@ -1039,10 +1039,10 @@ such a configuration is as follows::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(40))
+        company_id = mapped_column(ForeignKey("company.id"))
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -1052,10 +1052,10 @@ such a configuration is as follows::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(40))
+        company_id = mapped_column(ForeignKey("company.id"))
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -1080,16 +1080,16 @@ each of the relationships::
 
     class Company(Base):
         __tablename__ = "company"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
         employees = relationship("Employee", back_populates="company")
 
 
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="employees")
 
         __mapper_args__ = {
@@ -1100,10 +1100,10 @@ each of the relationships::
 
     class Manager(Employee):
         __tablename__ = "manager"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        manager_data = Column(String(40))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        manager_data = mapped_column(String(40))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="employees")
 
         __mapper_args__ = {
@@ -1114,10 +1114,10 @@ each of the relationships::
 
     class Engineer(Employee):
         __tablename__ = "engineer"
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50))
-        engineer_info = Column(String(40))
-        company_id = Column(ForeignKey("company.id"))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50))
+        engineer_info = mapped_column(String(40))
+        company_id = mapped_column(ForeignKey("company.id"))
         company = relationship("Company", back_populates="employees")
 
         __mapper_args__ = {

@@ -115,7 +115,9 @@ def mapped_column(
         Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
     ] = SchemaConst.NULL_UNSPECIFIED,
     primary_key: Optional[bool] = False,
-    deferred: bool = False,
+    deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    deferred_group: Optional[str] = None,
+    deferred_raiseload: bool = False,
     name: Optional[str] = None,
     type_: Optional[_TypeEngineArgument[Any]] = None,
     autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
@@ -133,137 +135,37 @@ def mapped_column(
     comment: Optional[str] = None,
     **dialect_kwargs: Any,
 ) -> MappedColumn[Any]:
-    r"""construct a new ORM-mapped :class:`_schema.Column` construct.
+    r"""declare a new ORM-mapped :class:`_schema.Column` construct
+    for use within :ref:`Declarative Table <orm_declarative_table>`
+    configuration.
 
     The :func:`_orm.mapped_column` function provides an ORM-aware and
     Python-typing-compatible construct which is used with
     :ref:`declarative <orm_declarative_mapping>` mappings to indicate an
     attribute that's mapped to a Core :class:`_schema.Column` object.  It
     provides the equivalent feature as mapping an attribute to a
-    :class:`_schema.Column` object directly when using declarative.
+    :class:`_schema.Column` object directly when using Declarative,
+    specifically when using :ref:`Declarative Table <orm_declarative_table>`
+    configuration.
 
     .. versionadded:: 2.0
 
     :func:`_orm.mapped_column` is normally used with explicit typing along with
-    the :class:`_orm.Mapped` mapped attribute type, where it can derive the SQL
-    type and nullability for the column automatically, such as::
+    the :class:`_orm.Mapped` annotation type, where it can derive the SQL
+    type and nullability for the column based on what's present within the
+    :class:`_orm.Mapped` annotation.   It also may be used without annotations
+    as a drop-in replacement for how :class:`_schema.Column` is used in
+    Declarative mappings in SQLAlchemy 1.x style.
 
-        from typing import Optional
+    For usage examples of :func:`_orm.mapped_column`, see the documentation
+    at :ref:`orm_declarative_table`.
 
-        from sqlalchemy.orm import Mapped
-        from sqlalchemy.orm import mapped_column
+    .. seealso::
 
-        class User(Base):
-            __tablename__ = 'user'
+        :ref:`orm_declarative_table` - complete documentation
 
-            id: Mapped[int] = mapped_column(primary_key=True)
-            name: Mapped[str] = mapped_column()
-            options: Mapped[Optional[str]] = mapped_column()
-
-    In the above example, the ``int`` and ``str`` types are inferred by the
-    Declarative mapping system to indicate use of the :class:`_types.Integer`
-    and :class:`_types.String` datatypes, and the presence of ``Optional`` or
-    not indicates whether or not each non-primary-key column is to be
-    ``nullable=True`` or ``nullable=False``.
-
-    The above example, when interpreted within a Declarative class, will result
-    in a table named ``"user"`` which is equivalent to the following::
-
-        from sqlalchemy import Integer
-        from sqlalchemy import String
-        from sqlalchemy import Table
-
-        Table(
-            'user',
-            Base.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("name", String, nullable=False),
-            Column("options", String, nullable=True),
-        )
-
-    The :func:`_orm.mapped_column` construct accepts the same arguments as
-    that of :class:`_schema.Column` directly, including optional "name"
-    and "type" fields, so the above mapping can be stated more explicitly
-    as::
-
-        from typing import Optional
-
-        from sqlalchemy import Integer
-        from sqlalchemy import String
-        from sqlalchemy.orm import Mapped
-        from sqlalchemy.orm import mapped_column
-
-        class User(Base):
-            __tablename__ = 'user'
-
-            id: Mapped[int] = mapped_column("id", Integer, primary_key=True)
-            name: Mapped[str] = mapped_column("name", String, nullable=False)
-            options: Mapped[Optional[str]] = mapped_column(
-                "name", String, nullable=True
-            )
-
-    Arguments passed to :func:`_orm.mapped_column` always supersede those which
-    would be derived from the type annotation and/or attribute name. To state
-    the above mapping with more specific datatypes for ``id`` and ``options``,
-    and a different column name for ``name``, looks like::
-
-        from sqlalchemy import BigInteger
-
-        class User(Base):
-            __tablename__ = 'user'
-
-            id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True)
-            name: Mapped[str] = mapped_column("user_name")
-            options: Mapped[Optional[str]] = mapped_column(String(50))
-
-    Where again, datatypes and nullable parameters that can be automatically
-    derived may be omitted.
-
-    The datatypes passed to :class:`_orm.Mapped` are mapped to SQL
-    :class:`_types.TypeEngine` types with the following default mapping::
-
-        _type_map = {
-            int: Integer(),
-            float: Float(),
-            bool: Boolean(),
-            decimal.Decimal: Numeric(),
-            dt.date: Date(),
-            dt.datetime: DateTime(),
-            dt.time: Time(),
-            dt.timedelta: Interval(),
-            util.NoneType: NULLTYPE,
-            bytes: LargeBinary(),
-            str: String(),
-        }
-
-    The above mapping may be expanded to include any combination of Python
-    datatypes to SQL types by using the
-    :paramref:`_orm.registry.type_annotation_map` parameter to
-    :class:`_orm.registry`, or as the attribute ``type_annotation_map`` upon
-    the :class:`_orm.DeclarativeBase` base class.
-
-    Finally, :func:`_orm.mapped_column` is implicitly used by the Declarative
-    mapping system for any :class:`_orm.Mapped` annotation that has no
-    attribute value set up.  This is much in the way that Python dataclasses
-    allow the ``field()`` construct to be optional, only needed when additional
-    parameters should be associated with the field.  Using this functionality,
-    our original mapping can be stated even more succinctly as::
-
-        from typing import Optional
-
-        from sqlalchemy.orm import Mapped
-        from sqlalchemy.orm import mapped_column
-
-        class User(Base):
-            __tablename__ = 'user'
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            name: Mapped[str]
-            options: Mapped[Optional[str]]
-
-    Above, the ``name`` and ``options`` columns will be evaluated as
-    ``Column("name", String, nullable=False)`` and
-    ``Column("options", String, nullable=True)``, respectively.
+        :ref:`whatsnew_20_orm_declarative_typing` - migration notes for
+        Declarative mappings using 1.x style mappings
 
     :param __name: String name to give to the :class:`_schema.Column`.  This
      is an optional, positional only argument that if present must be the
@@ -293,17 +195,54 @@ def mapped_column(
      ORM declarative process, and is not part of the :class:`_schema.Column`
      itself; instead, it indicates that this column should be "deferred" for
      loading as though mapped by :func:`_orm.deferred`.
-    :param default: This keyword argument, if present, is passed along to the
-     :class:`_schema.Column` constructor as the value of the
-     :paramref:`_schema.Column.default` parameter.  However, as
-     :paramref:`_orm.mapped_column.default` is also consumed as a dataclasses
-     directive, the :paramref:`_orm.mapped_column.insert_default` parameter
-     should be used instead in a dataclasses context.
+
+     .. seealso::
+
+        :ref:`deferred`
+
+    :param deferred_group: Implies :paramref:`_orm.mapped_column.deferred`
+     to ``True``, and set the :paramref:`_orm.deferred.group` parameter.
+    :param deferred_raiseload: Implies :paramref:`_orm.mapped_column.deferred`
+     to ``True``, and set the :paramref:`_orm.deferred.raiseload` parameter.
+
+    :param default: Passed directly to the
+     :paramref:`_schema.Column.default` parameter if the
+     :paramref:`_orm.mapped_column.insert_default` parameter is not present.
+     Additionally, when used with :ref:`orm_declarative_native_dataclasses`,
+     indicates a default Python value that should be applied to the keyword
+     constructor within the generated ``__init__()`` method.
+
+     Note that in the case of dataclass generation when
+     :paramref:`_orm.mapped_column.insert_default` is not present, this means
+     the :paramref:`_orm.mapped_column.default` value is used in **two**
+     places, both the ``__init__()`` method as well as the
+     :paramref:`_schema.Column.default` parameter. While this behavior may
+     change in a future release, for the moment this tends to "work out"; a
+     default of ``None`` will mean that the :class:`_schema.Column` gets no
+     default generator, whereas a default that refers to a non-``None`` Python
+     or SQL expression value will be assigned up front on the object when
+     ``__init__()`` is called, which is the same value that the Core
+     :class:`_sql.Insert` construct would use in any case, leading to the same
+     end result.
+
     :param insert_default: Passed directly to the
      :paramref:`_schema.Column.default` parameter; will supersede the value
      of :paramref:`_orm.mapped_column.default` when present, however
      :paramref:`_orm.mapped_column.default` will always apply to the
      constructor default for a dataclasses mapping.
+
+    :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__init__()``
+     method as generated by the dataclass process.
+    :param repr: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__repr__()``
+     method as generated by the dataclass process.
+    :param default_factory: Specific to
+     :ref:`orm_declarative_native_dataclasses`,
+     specifies a default-value generation function that will take place
+     as part of the ``__init__()``
+     method as generated by the dataclass process.
+
     :param \**kw: All remaining keyword argments are passed through to the
      constructor for the :class:`_schema.Column`.
 
@@ -341,6 +280,8 @@ def mapped_column(
         comment=comment,
         system=system,
         deferred=deferred,
+        deferred_group=deferred_group,
+        deferred_raiseload=deferred_raiseload,
         **dialect_kwargs,
     )
 
@@ -568,6 +509,18 @@ def composite(
 
     :param info: Optional data dictionary which will be populated into the
         :attr:`.MapperProperty.info` attribute of this object.
+
+    :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__init__()``
+     method as generated by the dataclass process.
+    :param repr: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__repr__()``
+     method as generated by the dataclass process.
+    :param default_factory: Specific to
+     :ref:`orm_declarative_native_dataclasses`,
+     specifies a default-value generation function that will take place
+     as part of the ``__init__()``
+     method as generated by the dataclass process.
 
     """
     if __kw:
@@ -825,87 +778,50 @@ def relationship(
     """Provide a relationship between two mapped classes.
 
     This corresponds to a parent-child or associative table relationship.
-    The constructed class is an instance of
-    :class:`.Relationship`.
-
-    A typical :func:`_orm.relationship`, used in a classical mapping::
-
-       mapper(Parent, properties={
-         'children': relationship(Child)
-       })
-
-    Some arguments accepted by :func:`_orm.relationship`
-    optionally accept a
-    callable function, which when called produces the desired value.
-    The callable is invoked by the parent :class:`_orm.Mapper` at "mapper
-    initialization" time, which happens only when mappers are first used,
-    and is assumed to be after all mappings have been constructed.  This
-    can be used to resolve order-of-declaration and other dependency
-    issues, such as if ``Child`` is declared below ``Parent`` in the same
-    file::
-
-        mapper(Parent, properties={
-            "children":relationship(lambda: Child,
-                                order_by=lambda: Child.id)
-        })
-
-    When using the :ref:`declarative_toplevel` extension, the Declarative
-    initializer allows string arguments to be passed to
-    :func:`_orm.relationship`.  These string arguments are converted into
-    callables that evaluate the string as Python code, using the
-    Declarative class-registry as a namespace.  This allows the lookup of
-    related classes to be automatic via their string name, and removes the
-    need for related classes to be imported into the local module space
-    before the dependent classes have been declared.  It is still required
-    that the modules in which these related classes appear are imported
-    anywhere in the application at some point before the related mappings
-    are actually used, else a lookup error will be raised when the
-    :func:`_orm.relationship`
-    attempts to resolve the string reference to the
-    related class.    An example of a string- resolved class is as
-    follows::
-
-        from sqlalchemy.ext.declarative import declarative_base
-
-        Base = declarative_base()
-
-        class Parent(Base):
-            __tablename__ = 'parent'
-            id = Column(Integer, primary_key=True)
-            children = relationship("Child", order_by="Child.id")
+    The constructed class is an instance of :class:`.Relationship`.
 
     .. seealso::
 
-      :ref:`relationship_config_toplevel` - Full introductory and
-      reference documentation for :func:`_orm.relationship`.
+        :ref:`tutorial_orm_related_objects` - tutorial introduction
+        to :func:`_orm.relationship` in the :ref:`unified_tutorial`
 
-      :ref:`tutorial_orm_related_objects` - ORM tutorial introduction.
+        :ref:`relationship_config_toplevel` - narrative documentation
 
     :param argument:
-      A mapped class, or actual :class:`_orm.Mapper` instance,
-      representing
-      the target of the relationship.
+      This parameter refers to the class that is to be related.   It
+      accepts several forms, including a direct reference to the target
+      class itself, the :class:`_orm.Mapper` instance for the target class,
+      a Python callable / lambda that will return a reference to the
+      class or :class:`_orm.Mapper` when called, and finally a string
+      name for the class, which will be resolved from the
+      :class:`_orm.registry` in use in order to locate the class, e.g.::
 
-      :paramref:`_orm.relationship.argument`
-      may also be passed as a callable
-      function which is evaluated at mapper initialization time, and may
-      be passed as a string name when using Declarative.
+            class SomeClass(Base):
+                # ...
 
-      .. warning:: Prior to SQLAlchemy 1.3.16, this value is interpreted
-         using Python's ``eval()`` function.
-         **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-         See :ref:`declarative_relationship_eval` for details on
-         declarative evaluation of :func:`_orm.relationship` arguments.
+                related = relationship("RelatedClass")
 
-      .. versionchanged 1.3.16::
+      The :paramref:`_orm.relationship.argument` may also be omitted from the
+      :func:`_orm.relationship` construct entirely, and instead placed inside
+      a :class:`_orm.Mapped` annotation on the left side, which should
+      include a Python collection type if the relationship is expected
+      to be a collection, such as::
 
-         The string evaluation of the main "argument" no longer accepts an
-         open ended Python expression, instead only accepting a string
-         class name or dotted package-qualified name.
+            class SomeClass(Base):
+                # ...
+
+                related_items: Mapped[List["RelatedItem"]] = relationship()
+
+      Or for a many-to-one or one-to-one relationship::
+
+            class SomeClass(Base):
+                # ...
+
+                related_item: Mapped["RelatedItem"] = relationship()
 
       .. seealso::
 
-        :ref:`declarative_configuring_relationships` - further detail
+        :ref:`orm_declarative_properties` - further detail
         on relationship configuration when using Declarative.
 
     :param secondary:
@@ -1530,13 +1446,17 @@ def relationship(
       A boolean that indicates if this property should be loaded as a
       list or a scalar. In most cases, this value is determined
       automatically by :func:`_orm.relationship` at mapper configuration
-      time, based on the type and direction
+      time.  When using explicit :class:`_orm.Mapped` annotations,
+      :paramref:`_orm.relationship.uselist` may be derived from the
+      whether or not the annotation within :class:`_orm.Mapped` contains
+      a collection class.
+      Otherwise, :paramref:`_orm.relationship.uselist` may be derived from
+      the type and direction
       of the relationship - one to many forms a list, many to one
       forms a scalar, many to many is a list. If a scalar is desired
       where normally a list would be present, such as a bi-directional
-      one-to-one relationship, set :paramref:`_orm.relationship.uselist`
-      to
-      False.
+      one-to-one relationship, use an appropriate :class:`_orm.Mapped`
+      annotation or set :paramref:`_orm.relationship.uselist` to False.
 
       The :paramref:`_orm.relationship.uselist`
       flag is also available on an
@@ -1552,8 +1472,8 @@ def relationship(
       .. seealso::
 
           :ref:`relationships_one_to_one` - Introduction to the "one to
-          one" relationship pattern, which is typically when the
-          :paramref:`_orm.relationship.uselist` flag is needed.
+          one" relationship pattern, which is typically when an alternate
+          setting for :paramref:`_orm.relationship.uselist` is involved.
 
     :param viewonly=False:
       When set to ``True``, the relationship is used only for loading
@@ -1621,6 +1541,19 @@ def relationship(
             emit a warning as this was not the intended use of this flag.
 
       .. versionadded:: 1.3
+
+    :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__init__()``
+     method as generated by the dataclass process.
+    :param repr: Specific to :ref:`orm_declarative_native_dataclasses`,
+     specifies if the mapped attribute should be part of the ``__repr__()``
+     method as generated by the dataclass process.
+    :param default_factory: Specific to
+     :ref:`orm_declarative_native_dataclasses`,
+     specifies a default-value generation function that will take place
+     as part of the ``__init__()``
+     method as generated by the dataclass process.
+
 
 
     """
@@ -1927,6 +1860,10 @@ def deferred(
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
 
+    When using :func:`_orm.mapped_column`, the same functionality as
+    that of :func:`_orm.deferred` construct is provided by using the
+    :paramref:`_orm.mapped_column.deferred` parameter.
+
     :param \*columns: columns to be mapped.  This is typically a single
      :class:`_schema.Column` object,
      however a collection is supported in order
@@ -1937,15 +1874,14 @@ def deferred(
 
      .. versionadded:: 1.4
 
-     .. seealso::
-
-        :ref:`deferred_raiseload`
 
     Additional arguments are the same as that of :func:`_orm.column_property`.
 
     .. seealso::
 
         :ref:`deferred`
+
+        :ref:`deferred_raiseload`
 
     """
     return ColumnProperty(

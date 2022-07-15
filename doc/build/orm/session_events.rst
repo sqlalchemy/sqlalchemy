@@ -115,16 +115,16 @@ Given a series of classes based on a mixin called ``HasTimestamp``::
     import datetime
 
     class HasTimestamp:
-        timestamp = Column(DateTime, default=datetime.datetime.now)
+        timestamp = mapped_column(DateTime, default=datetime.datetime.now)
 
 
     class SomeEntity(HasTimestamp, Base):
         __tablename__ = "some_entity"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
     class SomeOtherEntity(HasTimestamp, Base):
         __tablename__ = "some_entity"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
 
 The above classes ``SomeEntity`` and ``SomeOtherEntity`` will each have a column
@@ -452,10 +452,11 @@ wanted to intercept when any transient object is created, the
 event is applied to a specific class or superclass.  For example, to
 intercept all new objects for a particular declarative base::
 
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy import event
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     @event.listens_for(Base, "init", propagate=True)
     def intercept_init(instance, args, kwargs):

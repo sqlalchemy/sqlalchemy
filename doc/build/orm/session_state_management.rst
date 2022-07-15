@@ -292,16 +292,16 @@ Lets use the canonical example of the User and Address objects::
     class User(Base):
         __tablename__ = 'user'
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(50), nullable=False)
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(50), nullable=False)
         addresses = relationship("Address", backref="user")
 
     class Address(Base):
         __tablename__ = 'address'
 
-        id = Column(Integer, primary_key=True)
-        email_address = Column(String(50), nullable=False)
-        user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+        id = mapped_column(Integer, primary_key=True)
+        email_address = mapped_column(String(50), nullable=False)
+        user_id = mapped_column(Integer, ForeignKey('user.id'), nullable=False)
 
 Assume a ``User`` object with one ``Address``, already persistent::
 

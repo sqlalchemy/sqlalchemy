@@ -53,6 +53,15 @@ reveal_type(async_connection)
 async_session = AsyncSession(async_connection)
 
 
+# (variable) users1: Sequence[User]
+users1 = session.scalars(select(User)).all()
+
+# (variable) user: User
+user = session.query(User).one()
+
+
+user_iter = iter(session.scalars(select(User)))
+
 # EXPECTED_RE_TYPE: sqlalchemy..*AsyncSession\*?
 reveal_type(async_session)
 

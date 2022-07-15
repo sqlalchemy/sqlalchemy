@@ -27,9 +27,9 @@ class called ``Node``, representing a tree structure::
 
     class Node(Base):
         __tablename__ = 'node'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
-        data = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer, ForeignKey('node.id'))
+        data = mapped_column(String(50))
         children = relationship("Node")
 
 With this structure, a graph such as the following::
@@ -61,9 +61,9 @@ that indicate those which should be considered to be "remote"::
 
     class Node(Base):
         __tablename__ = 'node'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
-        data = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer, ForeignKey('node.id'))
+        data = mapped_column(String(50))
         parent = relationship("Node", remote_side=[id])
 
 Where above, the ``id`` column is applied as the :paramref:`_orm.relationship.remote_side`
@@ -76,9 +76,9 @@ relationship using the :func:`.backref` function::
 
     class Node(Base):
         __tablename__ = 'node'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
-        data = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer, ForeignKey('node.id'))
+        data = mapped_column(String(50))
         children = relationship("Node",
                     backref=backref('parent', remote_side=[id])
                 )
@@ -106,10 +106,10 @@ to a specific folder within that account::
               ['folder.account_id', 'folder.folder_id']),
         )
 
-        account_id = Column(Integer, primary_key=True)
-        folder_id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer)
-        name = Column(String)
+        account_id = mapped_column(Integer, primary_key=True)
+        folder_id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer)
+        name = mapped_column(String)
 
         parent_folder = relationship("Folder",
                             backref="child_folders",
@@ -185,9 +185,9 @@ configured via :paramref:`~.relationships.join_depth`:
 
     class Node(Base):
         __tablename__ = 'node'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
-        data = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer, ForeignKey('node.id'))
+        data = mapped_column(String(50))
         children = relationship("Node",
                         lazy="joined",
                         join_depth=2)

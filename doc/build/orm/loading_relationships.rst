@@ -90,7 +90,7 @@ the parent object is queried::
     class Parent(Base):
         __tablename__ = 'parent'
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         children = relationship("Child", lazy='joined')
 
 Above, whenever a collection of ``Parent`` objects are loaded, each
@@ -409,7 +409,7 @@ at the mapping level via the :paramref:`_orm.relationship.innerjoin` flag::
     class Address(Base):
         # ...
 
-        user_id = Column(ForeignKey('users.id'), nullable=False)
+        user_id = mapped_column(ForeignKey('users.id'), nullable=False)
         user = relationship(User, lazy="joined", innerjoin=True)
 
 At the query option level, via the :paramref:`_orm.joinedload.innerjoin` flag::
@@ -1074,7 +1074,7 @@ and additionally establish this as the basis for eager loading of ``User.address
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         addresses = relationship("Address")
 
     class Address(Base):
@@ -1198,15 +1198,16 @@ Given the following mapping::
 
     from sqlalchemy import Integer, ForeignKey, Column
     from sqlalchemy.orm import relationship, backref
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class A(Base):
         __tablename__ = 'a'
-        id = Column(Integer, primary_key=True)
-        b_id = Column(ForeignKey('b.id'))
+        id = mapped_column(Integer, primary_key=True)
+        b_id = mapped_column(ForeignKey('b.id'))
         b = relationship(
             "B",
             backref=backref("a", uselist=False),
@@ -1215,7 +1216,7 @@ Given the following mapping::
 
     class B(Base):
         __tablename__ = 'b'
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
 
 If we query for an ``A`` row, and then ask it for ``a.b.a``, we will get

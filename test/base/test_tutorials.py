@@ -10,6 +10,8 @@ from sqlalchemy.testing import requires
 
 
 class DocTest(fixtures.TestBase):
+    __requires__ = ("python39",)
+
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
 

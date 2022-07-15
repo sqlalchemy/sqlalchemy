@@ -19,7 +19,7 @@ an attribute::
 
         # ...
 
-        value = Column(Integer)
+        value = mapped_column(Integer)
 
     someobject = session.get(SomeClass, 5)
 
@@ -45,8 +45,8 @@ retrieved by the ORM as part of the object's primary key::
 
     class Foo(Base):
         __tablename__ = 'foo'
-        pk = Column(Integer, primary_key=True)
-        bar = Column(Integer)
+        pk = mapped_column(Integer, primary_key=True)
+        bar = mapped_column(Integer)
 
     e = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     Base.metadata.create_all(e)
@@ -144,8 +144,8 @@ The ORM considers any attribute that was never set on an object as a
 
     class MyObject(Base):
         __tablename__ = 'my_table'
-        id = Column(Integer, primary_key=True)
-        data = Column(String(50), nullable=True)
+        id = mapped_column(Integer, primary_key=True)
+        data = mapped_column(String(50), nullable=True)
 
     obj = MyObject(id=1)
     session.add(obj)
@@ -161,8 +161,8 @@ defaults::
 
     class MyObject(Base):
         __tablename__ = 'my_table'
-        id = Column(Integer, primary_key=True)
-        data = Column(String(50), nullable=True, server_default="default")
+        id = mapped_column(Integer, primary_key=True)
+        data = mapped_column(String(50), nullable=True, server_default="default")
 
     obj = MyObject(id=1)
     session.add(obj)
@@ -175,8 +175,8 @@ assigned::
 
     class MyObject(Base):
         __tablename__ = 'my_table'
-        id = Column(Integer, primary_key=True)
-        data = Column(String(50), nullable=True, server_default="default")
+        id = mapped_column(Integer, primary_key=True)
+        data = mapped_column(String(50), nullable=True, server_default="default")
 
     obj = MyObject(id=1, data=None)
     session.add(obj)
@@ -215,8 +215,8 @@ value and pass it through, rather than omitting it as a "missing" value::
 
     class MyObject(Base):
         __tablename__ = 'my_table'
-        id = Column(Integer, primary_key=True)
-        data = Column(
+        id = mapped_column(Integer, primary_key=True)
+        data = mapped_column(
           String(50).evaluates_none(),  # indicate that None should always be passed
           nullable=True, server_default="default")
 
@@ -286,12 +286,12 @@ columns should be fetched immediately upon INSERT and sometimes UPDATE::
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
-        timestamp = Column(DateTime(), server_default=func.now())
+        id = mapped_column(Integer, primary_key=True)
+        timestamp = mapped_column(DateTime(), server_default=func.now())
 
         # assume a database trigger populates a value into this column
         # during INSERT
-        special_identifier = Column(String(50), server_default=FetchedValue())
+        special_identifier = mapped_column(String(50), server_default=FetchedValue())
 
         __mapper_args__ = {"eager_defaults": True}
 
@@ -315,12 +315,12 @@ This case is the same as case 1 above, except we don't specify
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
-        timestamp = Column(DateTime(), server_default=func.now())
+        id = mapped_column(Integer, primary_key=True)
+        timestamp = mapped_column(DateTime(), server_default=func.now())
 
         # assume a database trigger populates a value into this column
         # during INSERT
-        special_identifier = Column(String(50), server_default=FetchedValue())
+        special_identifier = mapped_column(String(50), server_default=FetchedValue())
 
 After a record with the above mapping is INSERTed, the "timestamp" and
 "special_identifier" columns will remain empty, and will be fetched via
@@ -366,8 +366,8 @@ the :class:`.Sequence` construct::
     class MyOracleModel(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, Sequence("my_sequence"), primary_key=True)
-        data = Column(String(50))
+        id = mapped_column(Integer, Sequence("my_sequence"), primary_key=True)
+        data = mapped_column(String(50))
 
 The INSERT for a model as above on Oracle looks like:
 
@@ -385,7 +385,7 @@ SQL Server TIMESTAMP column as the primary key, which generates values automatic
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        timestamp = Column(TIMESTAMP(), server_default=FetchedValue(), primary_key=True)
+        timestamp = mapped_column(TIMESTAMP(), server_default=FetchedValue(), primary_key=True)
 
 An INSERT for the above table on SQL Server looks like:
 
@@ -419,7 +419,7 @@ pre-execute-supported default using the "NOW()" SQL function::
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        timestamp = Column(DateTime(), default=func.now(), primary_key=True)
+        timestamp = mapped_column(DateTime(), default=func.now(), primary_key=True)
 
 Where above, we select the "NOW()" function to deliver a datetime value
 to the column.  The SQL generated by the above is:
@@ -446,7 +446,7 @@ into the column::
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        timestamp = Column(
+        timestamp = mapped_column(
             TIMESTAMP(),
             default=cast(func.now(), Binary),
             primary_key=True)
@@ -478,7 +478,7 @@ by passing this as the ``type_`` parameter::
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        timestamp = Column(
+        timestamp = mapped_column(
             DateTime,
             default=func.datetime('now', 'localtime', type_=DateTime),
             primary_key=True)
@@ -533,10 +533,10 @@ to ensure that the fetch occurs::
     class MyModel(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
-        created = Column(DateTime(), default=func.now(), server_default=FetchedValue())
-        updated = Column(DateTime(), onupdate=func.now(), server_default=FetchedValue(), server_onupdate=FetchedValue())
+        created = mapped_column(DateTime(), default=func.now(), server_default=FetchedValue())
+        updated = mapped_column(DateTime(), onupdate=func.now(), server_default=FetchedValue(), server_onupdate=FetchedValue())
 
         __mapper_args__ = {"eager_defaults": True}
 
@@ -742,9 +742,14 @@ arbitrary Python class as a key, which will be used if it is found to be in the
 Supposing two declarative bases are representing two different database
 connections::
 
-    BaseA = declarative_base()
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Session
 
-    BaseB = declarative_base()
+    class BaseA(DeclarativeBase):
+        pass
+
+    class BaseB(DeclarativeBase):
+        pass
 
     class User(BaseA):
         # ...

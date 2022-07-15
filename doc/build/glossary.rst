@@ -25,6 +25,18 @@ Glossary
 
             :ref:`migration_20_toplevel`
 
+    mixin class
+    mixin classes
+
+      A common object-oriented pattern where a class that contains methods or
+      attributes for use by other classes without having to be the parent class
+      of those other classes.
+
+      .. seealso::
+
+          `Mixin (via Wikipedia) <https://en.wikipedia.org/wiki/Mixin>`_
+
+
     reflection
     reflected
         In SQLAlchemy, this term refers to the feature of querying a database's
@@ -38,6 +50,9 @@ Glossary
 
             :ref:`metadata_reflection_toplevel` - complete background on
             database reflection.
+
+            :ref:`orm_declarative_reflected` - background on integrating
+            ORM mappings with reflected tables.
 
 
     imperative

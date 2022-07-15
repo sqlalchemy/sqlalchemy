@@ -1,18 +1,14 @@
-.. currentmodule:: sqlalchemy.orm
-
 ===============================
-Mapping Columns and Expressions
+Mapping SQL Expressions
 ===============================
 
-The following sections discuss how table columns and SQL expressions are
-mapped to individual object attributes.
+This page has been merged into the
+:ref:`mapper_config_toplevel` index.
+
 
 .. toctree::
-    :maxdepth: 3
+    :hidden:
 
     mapping_columns
-    mapped_sql_expr
-    mapped_attributes
-    composites
 
 

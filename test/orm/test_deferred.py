@@ -130,6 +130,52 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             ],
         )
 
+    @testing.combinations(True, False, None, "deferred_parameter")
+    def test_group_defer_newstyle(self, deferred_parameter):
+        class Base(DeclarativeBase):
+            pass
+
+        class Order(Base):
+            __tablename__ = "orders"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            user_id: Mapped[int]
+            address_id: Mapped[int]
+
+            if deferred_parameter is None:
+                isopen: Mapped[bool] = mapped_column(deferred_group="g1")
+                description: Mapped[str] = mapped_column(deferred_group="g1")
+            else:
+                isopen: Mapped[bool] = mapped_column(
+                    deferred=deferred_parameter, deferred_group="g1"
+                )
+                description: Mapped[str] = mapped_column(
+                    deferred=deferred_parameter, deferred_group="g1"
+                )
+
+        if deferred_parameter is not False:
+            self.assert_compile(
+                select(Order),
+                "SELECT orders.id, orders.user_id, orders.address_id "
+                "FROM orders",
+            )
+            self.assert_compile(
+                select(Order).options(undefer_group("g1")),
+                "SELECT orders.isopen, orders.description, orders.id, "
+                "orders.user_id, orders.address_id FROM orders",
+            )
+        else:
+            self.assert_compile(
+                select(Order),
+                "SELECT orders.id, orders.user_id, orders.address_id, "
+                "orders.isopen, orders.description FROM orders",
+            )
+            self.assert_compile(
+                select(Order).options(undefer_group("g1")),
+                "SELECT orders.id, orders.user_id, orders.address_id, "
+                "orders.isopen, orders.description FROM orders",
+            )
+
     def test_defer_primary_key(self):
         """what happens when we try to defer the primary key?"""
 
@@ -983,6 +1029,31 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 "description": deferred(orders.c.description, raiseload=True)
             },
         )
+
+        sess = fixture_session()
+        stmt = sa.select(Order).order_by(Order.id)
+        o1 = (sess.query(Order).from_statement(stmt).all())[0]
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Order.description' is not available due to raiseload=True",
+            getattr,
+            o1,
+            "description",
+        )
+
+    def test_raise_on_col_newstyle(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class Order(Base):
+            __tablename__ = "orders"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            user_id: Mapped[int]
+            address_id: Mapped[int]
+            isopen: Mapped[bool]
+            description: Mapped[str] = mapped_column(deferred_raiseload=True)
 
         sess = fixture_session()
         stmt = sa.select(Order).order_by(Order.id)

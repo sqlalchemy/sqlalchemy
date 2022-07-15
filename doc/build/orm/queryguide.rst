@@ -72,8 +72,9 @@ upon the content at :ref:`tutorial_selecting_data`.
     >>> metadata_obj.create_all(engine)
     BEGIN (implicit)
     ...
-    >>> from sqlalchemy.orm import declarative_base
-    >>> Base = declarative_base()
+    >>> from sqlalchemy.orm import DeclarativeBase
+    >>> class Base(DeclarativeBase):
+    ...     pass
     >>> from sqlalchemy.orm import relationship
     >>> class User(Base):
     ...     __table__ = user_table

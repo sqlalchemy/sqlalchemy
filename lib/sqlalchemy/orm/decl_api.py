@@ -17,6 +17,7 @@ from typing import Callable
 from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
+from typing import Generic
 from typing import Iterator
 from typing import Mapping
 from typing import Optional
@@ -79,7 +80,10 @@ if TYPE_CHECKING:
     from .interfaces import MapperProperty
     from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
+
 _T = TypeVar("_T", bound=Any)
+
+_TT = TypeVar("_TT", bound=Any)
 
 # it's not clear how to have Annotated, Union objects etc. as keys here
 # from a typing perspective so just leave it open ended for now
@@ -228,100 +232,10 @@ def synonym_for(
     return decorate
 
 
-class declared_attr(interfaces._MappedAttribute[_T]):
-    """Mark a class-level method as representing the definition of
-    a mapped property or special declarative member name.
-
-    :class:`_orm.declared_attr` is typically applied as a decorator to a class
-    level method, turning the attribute into a scalar-like property that can be
-    invoked from the uninstantiated class. The Declarative mapping process
-    looks for these :class:`_orm.declared_attr` callables as it scans classes,
-    and assumes any attribute marked with :class:`_orm.declared_attr` will be a
-    callable that will produce an object specific to the Declarative mapping or
-    table configuration.
-
-    :class:`_orm.declared_attr` is usually applicable to mixins, to define
-    relationships that are to be applied to different implementors of the
-    class. It is also used to define :class:`_schema.Column` objects that
-    include the :class:`_schema.ForeignKey` construct, as these cannot be
-    easily reused across different mappings.  The example below illustrates
-    both::
-
-        class ProvidesUser:
-            "A mixin that adds a 'user' relationship to classes."
-
-            @declared_attr
-            def user_id(self):
-                return Column(ForeignKey("user_account.id"))
-
-            @declared_attr
-            def user(self):
-                return relationship("User")
-
-    :class:`_orm.declared_attr` can also be applied to mapped classes, such as
-    to provide a "polymorphic" scheme for inheritance::
-
-        class Employee(Base):
-            id = Column(Integer, primary_key=True)
-            type = Column(String(50), nullable=False)
-
-            @declared_attr
-            def __tablename__(cls):
-                return cls.__name__.lower()
-
-            @declared_attr
-            def __mapper_args__(cls):
-                if cls.__name__ == 'Employee':
-                    return {
-                            "polymorphic_on":cls.type,
-                            "polymorphic_identity":"Employee"
-                    }
-                else:
-                    return {"polymorphic_identity":cls.__name__}
-
-    To use :class:`_orm.declared_attr` inside of a Python dataclass
-    as discussed at :ref:`orm_declarative_dataclasses_declarative_table`,
-    it may be placed directly inside the field metadata using a lambda::
-
-        @dataclass
-        class AddressMixin:
-            __sa_dataclass_metadata_key__ = "sa"
-
-            user_id: int = field(
-                init=False, metadata={"sa": declared_attr(lambda: Column(ForeignKey("user.id")))}
-            )
-            user: User = field(
-                init=False, metadata={"sa": declared_attr(lambda: relationship(User))}
-            )
-
-    :class:`_orm.declared_attr` also may be omitted from this form using a
-    lambda directly, as in::
-
-        user: User = field(
-            init=False, metadata={"sa": lambda: relationship(User)}
-        )
-
-    .. seealso::
-
-        :ref:`orm_mixins_toplevel` - illustrates how to use Declarative Mixins
-        which is the primary use case for :class:`_orm.declared_attr`
-
-        :ref:`orm_declarative_dataclasses_mixin` - illustrates special forms
-        for use with Python dataclasses
-
-    """  # noqa: E501
-
-    if typing.TYPE_CHECKING:
-
-        def __set__(self, instance: Any, value: Any) -> None:
-            ...
-
-        def __delete__(self, instance: Any) -> None:
-            ...
-
+class _declared_attr_common:
     def __init__(
         self,
-        fn: _DeclaredAttrDecorated[_T],
+        fn: Callable[..., Any],
         cascading: bool = False,
     ):
         # suppport
@@ -341,21 +255,7 @@ class declared_attr(interfaces._MappedAttribute[_T]):
     def _collect_return_annotation(self) -> Optional[Type[Any]]:
         return util.get_annotations(self.fget).get("return")
 
-    # this is the Mapped[] API where at class descriptor get time we want
-    # the type checker to see InstrumentedAttribute[_T].   However the
-    # callable function prior to mapping in fact calls the given
-    # declarative function that does not return InstrumentedAttribute
-    @overload
-    def __get__(self, instance: None, owner: Any) -> InstrumentedAttribute[_T]:
-        ...
-
-    @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
-
-    def __get__(
-        self, instance: Optional[object], owner: Any
-    ) -> Union[InstrumentedAttribute[_T], _T]:
+    def __get__(self, instance: Optional[object], owner: Any) -> Any:
         # the declared_attr needs to make use of a cache that exists
         # for the span of the declarative scan_attributes() phase.
         # to achieve this we look at the class manager that's configured.
@@ -394,70 +294,171 @@ class declared_attr(interfaces._MappedAttribute[_T]):
             reg[self] = obj = self.fget(cls)
             return obj  # type: ignore
 
+
+class _declared_directive(_declared_attr_common, Generic[_T]):
+    # see mapping_api.rst for docstring
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(
+            self,
+            fn: Callable[..., _T],
+            cascading: bool = False,
+        ):
+            ...
+
+        def __get__(self, instance: Optional[object], owner: Any) -> _T:
+            ...
+
+        def __set__(self, instance: Any, value: Any) -> None:
+            ...
+
+        def __delete__(self, instance: Any) -> None:
+            ...
+
+        def __call__(self, fn: Callable[..., _TT]) -> _declared_directive[_TT]:
+            # extensive fooling of mypy underway...
+            ...
+
+
+class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
+    """Mark a class-level method as representing the definition of
+    a mapped property or Declarative directive.
+
+    :class:`_orm.declared_attr` is typically applied as a decorator to a class
+    level method, turning the attribute into a scalar-like property that can be
+    invoked from the uninstantiated class. The Declarative mapping process
+    looks for these :class:`_orm.declared_attr` callables as it scans classes,
+    and assumes any attribute marked with :class:`_orm.declared_attr` will be a
+    callable that will produce an object specific to the Declarative mapping or
+    table configuration.
+
+    :class:`_orm.declared_attr` is usually applicable to
+    :ref:`mixins <orm_mixins_toplevel>`, to define relationships that are to be
+    applied to different implementors of the class. It may also be used to
+    define dynamically generated column expressions and other Declarative
+    attributes.
+
+    Example::
+
+        class ProvidesUserMixin:
+            "A mixin that adds a 'user' relationship to classes."
+
+            user_id: Mapped[int] = mapped_column(ForeignKey("user_table.id"))
+
+            @declared_attr
+            def user(cls) -> Mapped["User"]:
+                return relationship("User")
+
+    When used with Declarative directives such as ``__tablename__``, the
+    :meth:`_orm.declared_attr.directive` modifier may be used which indicates
+    to :pep:`484` typing tools that the given method is not dealing with
+    :class:`_orm.Mapped` attributes::
+
+        class CreateTableName:
+            @declared_attr.directive
+            def __tablename__(cls) -> str:
+                return cls.__name__.lower()
+
+    :class:`_orm.declared_attr` can also be applied directly to mapped
+    classes, to allow for attributes that dynamically configure themselves
+    on subclasses when using mapped inheritance schemes.   Below
+    illustrates :class:`_orm.declared_attr` to create a dynamic scheme
+    for generating the :paramref:`_orm.Mapper.polymorphic_identity` parameter
+    for subclasses::
+
+        class Employee(Base):
+            __tablename__ = 'employee'
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+
+            @declared_attr.directive
+            def __mapper_args__(cls) -> dict[str, Any]:
+                if cls.__name__ == 'Employee':
+                    return {
+                            "polymorphic_on":cls.type,
+                            "polymorphic_identity":"Employee"
+                    }
+                else:
+                    return {"polymorphic_identity":cls.__name__}
+
+        class Engineer(Employee):
+            pass
+
+    :class:`_orm.declared_attr` supports decorating functions that are
+    explicitly decorated with ``@classmethod``. This is never necessary from a
+    runtime perspective, however may be needed in order to support :pep:`484`
+    typing tools that don't otherwise recognize the decorated function as
+    having class-level behaviors for the ``cls`` parameter::
+
+        class SomethingMixin:
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @declared_attr
+            @classmethod
+            def x_plus_y(cls) -> Mapped[int]:
+                return column_property(cls.x + cls.y)
+
+    .. versionadded:: 2.0 - :class:`_orm.declared_attr` can accommodate a
+       function decorated with ``@classmethod`` to help with :pep:`484`
+       integration where needed.
+
+
+    .. seealso::
+
+        :ref:`orm_mixins_toplevel` - Declarative Mixin documentation with
+        background on use patterns for :class:`_orm.declared_attr`.
+
+    """  # noqa: E501
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(
+            self,
+            fn: _DeclaredAttrDecorated[_T],
+            cascading: bool = False,
+        ):
+            ...
+
+        def __set__(self, instance: Any, value: Any) -> None:
+            ...
+
+        def __delete__(self, instance: Any) -> None:
+            ...
+
+        # this is the Mapped[] API where at class descriptor get time we want
+        # the type checker to see InstrumentedAttribute[_T].   However the
+        # callable function prior to mapping in fact calls the given
+        # declarative function that does not return InstrumentedAttribute
+        @overload
+        def __get__(
+            self, instance: None, owner: Any
+        ) -> InstrumentedAttribute[_T]:
+            ...
+
+        @overload
+        def __get__(self, instance: object, owner: Any) -> _T:
+            ...
+
+        def __get__(
+            self, instance: Optional[object], owner: Any
+        ) -> Union[InstrumentedAttribute[_T], _T]:
+            ...
+
     @hybridmethod
     def _stateful(cls, **kw: Any) -> _stateful_declared_attr[_T]:
         return _stateful_declared_attr(**kw)
 
     @hybridproperty
+    def directive(cls) -> _declared_directive[Any]:
+        # see mapping_api.rst for docstring
+        return _declared_directive  # type: ignore
+
+    @hybridproperty
     def cascading(cls) -> _stateful_declared_attr[_T]:
-        """Mark a :class:`.declared_attr` as cascading.
-
-        This is a special-use modifier which indicates that a column
-        or MapperProperty-based declared attribute should be configured
-        distinctly per mapped subclass, within a mapped-inheritance scenario.
-
-        .. warning::
-
-            The :attr:`.declared_attr.cascading` modifier has several
-            limitations:
-
-            * The flag **only** applies to the use of :class:`.declared_attr`
-              on declarative mixin classes and ``__abstract__`` classes; it
-              currently has no effect when used on a mapped class directly.
-
-            * The flag **only** applies to normally-named attributes, e.g.
-              not any special underscore attributes such as ``__tablename__``.
-              On these attributes it has **no** effect.
-
-            * The flag currently **does not allow further overrides** down
-              the class hierarchy; if a subclass tries to override the
-              attribute, a warning is emitted and the overridden attribute
-              is skipped.  This is a limitation that it is hoped will be
-              resolved at some point.
-
-        Below, both MyClass as well as MySubClass will have a distinct
-        ``id`` Column object established::
-
-            class HasIdMixin:
-                @declared_attr.cascading
-                def id(cls):
-                    if has_inherited_table(cls):
-                        return Column(
-                            ForeignKey('myclass.id'), primary_key=True
-                        )
-                    else:
-                        return Column(Integer, primary_key=True)
-
-            class MyClass(HasIdMixin, Base):
-                __tablename__ = 'myclass'
-                # ...
-
-            class MySubClass(MyClass):
-                ""
-                # ...
-
-        The behavior of the above configuration is that ``MySubClass``
-        will refer to both its own ``id`` column as well as that of
-        ``MyClass`` underneath the attribute named ``some_id``.
-
-        .. seealso::
-
-            :ref:`declarative_inheritance`
-
-            :ref:`mixin_inheritance_columns`
-
-
-        """
+        # see mapping_api.rst for docstring
         return cls._stateful(cascading=True)
 
 
@@ -557,45 +558,17 @@ def _setup_declarative_base(cls: Type[Any]) -> None:
         cls.metadata = cls.registry.metadata  # type: ignore
 
 
-class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
-    """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
-    to intercept new attributes.
-
-    The :class:`_orm.DeclarativeBaseNoMeta` base may be used when use of
-    custom metaclasses is desirable.
-
-    .. versionadded:: 2.0
-
-
-    """
-
-    registry: ClassVar[_RegistryType]
-    _sa_registry: ClassVar[_RegistryType]
-    metadata: ClassVar[MetaData]
-    __mapper__: ClassVar[Mapper[Any]]
-    __table__: Optional[FromClause]
-
-    if typing.TYPE_CHECKING:
-
-        def __init__(self, **kw: Any):
-            ...
-
-    def __init_subclass__(cls) -> None:
-        if DeclarativeBaseNoMeta in cls.__bases__:
-            _setup_declarative_base(cls)
-        else:
-            cls._sa_registry.map_declaratively(cls)
-
-
 class MappedAsDataclass(metaclass=DCTransformDeclarative):
     """Mixin class to indicate when mapping this class, also convert it to be
     a dataclass.
 
     .. seealso::
 
-        :meth:`_orm.registry.mapped_as_dataclass`
+        :ref:`orm_declarative_native_dataclasses` - complete background
+        on SQLAlchemy native dataclass mapping
 
     .. versionadded:: 2.0
+
     """
 
     def __init_subclass__(
@@ -635,7 +608,6 @@ class DeclarativeBase(
     metaclass=DeclarativeAttributeIntercept,
 ):
     """Base class used for declarative class definitions.
-
 
     The :class:`_orm.DeclarativeBase` allows for the creation of new
     declarative bases in such a way that is compatible with type checkers::
@@ -689,7 +661,14 @@ class DeclarativeBase(
      :paramref:`_orm.registry.type_annotation_map`.
     :param registry: supply a pre-existing :class:`_orm.registry` directly.
 
-    .. versionadded:: 2.0
+    .. versionadded:: 2.0  Added :class:`.DeclarativeBase`, so that declarative
+       base classes may be constructed in such a way that is also recognized
+       by :pep:`484` type checkers.   As a result, :class:`.DeclarativeBase`
+       and other subclassing-oriented APIs should be seen as
+       superseding previous "class returned by a function" APIs, namely
+       :func:`_orm.declarative_base` and :meth:`_orm.registry.generate_base`,
+       where the base class returned cannot be recognized by type checkers
+       without using plugins.
 
     """
 
@@ -698,10 +677,11 @@ class DeclarativeBase(
         _sa_registry: ClassVar[_RegistryType]
         metadata: ClassVar[MetaData]
 
+        __name__: ClassVar[str]
         __mapper__: ClassVar[Mapper[Any]]
         __table__: ClassVar[Optional[FromClause]]
 
-        __tablename__: ClassVar[Optional[str]]
+        __tablename__: ClassVar[Any]
 
         def __init__(self, **kw: Any):
             ...
@@ -711,6 +691,39 @@ class DeclarativeBase(
             _setup_declarative_base(cls)
         else:
             _as_declarative(cls._sa_registry, cls, cls.__dict__)
+
+
+class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
+    """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
+    to intercept new attributes.
+
+    The :class:`_orm.DeclarativeBaseNoMeta` base may be used when use of
+    custom metaclasses is desirable.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    if typing.TYPE_CHECKING:
+        registry: ClassVar[_RegistryType]
+        _sa_registry: ClassVar[_RegistryType]
+        metadata: ClassVar[MetaData]
+
+        __name__: ClassVar[str]
+        __mapper__: ClassVar[Mapper[Any]]
+        __table__: ClassVar[Optional[FromClause]]
+
+        __tablename__: ClassVar[Any]
+
+        def __init__(self, **kw: Any):
+            ...
+
+    def __init_subclass__(cls) -> None:
+        if DeclarativeBaseNoMeta in cls.__bases__:
+            _setup_declarative_base(cls)
+        else:
+            cls._sa_registry.map_declaratively(cls)
 
 
 def add_mapped_attribute(
@@ -750,6 +763,12 @@ def declarative_base(
     the appropriate :class:`_orm.Mapper` calls based on the
     information provided declaratively in the class and any subclasses
     of the class.
+
+    .. versionchanged:: 2.0 Note that the :func:`_orm.declarative_base`
+       function is superseded by the new :class:`_orm.DeclarativeBase` class,
+       which generates a new "base" class using subclassing, rather than
+       return value of a function.  This allows an approach that is compatible
+       with :pep:`484` typing tools.
 
     The :func:`_orm.declarative_base` function is a shorthand version
     of using the :meth:`_orm.registry.generate_base`
@@ -818,7 +837,12 @@ def declarative_base(
         to produce column types based on annotations within the
         :class:`_orm.Mapped` type.
 
+
         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapped_column_type_map`
 
     :param metaclass:
       Defaults to :class:`.DeclarativeMeta`.  A metaclass or __metaclass__
@@ -927,6 +951,11 @@ class registry:
           :class:`_orm.Mapped` type.
 
           .. versionadded:: 2.0
+
+          .. seealso::
+
+              :ref:`orm_declarative_mapped_column_type_map`
+
 
         """
         lcl_metadata = metadata or MetaData()
@@ -1176,6 +1205,13 @@ class registry:
 
                 __init__ = mapper_registry.constructor
 
+        .. versionchanged:: 2.0 Note that the
+           :meth:`_orm.registry.generate_base` method is superseded by the new
+           :class:`_orm.DeclarativeBase` class, which generates a new "base"
+           class using subclassing, rather than return value of a function.
+           This allows an approach that is compatible with :pep:`484` typing
+           tools.
+
         The :meth:`_orm.registry.generate_base` method provides the
         implementation for the :func:`_orm.declarative_base` function, which
         creates the :class:`_orm.registry` and base class all at once.
@@ -1282,7 +1318,9 @@ class registry:
 
         .. seealso::
 
-            :meth:`_orm.registry.mapped`
+            :ref:`orm_declarative_native_dataclasses` - complete background
+            on SQLAlchemy native dataclass mapping
+
 
         .. versionadded:: 2.0
 

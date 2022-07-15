@@ -18,13 +18,20 @@ in SQLAlchemy, it's first introduced in the :ref:`unified_tutorial` at
 
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 4
 
     mapping_styles
     declarative_mapping
     dataclasses
-    scalar_mapping
+    mapped_sql_expr
+    mapped_attributes
+    composites
     inheritance
     nonstandard_mappings
     versioning
     mapping_api
+
+.. toctree::
+    :hidden:
+
+    scalar_mapping

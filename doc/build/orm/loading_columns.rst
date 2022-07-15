@@ -15,54 +15,130 @@ Deferred Column Loading
 
 Deferred column loading allows particular columns of a table be loaded only
 upon direct access, instead of when the entity is queried using
-:class:`_sql.Select`.  This feature is useful when one wants to avoid
+:class:`_sql.Select` or :class:`_orm.Query`.  This feature is useful when one wants to avoid
 loading a large text or binary field into memory when it's not needed.
-Individual columns can be lazy loaded by themselves or placed into groups that
-lazy-load together, using the :func:`_orm.deferred` function to
-mark them as "deferred". In the example below, we define a mapping that will load each of
+
+Configuring Deferred Loading at Mapper Configuration Time
+---------------------------------------------------------
+
+First introduced at :ref:`orm_declarative_column_options` and
+:ref:`orm_imperative_table_column_options`, the
+:paramref:`_orm.mapped_column.deferred` parameter of :func:`_orm.mapped_column`,
+as well as the :func:`_orm.deferred` ORM function may be used to indicate mapped
+columns as "deferred" at mapper configuration time.  With this configuration,
+the target columns will not be loaded in SELECT statements by default, and
+will instead only be loaded "lazily" when their corresponding attribute is
+accessed on a mapped instance.   Deferral can be configured for individual
+columns or groups of columns that will load together when any of them
+are accessed.
+
+In the example below, using :ref:`Declarative Table <orm_declarative_table>`
+configuration, we define a mapping that will load each of
 ``.excerpt`` and ``.photo`` in separate, individual-row SELECT statements when each
 attribute is first referenced on the individual object instance::
 
-    from sqlalchemy.orm import deferred
-    from sqlalchemy import Integer, String, Text, Binary, Column
+    from sqlalchemy import Text
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+    class Base(DeclarativeBase):
+        pass
 
     class Book(Base):
         __tablename__ = 'book'
 
-        book_id = Column(Integer, primary_key=True)
-        title = Column(String(200), nullable=False)
-        summary = Column(String(2000))
-        excerpt = deferred(Column(Text))
-        photo = deferred(Column(Binary))
+        book_id: Mapped[int] = mapped_column(primary_key=True)
+        title: Mapped[str]
+        summary: Mapped[str]
+        excerpt: Mapped[str] = mapped_column(Text, deferred=True)
+        photo: Mapped[bytes] = mapped_column(deferred=True)
 
-Classical mappings as always place the usage of :func:`_orm.deferred` in the
-``properties`` dictionary against the table-bound :class:`_schema.Column`::
+A :func:`_sql.select` construct for the above mapping will not include
+``excerpt`` and ``photo`` by default::
 
-    mapper_registry.map_imperatively(Book, book_table, properties={
-        'photo':deferred(book_table.c.photo)
-    })
+    >>> from sqlalchemy import select
+    >>> print(select(Book))
+    SELECT book.book_id, book.title, book.summary
+    FROM book
+
+When an object of type ``Book`` is loaded by the ORM, accessing the
+``.excerpt`` or ``.photo`` attributes will instead :term:`lazy load` the
+data from each column using a new SQL statement.
+
+When using :ref:`Imperative Table <orm_imperative_table_configuration>`
+or fully :ref:`Imperative <orm_imperative_mapping>` configuration, the
+:func:`_orm.deferred` construct should be used instead, passing the
+target :class:`_schema.Column` object to be mapped as the argument::
+
+    from sqlalchemy import Column, Integer, LargeBinary, String, Table, Text
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import deferred
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    book = Table(
+        "book",
+        Base.metadata,
+        Column("book_id", Integer, primary_key=True),
+        Column("title", String),
+        Column("summary", String),
+        Column("excerpt", Text),
+        Column("photo", LargeBinary),
+    )
+
+
+    class Book(Base):
+        __table__ = book
+
+        excerpt = deferred(book.c.excerpt)
+        photo = deferred(book.c.photo)
+
 
 Deferred columns can be associated with a "group" name, so that they load
-together when any of them are first accessed.  The example below defines a
-mapping with a ``photos`` deferred group.  When one ``.photo`` is accessed, all three
-photos will be loaded in one SELECT statement. The ``.excerpt`` will be loaded
-separately when it is accessed::
+together when any of them are first accessed.  When using
+:func:`_orm.mapped_column`, this group name may be specified using the
+:paramref:`_orm.mapped_column.deferred_group` parameter, which implies
+:paramref:`_orm.mapped_column.deferred` if that parameter is not already
+set.  When using :func:`_orm.deferred`, the :paramref:`_orm.deferred.group`
+parameter may be used.
+
+The example below defines a mapping with a ``photos`` deferred group. When
+an attribute within the group ``.photo1``, ``.photo2``, ``.photo3``
+is accessed on an instance of ``Book``, all three columns will be loaded in one SELECT
+statement. The ``.excerpt`` column however will only be loaded when it
+is directly accessed::
+
+    from sqlalchemy import Text
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+    class Base(DeclarativeBase):
+        pass
 
     class Book(Base):
         __tablename__ = 'book'
 
-        book_id = Column(Integer, primary_key=True)
-        title = Column(String(200), nullable=False)
-        summary = Column(String(2000))
-        excerpt = deferred(Column(Text))
-        photo1 = deferred(Column(Binary), group='photos')
-        photo2 = deferred(Column(Binary), group='photos')
-        photo3 = deferred(Column(Binary), group='photos')
+        book_id: Mapped[int] = mapped_column(primary_key=True)
+        title: Mapped[str]
+        summary: Mapped[str]
+        excerpt: Mapped[str] = mapped_column(Text, deferred=True)
+        photo1: Mapped[bytes] = mapped_column(deferred_group="photos")
+        photo2: Mapped[bytes] = mapped_column(deferred_group="photos")
+        photo3: Mapped[bytes] = mapped_column(deferred_group="photos")
+
 
 .. _deferred_options:
 
 Deferred Column Loader Query Options
 ------------------------------------
+At query time, the :func:`_orm.defer`, :func:`_orm.undefer` and
+:func:`_orm.undefer_group` loader options may be used to further control the
+"deferral behavior" of mapped columns.
 
 Columns can be marked as "deferred" or reset to "undeferred" at query time
 using options which are passed to the :meth:`_sql.Select.options` method; the most
@@ -74,8 +150,8 @@ basic query options are :func:`_orm.defer` and
     from sqlalchemy import select
 
     stmt = select(Book)
-    stmt = stmt.options(defer('summary'), undefer('excerpt'))
-    session.scalars(stmt).all()
+    stmt = stmt.options(defer(Book.summary), undefer(Book.excerpt))
+    book_objs = session.scalars(stmt).all()
 
 
 Above, the "summary" column will not load until accessed, and the "excerpt"
@@ -89,7 +165,7 @@ using :func:`_orm.undefer_group`, sending in the group name::
 
     stmt = select(Book)
     stmt = stmt.options(undefer_group('photos'))
-    session.scalars(stmt).all()
+    book_objs = session.scalars(stmt).all()
 
 
 .. _deferred_loading_w_multiple:
@@ -97,15 +173,19 @@ using :func:`_orm.undefer_group`, sending in the group name::
 Deferred Loading across Multiple Entities
 -----------------------------------------
 
-To specify column deferral for a :class:`_sql.Select` that loads multiple types of
-entities at once, the deferral options may be specified more explicitly using
-class-bound attributes, rather than string names::
+Column deferral may also be used for a statement that loads multiple types of
+entities at once, by referring to the appropriate class bound attribute
+within the :func:`_orm.defer` function.  Suppose ``Book`` has a
+relationship ``Book.author`` to a related class ``Author``, we could write
+a query as follows which will defer the ``Author.bio`` column::
 
     from sqlalchemy.orm import defer
     from sqlalchemy import select
 
     stmt = select(Book, Author).join(Book.author)
     stmt = stmt.options(defer(Author.bio))
+
+    book_author_objs = session.execute(stmt).all()
 
 
 Column deferral options may also indicate that they take place along various
@@ -128,11 +208,12 @@ those explicitly specified::
         joinedload(Author.books).load_only(Book.summary, Book.excerpt)
     )
 
+    author_objs = session.scalars(stmt).all()
+
 Option structures as above can also be organized in more complex ways, such
 as hierarchically using the :meth:`_orm.Load.options`
 method, which allows multiple sub-options to be chained to a common parent
-option at once.  Any mixture of string names and class-bound attribute objects
-may be used::
+option at once.   The example below illustrates a more complex structure::
 
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import joinedload
@@ -149,11 +230,8 @@ may be used::
             )
         )
     )
+    author_objs = session.scalars(stmt).all()
 
-
-
-.. versionadded:: 1.3.6  Added :meth:`_orm.Load.options` to allow easier
-   construction of hierarchies of loader options.
 
 Another way to apply options to a path is to use the :func:`_orm.defaultload`
 function.   This function is used to indicate a particular path within a loader
@@ -170,6 +248,8 @@ to create the same structure as we did above using :meth:`_orm.Load.options` as:
         defaultload(Author.book).joinedload(Book.citations).joinedload(Citation.author),
         defaultload(Author.book).defaultload(Book.citations).defer(Citation.fulltext)
     )
+
+    author_objs = session.scalars(stmt).all()
 
 .. seealso::
 
@@ -188,8 +268,10 @@ the "summary" and "excerpt" columns, we could say::
     from sqlalchemy.orm import undefer
     from sqlalchemy import select
 
-    select(Book).options(
-        defer('*'), undefer("summary"), undefer("excerpt"))
+    stmt = select(Book).options(
+        defer('*'), undefer(Book.summary), undefer(Book.excerpt))
+
+    book_objs = session.scalars(stmt).all()
 
 Above, the :func:`.defer` option is applied using a wildcard to all column
 attributes on the ``Book`` class.   Then, the :func:`.undefer` option is used
@@ -206,32 +288,36 @@ that are named::
     from sqlalchemy.orm import load_only
     from sqlalchemy import select
 
-    select(Book).options(load_only(Book.summary, Book.excerpt))
+    stmt = select(Book).options(load_only(Book.summary, Book.excerpt))
+
+    book_objs = session.scalars(stmt).all()
 
 Wildcard and Exclusionary Options with Multiple-Entity Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Wildcard options and exclusionary options such as :func:`.load_only` may
-only be applied to a single entity at a time within a :class:`_query.Query`.  To
-suit the less common case where a :class:`_query.Query` is returning multiple
+only be applied to a single entity at a time within a statement.
+To suit the less common case where a statement is returning multiple
 primary entities at once, a special calling style may be required in order
-to apply a wildcard or exclusionary option, which is to use the
+to apply a wildcard or exclusionary option to a specific entity, which is to use the
 :class:`_orm.Load` object to indicate the starting entity for a deferral option.
-Such as, if we were loading ``Book`` and ``Author`` at once, the :class:`_query.Query`
+Such as, if we were loading ``Book`` and ``Author`` at once, the ORM
 will raise an informative error if we try to apply :func:`.load_only` to
-both at once.  Using :class:`_orm.Load` looks like::
+both at once.  Instead, we may use :class:`_orm.Load` to apply the option
+to either or both of ``Book`` and ``Author`` individually::
 
     from sqlalchemy.orm import Load
 
-    query = session.query(Book, Author).join(Book.author)
-    query = query.options(
+    stmt = select(Book, Author).join(Book.author)
+    stmt = stmt.options(
                 Load(Book).load_only(Book.summary, Book.excerpt)
             )
+    book_author_objs = session.execute(stmt).all()
 
 Above, :class:`_orm.Load` is used in conjunction with the exclusionary option
 :func:`.load_only` so that the deferral of all other columns only takes
 place for the ``Book`` class and not the ``Author`` class.   Again,
-the :class:`_query.Query` object should raise an informative error message when
+the ORM should raise an informative error message when
 the above calling style is actually required that describes those cases
 where explicit use of :class:`_orm.Load` is needed.
 
@@ -246,32 +332,80 @@ The :func:`.deferred` loader option and the corresponding loader strategy also
 support the concept of "raiseload", which is a loader strategy that will raise
 :class:`.InvalidRequestError` if the attribute is accessed such that it would
 need to emit a SQL query in order to be loaded.   This behavior is the
-column-based equivalent of the :func:`.raiseload` feature for relationship
+column-based equivalent of the :func:`_orm.raiseload` feature for relationship
 loading, discussed at :ref:`prevent_lazy_with_raiseload`.    Using the
-:paramref:`.orm.defer.raiseload` parameter on the :func:`.defer` option,
+:paramref:`_orm.defer.raiseload` parameter on the :func:`_orm.defer` option,
 an exception is raised if the attribute is accessed::
 
-    book = session.scalars(select(Book).options(defer(Book.summary, raiseload=True)).limit(1)).first()
+    book = session.scalar(
+      select(Book).options(defer(Book.summary, raiseload=True)).limit(1)
+    )
 
     # would raise an exception
     book.summary
 
 Deferred "raiseload" can be configured at the mapper level via
-:paramref:`.orm.deferred.raiseload` on :func:`.deferred`, so that an explicit
-:func:`.undefer` is required in order for the attribute to be usable::
+:paramref:`.orm.deferred.raiseload` on either :func:`_orm.mapped_column`
+or in :func:`.deferred`, so that an explicit
+:func:`.undefer` is required in order for the attribute to be usable.
+Below is a :ref:`Declarative table <orm_declarative_table>` configuration example::
 
+
+    from sqlalchemy import Text
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+    class Base(DeclarativeBase):
+        pass
 
     class Book(Base):
         __tablename__ = 'book'
 
-        book_id = Column(Integer, primary_key=True)
-        title = Column(String(200), nullable=False)
-        summary = deferred(Column(String(2000)), raiseload=True)
-        excerpt = deferred(Column(Text), raiseload=True)
+        book_id: Mapped[int] = mapped_column(primary_key=True)
+        title: Mapped[str]
+        summary: Mapped[str] = mapped_column(raiseload=True)
+        excerpt: Mapped[str] = mapped_column(Text, raiseload=True)
 
-    book_w_excerpt = session.scalars(select(Book).options(undefer(Book.excerpt)).limit(1)).first()
+Alternatively, the example below illustrates the same mapping using a
+:ref:`Imperative table <orm_imperative_table_configuration>` configuration::
+
+    from sqlalchemy import Column, Integer, LargeBinary, String, Table, Text
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import deferred
 
 
+    class Base(DeclarativeBase):
+        pass
+
+
+    book = Table(
+        "book",
+        Base.metadata,
+        Column("book_id", Integer, primary_key=True),
+        Column("title", String),
+        Column("summary", String),
+        Column("excerpt", Text),
+    )
+
+
+    class Book(Base):
+        __table__ = book
+
+        summary = deferred(book.c.summary, raiseload=True)
+        excerpt = deferred(book.c.excerpt, raiseload=True)
+
+With both mappings, if we wish to have either or both of ``.excerpt``
+or ``.summary`` available on an object when loaded, we make use of the
+:func:`_orm.undefer` loader option::
+
+    book_w_excerpt = session.scalars(
+      select(Book).options(undefer(Book.excerpt)).where(Book.id == 12)
+    ).first()
+
+The :func:`_orm.undefer` option will populate the ``.excerpt`` attribute
+above, even if the ``Book`` object were already loaded, assuming the
+``.excerpt`` field was not populated by some other means previously.
 
 
 Column Deferral API

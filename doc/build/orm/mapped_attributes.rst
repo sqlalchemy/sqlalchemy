@@ -5,6 +5,10 @@
 Changing Attribute Behavior
 ===========================
 
+This section will discuss features and techniques used to modify the
+behavior of ORM mapped attributes, including those mapped with
+:func:`_orm.mapped_column`, :func:`_orm.relationship`, and others.
+
 .. _simple_validators:
 
 Simple Validators
@@ -22,19 +26,14 @@ issued when the ORM is populating the object::
     class EmailAddress(Base):
         __tablename__ = 'address'
 
-        id = Column(Integer, primary_key=True)
-        email = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        email = mapped_column(String)
 
         @validates('email')
         def validate_email(self, key, address):
             if '@' not in address:
                 raise ValueError("failed simple email validation")
             return address
-
-.. versionchanged:: 1.0.0 - validators are no longer triggered within
-   the flush process when the newly fetched values for primary key
-   columns as well as some python- or server-side defaults are fetched.
-   Prior to 1.0, validators may be triggered in those cases as well.
 
 
 Validators also receive collection append events, when items are added to a
@@ -133,11 +132,11 @@ different name. Below we illustrate this using Python 2.6-style properties::
     class EmailAddress(Base):
         __tablename__ = 'email_address'
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
         # name the attribute with an underscore,
         # different from the column name
-        _email = Column("email", String)
+        _email = mapped_column("email", String)
 
         # then create an ".email" attribute
         # to get/set "._email"
@@ -161,9 +160,9 @@ usable with :class:`_sql.Select`. To provide these, we instead use the
     class EmailAddress(Base):
         __tablename__ = 'email_address'
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
-        _email = Column("email", String)
+        _email = mapped_column("email", String)
 
         @hybrid_property
         def email(self):
@@ -209,9 +208,9 @@ logic::
     class EmailAddress(Base):
         __tablename__ = 'email_address'
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
 
-        _email = Column("email", String)
+        _email = mapped_column("email", String)
 
         @hybrid_property
         def email(self):
@@ -262,12 +261,12 @@ In the most basic sense, the synonym is an easy way to make a certain
 attribute available by an additional name::
 
     from sqlalchemy.orm import synonym
-    
+
     class MyClass(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
-        job_status = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        job_status = mapped_column(String(50))
 
         status = synonym("job_status")
 
@@ -302,8 +301,8 @@ a user-defined :term:`descriptor`.  We can supply our
     class MyClass(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
-        status = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        status = mapped_column(String(50))
 
         @property
         def job_status(self):
@@ -319,8 +318,8 @@ using the :func:`.synonym_for` decorator::
     class MyClass(Base):
         __tablename__ = 'my_table'
 
-        id = Column(Integer, primary_key=True)
-        status = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        status = mapped_column(String(50))
 
         @synonym_for("status")
         @property

@@ -161,37 +161,113 @@ Customizing Collection Access
 =============================
 
 Mapping a one-to-many or many-to-many relationship results in a collection of
-values accessible through an attribute on the parent instance. By default,
-this collection is a ``list``::
+values accessible through an attribute on the parent instance.   The two
+common collection types for these are ``list`` and ``set``, which in
+:ref:`Declarative <orm_declarative_styles_toplevel>` mappings that use
+:class:`_orm.Mapped` is established by using the collection type within
+the :class:`_orm.Mapped` container, as demonstrated in the ``Parent.children`` collection
+below where ``list`` is used::
+
+    from sqlalchemy import ForeignKey
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+
+    class Base(DeclarativeBase):
+        pass
 
     class Parent(Base):
         __tablename__ = "parent"
-        parent_id = Column(Integer, primary_key=True)
 
-        children = relationship(Child)
+        parent_id: Mapped[int] = mapped_column(primary_key=True)
 
+        # use a list
+        children: Mapped[list["Child"]] = relationship()
 
-    parent = Parent()
-    parent.children.append(Child())
-    print(parent.children[0])
+    class Child(Base):
+        __tablename__ = "child"
 
-Collections are not limited to lists. Sets, mutable sequences and almost any
-other Python object that can act as a container can be used in place of the
-default list, by specifying the :paramref:`_orm.relationship.collection_class` option on
-:func:`~sqlalchemy.orm.relationship`::
+        child_id: Mapped[int] = mapped_column(primary_key=True)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+
+Or for a ``set``, illustrated in the same
+``Parent.children`` collection::
+
+    from sqlalchemy import ForeignKey
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+
+    class Base(DeclarativeBase):
+        pass
 
     class Parent(Base):
         __tablename__ = "parent"
-        parent_id = Column(Integer, primary_key=True)
+
+        parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a set
-        children = relationship(Child, collection_class=set)
+        children: Mapped[set["Child"]] = relationship()
+
+    class Child(Base):
+        __tablename__ = "child"
+
+        child_id: Mapped[int] = mapped_column(primary_key=True)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+
+.. note::  If using Python 3.7 or 3.8, annotations for collections need
+   to use ``typing.List`` or ``typing.Set``, e.g. ``Mapped[list["Child"]]`` or
+   ``Mapped[set["Child"]]``; the ``list`` and ``set`` Python built-ins
+   don't yet support generic annotation in these Python versions, such as::
+
+       from typing import List
 
 
-    parent = Parent()
-    child = Child()
-    parent.children.add(child)
-    assert child in parent.children
+       class Parent(Base):
+           __tablename__ = "parent"
+
+           parent_id: Mapped[int] = mapped_column(primary_key=True)
+
+           # use a List, Python 3.8 and earlier
+           children: Mapped[List["Child"]] = relationship()
+
+
+When using mappings without the :class:`_orm.Mapped` annotation, such as when
+using :ref:`imperative mappings <orm_imperative_mapping>` or untyped
+Python code, as well as in a few special cases, the collection class for a
+:func:`_orm.relationship` can always be specified directly using the
+:paramref:`_orm.relationship.collection_class` parameter::
+
+    # non-annotated mapping
+
+    class Parent(Base):
+        __tablename__ = "parent"
+
+        parent_id = mapped_column(Integer, primary_key=True)
+
+        children = relationship("Child", collection_class=set)
+
+    class Child(Base):
+        __tablename__ = "child"
+
+        child_id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(ForeignKey("parent.id"))
+
+In the absence of :paramref:`_orm.relationship.collection_class`
+or :class:`_orm.Mapped`, the default collection type is ``list``.
+
+Beyond ``list`` and ``set`` builtins, there is also support for two varities of
+dictionary, described below at :ref:`orm_dictionary_collection`. There is also
+support for any arbitrary mutable sequence type can be set up as the target
+collection, with some additional configuration steps; this is described in the
+section :ref:`orm_custom_collection`.
+
+
+.. _orm_dictionary_collection:
 
 Dictionary Collections
 ----------------------
@@ -202,20 +278,34 @@ strategy must be available to populate the dictionary correctly.  The
 :func:`.attribute_mapped_collection` function is by far the most common way
 to achieve a simple dictionary collection.  It produces a dictionary class that will apply a particular attribute
 of the mapped class as a key.   Below we map an ``Item`` class containing
-a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
+a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute.
+When using :func:`.attribute_mapped_collection`, the :class:`_orm.Mapped`
+annotation may be typed using the :class:`_orm.MappedCollection`
+type, however the :paramref:`_orm.relationship.collection_class` parameter
+is required in this case so that the :func:`.attribute_mapped_collection`
+may be appropriately parametrized::
 
-    from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import declarative_base, relationship
-    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from typing import Optional
 
-    Base = declarative_base()
+    from sqlalchemy import ForeignKey
+    from sqlalchemy.orm import attribute_mapped_collection
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import MappedCollection
+
+
+    class Base(DeclarativeBase):
+        pass
 
 
     class Item(Base):
         __tablename__ = "item"
-        id = Column(Integer, primary_key=True)
-        notes = relationship(
-            "Note",
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
             collection_class=attribute_mapped_collection("keyword"),
             cascade="all, delete-orphan",
         )
@@ -223,12 +313,13 @@ a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
 
     class Note(Base):
         __tablename__ = "note"
-        id = Column(Integer, primary_key=True)
-        item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
-        keyword = Column(String)
-        text = Column(String)
 
-        def __init__(self, keyword, text):
+        id: Mapped[int] = mapped_column(primary_key=True)
+        item_id: Mapped[int] = mapped_column(ForeignKey("item.id"))
+        keyword: Mapped[str]
+        text: Mapped[Optional[str]]
+
+        def __init__(self, keyword: str, text: str):
             self.keyword = keyword
             self.text = text
 
@@ -258,31 +349,36 @@ of the ``Note.text`` field::
 
     class Item(Base):
         __tablename__ = "item"
-        id = Column(Integer, primary_key=True)
-        notes = relationship(
-            "Note",
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
             collection_class=attribute_mapped_collection("note_key"),
-            backref="item",
+            back_populates="item",
             cascade="all, delete-orphan",
         )
 
-
     class Note(Base):
         __tablename__ = "note"
-        id = Column(Integer, primary_key=True)
-        item_id = Column(Integer, ForeignKey("item.id"), nullable=False)
-        keyword = Column(String)
-        text = Column(String)
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        item_id: Mapped[int] = mapped_column(ForeignKey("item.id"))
+        keyword: Mapped[str]
+        text: Mapped[str]
+
+        item: Mapped["Item"] = relationship()
 
         @property
         def note_key(self):
             return (self.keyword, self.text[0:10])
 
-        def __init__(self, keyword, text):
+        def __init__(self, keyword: str, text: str):
             self.keyword = keyword
             self.text = text
 
-Above we added a ``Note.item`` backref.  Assigning to this reverse relationship, the ``Note``
+Above we added a ``Note.item`` relationship, with a bi-directional
+:paramref:`_orm.relationship.back_populates` configuration.
+Assigning to this reverse relationship, the ``Note``
 is added to the ``Item.notes`` dictionary and the key is generated for us automatically::
 
     >>> item = Item()
@@ -295,14 +391,15 @@ Other built-in dictionary types include :func:`.column_mapped_collection`,
 which is almost like :func:`.attribute_mapped_collection` except given the :class:`_schema.Column`
 object directly::
 
-    from sqlalchemy.orm.collections import column_mapped_collection
+    from sqlalchemy.orm import column_mapped_collection
 
 
     class Item(Base):
         __tablename__ = "item"
-        id = Column(Integer, primary_key=True)
-        notes = relationship(
-            "Note",
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
             collection_class=column_mapped_collection(Note.__table__.c.keyword),
             cascade="all, delete-orphan",
         )
@@ -311,14 +408,15 @@ as well as :func:`.mapped_collection` which is passed any callable function.
 Note that it's usually easier to use :func:`.attribute_mapped_collection` along
 with a ``@property`` as mentioned earlier::
 
-    from sqlalchemy.orm.collections import mapped_collection
+    from sqlalchemy.orm import mapped_collection
 
 
     class Item(Base):
         __tablename__ = "item"
-        id = Column(Integer, primary_key=True)
-        notes = relationship(
-            "Note",
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
             collection_class=mapped_collection(lambda note: note.text[0:10]),
             cascade="all, delete-orphan",
         )
@@ -342,9 +440,9 @@ to populate an attribute mapped collection.  Given the following::
     class A(Base):
         __tablename__ = "a"
 
-        id = Column(Integer, primary_key=True)
-        bs = relationship(
-            "B",
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        bs: Mapped[MappedCollection[str, "B"]] = relationship(
             collection_class=attribute_mapped_collection("data"),
             back_populates="a",
         )
@@ -352,11 +450,12 @@ to populate an attribute mapped collection.  Given the following::
 
     class B(Base):
         __tablename__ = "b"
-        id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey("a.id"))
-        data = Column(String)
 
-        a = relationship("A", back_populates="bs")
+        id: Mapped[int] = mapped_column(primary_key=True)
+        a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+        data: Mapped[str]
+
+        a: Mapped["A"] = relationship(back_populates="bs")
 
 Above, if we create a ``B()`` that refers to a specific ``A()``, the back
 populates will then add the ``B()`` to the ``A.bs`` collection, however
@@ -412,6 +511,8 @@ collection as well::
 .. autofunction:: column_mapped_collection
 
 .. autofunction:: mapped_collection
+
+.. _orm_custom_collection:
 
 Custom Collection Implementations
 =================================
@@ -622,7 +723,7 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
 
-.. autoclass:: sqlalchemy.orm.collections.MappedCollection
+.. autoclass:: sqlalchemy.orm.MappedCollection
    :members:
 
 Instrumentation and Custom Types

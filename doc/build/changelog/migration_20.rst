@@ -1,8 +1,23 @@
 .. _migration_20_toplevel:
 
-=============================
-What's New in SQLAlchemy 2.0?
-=============================
+======================================
+SQLAlchemy 2.0 - Major Migration Guide
+======================================
+
+.. admonition:: Note for Readers
+
+    SQLAlchemy 2.0's transition documents are separated into **two**
+    documents - one which details major API shifts from the 1.x to 2.x
+    series, and the other which details new features and behaviors relative
+    to SQLAlchemy 1.4:
+
+    * :ref:`migration_20_toplevel` - this document, 1.x to 2.x API shifts
+    * :ref:`whatsnew_20_toplevel` - new features and behaviors for SQLAlchemy 2.0
+
+    Readers who have already updated their 1.4 application to follow
+    SQLAlchemy 2.0 engine and ORM conventions may navigate to
+    :ref:`whatsnew_20_toplevel` for an overview of new features and
+    capabilities.
 
 .. admonition:: About this document
 

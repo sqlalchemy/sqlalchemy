@@ -23,9 +23,9 @@ will provide for us the ``fullname``, which is the string concatenation of the t
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String(50))
-        lastname = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        firstname = mapped_column(String(50))
+        lastname = mapped_column(String(50))
 
         @hybrid_property
         def fullname(self):
@@ -54,9 +54,9 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String(50))
-        lastname = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        firstname = mapped_column(String(50))
+        lastname = mapped_column(String(50))
 
         @hybrid_property
         def fullname(self):
@@ -98,9 +98,9 @@ follows::
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String(50))
-        lastname = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        firstname = mapped_column(String(50))
+        lastname = mapped_column(String(50))
         fullname = column_property(firstname + " " + lastname)
 
 Correlated subqueries may be used as well. Below we use the
@@ -112,18 +112,19 @@ of ``Address`` objects available for a particular ``User``::
     from sqlalchemy import select, func
     from sqlalchemy import Column, Integer, String, ForeignKey
 
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     class Address(Base):
         __tablename__ = 'address'
-        id = Column(Integer, primary_key=True)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        id = mapped_column(Integer, primary_key=True)
+        user_id = mapped_column(Integer, ForeignKey('user.id'))
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         address_count = column_property(
             select(func.count(Address.id)).
             where(Address.user_id==id).
@@ -159,10 +160,35 @@ being inadvertently omitted from the FROM list in the case of a long string
 of joins between ``User`` and ``Address`` tables where SELECT statements against
 ``Address`` are nested.
 
+For a :func:`.column_property` that refers to columns linked from a
+many-to-many relationship, use :func:`.and_` to join the fields of the
+association table to both tables in a relationship::
+
+    from sqlalchemy import and_
+
+    class Author(Base):
+        # ...
+
+        book_count = column_property(
+            select(func.count(books.c.id)
+            ).where(
+                and_(
+                    book_authors.c.author_id==authors.c.id,
+                    book_authors.c.book_id==books.c.id
+                )
+            ).scalar_subquery()
+        )
+
+
+Adding column_property() to an existing Declarative mapped class
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 If import issues prevent the :func:`.column_property` from being defined
 inline with the class, it can be assigned to the class after both
-are configured.   When using mappings that make use of a :func:`_orm.declarative_base`
-base class, this attribute assignment has the effect of calling :meth:`_orm.Mapper.add_property`
+are configured.   When using mappings that make use of a Declarative
+base class (i.e. produced by the :class:`_orm.DeclarativeBase` superclass
+or legacy functions such as :func:`_orm.declarative_base`),
+this attribute assignment has the effect of calling :meth:`_orm.Mapper.add_property`
 to add an additional property after the fact::
 
     # only works if a declarative base class is in use
@@ -172,7 +198,7 @@ to add an additional property after the fact::
         scalar_subquery()
     )
 
-When using mapping styles that don't use :func:`_orm.declarative_base`,
+When using mapping styles that don't use Declarative base classes
 such as the :meth:`_orm.registry.mapped` decorator, the :meth:`_orm.Mapper.add_property`
 method may be invoked explicitly on the underlying :class:`_orm.Mapper` object,
 which can be obtained using :func:`_sa.inspect`::
@@ -200,24 +226,10 @@ which can be obtained using :func:`_sa.inspect`::
         )
     )
 
-For a :func:`.column_property` that refers to columns linked from a
-many-to-many relationship, use :func:`.and_` to join the fields of the
-association table to both tables in a relationship::
+.. seealso::
 
-    from sqlalchemy import and_
+  :ref:`orm_declarative_table_adding_columns`
 
-    class Author(Base):
-        # ...
-
-        book_count = column_property(
-            select(func.count(books.c.id)
-            ).where(
-                and_(
-                    book_authors.c.author_id==authors.c.id,
-                    book_authors.c.book_id==books.c.id
-                )
-            ).scalar_subquery()
-        )
 
 .. _mapper_column_property_sql_expressions_composed:
 
@@ -241,9 +253,9 @@ attribute, which is itself a :class:`.ColumnProperty`::
     class File(Base):
         __tablename__ = 'file'
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String(64))
-        extension = Column(String(8))
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(64))
+        extension = mapped_column(String(8))
         filename = column_property(name + '.' + extension)
         path = column_property('C:/' + filename.expression)
 
@@ -253,6 +265,8 @@ assigned to ``filename`` and ``path`` are usable directly.  The use of the
 the :class:`.ColumnProperty` directly within the mapping definition::
 
     stmt = select(File.path).where(File.filename == 'foo.txt')
+
+.. autofunction:: column_property
 
 
 Using a plain descriptor
@@ -272,9 +286,9 @@ which is then used to emit a query::
 
     class User(Base):
         __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String(50))
-        lastname = Column(String(50))
+        id = mapped_column(Integer, primary_key=True)
+        firstname = mapped_column(String(50))
+        lastname = mapped_column(String(50))
 
         @property
         def address_count(self):
@@ -313,9 +327,9 @@ may be applied::
 
     class A(Base):
         __tablename__ = 'a'
-        id = Column(Integer, primary_key=True)
-        x = Column(Integer)
-        y = Column(Integer)
+        id = mapped_column(Integer, primary_key=True)
+        x = mapped_column(Integer)
+        y = mapped_column(Integer)
 
         expr = query_expression()
 

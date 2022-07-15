@@ -714,6 +714,18 @@ class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
     checkers such as pylance and mypy so that ORM-mapped attributes
     are correctly typed.
 
+    The most prominent use of :class:`_orm.Mapped` is in
+    the :ref:`Declarative Mapping <orm_explicit_declarative_base>` form
+    of :class:`_orm.Mapper` configuration, where used explicitly it drives
+    the configuration of ORM attributes such as :func:`_orm.mapped_class`
+    and :func:`_orm.relationship`.
+
+    .. seealso::
+
+        :ref:`orm_explicit_declarative_base`
+
+        :ref:`orm_declarative_table`
+
     .. tip::
 
         The :class:`_orm.Mapped` class represents attributes that are handled

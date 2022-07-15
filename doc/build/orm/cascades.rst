@@ -336,7 +336,7 @@ association::
 
     class Parent(Base):
         __tablename__ = "left"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         children = relationship(
             "Child",
             secondary=association_table,
@@ -347,7 +347,7 @@ association::
 
     class Child(Base):
         __tablename__ = "right"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         parents = relationship(
             "Parent",
             secondary=association_table,
@@ -410,7 +410,7 @@ on the relevant ``FOREIGN KEY`` constraint as well::
 
     class Parent(Base):
         __tablename__ = "parent"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         children = relationship(
             "Child",
             back_populates="parent",
@@ -421,8 +421,8 @@ on the relevant ``FOREIGN KEY`` constraint as well::
 
     class Child(Base):
         __tablename__ = "child"
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey("parent.id", ondelete="CASCADE"))
+        id = mapped_column(Integer, primary_key=True)
+        parent_id = mapped_column(Integer, ForeignKey("parent.id", ondelete="CASCADE"))
         parent = relationship("Parent", back_populates="children")
 
 The behavior of the above configuration when a parent row is deleted
@@ -571,7 +571,7 @@ relationship as illustrated below::
 
     class Parent(Base):
         __tablename__ = "left"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         children = relationship(
             "Child",
             secondary=association_table,
@@ -582,7 +582,7 @@ relationship as illustrated below::
 
     class Child(Base):
         __tablename__ = "right"
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         parents = relationship(
             "Parent",
             secondary=association_table,

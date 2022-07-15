@@ -40,24 +40,25 @@ against the current :func:`_orm.relationship` being configured, with both
 Starting with the following example::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String)
 
         addresses = relationship("Address", backref="user")
 
 
     class Address(Base):
         __tablename__ = "address"
-        id = Column(Integer, primary_key=True)
-        email = Column(String)
-        user_id = Column(Integer, ForeignKey("user.id"))
+        id = mapped_column(Integer, primary_key=True)
+        email = mapped_column(String)
+        user_id = mapped_column(Integer, ForeignKey("user.id"))
 
 The above configuration establishes a collection of ``Address`` objects on ``User`` called
 ``User.addresses``.   It also establishes a ``.user`` attribute on ``Address`` which will
@@ -65,24 +66,25 @@ refer to the parent ``User`` object.   Using :paramref:`_orm.relationship.back_p
 it's equivalent to the following::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String)
 
         addresses = relationship("Address", back_populates="user")
 
 
     class Address(Base):
         __tablename__ = "address"
-        id = Column(Integer, primary_key=True)
-        email = Column(String)
-        user_id = Column(Integer, ForeignKey("user.id"))
+        id = mapped_column(Integer, primary_key=True)
+        email = mapped_column(String)
+        user_id = mapped_column(Integer, ForeignKey("user.id"))
 
         user = relationship("User", back_populates="addresses")
 
@@ -105,15 +107,16 @@ As an example, below is a :func:`_orm.relationship` that includes a
 which also includes the :paramref:`_orm.relationship.backref` keyword::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import declarative_base, relationship
+    from sqlalchemy.orm import DeclarativeBase, relationship
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String)
 
         addresses = relationship(
             "Address",
@@ -126,9 +129,9 @@ which also includes the :paramref:`_orm.relationship.backref` keyword::
 
     class Address(Base):
         __tablename__ = "address"
-        id = Column(Integer, primary_key=True)
-        email = Column(String)
-        user_id = Column(Integer, ForeignKey("user.id"))
+        id = mapped_column(Integer, primary_key=True)
+        email = mapped_column(String)
+        user_id = mapped_column(Integer, ForeignKey("user.id"))
 
 When the "backref" is generated, the :paramref:`_orm.relationship.primaryjoin`
 condition is copied to the new :func:`_orm.relationship` as well::
@@ -167,8 +170,8 @@ a specific set of arguments that will be transferred to the new
 
     class User(Base):
         __tablename__ = "user"
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String)
 
         addresses = relationship(
             "Address",

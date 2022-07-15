@@ -152,17 +152,18 @@ illustrates a complete example including mapper and session configuration::
         select,
     )
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.orm import declarative_base, relationship, selectinload
+    from sqlalchemy.orm import DeclarativeBase, relationship, selectinload
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
 
     class A(Base):
         __tablename__ = "a"
 
-        id = Column(Integer, primary_key=True)
-        data = Column(String)
-        create_date = Column(DateTime, server_default=func.now())
+        id = mapped_column(Integer, primary_key=True)
+        data = mapped_column(String)
+        create_date = mapped_column(DateTime, server_default=func.now())
         bs = relationship("B")
 
         # required in order to access columns with server defaults
@@ -173,9 +174,9 @@ illustrates a complete example including mapper and session configuration::
 
     class B(Base):
         __tablename__ = "b"
-        id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey("a.id"))
-        data = Column(String)
+        id = mapped_column(Integer, primary_key=True)
+        a_id = mapped_column(ForeignKey("a.id"))
+        data = mapped_column(String)
 
 
     async def async_main():
@@ -311,7 +312,7 @@ prevent this:
         # ...
 
         # column with a server_default, or SQL expression default
-        create_date = Column(DateTime, server_default=func.now())
+        create_date = mapped_column(DateTime, server_default=func.now())
 
         # add this so that it can be accessed
         __mapper_args__ = {"eager_defaults": True}

@@ -486,11 +486,16 @@ class MappedColumn(
         "foreign_keys",
         "_has_nullable",
         "deferred",
+        "deferred_group",
+        "deferred_raiseload",
         "_attribute_options",
         "_has_dataclass_arguments",
     )
 
     deferred: bool
+    deferred_raiseload: bool
+    deferred_group: Optional[str]
+
     column: Column[_T]
     foreign_keys: Optional[Set[ForeignKey]]
     _attribute_options: _AttributeOptions
@@ -514,7 +519,14 @@ class MappedColumn(
 
         kw["default"] = kw.pop("insert_default", None)
 
-        self.deferred = kw.pop("deferred", False)
+        self.deferred_group = kw.pop("deferred_group", None)
+        self.deferred_raiseload = kw.pop("deferred_raiseload", None)
+        self.deferred = kw.pop("deferred", _NoArg.NO_ARG)
+        if self.deferred is _NoArg.NO_ARG:
+            self.deferred = bool(
+                self.deferred_group or self.deferred_raiseload
+            )
+
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
         self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
@@ -545,6 +557,8 @@ class MappedColumn(
             return ColumnProperty(
                 self.column,
                 deferred=True,
+                group=self.deferred_group,
+                raiseload=self.deferred_raiseload,
                 attribute_options=self._attribute_options,
             )
         else:
