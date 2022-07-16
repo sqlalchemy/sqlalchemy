@@ -316,11 +316,7 @@ def mapped_column(
         name=name,
         type_=type_,
         autoincrement=autoincrement,
-        insert_default=insert_default
-        if insert_default is not _NoArg.NO_ARG
-        else default
-        if default is not _NoArg.NO_ARG
-        else None,
+        insert_default=insert_default,
         attribute_options=_AttributeOptions(
             init,
             repr,
