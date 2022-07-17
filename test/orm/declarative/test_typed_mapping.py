@@ -13,10 +13,12 @@ from typing import Union
 import uuid
 
 from sqlalchemy import BIGINT
+from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
@@ -642,6 +644,130 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 Element.__table__.c.id
             )
         )
+
+    @testing.combinations(
+        ("default", lambda ctx: 10),
+        ("default", func.foo()),
+        ("onupdate", lambda ctx: 10),
+        ("onupdate", func.foo()),
+        ("server_onupdate", func.foo()),
+        ("server_default", func.foo()),
+        ("nullable", True),
+        ("nullable", False),
+        ("type", BigInteger()),
+        argnames="paramname, value",
+    )
+    @testing.combinations(True, False, argnames="optional")
+    @testing.combinations(True, False, argnames="include_existing_col")
+    def test_combine_args_from_pep593(
+        self,
+        decl_base: Type[DeclarativeBase],
+        paramname,
+        value,
+        include_existing_col,
+        optional,
+    ):
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        args = []
+        params = {}
+        if paramname == "type":
+            args.append(value)
+        else:
+            params[paramname] = value
+
+        element_ref = Annotated[int, mapped_column(*args, **params)]
+        if optional:
+            element_ref = Optional[element_ref]
+
+        class Element(decl_base):
+            __tablename__ = "element"
+
+            id: Mapped[intpk]
+
+            if include_existing_col:
+                data: Mapped[element_ref] = mapped_column()
+            else:
+                data: Mapped[element_ref]
+
+        if paramname in (
+            "default",
+            "onupdate",
+            "server_default",
+            "server_onupdate",
+        ):
+            default = getattr(Element.__table__.c.data, paramname)
+            is_(default.arg, value)
+            is_(default.column, Element.__table__.c.data)
+        elif paramname == "type":
+            assert type(Element.__table__.c.data.type) is type(value)
+        else:
+            is_(getattr(Element.__table__.c.data, paramname), value)
+
+        if paramname != "nullable":
+            is_(Element.__table__.c.data.nullable, optional)
+        else:
+            is_(Element.__table__.c.data.nullable, value)
+
+    @testing.combinations(
+        ("default", lambda ctx: 10, lambda ctx: 15),
+        ("default", func.foo(), func.bar()),
+        ("onupdate", lambda ctx: 10, lambda ctx: 15),
+        ("onupdate", func.foo(), func.bar()),
+        ("server_onupdate", func.foo(), func.bar()),
+        ("server_default", func.foo(), func.bar()),
+        ("nullable", True, False),
+        ("nullable", False, True),
+        ("type", BigInteger(), Numeric()),
+        argnames="paramname, value, override_value",
+    )
+    def test_dont_combine_args_from_pep593(
+        self,
+        decl_base: Type[DeclarativeBase],
+        paramname,
+        value,
+        override_value,
+    ):
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        args = []
+        params = {}
+        override_args = []
+        override_params = {}
+        if paramname == "type":
+            args.append(value)
+            override_args.append(override_value)
+        else:
+            params[paramname] = value
+            if paramname == "default":
+                override_params["insert_default"] = override_value
+            else:
+                override_params[paramname] = override_value
+
+        element_ref = Annotated[int, mapped_column(*args, **params)]
+
+        class Element(decl_base):
+            __tablename__ = "element"
+
+            id: Mapped[intpk]
+
+            data: Mapped[element_ref] = mapped_column(
+                *override_args, **override_params
+            )
+
+        if paramname in (
+            "default",
+            "onupdate",
+            "server_default",
+            "server_onupdate",
+        ):
+            default = getattr(Element.__table__.c.data, paramname)
+            is_(default.arg, override_value)
+            is_(default.column, Element.__table__.c.data)
+        elif paramname == "type":
+            assert type(Element.__table__.c.data.type) is type(override_value)
+        else:
+            is_(getattr(Element.__table__.c.data, paramname), override_value)
 
     def test_unions(self):
         our_type = Numeric(10, 2)

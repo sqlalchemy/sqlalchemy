@@ -485,6 +485,7 @@ class MappedColumn(
         "_creation_order",
         "foreign_keys",
         "_has_nullable",
+        "_has_insert_default",
         "deferred",
         "deferred_group",
         "deferred_raiseload",
@@ -517,7 +518,13 @@ class MappedColumn(
             ):
                 self._has_dataclass_arguments = True
 
-        kw["default"] = kw.pop("insert_default", None)
+        insert_default = kw.pop("insert_default", _NoArg.NO_ARG)
+        self._has_insert_default = insert_default is not _NoArg.NO_ARG
+
+        if self._has_insert_default:
+            kw["default"] = insert_default
+        elif attr_opts.dataclasses_default is not _NoArg.NO_ARG:
+            kw["default"] = attr_opts.dataclasses_default
 
         self.deferred_group = kw.pop("deferred_group", None)
         self.deferred_raiseload = kw.pop("deferred_raiseload", None)
@@ -543,6 +550,7 @@ class MappedColumn(
         new.foreign_keys = new.column.foreign_keys
         new._has_nullable = self._has_nullable
         new._attribute_options = self._attribute_options
+        new._has_insert_default = self._has_insert_default
         new._has_dataclass_arguments = self._has_dataclass_arguments
         util.set_creation_order(new)
         return new
@@ -656,27 +664,13 @@ class MappedColumn(
             our_type_is_pep593 = False
 
         if use_args_from is not None:
-            if use_args_from.column.primary_key:
-                self.column.primary_key = True
-            if use_args_from.column.default is not None:
-                self.column.default = use_args_from.column.default
             if (
-                use_args_from.column.server_default
-                and self.column.server_default is None
+                not self._has_insert_default
+                and use_args_from.column.default is not None
             ):
-                self.column.server_default = (
-                    use_args_from.column.server_default
-                )
-
-            for const in use_args_from.column.constraints:
-                if not const._type_bound:
-                    new_const = const._copy()
-                    new_const._set_parent(self.column)
-
-            for fk in use_args_from.column.foreign_keys:
-                if not fk.constraint:
-                    new_fk = fk._copy()
-                    new_fk._set_parent(self.column)
+                self.column.default = None
+            use_args_from.column._merge(self.column)
+            sqltype = self.column.type
 
         if sqltype._isnull and not self.column.foreign_keys:
             new_sqltype = None
