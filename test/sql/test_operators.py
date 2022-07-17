@@ -2841,6 +2841,36 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"x_1": "y"},
         )
 
+    def test_contains_encoded(self):
+        self.assert_compile(
+            column("x").contains(b"y"),
+            "x LIKE '%' || :x_1 || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_not_contains_encoded(self):
+        self.assert_compile(
+            ~column("x").contains(b"y"),
+            "x NOT LIKE '%' || :x_1 || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_contains_encoded_mysql(self):
+        self.assert_compile(
+            column("x").contains(b"y"),
+            "x LIKE concat(concat('%%', %s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_contains_encoded_mysql(self):
+        self.assert_compile(
+            ~column("x").contains(b"y"),
+            "x NOT LIKE concat(concat('%%', %s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
     def test_contains_escape(self):
         self.assert_compile(
             column("x").contains("a%b_c", escape="\\"),
@@ -3004,6 +3034,36 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"x_1": "a^%b^_c/d^^e"},
         )
 
+    def test_startswith_encoded(self):
+        self.assert_compile(
+            column("x").startswith(b"y"),
+            "x LIKE :x_1 || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_startswith_encoded_mysql(self):
+        self.assert_compile(
+            column("x").startswith(b"y"),
+            "x LIKE concat(%s, '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_startswith_encoded(self):
+        self.assert_compile(
+            ~column("x").startswith(b"y"),
+            "x NOT LIKE :x_1 || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_not_startswith_encoded_mysql(self):
+        self.assert_compile(
+            ~column("x").startswith(b"y"),
+            "x NOT LIKE concat(%s, '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
     def test_not_startswith(self):
         self.assert_compile(
             ~column("x").startswith("y"),
@@ -3092,6 +3152,28 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             column("x").endswith("y"),
             "x LIKE '%' || :x_1",
             checkparams={"x_1": "y"},
+        )
+
+    def test_endswith_encoded(self):
+        self.assert_compile(
+            column("x").endswith(b"y"),
+            "x LIKE '%' || :x_1",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_endswith_encoded_mysql(self):
+        self.assert_compile(
+            column("x").endswith(b"y"),
+            "x LIKE concat('%%', %s)",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_endswith_encoded(self):
+        self.assert_compile(
+            ~column("x").endswith(b"y"),
+            "x NOT LIKE '%' || :x_1",
+            checkparams={"x_1": b"y"},
         )
 
     def test_endswith_escape(self):

@@ -466,6 +466,16 @@ class ColumnOperators(Operators):
         """
         return self.operate(concat_op, other)
 
+    def _rconcat(self, other):
+        """Implement an 'rconcat' operator.
+
+        this is for internal use at the moment
+
+        .. versionadded:: 1.4.40
+
+        """
+        return self.reverse_operate(concat_op, other)
+
     def like(self, other, escape=None):
         r"""Implement the ``like`` operator.
 
@@ -1512,7 +1522,12 @@ def filter_op(a, b):
 
 
 def concat_op(a, b):
-    return a.concat(b)
+    try:
+        concat = a.concat
+    except AttributeError:
+        return b._rconcat(a)
+    else:
+        return concat(b)
 
 
 def desc_op(a):

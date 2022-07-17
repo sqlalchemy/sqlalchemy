@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8253
+
+    Adjusted the SQL compilation for string containment functions
+    ``.contains()``, ``.startswith()``, ``.endswith()`` to force the use of the
+    string concatenation operator, rather than relying upon the overload of the
+    addition operator, so that non-standard use of these operators with for
+    example bytestrings still produces string concatenation operators.
+
