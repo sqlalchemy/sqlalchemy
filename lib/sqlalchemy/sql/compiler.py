@@ -2691,37 +2691,37 @@ class SQLCompiler(Compiled):
     def visit_contains_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__add__(binary.right).__add__(percent)
+        binary.right = percent.concat(binary.right).concat(percent)
         return self.visit_like_op_binary(binary, operator, **kw)
 
     def visit_not_contains_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__add__(binary.right).__add__(percent)
+        binary.right = percent.concat(binary.right).concat(percent)
         return self.visit_not_like_op_binary(binary, operator, **kw)
 
     def visit_startswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__radd__(binary.right)
+        binary.right = percent._rconcat(binary.right)
         return self.visit_like_op_binary(binary, operator, **kw)
 
     def visit_not_startswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__radd__(binary.right)
+        binary.right = percent._rconcat(binary.right)
         return self.visit_not_like_op_binary(binary, operator, **kw)
 
     def visit_endswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__add__(binary.right)
+        binary.right = percent.concat(binary.right)
         return self.visit_like_op_binary(binary, operator, **kw)
 
     def visit_not_endswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
-        binary.right = percent.__add__(binary.right)
+        binary.right = percent.concat(binary.right)
         return self.visit_not_like_op_binary(binary, operator, **kw)
 
     def visit_like_op_binary(self, binary, operator, **kw):
