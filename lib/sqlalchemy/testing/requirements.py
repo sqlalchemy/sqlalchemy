@@ -424,6 +424,15 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def insertmanyvalues(self):
+        return exclusions.only_if(
+            lambda config: config.db.dialect.supports_multivalues_insert
+            and config.db.dialect.insert_returning
+            and config.db.dialect.use_insertmanyvalues,
+            "%(database)s %(does_support)s 'insertmanyvalues functionality",
+        )
+
+    @property
     def tuple_in(self):
         """Target platform supports the syntax
         "(x, y) IN ((x1, y1), (x2, y2), ...)"

@@ -2402,6 +2402,8 @@ class MySQLDialect(default.DefaultDialect):
     supports_default_values = False
     supports_default_metavalue = True
 
+    use_insertmanyvalues: bool = True
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True

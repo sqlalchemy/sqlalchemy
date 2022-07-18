@@ -4,6 +4,7 @@ import re
 import sqlalchemy as tsa
 from sqlalchemy import bindparam
 from sqlalchemy import Column
+from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -31,7 +32,9 @@ class LogParamsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
 
     def setup_test(self):
-        self.eng = engines.testing_engine(options={"echo": True})
+        self.eng = engines.testing_engine(
+            options={"echo": True, "insertmanyvalues_page_size": 150}
+        )
         self.no_param_engine = engines.testing_engine(
             options={"echo": True, "hide_parameters": True}
         )
@@ -45,6 +48,7 @@ class LogParamsTest(fixtures.TestBase):
             log.addHandler(self.buf)
 
     def teardown_test(self):
+        self.eng = engines.testing_engine(options={"echo": True})
         exec_sql(self.eng, "drop table if exists foo")
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.removeHandler(self.buf)
@@ -176,6 +180,21 @@ class LogParamsTest(fixtures.TestBase):
             repr(params),
         )
 
+    def test_repr_params_huge_named_dict(self):
+        # given non-multi-params in a list.   repr params with
+        # per-element truncation, mostly does the exact same thing
+        params = {"key_%s" % i: i for i in range(800)}
+        eq_(
+            repr(sql_util._repr_params(params, batches=10, ismulti=False)),
+            # this assertion is very hardcoded to exactly how many characters
+            # are in a Python dict repr() for the given name/value scheme
+            # in the sample dictionary.   If for some strange reason
+            # Python dictionary repr() changes in some way, then this would
+            # have to be adjusted
+            f"{repr(params)[0:679]} ... 700 parameters truncated ... "
+            f"{repr(params)[-799:]}",
+        )
+
     def test_repr_params_ismulti_named_dict(self):
         # given non-multi-params in a list.   repr params with
         # per-element truncation, mostly does the exact same thing
@@ -218,6 +237,104 @@ class LogParamsTest(fixtures.TestBase):
             "(1310 characters truncated) ...  292, 293, 294, 295, 296, 297, "
             "298, 299], 5]]",
         )
+
+    def test_log_insertmanyvalues(self):
+        """test the full logging for insertmanyvalues added for #6047.
+
+        to make it as clear as possible what's going on, the "insertmanyvalues"
+        execute is noted explicitly and includes total number of batches,
+        batch count.  The long SQL string as well as the long parameter list
+        is now truncated in the middle, which is a new logging capability
+        as of this feature (we had only truncation of many separate parameter
+        sets and truncation of long individual parameter values, not
+        a long single tuple/dict of parameters.)
+
+        """
+        t = Table(
+            "t",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("data", String),
+        )
+
+        with self.eng.begin() as connection:
+            t.create(connection)
+
+            connection.execute(
+                t.insert().returning(t.c.id),
+                [{"data": f"d{i}"} for i in range(327)],
+            )
+
+            full_insert = (
+                "INSERT INTO t (data) VALUES (?), (?), "
+                "(?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?), (?), (?), (?), (?), (?), "
+                "(? ... 439 characters truncated ... ?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?) "
+                "RETURNING id"
+            )
+            eq_(self.buf.buffer[3].message, full_insert)
+
+            eq_regex(
+                self.buf.buffer[4].message,
+                r"\[generated in .* \(insertmanyvalues\)\] \('d0', 'd1', "
+                r"'d2', 'd3', 'd4', 'd5', 'd6', 'd7', "
+                r"'d8', 'd9', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15', "
+                r"'d16', 'd17', 'd18', 'd19', 'd20', 'd21', 'd22', 'd23', "
+                r"'d24', 'd25', 'd26', 'd27', 'd28', 'd29', 'd30', "
+                r"'d31', 'd32', 'd33', 'd34', 'd35', 'd36', 'd37', 'd38', "
+                r"'d39', 'd40', 'd41', 'd42', 'd43', 'd44', 'd45', 'd46', "
+                r"'d47', 'd48', "
+                r"'d49' ... 50 parameters truncated ... "
+                r"'d100', 'd101', 'd102', 'd103', 'd104', 'd105', 'd106', "
+                r"'d107', 'd108', 'd109', 'd110', 'd111', 'd112', 'd113', "
+                r"'d114', 'd115', 'd116', 'd117', 'd118', 'd119', 'd120', "
+                r"'d121', 'd122', 'd123', 'd124', 'd125', 'd126', 'd127', "
+                r"'d128', 'd129', 'd130', 'd131', 'd132', 'd133', 'd134', "
+                r"'d135', 'd136', 'd137', 'd138', 'd139', 'd140', "
+                r"'d141', 'd142', "
+                r"'d143', 'd144', 'd145', 'd146', 'd147', 'd148', 'd149'\)",
+            )
+            eq_(self.buf.buffer[5].message, full_insert)
+            eq_(
+                self.buf.buffer[6].message,
+                "[insertmanyvalues batch 2 of 3] ('d150', 'd151', 'd152', "
+                "'d153', 'd154', 'd155', 'd156', 'd157', 'd158', 'd159', "
+                "'d160', 'd161', 'd162', 'd163', 'd164', 'd165', 'd166', "
+                "'d167', 'd168', 'd169', 'd170', 'd171', 'd172', 'd173', "
+                "'d174', 'd175', 'd176', 'd177', 'd178', 'd179', 'd180', "
+                "'d181', 'd182', 'd183', 'd184', 'd185', 'd186', 'd187', "
+                "'d188', 'd189', 'd190', 'd191', 'd192', 'd193', 'd194', "
+                "'d195', 'd196', 'd197', 'd198', 'd199' "
+                "... 50 parameters truncated ... 'd250', 'd251', 'd252', "
+                "'d253', 'd254', 'd255', 'd256', 'd257', 'd258', 'd259', "
+                "'d260', 'd261', 'd262', 'd263', 'd264', 'd265', 'd266', "
+                "'d267', 'd268', 'd269', 'd270', 'd271', 'd272', 'd273', "
+                "'d274', 'd275', 'd276', 'd277', 'd278', 'd279', 'd280', "
+                "'d281', 'd282', 'd283', 'd284', 'd285', 'd286', 'd287', "
+                "'d288', 'd289', 'd290', 'd291', 'd292', 'd293', 'd294', "
+                "'d295', 'd296', 'd297', 'd298', 'd299')",
+            )
+            eq_(
+                self.buf.buffer[7].message,
+                "INSERT INTO t (data) VALUES (?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?), (?), (?), (?), (?), (?), "
+                "(?), (?), (?), (?), (?), (?) RETURNING id",
+            )
+            eq_(
+                self.buf.buffer[8].message,
+                "[insertmanyvalues batch 3 of 3] ('d300', 'd301', 'd302', "
+                "'d303', 'd304', 'd305', 'd306', 'd307', 'd308', 'd309', "
+                "'d310', 'd311', 'd312', 'd313', 'd314', 'd315', 'd316', "
+                "'d317', 'd318', 'd319', 'd320', 'd321', 'd322', 'd323', "
+                "'d324', 'd325', 'd326')",
+            )
 
     def test_log_large_parameter_single(self):
         import random

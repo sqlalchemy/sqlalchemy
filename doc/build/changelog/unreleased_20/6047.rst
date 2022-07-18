@@ -1,0 +1,16 @@
+.. change::
+    :tags: feature, orm, sql
+    :tickets: 6047
+
+    Added new feature to all included dialects that support RETURNING
+    called "insertmanyvalues".  This is a generalization of the
+    "fast executemany" feature first introduced for the psycopg2 driver
+    in 1.4 at :ref:`change_5263`, which allows the ORM to batch INSERT
+    statements into a much more efficient SQL structure while still being
+    able to fetch newly generated primary key and SQL default values
+    using RETURNING.
+
+    The feature now applies to the many dialects that support RETURNING along
+    with multiple VALUES constructs for INSERT, including all PostgreSQL
+    drivers, SQLite, MariaDB, MS SQL Server. Separately, the Oracle dialect
+    also gains the same capability using native cx_Oracle or OracleDB features.

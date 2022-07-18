@@ -14,6 +14,7 @@ from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import upsert
 
 
 # TODO: I can't get this to build dynamically with pytest-xdist procs
@@ -142,3 +143,18 @@ def _reap_sqlite_dbs(url, idents):
                 if os.path.exists(path):
                     log.info("deleting SQLite database file: %s" % path)
                     os.remove(path)
+
+
+@upsert.for_db("sqlite")
+def _upsert(cfg, table, returning, set_lambda=None):
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(table)
+
+    if set_lambda:
+        stmt = stmt.on_conflict_do_update(set_=set_lambda(stmt.excluded))
+    else:
+        stmt = stmt.on_conflict_do_nothing()
+
+    stmt = stmt.returning(*returning)
+    return stmt

@@ -3523,7 +3523,7 @@ class NoRowInsertedTest(fixtures.TestBase):
         ):
             if statement.startswith("INSERT"):
                 if statement.endswith("RETURNING my_table.id"):
-                    if executemany:
+                    if executemany and isinstance(parameters, list):
                         # remove some rows, so the count is wrong
                         parameters = parameters[0:1]
                     else:

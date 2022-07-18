@@ -206,7 +206,10 @@ class OnConflictTest(fixtures.TablesTest):
             [(1, "name1")],
         )
 
-    def test_on_conflict_do_update_set_executemany(self, connection):
+    @testing.combinations(True, False, argnames="use_returning")
+    def test_on_conflict_do_update_set_executemany(
+        self, connection, use_returning
+    ):
         """test #6581"""
 
         users = self.tables.users
@@ -221,7 +224,10 @@ class OnConflictTest(fixtures.TablesTest):
             index_elements=[users.c.id],
             set_={"id": i.excluded.id, "name": i.excluded.name + ".5"},
         )
-        connection.execute(
+        if use_returning:
+            i = i.returning(users.c.id, users.c.name)
+
+        result = connection.execute(
             i,
             [
                 dict(id=1, name="name1"),
@@ -229,6 +235,9 @@ class OnConflictTest(fixtures.TablesTest):
                 dict(id=3, name="name3"),
             ],
         )
+
+        if use_returning:
+            eq_(result.all(), [(1, "name1.5"), (2, "name2.5"), (3, "name3")])
 
         eq_(
             connection.execute(users.select().order_by(users.c.id)).fetchall(),

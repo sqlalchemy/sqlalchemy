@@ -1936,6 +1936,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
+    use_insertmanyvalues = True
     tuple_in_values = True
     supports_statement_cache = True
     insert_null_pk_still_autoincrements = True
@@ -1943,6 +1944,13 @@ class SQLiteDialect(default.DefaultDialect):
     update_returning = True
     delete_returning = True
     update_returning_multifrom = True
+
+    supports_default_metavalue = True
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    default_metavalue_token = "NULL"
+    """for INSERT... VALUES (DEFAULT) syntax, the token to put in the
+    parenthesis."""
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext
@@ -2054,6 +2062,10 @@ class SQLiteDialect(default.DefaultDialect):
                 self.update_returning = (
                     self.delete_returning
                 ) = self.insert_returning = False
+
+            if self.dbapi.sqlite_version_info < (3, 32, 0):
+                # https://www.sqlite.org/limits.html
+                self.insertmanyvalues_max_parameters = 999
 
     _isolation_lookup = util.immutabledict(
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}

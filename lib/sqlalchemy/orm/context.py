@@ -776,6 +776,10 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
         return self.element._all_selected_columns
 
     @property
+    def _return_defaults(self):
+        return self.element._return_defaults if is_dml(self.element) else None
+
+    @property
     def _returning(self):
         return self.element._returning if is_dml(self.element) else None
 

@@ -875,21 +875,24 @@ Bulk Operations
    of the Unit of Work's facilities for emitting INSERT and UPDATE statements
    on primary key targeted rows.   These routines were added to suit some
    cases where many rows being inserted or updated could be run into the
-   database without as much of the usual unit of work overhead, in that
-   most unit of work features are **disabled**.
+   database without as much of the usual unit of work overhead, by disabling
+   many unit of work features.
 
-   There is **usually no need to use these routines, and they are not easy
-   to use as there are many missing behaviors that are usually expected when
-   using ORM objects**; for efficient
-   bulk inserts, it's better to use the Core :class:`_sql.Insert` construct
-   directly.   Please read all caveats at :ref:`bulk_operations_caveats`.
+   There is **usually no need to use these routines, particularly in
+   modern SQLAlchemy 2.0 which has greatly improved the performance
+   of ORM unit-of-work INSERTs for most backends.**   Ordinary ORM
+   INSERT operations as well as the bulk methods documented here both take
+   advantage of the same :ref:`engine_insertmanyvalues` feature introduced
+   in SQLAlchemy 2.0.  For backends that support RETURNING, the vast majority
+   of performance overhead for bulk inserts has been resolved.
+
+   As the bulk operations forego many unit of work features, please read all
+   caveats at :ref:`bulk_operations_caveats`.
 
 .. note:: Bulk INSERT and UPDATE should not be confused with the
-   more common feature known as :ref:`orm_expression_update_delete`.   This
-   feature allows a single UPDATE or DELETE statement with arbitrary WHERE
-   criteria to be emitted.    There is also an option on some backends to
-   use true "upsert" with the ORM, such as on PostgreSQL.  See the section
-   :ref:`orm_dml_returning_objects` for examples.
+   feature known as :ref:`orm_expression_update_delete`, which
+   allow a single UPDATE or DELETE statement with arbitrary WHERE
+   criteria to be emitted.
 
 .. seealso::
 
@@ -899,8 +902,6 @@ Bulk Operations
     :ref:`orm_dml_returning_objects` - use UPDATE, INSERT or upsert operations to
     return ORM objects
 
-.. versionadded:: 1.0.0
-
 Bulk INSERT/per-row UPDATE operations on the :class:`.Session` include
 :meth:`.Session.bulk_save_objects`, :meth:`.Session.bulk_insert_mappings`, and
 :meth:`.Session.bulk_update_mappings`. The purpose of these methods is to
@@ -908,12 +909,12 @@ directly expose internal elements of the unit of work system, such that
 facilities for emitting INSERT and UPDATE statements given dictionaries or
 object states can be utilized alone, bypassing the normal unit of work
 mechanics of state, relationship and attribute management.   The advantages to
-this approach is strictly one of reduced Python overhead:
+this approach is strictly that of reduced Python overhead:
 
 * The flush() process, including the survey of all objects, their state,
   their cascade status, the status of all objects associated with them
   via :func:`_orm.relationship`, and the topological sort of all operations to
-  be performed is completely bypassed.  This reduces a great amount of
+  be performed are bypassed.  This can in many cases reduce
   Python overhead.
 
 * The objects as given have no defined relationship to the target
@@ -935,13 +936,13 @@ this approach is strictly one of reduced Python overhead:
   passed to the DBAPI, ensure that the incoming list of objects
   are grouped by type.
 
-* The process of fetching primary keys after an INSERT also is disabled by
-  default.   When performed correctly, INSERT statements can now more readily
-  be batched by the unit of work process into ``executemany()`` blocks, which
-  perform vastly better than individual statement invocations.
+* In most cases, the bulk operations don't need to fetch newly generated
+  primary key values after the INSERT proceeds.    This is historically a
+  major performance bottleneck in the ORM, however in modern ORM use most
+  backends have full support for RETURNING with multi-row INSERT statements.
 
 * UPDATE statements can similarly be tailored such that all attributes
-  are subject to the SET clause unconditionally, again making it much more
+  are subject to the SET clause unconditionally, making it more
   likely that ``executemany()`` blocks can be used.
 
 The performance behavior of the bulk routines should be studied using the
@@ -1023,10 +1024,9 @@ are **not available** when using these methods:
   value of each row is not available, so the WHERE criteria cannot be
   generated.
 
-* SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`) -
-  having to evaluate these would prevent INSERT and UPDATE statements from
-  being batched together in a straightforward way for a single executemany()
-  call as they alter the SQL compilation of the statement itself.
+* SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`)
+  are not supported in this mode as it prevents INSERT / UPDATE statements
+  from being efficiently batched.
 
 * ORM events such as :meth:`.MapperEvents.before_insert`, etc.  The bulk
   session methods have no event support.
@@ -1037,10 +1037,7 @@ Features that **are available** include:
 
 * Version identifier support
 
-* Multi-table mappings, such as joined-inheritance - however, an object
-  to be inserted across multiple tables either needs to have primary key
-  identifiers fully populated ahead of time, else the
-  :paramref:`.Session.bulk_save_objects.return_defaults` flag must be used,
-  which will greatly reduce the performance benefits
+* Multi-table mappings, such as joined-inheritance.  Enable
+  :paramref:`.Session.bulk_save_objects.return_defaults` for this to be used.
 
 

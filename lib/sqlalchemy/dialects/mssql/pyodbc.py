@@ -289,23 +289,34 @@ versioning.
 Fast Executemany Mode
 ---------------------
 
-The Pyodbc driver has added support for a "fast executemany" mode of execution
+.. note:: SQLAlchemy 2.0 now includes an equivalent "fast executemany"
+   handler for INSERT statements that is more robust than the PyODBC feature;
+   the feature is called :ref:`insertmanyvalues <engine_insertmanyvalues>`
+   and is enabled by default for all INSERT statements used by SQL Server.
+   SQLAlchemy's feature integrates with the PyODBC ``setinputsizes()`` method
+   which allows for more accurate specification of datatypes, and additionally
+   uses a dynamically sized, batched approach that scales to any number of
+   columns and/or rows.
+
+   The SQL Server ``fast_executemany`` parameter may be used at the same time
+   as ``insertmanyvalues`` is enabled; however, the parameter will not be used
+   in as many cases as INSERT statements that are invoked using Core
+   :class:`.Insert` constructs as well as all ORM use no longer use the
+   ``.executemany()`` DBAPI cursor method.
+
+The PyODBC driver includes support for a "fast executemany" mode of execution
 which greatly reduces round trips for a DBAPI ``executemany()`` call when using
 Microsoft ODBC drivers, for **limited size batches that fit in memory**.  The
-feature is enabled by setting the flag ``.fast_executemany`` on the DBAPI
-cursor when an executemany call is to be used.   The SQLAlchemy pyodbc SQL
-Server dialect supports setting this flag automatically when the
-``.fast_executemany`` flag is passed to
-:func:`_sa.create_engine` ; note that the ODBC driver must be the Microsoft
-driver in order to use this flag::
+feature is enabled by setting the attribute ``.fast_executemany`` on the DBAPI
+cursor when an executemany call is to be used.   The SQLAlchemy PyODBC SQL
+Server dialect supports this parameter by passing the
+``fast_executemany`` parameter to
+:func:`_sa.create_engine` , when using the **Microsoft ODBC driver only**::
 
     engine = create_engine(
-        "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server",
+        "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
         fast_executemany=True)
 
-.. warning:: The pyodbc fast_executemany mode **buffers all rows in memory** and is
-   not compatible with very large batches of data.    A future version of SQLAlchemy
-   may support this flag as a per-execution option instead.
 
 .. versionadded:: 1.3
 
@@ -319,11 +330,13 @@ driver in order to use this flag::
 Setinputsizes Support
 -----------------------
 
-As of version 2.0, the pyodbc ``cursor.setinputsizes()`` method is used by
-default except for .executemany() calls when fast_executemany=True.
+As of version 2.0, the pyodbc ``cursor.setinputsizes()`` method is used for
+all statement executions, except for ``cursor.executemany()`` calls when
+fast_executemany=True where it is not supported (assuming
+:ref:`insertmanyvalues <engine_insertmanyvalues>` is kept enabled,
+"fastexecutemany" will not take place for INSERT statements in any case).
 
-The behavior of setinputsizes can be customized, as may be necessary
-particularly if fast_executemany is in use, via the
+The behavior of setinputsizes can be customized via the
 :meth:`.DialectEvents.do_setinputsizes` hook. See that method for usage
 examples.
 
@@ -331,7 +344,8 @@ examples.
    unless ``use_setinputsizes=True`` is passed.
 
 .. versionchanged:: 2.0  The mssql+pyodbc dialect now defaults to using
-   setinputsizes except for .executemany() calls when fast_executemany=True.
+   setinputsizes for all statement executions with the exception of
+   cursor.executemany() calls when fast_executemany=True.
 
 """  # noqa
 

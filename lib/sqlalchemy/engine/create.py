@@ -58,6 +58,7 @@ def create_engine(
     future: Literal[True],
     hide_parameters: bool = ...,
     implicit_returning: Literal[True] = ...,
+    insertmanyvalues_page_size: int = ...,
     isolation_level: _IsolationLevel = ...,
     json_deserializer: Callable[..., Any] = ...,
     json_serializer: Callable[..., Any] = ...,
@@ -79,6 +80,7 @@ def create_engine(
     pool_use_lifo: bool = ...,
     plugins: List[str] = ...,
     query_cache_size: int = ...,
+    use_insertmanyvalues: bool = ...,
     **kwargs: Any,
 ) -> Engine:
     ...
@@ -272,6 +274,23 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
         configure this on a per-table basis using the
         :paramref:`.Table.implicit_returning` parameter.
 
+
+    :param insertmanyvalues_page_size: number of rows to format into an
+     INSERT statement when the statement uses "insertmanyvalues" mode, which is
+     a paged form of bulk insert that is used for many backends when using
+     :term:`executemany` execution typically in conjunction with RETURNING.
+     Defaults to 1000, but may also be subject to dialect-specific limiting
+     factors which may override this value on a per-statement basis.
+
+     .. versionadded:: 2.0
+
+     .. seealso::
+
+        :ref:`engine_insertmanyvalues`
+
+        :ref:`engine_insertmanyvalues_page_size`
+
+        :paramref:`_engine.Connection.execution_options.insertmanyvalues_page_size`
 
     :param isolation_level: optional string name of an isolation level
         which will be set on all new connections unconditionally.
@@ -507,6 +526,15 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
         :ref:`sql_caching`
 
      .. versionadded:: 1.4
+
+    :param use_insertmanyvalues: True by default, use the "insertmanyvalues"
+     execution style for INSERT..RETURNING statements by default.
+
+     .. versionadded:: 2.0
+
+     .. seealso::
+
+        :ref:`engine_insertmanyvalues`
 
     """  # noqa
 

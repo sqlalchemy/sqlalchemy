@@ -268,9 +268,9 @@ class Profiler:
 
     def run(self):
         if self.test:
-            tests = [fn for fn in self.tests if fn.__name__ == self.test]
+            tests = [fn for fn in self.tests if fn.__name__ in self.test]
             if not tests:
-                raise ValueError("No such test: %s" % self.test)
+                raise ValueError("No such test(s): %s" % self.test)
         else:
             tests = self.tests
 
@@ -333,7 +333,9 @@ class Profiler:
                 except ImportError:
                     pass
 
-        parser.add_argument("--test", type=str, help="run specific test name")
+        parser.add_argument(
+            "--test", nargs="+", type=str, help="run specific test(s)"
+        )
 
         parser.add_argument(
             "--dburl",

@@ -122,10 +122,9 @@ method:
 
     >>> session.flush()
     {opensql}BEGIN (implicit)
-    INSERT INTO user_account (name, fullname) VALUES (?, ?)
-    [...] ('squidward', 'Squidward Tentacles')
-    INSERT INTO user_account (name, fullname) VALUES (?, ?)
-    [...] ('ehkrabs', 'Eugene H. Krabs')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?) RETURNING id
+    [...] ('squidward', 'Squidward Tentacles', 'ehkrabs', 'Eugene H. Krabs')
+
 
 Above we observe the :class:`_orm.Session` was first called upon to emit SQL,
 so it created a new transaction and emitted the appropriate INSERT statements

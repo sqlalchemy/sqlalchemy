@@ -230,25 +230,23 @@ Modern versions of psycopg2 include a feature known as
 `Fast Execution Helpers \
 <https://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_, which
 have been shown in benchmarking to improve psycopg2's executemany()
-performance, primarily with INSERT statements, by multiple orders of magnitude.
-SQLAlchemy internally makes use of these extensions for ``executemany()`` style
-calls, which correspond to lists of parameters being passed to
-:meth:`_engine.Connection.execute` as detailed in :ref:`multiple parameter
-sets <tutorial_multiple_parameters>`.   The ORM also uses this mode internally whenever
-possible.
+performance, primarily with INSERT statements, by at least
+an order of magnitude.
 
-The two available extensions on the psycopg2 side are the ``execute_values()``
-and ``execute_batch()`` functions.  The psycopg2 dialect defaults to using the
-``execute_values()`` extension for all qualifying INSERT statements.
+SQLAlchemy implements a native form of the "insert many values"
+handler that will rewrite a single-row INSERT statement to accommodate for
+many values at once within an extended VALUES clause; this handler is
+equivalent to psycopg2's ``execute_values()`` handler; an overview of this
+feature and its configuration are at :ref:`engine_insertmanyvalues`.
 
-.. versionchanged:: 1.4  The psycopg2 dialect now defaults to a new mode
-   ``"values_only"`` for ``executemany_mode``, which allows an order of
-   magnitude performance improvement for INSERT statements, but does not
-   include "batch" mode for UPDATE and DELETE statements which removes the
-   ability of ``cursor.rowcount`` to function correctly.
+.. versionadded:: 2.0 Replaced psycopg2's ``execute_values()`` fast execution
+   helper with a native SQLAlchemy mechanism referred towards as
+   :ref:`insertmanyvalues <engine_insertmanyvalues>`.
 
-The use of these extensions is controlled by the ``executemany_mode`` flag
-which may be passed to :func:`_sa.create_engine`::
+The psycopg2 dialect retains the ability to use the psycopg2-specific
+``execute_batch()`` feature, although it is not expected that this is a widely
+used feature.  The use of this extension may be enabled using the
+``executemany_mode`` flag which may be passed to :func:`_sa.create_engine`::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
@@ -257,58 +255,54 @@ which may be passed to :func:`_sa.create_engine`::
 
 Possible options for ``executemany_mode`` include:
 
-* ``values_only`` - this is the default value.  the psycopg2 execute_values()
-  extension is used for qualifying INSERT statements, which rewrites the INSERT
-  to include multiple VALUES clauses so that many parameter sets can be
-  inserted with one statement.
+* ``values_only`` - this is the default value.  SQLAlchemy's native
+  :ref:`insertmanyvalues <engine_insertmanyvalues>` handler is used for qualifying
+  INSERT statements, assuming
+  :paramref:`_sa.create_engine.use_insertmanyvalues` is left at
+  its default value of ``True``.  This handler rewrites simple
+  INSERT statements to include multiple VALUES clauses so that many
+  parameter sets can be inserted with one statement.
 
-  .. versionadded:: 1.4 Added ``"values_only"`` setting for ``executemany_mode``
-     which is also now the default.
-
-* ``None`` - No psycopg2 extensions are not used, and the usual
-  ``cursor.executemany()`` method is used when invoking statements with
-  multiple parameter sets.
-
-* ``'batch'`` - Uses ``psycopg2.extras.execute_batch`` for all qualifying
-  INSERT, UPDATE and DELETE statements, so that multiple copies
-  of a SQL query, each one corresponding to a parameter set passed to
-  ``executemany()``, are joined into a single SQL string separated by a
-  semicolon.  When using this mode, the :attr:`_engine.CursorResult.rowcount`
-  attribute will not contain a value for executemany-style executions.
-
-* ``'values_plus_batch'``- ``execute_values`` is used for qualifying INSERT
-  statements, ``execute_batch`` is used for UPDATE and DELETE.
-  When using this mode, the :attr:`_engine.CursorResult.rowcount`
+* ``'values_plus_batch'``- SQLAlchemy's native
+  :ref:`insertmanyvalues <engine_insertmanyvalues>` handler is used for qualifying
+  INSERT statements, assuming
+  :paramref:`_sa.create_engine.use_insertmanyvalues` is left at its default
+  value of ``True``. Then, psycopg2's ``execute_batch()`` handler is used for
+  qualifying UPDATE and DELETE statements when executed with multiple parameter
+  sets. When using this mode, the :attr:`_engine.CursorResult.rowcount`
   attribute will not contain a value for executemany-style executions against
   UPDATE and DELETE statements.
 
-By "qualifying statements", we mean that the statement being executed
-must be a Core :func:`_expression.insert`, :func:`_expression.update`
-or :func:`_expression.delete` construct, and not a plain textual SQL
-string or one constructed using :func:`_expression.text`.  When using the
-ORM, all insert/update/delete statements used by the ORM flush process
+.. versionchanged:: 2.0 Removed the ``'batch'`` and ``'None'`` options
+   from psycopg2 ``executemany_mode``.  Control over batching for INSERT
+   statements is now configured via the
+   :paramref:`_sa.create_engine.use_insertmanyvalues` engine-level parameter.
+
+The term "qualifying statements" refers to the statement being executed
+being a Core :func:`_expression.insert`, :func:`_expression.update`
+or :func:`_expression.delete` construct, and **not** a plain textual SQL
+string or one constructed using :func:`_expression.text`.  It also may **not** be
+a special "extension" statement such as an "ON CONFLICT" "upsert" statement.
+When using the ORM, all insert/update/delete statements used by the ORM flush process
 are qualifying.
 
-The "page size" for the "values" and "batch" strategies can be affected
-by using the ``executemany_batch_page_size`` and
-``executemany_values_page_size`` engine parameters.  These
-control how many parameter sets
-should be represented in each execution.    The "values" page size defaults
-to 1000, which is different that psycopg2's default.  The "batch" page
-size defaults to 100.  These can be affected by passing new values to
-:func:`_engine.create_engine`::
+The "page size" for the psycopg2 "batch" strategy can be affected
+by using the ``executemany_batch_page_size`` parameter, which defaults to
+100.
+
+For the "insertmanyvalues" feature, the page size can be controlled using the
+:paramref:`_sa.create_engine.insertmanyvalues_page_size` parameter,
+which defaults to 1000.  An example of modifying both parameters
+is below::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
-        executemany_mode='values',
-        executemany_values_page_size=10000, executemany_batch_page_size=500)
-
-.. versionchanged:: 1.4
-
-    The default for ``executemany_values_page_size`` is now 1000, up from
-    100.
+        executemany_mode='values_plus_batch',
+        insertmanyvalues_page_size=5000, executemany_batch_page_size=500)
 
 .. seealso::
+
+    :ref:`engine_insertmanyvalues` - background on "insertmanyvalues"
 
     :ref:`tutorial_multiple_parameters` - General information on using the
     :class:`_engine.Connection`
@@ -484,13 +478,11 @@ from typing import cast
 from . import ranges
 from ._psycopg_common import _PGDialect_common_psycopg
 from ._psycopg_common import _PGExecutionContext_common_psycopg
-from .base import PGCompiler
 from .base import PGIdentifierPreparer
 from .json import JSON
 from .json import JSONB
 from ... import types as sqltypes
 from ... import util
-from ...engine import cursor as _cursor
 from ...util import FastIntFlag
 from ...util import parse_user_argument_for_enum
 
@@ -561,22 +553,6 @@ class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
     _psycopg2_fetched_rows = None
 
     def post_exec(self):
-        if (
-            self._psycopg2_fetched_rows
-            and self.compiled
-            and self.compiled.effective_returning
-        ):
-            # psycopg2 execute_values will provide for a real cursor where
-            # cursor.description works correctly. however, it executes the
-            # INSERT statement multiple times for multiple pages of rows, so
-            # while this cursor also supports calling .fetchall() directly, in
-            # order to get the list of all rows inserted across multiple pages,
-            # we have to retrieve the aggregated list from the execute_values()
-            # function directly.
-            strat_cls = _cursor.FullyBufferedCursorFetchStrategy
-            self.cursor_fetch_strategy = strat_cls(
-                self.cursor, initial_buffer=self._psycopg2_fetched_rows
-            )
         self._log_notices(self.cursor)
 
     def _log_notices(self, cursor):
@@ -597,24 +573,16 @@ class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
         cursor.connection.notices[:] = []
 
 
-class PGCompiler_psycopg2(PGCompiler):
-    pass
-
-
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
 
 
 class ExecutemanyMode(FastIntFlag):
-    EXECUTEMANY_PLAIN = 0
-    EXECUTEMANY_BATCH = 1
-    EXECUTEMANY_VALUES = 2
-    EXECUTEMANY_VALUES_PLUS_BATCH = EXECUTEMANY_BATCH | EXECUTEMANY_VALUES
+    EXECUTEMANY_VALUES = 0
+    EXECUTEMANY_VALUES_PLUS_BATCH = 1
 
 
 (
-    EXECUTEMANY_PLAIN,
-    EXECUTEMANY_BATCH,
     EXECUTEMANY_VALUES,
     EXECUTEMANY_VALUES_PLUS_BATCH,
 ) = tuple(ExecutemanyMode)
@@ -630,9 +598,9 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
     # set to true based on psycopg2 version
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
-    statement_compiler = PGCompiler_psycopg2
     preparer = PGIdentifierPreparer_psycopg2
     psycopg2_version = (0, 0)
+    use_insertmanyvalues_wo_returning = True
 
     _has_native_hstore = True
 
@@ -655,7 +623,6 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         self,
         executemany_mode="values_only",
         executemany_batch_page_size=100,
-        executemany_values_page_size=1000,
         **kwargs,
     ):
         _PGDialect_common_psycopg.__init__(self, **kwargs)
@@ -665,19 +632,13 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         self.executemany_mode = parse_user_argument_for_enum(
             executemany_mode,
             {
-                EXECUTEMANY_PLAIN: [None],
-                EXECUTEMANY_BATCH: ["batch"],
                 EXECUTEMANY_VALUES: ["values_only"],
-                EXECUTEMANY_VALUES_PLUS_BATCH: ["values_plus_batch", "values"],
+                EXECUTEMANY_VALUES_PLUS_BATCH: ["values_plus_batch"],
             },
             "executemany_mode",
         )
 
-        if self.executemany_mode & EXECUTEMANY_VALUES:
-            self.insert_executemany_returning = True
-
         self.executemany_batch_page_size = executemany_batch_page_size
-        self.executemany_values_page_size = executemany_values_page_size
 
         if self.dbapi and hasattr(self.dbapi, "__version__"):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
@@ -699,14 +660,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             is not None
         )
 
-        # PGDialect.initialize() checks server version for <= 8.2 and sets
-        # this flag to False if so
-        if not self.insert_returning:
-            self.insert_executemany_returning = False
-            self.executemany_mode = EXECUTEMANY_PLAIN
-
-        self.supports_sane_multi_rowcount = not (
-            self.executemany_mode & EXECUTEMANY_BATCH
+        self.supports_sane_multi_rowcount = (
+            self.executemany_mode is not EXECUTEMANY_VALUES_PLUS_BATCH
         )
 
     @classmethod
@@ -806,39 +761,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if (
-            self.executemany_mode & EXECUTEMANY_VALUES
-            and context
-            and context.isinsert
-            and context.compiled._is_safe_for_fast_insert_values_helper
-        ):
-            executemany_values = (
-                "(%s)" % context.compiled.insert_single_values_expr
-            )
-
-            # guard for statement that was altered via event hook or similar
-            if executemany_values not in statement:
-                executemany_values = None
-        else:
-            executemany_values = None
-
-        if executemany_values:
-            statement = statement.replace(executemany_values, "%s")
-            if self.executemany_values_page_size:
-                kwargs = {"page_size": self.executemany_values_page_size}
-            else:
-                kwargs = {}
-            xtras = self._psycopg2_extras
-            context._psycopg2_fetched_rows = xtras.execute_values(
-                cursor,
-                statement,
-                parameters,
-                template=executemany_values,
-                fetch=bool(context.compiled.effective_returning),
-                **kwargs,
-            )
-
-        elif self.executemany_mode & EXECUTEMANY_BATCH:
+        if self.executemany_mode is EXECUTEMANY_VALUES_PLUS_BATCH:
             if self.executemany_batch_page_size:
                 kwargs = {"page_size": self.executemany_batch_page_size}
             else:

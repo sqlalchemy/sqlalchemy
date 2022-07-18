@@ -1318,6 +1318,7 @@ SELECTs with LIMIT/OFFSET are correctly rendered and cached.
 
     :ref:`faq_new_caching` - in the :ref:`faq_toplevel` section
 
+
 .. _engine_lambda_caching:
 
 Using Lambdas to add significant speed gains to statement production
@@ -1741,6 +1742,231 @@ be used when the statement is invoked::
 For a series of examples of "lambda" caching with performance comparisons,
 see the "short_selects" test suite within the :ref:`examples_performance`
 performance example.
+
+.. _engine_insertmanyvalues:
+
+"Insert Many Values" Behavior for INSERT statements
+====================================================
+
+.. versionadded:: 2.0 see :ref:`change_6047` for background on the change
+   including sample performance tests
+
+As more databases have added support for INSERT..RETURNING, SQLAlchemy has
+undergone a major change in how it approaches the subject of INSERT statements
+where there's a need to acquire server-generated values, most importantly
+server-generated primary key values which allow the new row to be referenced in
+subsequent operations. This issue has for over a decade prevented SQLAlchemy
+from being able to batch large sets of rows into a small number of database
+round trips for the very common case where primary key values are
+server-generated, and historically has been the most significant performance
+bottleneck in the ORM.
+
+With recent support for RETURNING added to SQLite and MariaDB, SQLAlchemy no
+longer needs to rely upon the single-row-only
+`cursor.lastrowid <https://peps.python.org/pep-0249/#lastrowid>`_ attribute
+provided by the :term:`DBAPI` for most backends; RETURNING may now be used for
+all included backends with the exception of MySQL. The remaining performance
+limitation, that the
+`cursor.executemany() <https://peps.python.org/pep-0249/#executemany>`_ DBAPI
+method does not allow for rows to be fetched, is resolved for most backends by
+foregoing the use of ``executemany()`` and instead restructuring individual
+INSERT statements to each accommodate a large number of rows in a single
+statement that is invoked using ``cursor.execute()``. This approach originates
+from the
+`psycopg2 fast execution helpers <https://www.psycopg.org/docs/extras.html#fast-execution-helpers>`_
+feature of the ``psycopg2`` DBAPI, which SQLAlchemy incrementally added more
+and more support towards in recent release series.
+
+Concretely, for most backends the behavior will rewrite a statement of the
+form:
+
+.. sourcecode:: none
+
+    INSERT INTO a (data, x, y) VALUES (%(data)s, %(x)s, %(y)s) RETURNING a.id
+
+into a "batched" form as:
+
+.. sourcecode:: none
+
+    INSERT INTO a (data, x, y) VALUES
+        (%(data_0)s, %(x_0)s, %(y_0)s),
+        (%(data_1)s, %(x_1)s, %(y_1)s),
+        (%(data_2)s, %(x_2)s, %(y_2)s),
+        ...
+        (%(data_78)s, %(x_78)s, %(y_78)s)
+    RETURNING a.id
+
+It's also important to note that the feature will invoke **multiple INSERT
+statements** using the DBAPI ``cursor.execute()`` method,
+within the scope of  **single** call to the Core-level
+:meth:`_engine.Connection.execute` method,
+with each statement containing up to a fixed limit of parameter sets.
+This limit is configurable as described below at :ref:`engine_insertmanyvalues_page_size`.
+The separate calls to ``cursor.execute()`` are logged individually and
+also individually passed along to event listeners such as
+:meth:`.ConnectionEvents.before_cursor_execute` (see :ref:`engine_insertmanyvalues_events`
+below).
+
+The feature is enabled for included SQLAlchemy backends that support RETURNING
+as well as "multiple VALUES()" clauses within INSERT statements,
+and takes place for all INSERT...RETURNING statements that are used with
+"executemany" style execution, which occurs when passing a list of dictionaries
+to the :paramref:`_engine.Connection.execute.parameters` parameter of the
+:meth:`_engine.Connection.execute` method, as well as throughout Core and ORM
+for any similar method including ORM methods like :meth:`_orm.Session.execute`
+and asyncio methods like :meth:`_asyncio.AsyncConnection.execute` and
+:meth:`_asyncio.AsyncSession.execute`.     The ORM itself also makes use of the
+feature within the :term:`unit of work` process when inserting many rows,
+that is, for large numbers of objects added to a :class:`_orm.Session` using
+methods such as :meth:`_orm.Session.add` and :meth:`_orm.Session.add_all`.
+
+For SQLAlchemy's included dialects, support or equivalent support is currently
+as follows:
+
+* SQLite - supported for SQLite versions 3.35 and above
+* PostgreSQL - all supported Postgresql versions (9 and above)
+* SQL Server - all supported SQL Server versions
+* MariaDB - supported for MariaDB versions 10.5 and above
+* MySQL - no support, no RETURNING feature is present
+* Oracle - supports RETURNING with executemany using native cx_Oracle / OracleDB
+  APIs, for all supported Oracle versions 9 and above, using multi-row OUT
+  parameters. This is not the same implementation as "executemanyvalues", however has
+  the same usage patterns and equivalent performance benefits.
+
+Enabling/Disabling the feature
+------------------------------
+
+To disable the "insertmanyvalues" feature for a given backend for an
+:class:`.Engine` overall, pass the
+:paramref:`_sa.create_engine.use_insertmanyvalues` parameter as ``False`` to
+:func:`_sa.create_engine`::
+
+    engine = create_engine(
+        "mariadb+mariadbconnector://scott:tiger@host/db",
+        use_insertmanyvalues=False
+    )
+
+The feature can also be disabled from being used implicitly for a particular
+:class:`_schema.Table` object by passing the
+:paramref:`_schema.Table.implicit_returning` parameter as ``False``::
+
+      t = Table(
+          't',
+          metadata,
+          Column('id', Integer, primary_key=True),
+          Column('x', Integer),
+          implicit_returning=False
+      )
+
+The reason one might want to disable RETURNING for a specific table is to
+work around backend-specific limitations.  For example, there is a known
+limitation of SQL Server that the ``OUTPUT inserted.<colname>`` feature
+may not work correctly for a table that has INSERT triggers established;
+such a table may need to include ``implicit_returning=False`` (see
+:ref:`mssql_triggers`).
+
+.. _engine_insertmanyvalues_page_size:
+
+Controlling the Batch Size
+---------------------------
+
+A key characteristic of "insertmanyvalues" is that the size of the INSERT
+statement is limited on a fixed max number of "values" clauses as well as a
+dialect-specific fixed total number of bound parameters that may be represented
+in one INSERT statement at a time. When the number of parameter dictionaries
+given exceeds a fixed limit, or when the total number of bound parameters to be
+rendered in a single INSERT statement exceeds a fixed limit (the two fixed
+limits are separate), multiple INSERT statements will be invoked within the
+scope of a single :meth:`_engine.Connection.execute` call, each of which
+accommodate for a portion of the parameter dictionaries, referred towards as a
+"batch".  The number of parameter dictionaries represented within each
+"batch" is then known as the "batch size".  For example, a batch size of
+500 means that each INSERT statement emitted will INSERT at most 500 rows.
+
+It's potentially important to be able to adjust the batch size,
+as a larger batch size may be more performant for an INSERT where the value
+sets themselves are relatively small, and a smaller batch size may be more
+appropriate for an INSERT that uses very large value sets, where both the size
+of the rendered SQL as well as the total data size being passed in one
+statement may benefit from being limited to a certain size based on backend
+behavior and memory constraints.  For this reason the batch size
+can be configured on a per-:class:`.Engine` as well as a per-statement
+basis.   The parameter limit on the other hand is fixed based on the known
+characteristics of the database in use.
+
+The batch size defaults to 1000 for most backends, with an additional
+per-dialect "max number of parameters" limiting factor that may reduce the
+batch size further on a per-statement basis. The max number of parameters
+varies by dialect and server version; the largest size is 32700 (chosen as a
+healthy distance away from PostgreSQL's limit of 32767 and SQLite's modern
+limit of 32766, while leaving room for additional parameters in the statement
+as well as for DBAPI quirkiness). Older versions of SQLite (prior to 3.32.0)
+will set this value to 999; SQL Server sets it to 2099.  MariaDB has no
+established limit however 32700 remains as a limiting factor for SQL message
+size.
+
+The value of the "batch size" can be affected :class:`_engine.Engine`
+wide via the :paramref:`_sa.create_engine.insertmanyvalues_page_size` parameter.
+Such as, to affect INSERT statements to include up to 100 parameter sets
+in each statement::
+
+    e = create_engine("sqlite://", insertmanyvalues_page_size=100)
+
+The batch size may also be affected on a per statement basis using the
+:paramref:`_engine.Connection.execution_options.insertmanyvalues_page_size`
+execution option, such as per execution::
+
+    with e.begin() as conn:
+        result = conn.execute(
+            table.insert().returning(table.c.id),
+            parameterlist,
+            execution_options={"insertmanyvalues_page_size": 100}
+        )
+
+Or configured on the statement itself::
+
+    stmt = table.insert().returning(table.c.id).execution_options(
+        insertmanyvalues_page_size=100
+    )
+    with e.begin() as conn:
+        result = conn.execute(stmt, parameterlist)
+
+.. _engine_insertmanyvalues_events:
+
+Logging and Events
+-------------------
+
+The "insertmanyvalues" feature integrates fully with SQLAlchemy's statement
+logging as well as cursor events such as :meth:`.ConnectionEvents.before_cursor_execute`.
+When the list of parameters is broken into separate batches, **each INSERT
+statement is logged and passed to event handlers individually**.   This is a major change
+compared to how the psycopg2-only feature worked in previous 1.x series of
+SQLAlchemy, where the production of multiple INSERT statements was hidden from
+logging and events.  Logging display will truncate the long lists of parameters for readability,
+and will also indicate the specific batch of each statement. The example below illustrates
+an excerpt of this logging::
+
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
+  [generated in 0.00177s (insertmanyvalues)] ('d0', 0, 0, 'd1',  ...
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
+  [insertmanyvalues batch 2 of 10] ('d100', 100, 1000, 'd101', ...
+
+  ...
+
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
+  [insertmanyvalues batch 10 of 10] ('d900', 900, 9000, 'd901', ...
+
+Upsert Support
+--------------
+
+The PostgreSQL, SQLite, and MariaDB dialects offer backend-specific
+"upsert" constructs :func:`_postgresql.insert`, :func:`_sqlite.insert`
+and :func:`_mysql.insert`, which are each :class:`_dml.Insert` constructs that
+have an additional method such as ``on_conflict_do_update()` or
+``on_duplicate_key()``.   These constructs also support "insertmanyvalues"
+behaviors when they are used with RETURNING, allowing efficient upserts
+with RETURNING to take place.
+
 
 .. _engine_disposal:
 

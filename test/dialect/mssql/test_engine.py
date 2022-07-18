@@ -402,7 +402,9 @@ class FastExecutemanyTest(fixtures.TestBase):
         )
         t.create(testing.db)
 
-        eng = engines.testing_engine(options={"fast_executemany": True})
+        eng = engines.testing_engine(
+            options={"fast_executemany": True, "use_insertmanyvalues": False}
+        )
 
         @event.listens_for(eng, "after_cursor_execute")
         def after_cursor_execute(

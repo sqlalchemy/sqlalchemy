@@ -118,7 +118,6 @@ class DMLState(CompileState):
     ] = None
     _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
     _parameter_ordering: Optional[List[_DMLColumnElement]] = None
-    _has_multi_parameters = False
     _primary_table: FromClause
     _supports_implicit_returning = True
 
@@ -202,64 +201,10 @@ class DMLState(CompileState):
         froms.extend(all_tables[1:])
         return primary_table, froms
 
-    def _process_multi_values(self, statement: ValuesBase) -> None:
-        if not statement._supports_multi_parameters:
-            raise exc.InvalidRequestError(
-                "%s construct does not support "
-                "multiple parameter sets." % statement.__visit_name__.upper()
-            )
-        else:
-            assert isinstance(statement, Insert)
-
-            # which implies...
-            # assert isinstance(statement.table, TableClause)
-
-        for parameters in statement._multi_values:
-            multi_parameters: List[MutableMapping[_DMLColumnElement, Any]] = [
-                {
-                    c.key: value
-                    for c, value in zip(statement.table.c, parameter_set)
-                }
-                if isinstance(parameter_set, collections_abc.Sequence)
-                else parameter_set
-                for parameter_set in parameters
-            ]
-
-            if self._no_parameters:
-                self._no_parameters = False
-                self._has_multi_parameters = True
-                self._multi_parameters = multi_parameters
-                self._dict_parameters = self._multi_parameters[0]
-            elif not self._has_multi_parameters:
-                self._cant_mix_formats_error()
-            else:
-                assert self._multi_parameters
-                self._multi_parameters.extend(multi_parameters)
-
     def _process_values(self, statement: ValuesBase) -> None:
         if self._no_parameters:
-            self._has_multi_parameters = False
             self._dict_parameters = statement._values
             self._no_parameters = False
-        elif self._has_multi_parameters:
-            self._cant_mix_formats_error()
-
-    def _process_ordered_values(self, statement: ValuesBase) -> None:
-        parameters = statement._ordered_values
-
-        if self._no_parameters:
-            self._no_parameters = False
-            assert parameters is not None
-            self._dict_parameters = dict(parameters)
-            self._ordered_values = parameters
-            self._parameter_ordering = [key for key, value in parameters]
-        elif self._has_multi_parameters:
-            self._cant_mix_formats_error()
-        else:
-            raise exc.InvalidRequestError(
-                "Can only invoke ordered_values() once, and not mixed "
-                "with any other values() call"
-            )
 
     def _process_select_values(self, statement: ValuesBase) -> None:
         assert statement._select_names is not None
@@ -276,6 +221,12 @@ class DMLState(CompileState):
             # does not allow this construction to occur
             assert False, "This statement already has parameters"
 
+    def _no_multi_values_supported(self, statement: ValuesBase) -> NoReturn:
+        raise exc.InvalidRequestError(
+            "%s construct does not support "
+            "multiple parameter sets." % statement.__visit_name__.upper()
+        )
+
     def _cant_mix_formats_error(self) -> NoReturn:
         raise exc.InvalidRequestError(
             "Can't mix single and multiple VALUES "
@@ -290,6 +241,8 @@ class InsertDMLState(DMLState):
     isinsert = True
 
     include_table_with_column_exprs = False
+
+    _has_multi_parameters = False
 
     def __init__(
         self,
@@ -320,6 +273,37 @@ class InsertDMLState(DMLState):
             for col in self._dict_parameters or ()
         ]
 
+    def _process_values(self, statement: ValuesBase) -> None:
+        if self._no_parameters:
+            self._has_multi_parameters = False
+            self._dict_parameters = statement._values
+            self._no_parameters = False
+        elif self._has_multi_parameters:
+            self._cant_mix_formats_error()
+
+    def _process_multi_values(self, statement: ValuesBase) -> None:
+        for parameters in statement._multi_values:
+            multi_parameters: List[MutableMapping[_DMLColumnElement, Any]] = [
+                {
+                    c.key: value
+                    for c, value in zip(statement.table.c, parameter_set)
+                }
+                if isinstance(parameter_set, collections_abc.Sequence)
+                else parameter_set
+                for parameter_set in parameters
+            ]
+
+            if self._no_parameters:
+                self._no_parameters = False
+                self._has_multi_parameters = True
+                self._multi_parameters = multi_parameters
+                self._dict_parameters = self._multi_parameters[0]
+            elif not self._has_multi_parameters:
+                self._cant_mix_formats_error()
+            else:
+                assert self._multi_parameters
+                self._multi_parameters.extend(multi_parameters)
+
 
 @CompileState.plugin_for("default", "update")
 class UpdateDMLState(DMLState):
@@ -336,7 +320,7 @@ class UpdateDMLState(DMLState):
         elif statement._values is not None:
             self._process_values(statement)
         elif statement._multi_values:
-            self._process_multi_values(statement)
+            self._no_multi_values_supported(statement)
         t, ef = self._make_extra_froms(statement)
         self._primary_table = t
         self._extra_froms = ef
@@ -346,6 +330,21 @@ class UpdateDMLState(DMLState):
         self.include_table_with_column_exprs = bool(
             mt and compiler.render_table_with_column_in_update_from
         )
+
+    def _process_ordered_values(self, statement: ValuesBase) -> None:
+        parameters = statement._ordered_values
+
+        if self._no_parameters:
+            self._no_parameters = False
+            assert parameters is not None
+            self._dict_parameters = dict(parameters)
+            self._ordered_values = parameters
+            self._parameter_ordering = [key for key, value in parameters]
+        else:
+            raise exc.InvalidRequestError(
+                "Can only invoke ordered_values() once, and not mixed "
+                "with any other values() call"
+            )
 
 
 @CompileState.plugin_for("default", "delete")
@@ -897,18 +896,68 @@ class ValuesBase(UpdateBase):
         return self
 
     @_generative
-    @_exclusive_against(
-        "_returning",
-        msgs={
-            "_returning": "RETURNING is already configured on this statement"
-        },
-        defaults={"_returning": _returning},
-    )
     def return_defaults(
         self: SelfValuesBase, *cols: _DMLColumnArgument
     ) -> SelfValuesBase:
         """Make use of a :term:`RETURNING` clause for the purpose
-        of fetching server-side expressions and defaults.
+        of fetching server-side expressions and defaults, for supporting
+        backends only.
+
+        .. tip::
+
+            The :meth:`.ValuesBase.return_defaults` method is used by the ORM
+            for its internal work in fetching newly generated primary key
+            and server default values, in particular to provide the underyling
+            implementation of the :paramref:`_orm.Mapper.eager_defaults`
+            ORM feature.  Its behavior is fairly idiosyncratic
+            and is not really intended for general use.  End users should
+            stick with using :meth:`.UpdateBase.returning` in order to
+            add RETURNING clauses to their INSERT, UPDATE and DELETE
+            statements.
+
+        Normally, a single row INSERT statement will automatically populate the
+        :attr:`.CursorResult.inserted_primary_key` attribute when executed,
+        which stores the primary key of the row that was just inserted in the
+        form of a :class:`.Row` object with column names as named tuple keys
+        (and the :attr:`.Row._mapping` view fully populated as well). The
+        dialect in use chooses the strategy to use in order to populate this
+        data; if it was generated using server-side defaults and / or SQL
+        expressions, dialect-specific approaches such as ``cursor.lastrowid``
+        or ``RETURNING`` are typically used to acquire the new primary key
+        value.
+
+        However, when the statement is modified by calling
+        :meth:`.ValuesBase.return_defaults` before executing the statement,
+        additional behaviors take place **only** for backends that support
+        RETURNING and for :class:`.Table` objects that maintain the
+        :paramref:`.Table.implicit_returning` parameter at its default value of
+        ``True``. In these cases, when the :class:`.CursorResult` is returned
+        from the statement's execution, not only will
+        :attr:`.CursorResult.inserted_primary_key` be populated as always, the
+        :attr:`.CursorResult.returned_defaults` attribute will also be
+        populated with a :class:`.Row` named-tuple representing the full range
+        of server generated
+        values from that single row, including values for any columns that
+        specify :paramref:`_schema.Column.server_default` or which make use of
+        :paramref:`_schema.Column.default` using a SQL expression.
+
+        When invoking INSERT statements with multiple rows using
+        :ref:`insertmanyvalues <engine_insertmanyvalues>`, the
+        :meth:`.ValuesBase.return_defaults` modifier will have the effect of
+        the :attr:`_engine.CursorResult.inserted_primary_key_rows` and
+        :attr:`_engine.CursorResult.returned_defaults_rows` attributes being
+        fully populated with lists of :class:`.Row` objects representing newly
+        inserted primary key values as well as newly inserted server generated
+        values for each row inserted. The
+        :attr:`.CursorResult.inserted_primary_key` and
+        :attr:`.CursorResult.returned_defaults` attributes will also continue
+        to be populated with the first row of these two collections.
+
+        If the backend does not support RETURNING or the :class:`.Table` in use
+        has disabled :paramref:`.Table.implicit_returning`, then no RETURNING
+        clause is added and no additional data is fetched, however the
+        INSERT or UPDATE statement proceeds normally.
+
 
         E.g.::
 
@@ -918,64 +967,58 @@ class ValuesBase(UpdateBase):
 
             server_created_at = result.returned_defaults['created_at']
 
-        When used against a backend that supports RETURNING, all column
-        values generated by SQL expression or server-side-default will be
-        added to any existing RETURNING clause, provided that
-        :meth:`.UpdateBase.returning` is not used simultaneously.  The column
-        values will then be available on the result using the
-        :attr:`_engine.CursorResult.returned_defaults` accessor as
-        a dictionary,
-        referring to values keyed to the :class:`_schema.Column`
-        object as well as
-        its ``.key``.
 
-        This method differs from :meth:`.UpdateBase.returning` in these ways:
+        The :meth:`.ValuesBase.return_defaults` method is mutually exclusive
+        against the :meth:`.UpdateBase.returning` method and errors will be
+        raised during the SQL compilation process if both are used at the same
+        time on one statement. The RETURNING clause of the INSERT or UPDATE
+        statement is therefore controlled by only one of these methods at a
+        time.
 
-        1. :meth:`.ValuesBase.return_defaults` is only intended for use with an
-           INSERT or an UPDATE statement that matches exactly one row per
-           parameter set. While the RETURNING construct in the general sense
-           supports multiple rows for a multi-row UPDATE or DELETE statement,
-           or for special cases of INSERT that return multiple rows (e.g.
-           INSERT from SELECT, multi-valued VALUES clause),
-           :meth:`.ValuesBase.return_defaults` is intended only for an
-           "ORM-style" single-row INSERT/UPDATE statement.  The row
-           returned by the statement is also consumed implicitly when
-           :meth:`.ValuesBase.return_defaults` is used.  By contrast,
-           :meth:`.UpdateBase.returning` leaves the RETURNING result-set intact
-           with a collection of any number of rows.
+        The :meth:`.ValuesBase.return_defaults` method differs from
+        :meth:`.UpdateBase.returning` in these ways:
 
-        2. It is compatible with the existing logic to fetch auto-generated
-           primary key values, also known as "implicit returning".  Backends
-           that support RETURNING will automatically make use of RETURNING in
-           order to fetch the value of newly generated primary keys; while the
-           :meth:`.UpdateBase.returning` method circumvents this behavior,
-           :meth:`.ValuesBase.return_defaults` leaves it intact.
+        1. :meth:`.ValuesBase.return_defaults` method causes the
+           :attr:`.CursorResult.returned_defaults` collection to be populated
+           with the first row from the RETURNING result. This attribute is not
+           populated when using :meth:`.UpdateBase.returning`.
 
-        3. It can be called against any backend.  Backends that don't support
-           RETURNING will skip the usage of the feature, rather than raising
-           an exception.  The return value of
-           :attr:`_engine.CursorResult.returned_defaults` will be ``None``
+        2. :meth:`.ValuesBase.return_defaults` is compatible with existing
+           logic used to fetch auto-generated primary key values that are then
+           populated into the :attr:`.CursorResult.inserted_primary_key`
+           attribute. By contrast, using :meth:`.UpdateBase.returning` will
+           have the effect of the :attr:`.CursorResult.inserted_primary_key`
+           attribute being left unpopulated.
+
+        3. :meth:`.ValuesBase.return_defaults` can be called against any
+           backend. Backends that don't support RETURNING will skip the usage
+           of the feature, rather than raising an exception. The return value
+           of :attr:`_engine.CursorResult.returned_defaults` will be ``None``
+           for backends that don't support RETURNING or for which the target
+           :class:`.Table` sets :paramref:`.Table.implicit_returning` to
+           ``False``.
 
         4. An INSERT statement invoked with executemany() is supported if the
            backend database driver supports the
-           ``insert_executemany_returning`` feature, currently this includes
-           PostgreSQL with psycopg2.  When executemany is used, the
+           :ref:`insertmanyvalues <engine_insertmanyvalues>`
+           feature which is now supported by most SQLAlchemy-included backends.
+           When executemany is used, the
            :attr:`_engine.CursorResult.returned_defaults_rows` and
            :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors
            will return the inserted defaults and primary keys.
 
-           .. versionadded:: 1.4
+           .. versionadded:: 1.4 Added
+              :attr:`_engine.CursorResult.returned_defaults_rows` and
+              :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors.
+              In version 2.0, the underlying implementation which fetches and
+              populates the data for these attributes was generalized to be
+              supported by most backends, whereas in 1.4 they were only
+              supported by the ``psycopg2`` driver.
 
-        :meth:`.ValuesBase.return_defaults` is used by the ORM to provide
-        an efficient implementation for the ``eager_defaults`` feature of
-        :class:`_orm.Mapper`.
 
         :param cols: optional list of column key names or
-         :class:`_schema.Column`
-         objects.  If omitted, all column expressions evaluated on the server
-         are added to the returning list.
-
-        .. versionadded:: 0.9.0
+         :class:`_schema.Column` that acts as a filter for those columns that
+         will be fetched.
 
         .. seealso::
 

@@ -3989,14 +3989,6 @@ class Session(_SessionClassMethods, EventTarget):
             and SQL clause support are **silently omitted** in favor of raw
             INSERT/UPDATES of records.
 
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
-
             **Please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and
             fully test and confirm the functionality of all code developed
@@ -4108,8 +4100,6 @@ class Session(_SessionClassMethods, EventTarget):
         organizing the values within them across the tables to which
         the given mapper is mapped.
 
-        .. versionadded:: 1.0.0
-
         .. warning::
 
             The bulk insert feature allows for a lower-latency INSERT
@@ -4117,14 +4107,6 @@ class Session(_SessionClassMethods, EventTarget):
             Features such as object management, relationship handling,
             and SQL clause support are **silently omitted** in favor of raw
             INSERT of records.
-
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
 
             **Please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and
@@ -4142,19 +4124,18 @@ class Session(_SessionClassMethods, EventTarget):
          such as a joined-inheritance mapping, each dictionary must contain all
          keys to be populated into all tables.
 
-        :param return_defaults: when True, rows that are missing values which
-         generate defaults, namely integer primary key defaults and sequences,
-         will be inserted **one at a time**, so that the primary key value
-         is available.  In particular this will allow joined-inheritance
-         and other multi-table mappings to insert correctly without the need
-         to provide primary
-         key values ahead of time; however,
-         :paramref:`.Session.bulk_insert_mappings.return_defaults`
-         **greatly reduces the performance gains** of the method overall.
-         If the rows
-         to be inserted only refer to a single table, then there is no
-         reason this flag should be set as the returned default information
-         is not used.
+        :param return_defaults: when True, the INSERT process will be altered
+         to ensure that newly generated primary key values will be fetched.
+         The rationale for this parameter is typically to enable
+         :ref:`Joined Table Inheritance <joined_inheritance>` mappings to
+         be bulk inserted.
+
+         .. note:: for backends that don't support RETURNING, the
+            :paramref:`_orm.Session.bulk_insert_mappings.return_defaults`
+            parameter can significantly decrease performance as INSERT
+            statements can no longer be batched.   See
+            :ref:`engine_insertmanyvalues`
+            for background on which backends are affected.
 
         :param render_nulls: When True, a value of ``None`` will result
          in a NULL value being included in the INSERT statement, rather
@@ -4177,8 +4158,6 @@ class Session(_SessionClassMethods, EventTarget):
             the NULL value will be sent explicitly.   Care must be taken
             to ensure that no server-side default functions need to be
             invoked for the operation as a whole.
-
-         .. versionadded:: 1.1
 
         .. seealso::
 
@@ -4211,8 +4190,6 @@ class Session(_SessionClassMethods, EventTarget):
         state management features in use, reducing latency when updating
         large numbers of simple rows.
 
-        .. versionadded:: 1.0.0
-
         .. warning::
 
             The bulk update feature allows for a lower-latency UPDATE
@@ -4220,14 +4197,6 @@ class Session(_SessionClassMethods, EventTarget):
             Features such as object management, relationship handling,
             and SQL clause support are **silently omitted** in favor of raw
             UPDATES of records.
-
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
 
             **Please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and

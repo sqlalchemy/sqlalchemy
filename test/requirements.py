@@ -894,6 +894,11 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["mariadb+mariadbconnector"]) + self.empty_inserts
 
     @property
+    def provisioned_upsert(self):
+        """backend includes upsert() in its provisioning.py"""
+        return only_on(["postgresql", "sqlite", "mariadb"])
+
+    @property
     def expressions_against_unbounded_text(self):
         """target database supports use of an unbounded textual field in a
         WHERE clause."""
