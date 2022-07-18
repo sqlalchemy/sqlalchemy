@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -832,7 +833,7 @@ class AsyncSession(ReversibleProxy[Session]):
             :meth:`_asyncio.AsyncSession.close`
 
         """
-        return await greenlet_spawn(self.sync_session.close)
+        await greenlet_spawn(self.sync_session.close)
 
     async def invalidate(self) -> None:
         """Close this Session, using connection invalidation.
@@ -850,7 +851,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self
 
     async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
-        await self.close()
+        await asyncio.shield(self.close())
 
     def _maker_context_manager(self: _AS) -> _AsyncSessionContextManager[_AS]:
         return _AsyncSessionContextManager(self)
@@ -1511,8 +1512,11 @@ class _AsyncSessionContextManager(Generic[_AS]):
         return self.async_session
 
     async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
-        await self.trans.__aexit__(type_, value, traceback)
-        await self.async_session.__aexit__(type_, value, traceback)
+        async def go() -> None:
+            await self.trans.__aexit__(type_, value, traceback)
+            await self.async_session.__aexit__(type_, value, traceback)
+
+        await asyncio.shield(go())
 
 
 class AsyncSessionTransaction(
