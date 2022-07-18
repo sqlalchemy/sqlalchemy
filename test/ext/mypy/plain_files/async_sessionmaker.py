@@ -5,7 +5,9 @@ for asynchronous ORM use.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from typing import List
+from typing import Optional
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
@@ -16,6 +18,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from sqlalchemy import ScalarResult
@@ -40,6 +43,14 @@ class B(Base):
     data: Mapped[str]
 
 
+def work_with_a_session_one(sess: Session) -> Any:
+    pass
+
+
+def work_with_a_session_two(sess: Session, param: Optional[str] = None) -> Any:
+    pass
+
+
 async def async_main() -> None:
     """Main program function."""
 
@@ -56,6 +67,9 @@ async def async_main() -> None:
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session.begin() as session:
+        await session.run_sync(work_with_a_session_one)
+        await session.run_sync(work_with_a_session_two, param="foo")
+
         session.add_all(
             [
                 A(bs=[B(), B()], data="a1"),
