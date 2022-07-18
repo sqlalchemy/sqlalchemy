@@ -718,6 +718,8 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             out_parameters = self.out_parameters
             assert out_parameters is not None
 
+            len_params = len(self.parameters)
+
             quoted_bind_names = self.compiled.escaped_bind_names
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
@@ -726,7 +728,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
                     if hasattr(type_impl, "_cx_oracle_var"):
                         out_parameters[name] = type_impl._cx_oracle_var(
-                            self.dialect, self.cursor, arraysize=1
+                            self.dialect, self.cursor, arraysize=len_params
                         )
                     else:
                         dbtype = type_impl.get_dbapi_type(self.dialect.dbapi)
@@ -765,15 +767,17 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                             out_parameters[name] = self.cursor.var(
                                 dbtype,
                                 outconverter=lambda value: value.read(),
-                                arraysize=1,
+                                arraysize=len_params,
                             )
                         else:
                             out_parameters[name] = self.cursor.var(
-                                dbtype, arraysize=1
+                                dbtype, arraysize=len_params
                             )
-                    self.parameters[0][
-                        quoted_bind_names.get(name, name)
-                    ] = out_parameters[name]
+
+                    for param in self.parameters:
+                        param[
+                            quoted_bind_names.get(name, name)
+                        ] = out_parameters[name]
 
     def _generate_cursor_outputtype_handler(self):
         output_handlers = {}
@@ -833,16 +837,26 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             # get_out_parameter_values(), the result-row handlers here will be
             # applied at the Result level
 
-            numrows = len(self.out_parameters["ret_0"].values[0])
             numcols = len(self.out_parameters)
 
-            initial_buffer = [
-                tuple(
-                    self.out_parameters[f"ret_{j}"].values[0][i]
-                    for j in range(numcols)
+            # [stmt_result for stmt_result in outparam.values] == each
+            # statement in executemany
+            # [val for val in stmt_result] == each row for a particular
+            # statement
+            initial_buffer = list(
+                zip(
+                    *[
+                        [
+                            val
+                            for stmt_result in self.out_parameters[
+                                f"ret_{j}"
+                            ].values
+                            for val in stmt_result
+                        ]
+                        for j in range(numcols)
+                    ]
                 )
-                for i in range(numrows)
-            ]
+            )
 
             fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
                 self.cursor,
@@ -881,6 +895,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
+
+    insert_executemany_returning = True
 
     bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
