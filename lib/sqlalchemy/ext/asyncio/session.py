@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -33,7 +34,6 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Protocol
 
 if TYPE_CHECKING:
     from .engine import AsyncConnection
@@ -66,11 +66,6 @@ if TYPE_CHECKING:
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
 
 _T = TypeVar("_T", bound=Any)
-
-
-class _SyncSessionCallable(Protocol):
-    def __call__(self, session: Session, *arg: Any, **kw: Any) -> Any:
-        ...
 
 
 _EXECUTE_OPTIONS = util.immutabledict({"prebuffer_rows": True})
@@ -234,7 +229,7 @@ class AsyncSession(ReversibleProxy[Session]):
         )
 
     async def run_sync(
-        self, fn: _SyncSessionCallable, *arg: Any, **kw: Any
+        self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Any:
         """Invoke the given sync callable passing sync self as the first
         argument.

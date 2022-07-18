@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Generator
 from typing import NoReturn
@@ -33,7 +34,6 @@ from ...engine import Engine
 from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Protocol
 
 if TYPE_CHECKING:
     from ...engine.cursor import CursorResult
@@ -53,11 +53,6 @@ if TYPE_CHECKING:
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
-
-
-class _SyncConnectionCallable(Protocol):
-    def __call__(self, connection: Connection, *arg: Any, **kw: Any) -> Any:
-        ...
 
 
 def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
@@ -667,7 +662,7 @@ class AsyncConnection(
         return result.scalars()
 
     async def run_sync(
-        self, fn: _SyncConnectionCallable, *arg: Any, **kw: Any
+        self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Any:
         """Invoke the given sync callable passing self as the first argument.
 
@@ -844,6 +839,11 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
 
         def __init__(self, conn: AsyncConnection):
             self.conn = conn
+
+        if TYPE_CHECKING:
+
+            async def __aenter__(self) -> AsyncConnection:
+                ...
 
         async def start(self, is_ctxmanager: bool = False) -> AsyncConnection:
             await self.conn.start(is_ctxmanager=is_ctxmanager)
