@@ -2055,7 +2055,7 @@ class Relationship(
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
-            self._dependency_processor = (
+            self._dependency_processor = (  # type: ignore
                 dependency.DependencyProcessor.from_relationship
             )(self)
 

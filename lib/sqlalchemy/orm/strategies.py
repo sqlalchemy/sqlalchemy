@@ -543,7 +543,7 @@ class DeferredColumnLoader(LoaderStrategy):
 class LoadDeferredColumns:
     """serializable loader object used by DeferredColumnLoader"""
 
-    def __init__(self, key, raiseload=False):
+    def __init__(self, key: str, raiseload: bool = False):
         self.key = key
         self.raiseload = raiseload
 
