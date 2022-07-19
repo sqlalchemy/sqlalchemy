@@ -232,7 +232,11 @@ def _in_impl(
 def _getitem_impl(
     expr: ColumnElement[Any], op: OperatorType, other: Any, **kw: Any
 ) -> ColumnElement[Any]:
-    if isinstance(expr.type, type_api.INDEXABLE):
+    if (
+        isinstance(expr.type, type_api.INDEXABLE)
+        or isinstance(expr.type, type_api.TypeDecorator)
+        and isinstance(expr.type.impl_instance, type_api.INDEXABLE)
+    ):
         other = coercions.expect(
             roles.BinaryElementRole, other, expr=expr, operator=op
         )

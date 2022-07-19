@@ -1551,8 +1551,11 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
        the default rules of :meth:`.TypeEngine.coerce_compared_value` should
        be used in order to deal with operators like index operations::
 
+            from sqlalchemy import JSON
+            from sqlalchemy import TypeDecorator
+
             class MyJsonType(TypeDecorator):
-                impl = postgresql.JSON
+                impl = JSON
 
                 cache_ok = True
 
@@ -1561,6 +1564,24 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
        Without the above step, index operations such as ``mycol['foo']``
        will cause the index value ``'foo'`` to be JSON encoded.
+
+       Similarly, when working with the :class:`.ARRAY` datatype, the
+       type coercion for index operations (e.g. ``mycol[5]``) is also
+       handled by :meth:`.TypeDecorator.coerce_compared_value`, where
+       again a simple override is sufficient unless special rules are needed
+       for particular operators::
+
+            from sqlalchemy import ARRAY
+            from sqlalchemy import TypeDecorator
+
+            class MyArrayType(TypeDecorator):
+                impl = ARRAY
+
+                cache_ok = True
+
+                def coerce_compared_value(self, op, value):
+                    return self.impl.coerce_compared_value(op, value)
+
 
     """
 
