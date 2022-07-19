@@ -522,7 +522,7 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
 
 def _setup_declarative_base(cls: Type[Any]) -> None:
     if "metadata" in cls.__dict__:
-        metadata = cls.metadata  # type: ignore
+        metadata = cls.__dict__["metadata"]
     else:
         metadata = None
 
@@ -688,9 +688,25 @@ class DeclarativeBase(
 
     def __init_subclass__(cls) -> None:
         if DeclarativeBase in cls.__bases__:
+            _check_not_declarative(cls, DeclarativeBase)
             _setup_declarative_base(cls)
         else:
             _as_declarative(cls._sa_registry, cls, cls.__dict__)
+
+
+def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
+    cls_dict = cls.__dict__
+    if (
+        "__table__" in cls_dict
+        and not (
+            callable(cls_dict["__table__"])
+            or hasattr(cls_dict["__table__"], "__get__")
+        )
+    ) or isinstance(cls_dict.get("__tablename__", None), str):
+        raise exc.InvalidRequestError(
+            f"Cannot use {base.__name__!r} directly as a declarative base "
+            "class. Create a Base by creating a subclass of it."
+        )
 
 
 class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
@@ -705,22 +721,20 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
 
     """
 
+    registry: ClassVar[_RegistryType]
+    _sa_registry: ClassVar[_RegistryType]
+    metadata: ClassVar[MetaData]
+    __mapper__: ClassVar[Mapper[Any]]
+    __table__: Optional[FromClause]
+
     if typing.TYPE_CHECKING:
-        registry: ClassVar[_RegistryType]
-        _sa_registry: ClassVar[_RegistryType]
-        metadata: ClassVar[MetaData]
-
-        __name__: ClassVar[str]
-        __mapper__: ClassVar[Mapper[Any]]
-        __table__: ClassVar[Optional[FromClause]]
-
-        __tablename__: ClassVar[Any]
 
         def __init__(self, **kw: Any):
             ...
 
     def __init_subclass__(cls) -> None:
         if DeclarativeBaseNoMeta in cls.__bases__:
+            _check_not_declarative(cls, DeclarativeBaseNoMeta)
             _setup_declarative_base(cls)
         else:
             cls._sa_registry.map_declaratively(cls)
