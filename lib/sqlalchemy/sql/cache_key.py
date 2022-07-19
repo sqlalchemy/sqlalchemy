@@ -272,7 +272,7 @@ class HasCacheKey:
                 elif meth is ANON_NAME:
                     elements = util.preloaded.sql_elements
                     if isinstance(obj, elements._anonymous_label):
-                        obj = obj.apply_map(anon_map)
+                        obj = obj.apply_map(anon_map)  # type: ignore
                     result += (attrname, obj)
                 elif meth is CALL_GEN_CACHE_KEY:
                     result += (
