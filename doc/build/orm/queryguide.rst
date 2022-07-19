@@ -257,16 +257,15 @@ allows sets of column expressions to be grouped in result rows::
     ...     Bundle("email", Address.email_address)
     ... ).join_from(User, Address)
     {sql}>>> for row in session.execute(stmt):
-    ...     print(f"{row.user.name} {row.email.email_address}")
+    ...     print(f"{row.user.name} {row.user.fullname} {row.email.email_address}")
     SELECT user_account.name, user_account.fullname, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     [...] (){stop}
-    spongebob spongebob@sqlalchemy.org
-    sandy sandy@sqlalchemy.org
-    sandy squirrel@squirrelpower.org
-    patrick pat999@aol.com
-    squidward stentcl@sqlalchemy.org
-
+    spongebob Spongebob Squarepants spongebob@sqlalchemy.org
+    sandy Sandy Cheeks sandy@sqlalchemy.org
+    sandy Sandy Cheeks squirrel@squirrelpower.org
+    patrick Patrick Star pat999@aol.com
+    squidward Squidward Tentacles stentcl@sqlalchemy.org
 
 The :class:`_orm.Bundle` is potentially useful for creating lightweight
 views as well as custom column groupings such as mappings.
