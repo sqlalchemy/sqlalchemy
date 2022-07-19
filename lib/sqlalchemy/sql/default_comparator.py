@@ -168,7 +168,11 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
 
 
 def _getitem_impl(expr, op, other, **kw):
-    if isinstance(expr.type, type_api.INDEXABLE):
+    if (
+        isinstance(expr.type, type_api.INDEXABLE)
+        or isinstance(expr.type, type_api.TypeDecorator)
+        and isinstance(expr.type.impl, type_api.INDEXABLE)
+    ):
         other = coercions.expect(
             roles.BinaryElementRole, other, expr=expr, operator=op
         )
