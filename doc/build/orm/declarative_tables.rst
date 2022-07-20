@@ -1405,18 +1405,18 @@ way.   Example::
     class User(Base):
         __table__ = user_table
         __mapper_args__ = {
-            'include_properties' :['user_id', 'user_name']
+            'include_properties': ['user_id', 'user_name']
         }
 
-In the above example, the ``User`` class will map to the ``user_table`` table, only including
-the ``user_id`` and ``user_name`` columns - the rest are not referenced.
+In the above example, the ``User`` class will map to the ``user_table`` table, only
+including the ``user_id`` and ``user_name`` columns - the rest are not referenced.
 
 Similarly::
 
     class Address(Base):
         __table__ = address_table
         __mapper_args__ = {
-            'exclude_properties' : ["street", "city", "state", "zip"]
+            'exclude_properties': ["street", "city", "state", "zip"]
         }
 
 will map the ``Address`` class to the ``address_table`` table, including
@@ -1424,13 +1424,14 @@ all columns present except ``street``, ``city``, ``state``, and ``zip``.
 
 As indicated in the two examples, columns may be referred towards either
 by string name or by referring to the :class:`_schema.Column` object
-directly.  Referring to the object directly may be useful for explicitness as well as to resolve ambiguities when
+directly.  Referring to the object directly may be useful for explicitness as
+well as to resolve ambiguities when
 mapping to multi-table constructs that might have repeated names::
 
     class User(Base):
         __table__ = user_table
         __mapper_args__ = {
-            'include_properties' :[user_table.c.user_id, user_table.c.user_name]
+            'include_properties': [user_table.c.user_id, user_table.c.user_name]
         }
 
 When columns are not included in a mapping, these columns will not be
