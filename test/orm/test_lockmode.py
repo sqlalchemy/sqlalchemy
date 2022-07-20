@@ -330,6 +330,8 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_for_update_on_inner_w_joinedload_no_render_oracle(self):
+        from sqlalchemy.dialects import oracle
+
         User = self.classes.User
         sess = fixture_session()
         self.assert_compile(
@@ -349,5 +351,5 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "__[POSTCOMPILE_param_1]) anon_1 "
             "LEFT OUTER JOIN addresses addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id FOR UPDATE",
-            dialect="oracle",
+            dialect=oracle.dialect(enable_offset_fetch=False),
         )

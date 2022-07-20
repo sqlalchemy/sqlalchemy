@@ -260,23 +260,38 @@ impact of this change has been mitigated.
 LIMIT/OFFSET/FETCH Support
 --------------------------
 
-Methods like :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` currently
-use an emulated approach for LIMIT / OFFSET based on window functions, which
-involves creation of a subquery using ``ROW_NUMBER`` that is prone to
-performance issues as well as SQL construction issues for complex statements.
-However, this approach is supported by all Oracle versions.  See notes below.
+Methods like :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` make
+use of ``FETCH FIRST N ROW / OFFSET N ROWS`` syntax assuming
+Oracle 12c or above, and assuming the SELECT statement is not embedded within
+a compound statement like UNION.  This syntax is also available directly by using
+the :meth:`_sql.Select.fetch` method.
 
-When using Oracle 12c and above, use the :meth:`_sql.Select.fetch` method
-instead; this will render the more modern
-``FETCH FIRST N ROW / OFFSET N ROWS`` syntax.
+.. versionchanged:: 2.0  the Oracle dialect now uses
+   ``FETCH FIRST N ROW / OFFSET N ROWS`` for all
+   :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` usage including
+   within the ORM and legacy :class:`_orm.Query`.  To force the legacy
+   behavior using window functions, specify the ``enable_offset_fetch=False``
+   dialect parameter to :func:`_sa.create_engine`.
+
+The use of ``FETCH FIRST / OFFSET`` may be disabled on any Oracle version
+by passing ``enable_offset_fetch=False`` to :func:`_sa.create_engine`, which
+will force the use of "legacy" mode that makes use of window functions.
+This mode is also selected automatically when using a version of Oracle
+prior to 12c.
+
+When using legacy mode, or when a :class:`.Select` statement
+with limit/offset is embedded in a compound statement, an emulated approach for
+LIMIT / OFFSET based on window functions is used, which involves creation of a
+subquery using ``ROW_NUMBER`` that is prone to performance issues as well as
+SQL construction issues for complex statements. However, this approach is
+supported by all Oracle versions. See notes below.
 
 Notes on LIMIT / OFFSET emulation (when fetch() method cannot be used)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If using :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset`,
-or with the ORM the :meth:`_orm.Query.limit` and :meth:`_orm.Query.offset` methods,
-and the :meth:`_sql.Select.fetch` method **cannot** be used instead, the following
-notes apply:
+If using :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset`, or with the
+ORM the :meth:`_orm.Query.limit` and :meth:`_orm.Query.offset` methods on an
+Oracle version prior to 12c, the following notes apply:
 
 * SQLAlchemy currently makes use of ROWNUM to achieve
   LIMIT/OFFSET; the exact methodology is taken from
@@ -295,10 +310,6 @@ notes apply:
       .. seealso::
 
           :ref:`change_4808`.
-
-* A future release may use ``FETCH FIRST N ROW / OFFSET N ROWS`` automatically
-  when :meth:`_sql.Select.limit`, :meth:`_sql.Select.offset`, :meth:`_orm.Query.limit`,
-  :meth:`_orm.Query.offset` are used.
 
 .. _oracle_returning:
 
@@ -1001,6 +1012,33 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
+    def _row_limit_clause(self, select, **kw):
+        """ORacle 12c supports OFFSET/FETCH operators
+        Use it instead subquery with row_number
+
+        """
+
+        if (
+            select._fetch_clause is not None
+            or not self.dialect._supports_offset_fetch
+        ):
+            return super()._row_limit_clause(
+                select, use_literal_execute_for_simple_int=True, **kw
+            )
+        else:
+            return self.fetch_clause(
+                select,
+                fetch_clause=self._get_limit_or_fetch(select),
+                use_literal_execute_for_simple_int=True,
+                **kw,
+            )
+
+    def _get_limit_or_fetch(self, select):
+        if select._fetch_clause is None:
+            return select._limit_clause
+        else:
+            return select._fetch_clause
+
     def translate_select_structure(self, select_stmt, **kwargs):
         select = select_stmt
 
@@ -1017,6 +1055,7 @@ class OracleCompiler(compiler.SQLCompiler):
             # if fetch is used this is not needed
             if (
                 select._has_row_limiting_clause
+                and not self.dialect._supports_offset_fetch
                 and select._fetch_clause is None
             ):
                 limit_clause = select._limit_clause
@@ -1375,6 +1414,8 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 128
 
+    _supports_offset_fetch = True
+
     insert_returning = True
     update_returning = True
     delete_returning = True
@@ -1435,6 +1476,7 @@ class OracleDialect(default.DefaultDialect):
         use_binds_for_limits=None,
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
+        enable_offset_fetch=True,
         **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -1442,6 +1484,9 @@ class OracleDialect(default.DefaultDialect):
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
         self.exclude_tablespaces = exclude_tablespaces
+        self.enable_offset_fetch = (
+            self._supports_offset_fetch
+        ) = enable_offset_fetch
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
@@ -1458,6 +1503,9 @@ class OracleDialect(default.DefaultDialect):
             self.use_ansi = False
 
         self.supports_identity_columns = self.server_version_info >= (12,)
+        self._supports_offset_fetch = (
+            self.enable_offset_fetch and self.server_version_info >= (12,)
+        )
 
     def _get_effective_compat_server_version_info(self, connection):
         # dialect does not need compat levels below 12.2, so don't query

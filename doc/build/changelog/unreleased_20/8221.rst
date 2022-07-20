@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, oracle
+    :tickets: 8221
+
+    Oracle will now use FETCH FIRST N ROWS / OFFSET syntax for limit/offset
+    support by default for Oracle 12c and above. This syntax was already
+    available when :meth:`_sql.Select.fetch` were used directly, it's now
+    implied for :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` as
+    well.
+

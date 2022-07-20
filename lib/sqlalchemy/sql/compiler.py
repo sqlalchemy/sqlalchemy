@@ -4266,19 +4266,44 @@ class SQLCompiler(Compiled):
             text += " OFFSET " + self.process(select._offset_clause, **kw)
         return text
 
-    def fetch_clause(self, select, **kw):
+    def fetch_clause(
+        self,
+        select,
+        fetch_clause=None,
+        require_offset=False,
+        use_literal_execute_for_simple_int=False,
+        **kw,
+    ):
+        if fetch_clause is None:
+            fetch_clause = select._fetch_clause
+            fetch_clause_options = select._fetch_clause_options
+        else:
+            fetch_clause_options = {"percent": False, "with_ties": False}
+
         text = ""
+
         if select._offset_clause is not None:
-            text += "\n OFFSET %s ROWS" % self.process(
-                select._offset_clause, **kw
-            )
-        if select._fetch_clause is not None:
+            offset_clause = select._offset_clause
+            if (
+                use_literal_execute_for_simple_int
+                and select._simple_int_clause(offset_clause)
+            ):
+                offset_clause = offset_clause.render_literal_execute()
+            offset_str = self.process(offset_clause, **kw)
+            text += "\n OFFSET %s ROWS" % offset_str
+        elif require_offset:
+            text += "\n OFFSET 0 ROWS"
+
+        if fetch_clause is not None:
+            if (
+                use_literal_execute_for_simple_int
+                and select._simple_int_clause(fetch_clause)
+            ):
+                fetch_clause = fetch_clause.render_literal_execute()
             text += "\n FETCH FIRST %s%s ROWS %s" % (
-                self.process(select._fetch_clause, **kw),
-                " PERCENT" if select._fetch_clause_options["percent"] else "",
-                "WITH TIES"
-                if select._fetch_clause_options["with_ties"]
-                else "ONLY",
+                self.process(fetch_clause, **kw),
+                " PERCENT" if fetch_clause_options["percent"] else "",
+                "WITH TIES" if fetch_clause_options["with_ties"] else "ONLY",
             )
         return text
 
