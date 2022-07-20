@@ -37,6 +37,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1478,6 +1479,99 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "LEFT OUTER JOIN orders AS orders_1 "
             "ON users.id = orders_1.user_id",
         )
+
+
+@testing.combinations(
+    (
+        "order_one",
+        True,
+    ),
+    (
+        "order_two",
+        False,
+    ),
+    argnames="name, rel_ordering",
+    id_="sa",
+)
+class MultiPathTest(fixtures.DeclarativeMappedTest):
+    """test #8166"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(10))
+            phone = Column(String(10))
+
+        class Task(Base):
+            __tablename__ = "tasks"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(10))
+            created_by_id = Column(Integer, ForeignKey("users.id"))
+            managed_by_id = Column(Integer, ForeignKey("users.id"))
+
+            # reverse the order of these two in order to see it change
+            if cls.rel_ordering:
+                managed_by = relationship("User", foreign_keys=[managed_by_id])
+                created_by = relationship("User", foreign_keys=[created_by_id])
+            else:
+                created_by = relationship("User", foreign_keys=[created_by_id])
+                managed_by = relationship("User", foreign_keys=[managed_by_id])
+
+    @classmethod
+    def insert_data(cls, connection):
+        User, Task = cls.classes("User", "Task")
+
+        u1 = User(name="u1", phone="p1")
+        u2 = User(name="u2", phone="p2")
+        u3 = User(name="u3", phone="p3")
+
+        with Session(connection) as session:
+            session.add(Task(name="t1", created_by=u2, managed_by=u3))
+            session.add(Task(name="t2", created_by=u1, managed_by=u1))
+            session.commit()
+
+    def test_data_loaded(self):
+
+        User, Task = self.classes("User", "Task")
+        session = fixture_session()
+
+        all_tasks = session.query(Task).all()  # noqa: F841
+        all_users = session.query(User).all()  # noqa: F841
+
+        # expire all objects
+        session.expire_all()
+
+        # now load w/ the special paths.   User.phone needs to be
+        # undeferred
+        tasks = (
+            session.query(Task)
+            .options(
+                joinedload(Task.managed_by).load_only(User.name),
+                joinedload(Task.created_by).load_only(User.name, User.phone),
+            )
+            .all()
+        )
+
+        session.close()
+        for task in tasks:
+            if task.name == "t1":
+                # for User u2, created_by path includes User.phone
+                eq_(task.created_by.phone, "p2")
+
+                # for User u3, managed_by path does not
+                assert "phone" not in task.managed_by.__dict__
+            elif task.name == "t2":
+                # User u1 was loaded by both created_by and managed_by
+                # path, so 'phone' should be unconditionally populated
+                is_(task.created_by, task.managed_by)
+                eq_(task.created_by.phone, "p1")
+                eq_(task.managed_by.phone, "p1")
+            else:
+                assert False
 
 
 class SelfReferentialMultiPathTest(testing.fixtures.DeclarativeMappedTest):

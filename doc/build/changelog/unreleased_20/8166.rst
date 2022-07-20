@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8166
+
+    Made an improvement to the "deferred" / "load_only" set of strategy options
+    where if a certain object is loaded from two different logical paths within
+    one query, attributes that have been configured by at least one of the
+    options to be populated will be populated in all cases, even if other load
+    paths for that same object did not set this option. previously, it was
+    based on randomness as to which "path" addressed the object first.
