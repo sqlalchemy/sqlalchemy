@@ -1,5 +1,5 @@
-"""This series of tests illustrates different ways to UPDATE a large number
-of rows in bulk.
+"""This series of tests will illustrate different ways to UPDATE a large number
+of rows in bulk (under construction! there's just one test at the moment)
 
 
 """
