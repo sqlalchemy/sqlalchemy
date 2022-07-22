@@ -2862,8 +2862,6 @@ class MSDialect(default.DefaultDialect):
         ),
     ]
 
-    sqlserver_variant = "sqlserver"
-
     def __init__(
         self,
         query_timeout=None,
