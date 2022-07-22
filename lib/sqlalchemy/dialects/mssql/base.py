@@ -2752,6 +2752,7 @@ class MSDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
+        ignore_no_transaction_on_rollback=False,
         **opts
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2759,6 +2760,9 @@ class MSDialect(default.DefaultDialect):
 
         self.use_scope_identity = use_scope_identity
         self.deprecate_large_types = deprecate_large_types
+        self.ignore_no_transaction_on_rollback = (
+            ignore_no_transaction_on_rollback
+        )
 
         if legacy_schema_aliasing is not None:
             util.warn_deprecated(
@@ -2782,6 +2786,22 @@ class MSDialect(default.DefaultDialect):
     def do_release_savepoint(self, connection, name):
         # SQL Server does not support RELEASE SAVEPOINT
         pass
+
+    def do_rollback(self, dbapi_connection):
+        try:
+            super(MSDialect, self).do_rollback(dbapi_connection)
+        except self.dbapi.ProgrammingError as e:
+            if self.ignore_no_transaction_on_rollback and re.match(
+                r".*\b111214\b", str(e)
+            ):
+                util.warn(
+                    "ProgrammingError 111214 "
+                    "'No corresponding transaction found.' "
+                    "has been suppressed via "
+                    "ignore_no_transaction_on_rollback=True"
+                )
+            else:
+                raise
 
     _isolation_lookup = set(
         [
@@ -2807,48 +2827,42 @@ class MSDialect(default.DefaultDialect):
         if level == "SNAPSHOT":
             connection.commit()
 
-    def get_isolation_level(self, connection):
-        last_error = None
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT name FROM sys.system_views WHERE name IN "
+                "('dm_exec_sessions', 'dm_pdw_nodes_exec_sessions')"
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise NotImplementedError(
+                    "Can't fetch isolation level on this particular "
+                    "SQL Server version."
+                )
 
-        views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
-        for view in views:
-            cursor = connection.cursor()
-            try:
-                cursor.execute(
-                    """
-                  SELECT CASE transaction_isolation_level
+            view_name = "sys.{}".format(row[0])
+            cursor.execute(
+                """
+                    SELECT CASE transaction_isolation_level
                     WHEN 0 THEN NULL
                     WHEN 1 THEN 'READ UNCOMMITTED'
                     WHEN 2 THEN 'READ COMMITTED'
                     WHEN 3 THEN 'REPEATABLE READ'
                     WHEN 4 THEN 'SERIALIZABLE'
                     WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM %s
+                    FROM {}
                     where session_id = @@SPID
-                  """
-                    % view
+                """.format(
+                    view_name
                 )
-                val = cursor.fetchone()[0]
-            except self.dbapi.Error as err:
-                # Python3 scoping rules
-                last_error = err
-                continue
-            else:
-                return val.upper()
-            finally:
-                cursor.close()
-        else:
-            # note that the NotImplementedError is caught by
-            # DefaultDialect, so the warning here is all that displays
-            util.warn(
-                "Could not fetch transaction isolation level, "
-                "tried views: %s; final error was: %s" % (views, last_error)
             )
-            raise NotImplementedError(
-                "Can't fetch isolation level on this particular "
-                "SQL Server version. tried views: %s; final error was: %s"
-                % (views, last_error)
-            )
+            row = cursor.fetchone()
+            assert row is not None
+            val = row[0]
+        finally:
+            cursor.close()
+        return val.upper()
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
