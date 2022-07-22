@@ -2871,7 +2871,6 @@ class MSDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
-        sqlserver_variant="sqlserver",
         **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2892,8 +2891,6 @@ class MSDialect(default.DefaultDialect):
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
-
-        self.sqlserver_variant = sqlserver_variant
 
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
@@ -2925,48 +2922,34 @@ class MSDialect(default.DefaultDialect):
             dbapi_connection.commit()
 
     def get_isolation_level(self, dbapi_connection):
-        last_error = None
-
-        view = "sys.dm_pdw_nodes_exec_sessions" \
-                    if self.sqlserver_variant == "pdw" \
-                    else "sys.dm_exec_sessions"
-
         cursor = dbapi_connection.cursor()
-        try:
-            cursor.execute(
-                f"""
-                    SELECT CASE transaction_isolation_level
-                    WHEN 0 THEN NULL
-                    WHEN 1 THEN 'READ UNCOMMITTED'
-                    WHEN 2 THEN 'READ COMMITTED'
-                    WHEN 3 THEN 'REPEATABLE READ'
-                    WHEN 4 THEN 'SERIALIZABLE'
-                    WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM {view}
-                    where session_id = @@SPID
-                """
-            )
-            val = cursor.fetchone()[0]
-        except self.dbapi.Error as err:
-            # Python3 scoping rules
-            last_error = err
-        else:
-            return val.upper()
-        finally:
+        cursor.execute(
+            "SELECT name FROM sys.system_views WHERE name IN "
+            "('dm_exec_sessions', 'dm_pdw_nodes_exec_sessions')"
+        )
+        views = [f"sys.{row[0]}" for row in cursor.fetchall()]
+        if not views:
             cursor.close()
-
-        if last_error is not None:
-            # note that the NotImplementedError is caught by
-            # DefaultDialect, so the warning here is all that displays
-            util.warn(
-                "Could not fetch transaction isolation level, "
-                f"tried view: {view}; final error was: {last_error}"
-            )
             raise NotImplementedError(
                 "Can't fetch isolation level on this particular "
-                f"SQL Server version. tried view: {view}; final "
-                f"error was: {last_error}"
+                "SQL Server version."
             )
+        cursor.execute(
+            f"""
+                SELECT CASE transaction_isolation_level
+                WHEN 0 THEN NULL
+                WHEN 1 THEN 'READ UNCOMMITTED'
+                WHEN 2 THEN 'READ COMMITTED'
+                WHEN 3 THEN 'REPEATABLE READ'
+                WHEN 4 THEN 'SERIALIZABLE'
+                WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
+                FROM {views[0]}
+                where session_id = @@SPID
+            """
+        )
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper()
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
