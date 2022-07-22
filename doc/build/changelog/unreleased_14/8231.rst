@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 8231
+
+    Fixed issue where the SQL Server dialect's query for the current isolation
+    level would fail on Azure Synapse Analytics, due to the way in which this
+    database handles transaction rollbacks after an error has occurred. The
+    initial query has been modified to no longer rely upon catching an error
+    when attempting to detect the appropriate system view. Additionally, to
+    better support this database's very specific "rollback" behavior,
+    implemented new parameter ``ignore_no_transaction_on_rollback`` indicating
+    that a rollback should ignore Azure Synapse error 'No corresponding
+    transaction found. (111214)', which is raised if no transaction is present
+    in conflict with the Python DBAPI.
+
+    Initial patch and valuable debugging assistance courtesy of @ww2406.
+
+    .. seealso::
+
+        :ref:`azure_synapse_ignore_no_transaction_on_rollback`
