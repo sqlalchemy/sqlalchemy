@@ -22,7 +22,6 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
 
-    # EXPECTED_MYPY: Unexpected keyword argument "wrong_arg" for "RelationshipProperty" # noqa
     addresses: Mapped[List["Address"]] = relationship(
         "Address", wrong_arg="imwrong"
     )

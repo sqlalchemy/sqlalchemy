@@ -27,5 +27,4 @@ class A(Base):
     b_id: int = Column(ForeignKey("b.id"))
 
     # EXPECTED: Sending uselist=False and collection_class at the same time does not make sense # noqa
-    # EXPECTED_MYPY_RE: No overload variant of "relationship" matches argument types
     b: B = relationship(B, uselist=False, collection_class=set)
