@@ -99,6 +99,7 @@ if TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from .mapper import Mapper
     from .path_registry import PathRegistry
+    from .persistence import _SynchronizeSessionArgument
     from .session import _PKIdentityArgument
     from .session import Session
     from .state import InstanceState
@@ -2969,7 +2970,9 @@ class Query(
             self._legacy_from_self(col).enable_eagerloads(False).scalar()
         )
 
-    def delete(self, synchronize_session: str = "evaluate") -> int:
+    def delete(
+        self, synchronize_session: _SynchronizeSessionArgument = "evaluate"
+    ) -> int:
         r"""Perform a DELETE with an arbitrary WHERE clause.
 
         Deletes rows matched by this query from the database.
@@ -3030,7 +3033,7 @@ class Query(
     def update(
         self,
         values: Dict[_DMLColumnArgument, Any],
-        synchronize_session: str = "evaluate",
+        synchronize_session: _SynchronizeSessionArgument = "evaluate",
         update_args: Optional[Dict[Any, Any]] = None,
     ) -> int:
         r"""Perform an UPDATE with an arbitrary WHERE clause.
