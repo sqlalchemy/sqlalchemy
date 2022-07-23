@@ -65,7 +65,8 @@ class MypyPluginTest(fixtures.TestBase):
 
             args.append(path)
 
-            return api.run(args)
+            result = api.run(args)
+            return result
 
         return run
 
@@ -181,6 +182,8 @@ class MypyPluginTest(fixtures.TestBase):
 
         result = mypy_runner(path, use_plugin=use_plugin)
 
+        not_located = []
+
         if expected_errors:
             eq_(result[2], 1, msg=result)
 
@@ -201,8 +204,13 @@ class MypyPluginTest(fixtures.TestBase):
                     ):
                         break
                 else:
+                    not_located.append(msg)
                     continue
                 del errors[idx]
+
+            if not_located:
+                print(f"Couldn't locate expected messages: {not_located}")
+                assert False, "expected messages not found, see stdout"
 
             assert not errors, "errors remain: %s" % "\n".join(errors)
 

@@ -24,7 +24,7 @@ class A(Base):
 
     id = Column(Integer, primary_key=True)
     data = Column(String)
-    # EXPECTED: Left hand assignment 'bs: "Set[B]"' not compatible with ORM mapped expression of type "Mapped[List[B]]" # noqa
+
     bs: Set[B] = relationship(B, uselist=True, back_populates="a")
 
     # EXPECTED: Left hand assignment 'another_bs: "Set[B]"' not compatible with ORM mapped expression of type "Mapped[B]" # noqa
