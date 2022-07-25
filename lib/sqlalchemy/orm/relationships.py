@@ -160,9 +160,16 @@ _ORMOrderByArgument = Union[
     Iterable[Union[str, _ColumnExpressionArgument[Any]]],
 ]
 _ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
+
+_ORMColCollectionElement = Union[
+    ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole
+]
 _ORMColCollectionArgument = Union[
     str,
-    Sequence[Union[ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole]],
+    Sequence[_ORMColCollectionElement],
+    Callable[[], Sequence[_ORMColCollectionElement]],
+    Callable[[], _ORMColCollectionElement],
+    _ORMColCollectionElement,
 ]
 
 

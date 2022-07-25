@@ -58,6 +58,25 @@ class Address(Base):
 
     user_style_five = relationship(User, collection_class=set)
 
+    user_fk_style_one: Mapped[List[User]] = relationship(
+        foreign_keys="Address.user_id"
+    )
+    user_fk_style_two: Mapped[List[User]] = relationship(
+        foreign_keys=lambda: Address.user_id
+    )
+    user_fk_style_three: Mapped[List[User]] = relationship(
+        foreign_keys=[user_id]
+    )
+    user_pj_style_one: Mapped[List[User]] = relationship(
+        primaryjoin=user_id == User.id
+    )
+    user_pj_style_two: Mapped[List[User]] = relationship(
+        primaryjoin=lambda: Address.user_id == User.id
+    )
+    user_pj_style_three: Mapped[List[User]] = relationship(
+        primaryjoin="Address.user_id == User.id"
+    )
+
 
 if typing.TYPE_CHECKING:
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[traditional_relationship.Address\]\]
