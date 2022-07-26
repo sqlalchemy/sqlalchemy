@@ -3143,6 +3143,7 @@ class MSDialect(default.DefaultDialect):
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind.index_id, ind.is_unique, ind.name, "
+                "case when ind.index_id = 1 then cast(1 as bit) else cast(0 as bit) end as is_clustered, "
                 f"{filter_definition} "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
@@ -3166,6 +3167,12 @@ class MSDialect(default.DefaultDialect):
                 "column_names": [],
                 "include_columns": [],
             }
+
+            # issue #8288
+            if row["is_clustered"]:
+                indexes[row["index_id"]].setdefault("dialect_options", {})[
+                    "mssql_clustered"
+                ] = True
 
             if row["filter_definition"] is not None:
                 indexes[row["index_id"]].setdefault("dialect_options", {})[
