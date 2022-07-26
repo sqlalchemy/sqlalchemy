@@ -536,7 +536,7 @@ Schemas and Reflection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The schema feature of SQLAlchemy interacts with the table reflection
-feature introduced at ref:`metadata_reflection_toplevel`.  See the section
+feature introduced at :ref:`metadata_reflection_toplevel`.  See the section
 :ref:`metadata_reflection_schemas` for additional details on how this works.
 
 
