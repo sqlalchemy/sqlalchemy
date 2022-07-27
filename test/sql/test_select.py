@@ -16,8 +16,10 @@ from sqlalchemy.sql import literal
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 table1 = table(
     "mytable",
@@ -442,3 +444,72 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             " %(joiner)s SELECT :param_2 AS anon_2"
             " %(joiner)s SELECT :param_3 AS anon_3" % {"joiner": joiner},
         )
+
+
+class ColumnCollectionAsSelectTest(fixtures.TestBase, AssertsCompiledSQL):
+    """tests related to #8285."""
+
+    __dialect__ = "default"
+
+    def test_c_collection_as_from(self):
+        stmt = select(parent.c)
+
+        # this works because _all_selected_columns expands out
+        # ClauseList.  it does so in the same way that it works for
+        # Table already.  so this is free
+        eq_(stmt._all_selected_columns, [parent.c.id, parent.c.data])
+
+        self.assert_compile(stmt, "SELECT parent.id, parent.data FROM parent")
+
+    def test_c_sub_collection_str_stmt(self):
+        stmt = select(table1.c["myid", "description"])
+
+        self.assert_compile(
+            stmt, "SELECT mytable.myid, mytable.description FROM mytable"
+        )
+
+        subq = stmt.subquery()
+        self.assert_compile(
+            select(subq.c[0]).where(subq.c.description == "x"),
+            "SELECT anon_1.myid FROM (SELECT mytable.myid AS myid, "
+            "mytable.description AS description FROM mytable) AS anon_1 "
+            "WHERE anon_1.description = :description_1",
+        )
+
+    def test_c_sub_collection_int_stmt(self):
+        stmt = select(table1.c[2, 0])
+
+        self.assert_compile(
+            stmt, "SELECT mytable.description, mytable.myid FROM mytable"
+        )
+
+        subq = stmt.subquery()
+        self.assert_compile(
+            select(subq.c.myid).where(subq.c[1] == "x"),
+            "SELECT anon_1.myid FROM (SELECT mytable.description AS "
+            "description, mytable.myid AS myid FROM mytable) AS anon_1 "
+            "WHERE anon_1.myid = :myid_1",
+        )
+
+    def test_c_sub_collection_str(self):
+        coll = table1.c["myid", "description"]
+        is_(coll.myid, table1.c.myid)
+
+        eq_(list(coll), [table1.c.myid, table1.c.description])
+
+    def test_c_sub_collection_int(self):
+        coll = table1.c[2, 0]
+
+        is_(coll.myid, table1.c.myid)
+
+        eq_(list(coll), [table1.c.description, table1.c.myid])
+
+    def test_missing_key(self):
+
+        with expect_raises_message(KeyError, "unknown"):
+            table1.c["myid", "unknown"]
+
+    def test_missing_index(self):
+
+        with expect_raises_message(IndexError, "5"):
+            table1.c["myid", 5]

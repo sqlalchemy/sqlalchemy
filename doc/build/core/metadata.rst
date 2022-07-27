@@ -98,6 +98,10 @@ table include::
     # via string
     employees.c['employee_id']
 
+    # a tuple of columns may be returned using multiple strings
+    # (new in 2.0)
+    emp_id, name, type = employees.c['employee_id', "name", "type"]
+
     # iterate through all columns
     for c in employees.c:
         print(c)
@@ -112,9 +116,6 @@ table include::
 
     # access the table's MetaData:
     employees.metadata
-
-    # access the table's bound Engine or Connection, if its MetaData is bound:
-    employees.bind
 
     # access a column's name, type, nullable, primary key, foreign key
     employees.c.employee_id.name

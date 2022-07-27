@@ -95,6 +95,7 @@ elements within each row:
 
 The following sections will discuss the SELECT construct in more detail.
 
+.. _tutorial_selecting_columns:
 
 Setting the COLUMNS and FROM clause
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,6 +120,18 @@ are represented by those columns::
     >>> print(select(user_table.c.name, user_table.c.fullname))
     {opensql}SELECT user_account.name, user_account.fullname
     FROM user_account
+
+Alternatively, when using the :attr:`.FromClause.c` collection of any
+:class:`.FromClause` such as :class:`.Table`, multiple columns may be specified
+for a :func:`_sql.select` by using a tuple of string names::
+
+    >>> print(select(user_table.c['name', 'fullname']))
+    {opensql}SELECT user_account.name, user_account.fullname
+    FROM user_account
+
+.. versionadded:: 2.0 Added tuple-accessor capability to the
+   :attr`.FromClause.c` collection
+
 
 .. _tutorial_selecting_orm_entities:
 
