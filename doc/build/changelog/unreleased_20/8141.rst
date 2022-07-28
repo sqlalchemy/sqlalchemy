@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, schema
+    :tickets: 8141
+
+    Added parameter :paramref:`_ddl.DropConstraint.if_exists` to the
+    :class:`_ddl.DropConstraint` construct which result in "IF EXISTS" DDL
+    being added to the DROP statement.
+    This phrase is not accepted by all databases and the operation will fail
+    on a database that does not support it as there is no similarly compatible
+    fallback within the scope of a single DDL statement.
+    Pull request courtesy Mike Fiedler.
