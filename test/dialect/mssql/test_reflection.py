@@ -569,12 +569,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         t2 = Table("t", MetaData(), autoload_with=connection)
         idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
         self.assert_compile(
-            CreateIndex(idx), "CREATE INDEX idx_x ON t (x) WHERE ([x]='test')"
+            CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x) WHERE ([x]='test')"
         )
 
-    def test_index_with_clustered(self, metadata, connection):
+    def test_index_reflection_clustered(self, metadata, connection):
         """
-        when the result of get_indexes() is used build an index it should
+        when the result of get_indexes() is used to build an index it should
         include the CLUSTERED keyword when appropriate
         """
         t1 = Table(
@@ -591,9 +591,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         clustered_index = ""
         for ix in ind:
-            if "dialect_options" in ix:
-                if "mssql_clustered" in ix["dialect_options"] and ix["dialect_options"]["mssql_clustered"]:
-                    clustered_index = ix["name"]
+            if ix["dialect_options"]["mssql_clustered"]:
+                clustered_index = ix["name"]
 
         eq_(clustered_index, "idx_x")
 
@@ -604,7 +603,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             CreateIndex(idx), "CREATE CLUSTERED INDEX idx_x ON t (x)"
         )
 
-    def test_indexes_with_filtered_and_clustered(self, metadata, connection):
+    def test_index_reflection_filtered_and_clustered(self, metadata, connection):
         """
         table with one filtered index and one clustered index so each index will have different
         dialect_options keys
@@ -623,9 +622,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         clustered_index = ""
         for ix in ind:
-            if "dialect_options" in ix:
-                if "mssql_clustered" in ix["dialect_options"] and ix["dialect_options"]["mssql_clustered"]:
-                    clustered_index = ix["name"]
+            if ix["dialect_options"]["mssql_clustered"]:
+                clustered_index = ix["name"]
 
         eq_(clustered_index, "idx_x")
 
@@ -646,14 +644,16 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            CreateIndex(filtered_idx), "CREATE INDEX idx_y ON t (y) WHERE ([y]>=(5))"
+            CreateIndex(filtered_idx), "CREATE NONCLUSTERED INDEX idx_y ON t (y) WHERE ([y]>=(5))"
         )
 
 
-    def test_index_with_explicit_nonclustered(self, metadata, connection):
+    def test_index_reflection_nonclustered(self, metadata, connection):
         """
-        Resulting CREATE INDEX statement should use the default behavior and omit the 
-        NONCLUSTERED keyword
+        one index created by specifying mssql_clustered=False
+        one created without specifying mssql_clustered property so it will
+        use default of NONCLUSTERED.
+        When reflected back mssql_clustered=False should be included in both
         """
         t1 = Table(
             "t",
@@ -667,26 +667,21 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata.create_all(connection)
         ind = testing.db.dialect.get_indexes(connection, "t", None)
 
-        clustered_index = ""
         for ix in ind:
-            if "dialect_options" in ix:
-                if "mssql_clustered" in ix["dialect_options"] and ix["dialect_options"]["mssql_clustered"]:
-                    clustered_index = ix["name"]
-
-        eq_(clustered_index, "")
+            assert ix["dialect_options"]["mssql_clustered"] == False
 
         t2 = Table("t", MetaData(), autoload_with=connection)
         idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
 
         self.assert_compile(
-            CreateIndex(idx), "CREATE INDEX idx_x ON t (x)"
+            CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x)"
         )
 
-    def test_clustered_primary_key_reflection(self, metadata, connection):
+    def test_primary_key_reflection_clustered(self, metadata, connection):
         """
         A primary key will be clustered by default if no other clustered index
-        exists. mssql_clustered dialect_options should not be present in this
-        case to allow default behavior to control DDL.
+        exists.
+        When reflected back, mssql_clustered=True should be present.
         """
         t1 = Table(
             "t",
@@ -698,12 +693,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         PrimaryKeyConstraint(t1.c.id, name="pk_t")
         
         metadata.create_all(connection)
-        pkconst = testing.db.dialect.get_pk_constraint(connection, "t", None)
+        pk_reflect = testing.db.dialect.get_pk_constraint(connection, "t", None)
 
-        assert "dialect_options" not in pkconst
+        assert pk_reflect["dialect_options"]["mssql_clustered"] == True
 
 
-    def test_nonclustered_primary_key_reflection(self, metadata, connection):
+    def test_primary_key_reflection_nonclustered(self, metadata, connection):
         """
         Nonclustered primary key should include mssql_clustered=False
         when reflected back
@@ -720,7 +715,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata.create_all(connection)
         pk_reflect = testing.db.dialect.get_pk_constraint(connection, "t", None)
 
-        assert "dialect_options" in pk_reflect
         assert pk_reflect["dialect_options"]["mssql_clustered"] == False
 
 

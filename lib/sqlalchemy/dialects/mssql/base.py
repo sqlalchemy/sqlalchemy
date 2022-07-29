@@ -3168,11 +3168,10 @@ class MSDialect(default.DefaultDialect):
                 "include_columns": [],
             }
 
-            # issue #8288
-            if row["is_clustered"]:
-                indexes[row["index_id"]].setdefault("dialect_options", {})[
-                    "mssql_clustered"
-                ] = True
+            # issue #8288 - add mssql_clustered value
+            indexes[row["index_id"]].setdefault("dialect_options", {})[
+                "mssql_clustered"
+            ] = row["is_clustered"]
 
             if row["filter_definition"] is not None:
                 indexes[row["index_id"]].setdefault("dialect_options", {})[
@@ -3474,12 +3473,10 @@ class MSDialect(default.DefaultDialect):
             
         if pkeys:
             pkinfo = {"constrained_columns": pkeys, "name": constraint_name}
-            # default PK behavior is clustered in absence of another clustered index
-            # if the PK is nonclustered, include this in the dialect_options
-            if not row["is_clustered"]:
-                pkinfo.setdefault("dialect_options", {})[
-                    "mssql_clustered"
-                ] = False
+            # issue #8288 - add mssql_clustered value
+            pkinfo.setdefault("dialect_options", {})[
+                "mssql_clustered"
+            ] = row["is_clustered"]
             
             return pkinfo
         else:
