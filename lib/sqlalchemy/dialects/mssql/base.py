@@ -3450,8 +3450,12 @@ class MSDialect(default.DefaultDialect):
         # Primary key constraints
         s = (
             sql.select(
-                C.c.column_name, TC.c.constraint_type, C.c.constraint_name,
-                text("objectproperty(object_id(c.table_schema+'.'+c.constraint_name), 'CnstIsClustKey') as is_clustered") 
+                C.c.column_name,
+                TC.c.constraint_type,
+                C.c.constraint_name,
+                text(
+                    "objectproperty(object_id(c.table_schema+'.'+c.constraint_name), 'CnstIsClustKey') as is_clustered"
+                ),
             )
             .where(
                 sql.and_(
@@ -3470,14 +3474,14 @@ class MSDialect(default.DefaultDialect):
                 pkeys.append(row["COLUMN_NAME"])
                 if constraint_name is None:
                     constraint_name = row[C.c.constraint_name.name]
-            
+
         if pkeys:
             pkinfo = {"constrained_columns": pkeys, "name": constraint_name}
             # issue #8288 - add mssql_clustered value
-            pkinfo.setdefault("dialect_options", {})[
-                "mssql_clustered"
-            ] = row["is_clustered"]
-            
+            pkinfo.setdefault("dialect_options", {})["mssql_clustered"] = row[
+                "is_clustered"
+            ]
+
             return pkinfo
         else:
             return self._default_or_error(
