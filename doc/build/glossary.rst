@@ -1198,7 +1198,7 @@ Glossary
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key)
+                id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
                 projects = relationship(
@@ -1215,7 +1215,7 @@ Glossary
             class Project(Base):
                 __tablename__ = 'project'
 
-                id = Column(Integer, primary_key)
+                id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
         Above, the ``Employee.projects`` and back-referencing ``Project.employees``
@@ -1311,14 +1311,14 @@ Glossary
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key)
+                id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
 
             class Project(Base):
                 __tablename__ = 'project'
 
-                id = Column(Integer, primary_key)
+                id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
 
