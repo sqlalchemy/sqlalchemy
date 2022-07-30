@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, mssql
+    :tickets: 7844
+
+    Added support table and column comments on MSSQL when
+    creating a table. Added support for reflecting table comments.
+    Thanks to Daniel Hall for the help in this pull request.

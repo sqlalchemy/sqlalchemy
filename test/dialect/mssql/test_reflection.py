@@ -161,6 +161,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                             "nullable": False,
                             "default": None,
                             "autoincrement": False,
+                            "comment": None,
                         },
                         {
                             "name": "data",
@@ -170,6 +171,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                             "nullable": True,
                             "default": None,
                             "autoincrement": False,
+                            "comment": None,
                         },
                     ],
                 )
@@ -403,6 +405,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                         "nullable": False,
                         "default": None,
                         "autoincrement": False,
+                        "comment": None,
                     }
                 ],
             )
@@ -596,6 +599,44 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         for col in inspect(connection).get_columns("t"):
             is_(col["type"].length, None)
             in_("max", str(col["type"].compile(dialect=connection.dialect)))
+
+    def test_comments(self, metadata, connection):
+        Table(
+            "tbl_with_comments",
+            metadata,
+            Column(
+                "id",
+                types.Integer,
+                primary_key=True,
+                comment="pk comment 🔑",
+            ),
+            Column("no_comment", types.Integer),
+            Column(
+                "has_comment",
+                types.String(20),
+                comment="has the comment § méil 📧",
+            ),
+            comment="table comment çòé 🐍",
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+        eq_(
+            insp.get_table_comment("tbl_with_comments"),
+            {"text": "table comment çòé 🐍"},
+        )
+
+        cols = {
+            col["name"]: col["comment"]
+            for col in insp.get_columns("tbl_with_comments")
+        }
+        eq_(
+            cols,
+            {
+                "id": "pk comment 🔑",
+                "no_comment": None,
+                "has_comment": "has the comment § méil 📧",
+            },
+        )
 
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
