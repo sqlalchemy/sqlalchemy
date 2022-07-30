@@ -321,7 +321,7 @@ Glossary
        SQL that relational databases use to *modify* the data in tables. DML
        typically refers to the three widely familiar statements of INSERT,
        UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "Create,
-       Update, Delete").
+       Read, Update, Delete").
 
         .. seealso::
 
