@@ -161,5 +161,5 @@ SQLAlchemy Documentation
     * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
     * :doc:`Error Message Guide <errors>` - Explainations of many SQLAlchemy Errors
     * :doc:`Complete table of of contents <contents>`
-    * :doc:`Index <index>`
+    * :ref:`Index <genindex>`
 
