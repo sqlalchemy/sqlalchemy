@@ -1316,8 +1316,6 @@ class _AssociationCollection(Generic[_IT]):
     def __bool__(self) -> bool:
         return bool(self.col)
 
-    __nonzero__ = __bool__
-
     def __getstate__(self) -> Any:
         return {"parent": self.parent, "lazy_collection": self.lazy_collection}
 
@@ -1748,8 +1746,6 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             return True
         else:
             return False
-
-    __nonzero__ = __bool__
 
     def __contains__(self, __o: object) -> bool:
         for member in self.col:

@@ -696,8 +696,6 @@ class ClauseElement(
     def __bool__(self):
         raise TypeError("Boolean value of this clause is not defined")
 
-    __nonzero__ = __bool__
-
     def __repr__(self):
         friendly = self.description
         if friendly is None:

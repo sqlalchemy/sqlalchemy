@@ -398,8 +398,6 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
     def __bool__(self) -> bool:
         return bool(self.parent_listeners)
 
-    __nonzero__ = __bool__
-
 
 class _MutexProtocol(Protocol):
     def __enter__(self) -> bool:
@@ -508,8 +506,6 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
 
     def __bool__(self) -> bool:
         return bool(self.listeners or self.parent_listeners)
-
-    __nonzero__ = __bool__
 
 
 class _ListenerCollection(_CompoundListener[_ET]):

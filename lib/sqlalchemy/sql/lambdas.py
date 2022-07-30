@@ -1341,10 +1341,6 @@ class PyWrapper(ColumnOperators):
         to_evaluate = object.__getattribute__(self, "_to_evaluate")
         return bool(to_evaluate)
 
-    def __nonzero__(self):
-        to_evaluate = object.__getattribute__(self, "_to_evaluate")
-        return bool(to_evaluate)
-
     def __getattribute__(self, key):
         if key.startswith("_sa_"):
             return object.__getattribute__(self, key[4:])

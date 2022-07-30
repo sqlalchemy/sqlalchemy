@@ -337,8 +337,6 @@ class DynamicCollectionAdapter:
     def __bool__(self):
         return True
 
-    __nonzero__ = __bool__
-
 
 class AppenderMixin:
     query_class = None

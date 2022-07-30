@@ -614,8 +614,6 @@ class CollectionAdapter:
     def __bool__(self):
         return True
 
-    __nonzero__ = __bool__
-
     def fire_append_wo_mutation_event(self, item, initiator=None):
         """Notify that a entity is entering the collection but is already
         present.
