@@ -320,7 +320,7 @@ Glossary
        An acronym for **Data Manipulation Language**.  DML is the subset of
        SQL that relational databases use to *modify* the data in tables. DML
        typically refers to the three widely familiar statements of INSERT,
-       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "CReate,
+       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "Create,
        Update, Delete").
 
         .. seealso::
