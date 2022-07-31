@@ -257,7 +257,7 @@ class Annotated(SupportsAnnotations):
     """clones a SupportsAnnotations and applies an 'annotations' dictionary.
 
     Unlike regular clones, this clone also mimics __hash__() and
-    __cmp__() of the original element so that it takes its place
+    __eq__() of the original element so that it takes its place
     in hashed collections.
 
     A reference to the original element is maintained, for the important

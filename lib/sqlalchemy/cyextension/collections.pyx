@@ -213,9 +213,6 @@ cdef class IdentitySet:
     def clear(self):
         self._members.clear()
 
-    def __cmp__(self, other):
-        raise TypeError("cannot compare sets using cmp()")
-
     def __eq__(self, other):
         cdef IdentitySet other_
         if isinstance(other, IdentitySet):

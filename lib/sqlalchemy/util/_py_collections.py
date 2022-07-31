@@ -296,9 +296,6 @@ class IdentitySet:
     def clear(self) -> None:
         self._members.clear()
 
-    def __cmp__(self, other: Any) -> NoReturn:
-        raise TypeError("cannot compare sets using cmp()")
-
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, IdentitySet):
             return self._members == other._members
