@@ -2179,8 +2179,8 @@ class VersioningTest(fixtures.MappedTest):
 
 
 class DistinctPKTest(fixtures.MappedTest):
-    """test the construction of mapper.primary_key when an inheriting relationship
-    joins on a column other than primary key column."""
+    """test the construction of mapper.primary_key when an inheriting
+    relationship joins on a column other than primary key column."""
 
     run_inserts = "once"
     run_deletes = None

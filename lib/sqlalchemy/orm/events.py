@@ -1927,7 +1927,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def transient_to_pending(self, session, instance):
-        """Intercept the "transient to pending" transition for a specific object.
+        """Intercept the "transient to pending" transition for a specific
+        object.
 
         This event is a specialization of the
         :meth:`.SessionEvents.after_attach` event which is only invoked
@@ -1948,7 +1949,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def pending_to_transient(self, session, instance):
-        """Intercept the "pending to transient" transition for a specific object.
+        """Intercept the "pending to transient" transition for a specific
+        object.
 
         This less common transition occurs when an pending object that has
         not been flushed is evicted from the session; this can occur
@@ -1969,7 +1971,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def persistent_to_transient(self, session, instance):
-        """Intercept the "persistent to transient" transition for a specific object.
+        """Intercept the "persistent to transient" transition for a specific
+        object.
 
         This less common transition occurs when an pending object that has
         has been flushed is evicted from the session; this can occur
@@ -1989,7 +1992,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def pending_to_persistent(self, session, instance):
-        """Intercept the "pending to persistent"" transition for a specific object.
+        """Intercept the "pending to persistent"" transition for a specific
+        object.
 
         This event is invoked within the flush process, and is
         similar to scanning the :attr:`.Session.new` collection within
@@ -2011,7 +2015,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def detached_to_persistent(self, session, instance):
-        """Intercept the "detached to persistent" transition for a specific object.
+        """Intercept the "detached to persistent" transition for a specific
+        object.
 
         This event is a specialization of the
         :meth:`.SessionEvents.after_attach` event which is only invoked
@@ -2047,7 +2052,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def loaded_as_persistent(self, session, instance):
-        """Intercept the "loaded as persistent" transition for a specific object.
+        """Intercept the "loaded as persistent" transition for a specific
+        object.
 
         This event is invoked within the ORM loading process, and is invoked
         very similarly to the :meth:`.InstanceEvents.load` event.  However,
@@ -2082,7 +2088,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def persistent_to_deleted(self, session, instance):
-        """Intercept the "persistent to deleted" transition for a specific object.
+        """Intercept the "persistent to deleted" transition for a specific
+        object.
 
         This event is invoked when a persistent object's identity
         is deleted from the database within a flush, however the object
@@ -2114,7 +2121,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def deleted_to_persistent(self, session, instance):
-        """Intercept the "deleted to persistent" transition for a specific object.
+        """Intercept the "deleted to persistent" transition for a specific
+        object.
 
         This transition occurs only when an object that's been deleted
         successfully in a flush is restored due to a call to
@@ -2131,7 +2139,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def deleted_to_detached(self, session, instance):
-        """Intercept the "deleted to detached" transition for a specific object.
+        """Intercept the "deleted to detached" transition for a specific
+        object.
 
         This event is invoked when a deleted object is evicted
         from the session.   The typical case when this occurs is when
@@ -2154,7 +2163,8 @@ class SessionEvents(event.Events[Session]):
 
     @_lifecycle_event
     def persistent_to_detached(self, session, instance):
-        """Intercept the "persistent to detached" transition for a specific object.
+        """Intercept the "persistent to detached" transition for a specific
+        object.
 
         This event is invoked when a persistent object is evicted
         from the session.  There are many conditions that cause this

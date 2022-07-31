@@ -1413,7 +1413,8 @@ class CursorResult(Result[_T]):
 
     @property
     def inserted_primary_key_rows(self):
-        """Return the value of :attr:`_engine.CursorResult.inserted_primary_key`
+        """Return the value of
+        :attr:`_engine.CursorResult.inserted_primary_key`
         as a row contained within a list; some dialects may support a
         multiple row form as well.
 
@@ -1754,7 +1755,8 @@ class CursorResult(Result[_T]):
 
     @property
     def returns_rows(self):
-        """True if this :class:`_engine.CursorResult` returns zero or more rows.
+        """True if this :class:`_engine.CursorResult` returns zero or more
+        rows.
 
         I.e. if it is legal to call the methods
         :meth:`_engine.CursorResult.fetchone`,

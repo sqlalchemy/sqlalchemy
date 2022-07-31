@@ -12,7 +12,7 @@ repos:
     -   id: zimports
 
 -   repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    rev: 5.0.0
     hooks:
     -   id: flake8
         additional_dependencies:
@@ -25,7 +25,3 @@ repos:
           # in case it requires a version pin
           - pydocstyle
           - pygments
-
-
-
-
