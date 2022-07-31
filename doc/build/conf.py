@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import inspect
 import os
 import sys
 
@@ -39,7 +40,9 @@ extensions = [
     "changelog",
     "sphinx_paramlinks",
     "sphinx_copybutton",
+    "sphinxcontrib.spelling",
 ]
+
 needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
 # Add any paths that contain templates here, relative to this directory.
@@ -470,3 +473,65 @@ epub_copyright = "2007-2015, SQLAlchemy authors"
 
 # Allow duplicate toc entries.
 # epub_tocdup = True
+
+# Code that sphinx appends to every .rst file
+# Enable roles for inline syntax highlighting, e.g.
+# ":python:`print(something)`"
+# Ref here:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+# #confval-rst-prolog
+rst_prolog = inspect.cleandoc(
+    """
+    .. role:: python(code)
+        :language: python
+
+    .. role:: sql(code)
+        :language: sql
+
+    .. role:: bash(code)
+        :language: bash
+
+    .. role:: mako(code)
+        :language: mako
+
+    .. role:: ccode(code)
+        :language: c
+
+    .. role:: mysql(code)
+        :language: mysql
+
+    .. role:: postgres(code)
+        :language: postgres
+
+    .. role:: sqlite3(code)
+        :language: sqlite3
+
+    .. role:: tsql(code)
+        :language: tsql
+
+    """
+)
+
+# Configuration for sphinxcontrib.spelling
+# All options listed here https://sphinxcontrib-spelling.readthedocs.io/en
+# /latest/customize.html
+spelling_lang = "en_US"
+spelling_exclude_patterns = ["changelog/*.rst"]
+spelling_filters = [
+    "enchant.tokenize.URLFilter",
+]
+spelling_ignore_pypi_package_names = True
+spelling_show_suggestions = True
+spelling_suggestion_limit = 2
+spelling_verbose = False
+spelling_word_list_filename = "spelling_wordlist.txt"
+spelling_lang = "en_US"
+tokenizer_lang = "en_US"
+
+
+# All of the below are true by default
+# spelling_ignore_wiki_words = True
+# spelling_ignore_acronyms = True
+# spelling_ignore_python_builtins = True
+# spelling_ignore_importable_modules = True
+# spelling_ignore_contributor_names = True

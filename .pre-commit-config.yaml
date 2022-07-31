@@ -26,6 +26,38 @@ repos:
           - pydocstyle
           - pygments
 
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.2.0
+    hooks:
+        # Misc linters
+      - id: check-yaml
+      - id: check-toml
+        # Simple cleanliness things
+      - id: fix-byte-order-marker
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: file-contents-sorter
+        args: ["--ignore-case", "--unique"]
+        files: "doc/build/spelling_wordlist.txt"
 
 
+# This is disabled by default
+# Run it manually with `pre-commit run --hook-stage manual`
+-   repo: https://github.com/asottile/blacken-docs
+    rev: v1.12.1
+    hooks:
+    -   id: blacken-docs
+        stages: [manual]
+        # Does not obey pyproject.toml configuration
+        args: ["--line-length", "79"]
+        additional_dependencies: [black==22.3.0]
 
+# Basic RST validator
+-   repo: https://github.com/myint/rstcheck
+    rev: v6.0.0
+    hooks:
+      - id: rstcheck
+        stages: [manual]
