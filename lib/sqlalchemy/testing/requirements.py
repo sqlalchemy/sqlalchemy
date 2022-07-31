@@ -228,9 +228,8 @@ class SuiteRequirements(Requirements):
 
     @property
     def standalone_binds(self):
-        """target database/driver supports bound parameters as column expressions
-        without being in the context of a typed column.
-
+        """target database/driver supports bound parameters as column
+        expressions without being in the context of a typed column.
         """
         return exclusions.closed()
 

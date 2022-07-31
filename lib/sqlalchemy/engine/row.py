@@ -549,7 +549,8 @@ class ROMappingView(
 
 
 class RowMapping(BaseRow, collections_abc.Mapping):
-    """A ``Mapping`` that maps column names and objects to :class:`.Row` values.
+    """A ``Mapping`` that maps column names and objects to :class:`.Row`
+    values.
 
     The :class:`.RowMapping` is available from a :class:`.Row` via the
     :attr:`.Row._mapping` attribute, as well as from the iterable interface

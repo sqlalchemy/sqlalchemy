@@ -376,7 +376,8 @@ else:
 
 
 class Mapped(QueryableAttribute, _Generic_T):
-    """Represent an ORM mapped :term:`descriptor` attribute for typing purposes.
+    """Represent an ORM mapped :term:`descriptor` attribute for typing
+    purposes.
 
     This class represents the complete descriptor interface for any class
     attribute that will have been :term:`instrumented` by the ORM

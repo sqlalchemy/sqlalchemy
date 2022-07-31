@@ -1768,7 +1768,8 @@ def null_result():
 
 
 class ChunkedIteratorResult(IteratorResult):
-    """An :class:`.IteratorResult` that works from an iterator-producing callable.
+    """An :class:`.IteratorResult` that works from an iterator-producing
+    callable.
 
     The given ``chunks`` argument is a function that is given a number of rows
     to return in each chunk, or ``None`` for all rows.  The function should

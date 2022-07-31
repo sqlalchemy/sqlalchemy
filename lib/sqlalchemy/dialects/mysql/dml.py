@@ -29,7 +29,8 @@ class Insert(StandardInsert):
 
     @property
     def inserted(self):
-        """Provide the "inserted" namespace for an ON DUPLICATE KEY UPDATE statement
+        """Provide the "inserted" namespace for an ON DUPLICATE KEY UPDATE
+        statement
 
         MySQL's ON DUPLICATE KEY UPDATE clause allows reference to the row
         that would be inserted, via a special function called ``VALUES()``.

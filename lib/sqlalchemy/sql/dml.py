@@ -511,8 +511,8 @@ class UpdateBase(
 
     @property
     def entity_description(self):
-        """Return a :term:`plugin-enabled` description of the table and/or entity
-        which this DML construct is operating against.
+        """Return a :term:`plugin-enabled` description of the table and/or
+        entity which this DML construct is operating against.
 
         This attribute is generally useful when using the ORM, as an
         extended structure which includes information about mapped

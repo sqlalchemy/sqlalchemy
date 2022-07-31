@@ -179,8 +179,8 @@ class TypeEngine(Traversible):
     """
 
     def evaluates_none(self):
-        """Return a copy of this type which has the :attr:`.should_evaluate_none`
-        flag set to True.
+        """Return a copy of this type which has the
+        :attr:`.should_evaluate_none` flag set to True.
 
         E.g.::
 
@@ -1105,7 +1105,8 @@ class Emulated(object):
     """
 
     def adapt_to_emulated(self, impltype, **kw):
-        """Given an impl class, adapt this type to the impl assuming "emulated".
+        """Given an impl class, adapt this type to the impl assuming
+        "emulated".
 
         The impl should also be an "emulated" version of this type,
         most likely the same class as this type itself.
@@ -1152,7 +1153,8 @@ class NativeForEmulated(object):
 
     @classmethod
     def adapt_emulated_to_native(cls, impl, **kw):
-        """Given an impl, adapt this type's class to the impl assuming "native".
+        """Given an impl, adapt this type's class to the impl assuming
+        "native".
 
         The impl will be an :class:`.Emulated` class but not a
         :class:`.NativeForEmulated`.

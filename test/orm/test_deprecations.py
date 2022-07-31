@@ -1883,8 +1883,8 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             )
 
     def test_from_self_resets_joinpaths(self):
-        """test a join from from_self() doesn't confuse joins inside the subquery
-        with the outside.
+        """test a join from from_self() doesn't confuse joins inside the
+        subquery with the outside.
         """
 
         Item, Keyword = self.classes.Item, self.classes.Keyword

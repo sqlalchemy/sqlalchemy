@@ -323,8 +323,8 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(FrozenResult, self)
 
     def merge(self, *others):
-        """Merge this :class:`_asyncio.AsyncResult` with other compatible result
-        objects.
+        """Merge this :class:`_asyncio.AsyncResult` with other compatible
+        result objects.
 
         The object returned is an instance of :class:`_engine.MergedResult`,
         which will be composed of iterators from the given result
@@ -495,8 +495,8 @@ class AsyncScalarResult(AsyncCommon):
 
 
 class AsyncMappingResult(AsyncCommon):
-    """A wrapper for a :class:`_asyncio.AsyncResult` that returns dictionary values
-    rather than :class:`_engine.Row` values.
+    """A wrapper for a :class:`_asyncio.AsyncResult` that returns dictionary
+    values rather than :class:`_engine.Row` values.
 
     The :class:`_asyncio.AsyncMappingResult` object is acquired by calling the
     :meth:`_asyncio.AsyncResult.mappings` method.
