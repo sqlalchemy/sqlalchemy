@@ -184,6 +184,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
     psycopg_version = (0, 0)
 
     _has_native_hstore = True
+    _psycopg_adapters_map = None
 
     colspecs = util.update_copy(
         _PGDialect_common_psycopg.colspecs,
@@ -241,7 +242,8 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         # see https://github.com/psycopg/psycopg/issues/83
         cargs, cparams = super().create_connect_args(url)
 
-        cparams["context"] = self._psycopg_adapters_map
+        if self._psycopg_adapters_map:
+            cparams["context"] = self._psycopg_adapters_map
         if self.client_encoding is not None:
             cparams["client_encoding"] = self.client_encoding
         return cargs, cparams

@@ -1,0 +1,22 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4392
+
+    Fixed issue in psycopg2 dialect where the "multiple hosts" feature
+    implemented for :ticket:`4392`, where multiple ``host:port`` pairs could be
+    passed in the query string as
+    ``?host=host1:port1&host=host2:port2&host=host3:port3`` was not implemented
+    correctly, as it did not propagate the "port" parameter appropriately.
+    Connections that didn't use a different "port" likely worked without issue,
+    and connections that had "port" for some of the entries may have
+    incorrectly passed on that hostname. The format is now corrected to pass
+    hosts/ports appropriately.
+
+    As part of this change, maintained support for another multihost style that
+    worked unintentionally, which is comma-separated
+    ``?host=h1,h2,h3&port=p1,p2,p3``. This format is more consistent with
+    libpq's query-string format, whereas the previous format is inspired by a
+    different aspect of libpq's URI format but is not quite the same thing.
+
+    If the two styles are mixed together, an error is raised as this is
+    ambiguous.
