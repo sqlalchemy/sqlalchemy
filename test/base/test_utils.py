@@ -550,8 +550,10 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(coll._colset, set(c for k, c in coll._collection))
         d = {}
         for k, col in coll._collection:
-            d.setdefault(k, col)
-        d.update({idx: col for idx, (k, col) in enumerate(coll._collection)})
+            d.setdefault(k, (k, col))
+        d.update(
+            {idx: (k, col) for idx, (k, col) in enumerate(coll._collection)}
+        )
         eq_(coll._index, d)
 
     def test_keys(self):
@@ -592,6 +594,27 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
 
         ci = cc.as_readonly()
         eq_(ci.items(), [("c1", c1), ("foo", c2), ("c3", c3)])
+
+    def test_getitem_tuple_str(self):
+        c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")
+        c2.key = "foo"
+        cc = self._column_collection(
+            columns=[("c1", c1), ("foo", c2), ("c3", c3)]
+        )
+        sub_cc = cc["c3", "foo"]
+        is_(sub_cc.c3, c3)
+        eq_(list(sub_cc), [c3, c2])
+
+    def test_getitem_tuple_int(self):
+        c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")
+        c2.key = "foo"
+        cc = self._column_collection(
+            columns=[("c1", c1), ("foo", c2), ("c3", c3)]
+        )
+
+        sub_cc = cc[2, 1]
+        is_(sub_cc.c3, c3)
+        eq_(list(sub_cc), [c3, c2])
 
     def test_key_index_error(self):
         cc = self._column_collection(

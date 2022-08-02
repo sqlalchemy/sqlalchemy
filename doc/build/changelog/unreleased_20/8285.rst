@@ -1,0 +1,15 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 8285
+
+    Added new syntax to the :attr:`.FromClause.c` collection on all
+    :class:`.FromClause` objects allowing tuples of keys to be passed to
+    ``__getitem__()``, along with support for the :func:`_sql.select` construct
+    to handle the resulting tuple-like collection directly, allowing the syntax
+    ``select(table.c['a', 'b', 'c'])`` to be possible. The sub-collection
+    returned is itself a :class:`.ColumnCollection` which is also directly
+    consumable by :func:`_sql.select` and similar now.
+
+    .. seealso::
+
+        :ref:`tutorial_selecting_columns`
