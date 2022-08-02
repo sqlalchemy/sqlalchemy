@@ -41,6 +41,7 @@ from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
 from .json import JSONB
+from .json import JSONPATH
 from .named_types import CreateDomainType
 from .named_types import CreateEnumType
 from .named_types import DropDomainType
@@ -128,6 +129,7 @@ __all__ = (
     "TSTZMULTIRANGE",
     "JSON",
     "JSONB",
+    "JSONPATH",
     "Any",
     "All",
     "DropEnumType",

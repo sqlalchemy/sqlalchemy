@@ -20,6 +20,8 @@ as well as array literals:
 * :class:`_postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
   function syntax.
 
+.. _postgresql_json_types:
+
 JSON Types
 ----------
 
@@ -30,6 +32,8 @@ operators:
 * :class:`_postgresql.JSON`
 
 * :class:`_postgresql.JSONB`
+
+* :class:`_postgresql.JSONPATH`
 
 HSTORE Type
 -----------
@@ -361,6 +365,8 @@ construction arguments, are as follows:
 
 .. autoclass:: JSONB
     :members:
+
+.. autoclass:: JSONPATH
 
 .. autoclass:: MACADDR
 

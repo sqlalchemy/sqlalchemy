@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-import collections.abc as collections_abc
 
 from ... import types as sqltypes
 from ...sql import operators
@@ -68,31 +67,47 @@ CONTAINED_BY = operators.custom_op(
 
 
 class JSONPathType(sqltypes.JSON.JSONPathType):
-    def bind_processor(self, dialect):
-        super_proc = self.string_bind_processor(dialect)
-
+    def _processor(self, dialect, super_proc):
         def process(value):
-            assert isinstance(value, collections_abc.Sequence)
-            tokens = [str(elem) for elem in value]
-            value = "{%s}" % (", ".join(tokens))
+            if isinstance(value, str):
+                # If it's already a string assume that it's in json path
+                # format. This allows using cast with json paths literals
+                return value
+            elif value:
+                # If it's already a string assume that it's in json path
+                # format. This allows using cast with json paths literals
+                value = "{%s}" % (", ".join(map(str, value)))
+            else:
+                value = "{}"
             if super_proc:
                 value = super_proc(value)
             return value
 
         return process
+
+    def bind_processor(self, dialect):
+        return self._processor(dialect, self.string_bind_processor(dialect))
 
     def literal_processor(self, dialect):
-        super_proc = self.string_literal_processor(dialect)
+        return self._processor(dialect, self.string_literal_processor(dialect))
 
-        def process(value):
-            assert isinstance(value, collections_abc.Sequence)
-            tokens = [str(elem) for elem in value]
-            value = "{%s}" % (", ".join(tokens))
-            if super_proc:
-                value = super_proc(value)
-            return value
 
-        return process
+class JSONPATH(JSONPathType):
+    """JSON Path Type.
+
+    This is usually required to cast literal values to json path when using
+    json search like function, such as ``jsonb_path_query_array`` or
+    ``jsonb_path_exists``::
+
+        stmt = sa.select(
+            sa.func.jsonb_path_query_array(
+                table.c.jsonb_col, cast("$.address.id", JSONPATH)
+            )
+        )
+
+    """
+
+    __visit_name__ = "JSONPATH"
 
 
 class JSON(sqltypes.JSON):

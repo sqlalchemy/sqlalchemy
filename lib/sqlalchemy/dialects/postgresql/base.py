@@ -1512,7 +1512,7 @@ colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
     sqltypes.Interval: INTERVAL,
     sqltypes.Enum: ENUM,
-    sqltypes.JSON.JSONPathType: _json.JSONPathType,
+    sqltypes.JSON.JSONPathType: _json.JSONPATH,
     sqltypes.JSON: _json.JSON,
     UUID: PGUuid,
 }
@@ -2502,6 +2502,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             inner,
             count=1,
         )
+
+    def visit_json_path(self, type_, **kw):
+        return self.visit_JSONPATH(type_, **kw)
+
+    def visit_JSONPATH(self, type_, **kw):
+        return "JSONPATH"
 
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):

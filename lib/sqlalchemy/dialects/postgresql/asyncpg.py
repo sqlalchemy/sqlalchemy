@@ -122,7 +122,6 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 from __future__ import annotations
 
 import collections
-import collections.abc as collections_abc
 import decimal
 import json as _py_json
 import re
@@ -231,9 +230,15 @@ class AsyncpgJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
 class AsyncpgJSONPathType(json.JSONPathType):
     def bind_processor(self, dialect):
         def process(value):
-            assert isinstance(value, collections_abc.Sequence)
-            tokens = [str(elem) for elem in value]
-            return tokens
+            if isinstance(value, str):
+                # If it's already a string assume that it's in json path
+                # format. This allows using cast with json paths literals
+                return value
+            elif value:
+                tokens = [str(elem) for elem in value]
+                return tokens
+            else:
+                return []
 
         return process
 
