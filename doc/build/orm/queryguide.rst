@@ -1013,12 +1013,43 @@ The ``autoflush`` execution option is equvialent to the
 
 .. _orm_queryguide_yield_per:
 
-Yield Per
-^^^^^^^^^
+Fetching Large Result Sets with Yield Per
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``yield_per`` execution option is an integer value which will cause the
-:class:`_engine.Result` to yield only a fixed count of rows at a time.
-When used as an execution option, ``yield_per`` is equivalent to making use
+:class:`_engine.Result` to buffer only limited number of rows and/or ORM
+objects at a time, before making data available to the client.
+
+Normally, the ORM will construct ORM objects for **all** rows up front,
+assembling them into a single buffer, before passing this buffer to
+the :class:`_engine.Result` object as a source of rows to be returned.
+The rationale for this behavior is to allow correct behavior
+for features such as joined eager loading, uniquifying of results, and the
+general case of result handling logic that relies upon the identity map
+maintaining a consistent state for every object in a result set as it is
+fetched.
+
+The purpose of the ``yield_per`` option is to change this behavior so that the
+ORM result set is optimized for iteration through very large result sets (> 10K
+rows), where the user has determined that the above patterns don't apply. When
+``yield_per`` is used, the ORM will instead batch ORM results into
+sub-collections and yield rows from each sub-collection individually as the
+:class:`_engine.Result` object is iterated, so that the Python interpreter
+doesn't need to declare very large areas of memory which is both time consuming
+and leads to excessive memory use. The option affects both the way the database
+cursor is used as well as how the ORM constructs rows and objects to be
+passed to the :class:`_engine.Result`.
+
+.. tip::
+
+    From the above, it follows that the :class:`_engine.Result` must be
+    consumed in an iterable fashion, that is, using iteration such as
+    ``for row in result`` or using partial row methods such as
+    :meth:`_engine.Result.fetchmany` or :meth:`_engine.Result.partitions`.
+    Calling :meth:`_engine.Result.all` will defeat the purpose of using
+    ``yield_per``.
+
+Using ``yield_per`` is equivalent to making use
 of both the :paramref:`_engine.Connection.execution_options.stream_results`
 execution option, which selects for server side cursors to be used
 by the backend if supported, and the :meth:`_engine.Result.yield_per` method
@@ -1080,12 +1111,6 @@ partitions. The size of each partition defaults to the integer value passed to
     [...] (){stop}
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
     ...
-
-The purpose of "yield per" is when fetching very large result sets
-(> 10K rows), to batch results in sub-collections and yield them
-out partially, so that the Python interpreter doesn't need to declare
-very large areas of memory which is both time consuming and leads
-to excessive memory use.
 
 When ``yield_per`` is used, the
 :paramref:`_engine.Connection.execution_options.stream_results` option is also
