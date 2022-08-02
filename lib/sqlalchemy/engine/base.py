@@ -897,7 +897,7 @@ class Connection(Connectable):
 
             :meth:`_engine.Connection.begin`
 
-            :meth:`_engine.Connection.begin_twophase`
+            :ref:`session_begin_nested` - ORM support for SAVEPOINT
 
         """
         if self._is_future:

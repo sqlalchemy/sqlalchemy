@@ -146,36 +146,76 @@ method::
     # commits u1 and u2
 
 Each time :meth:`_orm.Session.begin_nested` is called, a new "BEGIN SAVEPOINT"
-command is emitted to the database with a unique identifier.  When
-:meth:`_orm.SessionTransaction.commit` is called, "RELEASE SAVEPOINT"
-is emitted on the database, and if instead
-:meth:`_orm.SessionTransaction.rollback` is called, "ROLLBACK TO SAVEPOINT"
-is emitted.
+command is emitted to the database within the scope of the current
+database transaction (starting one if not already in progress), and
+an object of type :class:`_orm.SessionTransaction` is returned, which
+represents a handle to this SAVEPOINT.  When
+the ``.commit()`` method on this object is called, "RELEASE SAVEPOINT"
+is emitted to the database, and if instead the ``.rollback()``
+method is called, "ROLLBACK TO SAVEPOINT" is emitted.  The enclosing
+database transaction remains in progress.
 
-:meth:`_orm.Session.begin_nested` may also be used as a context manager in the
-same manner as that of the :meth:`_orm.Session.begin` method::
+:meth:`_orm.Session.begin_nested` is typically used as a context manager
+where specific per-instance errors may be caught, in conjunction with
+a rollback emitted for that portion of the transaction's state, without
+rolling back the whole transaction, as in the example below::
 
     for record in records:
         try:
             with session.begin_nested():
-                session.merge(record)
+               session.merge(record)
         except:
-            print("Skipped record %s" % record)
+             print("Skipped record %s" % record)
     session.commit()
 
-When :meth:`~.Session.begin_nested` is called, a
-:meth:`~.Session.flush` is unconditionally issued
-(regardless of the ``autoflush`` setting). This is so that when a
-rollback on this nested transaction occurs, the full state of the
-session is expired, thus causing all subsequent attribute/instance access to
-reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
-before :meth:`~.Session.begin_nested` was called.
+When the context manager yielded by :meth:`_orm.Session.begin_nested`
+completes, it "commits" the savepoint,
+which includes the usual behavior of flushing all pending state.  When
+an error is raised, the savepoint is rolled back and the state of the
+:class:`_orm.Session` local to the objects that were changed is expired.
+
+This pattern is ideal for situations such as using PostgreSQL and
+catching :class:`.IntegrityError` to detect duplicate rows; PostgreSQL normally
+aborts the entire tranasction when such an error is raised, however when using
+SAVEPOINT, the outer transaction is maintained.   In the example below
+a list of data is persisted into the database, with the occasional
+"duplicate primary key" record skipped, without rolling back the entire
+operation::
+
+    from sqlalchemy import exc
+
+    with session.begin():
+        for record in records:
+            try:
+                with session.begin_nested():
+                    obj = SomeRecord(id=record["identifier"], name=record["name"])
+                    session.add(obj)
+            except exc.IntegrityError:
+                print(f"Skipped record {record} - row already exists")
+
+When :meth:`~.Session.begin_nested` is called, the :class:`_orm.Session` first
+flushes all currently pending state to the database; this occurs unconditionally,
+regardless of the value of the :paramref:`_orm.Session.autoflush` parameter
+which normally may be used to disable automatic flush.  The rationale
+for this behavior is so that
+when a rollback on this nested transaction occurs, the :class:`_orm.Session`
+may expire any in-memory state that was created within the scope of the
+SAVEPOINT, while
+ensuring that when those expired objects are refreshed, the state of the
+object graph prior to the beginning of the SAVEPOINT will be available
+to re-load from the database.
+
+In modern versions of SQLAlchemy, when a SAVEPOINT initiated by
+:meth:`_orm.Session.begin_nested` is rolled back, in-memory object state that
+was modified since the SAVEPOINT was created
+is expired, however other object state that was not altered since the SAVEPOINT
+began is maintained.  This is so that subsequent operations can continue to make use of the
+otherwise unaffected data
+without the need for refreshing it from the database.
 
 .. seealso::
 
-    :class:`_engine.NestedTransaction` - the :class:`.NestedTransaction` class is the
-    Core-level construct that is used by the :class:`_orm.Session` internally
-    to produce SAVEPOINT blocks.
+    :meth:`_engine.Connection.begin_nested` -  Core SAVEPOINT API
 
 .. _orm_session_vs_engine:
 
