@@ -1341,8 +1341,8 @@ Glossary
             emp2 = Employee(name="emp2")
 
             proj.project_employees.extend([
-                EmployeeProject(employee=emp1, role="tech lead"),
-                EmployeeProject(employee=emp2, role="account executive")
+                EmployeeProject(employee=emp1, role_name="tech lead"),
+                EmployeeProject(employee=emp2, role_name="account executive")
             ])
 
         .. seealso::
