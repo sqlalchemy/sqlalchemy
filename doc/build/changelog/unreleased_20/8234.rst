@@ -1,0 +1,16 @@
+.. change::
+    :tags: sqlite, usecase
+    :tickets: 8234
+
+    Added new parameter to SQLite for reflection methods called
+    ``sqlite_include_internal=True``; when omitted, local tables that start
+    with the prefix ``sqlite_``, which per SQLite documentation are noted as
+    "internal schema" tables such as the ``sqlite_sequence`` table generated to
+    support "AUTOINCREMENT" columns, will not be included in reflection methods
+    that return lists of local objects. This prevents issues for example when
+    using Alembic autogenerate, which previously would consider these
+    SQLite-generated tables as being remove from the model.
+
+    .. seealso::
+
+        :ref:`sqlite_include_internal`
