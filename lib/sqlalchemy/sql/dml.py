@@ -989,10 +989,26 @@ class ValuesBase(UpdateBase):
             :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
+
+        if self._return_defaults:
+            # note _return_defaults_columns = () means return all columns,
+            # so if we have been here before, only update collection if there
+            # are columns in the collection
+            if self._return_defaults_columns and cols:
+                self._return_defaults_columns = tuple(
+                    set(self._return_defaults_columns).union(
+                        coercions.expect(roles.ColumnsClauseRole, c)
+                        for c in cols
+                    )
+                )
+            else:
+                # set for all columns
+                self._return_defaults_columns = ()
+        else:
+            self._return_defaults_columns = tuple(
+                coercions.expect(roles.ColumnsClauseRole, c) for c in cols
+            )
         self._return_defaults = True
-        self._return_defaults_columns = tuple(
-            coercions.expect(roles.ColumnsClauseRole, c) for c in cols
-        )
         return self
 
 

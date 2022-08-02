@@ -28,6 +28,7 @@ from typing import cast
 from typing import Collection
 from typing import Deque
 from typing import Dict
+from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
@@ -2397,15 +2398,21 @@ class Mapper(
         )
 
     @HasMemoized.memoized_attribute
-    def _server_default_cols(self):
+    def _server_default_cols(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
         return dict(
             (
                 table,
                 frozenset(
                     [
-                        col.key
-                        for col in columns
+                        col
+                        for col in cast("Iterable[Column[Any]]", columns)
                         if col.server_default is not None
+                        or (
+                            col.default is not None
+                            and col.default.is_clause_element
+                        )
                     ]
                 ),
             )
@@ -2413,34 +2420,59 @@ class Mapper(
         )
 
     @HasMemoized.memoized_attribute
-    def _server_default_plus_onupdate_propkeys(self):
-        result = set()
-
-        for table, columns in self._cols_by_table.items():
-            for col in columns:
-                if (
-                    col.server_default is not None
-                    or col.server_onupdate is not None
-                ) and col in self._columntoproperty:
-                    result.add(self._columntoproperty[col].key)
-
-        return result
-
-    @HasMemoized.memoized_attribute
-    def _server_onupdate_default_cols(self):
+    def _server_onupdate_default_cols(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
         return dict(
             (
                 table,
                 frozenset(
                     [
-                        col.key
-                        for col in columns
+                        col
+                        for col in cast("Iterable[Column[Any]]", columns)
                         if col.server_onupdate is not None
+                        or (
+                            col.onupdate is not None
+                            and col.onupdate.is_clause_element
+                        )
                     ]
                 ),
             )
             for table, columns in self._cols_by_table.items()
         )
+
+    @HasMemoized.memoized_attribute
+    def _server_default_col_keys(self) -> Mapping[FromClause, FrozenSet[str]]:
+        return {
+            table: frozenset(col.key for col in cols if col.key is not None)
+            for table, cols in self._server_default_cols.items()
+        }
+
+    @HasMemoized.memoized_attribute
+    def _server_onupdate_default_col_keys(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[str]]:
+        return {
+            table: frozenset(col.key for col in cols if col.key is not None)
+            for table, cols in self._server_onupdate_default_cols.items()
+        }
+
+    @HasMemoized.memoized_attribute
+    def _server_default_plus_onupdate_propkeys(self) -> Set[str]:
+        result: Set[str] = set()
+
+        col_to_property = self._columntoproperty
+        for table, columns in self._server_default_cols.items():
+            result.update(
+                col_to_property[col].key
+                for col in columns.intersection(col_to_property)
+            )
+        for table, columns in self._server_onupdate_default_cols.items():
+            result.update(
+                col_to_property[col].key
+                for col in columns.intersection(col_to_property)
+            )
+        return result
 
     @HasMemoized.memoized_instancemethod
     def __clause_element__(self):
