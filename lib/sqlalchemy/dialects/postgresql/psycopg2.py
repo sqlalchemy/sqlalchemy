@@ -117,22 +117,51 @@ Specifying multiple fallback hosts
 psycopg2 supports multiple connection points in the connection string.
 When the ``host`` parameter is used multiple times in the query section of
 the URL, SQLAlchemy will create a single string of the host and port
-information provided to make the connections::
+information provided to make the connections.  Tokens may consist of
+``host::port`` or just ``host``; in the latter case, the default port
+is selected by libpq.  In the example below, three host connections
+are specified, for ``HostA::PortA``, ``HostB`` connecting to the default port,
+and ``HostC::PortC``::
 
     create_engine(
-        "postgresql+psycopg2://user:password@/dbname?host=HostA:port1&host=HostB&host=HostC"
+        "postgresql+psycopg2://user:password@/dbname?host=HostA:PortA&host=HostB&host=HostC:PortC"
     )
 
-A connection to each host is then attempted until either a connection is successful
-or all connections are unsuccessful in which case an error is raised.
+As an alternative, libpq query string format also may be used; this specifies
+``host`` and ``port`` as single query string arguments with comma-separated
+lists - the default port can be chosen by indicating an empty value
+in the comma separated list::
+
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=HostA,HostB,HostC&port=PortA,,PortC"
+    )
+
+With either URL style, connections to each host is attempted based on a
+configurable strategy, which may be configured using the libpq
+``target_session_attrs`` parameter.  Per libpq this defaults to ``any``
+which indicates a connection to each host is then attempted until a connection is successful.
+Other strategies include ``primary``, ``prefer-standby``, etc.  The complete
+list is documented by PostgreSQL at
+`libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_.
+
+For example, to indicate two hosts using the ``primary`` strategy::
+
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=HostA:PortA&host=HostB&host=HostC:PortC&target_session_attrs=primary"
+    )
+
+.. versionchanged:: 1.4.40 Port specification in psycopg2 multiple host format
+   is repaired, previously ports were not correctly interpreted in this context.
+   libpq comma-separated format is also now supported.
 
 .. versionadded:: 1.3.20 Support for multiple hosts in PostgreSQL connection
    string.
 
 .. seealso::
 
-    `PQConnString \
-    <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
+    `libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_ - please refer
+    to this section in the libpq documentation for complete background on multiple host support.
+
 
 Empty DSN Connections / Environment Variable Connections
 ---------------------------------------------------------
