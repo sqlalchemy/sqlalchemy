@@ -578,6 +578,8 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
         order: Union[_NoArg, bool] = _NoArg.NO_ARG,
         unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     ) -> None:
 
         apply_dc_transforms: _DataclassArguments = {
@@ -586,6 +588,8 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
             "eq": eq,
             "order": order,
             "unsafe_hash": unsafe_hash,
+            "match_args": match_args,
+            "kw_only": kw_only,
         }
 
         if hasattr(cls, "_sa_apply_dc_transforms"):
@@ -1313,6 +1317,8 @@ class registry:
         eq: Union[_NoArg, bool] = ...,
         order: Union[_NoArg, bool] = ...,
         unsafe_hash: Union[_NoArg, bool] = ...,
+        match_args: Union[_NoArg, bool] = ...,
+        kw_only: Union[_NoArg, bool] = ...,
     ) -> Callable[[Type[_O]], Type[_O]]:
         ...
 
@@ -1325,6 +1331,8 @@ class registry:
         eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
         order: Union[_NoArg, bool] = _NoArg.NO_ARG,
         unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     ) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
         """Class decorator that will apply the Declarative mapping process
         to a given class, and additionally convert the class to be a
@@ -1348,6 +1356,8 @@ class registry:
                 "eq": eq,
                 "order": order,
                 "unsafe_hash": unsafe_hash,
+                "match_args": match_args,
+                "kw_only": kw_only,
             }
             _as_declarative(self, cls, cls.__dict__)
             return cls
