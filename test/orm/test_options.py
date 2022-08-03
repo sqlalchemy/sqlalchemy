@@ -19,6 +19,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
+from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
@@ -1694,7 +1695,8 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         ctx = sess.query(User)._compile_context()
 
         def go():
-            result = list(sess.query(User).instances(r, ctx))
+            result = loading.instances(r, ctx).scalars().unique()
+            result = list(result)
             eq_(result, self.static.user_address_result)
 
         self.sql_count_(4, go)
@@ -1793,7 +1795,8 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         ctx = sess.query(User)._compile_context()
 
         def go():
-            result = list(sess.query(User).instances(r, ctx))
+            result = loading.instances(r, ctx).scalars().unique()
+            result = list(result)
             eq_(result, self.static.user_all_result)
 
         self.assert_sql_count(testing.db, go, 6)
