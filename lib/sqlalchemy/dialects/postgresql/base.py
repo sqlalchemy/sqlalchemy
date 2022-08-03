@@ -2924,6 +2924,8 @@ class PGDialect(default.DefaultDialect):
     update_returning = True
     delete_returning = True
     insert_returning = True
+    update_returning_multifrom = True
+    delete_returning_multifrom = True
 
     connection_characteristics = (
         default.DefaultDialect.connection_characteristics

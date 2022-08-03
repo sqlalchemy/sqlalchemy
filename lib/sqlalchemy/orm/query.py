@@ -3021,7 +3021,9 @@ class Query(
             self.session.execute(
                 delete_,
                 self._params,
-                execution_options={"synchronize_session": synchronize_session},
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_del.result = result  # type: ignore
@@ -3113,7 +3115,9 @@ class Query(
             self.session.execute(
                 upd,
                 self._params,
-                execution_options={"synchronize_session": synchronize_session},
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_ud.result = result  # type: ignore

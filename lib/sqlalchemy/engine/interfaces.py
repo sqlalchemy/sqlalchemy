@@ -781,8 +781,22 @@ class Dialect(EventTarget):
 
     """
 
+    update_returning_multifrom: bool
+    """if the dialect supports RETURNING with UPDATE..FROM
+
+    .. versionadded:: 2.0
+
+    """
+
     delete_returning: bool
     """if the dialect supports RETURNING with DELETE
+
+    .. versionadded:: 2.0
+
+    """
+
+    delete_returning_multifrom: bool
+    """if the dialect supports RETURNING with DELETE..FROM
 
     .. versionadded:: 2.0
 

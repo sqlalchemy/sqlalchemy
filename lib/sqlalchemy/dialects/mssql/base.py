@@ -2800,6 +2800,8 @@ class MSDialect(default.DefaultDialect):
     insert_returning = True
     update_returning = True
     delete_returning = True
+    update_returning_multifrom = True
+    delete_returning_multifrom = True
 
     colspecs = {
         sqltypes.DateTime: _MSDateTime,

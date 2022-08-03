@@ -467,11 +467,11 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def delete_from(self):
+    def delete_using(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
             ["postgresql", "mssql", "mysql", "mariadb"],
-            "Backend does not support DELETE..FROM",
+            "Backend does not support DELETE..USING or equivalent",
         )
 
     @property
