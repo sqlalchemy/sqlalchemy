@@ -51,6 +51,7 @@ from sqlalchemy.testing import combinations
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -971,6 +972,21 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                 "INTEGER) AS anon_1 FROM t" % subst,
             )
+
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=sqlite.SQLiteDialect())),
+            "INSERT INTO t (description) VALUES (lower(?)) "
+            "RETURNING myid, name, description",
+        )
 
     def test_true_false(self):
         self.assert_compile(sql.false(), "0")

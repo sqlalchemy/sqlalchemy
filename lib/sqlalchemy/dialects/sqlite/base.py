@@ -1930,6 +1930,9 @@ class SQLiteDialect(default.DefaultDialect):
     tuple_in_values = True
     supports_statement_cache = True
     insert_null_pk_still_autoincrements = True
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext
@@ -2037,10 +2040,10 @@ class SQLiteDialect(default.DefaultDialect):
                 14,
             )
 
-            if self.dbapi.sqlite_version_info >= (3, 35):
+            if self.dbapi.sqlite_version_info < (3, 35):
                 self.update_returning = (
                     self.delete_returning
-                ) = self.insert_returning = True
+                ) = self.insert_returning = False
 
     _isolation_lookup = util.immutabledict(
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}

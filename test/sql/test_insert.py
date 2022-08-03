@@ -1542,7 +1542,9 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         stmt = table.insert().return_defaults().values(id=func.foobar())
-        compiled = stmt.compile(dialect=sqlite.dialect(), column_keys=["data"])
+        dialect = sqlite.dialect()
+        dialect.insert_returning = False
+        compiled = stmt.compile(dialect=dialect, column_keys=["data"])
         eq_(compiled.postfetch, [])
         eq_(compiled.implicit_returning, [])
 
@@ -1551,7 +1553,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO sometable (id, data) VALUES " "(foobar(), ?)",
             checkparams={"data": "foo"},
             params={"data": "foo"},
-            dialect=sqlite.dialect(),
+            dialect=dialect,
         )
 
     def test_sql_expression_pk_autoinc_returning(self):
