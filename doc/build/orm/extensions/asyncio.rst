@@ -726,10 +726,21 @@ from using any connection more than once::
 Using asyncio scoped session
 ----------------------------
 
-The usage of :class:`_asyncio.async_scoped_session` is mostly similar to
-:class:`.scoped_session`. However, since there's no "thread-local" concept in
-the asyncio context, the "scopefunc" parameter must be provided to the
-constructor::
+The "scoped session" pattern used in threaded SQLAlchemy with the
+:class:`.scoped_session` object is also available in asyncio, using
+an adapted version called :class:`_asyncio.async_scoped_session`.
+
+.. tip::  SQLAlchemy generally does not recommend the "scoped" pattern
+   for new development as it relies upon mutable global state that must also be
+   explicitly torn down when work within the thread or task is complete.
+   Particularly when using asyncio, it's likely a better idea to pass the
+   :class:`_asyncio.AsyncSession` directly to the awaitable functions that need
+   it.
+
+When using :class:`_asyncio.async_scoped_session`, as there's no "thread-local"
+concept in the asyncio context, the "scopefunc" parameter must be provided to
+the constructor. The example below illustrates using the
+``asyncio.current_task()`` function for this purpose::
 
     from asyncio import current_task
 
@@ -748,7 +759,21 @@ constructor::
     )
     some_async_session = AsyncScopedSession()
 
-:class:`_asyncio.async_scoped_session` also includes **proxy
+.. warning:: The "scopefunc" used by :class:`_asyncio.async_scoped_session`
+   is invoked **an arbitrary number of times** within a task, once for each
+   time the underlying :class:`_asyncio.AsyncSession` is accessed. The function
+   should therefore be **idempotent** and lightweight, and should not attempt
+   to create or mutate any state, such as establishing callbacks, etc.
+
+.. warning:: Using ``current_task()`` for the "key" in the scope requires that
+   the :meth:`_asyncio.async_scoped_session.remove` method is called from
+   within the outermost awaitable, to ensure the key is removed from the
+   registry when the task is complete, otherwise the task handle as well as
+   the :class:`_asyncio.AsyncSession` will remain in memory, essentially
+   creating a memory leak.  See the following example which illustrates
+   the correct use of :meth:`_asyncio.async_scoped_session.remove`.
+
+:class:`_asyncio.async_scoped_session` includes **proxy
 behavior** similar to that of :class:`.scoped_session`, which means it can be
 treated as a :class:`_asyncio.AsyncSession` directly, keeping in mind that
 the usual ``await`` keywords are necessary, including for the
