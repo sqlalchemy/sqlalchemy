@@ -2783,6 +2783,13 @@ class Query(
 
         return _column_descriptions(self, legacy=True)
 
+    @util.deprecated(
+        "2.0",
+        "The :meth:`_orm.Query.instances` method is deprecated and will "
+        "be removed in a future release. "
+        "Use the Select.from_statement() method or aliased() construct in "
+        "conjunction with Session.execute() instead.",
+    )
     def instances(
         self,
         result_proxy: CursorResult[Any],
