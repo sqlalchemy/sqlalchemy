@@ -56,6 +56,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.util import OrderedDict
@@ -100,6 +101,21 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
+
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=postgresql.dialect())),
+            "INSERT INTO t (description) VALUES (lower(%(lower_1)s)) "
+            "RETURNING t.myid, t.name, t.description",
+        )
 
     def test_update_returning(self):
         dialect = postgresql.dialect()

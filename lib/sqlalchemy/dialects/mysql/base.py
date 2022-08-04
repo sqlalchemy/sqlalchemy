@@ -2568,6 +2568,12 @@ class MySQLDialect(default.DefaultDialect):
             # this would have been set by the default dialect already,
             # so set it again
             self.identifier_preparer = self.preparer(self)
+
+            # this will be updated on first connect in initialize()
+            # if using older mariadb version
+            self.delete_returning = True
+            self.insert_returning = True
+
         self.is_mariadb = is_mariadb
 
     def do_begin_twophase(self, connection, xid):

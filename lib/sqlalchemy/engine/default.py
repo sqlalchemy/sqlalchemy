@@ -903,6 +903,10 @@ class StrCompileDialect(DefaultDialect):
     type_compiler_cls = compiler.StrSQLTypeCompiler
     preparer = compiler.IdentifierPreparer
 
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
+
     supports_statement_cache = True
 
     supports_identity_columns = True
