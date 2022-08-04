@@ -3143,7 +3143,9 @@ class MSDialect(default.DefaultDialect):
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind.index_id, ind.is_unique, ind.name, "
-                "case when ind.index_id = 1 then cast(1 as bit) else cast(0 as bit) end as is_clustered, "
+                "case when ind.index_id = 1 "
+                "then cast(1 as bit) "
+                "else cast(0 as bit) end as is_clustered, "
                 f"{filter_definition} "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
@@ -3454,7 +3456,9 @@ class MSDialect(default.DefaultDialect):
                 TC.c.constraint_type,
                 C.c.constraint_name,
                 text(
-                    "objectproperty(object_id(c.table_schema+'.'+c.constraint_name), 'CnstIsClustKey') as is_clustered"
+                    "objectproperty("
+                    "object_id(c.table_schema+'.'+c.constraint_name),"
+                    "'CnstIsClustKey') as is_clustered"
                 ),
             )
             .where(

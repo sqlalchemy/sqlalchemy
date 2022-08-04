@@ -608,8 +608,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         self, metadata, connection
     ):
         """
-        table with one filtered index and one clustered index so each index will have different
-        dialect_options keys
+        table with one filtered index and one clustered index so each index
+        will have different dialect_options keys
         """
         t1 = Table(
             "t",
