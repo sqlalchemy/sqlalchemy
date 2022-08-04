@@ -5149,10 +5149,11 @@ class quoted_name(util.MemoizedSlots, util.text_type):
     an unconditionally quoted name::
 
         from sqlalchemy import create_engine
+        from sqlalchemy import inspect
         from sqlalchemy.sql import quoted_name
 
         engine = create_engine("oracle+cx_oracle://some_dsn")
-        engine.has_table(quoted_name("some_table", True))
+        print(inspect(engine).has_table(quoted_name("some_table", True)))
 
     The above logic will run the "has table" logic against the Oracle backend,
     passing the name exactly as ``"some_table"`` without converting to
