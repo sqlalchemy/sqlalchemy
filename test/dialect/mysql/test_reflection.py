@@ -369,7 +369,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
             assert reflected.comment == comment
             assert reflected.kwargs["mysql_comment"] == comment
-            assert reflected.kwargs["mysql_default charset"] == "utf8"
+            assert reflected.kwargs["mysql_default charset"] in (
+                "utf8",
+                "utf8mb3",
+            )
             assert reflected.kwargs["mysql_avg_row_length"] == "3"
             assert reflected.kwargs["mysql_connection"] == "fish"
 
