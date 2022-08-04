@@ -1290,6 +1290,34 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         eq_(list(t.indexes)[0].columns, [t.c.b])
 
+    def test_index_reflection_expression_not_found(self, connection, metadata):
+        t = Table("x", metadata, Column("a", Integer), Column("b", Integer))
+        sa.Index("x_ix", t.c.a)
+        sa.Index("x_iy", t.c.a, t.c.b)
+        metadata.create_all(connection)
+
+        gri = Inspector._get_reflection_info
+
+        def mock_gri(self, *a, **kw):
+            res = gri(self, *a, **kw)
+            for idx in res.indexes[(None, "x")]:
+                if idx["name"] == "x_iy":
+                    idx["column_names"][1] = None
+                    idx.pop("expressions", None)
+            return res
+
+        with testing.mock.patch.object(
+            Inspector, "_get_reflection_info", mock_gri
+        ):
+            m = MetaData()
+            with testing.expect_warnings(
+                "Skipping index 'x_iy' because key 2 reflected as None"
+            ):
+                t = Table("x", m, autoload_with=connection)
+
+        eq_(len(t.indexes), 1)
+        eq_(list(t.indexes)[0].name, "x_ix")
+
     @testing.requires.views
     def test_views(self, connection, metadata):
         users, addresses, dingalings = createTables(metadata)

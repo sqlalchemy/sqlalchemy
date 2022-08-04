@@ -8,7 +8,6 @@ from typing import cast
 from typing import List
 from typing import Tuple
 
-import sqlalchemy
 from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
@@ -63,20 +62,8 @@ class MypyPluginTest(fixtures.TestBase):
             yield item
 
     def _cachedir(self):
-        sqlalchemy_path = os.path.dirname(os.path.dirname(sqlalchemy.__file__))
-
-        # for a pytest from my local ./lib/ , i need mypy_path.
-        # for a tox run where sqlalchemy is in site_packages, mypy complains
-        # "../python3.10/site-packages is in the MYPYPATH. Please remove it."
-        # previously when we used sqlalchemy2-stubs, it would just be
-        # installed as a dependency, which is why mypy_path wasn't needed
-        # then, but I like to be able to run the test suite from the local
-        # ./lib/ as well.
-
-        if "site-packages" not in sqlalchemy_path:
-            mypy_path = f"mypy_path={sqlalchemy_path}"
-        else:
-            mypy_path = ""
+        # as of mypy 0.971 i think we need to keep mypy_path empty
+        mypy_path = ""
 
         with tempfile.TemporaryDirectory() as cachedir:
             with open(
@@ -132,7 +119,8 @@ class MypyPluginTest(fixtures.TestBase):
 
             args.append(path)
 
-            return api.run(args)
+            result = api.run(args)
+            return result
 
         return run
 
@@ -286,6 +274,8 @@ class MypyPluginTest(fixtures.TestBase):
 
         result = mypy_runner(path, use_plugin=use_plugin)
 
+        not_located = []
+
         if expected_messages:
             eq_(result[2], 1, msg=result)
 
@@ -326,8 +316,14 @@ class MypyPluginTest(fixtures.TestBase):
                     ):
                         break
                 else:
+                    not_located.append(msg)
                     continue
                 del output[idx]
+
+            if not_located:
+                print(f"Couldn't locate expected messages: {not_located}")
+                print("\n".join(msg for _, msg in output))
+                assert False, "expected messages not found, see stdout"
 
             if output:
                 print(f"{len(output)} messages from mypy were not consumed:")

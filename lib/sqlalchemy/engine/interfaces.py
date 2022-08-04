@@ -472,8 +472,17 @@ class ReflectedIndex(TypedDict):
     name: Optional[str]
     """index name"""
 
-    column_names: List[str]
-    """column names which the index refers towards"""
+    column_names: List[Optional[str]]
+    """column names which the index refers towards.
+    An element of this list is ``None`` if it's an expression and is
+    returned in the ``expressions`` list.
+    """
+
+    expressions: NotRequired[List[str]]
+    """Expressions that compose the index. This list, when present, contains
+    both plain column names (that are also in ``column_names``) and
+    expressions (that are ``None`` in ``column_names``).
+    """
 
     unique: bool
     """whether or not the index has a unique flag"""

@@ -736,6 +736,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def reflect_indexes_with_expressions(self):
+        """target database supports reflection of indexes with
+        SQL expressions."""
+        return exclusions.closed()
+
+    @property
     def unique_constraint_reflection(self):
         """target dialect supports reflection of unique constraints"""
         return exclusions.open()

@@ -67,6 +67,7 @@ pg_get_serial_sequence = _pg_cat.pg_get_serial_sequence
 format_type = _pg_cat.format_type
 pg_get_expr = _pg_cat.pg_get_expr
 pg_get_constraintdef = _pg_cat.pg_get_constraintdef
+pg_get_indexdef = _pg_cat.pg_get_indexdef
 
 # constants
 RELKINDS_TABLE_NO_FOREIGN = ("r", "p")

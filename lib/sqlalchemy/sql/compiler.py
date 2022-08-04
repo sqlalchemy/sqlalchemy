@@ -5259,10 +5259,11 @@ class DDLCompiler(Compiled):
                 "Can't emit DROP CONSTRAINT for constraint %r; "
                 "it has no name" % drop.element
             )
-        return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
+        return "ALTER TABLE %s DROP CONSTRAINT %s%s%s" % (
             self.preparer.format_table(drop.element.table),
+            "IF EXISTS " if drop.if_exists else "",
             formatted_name,
-            drop.cascade and " CASCADE" or "",
+            " CASCADE" if drop.cascade else "",
         )
 
     def get_column_specification(self, column, **kwargs):

@@ -18,6 +18,7 @@ from .assertions import assert_warns
 from .assertions import assert_warns_message
 from .assertions import AssertsCompiledSQL
 from .assertions import AssertsExecutionResults
+from .assertions import ComparesIndexes
 from .assertions import ComparesTables
 from .assertions import emits_warning
 from .assertions import emits_warning_on

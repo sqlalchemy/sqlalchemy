@@ -4060,11 +4060,23 @@ class PGDialect(default.DefaultDialect):
             select(
                 idx_sq.c.indexrelid,
                 idx_sq.c.indrelid,
-                pg_catalog.pg_attribute.c.attname,
+                # NOTE: always using pg_get_indexdef is too slow so just
+                # invoke when the element is an expression
+                sql.case(
+                    (
+                        idx_sq.c.attnum == 0,
+                        pg_catalog.pg_get_indexdef(
+                            idx_sq.c.indexrelid, idx_sq.c.ord + 1, True
+                        ),
+                    ),
+                    else_=pg_catalog.pg_attribute.c.attname,
+                ).label("element"),
+                (idx_sq.c.attnum == 0).label("is_expr"),
             )
-            .select_from(pg_catalog.pg_attribute)
-            .join(
-                idx_sq,
+            .select_from(idx_sq)
+            .outerjoin(
+                # do not remove rows where idx_sq.c.attnum is 0
+                pg_catalog.pg_attribute,
                 sql.and_(
                     pg_catalog.pg_attribute.c.attnum == idx_sq.c.attnum,
                     pg_catalog.pg_attribute.c.attrelid == idx_sq.c.indrelid,
@@ -4079,7 +4091,10 @@ class PGDialect(default.DefaultDialect):
             select(
                 attr_sq.c.indexrelid,
                 attr_sq.c.indrelid,
-                sql.func.array_agg(attr_sq.c.attname).label("cols"),
+                sql.func.array_agg(attr_sq.c.element).label("elements"),
+                sql.func.array_agg(attr_sq.c.is_expr).label(
+                    "elements_is_expr"
+                ),
             )
             .group_by(attr_sq.c.indexrelid, attr_sq.c.indrelid)
             .subquery("idx_cols")
@@ -4095,19 +4110,27 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_index.c.indrelid,
                 pg_class_index.c.relname.label("relname_index"),
                 pg_catalog.pg_index.c.indisunique,
-                pg_catalog.pg_index.c.indexprs,
                 pg_catalog.pg_constraint.c.conrelid.is_not(None).label(
                     "has_constraint"
                 ),
                 pg_catalog.pg_index.c.indoption,
                 pg_class_index.c.reloptions,
                 pg_catalog.pg_am.c.amname,
-                pg_catalog.pg_get_expr(
-                    pg_catalog.pg_index.c.indpred,
-                    pg_catalog.pg_index.c.indrelid,
+                sql.case(
+                    # pg_get_expr is very fast so this case has almost no
+                    # performance impact
+                    (
+                        pg_catalog.pg_index.c.indpred.is_not(None),
+                        pg_catalog.pg_get_expr(
+                            pg_catalog.pg_index.c.indpred,
+                            pg_catalog.pg_index.c.indrelid,
+                        ),
+                    ),
+                    else_=sql.null(),
                 ).label("filter_definition"),
                 indnkeyatts,
-                cols_sq.c.cols.label("index_cols"),
+                cols_sq.c.elements,
+                cols_sq.c.elements_is_expr,
             )
             .select_from(pg_catalog.pg_index)
             .where(
@@ -4178,38 +4201,43 @@ class PGDialect(default.DefaultDialect):
 
                     table_indexes = indexes[(schema, table_name)]
 
-                    if row["indexprs"]:
-                        tn = (
-                            table_name
-                            if schema is None
-                            else f"{schema}.{table_name}"
-                        )
-                        util.warn(
-                            "Skipped unsupported reflection of "
-                            f"expression-based index {index_name} of "
-                            f"table {tn}"
-                        )
-                        continue
-
-                    all_cols = row["index_cols"]
+                    all_elements = row["elements"]
+                    all_elements_is_expr = row["elements_is_expr"]
                     indnkeyatts = row["indnkeyatts"]
                     # "The number of key columns in the index, not counting any
                     # included columns, which are merely stored and do not
                     # participate in the index semantics"
-                    if indnkeyatts and all_cols[indnkeyatts:]:
+                    if indnkeyatts and len(all_elements) > indnkeyatts:
                         # this is a "covering index" which has INCLUDE columns
                         # as well as regular index columns
-                        inc_cols = all_cols[indnkeyatts:]
-                        idx_cols = all_cols[:indnkeyatts]
+                        inc_cols = all_elements[indnkeyatts:]
+                        idx_elements = all_elements[:indnkeyatts]
+                        idx_elements_is_expr = all_elements_is_expr[
+                            :indnkeyatts
+                        ]
+                        # postgresql does not support expression on included
+                        # columns as of v14: "ERROR: expressions are not
+                        # supported in included columns".
+                        assert all(
+                            not is_expr
+                            for is_expr in all_elements_is_expr[indnkeyatts:]
+                        )
                     else:
-                        idx_cols = all_cols
+                        idx_elements = all_elements
+                        idx_elements_is_expr = all_elements_is_expr
                         inc_cols = []
 
-                    index = {
-                        "name": index_name,
-                        "unique": row["indisunique"],
-                        "column_names": idx_cols,
-                    }
+                    index = {"name": index_name, "unique": row["indisunique"]}
+                    if any(idx_elements_is_expr):
+                        index["column_names"] = [
+                            None if is_expr else expr
+                            for expr, is_expr in zip(
+                                idx_elements, idx_elements_is_expr
+                            )
+                        ]
+                        index["expressions"] = idx_elements
+                    else:
+                        index["column_names"] = idx_elements
 
                     sorting = {}
                     for col_index, col_flags in enumerate(row["indoption"]):
@@ -4224,7 +4252,7 @@ class PGDialect(default.DefaultDialect):
                             if col_flags & 0x02:
                                 col_sorting += ("nulls_first",)
                         if col_sorting:
-                            sorting[idx_cols[col_index]] = col_sorting
+                            sorting[idx_elements[col_index]] = col_sorting
                     if sorting:
                         index["column_sorting"] = sorting
                     if row["has_constraint"]:

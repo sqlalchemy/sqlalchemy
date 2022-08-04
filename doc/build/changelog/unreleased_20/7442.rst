@@ -1,0 +1,9 @@
+.. change::
+    :tags: reflection, postgresql
+    :tickets: 7442
+
+    The PostgreSQL dialect now supports reflection of expression based indexes.
+    The reflection is supported both when using
+    :meth:`_engine.Inspector.get_indexes` and when reflecting a
+    :class:`_schema.Table` using :paramref:`_schema.Table.autoload_with`.
+    Thanks to immerrr and Aidan Kane for the help on this ticket.

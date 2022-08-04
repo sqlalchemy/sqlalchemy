@@ -55,6 +55,7 @@ from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .mapper import Mapper
@@ -63,6 +64,9 @@ if TYPE_CHECKING:
     from .state import InstanceState
 
 _O = TypeVar("_O", bound=object)
+
+
+_SynchronizeSessionArgument = Literal[False, "evaluate", "fetch"]
 
 
 def _bulk_insert(

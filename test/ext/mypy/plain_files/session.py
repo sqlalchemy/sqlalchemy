@@ -58,4 +58,23 @@ with Session(e) as sess:
     # EXPECTED_TYPE: List[Row[Tuple[int]]]
     reveal_type(rows2)
 
+    # test #8280
+
+    sess.query(User).update(
+        {"name": User.name + " some name"}, synchronize_session="fetch"
+    )
+    sess.query(User).update(
+        {"name": User.name + " some name"}, synchronize_session=False
+    )
+    sess.query(User).update(
+        {"name": User.name + " some name"}, synchronize_session="evaluate"
+    )
+
+    sess.query(User).update(
+        {"name": User.name + " some name"},
+        # EXPECTED_MYPY: Argument "synchronize_session" to "update" of "Query" has incompatible type  # noqa: E501
+        synchronize_session="invalid",
+    )
+    sess.query(User).update({"name": User.name + " some name"})
+
 # more result tests in typed_results.py
