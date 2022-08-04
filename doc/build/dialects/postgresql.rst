@@ -5,8 +5,8 @@ PostgreSQL
 
 .. automodule:: sqlalchemy.dialects.postgresql.base
 
-PostgreSQL Data Types and Custom SQL Constructs
-------------------------------------------------
+PostgreSQL Data Types
+---------------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with PostgreSQL are importable from the top level dialect, whether
@@ -105,12 +105,6 @@ construction arguments, are as follows:
     :noindex:
 
 
-Range Types
-~~~~~~~~~~~
-
-The new range column types found in PostgreSQL 9.2 onwards are
-catered for by the following types:
-
 .. autoclass:: INT4RANGE
 
 
@@ -129,53 +123,6 @@ catered for by the following types:
 .. autoclass:: TSTZRANGE
 
 
-The types above get most of their functionality from the following
-mixin:
-
-.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
-    :members:
-
-.. warning::
-
-  The range type DDL support should work with any PostgreSQL DBAPI
-  driver, however the data types returned may vary. If you are using
-  ``psycopg2``, it's recommended to upgrade to version 2.5 or later
-  before using these column types.
-
-When instantiating models that use these column types, you should pass
-whatever data type is expected by the DBAPI driver you're using for
-the column type. For ``psycopg2`` these are
-``psycopg2.extras.NumericRange``,
-``psycopg2.extras.DateRange``,
-``psycopg2.extras.DateTimeRange`` and
-``psycopg2.extras.DateTimeTZRange`` or the class you've
-registered with ``psycopg2.extras.register_range``.
-
-For example:
-
-.. code-block:: python
-
-  from psycopg2.extras import DateTimeRange
-  from sqlalchemy.dialects.postgresql import TSRANGE
-
-  class RoomBooking(Base):
-
-      __tablename__ = 'room_booking'
-
-      room = Column(Integer(), primary_key=True)
-      during = Column(TSRANGE())
-
-  booking = RoomBooking(
-      room=101,
-      during=DateTimeRange(datetime(2013, 3, 23), None)
-  )
-
-MultiRange Types
-~~~~~~~~~~~~~~~~
-
-The new MultiRange column types found in PostgreSQL 14 onwards are
-catered for by the following types:
-
 .. autoclass:: INT4MULTIRANGE
 
 
@@ -193,47 +140,6 @@ catered for by the following types:
 
 .. autoclass:: TSTZMULTIRANGE
 
-
-The types above get most of their functionality from the following
-mixin:
-
-.. autoclass:: sqlalchemy.dialects.postgresql.ranges.RangeOperators
-    :members:
-
-.. warning::
-
-  The multirange type DDL support should work with any PostgreSQL DBAPI
-  driver, however the data types returned may vary. The feature is
-  currently developed against the psycopg driver, and is known to
-  work with the range types specific to the `psycopg.types.range`
-  extension module.
-
-When instantiating models that use these column types, you should pass
-whatever data type is expected by the DBAPI driver you're using for
-the column type.
-
-For example:
-
-.. code-block:: python
-  # Note: Multirange type currently only tested against the psycopg
-  # driver, hence the use here.
-  from psycopg.types.range import Range
-  from pscyopg.types.multirange import Multirange
-  from sqlalchemy.dialects.postgresql import TSMULTIRANGE
-
-  class RoomBooking(Base):
-
-      __tablename__ = 'room_booking'
-
-      room = Column(Integer(), primary_key=True)
-      during = Column(TSMULTIRANGE())
-
-  booking = RoomBooking(
-      room=101,
-      during=Multirange([
-          Range(datetime(2013, 3, 23), datetime(2014, 3, 22)),
-          Range(datetime(2015, 1, 1), None)
-      ])
 
 
 PostgreSQL Constraint Types

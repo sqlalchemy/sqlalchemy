@@ -474,10 +474,14 @@ place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2``
 which may be more performant.
 
 """  # noqa
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import logging
 import re
+from typing import cast
 
+from . import ranges
 from ._psycopg_common import _PGDialect_common_psycopg
 from ._psycopg_common import _PGExecutionContext_common_psycopg
 from .base import PGCompiler
@@ -490,7 +494,6 @@ from ...engine import cursor as _cursor
 from ...util import FastIntFlag
 from ...util import parse_user_argument_for_enum
 
-
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
 
@@ -502,6 +505,56 @@ class _PGJSON(JSON):
 class _PGJSONB(JSONB):
     def result_processor(self, dialect, coltype):
         return None
+
+
+class _Psycopg2Range(ranges.AbstractRange):
+    _psycopg2_range_cls = "none"
+
+    def bind_processor(self, dialect):
+        Range = getattr(
+            cast(PGDialect_psycopg2, dialect)._psycopg2_extras,
+            self._psycopg2_range_cls,
+        )
+
+        NoneType = type(None)
+
+        def to_range(value):
+            if not isinstance(value, (str, NoneType)):
+                value = Range(
+                    value.lower, value.upper, value.bounds, value.empty
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                value = ranges.Range(
+                    value._lower,
+                    value._upper,
+                    bounds=value._bounds if value._bounds else "[)",
+                    empty=not value._bounds,
+                )
+            return value
+
+        return to_range
+
+
+class _Psycopg2NumericRange(_Psycopg2Range):
+    _psycopg2_range_cls = "NumericRange"
+
+
+class _Psycopg2DateRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateRange"
+
+
+class _Psycopg2DateTimeRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateTimeRange"
+
+
+class _Psycopg2DateTimeTZRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateTimeTZRange"
 
 
 class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
@@ -589,6 +642,12 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
+            ranges.INT4RANGE: _Psycopg2NumericRange,
+            ranges.INT8RANGE: _Psycopg2NumericRange,
+            ranges.NUMRANGE: _Psycopg2NumericRange,
+            ranges.DATERANGE: _Psycopg2DateRange,
+            ranges.TSRANGE: _Psycopg2DateTimeRange,
+            ranges.TSTZRANGE: _Psycopg2DateTimeTZRange,
         },
     )
 
