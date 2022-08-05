@@ -2,16 +2,16 @@
     :tags: postgresql, usecase
     :tickets: 7156
 
-    Adds support for PostgreSQL MultiRange types, introduced in PostgreSQL 14.
-    This integrates with both the ``psycopg.types.range`` extension module
-    as well as new the :class:`_postgresql.MultiRange` datatype introduced
-    in SQLAlchemy 2.0 for all PostgreSQL backends.
+    Adds support for PostgreSQL multirange types, introduced in PostgreSQL 14.
+    Support for PostgreSQL ranges and multiranges has now been generalized to
+    the psycopg3, psycopg2 and asyncpg backends, with room for further dialect
+    support, using a backend-agnostic :class:`_postgresql.Range` data object
+    that's constructor-compatible with the previously used psycopg2 object. See
+    the new documentation for usage patterns.
 
+    Thanks very much to @zeeeeeb for the pull request implementing and testing
+    the new datatypes and psycopg support.
 
-.. change::
-    :tags: postgresql, feature
+    .. seealso::
 
-    Implemented support for PostgreSQL ranges and multiranges for all
-    PostgreSQL backends.  To establish range and multirange types, use the
-    new :class:`_postgresql.Range` and :class:`_postgresql.MultiRange`
-    datatypes.
+        :ref:`postgresql_ranges`
