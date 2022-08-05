@@ -561,9 +561,9 @@ def _collect_insert_commands(
             has_all_pks = mapper._pk_keys_by_table[table].issubset(params)
 
             if mapper.base_mapper.eager_defaults:
-                has_all_defaults = mapper._server_default_cols[table].issubset(
-                    params
-                )
+                has_all_defaults = mapper._server_default_col_keys[
+                    table
+                ].issubset(params)
             else:
                 has_all_defaults = True
         else:
@@ -659,7 +659,7 @@ def _collect_update_commands(
 
             if mapper.base_mapper.eager_defaults:
                 has_all_defaults = (
-                    mapper._server_onupdate_default_cols[table]
+                    mapper._server_onupdate_default_col_keys[table]
                 ).issubset(params)
             else:
                 has_all_defaults = True
@@ -930,16 +930,20 @@ def _emit_update_statements(
         return_defaults = False
 
         if not has_all_pks:
-            statement = statement.return_defaults()
+            statement = statement.return_defaults(*mapper._pks_by_table[table])
             return_defaults = True
-        elif (
+
+        if (
             bookkeeping
             and not has_all_defaults
             and mapper.base_mapper.eager_defaults
         ):
-            statement = statement.return_defaults()
+            statement = statement.return_defaults(
+                *mapper._server_onupdate_default_cols[table]
+            )
             return_defaults = True
-        elif mapper.version_id_col is not None:
+
+        if mapper.version_id_col is not None:
             statement = statement.return_defaults(mapper.version_id_col)
             return_defaults = True
 
@@ -1171,8 +1175,10 @@ def _emit_insert_statements(
                 do_executemany = False
 
             if not has_all_defaults and base_mapper.eager_defaults:
-                statement = statement.return_defaults()
-            elif mapper.version_id_col is not None:
+                statement = statement.return_defaults(
+                    *mapper._server_default_cols[table]
+                )
+            if mapper.version_id_col is not None:
                 statement = statement.return_defaults(mapper.version_id_col)
             elif do_executemany:
                 statement = statement.return_defaults(*table.primary_key)

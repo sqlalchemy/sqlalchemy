@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7438
+
+    Fixed bug in the behavior of the :paramref:`_orm.Mapper.eager_defaults`
+    parameter such that client-side SQL default or onupdate expressions in the
+    table definition alone will trigger a fetch operation using RETURNING or
+    SELECT when the ORM emits an INSERT or UPDATE for the row. Previously, only
+    server side defaults established as part of table DDL and/or server-side
+    onupdate expressions would trigger this fetch, even though client-side SQL
+    expressions would be included when the fetch was rendered.

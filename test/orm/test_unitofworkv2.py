@@ -2353,12 +2353,33 @@ class EagerDefaultsTest(fixtures.MappedTest):
             Column("bar", Integer, server_onupdate=FetchedValue()),
         )
 
+        Table(
+            "test3",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", String(50), default=func.lower("HI")),
+        )
+
+        Table(
+            "test4",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, onupdate=text("5 + 3")),
+        )
+
     @classmethod
     def setup_classes(cls):
         class Thing(cls.Basic):
             pass
 
         class Thing2(cls.Basic):
+            pass
+
+        class Thing3(cls.Basic):
+            pass
+
+        class Thing4(cls.Basic):
             pass
 
     @classmethod
@@ -2375,7 +2396,19 @@ class EagerDefaultsTest(fixtures.MappedTest):
             Thing2, cls.tables.test2, eager_defaults=True
         )
 
-    def test_insert_defaults_present(self):
+        Thing3 = cls.classes.Thing3
+
+        cls.mapper_registry.map_imperatively(
+            Thing3, cls.tables.test3, eager_defaults=True
+        )
+
+        Thing4 = cls.classes.Thing4
+
+        cls.mapper_registry.map_imperatively(
+            Thing4, cls.tables.test4, eager_defaults=True
+        )
+
+    def test_server_insert_defaults_present(self):
         Thing = self.classes.Thing
         s = fixture_session()
 
@@ -2388,7 +2421,10 @@ class EagerDefaultsTest(fixtures.MappedTest):
             s.flush,
             CompiledSQL(
                 "INSERT INTO test (id, foo) VALUES (:id, :foo)",
-                [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
+                [
+                    {"foo": 5, "id": 1},
+                    {"foo": 10, "id": 2},
+                ],
             ),
         )
 
@@ -2398,7 +2434,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 0)
 
-    def test_insert_defaults_present_as_expr(self):
+    def test_server_insert_defaults_present_as_expr(self):
         Thing = self.classes.Thing
         s = fixture_session()
 
@@ -2414,13 +2450,15 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 testing.db,
                 s.flush,
                 CompiledSQL(
-                    "INSERT INTO test (id, foo) VALUES (%(id)s, 2 + 5) "
+                    "INSERT INTO test (id, foo) "
+                    "VALUES (%(id)s, 2 + 5) "
                     "RETURNING test.foo",
                     [{"id": 1}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
-                    "INSERT INTO test (id, foo) VALUES (%(id)s, 5 + 5) "
+                    "INSERT INTO test (id, foo) "
+                    "VALUES (%(id)s, 5 + 5) "
                     "RETURNING test.foo",
                     [{"id": 2}],
                     dialect="postgresql",
@@ -2457,7 +2495,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 0)
 
-    def test_insert_defaults_nonpresent(self):
+    def test_server_insert_defaults_nonpresent(self):
         Thing = self.classes.Thing
         s = fixture_session()
 
@@ -2516,7 +2554,73 @@ class EagerDefaultsTest(fixtures.MappedTest):
             ),
         )
 
-    def test_update_defaults_nonpresent(self):
+    def test_clientsql_insert_defaults_nonpresent(self):
+        Thing3 = self.classes.Thing3
+        s = fixture_session()
+
+        t1, t2 = (Thing3(id=1), Thing3(id=2))
+
+        s.add_all([t1, t2])
+
+        self.assert_sql_execution(
+            testing.db,
+            s.commit,
+            Conditional(
+                testing.db.dialect.insert_returning,
+                [
+                    Conditional(
+                        testing.db.dialect.insert_executemany_returning,
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test3 (id, foo) "
+                                "VALUES (%(id)s, lower(%(lower_1)s)) "
+                                "RETURNING test3.foo",
+                                [{"id": 1}, {"id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test3 (id, foo) "
+                                "VALUES (%(id)s, lower(%(lower_1)s)) "
+                                "RETURNING test3.foo",
+                                [{"id": 1}],
+                                dialect="postgresql",
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test3 (id, foo) "
+                                "VALUES (%(id)s, lower(%(lower_1)s)) "
+                                "RETURNING test3.foo",
+                                [{"id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test3 (id, foo) "
+                        "VALUES (:id, lower(:lower_1))",
+                        [
+                            {"id": 1, "lower_1": "HI"},
+                            {"id": 2, "lower_1": "HI"},
+                        ],
+                    ),
+                    CompiledSQL(
+                        "SELECT test3.foo AS test3_foo "
+                        "FROM test3 WHERE test3.id = :pk_1",
+                        [{"pk_1": 1}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test3.foo AS test3_foo "
+                        "FROM test3 WHERE test3.id = :pk_1",
+                        [{"pk_1": 2}],
+                    ),
+                ],
+            ),
+        )
+
+    def test_server_update_defaults_nonpresent(self):
         Thing2 = self.classes.Thing2
         s = fixture_session()
 
@@ -2607,6 +2711,101 @@ class EagerDefaultsTest(fixtures.MappedTest):
             eq_(t1.bar, 2)
             eq_(t2.bar, 10)
             eq_(t3.bar, 4)
+            eq_(t4.bar, 12)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_clientsql_update_defaults_nonpresent(self):
+        Thing4 = self.classes.Thing4
+        s = fixture_session()
+
+        t1, t2, t3, t4 = (
+            Thing4(id=1, foo=1),
+            Thing4(id=2, foo=2),
+            Thing4(id=3, foo=3),
+            Thing4(id=4, foo=4),
+        )
+
+        s.add_all([t1, t2, t3, t4])
+        s.flush()
+
+        t1.foo = 5
+        t2.foo = 6
+        t2.bar = 10
+        t3.foo = 7
+        t4.foo = 8
+        t4.bar = 12
+
+        self.assert_sql_execution(
+            testing.db,
+            s.flush,
+            Conditional(
+                testing.db.dialect.update_returning,
+                [
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=%(foo)s, bar=5 + 3 "
+                        "WHERE test4.id = %(test4_id)s RETURNING test4.bar",
+                        [{"foo": 5, "test4_id": 1}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=%(foo)s, bar=%(bar)s "
+                        "WHERE test4.id = %(test4_id)s",
+                        [{"foo": 6, "bar": 10, "test4_id": 2}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=%(foo)s, bar=5 + 3 WHERE "
+                        "test4.id = %(test4_id)s RETURNING test4.bar",
+                        [{"foo": 7, "test4_id": 3}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=%(foo)s, bar=%(bar)s WHERE "
+                        "test4.id = %(test4_id)s",
+                        [{"foo": 8, "bar": 12, "test4_id": 4}],
+                        dialect="postgresql",
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=:foo, bar=5 + 3 "
+                        "WHERE test4.id = :test4_id",
+                        [{"foo": 5, "test4_id": 1}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=:foo, bar=:bar "
+                        "WHERE test4.id = :test4_id",
+                        [{"foo": 6, "bar": 10, "test4_id": 2}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=:foo, bar=5 + 3 "
+                        "WHERE test4.id = :test4_id",
+                        [{"foo": 7, "test4_id": 3}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test4 SET foo=:foo, bar=:bar "
+                        "WHERE test4.id = :test4_id",
+                        [{"foo": 8, "bar": 12, "test4_id": 4}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test4.bar AS test4_bar FROM test4 "
+                        "WHERE test4.id = :pk_1",
+                        [{"pk_1": 1}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test4.bar AS test4_bar FROM test4 "
+                        "WHERE test4.id = :pk_1",
+                        [{"pk_1": 3}],
+                    ),
+                ],
+            ),
+        )
+
+        def go():
+            eq_(t1.bar, 8)
+            eq_(t2.bar, 10)
+            eq_(t3.bar, 8)
             eq_(t4.bar, 12)
 
         self.assert_sql_count(testing.db, go, 0)
