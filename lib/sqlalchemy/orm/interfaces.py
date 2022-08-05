@@ -187,6 +187,7 @@ class _AttributeOptions(NamedTuple):
     dataclasses_repr: Union[_NoArg, bool]
     dataclasses_default: Union[_NoArg, Any]
     dataclasses_default_factory: Union[_NoArg, Callable[[], Any]]
+    dataclasses_kw_only: Union[_NoArg, bool]
 
     def _as_dataclass_field(self) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
@@ -200,6 +201,8 @@ class _AttributeOptions(NamedTuple):
             kw["init"] = self.dataclasses_init
         if self.dataclasses_repr is not _NoArg.NO_ARG:
             kw["repr"] = self.dataclasses_repr
+        if self.dataclasses_kw_only is not _NoArg.NO_ARG:
+            kw["kw_only"] = self.dataclasses_kw_only
 
         return dataclasses.field(**kw)
 
@@ -226,7 +229,7 @@ class _AttributeOptions(NamedTuple):
 
 
 _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
-    _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG
+    _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG
 )
 
 

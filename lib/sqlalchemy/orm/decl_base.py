@@ -106,6 +106,8 @@ class _DataclassArguments(TypedDict):
     eq: Union[_NoArg, bool]
     order: Union[_NoArg, bool]
     unsafe_hash: Union[_NoArg, bool]
+    match_args: Union[_NoArg, bool]
+    kw_only: Union[_NoArg, bool]
 
 
 def _declared_mapping_info(
@@ -1030,22 +1032,20 @@ class _ClassScanMapperConfig(_MapperConfig):
 
     @classmethod
     def _assert_dc_arguments(cls, arguments: _DataclassArguments) -> None:
-        disallowed_args = set(arguments).difference(
-            {
-                "init",
-                "repr",
-                "order",
-                "eq",
-                "unsafe_hash",
-            }
-        )
+        allowed = {
+            "init",
+            "repr",
+            "order",
+            "eq",
+            "unsafe_hash",
+            "kw_only",
+            "match_args",
+        }
+        disallowed_args = set(arguments).difference(allowed)
         if disallowed_args:
+            msg = ", ".join(f"{arg!r}" for arg in sorted(disallowed_args))
             raise exc.ArgumentError(
-                f"Dataclass argument(s) "
-                f"""{
-                    ', '.join(f'{arg!r}'
-                    for arg in sorted(disallowed_args))
-                } are not accepted"""
+                f"Dataclass argument(s) {msg} are not accepted"
             )
 
     def _collect_annotation(
