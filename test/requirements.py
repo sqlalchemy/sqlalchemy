@@ -1354,7 +1354,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def range_types(self):
         def check_range_types(config):
-            if not self.psycopg_compatibility.enabled:
+            if not self.any_psycopg_compatibility.enabled:
                 return False
             try:
                 with config.db.connect() as conn:
@@ -1414,14 +1414,14 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def native_hstore(self):
-        return self.psycopg_compatibility
+        return self.any_psycopg_compatibility
 
     @property
     def psycopg2_compatibility(self):
         return only_on(["postgresql+psycopg2", "postgresql+psycopg2cffi"])
 
     @property
-    def psycopg_compatibility(self):
+    def any_psycopg_compatibility(self):
         return only_on(
             [
                 "postgresql+psycopg2",
@@ -1431,8 +1431,12 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def psycopg_only_compatibility(self):
+        return only_on(["postgresql+psycopg"])
+
+    @property
     def psycopg_or_pg8000_compatibility(self):
-        return only_on([self.psycopg_compatibility, "postgresql+pg8000"])
+        return only_on([self.any_psycopg_compatibility, "postgresql+pg8000"])
 
     @property
     def percent_schema_names(self):
