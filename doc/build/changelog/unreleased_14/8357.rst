@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8357
+
+    Fixed issue where referencing a CTE multiple times in conjunction with a
+    polymorphic SELECT could result in multiple "clones" of the same CTE being
+    constructed, which would then trigger these two CTEs as duplicates. To
+    resolve, the two CTEs are deep-compared when this occurs to ensure that
+    they are equivalent, then are treated as equivalent.
+
