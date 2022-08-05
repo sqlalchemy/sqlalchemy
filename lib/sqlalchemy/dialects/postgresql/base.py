@@ -1445,6 +1445,157 @@ E.g.::
         Column('data', CastingArray(JSONB))
     )
 
+Range and Multirange Types
+--------------------------
+
+PostgreSQL range and multirange types are supported for the psycopg2,
+psycopg, and asyncpg dialects.
+
+Data values being passed to the database may be passed as string
+values or by using the :class:`_postgresql.Range` data object.
+
+.. versionadded:: 2.0  Added the backend-agnostic :class:`_postgresql.Range`
+   object used to indicate ranges.  The ``psycopg2``-specific range classes
+   are no longer exposed and are only used internally by that particular
+   dialect.
+
+E.g. an example of a fully typed model using the
+:class:`_postgresql.TSRANGE` datatype::
+
+  from datetime import datetime
+
+  from sqlalchemy.dialects.postgresql import Range
+  from sqlalchemy.dialects.postgresql import TSRANGE
+  from sqlalchemy.orm import DeclarativeBase
+  from sqlalchemy.orm import Mapped
+  from sqlalchemy.orm import mapped_column
+
+  class Base(DeclarativeBase):
+      pass
+
+  class RoomBooking(Base):
+
+      __tablename__ = 'room_booking'
+
+      id: Mapped[int] = mapped_column(primary_key=True)
+      room: Mapped[str]
+      during: Mapped[Range[datetime]] = mapped_column(TSRANGE)
+
+To represent data for the ``during`` column above, the :class:`_postgresql.Range`
+type is a simple dataclass that will represent the bounds of the range.
+Below illustrates an INSERT of a row into the above ``room_booking`` table::
+
+  from sqlalchemy import create_engine
+  from sqlalchemy.orm import Session
+
+  engine = create_engine("postgresql+psycopg://scott:tiger@pg14/dbname")
+
+  Base.metadata.create_all(engine)
+
+  with Session(engine) as session:
+      booking = RoomBooking(
+          room="101",
+          during=Range(datetime(2013, 3, 23), datetime(2013, 3, 25))
+      )
+      session.add(booking)
+      session.commit()
+
+Selecting from any range column will also return :class:`_postgresql.Range`
+objects as indicated::
+
+  from sqlalchemy import select
+
+  with Session(engine) as session:
+      for row in session.execute(select(RoomBooking.during)):
+          print(row)
+
+The available range datatypes are as follows:
+
+* :class:`_postgresql.INT4RANGE`
+* :class:`_postgresql.INT8RANGE`
+* :class:`_postgresql.NUMRANGE`
+* :class:`_postgresql.DATERANGE`
+* :class:`_postgresql.TSRANGE`
+* :class:`_postgresql.TSTZRANGE`
+
+.. autoclass:: sqlalchemy.dialects.postgresql.Range
+
+Multiranges
+^^^^^^^^^^^
+
+Multiranges are supported by PostgreSQL 14 and above.  SQLAlchemy's
+multirange datatypes deal in lists of :class:`_postgresql.Range` types.
+
+.. versionadded:: 2.0 Added support for MULTIRANGE datatypes.   In contrast
+   to the ``psycopg`` multirange feature, SQLAlchemy's adaptation represents
+   a multirange datatype as a list of :class:`_postgresql.Range` objects.
+
+The example below illustrates use of the :class:`_postgresql.TSMULTIRANGE`
+datatype::
+
+    from datetime import datetime
+    from typing import List
+
+    from sqlalchemy.dialects.postgresql import Range
+    from sqlalchemy.dialects.postgresql import TSMULTIRANGE
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+    class Base(DeclarativeBase):
+        pass
+
+    class EventCalendar(Base):
+
+        __tablename__ = 'event_calendar'
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        event_name: Mapped[str]
+        in_session_periods: Mapped[List[Range[datetime]]] = mapped_column(TSMULTIRANGE)
+
+Illustrating insertion and selecting of a record::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    engine = create_engine("postgresql+psycopg://scott:tiger@pg14/test")
+
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        calendar = EventCalendar(
+            event_name="SQLAlchemy Tutorial Sessions",
+            in_session_periods= [
+                Range(datetime(2013, 3, 23), datetime(2013, 3, 25)),
+                Range(datetime(2013, 4, 12), datetime(2013, 4, 15)),
+                Range(datetime(2013, 5, 9), datetime(2013, 5, 12)),
+            ]
+        )
+        session.add(calendar)
+        session.commit()
+
+        for multirange in session.scalars(select(EventCalendar.in_session_periods)):
+            for range_ in multirange:
+                print(f"Start: {range_.lower}  End: {range_.upper}")
+
+.. note:: In the above example, the list of :class:`_postgresql.Range` types
+   as handled by the ORM will not automatically detect in-place changes to
+   a particular list value; to update list values with the ORM, either re-assign
+   a new list to the attribute, or use the :class:`.MutableList`
+   type modifier.  See the section :ref:`mutable_toplevel` for background.
+
+
+The available multirange datatypes are as follows:
+
+* :class:`_postgresql.INT4MULTIRANGE`
+* :class:`_postgresql.INT8MULTIRANGE`
+* :class:`_postgresql.NUMMULTIRANGE`
+* :class:`_postgresql.DATEMULTIRANGE`
+* :class:`_postgresql.TSMULTIRANGE`
+* :class:`_postgresql.TSTZMULTIRANGE`
+
+
 
 """  # noqa: E501
 

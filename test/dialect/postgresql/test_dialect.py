@@ -1,4 +1,5 @@
 # coding: utf-8
+import dataclasses
 import datetime
 import itertools
 import logging
@@ -35,6 +36,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
+from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_BATCH
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_PLAIN
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
@@ -55,6 +57,7 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
+from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import ne_
 
 if True:
@@ -65,6 +68,29 @@ if True:
 
 class DialectTest(fixtures.TestBase):
     """python-side dialect tests."""
+
+    def test_range_constructor(self):
+        """test kwonly argments in the range constructor, as we had
+        to do dataclasses backwards compat operations"""
+
+        r1 = Range(None, 5)
+        eq_(dataclasses.astuple(r1), (None, 5, "[)", False))
+
+        r1 = Range(10, 5, bounds="()")
+        eq_(dataclasses.astuple(r1), (10, 5, "()", False))
+
+        with expect_raises(TypeError):
+            Range(10, 5, "()")  # type: ignore
+
+        with expect_raises(TypeError):
+            Range(None, None, "()", True)  # type: ignore
+
+    def test_range_frozen(self):
+        r1 = Range(None, 5)
+        eq_(dataclasses.astuple(r1), (None, 5, "[)", False))
+
+        with expect_raises(dataclasses.FrozenInstanceError):
+            r1.lower = 8  # type: ignore
 
     def test_version_parsing(self):
         def mock_conn(res):

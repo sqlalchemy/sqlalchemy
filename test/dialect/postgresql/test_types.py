@@ -1,5 +1,4 @@
 # coding: utf-8
-from collections import defaultdict
 import datetime
 import decimal
 from enum import Enum as _PY_Enum
@@ -53,6 +52,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import NamedType
 from sqlalchemy.dialects.postgresql import NUMMULTIRANGE
 from sqlalchemy.dialects.postgresql import NUMRANGE
+from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import TSMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
@@ -3708,27 +3708,8 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class _RangeTypeRoundTrip(fixtures.TablesTest):
-    __requires__ = "range_types", "any_psycopg_compatibility"
+    __requires__ = ("range_types",)
     __backend__ = True
-
-    def extras(self):
-        # done this way so we don't get ImportErrors with
-        # older psycopg2 versions.
-        if testing.against("postgresql+psycopg2cffi"):
-            from psycopg2cffi import extras
-        elif testing.against("postgresql+psycopg2"):
-            from psycopg2 import extras
-        elif testing.against("postgresql+psycopg"):
-            from psycopg.types.range import Range
-
-            class psycopg_extras:
-                def __getattr__(self, _):
-                    return Range
-
-            extras = psycopg_extras()
-        else:
-            assert False, "Unknown dialect"
-        return extras
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3761,13 +3742,25 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         )
         self._assert_data(connection)
 
+    @testing.requires.any_psycopg_compatibility
     def test_insert_text(self, connection):
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
         )
         self._assert_data(connection)
 
-    def test_union_result(self, connection):
+    def test_union_result_obj(self, connection):
+        # insert
+        connection.execute(
+            self.tables.data_table.insert(), {"range": self._data_obj()}
+        )
+        # select
+        range_ = self.tables.data_table.c.range
+        data = connection.execute(select(range_ + range_)).fetchall()
+        eq_(data, [(self._data_obj(),)])
+
+    @testing.requires.any_psycopg_compatibility
+    def test_union_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -3777,7 +3770,18 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    def test_intersection_result(self, connection):
+    def test_intersection_result_obj(self, connection):
+        # insert
+        connection.execute(
+            self.tables.data_table.insert(), {"range": self._data_obj()}
+        )
+        # select
+        range_ = self.tables.data_table.c.range
+        data = connection.execute(select(range_ * range_)).fetchall()
+        eq_(data, [(self._data_obj(),)])
+
+    @testing.requires.any_psycopg_compatibility
+    def test_intersection_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -3787,7 +3791,18 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    def test_difference_result(self, connection):
+    def test_difference_result_obj(self, connection):
+        # insert
+        connection.execute(
+            self.tables.data_table.insert(), {"range": self._data_obj()}
+        )
+        # select
+        range_ = self.tables.data_table.c.range
+        data = connection.execute(select(range_ - range_)).fetchall()
+        eq_(data, [(self._data_obj().__class__(empty=True),)])
+
+    @testing.requires.any_psycopg_compatibility
+    def test_difference_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -3807,7 +3822,7 @@ class _Int4RangeTests:
         return "[1,2)"
 
     def _data_obj(self):
-        return self.extras().NumericRange(1, 2)
+        return Range(1, 2)
 
 
 class _Int8RangeTests:
@@ -3819,9 +3834,7 @@ class _Int8RangeTests:
         return "[9223372036854775806,9223372036854775807)"
 
     def _data_obj(self):
-        return self.extras().NumericRange(
-            9223372036854775806, 9223372036854775807
-        )
+        return Range(9223372036854775806, 9223372036854775807)
 
 
 class _NumRangeTests:
@@ -3833,9 +3846,7 @@ class _NumRangeTests:
         return "[1.0,2.0)"
 
     def _data_obj(self):
-        return self.extras().NumericRange(
-            decimal.Decimal("1.0"), decimal.Decimal("2.0")
-        )
+        return Range(decimal.Decimal("1.0"), decimal.Decimal("2.0"))
 
 
 class _DateRangeTests:
@@ -3847,9 +3858,7 @@ class _DateRangeTests:
         return "[2013-03-23,2013-03-24)"
 
     def _data_obj(self):
-        return self.extras().DateRange(
-            datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
-        )
+        return Range(datetime.date(2013, 3, 23), datetime.date(2013, 3, 24))
 
 
 class _DateTimeRangeTests:
@@ -3861,7 +3870,7 @@ class _DateTimeRangeTests:
         return "[2013-03-23 14:30,2013-03-23 23:30)"
 
     def _data_obj(self):
-        return self.extras().DateTimeRange(
+        return Range(
             datetime.datetime(2013, 3, 23, 14, 30),
             datetime.datetime(2013, 3, 23, 23, 30),
         )
@@ -3888,7 +3897,7 @@ class _DateTimeTZRangeTests:
         return "[%s,%s)" % self.tstzs()
 
     def _data_obj(self):
-        return self.extras().DateTimeTZRange(*self.tstzs())
+        return Range(*self.tstzs())
 
 
 class Int4RangeCompilationTest(_Int4RangeTests, _RangeTypeCompilation):
@@ -4104,29 +4113,8 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
-    __requires__ = "range_types", "psycopg_only_compatibility"
+    __requires__ = ("multirange_types",)
     __backend__ = True
-
-    def extras(self):
-        # done this way so we don't get ImportErrors with
-        # older psycopg2 versions.
-        if testing.against("postgresql+psycopg"):
-            from psycopg.types.range import Range
-            from psycopg.types.multirange import Multirange
-
-            class psycopg_extras:
-                def __init__(self):
-                    self.data = defaultdict(
-                        lambda: Range, Multirange=Multirange
-                    )
-
-                def __getattr__(self, name):
-                    return self.data[name]
-
-            extras = psycopg_extras()
-        else:
-            assert False, "Unsupported MultiRange Dialect"
-        return extras
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4159,13 +4147,15 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         )
         self._assert_data(connection)
 
+    @testing.requires.any_psycopg_compatibility
     def test_insert_text(self, connection):
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
         )
         self._assert_data(connection)
 
-    def test_union_result(self, connection):
+    @testing.requires.any_psycopg_compatibility
+    def test_union_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -4175,7 +4165,8 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    def test_intersection_result(self, connection):
+    @testing.requires.any_psycopg_compatibility
+    def test_intersection_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -4185,7 +4176,8 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    def test_difference_result(self, connection):
+    @testing.requires.any_psycopg_compatibility
+    def test_difference_result_text(self, connection):
         # insert
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -4193,7 +4185,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         # select
         range_ = self.tables.data_table.c.range
         data = connection.execute(select(range_ - range_)).fetchall()
-        eq_(data, [(self.extras().Multirange(),)])
+        eq_(data, [([],)])
 
 
 class _Int4MultiRangeTests:
@@ -4205,13 +4197,11 @@ class _Int4MultiRangeTests:
         return "{[1,2), [3, 5), [9, 12)}"
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(1, 2),
-                self.extras().Range(3, 5),
-                self.extras().Range(9, 12),
-            ]
-        )
+        return [
+            Range(1, 2),
+            Range(3, 5),
+            Range(9, 12),
+        ]
 
 
 class _Int8MultiRangeTests:
@@ -4226,12 +4216,10 @@ class _Int8MultiRangeTests:
         )
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(9223372036854775801, 9223372036854775803),
-                self.extras().Range(9223372036854775805, 9223372036854775807),
-            ]
-        )
+        return [
+            Range(9223372036854775801, 9223372036854775803),
+            Range(9223372036854775805, 9223372036854775807),
+        ]
 
 
 class _NumMultiRangeTests:
@@ -4243,19 +4231,11 @@ class _NumMultiRangeTests:
         return "{[1.0,2.0), [3.0, 5.0), [9.0, 12.0)}"
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(
-                    decimal.Decimal("1.0"), decimal.Decimal("2.0")
-                ),
-                self.extras().Range(
-                    decimal.Decimal("3.0"), decimal.Decimal("5.0")
-                ),
-                self.extras().Range(
-                    decimal.Decimal("9.0"), decimal.Decimal("12.0")
-                ),
-            ]
-        )
+        return [
+            Range(decimal.Decimal("1.0"), decimal.Decimal("2.0")),
+            Range(decimal.Decimal("3.0"), decimal.Decimal("5.0")),
+            Range(decimal.Decimal("9.0"), decimal.Decimal("12.0")),
+        ]
 
 
 class _DateMultiRangeTests:
@@ -4267,16 +4247,10 @@ class _DateMultiRangeTests:
         return "{[2013-03-23,2013-03-24), [2014-05-23,2014-05-24)}"
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(
-                    datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
-                ),
-                self.extras().Range(
-                    datetime.date(2014, 5, 23), datetime.date(2014, 5, 24)
-                ),
-            ]
-        )
+        return [
+            Range(datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)),
+            Range(datetime.date(2014, 5, 23), datetime.date(2014, 5, 24)),
+        ]
 
 
 class _DateTimeMultiRangeTests:
@@ -4291,18 +4265,16 @@ class _DateTimeMultiRangeTests:
         )
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(
-                    datetime.datetime(2013, 3, 23, 14, 30),
-                    datetime.datetime(2013, 3, 23, 23, 30),
-                ),
-                self.extras().Range(
-                    datetime.datetime(2014, 5, 23, 14, 30),
-                    datetime.datetime(2014, 5, 23, 23, 30),
-                ),
-            ]
-        )
+        return [
+            Range(
+                datetime.datetime(2013, 3, 23, 14, 30),
+                datetime.datetime(2013, 3, 23, 23, 30),
+            ),
+            Range(
+                datetime.datetime(2014, 5, 23, 14, 30),
+                datetime.datetime(2014, 5, 23, 23, 30),
+            ),
+        ]
 
 
 class _DateTimeTZMultiRangeTests:
@@ -4344,12 +4316,10 @@ class _DateTimeTZMultiRangeTests:
         )
 
     def _data_obj(self):
-        return self.extras().Multirange(
-            [
-                self.extras().Range(*self.tstzs()),
-                self.extras().Range(*self.tstzs_delta()),
-            ]
-        )
+        return [
+            Range(*self.tstzs()),
+            Range(*self.tstzs_delta()),
+        ]
 
 
 class Int4MultiRangeCompilationTest(

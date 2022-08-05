@@ -1353,17 +1353,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def range_types(self):
-        def check_range_types(config):
-            if not self.any_psycopg_compatibility.enabled:
-                return False
-            try:
-                with config.db.connect() as conn:
-                    conn.exec_driver_sql("select '[1,2)'::int4range;").scalar()
-                return True
-            except Exception:
-                return False
+        return only_on(["+psycopg2", "+psycopg", "+asyncpg"])
 
-        return only_if(check_range_types)
+    @property
+    def multirange_types(self):
+        return only_on(["+psycopg", "+asyncpg"]) + only_on("postgresql >= 14")
 
     @property
     def async_dialect(self):
