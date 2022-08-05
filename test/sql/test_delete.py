@@ -307,7 +307,7 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
             ),
         )
 
-    @testing.requires.delete_from
+    @testing.requires.delete_using
     def test_exec_two_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings
@@ -326,7 +326,7 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         ]
         self._assert_table(connection, addresses, expected)
 
-    @testing.requires.delete_from
+    @testing.requires.delete_using
     def test_exec_three_table(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses
@@ -342,7 +342,7 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         expected = [(2, 5, "ding 2/5")]
         self._assert_table(connection, dingalings, expected)
 
-    @testing.requires.delete_from
+    @testing.requires.delete_using
     def test_exec_two_table_plus_alias(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings
@@ -359,7 +359,7 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         expected = [(1, 7, "x", "jack@bean.com"), (5, 9, "x", "fred@fred.com")]
         self._assert_table(connection, addresses, expected)
 
-    @testing.requires.delete_from
+    @testing.requires.delete_using
     def test_exec_alias_plus_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings

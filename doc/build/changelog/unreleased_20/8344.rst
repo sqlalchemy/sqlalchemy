@@ -1,0 +1,44 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8344
+
+    Fixed issue in ORM enabled UPDATE when the statement is created against a
+    joined-inheritance subclass, updating only local table columns, where the
+    "fetch" synchronization strategy would not render the correct RETURNING
+    clause for databases that use RETURNING for fetch synchronization.
+    Also adjusts the strategy used for RETURNING in UPDATE FROM and
+    DELETE FROM statements.
+
+.. change::
+    :tags: usecase, mariadb
+    :tickets: 8344
+
+    Added a new execution option ``is_delete_using=True``, which is consumed
+    by the ORM when using an ORM-enabled DELETE statement in conjunction with
+    the "fetch" synchronization strategy; this option indicates that the
+    DELETE statement is expected to use multiple tables, which on MariaDB
+    is the DELETE..USING syntax.   The option then indicates that
+    RETURNING (newly implemented in SQLAlchemy 2.0 for MariaDB
+    for  :ticket:`7011`) should not be used for databases that are known
+    to not support "DELETE..USING..RETURNING" syntax, even though they
+    support "DELETE..USING", which is MariaDB's current capability.
+
+    The rationale for this option is that the current workings of ORM-enabled
+    DELETE doesn't know up front if a DELETE statement is against multiple
+    tables or not until compilation occurs, which is cached in any case, yet it
+    needs to be known so that a SELECT for the to-be-deleted row can be emitted
+    up front. Instead of applying an across-the-board performance penalty for
+    all DELETE statements by proactively checking them all for this
+    relatively unusual SQL pattern, the ``is_delete_using=True`` execution
+    option is requested via a new exception message that is raised
+    within the compilation step.  This exception message is specifically
+    (and only) raised when:   the statement is an ORM-enabled DELETE where
+    the "fetch" synchronization strategy has been requested; the
+    backend is MariaDB or other backend with this specific limitation;
+    the statement has been detected within the initial compilation
+    that it would otherwise emit "DELETE..USING..RETURNING".   By applying
+    the execution option, the ORM knows to run a SELECT upfront instead.
+    A similar option is implemented for ORM-enabled UPDATE but there is not
+    currently a backend where it is needed.
+
+

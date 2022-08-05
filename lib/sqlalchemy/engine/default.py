@@ -143,6 +143,8 @@ class DefaultDialect(Dialect):
     insert_null_pk_still_autoincrements = False
     update_returning = False
     delete_returning = False
+    update_returning_multifrom = False
+    delete_returning_multifrom = False
     insert_returning = False
     insert_executemany_returning = False
 

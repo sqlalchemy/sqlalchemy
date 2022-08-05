@@ -359,6 +359,7 @@ class DeleteDMLState(DMLState):
         t, ef = self._make_extra_froms(statement)
         self._primary_table = t
         self._extra_froms = ef
+        self.is_multitable = ef
 
 
 SelfUpdateBase = typing.TypeVar("SelfUpdateBase", bound="UpdateBase")
