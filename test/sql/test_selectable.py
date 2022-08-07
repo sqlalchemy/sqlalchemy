@@ -44,6 +44,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.dml import Insert
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -3028,6 +3029,26 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(whereclause._annotations, {"foo": "bar"})
         eq_(whereclause.left._annotations, {"foo": "bar"})
         eq_(whereclause.right._annotations, {"foo": "bar"})
+
+    @testing.combinations(True, False, None)
+    def test_setup_inherit_cache(self, inherit_cache_value):
+        if inherit_cache_value is None:
+
+            class MyInsertThing(Insert):
+                pass
+
+        else:
+
+            class MyInsertThing(Insert):
+                inherit_cache = inherit_cache_value
+
+        t = table("t", column("x"))
+        anno = MyInsertThing(t)._annotate({"foo": "bar"})
+
+        if inherit_cache_value is not None:
+            is_(type(anno).__dict__["inherit_cache"], inherit_cache_value)
+        else:
+            assert "inherit_cache" not in type(anno).__dict__
 
     def test_proxy_set_iteration_includes_annotated(self):
         from sqlalchemy.schema import Column

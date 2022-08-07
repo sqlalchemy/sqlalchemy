@@ -324,7 +324,6 @@ class EvaluateTest(fixtures.MappedTest):
         """test #3162"""
 
         User = self.classes.User
-
         with expect_raises_message(
             evaluator.UnevaluatableError,
             r"Custom operator '\^\^' can't be evaluated in "

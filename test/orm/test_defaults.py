@@ -383,20 +383,24 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                 CompiledSQL(
                     "UPDATE test SET foo=:foo WHERE test.id = :test_id",
                     [{"foo": 5, "test_id": 1}],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "UPDATE test SET foo=:foo WHERE test.id = :test_id",
                     [{"foo": 6, "test_id": 2}],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
                     "WHERE test.id = :pk_1",
                     [{"pk_1": 1}],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
                     "WHERE test.id = :pk_1",
                     [{"pk_1": 2}],
+                    enable_returning=False,
                 ),
             )
         else:

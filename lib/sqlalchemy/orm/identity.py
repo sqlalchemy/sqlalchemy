@@ -68,6 +68,11 @@ class IdentityMap:
     ) -> Optional[_O]:
         raise NotImplementedError()
 
+    def fast_get_state(
+        self, key: _IdentityKeyType[_O]
+    ) -> Optional[InstanceState[_O]]:
+        raise NotImplementedError()
+
     def keys(self) -> Iterable[_IdentityKeyType[Any]]:
         return self._dict.keys()
 
@@ -205,6 +210,11 @@ class WeakInstanceDict(IdentityMap):
         # inlined form of add() called by loading.py
         self._dict[key] = state
         state._instance_dict = self._wr
+
+    def fast_get_state(
+        self, key: _IdentityKeyType[_O]
+    ) -> Optional[InstanceState[_O]]:
+        return self._dict.get(key)
 
     def get(
         self, key: _IdentityKeyType[_O], default: Optional[_O] = None

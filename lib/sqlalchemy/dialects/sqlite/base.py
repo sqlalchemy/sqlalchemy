@@ -1466,11 +1466,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
         return target_text
 
-    def visit_insert(self, insert_stmt, **kw):
-        if insert_stmt._post_values_clause is not None:
-            kw["disable_implicit_returning"] = True
-        return super().visit_insert(insert_stmt, **kw)
-
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
 
         target_text = self._on_conflict_target(on_conflict, **kw)

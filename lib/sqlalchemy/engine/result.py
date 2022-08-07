@@ -109,9 +109,27 @@ class ResultMetaData:
     def _for_freeze(self) -> ResultMetaData:
         raise NotImplementedError()
 
+    @overload
     def _key_fallback(
-        self, key: _KeyType, err: Exception, raiseerr: bool = True
+        self, key: Any, err: Exception, raiseerr: Literal[True] = ...
     ) -> NoReturn:
+        ...
+
+    @overload
+    def _key_fallback(
+        self, key: Any, err: Exception, raiseerr: Literal[False] = ...
+    ) -> None:
+        ...
+
+    @overload
+    def _key_fallback(
+        self, key: Any, err: Exception, raiseerr: bool = ...
+    ) -> Optional[NoReturn]:
+        ...
+
+    def _key_fallback(
+        self, key: Any, err: Exception, raiseerr: bool = True
+    ) -> Optional[NoReturn]:
         assert raiseerr
         raise KeyError(key) from err
 
@@ -2148,6 +2166,7 @@ class IteratorResult(Result[_TP]):
     """
 
     _hard_closed = False
+    _soft_closed = False
 
     def __init__(
         self,
@@ -2168,6 +2187,7 @@ class IteratorResult(Result[_TP]):
             self.raw._soft_close(hard=hard, **kw)
         self.iterator = iter([])
         self._reset_memoizations()
+        self._soft_closed = True
 
     def _raise_hard_closed(self) -> NoReturn:
         raise exc.ResourceClosedError("This result object is closed.")

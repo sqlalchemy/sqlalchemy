@@ -68,7 +68,7 @@ class CursorSQL(SQLMatchRule):
 
 class CompiledSQL(SQLMatchRule):
     def __init__(
-        self, statement, params=None, dialect="default", enable_returning=False
+        self, statement, params=None, dialect="default", enable_returning=True
     ):
         self.statement = statement
         self.params = params
@@ -90,6 +90,17 @@ class CompiledSQL(SQLMatchRule):
                 dialect.insert_returning = (
                     dialect.update_returning
                 ) = dialect.delete_returning = True
+                dialect.use_insertmanyvalues = True
+                dialect.supports_multivalues_insert = True
+                dialect.update_returning_multifrom = True
+                dialect.delete_returning_multifrom = True
+                # dialect.favor_returning_over_lastrowid = True
+                # dialect.insert_null_pk_still_autoincrements = True
+
+                # this is calculated but we need it to be True for this
+                # to look like all the current RETURNING dialects
+                assert dialect.insert_executemany_returning
+
             return dialect
         else:
             return url.URL.create(self.dialect).get_dialect()()

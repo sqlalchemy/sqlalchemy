@@ -134,9 +134,11 @@ def _upsert(cfg, table, returning, set_lambda=None):
 
     stmt = insert(table)
 
+    table_pk = inspect(table).selectable
+
     if set_lambda:
         stmt = stmt.on_conflict_do_update(
-            index_elements=table.primary_key, set_=set_lambda(stmt.excluded)
+            index_elements=table_pk.primary_key, set_=set_lambda(stmt.excluded)
         )
     else:
         stmt = stmt.on_conflict_do_nothing()

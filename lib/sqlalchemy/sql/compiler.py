@@ -5166,6 +5166,8 @@ class SQLCompiler(Compiled):
             delete_stmt, delete_stmt.table, extra_froms
         )
 
+        crud._get_crud_params(self, delete_stmt, compile_state, toplevel, **kw)
+
         if delete_stmt._hints:
             dialect_hints, table_text = self._setup_crud_hints(
                 delete_stmt, table_text
@@ -5178,13 +5180,14 @@ class SQLCompiler(Compiled):
 
         text += table_text
 
-        if delete_stmt._returning:
-            if self.returning_precedes_values:
-                text += " " + self.returning_clause(
-                    delete_stmt,
-                    delete_stmt._returning,
-                    populate_result_map=toplevel,
-                )
+        if (
+            self.implicit_returning or delete_stmt._returning
+        ) and self.returning_precedes_values:
+            text += " " + self.returning_clause(
+                delete_stmt,
+                self.implicit_returning or delete_stmt._returning,
+                populate_result_map=toplevel,
+            )
 
         if extra_froms:
             extra_from_text = self.delete_extra_from_clause(
@@ -5204,10 +5207,12 @@ class SQLCompiler(Compiled):
             if t:
                 text += " WHERE " + t
 
-        if delete_stmt._returning and not self.returning_precedes_values:
+        if (
+            self.implicit_returning or delete_stmt._returning
+        ) and not self.returning_precedes_values:
             text += " " + self.returning_clause(
                 delete_stmt,
-                delete_stmt._returning,
+                self.implicit_returning or delete_stmt._returning,
                 populate_result_map=toplevel,
             )
 
@@ -5297,7 +5302,6 @@ class StrSQLCompiler(SQLCompiler):
             self._label_select_column(None, c, True, False, {})
             for c in base._select_iterables(returning_cols)
         ]
-
         return "RETURNING " + ", ".join(columns)
 
     def update_from_clause(

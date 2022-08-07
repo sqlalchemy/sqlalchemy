@@ -1424,12 +1424,10 @@ class ServerVersioningTest(fixtures.MappedTest):
         sess.add(f1)
 
         statements = [
-            # note that the assertsql tests the rule against
-            # "default" - on a "returning" backend, the statement
-            # includes "RETURNING"
             CompiledSQL(
                 "INSERT INTO version_table (version_id, value) "
-                "VALUES (1, :value)",
+                "VALUES (1, :value) "
+                "RETURNING version_table.id, version_table.version_id",
                 lambda ctx: [{"value": "f1"}],
             )
         ]
@@ -1493,6 +1491,7 @@ class ServerVersioningTest(fixtures.MappedTest):
                             "value": "f2",
                         }
                     ],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
@@ -1618,6 +1617,7 @@ class ServerVersioningTest(fixtures.MappedTest):
                             "value": "f1a",
                         }
                     ],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "UPDATE version_table SET version_id=2, value=:value "
@@ -1630,6 +1630,7 @@ class ServerVersioningTest(fixtures.MappedTest):
                             "value": "f2a",
                         }
                     ],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "UPDATE version_table SET version_id=2, value=:value "
@@ -1642,6 +1643,7 @@ class ServerVersioningTest(fixtures.MappedTest):
                             "value": "f3a",
                         }
                     ],
+                    enable_returning=False,
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "

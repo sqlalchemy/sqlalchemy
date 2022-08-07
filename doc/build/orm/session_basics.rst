@@ -660,6 +660,17 @@ Selecting a Synchronization Strategy
 With both the 1.x and 2.0 form of ORM-enabled updates and deletes, the following
 values for ``synchronize_session`` are supported:
 
+* ``'auto'`` - this is the default.   The ``'fetch'`` strategy will be used on
+  backends that support RETURNING, which includes all SQLAlchemy-native drivers
+  except for MySQL.   If RETURNING is not supported, the ``'evaluate'``
+  strategy will be used instead.
+
+  .. versionchanged:: 2.0  Added the ``'auto'`` synchronization strategy.  As
+     most backends now support RETURNING, selecting ``'fetch'`` for these
+     backends specifically is the more efficient and error-free default for
+     these backends. The MySQL backend as well as third party backends without
+     RETURNING support will continue to use ``'evaluate'`` by default.
+
 * ``False`` - don't synchronize the session. This option is the most
   efficient and is reliable once the session is expired, which
   typically occurs after a commit(), or explicitly using

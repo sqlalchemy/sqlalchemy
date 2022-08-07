@@ -23,6 +23,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.schema import Column
@@ -76,6 +77,7 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
         stmt = stmt.returning(t.c.x)
 
         stmt = stmt.return_defaults()
+
         assert_raises_message(
             sa_exc.CompileError,
             r"Can't compile statement that includes returning\(\) "
@@ -330,6 +332,7 @@ class InsertReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         table = self.tables.returning_tbl
 
         exprs = testing.resolve_lambda(testcase, table=table)
+
         result = connection.execute(
             table.insert().returning(*exprs),
             {"persons": 5, "full": False, "strval": "str1"},
@@ -679,6 +682,30 @@ class InsertReturnDefaultsTest(fixtures.TablesTest):
             Column("upddef", Integer, onupdate=IncDefault()),
         )
 
+        Table(
+            "table_no_addtl_defaults",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(50)),
+        )
+
+        class MyType(TypeDecorator):
+            impl = String(50)
+
+            def process_result_value(self, value, dialect):
+                return f"PROCESSED! {value}"
+
+        Table(
+            "table_datatype_has_result_proc",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", MyType()),
+        )
+
     def test_chained_insert_pk(self, connection):
         t1 = self.tables.t1
         result = connection.execute(
@@ -758,6 +785,38 @@ class InsertReturnDefaultsTest(fixtures.TablesTest):
         )
         eq_(result.inserted_primary_key, (1,))
 
+    def test_insert_w_defaults_supplemental_cols(self, connection):
+        t1 = self.tables.t1
+        result = connection.execute(
+            t1.insert().return_defaults(supplemental_cols=[t1.c.id]),
+            {"data": "d1"},
+        )
+        eq_(result.all(), [(1, 0, None)])
+
+    def test_insert_w_no_defaults_supplemental_cols(self, connection):
+        t1 = self.tables.table_no_addtl_defaults
+        result = connection.execute(
+            t1.insert().return_defaults(supplemental_cols=[t1.c.id]),
+            {"data": "d1"},
+        )
+        eq_(result.all(), [(1,)])
+
+    def test_insert_w_defaults_supplemental_processor_cols(self, connection):
+        """test that the cursor._rewind() used by supplemental RETURNING
+        clears out result-row processors as we will have already processed
+        the rows.
+
+        """
+
+        t1 = self.tables.table_datatype_has_result_proc
+        result = connection.execute(
+            t1.insert().return_defaults(
+                supplemental_cols=[t1.c.id, t1.c.data]
+            ),
+            {"data": "d1"},
+        )
+        eq_(result.all(), [(1, "PROCESSED! d1")])
+
 
 class UpdatedReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("update_returning",)
@@ -792,6 +851,7 @@ class UpdatedReturnDefaultsTest(fixtures.TablesTest):
 
         t1 = self.tables.t1
         connection.execute(t1.insert().values(upddef=1))
+
         result = connection.execute(
             t1.update().values(upddef=2).return_defaults(t1.c.data)
         )
@@ -799,6 +859,72 @@ class UpdatedReturnDefaultsTest(fixtures.TablesTest):
             [result.returned_defaults._mapping[k] for k in (t1.c.data,)],
             [None],
         )
+
+    def test_update_values_col_is_excluded(self, connection):
+        """columns that are in values() are not returned"""
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+
+        result = connection.execute(
+            t1.update().values(data="x", upddef=2).return_defaults(t1.c.data)
+        )
+        is_(result.returned_defaults, None)
+
+        result = connection.execute(
+            t1.update()
+            .values(data="x", upddef=2)
+            .return_defaults(t1.c.data, t1.c.id)
+        )
+        eq_(result.returned_defaults, (1,))
+
+    def test_update_supplemental_cols(self, connection):
+        """with supplemental_cols, we can get back arbitrary cols."""
+
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(
+            t1.update()
+            .values(data="x", insdef=3)
+            .return_defaults(supplemental_cols=[t1.c.data, t1.c.insdef])
+        )
+
+        row = result.returned_defaults
+
+        # row has all the cols in it
+        eq_(row, ("x", 3, 1))
+        eq_(row._mapping[t1.c.upddef], 1)
+        eq_(row._mapping[t1.c.insdef], 3)
+
+        # result is rewound
+        # but has both return_defaults + supplemental_cols
+        eq_(result.all(), [("x", 3, 1)])
+
+    def test_update_expl_return_defaults_plus_supplemental_cols(
+        self, connection
+    ):
+        """with supplemental_cols, we can get back arbitrary cols."""
+
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(
+            t1.update()
+            .values(data="x", insdef=3)
+            .return_defaults(
+                t1.c.id, supplemental_cols=[t1.c.data, t1.c.insdef]
+            )
+        )
+
+        row = result.returned_defaults
+
+        # row has all the cols in it
+        eq_(row, (1, "x", 3))
+        eq_(row._mapping[t1.c.id], 1)
+        eq_(row._mapping[t1.c.insdef], 3)
+        assert t1.c.upddef not in row._mapping
+
+        # result is rewound
+        # but has both return_defaults + supplemental_cols
+        eq_(result.all(), [(1, "x", 3)])
 
     def test_update_sql_expr(self, connection):
         from sqlalchemy import literal
@@ -831,6 +957,75 @@ class UpdatedReturnDefaultsTest(fixtures.TablesTest):
             t1.update().values(insdef=2).return_defaults()
         )
         eq_(dict(result.returned_defaults._mapping), {"upddef": 1})
+
+
+class DeleteReturnDefaultsTest(fixtures.TablesTest):
+    __requires__ = ("delete_returning",)
+    run_define_tables = "each"
+    __backend__ = True
+
+    define_tables = InsertReturnDefaultsTest.define_tables
+
+    def test_delete(self, connection):
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(t1.delete().return_defaults(t1.c.upddef))
+        eq_(
+            [result.returned_defaults._mapping[k] for k in (t1.c.upddef,)], [1]
+        )
+
+    def test_delete_empty_return_defaults(self, connection):
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=5))
+        result = connection.execute(t1.delete().return_defaults())
+
+        # there's no "delete" default, so we get None.  we have to
+        # ask for them in all cases
+        eq_(result.returned_defaults, None)
+
+    def test_delete_non_default(self, connection):
+        """test that a column not marked at all as a
+        default works with this feature."""
+
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(t1.delete().return_defaults(t1.c.data))
+        eq_(
+            [result.returned_defaults._mapping[k] for k in (t1.c.data,)],
+            [None],
+        )
+
+    def test_delete_non_default_plus_default(self, connection):
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(
+            t1.delete().return_defaults(t1.c.data, t1.c.upddef)
+        )
+        eq_(
+            dict(result.returned_defaults._mapping),
+            {"data": None, "upddef": 1},
+        )
+
+    def test_delete_supplemental_cols(self, connection):
+        """with supplemental_cols, we can get back arbitrary cols."""
+
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(
+            t1.delete().return_defaults(
+                t1.c.id, supplemental_cols=[t1.c.data, t1.c.insdef]
+            )
+        )
+
+        row = result.returned_defaults
+
+        # row has all the cols in it
+        eq_(row, (1, None, 0))
+        eq_(row._mapping[t1.c.insdef], 0)
+
+        # result is rewound
+        # but has both return_defaults + supplemental_cols
+        eq_(result.all(), [(1, None, 0)])
 
 
 class InsertManyReturnDefaultsTest(fixtures.TablesTest):

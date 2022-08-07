@@ -552,6 +552,8 @@ def _new_annotation_type(
     # e.g. BindParameter, add it if present.
     if cls.__dict__.get("inherit_cache", False):
         anno_cls.inherit_cache = True  # type: ignore
+    elif "inherit_cache" in cls.__dict__:
+        anno_cls.inherit_cache = cls.__dict__["inherit_cache"]  # type: ignore
 
     anno_cls._is_column_operators = issubclass(cls, operators.ColumnOperators)
 
