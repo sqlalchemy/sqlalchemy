@@ -178,7 +178,7 @@ To set using per-connection execution options::
             # ... work with transaction
 
 There are also more options for isolation level configurations, such as
-"sub-engine" objects linked to a main :class:`.Engine` which each apply
+"sub-engine" objects linked to a main :class:`_engine.Engine` which each apply
 different isolation level settings.  See the discussion at
 :ref:`dbapi_autocommit` for background.
 

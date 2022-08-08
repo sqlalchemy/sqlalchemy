@@ -155,7 +155,7 @@ This document details individual issue-level changes made throughout
         with a :class:`.Numeric` datatype would produce errors when attempting to
         reconcile the "autoincrement" column, preventing construction of the
         :class:`.Column` from using the :paramref:`.Column.autoincrement` parameter
-        as well as emitting errors when attempting to invoke an :class:`.Insert`
+        as well as emitting errors when attempting to invoke an :class:`_dml.Insert`
         construct.
 
 
@@ -195,7 +195,7 @@ This document details individual issue-level changes made throughout
         :tickets: 8073
 
         An informative error is raised for the use case where
-        :meth:`.Insert.from_select` is being passed a "compound select" object such
+        :meth:`_dml.Insert.from_select` is being passed a "compound select" object such
         as a UNION, yet the INSERT statement needs to append additional columns to
         support Python-side or explicit SQL defaults from the table metadata. In
         this case a subquery of the compound object should be passed.
@@ -233,8 +233,8 @@ This document details individual issue-level changes made throughout
 
         Fixed an issue where using :func:`.bindparam` with no explicit data or type
         given could be coerced into the incorrect type when used in expressions
-        such as when using :meth:`.ARRAY.Comparator.any` and
-        :meth:`.ARRAY.Comparator.all`.
+        such as when using :meth:`_types.ARRAY.Comparator.any` and
+        :meth:`_types.ARRAY.Comparator.all`.
 
 
     .. change::
