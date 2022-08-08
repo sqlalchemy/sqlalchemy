@@ -3,5 +3,5 @@
     :tickets: 7249
 
     Fixed issue where :class:`.TypeDecorator` would not correctly proxy the
-    ``__getitem__()`` operator when decorating the :class:`.ARRAY` datatype,
-    without explicit workarounds.
+    ``__getitem__()`` operator when decorating the :class:`_types.ARRAY`
+    datatype, without explicit workarounds.
