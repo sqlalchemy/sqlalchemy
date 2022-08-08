@@ -34,7 +34,11 @@ primary arguments are the table name, then the
 The remaining positional arguments are mostly
 :class:`~sqlalchemy.schema.Column` objects describing each column::
 
-    user = Table('user', metadata_obj,
+    from sqlalchemy import Table, Column, Integer, String
+
+    user = Table(
+        'user',
+        metadata_obj,
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16), nullable=False),
         Column('email_address', String(60)),
