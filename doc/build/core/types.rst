@@ -1,6 +1,6 @@
 .. _types_toplevel:
 
-Column and Data Types
+SQL Datatype Objects
 =====================
 
 .. toctree::
