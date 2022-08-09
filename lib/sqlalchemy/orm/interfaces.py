@@ -50,6 +50,7 @@ from .base import InspectionAttrInfo as InspectionAttrInfo
 from .base import MANYTOMANY as MANYTOMANY  # noqa: F401
 from .base import MANYTOONE as MANYTOONE  # noqa: F401
 from .base import NO_KEY as NO_KEY  # noqa: F401
+from .base import NO_VALUE as NO_VALUE  # noqa: F401
 from .base import NotExtension as NotExtension  # noqa: F401
 from .base import ONETOMANY as ONETOMANY  # noqa: F401
 from .base import RelationshipDirection as RelationshipDirection  # noqa: F401
