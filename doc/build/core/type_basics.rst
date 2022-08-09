@@ -1,4 +1,4 @@
-Column and Data Types
+The Type Hierarchy
 =====================
 
 .. module:: sqlalchemy.types
