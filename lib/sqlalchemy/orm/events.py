@@ -22,6 +22,7 @@ from . import interfaces
 from . import mapperlib
 from .attributes import QueryableAttribute
 from .base import _mapper_or_none
+from .base import NO_KEY
 from .query import Query
 from .scoping import scoped_session
 from .session import Session
@@ -2288,6 +2289,7 @@ class AttributeEvents(event.Events):
         raw=False,
         retval=False,
         propagate=False,
+        include_key=False,
     ):
 
         target, fn = event_key.dispatch_target, event_key._listen_fn
@@ -2295,9 +2297,9 @@ class AttributeEvents(event.Events):
         if active_history:
             target.dispatch._active_history = True
 
-        if not raw or not retval:
+        if not raw or not retval or not include_key:
 
-            def wrap(target, *arg):
+            def wrap(target, *arg, **kw):
                 if not raw:
                     target = target.obj()
                 if not retval:
@@ -2305,10 +2307,16 @@ class AttributeEvents(event.Events):
                         value = arg[0]
                     else:
                         value = None
-                    fn(target, *arg)
+                    if include_key:
+                        fn(target, *arg, **kw)
+                    else:
+                        fn(target, *arg)
                     return value
                 else:
-                    return fn(target, *arg)
+                    if include_key:
+                        return fn(target, *arg, **kw)
+                    else:
+                        return fn(target, *arg)
 
             event_key = event_key.with_wrapper(wrap)
 
@@ -2324,7 +2332,7 @@ class AttributeEvents(event.Events):
                 if active_history:
                     mgr[target.key].dispatch._active_history = True
 
-    def append(self, target, value, initiator):
+    def append(self, target, value, initiator, *, key=NO_KEY):
         """Receive a collection append event.
 
         The append event is invoked for each element as it is appended
@@ -2343,6 +2351,19 @@ class AttributeEvents(event.Events):
           from its original value by backref handlers in order to control
           chained event propagation, as well as be inspected for information
           about the source of the event.
+        :param key: When the event is established using the
+         :paramref:`.AttributeEvents.include_key` parameter set to
+         True, this will be the key used in the operation, such as
+         ``collection[some_key_or_index] = value``.
+         The parameter is not passed
+         to the event at all if the the
+         :paramref:`.AttributeEvents.include_key`
+         was not used to set up the event; this is to allow backwards
+         compatibility with existing event handlers that don't include the
+         ``key`` parameter.
+
+         .. versionadded:: 2.0
+
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
 
@@ -2355,7 +2376,7 @@ class AttributeEvents(event.Events):
 
         """
 
-    def append_wo_mutation(self, target, value, initiator):
+    def append_wo_mutation(self, target, value, initiator, *, key=NO_KEY):
         """Receive a collection append event where the collection was not
         actually mutated.
 
@@ -2378,6 +2399,18 @@ class AttributeEvents(event.Events):
           from its original value by backref handlers in order to control
           chained event propagation, as well as be inspected for information
           about the source of the event.
+        :param key: When the event is established using the
+         :paramref:`.AttributeEvents.include_key` parameter set to
+         True, this will be the key used in the operation, such as
+         ``collection[some_key_or_index] = value``.
+         The parameter is not passed
+         to the event at all if the the
+         :paramref:`.AttributeEvents.include_key`
+         was not used to set up the event; this is to allow backwards
+         compatibility with existing event handlers that don't include the
+         ``key`` parameter.
+
+         .. versionadded:: 2.0
 
         :return: No return value is defined for this event.
 
@@ -2385,7 +2418,7 @@ class AttributeEvents(event.Events):
 
         """
 
-    def bulk_replace(self, target, values, initiator):
+    def bulk_replace(self, target, values, initiator, *, keys=None):
         """Receive a collection 'bulk replace' event.
 
         This event is invoked for a sequence of values as they are incoming
@@ -2428,6 +2461,17 @@ class AttributeEvents(event.Events):
           handler can modify this list in place.
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.
+        :param keys: When the event is established using the
+         :paramref:`.AttributeEvents.include_key` parameter set to
+         True, this will be the sequence of keys used in the operation,
+         typically only for a dictionary update.  The parameter is not passed
+         to the event at all if the the
+         :paramref:`.AttributeEvents.include_key`
+         was not used to set up the event; this is to allow backwards
+         compatibility with existing event handlers that don't include the
+         ``key`` parameter.
+
+         .. versionadded:: 2.0
 
         .. seealso::
 
@@ -2437,7 +2481,7 @@ class AttributeEvents(event.Events):
 
         """
 
-    def remove(self, target, value, initiator):
+    def remove(self, target, value, initiator, *, key=NO_KEY):
         """Receive a collection remove event.
 
         :param target: the object instance receiving the event.
@@ -2453,6 +2497,17 @@ class AttributeEvents(event.Events):
              passed as a :class:`.attributes.Event` object, and may be
              modified by backref handlers within a chain of backref-linked
              events.
+        :param key: When the event is established using the
+         :paramref:`.AttributeEvents.include_key` parameter set to
+         True, this will be the key used in the operation, such as
+         ``del collection[some_key_or_index]``.  The parameter is not passed
+         to the event at all if the the
+         :paramref:`.AttributeEvents.include_key`
+         was not used to set up the event; this is to allow backwards
+         compatibility with existing event handlers that don't include the
+         ``key`` parameter.
+
+         .. versionadded:: 2.0
 
         :return: No return value is defined for this event.
 

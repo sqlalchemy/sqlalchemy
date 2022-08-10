@@ -1,0 +1,14 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 8375
+
+    Added new parameter :paramref:`_orm.AttributeEvents.include_key`, which
+    will include the dictionary or list key for operations such as
+    ``__setitem__()`` (e.g. ``obj[key] = value``) and ``__delitem__()`` (e.g.
+    ``del obj[key]``), using a new keyword parameter "key" or "keys", depending
+    on event, e.g. :paramref:`_orm.AttributeEvents.append.key`,
+    :paramref:`_orm.AttributeEvents.bulk_replace.keys`. This allows event
+    handlers to take into account the key that was passed to the operation and
+    is of particular importance for dictionary operations working with
+    :class:`_orm.MappedCollection`.
+
