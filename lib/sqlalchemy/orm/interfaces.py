@@ -335,6 +335,27 @@ class MapperProperty(
 
     """
 
+    info: _InfoType
+    """Info dictionary associated with the object, allowing user-defined
+    data to be associated with this :class:`.InspectionAttr`.
+
+    The dictionary is generated when first accessed.  Alternatively,
+    it can be specified as a constructor argument to the
+    :func:`.column_property`, :func:`_orm.relationship`, or :func:`.composite`
+    functions.
+
+    .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
+        from :class:`.MapperProperty` so that it can apply to a wider
+        variety of ORM and extension constructs.
+
+    .. seealso::
+
+        :attr:`.QueryableAttribute.info`
+
+        :attr:`.SchemaItem.info`
+
+    """
+
     _has_dataclass_arguments: bool
 
     def _memoized_attr_info(self) -> _InfoType:

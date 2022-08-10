@@ -273,11 +273,59 @@ class ORMExecuteState(util.MemoizedSlots):
     )
 
     session: Session
+    """The :class:`_orm.Session` in use."""
+
     statement: Executable
+    """The SQL statement being invoked.
+
+    For an ORM selection as would
+    be retrieved from :class:`_orm.Query`, this is an instance of
+    :class:`_future.select` that was generated from the ORM query.
+    """
+
     parameters: Optional[_CoreAnyExecuteParams]
+    """Dictionary of parameters that was passed to
+    :meth:`_orm.Session.execute`."""
+
     execution_options: _ExecuteOptions
+    """The complete dictionary of current execution options.
+
+    This is a merge of the statement level options with the
+    locally passed execution options.
+
+    .. seealso::
+
+        :attr:`_orm.ORMExecuteState.local_execution_options`
+
+        :meth:`_sql.Executable.execution_options`
+
+        :ref:`orm_queryguide_execution_options`
+
+    """
+
     local_execution_options: _ExecuteOptions
+    """Dictionary view of the execution options passed to the
+    :meth:`.Session.execute` method.
+
+    This does not include options that may be associated with the statement
+    being invoked.
+
+    .. seealso::
+
+        :attr:`_orm.ORMExecuteState.execution_options`
+
+    """
+
     bind_arguments: _BindArguments
+    """The dictionary passed as the
+    :paramref:`_orm.Session.execute.bind_arguments` dictionary.
+
+    This dictionary may be used by extensions to :class:`_orm.Session` to pass
+    arguments that will assist in determining amongst a set of database
+    connections which one should be used to invoke this statement.
+
+    """
+
     _compile_state_cls: Optional[Type[ORMCompileState]]
     _starting_event_idx: int
     _events_todo: List[Any]
@@ -293,6 +341,11 @@ class ORMExecuteState(util.MemoizedSlots):
         compile_state_cls: Optional[Type[ORMCompileState]],
         events_todo: List[_InstanceLevelDispatch[Session]],
     ):
+        """Construct a new :class:`_orm.ORMExecuteState`.
+
+        this object is constructed internally.
+
+        """
         self.session = session
         self.statement = statement
         self.parameters = parameters

@@ -497,14 +497,17 @@ class Mapper(
           SQL expression used to determine the target class for an
           incoming row, when inheriting classes are present.
 
-          This value is commonly a :class:`_schema.Column` object that's
-          present in the mapped :class:`_schema.Table`::
+          May be specified as a string attribute name, or as a SQL
+          expression such as a :class:`_schema.Column` or in a Declarative
+          mapping a :func:`_orm.mapped_column` object.  It is typically
+          expected that the SQL expression corresponds to a column in the
+          base-most mapped :class:`.Table`::
 
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key=True)
-                discriminator = Column(String(50))
+                id: Mapped[int] = mapped_column(primary_key=True)
+                discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
                     "polymorphic_on":discriminator,
@@ -519,8 +522,8 @@ class Mapper(
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key=True)
-                discriminator = Column(String(50))
+                id: Mapped[int] = mapped_column(primary_key=True)
+                discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
                     "polymorphic_on":case([
@@ -530,24 +533,18 @@ class Mapper(
                     "polymorphic_identity":"employee"
                 }
 
-          It may also refer to any attribute
-          configured with :func:`.column_property`, or to the
-          string name of one::
+          It may also refer to any attribute using its string name,
+          which is of particular use when using annotated column
+          configurations::
 
                 class Employee(Base):
                     __tablename__ = 'employee'
 
-                    id = Column(Integer, primary_key=True)
-                    discriminator = Column(String(50))
-                    employee_type = column_property(
-                        case([
-                            (discriminator == "EN", "engineer"),
-                            (discriminator == "MA", "manager"),
-                        ], else_="employee")
-                    )
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    discriminator: Mapped[str]
 
                     __mapper_args__ = {
-                        "polymorphic_on": "employee_type",
+                        "polymorphic_on": "discriminator",
                         "polymorphic_identity": "employee"
                     }
 

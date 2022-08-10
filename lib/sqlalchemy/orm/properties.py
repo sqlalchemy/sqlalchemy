@@ -358,6 +358,17 @@ class ColumnProperty(
 
         prop: RODescriptorReference[ColumnProperty[_PT]]
 
+        expressions: Sequence[NamedColumn[Any]]
+        """The full sequence of columns referenced by this
+         attribute, adjusted for any aliasing in progress.
+
+        .. versionadded:: 1.3.17
+
+        .. seealso::
+
+           :ref:`maptojoin` - usage example
+        """
+
         def _orm_annotate_column(self, column: _NC) -> _NC:
             """annotate and possibly adapt a column to be returned
             as the mapped-attribute exposed version of the column.
