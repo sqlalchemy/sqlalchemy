@@ -97,9 +97,9 @@ if TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
+    from .bulk_persistence import _SynchronizeSessionArgument
     from .mapper import Mapper
     from .path_registry import PathRegistry
-    from .persistence import _SynchronizeSessionArgument
     from .session import _PKIdentityArgument
     from .session import Session
     from .state import InstanceState

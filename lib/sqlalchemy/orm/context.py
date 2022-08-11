@@ -206,7 +206,50 @@ _orm_load_exec_options = util.immutabledict(
 )
 
 
-class ORMCompileState(CompileState):
+class AbstractORMCompileState(CompileState):
+    @classmethod
+    def create_for_statement(
+        cls,
+        statement: Union[Select, FromStatement],
+        compiler: Optional[SQLCompiler],
+        **kw: Any,
+    ) -> ORMCompileState:
+        """Create a context for a statement given a :class:`.Compiler`.
+        This method is always invoked in the context of SQLCompiler.process().
+        For a Select object, this would be invoked from
+        SQLCompiler.visit_select(). For the special FromStatement object used
+        by Query to indicate "Query.from_statement()", this is called by
+        FromStatement._compiler_dispatch() that would be called by
+        SQLCompiler.process().
+        """
+        return super().create_for_statement(statement, compiler, **kw)
+
+    @classmethod
+    def orm_pre_session_exec(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        is_reentrant_invoke,
+    ):
+        raise NotImplementedError()
+
+    @classmethod
+    def orm_setup_cursor_result(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
+    ):
+        raise NotImplementedError()
+
+
+class ORMCompileState(AbstractORMCompileState):
     class default_compile_options(CacheableOptions):
         _cache_key_traversal = [
             ("_use_legacy_query_style", InternalTraversal.dp_boolean),

@@ -34,12 +34,12 @@ from typing import Union
 import weakref
 
 from . import attributes
+from . import bulk_persistence
 from . import context
 from . import descriptor_props
 from . import exc
 from . import identity
 from . import loading
-from . import persistence
 from . import query
 from . import state as statelib
 from ._typing import _O
@@ -705,8 +705,8 @@ class ORMExecuteState(util.MemoizedSlots):
     def update_delete_options(
         self,
     ) -> Union[
-        persistence.BulkUDCompileState.default_update_options,
-        Type[persistence.BulkUDCompileState.default_update_options],
+        bulk_persistence.BulkUDCompileState.default_update_options,
+        Type[bulk_persistence.BulkUDCompileState.default_update_options],
     ]:
         """Return the update_delete_options that will be used for this
         execution."""
@@ -718,7 +718,7 @@ class ORMExecuteState(util.MemoizedSlots):
             )
         return self.execution_options.get(
             "_sa_orm_update_options",
-            persistence.BulkUDCompileState.default_update_options,
+            bulk_persistence.BulkUDCompileState.default_update_options,
         )
 
     @property
@@ -4275,7 +4275,7 @@ class Session(_SessionClassMethods, EventTarget):
         transaction = self.begin(_subtrans=True)
         try:
             if isupdate:
-                persistence._bulk_update(
+                bulk_persistence._bulk_update(
                     mapper,
                     mappings,
                     transaction,
@@ -4283,7 +4283,7 @@ class Session(_SessionClassMethods, EventTarget):
                     update_changed_only,
                 )
             else:
-                persistence._bulk_insert(
+                bulk_persistence._bulk_insert(
                     mapper,
                     mappings,
                     transaction,
