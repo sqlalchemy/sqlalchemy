@@ -2428,13 +2428,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_json_str_index(self, type_, **kw):
         return "TEXT"
-+
-     def visit_MONEY(self, type_, **kw):
-         return "MONEY"
-
-@@ -2447,6 +2461,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
-             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
-         )
 
     def visit_datetime(self, type_, **kw):
         return self.visit_TIMESTAMP(type_, **kw)
