@@ -1517,6 +1517,15 @@ colspecs = {
     UUID: PGUuid,
 }
 
+
+class MACADDR8(MACADDR):
+    __visit_name__ = "MACADDR8"
+
+
+class TIMESTAMPTZ(TIMESTAMP):
+    __visit_name__ = "TIMESTAMPTZ"
+
+
 ischema_names = {
     "_array": _array.ARRAY,
     "hstore": _hstore.HSTORE,
@@ -1551,11 +1560,13 @@ ischema_names = {
     "bit": BIT,
     "bit varying": BIT,
     "macaddr": MACADDR,
+    "macaddr8": MACADDR8,
     "money": MONEY,
     "oid": OID,
     "regclass": REGCLASS,
     "double precision": DOUBLE_PRECISION,
     "timestamp": TIMESTAMP,
+    "timestampz": TIMESTAMPZ,
     "timestamp with time zone": TIMESTAMP,
     "timestamp without time zone": TIMESTAMP,
     "time with time zone": TIME,
@@ -2348,6 +2359,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
 
+    def visit_MACADDR8(self, type_, **kw):
+        return "MACADDR8"
+
     def visit_MONEY(self, type_, **kw):
         return "MONEY"
 
@@ -2419,6 +2433,13 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_json_str_index(self, type_, **kw):
         return "TEXT"
++
+     def visit_MONEY(self, type_, **kw):
+         return "MONEY"
+
+@@ -2447,6 +2461,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
+             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
+         )
 
     def visit_datetime(self, type_, **kw):
         return self.visit_TIMESTAMP(type_, **kw)
@@ -2446,6 +2467,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             else "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
         )
+
+    def visit_TIMESTAMPTZ(self, type_, **kw):
+        return "TIMESTAMPTZ"
 
     def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
