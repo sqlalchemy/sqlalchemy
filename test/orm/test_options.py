@@ -23,6 +23,7 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import emits_warning
@@ -2050,12 +2051,16 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         oalias = aliased(Order)
         opt1 = sa.orm.joinedload(User.orders, Order.items)
         opt2 = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
-        u1 = (
-            sess.query(User)
-            .join(oalias, User.orders)
-            .options(opt1, opt2)
-            .first()
-        )
-        ustate = attributes.instance_state(u1)
-        assert opt1 in ustate.load_options
-        assert opt2 not in ustate.load_options
+
+        with mock.patch.object(
+            Load, "_adjust_for_extra_criteria", lambda self, ctx: self
+        ):
+            u1 = (
+                sess.query(User)
+                .join(oalias, User.orders)
+                .options(opt1, opt2)
+                .first()
+            )
+            ustate = attributes.instance_state(u1)
+            assert opt1 in ustate.load_options
+            assert opt2 not in ustate.load_options

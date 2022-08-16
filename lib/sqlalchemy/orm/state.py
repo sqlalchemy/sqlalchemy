@@ -70,7 +70,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
     session_id = None
     key = None
     runid = None
-    load_options = util.EMPTY_SET
+    load_options = ()
     load_path = PathRegistry.root
     insert_order = None
     _strong_obj = None

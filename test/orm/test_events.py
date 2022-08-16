@@ -201,7 +201,7 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
         def go(context):
             for elem in context.user_defined_options:
                 if isinstance(elem, SetShardOption):
-                    m1.update_execution_options(_sa_shard_id=elem.payload)
+                    m1.do_some_mock_thing(_sa_shard_id=elem.payload)
 
         stmt = select(User).options(
             loader_opt(User.addresses).options(loader_opt(Address.dingaling)),
@@ -217,21 +217,15 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             loader_opt(User.addresses).options(loader_opt(Address.dingaling)),
             SetShardOption("some_other_shard"),
         )
+
         for u in s.execute(stmt).unique().scalars():
             for a in u.addresses:
                 a.dingaling
         eq_(
             m1.mock_calls,
-            (
-                [call.update_execution_options(_sa_shard_id="some_shard")]
-                * num_opts
-            )
+            ([call.do_some_mock_thing(_sa_shard_id="some_shard")] * num_opts)
             + (
-                [
-                    call.update_execution_options(
-                        _sa_shard_id="some_other_shard"
-                    )
-                ]
+                [call.do_some_mock_thing(_sa_shard_id="some_other_shard")]
                 * num_opts
             ),
         )

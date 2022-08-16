@@ -24,6 +24,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assertsql
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -963,15 +964,23 @@ class LazyLoaderTransfersOptsTest(fixtures.DeclarativeMappedTest):
             _cache_key_traversal = ()
             propagate_to_loaders = True
 
-        any_opt = AnyOpt()
-        if strat is None:
-            opts = (any_opt,)
-        else:
-            opts = (strat(User.address), any_opt)
+            def _adjust_for_extra_criteria(self, context):
+                return self
 
-        u = sess.execute(select(User).options(*opts)).scalars().one()
-        address = u.address
-        eq_(inspect(address).load_options, set(opts))
+        from sqlalchemy.orm.strategy_options import Load
+
+        with mock.patch.object(
+            Load, "_adjust_for_extra_criteria", lambda self, ctx: self
+        ):
+            any_opt = AnyOpt()
+            if strat is None:
+                opts = (any_opt,)
+            else:
+                opts = (strat(User.address), any_opt)
+
+            u = sess.execute(select(User).options(*opts)).scalars().one()
+            address = u.address
+            eq_(inspect(address).load_options, opts)
 
 
 class NoBaseWPPlusAliasedTest(
