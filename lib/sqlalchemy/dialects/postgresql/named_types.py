@@ -20,7 +20,8 @@ from ...sql import elements
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import type_api
-from ...sql.ddl import InvokeDDLBase
+from ...sql.ddl import InvokeCreateDDLBase
+from ...sql.ddl import InvokeDropDDLBase
 
 if TYPE_CHECKING:
     from ...sql._typing import _TypeEngineArgument
@@ -112,7 +113,7 @@ class NamedType(sqltypes.TypeEngine):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 
-class NamedTypeGenerator(InvokeDDLBase):
+class NamedTypeGenerator(InvokeCreateDDLBase):
     def __init__(self, dialect, connection, checkfirst=False, **kwargs):
         super().__init__(connection, **kwargs)
         self.checkfirst = checkfirst
@@ -127,7 +128,7 @@ class NamedTypeGenerator(InvokeDDLBase):
         )
 
 
-class NamedTypeDropper(InvokeDDLBase):
+class NamedTypeDropper(InvokeDropDDLBase):
     def __init__(self, dialect, connection, checkfirst=False, **kwargs):
         super().__init__(connection, **kwargs)
         self.checkfirst = checkfirst
@@ -147,7 +148,8 @@ class EnumGenerator(NamedTypeGenerator):
         if not self._can_create_type(enum):
             return
 
-        self.connection.execute(CreateEnumType(enum))
+        with self.with_ddl_events(enum):
+            self.connection.execute(CreateEnumType(enum))
 
 
 class EnumDropper(NamedTypeDropper):
@@ -155,7 +157,8 @@ class EnumDropper(NamedTypeDropper):
         if not self._can_drop_type(enum):
             return
 
-        self.connection.execute(DropEnumType(enum))
+        with self.with_ddl_events(enum):
+            self.connection.execute(DropEnumType(enum))
 
 
 class ENUM(NamedType, sqltypes.NativeForEmulated, sqltypes.Enum):
@@ -297,6 +300,7 @@ class ENUM(NamedType, sqltypes.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
         kw.setdefault("omit_aliases", impl._omit_aliases)
+        kw.setdefault("_adapted_from", impl)
         return cls(**kw)
 
     def create(self, bind=None, checkfirst=True):
@@ -351,7 +355,8 @@ class DomainGenerator(NamedTypeGenerator):
     def visit_DOMAIN(self, domain):
         if not self._can_create_type(domain):
             return
-        self.connection.execute(CreateDomainType(domain))
+        with self.with_ddl_events(domain):
+            self.connection.execute(CreateDomainType(domain))
 
 
 class DomainDropper(NamedTypeDropper):
@@ -359,7 +364,8 @@ class DomainDropper(NamedTypeDropper):
         if not self._can_drop_type(domain):
             return
 
-        self.connection.execute(DropDomainType(domain))
+        with self.with_ddl_events(domain):
+            self.connection.execute(DropDomainType(domain))
 
 
 class DOMAIN(NamedType, sqltypes.SchemaType):

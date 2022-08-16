@@ -77,6 +77,7 @@ from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.types import UserDefinedType
+from ...engine.test_ddlevents import DDLEventWCreateHarness
 
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -1071,6 +1072,80 @@ class NamedTypeTest(
         assert "my_enum" not in [
             e["name"] for e in inspect(connection).get_enums()
         ]
+
+
+class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+    __backend__ = True
+
+    __only_on__ = "postgresql > 8.3"
+
+    creates_implicitly_with_table = False
+    drops_implicitly_with_table = False
+    requires_table_to_exist = False
+
+    @testing.fixture
+    def produce_subject(self):
+        return DOMAIN(
+            name="email",
+            data_type=Text,
+            check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+        )
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        return Table(
+            "table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("email", produce_subject),
+        )
+
+
+class EnumDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+    __backend__ = True
+
+    __only_on__ = "postgresql > 8.3"
+
+    creates_implicitly_with_table = False
+    drops_implicitly_with_table = False
+    requires_table_to_exist = False
+
+    @testing.fixture
+    def produce_subject(self):
+        return Enum(
+            "x",
+            "y",
+            "z",
+            name="status",
+        )
+
+    @testing.fixture
+    def produce_event_target(self, produce_subject, connection):
+        return produce_subject.dialect_impl(connection.dialect)
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        return Table(
+            "table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("status", produce_subject),
+        )
+
+
+class NativeEnumDDLEventTest(EnumDDLEventTest):
+    @testing.fixture
+    def produce_event_target(self, produce_subject, connection):
+        return produce_subject
+
+    @testing.fixture
+    def produce_subject(self):
+        return ENUM(
+            "x",
+            "y",
+            "z",
+            name="status",
+        )
 
 
 class OIDTest(fixtures.TestBase):

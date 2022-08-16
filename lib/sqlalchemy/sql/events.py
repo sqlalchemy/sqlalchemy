@@ -28,33 +28,98 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     Define event listeners for schema objects,
     that is, :class:`.SchemaItem` and other :class:`.SchemaEventTarget`
     subclasses, including :class:`_schema.MetaData`, :class:`_schema.Table`,
-    :class:`_schema.Column`.
+    :class:`_schema.Column`, etc.
 
-    :class:`_schema.MetaData` and :class:`_schema.Table` support events
-    specifically regarding when CREATE and DROP
-    DDL is emitted to the database.
+    **Create / Drop Events**
 
-    Attachment events are also provided to customize
-    behavior whenever a child schema element is associated
-    with a parent, such as, when a :class:`_schema.Column` is associated
-    with its :class:`_schema.Table`, when a
-    :class:`_schema.ForeignKeyConstraint`
-    is associated with a :class:`_schema.Table`, etc.
+    Events emitted when CREATE and DROP commands are emitted to the database.
+    The event hooks in this category include :meth:`.DDLEvents.before_create`,
+    :meth:`.DDLEvents.after_create`, :meth:`.DDLEvents.before_drop`, and
+    :meth:`.DDLEvents.after_drop`.
 
-    Example using the ``after_create`` event::
+    These events are emitted when using schema-level methods such as
+    :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`. Per-object
+    create/drop methods such as :meth:`.Table.create`, :meth:`.Table.drop`,
+    :meth:`.Index.create` are also included, as well as dialect-specific
+    methods such as :meth:`_postgresql.ENUM.create`.
 
+    .. versionadded:: 2.0 :class:`.DDLEvents` event hooks now take place
+       for non-table objects including constraints, indexes, and
+       dialect-specific schema types.
+
+    Event hooks may be attached directly to a :class:`_schema.Table` object or
+    to a :class:`_schema.MetaData` collection, as well as to any
+    :class:`.SchemaItem` class or object that can be individually created and
+    dropped using a distinct SQL command. Such classes include :class:`.Index`,
+    :class:`.Sequence`, and dialect-specific classes such as
+    :class:`_postgresql.ENUM`.
+
+    Example using the :meth:`.DDLEvents.after_create` event, where a custom
+    event hook will emit an ``ALTER TABLE`` command on the current connection,
+    after ``CREATE TABLE`` is emitted::
+
+        from sqlalchemy import create_engine
         from sqlalchemy import event
         from sqlalchemy import Table, Column, Metadata, Integer
 
         m = MetaData()
         some_table = Table('some_table', m, Column('data', Integer))
 
+        @event.listens_for(some_table, "after_create")
         def after_create(target, connection, **kw):
             connection.execute(text(
                 "ALTER TABLE %s SET name=foo_%s" % (target.name, target.name)
             ))
 
-        event.listen(some_table, "after_create", after_create)
+
+        some_engine = create_engine("postgresql://scott:tiger@host/test")
+
+        # will emit "CREATE TABLE some_table" as well as the above
+        # "ALTER TABLE" statement afterwards
+        m.create_all(some_engine)
+
+    Constraint objects such as :class:`.ForeignKeyConstraint`,
+    :class:`.UniqueConstraint`, :class:`.CheckConstraint` may also be
+    subscribed to these events, however they will **not** normally produce
+    events as these objects are usually rendered inline within an
+    enclosing ``CREATE TABLE`` statement and implicitly dropped from a
+    ``DROP TABLE`` statement.
+
+    For the :class:`.Index` construct, the event hook will be emitted
+    for ``CREATE INDEX``, however SQLAlchemy does not normally emit
+    ``DROP INDEX`` when dropping tables as this is again implicit within the
+    ``DROP TABLE`` statement.
+
+    .. versionadded:: 2.0 Support for :class:`.SchemaItem` objects
+       for create/drop events was expanded from its previous support for
+       :class:`.MetaData` and :class:`.Table` to also include
+       :class:`.Constraint` and all subclasses, :class:`.Index`,
+       :class:`.Sequence` and some type-related constructs such as
+       :class:`_postgresql.ENUM`.
+
+    .. note:: These event hooks are only emitted within the scope of
+       SQLAlchemy's create/drop methods; they are not necessarily supported
+       by tools such as `alembic <https://alembic.sqlalchemy.org>`_.
+
+
+    **Attachment Events**
+
+    Attachment events are provided to customize
+    behavior whenever a child schema element is associated
+    with a parent, such as when a :class:`_schema.Column` is associated
+    with its :class:`_schema.Table`, when a
+    :class:`_schema.ForeignKeyConstraint`
+    is associated with a :class:`_schema.Table`, etc.  These events include
+    :meth:`.DDLEvents.before_parent_attach` and
+    :meth:`.DDLEvents.after_parent_attach`.
+
+    **Reflection Events**
+
+    The :meth:`.DDLEvents.column_reflect` event is used to intercept
+    and modify the in-Python definition of database columns when
+    :term:`reflection` of database tables proceeds.
+
+    **Use with Generic DDL**
 
     DDL events integrate closely with the
     :class:`.DDL` class and the :class:`.ExecutableDDLElement` hierarchy
@@ -68,9 +133,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
             DDL("ALTER TABLE %(table)s SET name=foo_%(table)s")
         )
 
-    The methods here define the name of an event as well
-    as the names of members that are passed to listener
-    functions.
+    **Event Propagation to MetaData Copies**
 
     For all :class:`.DDLEvent` events, the ``propagate=True`` keyword argument
     will ensure that a given event handler is propagated to copies of the
@@ -78,6 +141,10 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     method::
 
         from sqlalchemy import DDL
+
+        metadata = MetaData()
+        some_table = Table("some_table", metadata, Column("data", Integer))
+
         event.listen(
             some_table,
             "after_create",
@@ -85,10 +152,12 @@ class DDLEvents(event.Events[SchemaEventTarget]):
             propagate=True
         )
 
+        new_metadata = MetaData()
         new_table = some_table.to_metadata(new_metadata)
 
-    The above :class:`.DDL` object will also be associated with the
-    :class:`_schema.Table` object represented by ``new_table``.
+    The above :class:`.DDL` object will be associated with the
+    :meth:`.DDLEvents.after_create` event for both the ``some_table`` and
+    the ``new_table`` :class:`.Table` objects.
 
     .. seealso::
 
@@ -110,8 +179,15 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     ) -> None:
         r"""Called before CREATE statements are emitted.
 
-        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
+        :param target: the :class:`.SchemaObject`, such as a
+         :class:`_schema.MetaData` or :class:`_schema.Table`
+         but also including all create/drop objects such as
+         :class:`.Index`, :class:`.Sequence`, etc.,
          object which is the target of the event.
+
+         .. versionadded:: 2.0 Support for all :class:`.SchemaItem` objects
+            was added.
+
         :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
@@ -139,8 +215,15 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     ) -> None:
         r"""Called after CREATE statements are emitted.
 
-        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
+        :param target: the :class:`.SchemaObject`, such as a
+         :class:`_schema.MetaData` or :class:`_schema.Table`
+         but also including all create/drop objects such as
+         :class:`.Index`, :class:`.Sequence`, etc.,
          object which is the target of the event.
+
+         .. versionadded:: 2.0 Support for all :class:`.SchemaItem` objects
+            was added.
+
         :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
@@ -163,8 +246,15 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     ) -> None:
         r"""Called before DROP statements are emitted.
 
-        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
+        :param target: the :class:`.SchemaObject`, such as a
+         :class:`_schema.MetaData` or :class:`_schema.Table`
+         but also including all create/drop objects such as
+         :class:`.Index`, :class:`.Sequence`, etc.,
          object which is the target of the event.
+
+         .. versionadded:: 2.0 Support for all :class:`.SchemaItem` objects
+            was added.
+
         :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
@@ -187,8 +277,15 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     ) -> None:
         r"""Called after DROP statements are emitted.
 
-        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
+        :param target: the :class:`.SchemaObject`, such as a
+         :class:`_schema.MetaData` or :class:`_schema.Table`
+         but also including all create/drop objects such as
+         :class:`.Index`, :class:`.Sequence`, etc.,
          object which is the target of the event.
+
+         .. versionadded:: 2.0 Support for all :class:`.SchemaItem` objects
+            was added.
+
         :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
