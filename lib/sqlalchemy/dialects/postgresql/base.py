@@ -1522,10 +1522,6 @@ class MACADDR8(MACADDR):
     __visit_name__ = "MACADDR8"
 
 
-class TIMESTAMPTZ(TIMESTAMP):
-    __visit_name__ = "TIMESTAMPTZ"
-
-
 ischema_names = {
     "_array": _array.ARRAY,
     "hstore": _hstore.HSTORE,
@@ -1566,7 +1562,6 @@ ischema_names = {
     "regclass": REGCLASS,
     "double precision": DOUBLE_PRECISION,
     "timestamp": TIMESTAMP,
-    "timestampz": TIMESTAMPZ,
     "timestamp with time zone": TIMESTAMP,
     "timestamp without time zone": TIMESTAMP,
     "time with time zone": TIME,
@@ -2467,9 +2462,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             else "",
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
         )
-
-    def visit_TIMESTAMPTZ(self, type_, **kw):
-        return "TIMESTAMPTZ"
 
     def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
