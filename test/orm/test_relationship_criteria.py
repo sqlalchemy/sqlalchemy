@@ -481,6 +481,63 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             ),
         )
 
+    def test_select_selectinload_mapper_mapper_closure_criteria(
+        self, user_address_fixture
+    ):
+        User, Address = user_address_fixture
+
+        def get_statement(closure="name"):
+
+            stmt = select(User).options(
+                selectinload(User.addresses),
+                with_loader_criteria(
+                    Address, lambda cls: cls.email_address != closure
+                ),
+            )
+            return stmt
+
+        s = Session(testing.db, future=True)
+
+        stmt = get_statement(closure="name")
+        with self.sql_execution_asserter() as asserter:
+            s.execute(stmt).all()
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users",
+                [],
+            ),
+            CompiledSQL(
+                "SELECT addresses.user_id AS addresses_user_id, addresses.id "
+                "AS addresses_id, addresses.email_address "
+                "AS addresses_email_address FROM addresses "
+                "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"primary_keys": [7, 8, 9, 10], "closure_1": "name"}],
+            ),
+        )
+
+        stmt = get_statement(closure="new name")
+        with self.sql_execution_asserter() as asserter:
+            s.execute(stmt).all()
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users",
+                [],
+            ),
+            CompiledSQL(
+                "SELECT addresses.user_id AS addresses_user_id, addresses.id "
+                "AS addresses_id, addresses.email_address "
+                "AS addresses_email_address FROM addresses "
+                "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"primary_keys": [7, 8, 9, 10], "closure_1": "new name"}],
+            ),
+        )
+
     def test_select_lazyload_mapper_mapper_criteria(
         self, user_address_fixture
     ):
@@ -540,6 +597,125 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 10, "email_address_1": "name"}],
+            ),
+        )
+
+    def test_select_lazyload_mapper_mapper_closure_criteria(
+        self, user_address_fixture
+    ):
+        User, Address = user_address_fixture
+
+        def get_statement(closure="name"):
+
+            stmt = (
+                select(User)
+                .options(
+                    lazyload(User.addresses),
+                    with_loader_criteria(
+                        Address, lambda cls: cls.email_address != closure
+                    ),
+                )
+                .order_by(User.id)
+            )
+            return stmt
+
+        s = Session(testing.db, future=True)
+
+        stmt = get_statement(closure="name")
+        with self.sql_execution_asserter() as asserter:
+            for obj in s.scalars(stmt).all():
+                obj.addresses
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users ORDER BY users.id",
+                [],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 7, "closure_1": "name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 8, "closure_1": "name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 9, "closure_1": "name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 10, "closure_1": "name"}],
+            ),
+        )
+
+        stmt = get_statement(closure="new name")
+        with self.sql_execution_asserter() as asserter:
+            for obj in s.scalars(
+                stmt, execution_options={"populate_existing": True}
+            ).all():
+                obj.addresses
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users ORDER BY users.id",
+                [],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 7, "closure_1": "new name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 8, "closure_1": "new name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 9, "closure_1": "new name"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :closure_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 10, "closure_1": "new name"}],
             ),
         )
 
