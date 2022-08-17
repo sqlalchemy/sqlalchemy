@@ -268,9 +268,6 @@ class DDLEvents(event.Events):
                 ]
             )
 
-        A future release will allow it to be associated with a specific
-        :class:`_schema.MetaData` object as well.
-
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
         is that returned in each element of the list returned
