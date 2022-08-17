@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import Table
@@ -63,8 +64,19 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
     def test_mapper_and_aliased(self):
         User, Address, Keyword = self.classes("User", "Address", "Keyword")
 
+        addresses_table = self.tables.addresses
+
         self._run_cache_key_fixture(
-            lambda: (inspect(User), inspect(Address), inspect(aliased(User))),
+            lambda: (
+                inspect(User),
+                inspect(Address),
+                inspect(aliased(User)),
+                inspect(aliased(aliased(User, addresses_table))),
+                inspect(aliased(aliased(User), addresses_table.select())),
+                inspect(aliased(Address)),
+                inspect(aliased(Address, addresses_table.select())),
+                inspect(aliased(User, addresses_table.select())),
+            ),
             compare_values=True,
         )
 
@@ -606,6 +618,94 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
                         .outerjoin(Engineer)
                         .subquery(),
                     )
+                ),
+            ),
+            compare_values=True,
+        )
+
+    def test_wpoly_cache_keys(self):
+        Person, Manager, Engineer, Boss = self.classes(
+            "Person", "Manager", "Engineer", "Boss"
+        )
+
+        meb_stmt = inspect(
+            with_polymorphic(Person, [Manager, Engineer, Boss])
+        ).selectable
+        me_stmt = inspect(
+            with_polymorphic(Person, [Manager, Engineer])
+        ).selectable
+
+        self._run_cache_key_fixture(
+            lambda: (
+                inspect(Person),
+                inspect(
+                    aliased(Person, me_stmt),
+                ),
+                inspect(
+                    aliased(Person, meb_stmt),
+                ),
+                inspect(
+                    with_polymorphic(Person, [Manager, Engineer]),
+                ),
+                # aliased=True is the same as flat=True for default selectable
+                inspect(
+                    with_polymorphic(
+                        Person, [Manager, Engineer], aliased=True
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(Person, [Manager, Engineer], flat=True),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person, [Manager, Engineer], flat=True, innerjoin=True
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person,
+                        [Manager, Engineer],
+                        flat=True,
+                        _use_mapper_path=True,
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person,
+                        [Manager, Engineer],
+                        flat=True,
+                        adapt_on_names=True,
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person, [Manager, Engineer], selectable=meb_stmt
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person,
+                        [Manager, Engineer],
+                        selectable=meb_stmt,
+                        aliased=True,
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(Person, [Manager, Engineer, Boss]),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person,
+                        [Manager, Engineer, Boss],
+                        polymorphic_on=literal_column("foo"),
+                    ),
+                ),
+                inspect(
+                    with_polymorphic(
+                        Person,
+                        [Manager, Engineer, Boss],
+                        polymorphic_on=literal_column("bar"),
+                    ),
                 ),
             ),
             compare_values=True,
