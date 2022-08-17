@@ -30,7 +30,9 @@ from .cursor import ResultProxy as ResultProxy
 from .interfaces import AdaptedConnection as AdaptedConnection
 from .interfaces import BindTyping as BindTyping
 from .interfaces import Compiled as Compiled
+from .interfaces import Connectable as Connectable
 from .interfaces import ConnectArgsType as ConnectArgsType
+from .interfaces import ConnectionEventsTarget as ConnectionEventsTarget
 from .interfaces import CreateEnginePlugin as CreateEnginePlugin
 from .interfaces import Dialect as Dialect
 from .interfaces import ExceptionContext as ExceptionContext
