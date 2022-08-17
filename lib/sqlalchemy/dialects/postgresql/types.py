@@ -46,6 +46,13 @@ class MACADDR(sqltypes.TypeEngine[str]):
 PGMacAddr = MACADDR
 
 
+class MACADDR8(MACADDR):
+    __visit_name__ = "MACADDR8"
+
+
+PGMacAddr8 = MACADDR8
+
+
 class MONEY(sqltypes.TypeEngine[str]):
 
     r"""Provide the PostgreSQL MONEY type.
