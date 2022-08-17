@@ -754,6 +754,46 @@ class ORMOption(ExecutableOption):
 
     _is_strategy_option = False
 
+    def _adapt_cached_option_to_uncached_option(self, context, uncached_opt):
+        """given "self" which is an option from a cached query, as well as the
+        corresponding option from the uncached version of the same query,
+        return the option we should use in a new query, in the context of a
+        loader strategy being asked to load related rows on behalf of that
+        cached query, which is assumed to be building a new query based on
+        entities passed to us from the cached query.
+
+        Currently this routine chooses between "self" and "uncached" without
+        manufacturing anything new. If the option is itself a loader strategy
+        option which has a path, that path needs to match to the entities being
+        passed to us by the cached query, so the :class:`_orm.Load` subclass
+        overrides this to return "self". For all other options, we return the
+        uncached form which may have changing state, such as a
+        with_loader_criteria() option which will very often have new state.
+
+        This routine could in the future involve
+        generating a new option based on both inputs if use cases arise,
+        such as if with_loader_criteria() needed to match up to
+        ``AliasedClass`` instances given in the parent query.
+
+        However, longer term it might be better to restructure things such that
+        ``AliasedClass`` entities are always matched up on their cache key,
+        instead of identity, in things like paths and such, so that this whole
+        issue of "the uncached option does not match the entities" goes away.
+        However this would make ``PathRegistry`` more complicated and difficult
+        to debug as well as potentially less performant in that it would be
+        hashing enormous cache keys rather than a simple AliasedInsp. UNLESS,
+        we could get cache keys overall to be reliably hashed into something
+        like an md5 key.
+
+        .. versionadded:: 1.4.41
+
+
+        """
+        if uncached_opt is not None:
+            return uncached_opt
+        else:
+            return self
+
 
 class CompileStateOption(HasCacheKey, ORMOption):
     """base for :class:`.ORMOption` classes that affect the compilation of

@@ -115,6 +115,9 @@ class Load(Generative, LoaderOption):
         load._extra_criteria = ()
         return load
 
+    def _adapt_cached_option_to_uncached_option(self, context, uncached_opt):
+        return self._adjust_for_extra_criteria(context)
+
     def _generate_extra_criteria(self, context):
         """Apply the current bound parameters in a QueryContext to the
         immediate "extra_criteria" stored with this Load object.
