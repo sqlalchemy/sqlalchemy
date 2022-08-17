@@ -732,6 +732,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping["foo"],
         )
 
+    @testing.skip_if("+aiosqlite", "unknown issue")
     @testing.combinations(
         (True,),
         (False,),
