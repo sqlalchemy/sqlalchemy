@@ -4496,8 +4496,11 @@ class JSONRoundTripTest(fixtures.TablesTest):
             Column("nulldata", cls.data_type(none_as_null=True)),
         )
 
+    @property
+    def data_table(self):
+        return self.tables.data_table
+
     def _fixture_data(self, connection):
-        data_table = self.tables.data_table
 
         data = [
             {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
@@ -4507,23 +4510,23 @@ class JSONRoundTripTest(fixtures.TablesTest):
             {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
             {"name": "r6", "data": {"k1": {"r6v1": {"subr": [1, 2, 3]}}}},
         ]
-        connection.execute(data_table.insert(), data)
+        connection.execute(self.data_table.insert(), data)
         return data
 
     def _assert_data(self, compare, conn, column="data"):
-        col = self.tables.data_table.c[column]
+        col = self.data_table.c[column]
         data = conn.execute(
-            select(col).order_by(self.tables.data_table.c.name)
+            select(col).order_by(self.data_table.c.name)
         ).fetchall()
         eq_([d for d, in data], compare)
 
     def _assert_column_is_NULL(self, conn, column="data"):
-        col = self.tables.data_table.c[column]
+        col = self.data_table.c[column]
         data = conn.execute(select(col).where(col.is_(null()))).fetchall()
         eq_([d for d, in data], [None])
 
     def _assert_column_is_JSON_NULL(self, conn, column="data"):
-        col = self.tables.data_table.c[column]
+        col = self.data_table.c[column]
         data = conn.execute(
             select(col).where(cast(col, String) == "null")
         ).fetchall()
@@ -4539,7 +4542,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         argnames="key",
     )
     def test_indexed_special_keys(self, connection, key):
-        data_table = self.tables.data_table
+        data_table = self.data_table
         data_element = {key: "some value"}
 
         connection.execute(
@@ -4563,27 +4566,27 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def test_insert(self, connection):
         connection.execute(
-            self.tables.data_table.insert(),
+            self.data_table.insert(),
             {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
         )
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], connection)
 
     def test_insert_nulls(self, connection):
         connection.execute(
-            self.tables.data_table.insert(), {"name": "r1", "data": null()}
+            self.data_table.insert(), {"name": "r1", "data": null()}
         )
         self._assert_data([None], connection)
 
     def test_insert_none_as_null(self, connection):
         connection.execute(
-            self.tables.data_table.insert(),
+            self.data_table.insert(),
             {"name": "r1", "nulldata": None},
         )
         self._assert_column_is_NULL(connection, column="nulldata")
 
     def test_insert_nulljson_into_none_as_null(self, connection):
         connection.execute(
-            self.tables.data_table.insert(),
+            self.data_table.insert(),
             {"name": "r1", "nulldata": JSON.NULL},
         )
         self._assert_column_is_JSON_NULL(connection, column="nulldata")
@@ -4654,9 +4657,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def test_query_returned_as_text(self, connection):
         self._fixture_data(connection)
-        data_table = self.tables.data_table
         result = connection.execute(
-            select(data_table.c.data["k1"].astext)
+            select(self.data_table.c.data["k1"].astext)
         ).first()
         assert isinstance(result[0], str)
 
@@ -4794,6 +4796,21 @@ class JSONBRoundTripTest(JSONRoundTripTest):
     @testing.requires.postgresql_utf8_server_encoding
     def test_unicode_round_trip(self, connection):
         super(JSONBRoundTripTest, self).test_unicode_round_trip(connection)
+
+    @testing.only_on("postgresql >= 12")
+    def test_cast_jsonpath(self, connection):
+        self._fixture_data(connection)
+
+        def go(path, res):
+            q = select(func.count("*")).where(
+                func.jsonb_path_exists(
+                    self.data_table.c.data, cast(path, JSONB.JSONPathType)
+                )
+            )
+            eq_(connection.scalar(q), res)
+
+        go("$.k1.k2", 0)
+        go("$.k1.r6v1", 1)
 
 
 class JSONBSuiteTest(suite.JSONTest):

@@ -41,6 +41,8 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONPATH
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -2352,6 +2354,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT sum(data.x) AS sum_1, sum(data.y) AS sum_2, "
             "avg(data.x) AS avg_1, avg(data.y) AS avg_2 FROM data "
             "WHERE data.group_id = summary.group_id)",
+        )
+
+    @testing.combinations(JSONB.JSONPathType, JSONPATH)
+    def test_json_path(self, type_):
+        data = table("data", column("id", Integer), column("x", JSONB))
+        stmt = select(
+            func.jsonb_path_exists(data.c.x, cast("$.data.w", type_))
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT jsonb_path_exists(data.x, CAST(%(param_1)s AS JSONPATH)) "
+            "AS jsonb_path_exists_1 FROM data",
         )
 
 
