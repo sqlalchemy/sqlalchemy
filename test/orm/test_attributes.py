@@ -8,6 +8,8 @@ from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import NO_KEY
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.testing import assert_raises
@@ -22,7 +24,6 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.util import all_partial_orderings
 from sqlalchemy.testing.util import gc_collect
-
 
 # global for pickling tests
 MyTest = None
@@ -2576,8 +2577,6 @@ class HistoryTest(fixtures.TestBase):
         class Bar(fixtures.BasicEntity):
             pass
 
-        from sqlalchemy.orm.collections import attribute_mapped_collection
-
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
         _register_attribute(
@@ -3190,6 +3189,239 @@ class LazyloadHistoryTest(fixtures.TestBase):
         eq_(
             attributes.get_state_history(attributes.instance_state(f), "bar"),
             ((), (), [bar1]),
+        )
+
+
+class CollectionKeyTest(fixtures.ORMTest):
+    @testing.fixture
+    def dict_collection(self):
+        class Foo(fixtures.BasicEntity):
+            pass
+
+        class Bar(fixtures.BasicEntity):
+            def __init__(self, name):
+                self.name = name
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        _register_attribute(
+            Foo,
+            "someattr",
+            uselist=True,
+            useobject=True,
+            typecallable=attribute_mapped_collection("name"),
+        )
+        _register_attribute(
+            Bar,
+            "name",
+            uselist=False,
+            useobject=False,
+        )
+
+        return Foo, Bar
+
+    @testing.fixture
+    def list_collection(self):
+        class Foo(fixtures.BasicEntity):
+            pass
+
+        class Bar(fixtures.BasicEntity):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        _register_attribute(
+            Foo,
+            "someattr",
+            uselist=True,
+            useobject=True,
+        )
+
+        return Foo, Bar
+
+    def test_listen_w_list_key(self, list_collection):
+        Foo, Bar = list_collection
+
+        m1 = Mock()
+
+        event.listen(Foo.someattr, "append", m1, include_key=True)
+        event.listen(Foo.someattr, "remove", m1, include_key=True)
+
+        f1 = Foo()
+        b1, b2, b3 = Bar(), Bar(), Bar()
+        f1.someattr.append(b1)
+        f1.someattr.append(b2)
+        f1.someattr[1] = b3
+        del f1.someattr[0]
+        append_token, remove_token = (
+            Foo.someattr.impl._append_token,
+            Foo.someattr.impl._remove_token,
+        )
+
+        eq_(
+            m1.mock_calls,
+            [
+                call(
+                    f1,
+                    b1,
+                    append_token,
+                    key=NO_KEY,
+                ),
+                call(
+                    f1,
+                    b2,
+                    append_token,
+                    key=NO_KEY,
+                ),
+                call(
+                    f1,
+                    b2,
+                    remove_token,
+                    key=1,
+                ),
+                call(
+                    f1,
+                    b3,
+                    append_token,
+                    key=1,
+                ),
+                call(
+                    f1,
+                    b1,
+                    remove_token,
+                    key=0,
+                ),
+            ],
+        )
+
+    def test_listen_w_dict_key(self, dict_collection):
+        Foo, Bar = dict_collection
+
+        m1 = Mock()
+
+        event.listen(Foo.someattr, "append", m1, include_key=True)
+        event.listen(Foo.someattr, "remove", m1, include_key=True)
+
+        f1 = Foo()
+        b1, b2, b3 = Bar("b1"), Bar("b2"), Bar("b3")
+        f1.someattr["k1"] = b1
+        f1.someattr.update({"k2": b2, "k3": b3})
+
+        del f1.someattr["k2"]
+
+        append_token, remove_token = (
+            Foo.someattr.impl._append_token,
+            Foo.someattr.impl._remove_token,
+        )
+
+        eq_(
+            m1.mock_calls,
+            [
+                call(
+                    f1,
+                    b1,
+                    append_token,
+                    key="k1",
+                ),
+                call(
+                    f1,
+                    b2,
+                    append_token,
+                    key="k2",
+                ),
+                call(
+                    f1,
+                    b3,
+                    append_token,
+                    key="k3",
+                ),
+                call(
+                    f1,
+                    b2,
+                    remove_token,
+                    key="k2",
+                ),
+            ],
+        )
+
+    def test_dict_bulk_replace_w_key(self, dict_collection):
+        Foo, Bar = dict_collection
+
+        m1 = Mock()
+
+        event.listen(Foo.someattr, "bulk_replace", m1, include_key=True)
+        event.listen(Foo.someattr, "append", m1, include_key=True)
+        event.listen(Foo.someattr, "remove", m1, include_key=True)
+
+        f1 = Foo()
+        b1, b2, b3, b4 = Bar("b1"), Bar("b2"), Bar("b3"), Bar("b4")
+        f1.someattr = {"b1": b1, "b3": b3}
+        f1.someattr = {"b2": b2, "b3": b3, "b4": b4}
+
+        bulk_replace_token = Foo.someattr.impl._bulk_replace_token
+
+        eq_(
+            m1.mock_calls,
+            [
+                call(f1, [b1, b3], bulk_replace_token, keys=["b1", "b3"]),
+                call(f1, b1, bulk_replace_token, key="b1"),
+                call(f1, b3, bulk_replace_token, key="b3"),
+                call(
+                    f1,
+                    [b2, b3, b4],
+                    bulk_replace_token,
+                    keys=["b2", "b3", "b4"],
+                ),
+                call(f1, b2, bulk_replace_token, key="b2"),
+                call(f1, b4, bulk_replace_token, key="b4"),
+                call(f1, b1, bulk_replace_token, key=NO_KEY),
+            ],
+        )
+
+    def test_listen_wo_dict_key(self, dict_collection):
+        Foo, Bar = dict_collection
+
+        m1 = Mock()
+
+        event.listen(Foo.someattr, "append", m1)
+        event.listen(Foo.someattr, "remove", m1)
+
+        f1 = Foo()
+        b1, b2, b3 = Bar("b1"), Bar("b2"), Bar("b3")
+        f1.someattr["k1"] = b1
+        f1.someattr.update({"k2": b2, "k3": b3})
+
+        del f1.someattr["k2"]
+
+        append_token, remove_token = (
+            Foo.someattr.impl._append_token,
+            Foo.someattr.impl._remove_token,
+        )
+
+        eq_(
+            m1.mock_calls,
+            [
+                call(
+                    f1,
+                    b1,
+                    append_token,
+                ),
+                call(
+                    f1,
+                    b2,
+                    append_token,
+                ),
+                call(
+                    f1,
+                    b3,
+                    append_token,
+                ),
+                call(
+                    f1,
+                    b2,
+                    remove_token,
+                ),
+            ],
         )
 
 
