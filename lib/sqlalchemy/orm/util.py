@@ -748,6 +748,19 @@ class AliasedInsp(
         "_nest_adapters",
     )
 
+    _cache_key_traversal = [
+        ("name", visitors.ExtendedInternalTraversal.dp_string),
+        ("_adapt_on_names", visitors.ExtendedInternalTraversal.dp_boolean),
+        ("_use_mapper_path", visitors.ExtendedInternalTraversal.dp_boolean),
+        ("_target", visitors.ExtendedInternalTraversal.dp_inspectable),
+        ("selectable", visitors.ExtendedInternalTraversal.dp_clauseelement),
+        (
+            "with_polymorphic_mappers",
+            visitors.InternalTraversal.dp_has_cache_key_list,
+        ),
+        ("polymorphic_on", visitors.InternalTraversal.dp_clauseelement),
+    ]
+
     mapper: Mapper[_O]
     selectable: FromClause
     _adapter: sql_util.ColumnAdapter
@@ -939,12 +952,6 @@ class AliasedInsp(
     @property
     def entity_namespace(self) -> AliasedClass[_O]:
         return self.entity
-
-    _cache_key_traversal = [
-        ("name", visitors.ExtendedInternalTraversal.dp_string),
-        ("_adapt_on_names", visitors.ExtendedInternalTraversal.dp_boolean),
-        ("selectable", visitors.ExtendedInternalTraversal.dp_clauseelement),
-    ]
 
     @property
     def class_(self) -> Type[_O]:
