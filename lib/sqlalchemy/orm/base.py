@@ -209,6 +209,15 @@ EXT_CONTINUE, EXT_STOP, EXT_SKIP, NO_KEY = tuple(EventConstants)
 
 
 class RelationshipDirection(Enum):
+    """enumeration which indicates the 'direction' of a
+    :class:`_orm.Relationship`.
+
+    :class:`.RelationshipDirection` is accessible from the
+    :attr:`_orm.Relationship.direction` attribute of
+    :class:`_orm.Relationship`.
+
+    """
+
     ONETOMANY = 1
     """Indicates the one-to-many direction for a :func:`_orm.relationship`.
 

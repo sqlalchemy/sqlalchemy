@@ -45,9 +45,8 @@ sections, are listed here.
     :members: __get__, __set__, __delete__
     :undoc-members:
 
-.. autodata:: MANYTOONE
-
-.. autodata:: MANYTOMANY
+.. autoclass:: LoaderCallableStatus
+    :members:
 
 .. autoclass:: Mapped
 
@@ -67,8 +66,6 @@ sections, are listed here.
 .. autofunction:: merge_frozen_result
 
 
-.. autodata:: ONETOMANY
-
 .. autoclass:: PropComparator
     :members:
     :inherited-members:
@@ -76,6 +73,9 @@ sections, are listed here.
 .. autoclass:: Relationship
     :members:
     :inherited-members:
+
+.. autoclass:: RelationshipDirection
+    :members:
 
 .. autodata:: RelationshipProperty
 

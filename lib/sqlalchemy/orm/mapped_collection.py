@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -57,7 +56,6 @@ class _PlainColumnGetter:
             m._get_state_attr_by_column(state, state.dict, col)
             for col in self._cols(m)
         ]
-
         if self.composite:
             return tuple(key)
         else:
@@ -107,17 +105,45 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
         return cols
 
 
-def column_mapped_collection(mapping_spec):
+def column_mapped_collection(
+    mapping_spec, *, ignore_unpopulated_attribute: bool = False
+):
     """A dictionary-based collection type with column-based keying.
 
-    Returns a :class:`.MappedCollection` factory with a keying function
-    generated from mapping_spec, which may be a Column or a sequence
-    of Columns.
+    Returns a :class:`.MappedCollection` factory which will produce new
+    dictionary keys based on the value of a particular :class:`.Column`-mapped
+    attribute on ORM mapped instances to be added to the dictionary.
 
-    The key value must be immutable for the lifetime of the object.  You
-    can not, for example, map on foreign key values if those key values will
-    change during the session, i.e. from None to a database-assigned integer
-    after a session flush.
+    .. note:: the value of the target attribute must be assigned with its
+       value at the time that the object is being added to the
+       dictionary collection.   Additionally, changes to the key attribute
+       are **not tracked**, which means the key in the dictionary is not
+       automatically synchronized with the key value on the target object
+       itself.  See :ref:`key_collections_mutations` for further details.
+
+    .. seealso::
+
+        :ref:`orm_dictionary_collection` - background on use
+
+    :param mapping_spec: a :class:`_schema.Column` object that is expected
+     to be mapped by the target mapper to a particular attribute on the
+     mapped class, the value of which on a particular instance is to be used
+     as the key for a new dictionary entry for that instance.
+    :param ignore_unpopulated_attribute:  if True, and the mapped attribute
+     indicated by the given :class:`_schema.Column` target attribute
+     on an object is not populated at all, the operation will be silently
+     skipped.  By default, an error is raised.
+
+     .. versionadded:: 2.0 an error is raised by default if the attribute
+        being used for the dictionary key is determined that it was never
+        populated with any value.  The
+        :paramref:`.column_mapped_collection.ignore_unpopulated_attribute`
+        parameter may be set which will instead indicate that this condition
+        should be ignored, and the append operation silently skipped.
+        This is in contrast to the behavior of the 1.x series which would
+        erroneously populate the value in the dictionary with an arbitrary key
+        value of ``None``.
+
 
     """
     cols = [
@@ -125,31 +151,75 @@ def column_mapped_collection(mapping_spec):
         for q in util.to_list(mapping_spec)
     ]
     keyfunc = _PlainColumnGetter(cols)
-    return _mapped_collection_cls(keyfunc)
+    return _mapped_collection_cls(
+        keyfunc, ignore_unpopulated_attribute=ignore_unpopulated_attribute
+    )
 
 
-def attribute_mapped_collection(attr_name: str) -> Type["MappedCollection"]:
+class _AttrGetter:
+    __slots__ = ("attr_name",)
+
+    def __init__(self, attr_name: str):
+        self.attr_name = attr_name
+
+    def __call__(self, mapped_object: Any) -> Any:
+        dict_ = base.instance_dict(mapped_object)
+        return dict_.get(self.attr_name, base.NO_VALUE)
+
+    def __reduce__(self):
+        return _AttrGetter, (self.attr_name,)
+
+
+def attribute_mapped_collection(
+    attr_name: str, *, ignore_unpopulated_attribute: bool = False
+) -> Type["MappedCollection"]:
     """A dictionary-based collection type with attribute-based keying.
 
-    Returns a :class:`.MappedCollection` factory with a keying based on the
-    'attr_name' attribute of entities in the collection, where ``attr_name``
-    is the string name of the attribute.
+    Returns a :class:`.MappedCollection` factory which will produce new
+    dictionary keys based on the value of a particular named attribute on
+    ORM mapped instances to be added to the dictionary.
 
-    .. warning:: the key value must be assigned to its final value
-       **before** it is accessed by the attribute mapped collection.
-       Additionally, changes to the key attribute are **not tracked**
-       automatically, which means the key in the dictionary is not
+    .. note:: the value of the target attribute must be assigned with its
+       value at the time that the object is being added to the
+       dictionary collection.   Additionally, changes to the key attribute
+       are **not tracked**, which means the key in the dictionary is not
        automatically synchronized with the key value on the target object
-       itself.  See the section :ref:`key_collections_mutations`
-       for an example.
+       itself.  See :ref:`key_collections_mutations` for further details.
+
+    .. seealso::
+
+        :ref:`orm_dictionary_collection` - background on use
+
+    :param attr_name: string name of an ORM-mapped attribute
+     on the mapped class, the value of which on a particular instance
+     is to be used as the key for a new dictionary entry for that instance.
+    :param ignore_unpopulated_attribute:  if True, and the target attribute
+     on an object is not populated at all, the operation will be silently
+     skipped.  By default, an error is raised.
+
+     .. versionadded:: 2.0 an error is raised by default if the attribute
+        being used for the dictionary key is determined that it was never
+        populated with any value.  The
+        :paramref:`.attribute_mapped_collection.ignore_unpopulated_attribute`
+        parameter may be set which will instead indicate that this condition
+        should be ignored, and the append operation silently skipped.
+        This is in contrast to the behavior of the 1.x series which would
+        erroneously populate the value in the dictionary with an arbitrary key
+        value of ``None``.
+
 
     """
-    getter = operator.attrgetter(attr_name)
-    return _mapped_collection_cls(getter)
+
+    return _mapped_collection_cls(
+        _AttrGetter(attr_name),
+        ignore_unpopulated_attribute=ignore_unpopulated_attribute,
+    )
 
 
 def mapped_collection(
-    keyfunc: Callable[[Any], _KT]
+    keyfunc: Callable[[Any], _KT],
+    *,
+    ignore_unpopulated_attribute: bool = False,
 ) -> Type["MappedCollection[_KT, Any]"]:
     """A dictionary-based collection type with arbitrary keying.
 
@@ -157,13 +227,39 @@ def mapped_collection(
     generated from keyfunc, a callable that takes an entity and returns a
     key value.
 
-    The key value must be immutable for the lifetime of the object.  You
-    can not, for example, map on foreign key values if those key values will
-    change during the session, i.e. from None to a database-assigned integer
-    after a session flush.
+    .. note:: the given keyfunc is called only once at the time that the
+       target object is being added to the collection.   Changes to the
+       effective value returned by the function are not tracked.
+
+
+    .. seealso::
+
+        :ref:`orm_dictionary_collection` - background on use
+
+    :param keyfunc: a callable that will be passed the ORM-mapped instance
+     which should then generate a new key to use in the dictionary.
+     If the value returned is :attr:`.LoaderCallableStatus.NO_VALUE`, an error
+     is raised.
+    :param ignore_unpopulated_attribute:  if True, and the callable returns
+     :attr:`.LoaderCallableStatus.NO_VALUE` for a particular instance, the
+     operation will be silently skipped.  By default, an error is raised.
+
+     .. versionadded:: 2.0 an error is raised by default if the callable
+        being used for the dictionary key returns
+        :attr:`.LoaderCallableStatus.NO_VALUE`, which in an ORM attribute
+        context indicates an attribute that was never populated with any value.
+        The :paramref:`.mapped_collection.ignore_unpopulated_attribute`
+        parameter may be set which will instead indicate that this condition
+        should be ignored, and the append operation silently skipped. This is
+        in contrast to the behavior of the 1.x series which would erroneously
+        populate the value in the dictionary with an arbitrary key value of
+        ``None``.
+
 
     """
-    return _mapped_collection_cls(keyfunc)
+    return _mapped_collection_cls(
+        keyfunc, ignore_unpopulated_attribute=ignore_unpopulated_attribute
+    )
 
 
 class MappedCollection(Dict[_KT, _VT]):
@@ -178,6 +274,10 @@ class MappedCollection(Dict[_KT, _VT]):
 
     .. seealso::
 
+        :func:`_orm.attribute_mapped_collection`
+
+        :func:`_orm.column_mapped_collection`
+
         :ref:`orm_dictionary_collection`
 
         :ref:`orm_custom_collection`
@@ -185,7 +285,7 @@ class MappedCollection(Dict[_KT, _VT]):
 
     """
 
-    def __init__(self, keyfunc):
+    def __init__(self, keyfunc, *, ignore_unpopulated_attribute=False):
         """Create a new collection with keying provided by keyfunc.
 
         keyfunc may be any callable that takes an object and returns an object
@@ -200,6 +300,7 @@ class MappedCollection(Dict[_KT, _VT]):
 
         """
         self.keyfunc = keyfunc
+        self.ignore_unpopulated_attribute = ignore_unpopulated_attribute
 
     @classmethod
     def _unreduce(cls, keyfunc, values):
@@ -210,12 +311,41 @@ class MappedCollection(Dict[_KT, _VT]):
     def __reduce__(self):
         return (MappedCollection._unreduce, (self.keyfunc, dict(self)))
 
+    def _raise_for_unpopulated(self, value, initiator):
+        mapper = base.instance_state(value).mapper
+
+        if initiator is None:
+            relationship = "unknown relationship"
+        else:
+            relationship = mapper.attrs[initiator.key]
+
+        raise sa_exc.InvalidRequestError(
+            f"In event triggered from population of attribute {relationship} "
+            "(likely from a backref), "
+            f"can't populate value in MappedCollection; "
+            "dictionary key "
+            f"derived from {base.instance_str(value)} is not "
+            f"populated. Ensure appropriate state is set up on "
+            f"the {base.instance_str(value)} object "
+            f"before assigning to the {relationship} attribute. "
+            f"To skip this assignment entirely, "
+            f'Set the "ignore_unpopulated_attribute=True" '
+            f"parameter on the mapped collection factory."
+        )
+
     @collection.appender
     @collection.internally_instrumented
     def set(self, value, _sa_initiator=None):
         """Add an item by value, consulting the keyfunc for the key."""
 
         key = self.keyfunc(value)
+
+        if key is base.NO_VALUE:
+            if not self.ignore_unpopulated_attribute:
+                self._raise_for_unpopulated(value, _sa_initiator)
+            else:
+                return
+
         self.__setitem__(key, value, _sa_initiator)
 
     @collection.remover
@@ -224,6 +354,12 @@ class MappedCollection(Dict[_KT, _VT]):
         """Remove an item by value, consulting the keyfunc for the key."""
 
         key = self.keyfunc(value)
+
+        if key is base.NO_VALUE:
+            if not self.ignore_unpopulated_attribute:
+                self._raise_for_unpopulated(value, _sa_initiator)
+            return
+
         # Let self[key] raise if key is not in this collection
         # testlib.pragma exempt:__ne__
         if self[key] != value:
@@ -236,9 +372,12 @@ class MappedCollection(Dict[_KT, _VT]):
         self.__delitem__(key, _sa_initiator)
 
 
-def _mapped_collection_cls(keyfunc):
+def _mapped_collection_cls(keyfunc, ignore_unpopulated_attribute):
     class _MKeyfuncMapped(MappedCollection):
         def __init__(self):
-            super().__init__(keyfunc)
+            super().__init__(
+                keyfunc,
+                ignore_unpopulated_attribute=ignore_unpopulated_attribute,
+            )
 
     return _MKeyfuncMapped
