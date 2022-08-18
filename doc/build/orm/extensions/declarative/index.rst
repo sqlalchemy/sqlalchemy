@@ -22,15 +22,3 @@ mapping API.
 .. autoclass:: DeferredReflection
    :members:
 
-.. these pages have all been integrated into the main ORM documentation
-   however are still here as placeholder docs with links to where they've moved
-
-.. toctree::
-   :hidden:
-
-   api
-   basic_use
-   inheritance
-   mixins
-   relationships
-   table_config
