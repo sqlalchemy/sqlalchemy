@@ -1934,11 +1934,7 @@
 
         Fixed bug in :ref:`change_3948` which prevented "selectin" and
         "inline" settings in a multi-level class hierarchy from interacting
-        together as expected.    A new example is added to the documentation.
-
-        .. seealso::
-
-            :ref:`polymorphic_selectin_and_withpoly`
+        together as expected.
 
     .. change::
         :tags: bug, oracle

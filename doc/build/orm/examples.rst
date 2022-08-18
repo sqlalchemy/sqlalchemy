@@ -54,10 +54,6 @@ Generic Associations
 
 .. automodule:: examples.generic_associations
 
-Large Collections
------------------
-
-.. automodule:: examples.large_collection
 
 Materialized Paths
 ------------------
@@ -76,12 +72,6 @@ Performance
 
 .. automodule:: examples.performance
 
-.. _examples_relationships:
-
-Relationship Join Conditions
-----------------------------
-
-.. automodule:: examples.join_conditions
 
 .. _examples_spaceinvaders:
 
@@ -90,12 +80,6 @@ Space Invaders
 
 .. automodule:: examples.space_invaders
 
-.. _examples_xmlpersistence:
-
-XML Persistence
----------------
-
-.. automodule:: examples.elementtree
 
 .. _examples_versioning:
 
@@ -167,11 +151,4 @@ Dogpile Caching
 ---------------
 
 .. automodule:: examples.dogpile_caching
-
-.. _examples_postgis:
-
-PostGIS Integration
--------------------
-
-.. automodule:: examples.postgis
 

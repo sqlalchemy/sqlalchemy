@@ -885,11 +885,12 @@ Operations that are improved by this feature include:
 
 * unit of work flushes for objects added to the session using
   :meth:`_orm.Session.add` and :meth:`_orm.Session.add_all`.
+* The new `ORM Bulk Insert Statement <orm_queryguide_bulk_insert>` feature,
+  which improves upon the experimental version of this feature first introduced
+  in SQLAlchemy 1.4.
 * the :class:`_orm.Session` "bulk" operations described at
-  :ref:`bulk_operations`
-* An upcoming feature known as "ORM Enabled Insert Statements" that will be
-  an improvement upon the existing :ref:`orm_dml_returning_objects` first
-  introduced as an experimental feature in SQLAlchemy 1.4.
+  :ref:`bulk_operations`, which are superseded by the above mentioned
+  ORM Bulk Insert feature.
 
 To get a sense of the scale of the operation, below are performance
 measurements using the ``test_flush_no_pk`` performance suite, which
@@ -966,6 +967,172 @@ get all drivers to this state:
     :ref:`engine_insertmanyvalues` - Documentation and background on the
     new feature as well as how to configure it
 
+ORM-enabled Insert, Upsert, Update and Delete Statements, with ORM RETURNING
+-----------------------------------------------------------------------------
+
+SQLAlchemy 1.4 ported the features of the legacy :class:`_orm.Query` object to
+:term:`2.0 style` execution, which meant that the :class:`.Select` construct
+could be passed to :meth:`_orm.Session.execute` to deliver ORM results. Support
+was also added for :class:`.Update` and :class:`.Delete` to be passed to
+:meth:`_orm.Session.execute`, to the degree that they could provide
+implementations of :meth:`_orm.Query.update` and :meth:`_orm.Query.delete`.
+
+The major missing element has been support for the :class:`_dml.Insert` construct.
+The 1.4 documentation addressed this with some recipes for "inserts" and "upserts"
+with use of :meth:`.Select.from_statement` to integrate RETURNING
+into an ORM context.  2.0 now fully closes the gap by integrating direct support for
+:class:`_dml.Insert` as an enhanced version of the :meth:`_orm.Session.bulk_insert_mappings`
+method, along with full ORM RETURNING support for all DML structures.
+
+Bulk Insert with RETURNING
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:class:`_dml.Insert` can be passed to :meth:`_orm.Session.execute`, with
+or without :meth:`_dml.Insert.returning`, which when passed with a
+separate parameter list will invoke the same process as was previously
+implemented by
+:meth:`_orm.Session.bulk_insert_mappings`, with additional enhancements.  This will optimize the
+batching of rows making use of the new :ref:`fast insertmany <change_6047>`
+feature, while also adding support for
+heterogenous parameter sets and multiple-table mappings like joined table
+inheritance::
+
+    >>> users = session.scalars(
+    ...     insert(User).returning(User),
+    ...     [
+    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...          {"name": "patrick", "fullname": "Patrick Star"},
+    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ]
+    ... )
+    >>> print(users.all())
+    [User(name='spongebob', fullname='Spongebob Squarepants'),
+     User(name='sandy', fullname='Sandy Cheeks'),
+     User(name='patrick', fullname='Patrick Star'),
+     User(name='squidward', fullname='Squidward Tentacles'),
+     User(name='ehkrabs', fullname='Eugene H. Krabs')]
+
+RETURNING is supported for all of these use cases, where the ORM will construct
+a full result set from multiple statement invocations.
+
+.. seealso::
+
+    :ref:`orm_queryguide_bulk_insert`
+
+Bulk UPDATE
+~~~~~~~~~~~
+
+In a similar manner as that of :class:`_dml.Insert`, passing the
+:class:`_dml.Update` construct along with a parameter list that includes
+primary key values to :meth:`_orm.Session.execute` will invoke the same process
+as previously supported by the :meth:`_orm.Session.bulk_update_mappings`
+method.  This feature does not however support RETURNING, as it uses
+a SQL UPDATE statement that is invoked using DBAPI :term:`executemany`::
+
+    >>> from sqlalchemy import update
+    >>> session.execute(
+    ...     update(User),
+    ...     [
+    ...          {"id": 1, "fullname": "Spongebob Squarepants"},
+    ...          {"id": 3, "fullname": "Patrick Star"},
+    ...     ]
+    ... )
+
+.. seealso::
+
+    :ref:`orm_queryguide_bulk_update`
+
+INSERT / upsert ... VALUES ... RETURNING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When using :class:`_dml.Insert` with :meth:`_dml.Insert.values`, the set of
+parameters may include SQL expressions. Additionally, upsert variants
+such as those for SQLite, PostgreSQL and MariaDB are also supported.
+These statements may now include :meth:`_dml.Insert.returning` clauses
+with column expressions or full ORM entities::
+
+    >>> from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+    >>> stmt = sqlite_upsert(User).values(
+    ...     [
+    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...          {"name": "patrick", "fullname": "Patrick Star"},
+    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...  ]
+    ... )
+    >>> stmt = stmt.on_conflict_do_update(
+    ...        index_elements=[User.name],
+    ...        set_=dict(fullname=stmt.excluded.fullname)
+    ... )
+    >>> result = session.scalars(stmt.returning(User))
+    >>> print(result.all())
+    [User(name='spongebob', fullname='Spongebob Squarepants'),
+    User(name='sandy', fullname='Sandy Cheeks'),
+    User(name='patrick', fullname='Patrick Star'),
+    User(name='squidward', fullname='Squidward Tentacles'),
+    User(name='ehkrabs', fullname='Eugene H. Krabs')]
+
+.. seealso::
+
+    :ref:`orm_queryguide_insert_values`
+
+    :ref:`orm_queryguide_upsert`
+
+ORM UPDATE / DELETE with WHERE ... RETURNING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLAlchemy 1.4 also had some modest support for the RETURNING feature to be
+used with the :func:`_dml.update` and :func:`_dml.delete` constructs, when
+used with :meth:`_orm.Session.execute`.  This support has now been upgraded
+to be fully native, including that the ``fetch`` synchronization strategy
+may also proceed whether or not explicit use of RETURNING is present::
+
+    >>> from sqlalchemy import update
+    >>> stmt = (
+    ...      update(User).
+    ...      where(User.name == "squidward").
+    ...      values(name="spongebob").
+    ...      returning(User)
+    ... )
+    >>> result = session.scalars(stmt, execution_options={"synchronize_session": "fetch"})
+    >>> print(result.all())
+
+
+.. seealso::
+
+    :ref:`orm_queryguide_update_delete_where`
+
+    :ref:`orm_queryguide_update_delete_where_returning`
+
+Improved ``synchronize_session`` behavior for ORM UPDATE / DELETE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The default strategy for :ref:`synchronize_session <orm_queryguide_update_delete_sync>`
+is now a new value ``"auto"``.  This strategy will attempt to use the
+``"evaluate"`` strategy and then automatically fall back to the ``"fetch"``
+strategy.   For all backends other than MySQL / MariaDB, ``"fetch"`` uses
+RETURNING to fetch UPDATE/DELETEd primary key identifiers within the
+same statement, so is generally more efficient than previous versions
+(in 1.4, RETURNING was only available for PostgreSQL, SQL Server).
+
+.. seealso::
+
+    :ref:`orm_queryguide_update_delete_sync`
+
+Summary of Changes
+~~~~~~~~~~~~~~~~~~
+
+Listed tickets for new ORM DML with RETURNING features:
+
+* convert ``insert()`` at ORM level to interpret ``values()`` in an ORM
+  context - :ticket:`7864`
+* evaluate feasibility of dml.returning(Entity) to deliver ORM expressions,
+  automatically apply select().from_statement equiv - :ticket:`7865`
+* given ORM insert, try to carry the bulk methods along, re: inheritance -
+  :ticket:`8360`
 
 .. _change_7311:
 

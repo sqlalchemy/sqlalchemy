@@ -1821,7 +1821,7 @@ class CursorResult(Result[_T]):
 
         .. seealso::
 
-            :ref:`.CursorResult.splice_horizontally`
+            :meth:`.CursorResult.splice_horizontally`
 
         """
         clone = self._generate()

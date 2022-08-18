@@ -1,7 +1,0 @@
-<somefile>
-    test3
-    <header name="aheader" value="bar" hoho="lala">
-        <field1>one</field1>
-        <field2 attr='foo'>there</field2>
-    </header>
-</somefile>

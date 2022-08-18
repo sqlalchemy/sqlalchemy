@@ -3964,36 +3964,19 @@ class Session(_SessionClassMethods, EventTarget):
     ) -> None:
         """Perform a bulk save of the given list of objects.
 
-        The bulk save feature allows mapped objects to be used as the
-        source of simple INSERT and UPDATE operations which can be more easily
-        grouped together into higher performing "executemany"
-        operations; the extraction of data from the objects is also performed
-        using a lower-latency process that ignores whether or not attributes
-        have actually been modified in the case of UPDATEs, and also ignores
-        SQL expressions.
+        .. legacy::
 
-        The objects as given are not added to the session and no additional
-        state is established on them. If the
-        :paramref:`_orm.Session.bulk_save_objects.return_defaults` flag is set,
-        then server-generated primary key values will be assigned to the
-        returned objects, but **not server side defaults**; this is a
-        limitation in the implementation. If stateful objects are desired,
-        please use the standard :meth:`_orm.Session.add_all` approach or
-        as an alternative newer mass-insert features such as
-        :ref:`orm_dml_returning_objects`.
+            This method is a legacy feature as of the 2.0 series of
+            SQLAlchemy.   For modern bulk INSERT and UPDATE, see
+            the sections :ref:`orm_queryguide_bulk_insert` and
+            :ref:`orm_queryguide_bulk_update`.
 
-        .. warning::
-
-            The bulk save feature allows for a lower-latency INSERT/UPDATE
-            of rows at the expense of most other unit-of-work features.
-            Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
-            INSERT/UPDATES of records.
-
-            **Please read the list of caveats at**
-            :ref:`bulk_operations_caveats` **before using this method, and
-            fully test and confirm the functionality of all code developed
-            using these systems.**
+            For general INSERT and UPDATE of existing ORM mapped objects,
+            prefer standard :term:`unit of work` data management patterns,
+            introduced in the :ref:`unified_tutorial` at
+            :ref:`tutorial_orm_data_manipulation`.  SQLAlchemy 2.0
+            now uses :ref:`engine_insertmanyvalues` with modern dialects
+            which solves previous issues of bulk INSERT slowness.
 
         :param objects: a sequence of mapped object instances.  The mapped
          objects are persisted as is, and are **not** associated with the
@@ -4035,11 +4018,9 @@ class Session(_SessionClassMethods, EventTarget):
          False, common types of objects are grouped into inserts
          and updates, to allow for more batching opportunities.
 
-         .. versionadded:: 1.3
-
         .. seealso::
 
-            :ref:`bulk_operations`
+            :doc:`queryguide/dml`
 
             :meth:`.Session.bulk_insert_mappings`
 
@@ -4088,31 +4069,14 @@ class Session(_SessionClassMethods, EventTarget):
     ) -> None:
         """Perform a bulk insert of the given list of mapping dictionaries.
 
-        The bulk insert feature allows plain Python dictionaries to be used as
-        the source of simple INSERT operations which can be more easily
-        grouped together into higher performing "executemany"
-        operations.  Using dictionaries, there is no "history" or session
-        state management features in use, reducing latency when inserting
-        large numbers of simple rows.
+        .. legacy::
 
-        The values within the dictionaries as given are typically passed
-        without modification into Core :meth:`_expression.Insert` constructs,
-        after
-        organizing the values within them across the tables to which
-        the given mapper is mapped.
-
-        .. warning::
-
-            The bulk insert feature allows for a lower-latency INSERT
-            of rows at the expense of most other unit-of-work features.
-            Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
-            INSERT of records.
-
-            **Please read the list of caveats at**
-            :ref:`bulk_operations_caveats` **before using this method, and
-            fully test and confirm the functionality of all code developed
-            using these systems.**
+            This method is a legacy feature as of the 2.0 series of
+            SQLAlchemy.   For modern bulk INSERT and UPDATE, see
+            the sections :ref:`orm_queryguide_bulk_insert` and
+            :ref:`orm_queryguide_bulk_update`.  The 2.0 API shares
+            implementation details with this method and adds new features
+            as well.
 
         :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
          object,
@@ -4162,7 +4126,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         .. seealso::
 
-            :ref:`bulk_operations`
+            :doc:`queryguide/dml`
 
             :meth:`.Session.bulk_save_objects`
 
@@ -4184,25 +4148,14 @@ class Session(_SessionClassMethods, EventTarget):
     ) -> None:
         """Perform a bulk update of the given list of mapping dictionaries.
 
-        The bulk update feature allows plain Python dictionaries to be used as
-        the source of simple UPDATE operations which can be more easily
-        grouped together into higher performing "executemany"
-        operations.  Using dictionaries, there is no "history" or session
-        state management features in use, reducing latency when updating
-        large numbers of simple rows.
+        .. legacy::
 
-        .. warning::
-
-            The bulk update feature allows for a lower-latency UPDATE
-            of rows at the expense of most other unit-of-work features.
-            Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
-            UPDATES of records.
-
-            **Please read the list of caveats at**
-            :ref:`bulk_operations_caveats` **before using this method, and
-            fully test and confirm the functionality of all code developed
-            using these systems.**
+            This method is a legacy feature as of the 2.0 series of
+            SQLAlchemy.   For modern bulk INSERT and UPDATE, see
+            the sections :ref:`orm_queryguide_bulk_insert` and
+            :ref:`orm_queryguide_bulk_update`.  The 2.0 API shares
+            implementation details with this method and adds new features
+            as well.
 
         :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
          object,
@@ -4221,7 +4174,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         .. seealso::
 
-            :ref:`bulk_operations`
+            :doc:`queryguide/dml`
 
             :meth:`.Session.bulk_insert_mappings`
 
@@ -4692,7 +4645,8 @@ def make_transient(instance: object) -> None:
 
         * are normally :term:`lazy loaded` but are not currently loaded
 
-        * are "deferred" via :ref:`deferred` and are not yet loaded
+        * are "deferred" (see :ref:`orm_queryguide_column_deferral`) and are
+          not yet loaded
 
         * were not present in the query which loaded this object, such as that
           which is common in joined table inheritance and other scenarios.

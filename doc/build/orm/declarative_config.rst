@@ -86,7 +86,7 @@ SQL expression mapped by :func:`_orm.column_property`, and an additional
 "deferred" basis as defined
 by the :paramref:`_orm.mapped_column.deferred` keyword.    More documentation
 on these particular concepts may be found at :ref:`relationship_patterns`,
-:ref:`mapper_column_property_sql_expressions`, and :ref:`deferred`.
+:ref:`mapper_column_property_sql_expressions`, and :ref:`orm_queryguide_column_deferral`.
 
 Properties may be specified with a declarative mapping as above using
 "hybrid table" style as well; the :class:`_schema.Column` objects that

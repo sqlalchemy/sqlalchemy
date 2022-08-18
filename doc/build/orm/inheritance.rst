@@ -19,6 +19,8 @@ return objects of multiple types.
 
 .. seealso::
 
+    :ref:`loading_joined_inheritance` - in the :ref:`queryguide_toplevel`
+
     :ref:`examples_inheritance` - complete examples of joined, single and
     concrete inheritance
 
@@ -30,19 +32,18 @@ Joined Table Inheritance
 In joined table inheritance, each class along a hierarchy of classes
 is represented by a distinct table.  Querying for a particular subclass
 in the hierarchy will render as a SQL JOIN along all tables in its
-inheritance path. If the queried class is the base class, the **default behavior
-is to include only the base table** in a SELECT statement.   In all cases, the
-ultimate class to instantiate for a given row is determined by a discriminator
-column or an expression that works against the base table.    When a subclass
-is loaded **only** against a base table, resulting objects will have base attributes
-populated at first; attributes that are local to the subclass will :term:`lazy load`
-when they are accessed.    Alternatively, there are options which can change
-the default behavior, allowing the query to include columns corresponding to
-multiple tables/subclasses up front.
+inheritance path. If the queried class is the base class, the base table
+is queried instead, with options to include other tables at the same time
+or to allow attributes specific to sub-tables to load later.
+
+In all cases, the ultimate class to instantiate for a given row is determined
+by a :term:`discriminator` column or SQL expression, defined on the base class,
+which will yield a scalar value that is associated with a particular subclass.
+
 
 The base class in a joined inheritance hierarchy is configured with
-additional arguments that will refer to the polymorphic discriminator
-column as well as the identifier for the base class::
+additional arguments that will indicate to the polymorphic discriminator
+column, and optionally a polymorphic identifier for the base class itself::
 
     from sqlalchemy import ForeignKey
     from sqlalchemy.orm import DeclarativeBase
@@ -63,24 +64,26 @@ column as well as the identifier for the base class::
             "polymorphic_on": "type",
         }
 
-Above, an additional column ``type`` is established to act as the
-**discriminator**, configured as such using the
-:paramref:`_orm.Mapper.polymorphic_on` parameter, which accepts a column-oriented
-expression specified either as a string name of the mapped attribute to use, or
-as a column expression object such as :class:`_schema.Column` or
-:func:`_orm.mapped_column` construct.
+        def __repr__(self):
+            return f"{self.__class__.__name__}({self.name!r})"
 
-This column will store a value which indicates the type of object
+In the above example, the discriminator is the ``type`` column, whichever is
+configured using the :paramref:`_orm.Mapper.polymorphic_on` parameter. This
+parameter accepts a column-oriented expression, specified either as a string
+name of the mapped attribute to use or as a column expression object such as
+:class:`_schema.Column` or :func:`_orm.mapped_column` construct.
+
+The discriminator column will store a value which indicates the type of object
 represented within the row. The column may be of any datatype, though string
 and integer are the most common.  The actual data value to be applied to this
 column for a particular row in the database is specified using the
 :paramref:`_orm.Mapper.polymorphic_identity` parameter, described below.
 
 While a polymorphic discriminator expression is not strictly necessary, it is
-required if polymorphic loading is desired.   Establishing a simple column on
+required if polymorphic loading is desired.   Establishing a column on
 the base table is the easiest way to achieve this, however very sophisticated
-inheritance mappings may even configure a SQL expression such as a CASE
-statement as the polymorphic discriminator.
+inheritance mappings may make use of SQL expressions, such as a CASE
+expression, as the polymorphic discriminator.
 
 .. note::
 
@@ -225,7 +228,7 @@ established between the ``Manager`` and ``Company`` classes::
 
         __mapper_args__ = {
             "polymorphic_identity": "employee",
-            "polymorphic_on": type,
+            "polymorphic_on": "type",
         }
 
 

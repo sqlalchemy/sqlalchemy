@@ -1068,7 +1068,7 @@ class Executable(roles.StatementRole):
 
         .. seealso::
 
-            :ref:`deferred_options` - refers to options specific to the usage
+            :ref:`loading_columns` - refers to options specific to the usage
             of ORM queries
 
             :ref:`relationship_loader_options` - refers to options specific

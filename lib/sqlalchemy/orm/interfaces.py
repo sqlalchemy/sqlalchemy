@@ -763,7 +763,7 @@ class PropComparator(SQLORMOperations[_T]):
         ) -> ColumnElement[Any]:
             ...
 
-    def of_type(self, class_: _EntityType[_T]) -> PropComparator[_T]:
+    def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T]:
         r"""Redefine this object in terms of a polymorphic subclass,
         :func:`_orm.with_polymorphic` construct, or :func:`_orm.aliased`
         construct.
@@ -781,7 +781,8 @@ class PropComparator(SQLORMOperations[_T]):
 
         .. seealso::
 
-            :ref:`queryguide_join_onclause` - in the :ref:`queryguide_toplevel`
+            :ref:`orm_queryguide_joining_relationships_aliased` - in the
+            :ref:`queryguide_toplevel`
 
             :ref:`inheritance_of_type`
 

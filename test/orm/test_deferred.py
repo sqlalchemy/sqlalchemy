@@ -2320,6 +2320,10 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
     def test_load_only_raise_option_raise_column_plain(self):
         A = self.classes.A
         s = fixture_session()
+        a1 = s.query(A).options(defer(A.x)).first()
+        a1.x
+
+        s.close()
 
         a1 = s.query(A).options(load_only(A.y, A.z, raiseload=True)).first()
         assert_raises_message(

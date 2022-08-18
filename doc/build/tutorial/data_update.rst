@@ -346,7 +346,6 @@ Further Reading for UPDATE, DELETE
 
     ORM-enabled UPDATE and DELETE:
 
-    * :ref:`tutorial_orm_enabled_update`
+    :ref:`orm_expression_update_delete` - in the :ref:`queryguide_toplevel`
 
-    * :ref:`tutorial_orm_enabled_delete`
 

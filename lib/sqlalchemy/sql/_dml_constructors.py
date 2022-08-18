@@ -57,9 +57,9 @@ def insert(table: _DMLTableArgument) -> Insert:
      backends that support "returning", this turns off the "implicit
      returning" feature for the statement.
 
-    If both :paramref:`_expression.Insert.values` and compile-time bind
+    If both :paramref:`_expression.insert.values` and compile-time bind
     parameters are present, the compile-time bind parameters override the
-    information specified within :paramref:`_expression.Insert.values` on a
+    information specified within :paramref:`_expression.insert.values` on a
     per-key basis.
 
     The keys within :paramref:`_expression.Insert.values` can be either

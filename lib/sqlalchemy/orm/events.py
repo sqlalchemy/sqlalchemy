@@ -1876,10 +1876,16 @@ class SessionEvents(event.Events[Session]):
         ),
     )
     def after_bulk_update(self, update_context):
-        """Execute after an ORM UPDATE against a WHERE expression has been
-        invoked.
+        """Event for after the legacy :meth:`_orm.Query.update` method
+        has been called.
 
-        This is called as a result of the :meth:`_query.Query.update` method.
+        .. legacy:: The :meth:`_orm.SessionEvents.after_bulk_update` method
+           is a legacy event hook as of SQLAlchemy 2.0.   The event
+           **does not participate** in :term:`2.0 style` invocations
+           using :func:`_dml.update` documented at
+           :ref:`orm_queryguide_update_delete_where`.  For 2.0 style use,
+           the :meth:`_orm.SessionEvents.do_orm_execute` hook will intercept
+           these calls.
 
         :param update_context: an "update context" object which contains
          details about the update, including these attributes:
@@ -1916,10 +1922,16 @@ class SessionEvents(event.Events[Session]):
         ),
     )
     def after_bulk_delete(self, delete_context):
-        """Execute after ORM DELETE against a WHERE expression has been
-        invoked.
+        """Event for after the legacy :meth:`_orm.Query.delete` method
+        has been called.
 
-        This is called as a result of the :meth:`_query.Query.delete` method.
+        .. legacy:: The :meth:`_orm.SessionEvents.after_bulk_delete` method
+           is a legacy event hook as of SQLAlchemy 2.0.   The event
+           **does not participate** in :term:`2.0 style` invocations
+           using :func:`_dml.delete` documented at
+           :ref:`orm_queryguide_update_delete_where`.  For 2.0 style use,
+           the :meth:`_orm.SessionEvents.do_orm_execute` hook will intercept
+           these calls.
 
         :param delete_context: a "delete context" object which contains
          details about the update, including these attributes:
@@ -2789,6 +2801,13 @@ class AttributeEvents(event.Events):
 class QueryEvents(event.Events):
     """Represent events within the construction of a :class:`_query.Query`
     object.
+
+    .. legacy:: The :class:`_orm.QueryEvents` event methods are legacy
+        as of SQLAlchemy 2.0, and only apply to direct use of the
+        :class:`_orm.Query` object. They are not used for :term:`2.0 style`
+        statements. For events to intercept and modify 2.0 style ORM use,
+        use the :meth:`_orm.SessionEvents.do_orm_execute` hook.
+
 
     The :class:`_orm.QueryEvents` hooks are now superseded by the
     :meth:`_orm.SessionEvents.do_orm_execute` event hook.

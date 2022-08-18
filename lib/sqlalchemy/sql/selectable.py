@@ -5574,19 +5574,29 @@ class Select(
 
     @_generative
     def add_columns(
-        self, *columns: _ColumnsClauseArgument[Any]
+        self, *entities: _ColumnsClauseArgument[Any]
     ) -> Select[Any]:
-        """Return a new :func:`_expression.select` construct with
-        the given column expressions added to its columns clause.
+        r"""Return a new :func:`_expression.select` construct with
+        the given entities appended to its columns clause.
 
         E.g.::
 
             my_select = my_select.add_columns(table.c.new_column)
 
-        See the documentation for
-        :meth:`_expression.Select.with_only_columns`
-        for guidelines on adding /replacing the columns of a
-        :class:`_expression.Select` object.
+        The original expressions in the columns clause remain in place.
+        To replace the original expressions with new ones, see the method
+        :meth:`_expression.Select.with_only_columns`.
+
+        :param \*entities: column, table, or other entity expressions to be
+         added to the columns clause
+
+        .. seealso::
+
+            :meth:`_expression.Select.with_only_columns` - replaces existing
+            expressions rather than appending.
+
+            :ref:`orm_queryguide_select_multiple_entities` - ORM-centric
+            example
 
         """
         self._reset_memoizations()
@@ -5595,7 +5605,7 @@ class Select(
             coercions.expect(
                 roles.ColumnsClauseRole, column, apply_propagate_attrs=self
             )
-            for column in columns
+            for column in entities
         ]
         return self
 
@@ -5751,7 +5761,7 @@ class Select(
     @overload
     def with_only_columns(
         self,
-        *columns: _ColumnsClauseArgument[Any],
+        *entities: _ColumnsClauseArgument[Any],
         maintain_column_froms: bool = False,
         **__kw: Any,
     ) -> Select[Any]:
@@ -5760,16 +5770,16 @@ class Select(
     @_generative
     def with_only_columns(
         self,
-        *columns: _ColumnsClauseArgument[Any],
+        *entities: _ColumnsClauseArgument[Any],
         maintain_column_froms: bool = False,
         **__kw: Any,
     ) -> Select[Any]:
         r"""Return a new :func:`_expression.select` construct with its columns
-        clause replaced with the given columns.
+        clause replaced with the given entities.
 
         By default, this method is exactly equivalent to as if the original
-        :func:`_expression.select` had been called with the given columns
-        clause. E.g. a statement::
+        :func:`_expression.select` had been called with the given entities.
+        E.g. a statement::
 
             s = select(table1.c.a, table1.c.b)
             s = s.with_only_columns(table1.c.b)
@@ -5803,11 +5813,7 @@ class Select(
             s = select(table1.c.a, table2.c.b)
             s = s.select_from(*s.columns_clause_froms).with_only_columns(table1.c.a)
 
-        :param \*columns: column expressions to be used.
-
-         .. versionchanged:: 1.4 the :meth:`_sql.Select.with_only_columns`
-            method accepts the list of column expressions positionally;
-            passing the expressions as a list is deprecated.
+        :param \*entities: column expressions to be used.
 
         :param maintain_column_froms: boolean parameter that will ensure the
          FROM list implied from the current columns clause will be transferred
@@ -5836,7 +5842,7 @@ class Select(
         self._raw_columns = [
             coercions.expect(roles.ColumnsClauseRole, c)
             for c in coercions._expression_collection_was_a_list(
-                "columns", "Select.with_only_columns", columns
+                "columns", "Select.with_only_columns", entities
             )
         ]
         return self

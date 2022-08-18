@@ -758,7 +758,7 @@ that are commonly used include:
 
 * **deferred column loading** - The :paramref:`_orm.mapped_column.deferred`
   boolean establishes the :class:`_schema.Column` using
-  :ref:`deferred column loading <deferred>` by default.  In the example
+  :ref:`deferred column loading <orm_queryguide_column_deferral>` by default.  In the example
   below, the ``User.bio`` column will not be loaded by default, but only
   when accessed::
 
@@ -771,7 +771,7 @@ that are commonly used include:
 
   .. seealso::
 
-     :ref:`deferred` - full description of deferred column loading
+     :ref:`orm_queryguide_column_deferral` - full description of deferred column loading
 
 * **active history** - The :paramref:`_orm.mapped_column.active_history`
   ensures that upon change of value for the attribute, the previous value
@@ -1071,7 +1071,7 @@ associate additional parameters with the column.   Options include:
   for invoking :func:`_orm.column_property` with the
   :paramref:`_orm.column_property.deferred` parameter set to ``True``;
   this construct establishes the :class:`_schema.Column` using
-  :ref:`deferred column loading <deferred>` by default.  In the example
+  :ref:`deferred column loading <orm_queryguide_column_deferral>` by default.  In the example
   below, the ``User.bio`` column will not be loaded by default, but only
   when accessed::
 
@@ -1093,7 +1093,7 @@ associate additional parameters with the column.   Options include:
 
  .. seealso::
 
-     :ref:`deferred` -  full description of deferred column loading
+     :ref:`orm_queryguide_column_deferral` - full description of deferred column loading
 
 * **active history** - The :paramref:`_orm.column_property.active_history`
   ensures that upon change of value for the attribute, the previous value

@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import insert
 from sqlalchemy import Integer
-from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
@@ -59,24 +58,6 @@ def test_flush_no_pk(n):
 
 
 @Profiler.profile
-def test_bulk_save_return_pks(n):
-    """INSERT statements in "bulk" (batched with RETURNING if available),
-    fetching generated row id"""
-    session = Session(bind=engine)
-    session.bulk_save_objects(
-        [
-            Customer(
-                name="customer name %d" % i,
-                description="customer description %d" % i,
-            )
-            for i in range(n)
-        ],
-        return_defaults=True,
-    )
-    session.commit()
-
-
-@Profiler.profile
 def test_flush_pk_given(n):
     """Batched INSERT statements via the ORM, PKs already defined"""
     session = Session(bind=engine)
@@ -96,71 +77,42 @@ def test_flush_pk_given(n):
 
 
 @Profiler.profile
-def test_bulk_save(n):
-    """Batched INSERT statements via the ORM in "bulk", discarding PKs."""
-    session = Session(bind=engine)
-    session.bulk_save_objects(
-        [
-            Customer(
-                name="customer name %d" % i,
-                description="customer description %d" % i,
-            )
-            for i in range(n)
-        ]
-    )
-    session.commit()
-
-
-@Profiler.profile
-def test_orm_insert(n):
-    """A single Core INSERT run through the Session"""
+def test_orm_bulk_insert(n):
+    """Batched INSERT statements via the ORM in "bulk", not returning rows"""
     session = Session(bind=engine)
     session.execute(
         insert(Customer),
-        params=[
-            dict(
-                name="customer name %d" % i,
-                description="customer description %d" % i,
-            )
-            for i in range(n)
-        ],
-    )
-    session.commit()
-
-
-@Profiler.profile
-def test_orm_insert_w_fetch(n):
-    """A single Core INSERT w executemany run through the Session, fetching
-    back new Customer objects into a list"""
-    session = Session(bind=engine)
-    result = session.execute(
-        select(Customer).from_statement(insert(Customer).returning(Customer)),
-        params=[
-            dict(
-                name="customer name %d" % i,
-                description="customer description %d" % i,
-            )
-            for i in range(n)
-        ],
-    )
-    customers = result.scalars().all()  # noqa: F841
-    session.commit()
-
-
-@Profiler.profile
-def test_bulk_insert_mappings(n):
-    """Batched INSERT statements via the ORM "bulk", using dictionaries."""
-    session = Session(bind=engine)
-    session.bulk_insert_mappings(
-        Customer,
         [
-            dict(
-                name="customer name %d" % i,
-                description="customer description %d" % i,
-            )
+            {
+                "name": "customer name %d" % i,
+                "description": "customer description %d" % i,
+            }
             for i in range(n)
         ],
     )
+    session.commit()
+
+
+@Profiler.profile
+def test_orm_insert_returning(n):
+    """Batched INSERT statements via the ORM in "bulk", returning new Customer
+    objects"""
+    session = Session(bind=engine)
+
+    customer_result = session.scalars(
+        insert(Customer).returning(Customer),
+        [
+            {
+                "name": "customer name %d" % i,
+                "description": "customer description %d" % i,
+            }
+            for i in range(n)
+        ],
+    )
+
+    # this step is where the rows actually become objects
+    customers = customer_result.all()  # noqa: F841
+
     session.commit()
 
 

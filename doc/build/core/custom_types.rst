@@ -349,9 +349,7 @@ possible to define SQL-level transformations as well.  The rationale here is whe
 only the relational database contains a particular series of functions that are necessary
 to coerce incoming and outgoing data between an application and persistence format.
 Examples include using database-defined encryption/decryption functions, as well
-as stored procedures that handle geographic data.  The PostGIS extension to PostgreSQL
-includes an extensive array of SQL functions that are necessary for coercing
-data into particular formats.
+as stored procedures that handle geographic data.
 
 Any :class:`.TypeEngine`, :class:`.UserDefinedType` or :class:`.TypeDecorator` subclass
 can include implementations of
@@ -473,9 +471,6 @@ to the INSERT and SELECT statements::
     {'pgp_sym_decrypt_1': 'this is my passphrase', 'username_1': 'some user'}
 
 
-.. seealso::
-
-   :ref:`examples_postgis`
 
 .. _types_operators:
 

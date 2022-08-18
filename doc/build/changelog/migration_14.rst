@@ -1842,7 +1842,7 @@ as was present previously.
 
 .. seealso::
 
-    :ref:`deferred_raiseload`
+    :ref:`orm_queryguide_deferred_raiseload`
 
 :ticket:`4826`
 

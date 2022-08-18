@@ -1765,7 +1765,8 @@ With recent support for RETURNING added to SQLite and MariaDB, SQLAlchemy no
 longer needs to rely upon the single-row-only
 `cursor.lastrowid <https://peps.python.org/pep-0249/#lastrowid>`_ attribute
 provided by the :term:`DBAPI` for most backends; RETURNING may now be used for
-all included backends with the exception of MySQL. The remaining performance
+all :ref:`SQLAlchemy-included <included_dialects>` backends with the exception
+of MySQL. The remaining performance
 limitation, that the
 `cursor.executemany() <https://peps.python.org/pep-0249/#executemany>`_ DBAPI
 method does not allow for rows to be fetched, is resolved for most backends by
