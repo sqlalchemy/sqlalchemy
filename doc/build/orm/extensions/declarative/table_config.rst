@@ -1,3 +1,5 @@
+:orphan:
+
 .. _declarative_table_args:
 
 ===================

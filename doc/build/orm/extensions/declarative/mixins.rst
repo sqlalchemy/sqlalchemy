@@ -1,3 +1,5 @@
+:orphan:
+
 .. _declarative_mixins:
 
 Mixin and Custom Base Classes

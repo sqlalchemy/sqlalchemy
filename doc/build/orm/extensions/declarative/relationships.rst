@@ -1,3 +1,5 @@
+:orphan:
+
 .. _declarative_configuring_relationships:
 
 =========================
