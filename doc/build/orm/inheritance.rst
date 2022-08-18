@@ -826,7 +826,9 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
 
 
     class Employee(AbstractConcreteBase, Base):
-        pass
+        strict_attrs = True
+
+        name = mapped_column(String(50))
 
 
     class Manager(Employee):
@@ -863,6 +865,46 @@ of the base class must be delayed until all the subclasses have been declared.
 With a mapping like the above, only instances of ``Manager`` and ``Engineer``
 may be persisted; querying against the ``Employee`` class will always produce
 ``Manager`` and ``Engineer`` objects.
+
+Using the above mapping, queries can be produced in terms of the ``Employee``
+class and any attributes that are locally declared upon it, such as the
+``Employee.name``::
+
+    >>> stmt = select(Employee).where(Employee.name == 'n1')
+    >>> print(stmt)
+    SELECT pjoin.id, pjoin.name, pjoin.type, pjoin.manager_data, pjoin.engineer_info
+    FROM (
+      SELECT engineer.id AS id, engineer.name AS name, engineer.engineer_info AS engineer_info,
+      CAST(NULL AS VARCHAR(40)) AS manager_data, 'engineer' AS type
+      FROM engineer
+      UNION ALL
+      SELECT manager.id AS id, manager.name AS name, CAST(NULL AS VARCHAR(40)) AS engineer_info,
+      manager.manager_data AS manager_data, 'manager' AS type
+      FROM manager
+    ) AS pjoin
+    WHERE pjoin.name = :name_1
+
+The :paramref:`.AbstractConcreteBase.strict_attrs` parameter indicates that the
+``Employee`` class should directly map only those attributes which are local to
+the ``Employee`` class, in this case the ``Employee.name`` attribute. Other
+attributes such as ``Manager.manager_data`` and ``Engineer.engineer_info`` are
+present only on their corresponding subclass.
+When :paramref:`.AbstractConcreteBase.strict_attrs`
+is not set, then all subclass attributes such as ``Manager.manager_data`` and
+``Engineer.engineer_info`` get mapped onto the base ``Employee`` class.  This
+is a legacy mode of use which may be more convenient for querying but has the
+effect that all subclasses share the
+full set of attributes for the whole hierarchy; in the above example, not
+using :paramref:`.AbstractConcreteBase.strict_attrs` would have the effect
+of generating non-useful ``Engineer.manager_name`` and ``Manager.engineer_info``
+attributes.
+
+.. versionadded:: 2.0  Added :paramref:`.AbstractConcreteBase.strict_attrs`
+   parameter to :class:`.AbstractConcreteBase` which produces a cleaner
+   mapping; the default is False to allow legacy mappings to continue working
+   as they did in 1.x versions.
+
+
 
 .. seealso::
 

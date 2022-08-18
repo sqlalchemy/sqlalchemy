@@ -1490,6 +1490,8 @@ class AdaptOnNamesTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
 
             """
 
+            strict_attrs = True
+
             @declared_attr
             def id(cls):
                 return Column(Integer, primary_key=True)
@@ -1665,9 +1667,10 @@ class AdaptOnNamesTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
             )
         asserter.assert_(
             CompiledSQL(
-                "SELECT anon_1.id, anon_1.metadata_id, anon_1.thing1, "
-                "anon_1.x1, anon_1.y1, anon_1.thing2, anon_1.x2, anon_1.y2, "
-                "anon_1.type, anon_1.id_1, anon_1.some_data FROM "
+                "SELECT anon_1.id, anon_1.metadata_id, anon_1.type, "
+                "anon_1.id_1, anon_1.some_data, anon_1.thing1, "
+                "anon_1.x1, anon_1.y1, anon_1.thing2, anon_1.x2, anon_1.y2 "
+                "FROM "
                 "(SELECT a.id AS id, a.metadata_id AS metadata_id, "
                 "a.thing1 AS thing1, a.x1 AS x1, a.y1 AS y1, "
                 "NULL AS thing2, NULL AS x2, NULL AS y2, :param_1 AS type, "
