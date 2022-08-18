@@ -628,14 +628,6 @@ of ``Manager`` and ``Engineer`` instances.    This brings us back into the
 domain of concrete inheritance, and we must build a special mapper against
 ``Employee`` in order to achieve this.
 
-.. topic:: Mappers can always SELECT
-
-    In SQLAlchemy, a mapper for a class always has to refer to some
-    "selectable", which is normally a :class:`_schema.Table` but may also refer to any
-    :func:`_expression.select` object as well.   While it may appear that a "single table
-    inheritance" mapper does not map to a table, these mappers in fact
-    implicitly refer to the table that is mapped by a superclass.
-
 To modify our concrete inheritance example to illustrate an "abstract" base
 that is capable of polymorphic loading,
 we will have only an ``engineer`` and a ``manager`` table and no ``employee``
