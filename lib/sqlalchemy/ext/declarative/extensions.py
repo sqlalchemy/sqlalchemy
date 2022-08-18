@@ -144,8 +144,8 @@ class AbstractConcreteBase(ConcreteBase):
 
     .. note::
 
-        The :class:`.AbstractConcreteBase` class does not intend to set up  the
-        mapping for the base class until all the subclasses have been defined,
+        The :class:`.AbstractConcreteBase` delays the mapper creation of the
+        base class until all the subclasses have been defined,
         as it needs to create a mapping against a selectable that will include
         all subclass tables.  In order to achieve this, it waits for the
         **mapper configuration event** to occur, at which point it scans
@@ -155,22 +155,20 @@ class AbstractConcreteBase(ConcreteBase):
         While this event is normally invoked automatically, in the case of
         :class:`.AbstractConcreteBase`, it may be necessary to invoke it
         explicitly after **all** subclass mappings are defined, if the first
-        operation is to be a query against this base class.  To do so, invoke
-        :func:`.configure_mappers` once all the desired classes have been
-        configured::
+        operation is to be a query against this base class. To do so, once all
+        the desired classes have been configured, the
+        :meth:`_orm.registry.configure` method on the :class:`_orm.registry`
+        in use can be invoked, which is available in relation to a particular
+        declarative base class::
 
-            from sqlalchemy.orm import configure_mappers
-
-            configure_mappers()
-
-        .. seealso::
-
-            :func:`_orm.configure_mappers`
-
+            Base.registry.configure()
 
     Example::
 
         from sqlalchemy.ext.declarative import AbstractConcreteBase
+        from sqlalchemy.orm import declarative_base
+
+        Base = declarative_base()
 
         class Employee(AbstractConcreteBase, Base):
             pass
@@ -183,9 +181,10 @@ class AbstractConcreteBase(ConcreteBase):
 
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
-                'concrete':True}
+                'concrete':True
+            }
 
-        configure_mappers()
+        Base.registry.configure()
 
     The abstract base class is handled by declarative in a special way;
     at class configuration time, it behaves like a declarative mixin
@@ -221,24 +220,25 @@ class AbstractConcreteBase(ConcreteBase):
 
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
-                'concrete':True}
+                'concrete':True
+            }
 
-        configure_mappers()
+        Base.registry.configure()
 
     When we make use of our mappings however, both ``Manager`` and
     ``Employee`` will have an independently usable ``.company`` attribute::
 
-        session.query(Employee).filter(Employee.company.has(id=5))
-
-    .. versionchanged:: 1.0.0 - The mechanics of :class:`.AbstractConcreteBase`
-       have been reworked to support relationships established directly
-       on the abstract base, without any special configurational steps.
+        session.execute(
+            select(Employee).filter(Employee.company.has(id=5))
+        )
 
     .. seealso::
 
         :class:`.ConcreteBase`
 
         :ref:`concrete_inheritance`
+
+        :ref:`abstract_concrete_base`
 
     """
 

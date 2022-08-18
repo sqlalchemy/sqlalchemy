@@ -637,7 +637,9 @@ Using :class:`.ConcreteBase`, we can set up our concrete mapping in
 almost the same way as we do other forms of inheritance mappings::
 
     from sqlalchemy.ext.declarative import ConcreteBase
+    from sqlalchemy.orm import declarative_base
 
+    Base = declarative_base()
 
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
@@ -723,6 +725,12 @@ The above UNION query needs to manufacture "NULL" columns for each subtable
 in order to accommodate for those columns that aren't members of that
 particular subclass.
 
+.. seealso::
+
+    :class:`.ConcreteBase`
+
+.. _abstract_concrete_base:
+
 Abstract Concrete Classes
 +++++++++++++++++++++++++
 
@@ -737,6 +745,10 @@ tables, and leave the base class unmapped, this can be achieved very easily.
 When using Declarative, just declare the
 base class with the ``__abstract__`` indicator::
 
+    from sqlalchemy.orm import declarative_base
+
+    Base = declarative_base()
+
     class Employee(Base):
         __abstract__ = True
 
@@ -747,20 +759,12 @@ base class with the ``__abstract__`` indicator::
         name = Column(String(50))
         manager_data = Column(String(40))
 
-        __mapper_args__ = {
-            "polymorphic_identity": "manager",
-        }
-
 
     class Engineer(Employee):
         __tablename__ = "engineer"
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
         engineer_info = Column(String(40))
-
-        __mapper_args__ = {
-            "polymorphic_identity": "engineer",
-        }
 
 Above, we are not actually making use of SQLAlchemy's inheritance mapping
 facilities; we can load and persist instances of ``Manager`` and ``Engineer``
@@ -781,6 +785,9 @@ To help with this, Declarative offers a variant of the :class:`.ConcreteBase`
 class called :class:`.AbstractConcreteBase` which achieves this automatically::
 
     from sqlalchemy.ext.declarative import AbstractConcreteBase
+    from sqlalchemy.orm import declarative_base
+
+    Base = declarative_base()
 
 
     class Employee(AbstractConcreteBase, Base):
@@ -810,12 +817,21 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
             "concrete": True,
         }
 
-The :class:`.AbstractConcreteBase` helper class has a more complex internal
-process than that of :class:`.ConcreteBase`, in that the entire mapping
+    Base.registry.configure()
+
+Above, the :meth:`_orm.registry.configure` method is invoked, which will
+trigger the ``Employee`` class to be actually mapped; before the configuration
+step, the class has no mapping as the sub-tables which it will query from
+have not yet been defined.   This process is more complex than that of
+:class:`.ConcreteBase`, in that the entire mapping
 of the base class must be delayed until all the subclasses have been declared.
 With a mapping like the above, only instances of ``Manager`` and ``Engineer``
 may be persisted; querying against the ``Employee`` class will always produce
 ``Manager`` and ``Engineer`` objects.
+
+.. seealso::
+
+    :class:`.AbstractConcreteBase`
 
 
 Classical and Semi-Classical Concrete Polymorphic Configuration
