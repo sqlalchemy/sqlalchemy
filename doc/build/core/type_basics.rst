@@ -151,16 +151,17 @@ to make use of the :paramref:`_mysql.VARCHAR.charset` parameter of
     user = Table(
         "user",
         metadata_obj,
-        Column("user_name", String, primary_key=True),
+        Column("user_name", String(100), primary_key=True),
         Column(
             "bio",
-            String(255).with_variant(VARCHAR(255, charset="utf-8"), "mysql", "mariadb"),
+            String(255).with_variant(VARCHAR(255, charset="utf8"), "mysql", "mariadb"),
         ),
     )
 
 In the above table definition, the ``"bio"`` column will have string-behaviors
-on all backends.  On most backends it will render in DDL as ``VARCHAR``.
-However on MySQL and MariaDB, it will render as ``VARCHAR(255) CHARACTER SET utf-8``.
+on all backends. On most backends it will render in DDL as ``VARCHAR``. However
+on MySQL and MariaDB (indicated by database URLs that start with ``mysql`` or
+``mariadb``), it will render as ``VARCHAR(255) CHARACTER SET utf8``.
 
 .. seealso::
 
