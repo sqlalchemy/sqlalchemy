@@ -3544,6 +3544,12 @@ def reconstructor(fn):
     method that will be called by the ORM after the instance has been
     loaded from the database or otherwise reconstituted.
 
+    .. tip::
+
+        The :func:`_orm.reconstructor` decorator makes use of the
+        :meth:`_orm.InstanceEvents.load` event hook, which can be
+        used directly.
+
     The reconstructor will be invoked with no arguments.  Scalar
     (non-collection) database-mapped attributes of the instance will
     be available for use within the function.  Eagerly-loaded
@@ -3553,8 +3559,6 @@ def reconstructor(fn):
     the activity within a reconstructor should be conservative.
 
     .. seealso::
-
-        :ref:`mapping_constructors`
 
         :meth:`.InstanceEvents.load`
 

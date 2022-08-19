@@ -24,5 +24,4 @@ sections are currently mixed as far as which style they are using.
     loading_columns
     loading_relationships
     inheritance_loading
-    constructors
     query

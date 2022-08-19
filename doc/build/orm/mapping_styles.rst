@@ -290,6 +290,8 @@ method which passes them along to the :func:`_orm.mapper` function.
 The full range of parameters accepted are documented at  :class:`_orm.mapper`.
 
 
+.. _orm_mapped_class_behavior:
+
 
 Mapped Class Behavior
 =====================
