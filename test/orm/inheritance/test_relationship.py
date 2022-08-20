@@ -2484,9 +2484,9 @@ class JoinedloadOverWPolyAliased(
 class JoinAcrossJoinedInhMultiPath(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):
-    """test long join paths with a joined-inh in the middle, where we go multiple
-    times across the same joined-inh to the same target but with other classes
-    in the middle.    E.g. test [ticket:2908]
+    """test long join paths with a joined-inh in the middle, where we go
+    multiple times across the same joined-inh to the same target but with
+    other classes in the middle.  E.g. test [ticket:2908]
     """
 
     run_setup_mappers = "once"

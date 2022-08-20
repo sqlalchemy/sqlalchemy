@@ -17,5 +17,4 @@ For an introduction to querying with the SQLAlchemy ORM, start with the
     loading_columns
     loading_relationships
     inheritance_loading
-    constructors
     query

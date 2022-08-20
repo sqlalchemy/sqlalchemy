@@ -226,8 +226,9 @@ class M2MTest(fixtures.MappedTest):
         assert p2 in p1.parent_places
 
     def test_joinedload_on_double(self):
-        """test that a mapper can have two eager relationships to the same table, via
-        two different association tables.  aliases are required."""
+        """test that a mapper can have two eager relationships to the same
+        table, via two different association tables.  aliases are required.
+        """
 
         (
             place_input,

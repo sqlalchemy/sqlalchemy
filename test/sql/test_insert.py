@@ -1,4 +1,7 @@
 #! coding:utf-8
+from __future__ import annotations
+
+from typing import Tuple
 
 from sqlalchemy import bindparam
 from sqlalchemy import Column
@@ -65,6 +68,30 @@ class _InsertTestBase:
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    @testing.combinations(
+        ((), ("z",), ()),
+        (("x",), (), ()),
+        (("x",), ("y",), ("x", "y")),
+        (("x", "y"), ("y",), ("x", "y")),
+    )
+    def test_return_defaults_generative(
+        self,
+        initial_keys: Tuple[str, ...],
+        second_keys: Tuple[str, ...],
+        expected_keys: Tuple[str, ...],
+    ):
+        t = table("foo", column("x"), column("y"), column("z"))
+
+        initial_cols = tuple(t.c[initial_keys])
+        second_cols = tuple(t.c[second_keys])
+        expected = set(t.c[expected_keys])
+
+        stmt = t.insert().return_defaults(*initial_cols)
+        eq_(stmt._return_defaults_columns, initial_cols)
+        stmt = stmt.return_defaults(*second_cols)
+        assert isinstance(stmt._return_defaults_columns, tuple)
+        eq_(set(stmt._return_defaults_columns), expected)
 
     def test_binds_that_match_columns(self):
         """test bind params named after column names
@@ -1542,7 +1569,9 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         stmt = table.insert().return_defaults().values(id=func.foobar())
-        compiled = stmt.compile(dialect=sqlite.dialect(), column_keys=["data"])
+        dialect = sqlite.dialect()
+        dialect.insert_returning = False
+        compiled = stmt.compile(dialect=dialect, column_keys=["data"])
         eq_(compiled.postfetch, [])
         eq_(compiled.implicit_returning, [])
 
@@ -1551,7 +1580,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO sometable (id, data) VALUES " "(foobar(), ?)",
             checkparams={"data": "foo"},
             params={"data": "foo"},
-            dialect=sqlite.dialect(),
+            dialect=dialect,
         )
 
     def test_sql_expression_pk_autoinc_returning(self):

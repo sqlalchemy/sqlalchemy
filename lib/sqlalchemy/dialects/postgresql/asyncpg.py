@@ -119,14 +119,18 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
 """  # noqa
 
+from __future__ import annotations
+
 import collections
-import collections.abc as collections_abc
 import decimal
 import json as _py_json
 import re
 import time
+from typing import cast
+from typing import TYPE_CHECKING
 
 from . import json
+from . import ranges
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -147,6 +151,9 @@ from ...sql import sqltypes
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
+
+if TYPE_CHECKING:
+    from typing import Iterable
 
 
 class AsyncpgString(sqltypes.String):
@@ -223,9 +230,15 @@ class AsyncpgJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
 class AsyncpgJSONPathType(json.JSONPathType):
     def bind_processor(self, dialect):
         def process(value):
-            assert isinstance(value, collections_abc.Sequence)
-            tokens = [str(elem) for elem in value]
-            return tokens
+            if isinstance(value, str):
+                # If it's already a string assume that it's in json path
+                # format. This allows using cast with json paths literals
+                return value
+            elif value:
+                tokens = [str(elem) for elem in value]
+                return tokens
+            else:
+                return []
 
         return process
 
@@ -276,6 +289,91 @@ class AsyncpgOID(OID):
 
 class AsyncpgCHAR(sqltypes.CHAR):
     render_bind_cast = True
+
+
+class _AsyncpgRange(ranges.AbstractRange):
+    def bind_processor(self, dialect):
+        Range = dialect.dbapi.asyncpg.Range
+
+        NoneType = type(None)
+
+        def to_range(value):
+            if not isinstance(value, (str, NoneType)):
+                value = Range(
+                    value.lower,
+                    value.upper,
+                    lower_inc=value.bounds[0] == "[",
+                    upper_inc=value.bounds[1] == "]",
+                    empty=value.empty,
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                empty = value.isempty
+                value = ranges.Range(
+                    value.lower,
+                    value.upper,
+                    bounds=f"{'[' if empty or value.lower_inc else '('}"  # type: ignore  # noqa: E501
+                    f"{']' if not empty and value.upper_inc else ')'}",
+                    empty=empty,
+                )
+            return value
+
+        return to_range
+
+
+class _AsyncpgMultiRange(ranges.AbstractMultiRange):
+    def bind_processor(self, dialect):
+        Range = dialect.dbapi.asyncpg.Range
+
+        NoneType = type(None)
+
+        def to_range(value):
+            if isinstance(value, (str, NoneType)):
+                return value
+
+            def to_range(value):
+                if not isinstance(value, (str, NoneType)):
+                    value = Range(
+                        value.lower,
+                        value.upper,
+                        lower_inc=value.bounds[0] == "[",
+                        upper_inc=value.bounds[1] == "]",
+                        empty=value.empty,
+                    )
+                return value
+
+            return [
+                to_range(element)
+                for element in cast("Iterable[ranges.Range]", value)
+            ]
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range_array(value):
+            def to_range(rvalue):
+                if rvalue is not None:
+                    empty = rvalue.isempty
+                    rvalue = ranges.Range(
+                        rvalue.lower,
+                        rvalue.upper,
+                        bounds=f"{'[' if empty or rvalue.lower_inc else '('}"  # type: ignore  # noqa: E501
+                        f"{']' if not empty and rvalue.upper_inc else ')'}",
+                        empty=empty,
+                    )
+                return rvalue
+
+            if value is not None:
+                value = [to_range(elem) for elem in value]
+
+            return value
+
+        return to_range_array
 
 
 class PGExecutionContext_asyncpg(PGExecutionContext):
@@ -828,6 +926,8 @@ class PGDialect_asyncpg(PGDialect):
             OID: AsyncpgOID,
             REGCLASS: AsyncpgREGCLASS,
             sqltypes.CHAR: AsyncpgCHAR,
+            ranges.AbstractRange: _AsyncpgRange,
+            ranges.AbstractMultiRange: _AsyncpgMultiRange,
         },
     )
     is_async = True

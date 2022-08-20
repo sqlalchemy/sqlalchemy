@@ -1717,9 +1717,10 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         value: _T,
         initiator: Optional[AttributeEventToken],
+        key: Optional[Any],
     ) -> _T:
         for fn in self.dispatch.append:
-            value = fn(state, value, initiator or self._append_token)
+            value = fn(state, value, initiator or self._append_token, key=key)
 
         state._modified_event(dict_, self, NO_VALUE, True)
 
@@ -1734,9 +1735,10 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         value: _T,
         initiator: Optional[AttributeEventToken],
+        key: Optional[Any],
     ) -> _T:
         for fn in self.dispatch.append_wo_mutation:
-            value = fn(state, value, initiator or self._append_token)
+            value = fn(state, value, initiator or self._append_token, key=key)
 
         return value
 
@@ -1745,6 +1747,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         initiator: Optional[AttributeEventToken],
+        key: Optional[Any],
     ) -> None:
         """A special event used for pop() operations.
 
@@ -1762,12 +1765,13 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         value: Any,
         initiator: Optional[AttributeEventToken],
+        key: Optional[Any],
     ) -> None:
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
-            fn(state, value, initiator or self._remove_token)
+            fn(state, value, initiator or self._remove_token, key=key)
 
         state._modified_event(dict_, self, NO_VALUE, True)
 
@@ -1825,7 +1829,9 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
             state, dict_, user_data=None, passive=passive
         )
         if collection is PASSIVE_NO_RESULT:
-            value = self.fire_append_event(state, dict_, value, initiator)
+            value = self.fire_append_event(
+                state, dict_, value, initiator, key=NO_KEY
+            )
             assert (
                 self.key not in dict_
             ), "Collection was loaded during event handling."
@@ -1847,7 +1853,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
             state, state.dict, user_data=None, passive=passive
         )
         if collection is PASSIVE_NO_RESULT:
-            self.fire_remove_event(state, dict_, value, initiator)
+            self.fire_remove_event(state, dict_, value, initiator, key=NO_KEY)
             assert (
                 self.key not in dict_
             ), "Collection was loaded during event handling."
@@ -1885,6 +1891,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         _adapt: bool = True,
     ) -> None:
         iterable = orig_iterable = value
+        new_keys = None
 
         # pulling a new collection first so that an adaptation exception does
         # not trigger a lazy load of the old collection.
@@ -1913,14 +1920,18 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
                 if hasattr(iterable, "_sa_iterator"):
                     iterable = iterable._sa_iterator()
                 elif setting_type is dict:
+                    new_keys = list(iterable)
                     iterable = iterable.values()
                 else:
                     iterable = iter(iterable)
+        elif util.duck_type_collection(iterable) is dict:
+            new_keys = list(value)
+
         new_values = list(iterable)
 
         evt = self._bulk_replace_token
 
-        self.dispatch.bulk_replace(state, new_values, evt)
+        self.dispatch.bulk_replace(state, new_values, evt, keys=new_keys)
 
         old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         if old is PASSIVE_NO_RESULT:
@@ -2081,7 +2092,9 @@ def backref_listeners(
             )
         )
 
-    def emit_backref_from_scalar_set_event(state, child, oldchild, initiator):
+    def emit_backref_from_scalar_set_event(
+        state, child, oldchild, initiator, **kw
+    ):
         if oldchild is child:
             return child
         if (
@@ -2146,7 +2159,9 @@ def backref_listeners(
                 )
         return child
 
-    def emit_backref_from_collection_append_event(state, child, initiator):
+    def emit_backref_from_collection_append_event(
+        state, child, initiator, **kw
+    ):
         if child is None:
             return
 
@@ -2180,7 +2195,9 @@ def backref_listeners(
             )
         return child
 
-    def emit_backref_from_collection_remove_event(state, child, initiator):
+    def emit_backref_from_collection_remove_event(
+        state, child, initiator, **kw
+    ):
         if (
             child is not None
             and child is not PASSIVE_NO_RESULT
@@ -2234,6 +2251,7 @@ def backref_listeners(
             emit_backref_from_collection_append_event,
             retval=True,
             raw=True,
+            include_key=True,
         )
     else:
         event.listen(
@@ -2242,6 +2260,7 @@ def backref_listeners(
             emit_backref_from_scalar_set_event,
             retval=True,
             raw=True,
+            include_key=True,
         )
     # TODO: need coverage in test/orm/ of remove event
     event.listen(
@@ -2250,6 +2269,7 @@ def backref_listeners(
         emit_backref_from_collection_remove_event,
         retval=True,
         raw=True,
+        include_key=True,
     )
 
 

@@ -19,6 +19,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
@@ -2630,3 +2631,84 @@ class InstrumentationTest(fixtures.ORMTest):
 
         f1.attr = []
         assert not adapter._referenced_by_owner
+
+
+class UnpopulatedAttrTest(fixtures.TestBase):
+    def _fixture(self, decl_base, collection_fn, ignore_unpopulated):
+        class B(decl_base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+            a_id = Column(ForeignKey("a.id"))
+
+        if collection_fn is collections.attribute_mapped_collection:
+            cc = collection_fn(
+                "data", ignore_unpopulated_attribute=ignore_unpopulated
+            )
+        elif collection_fn is collections.column_mapped_collection:
+            cc = collection_fn(
+                B.data, ignore_unpopulated_attribute=ignore_unpopulated
+            )
+        else:
+            assert False
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                collection_class=cc,
+                backref="a",
+            )
+
+        return A, B
+
+    @testing.combinations(
+        collections.attribute_mapped_collection,
+        collections.column_mapped_collection,
+        argnames="collection_fn",
+    )
+    @testing.combinations(True, False, argnames="ignore_unpopulated")
+    def test_attr_unpopulated_backref_assign(
+        self, decl_base, collection_fn, ignore_unpopulated
+    ):
+        A, B = self._fixture(decl_base, collection_fn, ignore_unpopulated)
+
+        a1 = A()
+
+        if ignore_unpopulated:
+            a1.bs["bar"] = b = B(a=a1)
+            eq_(a1.bs, {"bar": b})
+            assert None not in a1.bs
+        else:
+            with expect_raises_message(
+                sa_exc.InvalidRequestError,
+                "In event triggered from population of attribute B.a",
+            ):
+                a1.bs["bar"] = B(a=a1)
+
+    @testing.combinations(
+        collections.attribute_mapped_collection,
+        collections.column_mapped_collection,
+        argnames="collection_fn",
+    )
+    @testing.combinations(True, False, argnames="ignore_unpopulated")
+    def test_attr_unpopulated_backref_del(
+        self, decl_base, collection_fn, ignore_unpopulated
+    ):
+        A, B = self._fixture(decl_base, collection_fn, ignore_unpopulated)
+
+        a1 = A()
+        b1 = B(data="bar")
+        a1.bs["bar"] = b1
+        del b1.__dict__["data"]
+
+        if ignore_unpopulated:
+            b1.a = None
+        else:
+            with expect_raises_message(
+                sa_exc.InvalidRequestError,
+                "In event triggered from population of attribute B.a",
+            ):
+                b1.a = None

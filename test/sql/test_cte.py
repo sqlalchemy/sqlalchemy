@@ -489,20 +489,38 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cs1.x, cs2.x AS x_1 FROM bar AS cs1, cte AS cs2",
         )
 
-    def test_conflicting_names(self):
+    @testing.combinations(True, False, argnames="identical")
+    @testing.combinations(True, False, argnames="use_clone")
+    def test_conflicting_names(self, identical, use_clone):
         """test a flat out name conflict."""
 
         s1 = select(1)
         c1 = s1.cte(name="cte1", recursive=True)
-        s2 = select(1)
-        c2 = s2.cte(name="cte1", recursive=True)
+        if use_clone:
+            c2 = c1._clone()
+            if not identical:
+                c2 = c2.union(select(2))
+        else:
+            if identical:
+                s2 = select(1)
+            else:
+                s2 = select(column("q"))
+            c2 = s2.cte(name="cte1", recursive=True)
 
         s = select(c1, c2)
-        assert_raises_message(
-            CompileError,
-            "Multiple, unrelated CTEs found " "with the same name: 'cte1'",
-            s.compile,
-        )
+
+        if use_clone and identical:
+            self.assert_compile(
+                s,
+                'WITH RECURSIVE cte1("1") AS (SELECT 1) SELECT cte1.1, '
+                'cte1.1 AS "1_1" FROM cte1',
+            )
+        else:
+            assert_raises_message(
+                CompileError,
+                "Multiple, unrelated CTEs found " "with the same name: 'cte1'",
+                s.compile,
+            )
 
     def test_with_recursive_no_name_currently_buggy(self):
         s1 = select(1)

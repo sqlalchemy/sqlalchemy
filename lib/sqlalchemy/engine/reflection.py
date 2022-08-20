@@ -881,7 +881,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
         scope: ObjectScope = ObjectScope.DEFAULT,
         **kw: Any,
     ) -> Dict[TableKey, List[ReflectedColumn]]:
-        r"""Return information about columns in all objects in the given schema.
+        r"""Return information about columns in all objects in the given
+        schema.
 
         The objects can be filtered by passing the names to use to
         ``filter_names``.

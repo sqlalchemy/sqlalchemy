@@ -57,6 +57,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(sql.false(), "0")
         self.assert_compile(sql.true(), "1")
 
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=oracle.OracleDialect())),
+            "INSERT INTO t (description) VALUES (lower(:lower_1)) "
+            "RETURNING t.myid, t.name, t.description "
+            "INTO :ret_0, :ret_1, :ret_2",
+        )
+
     def test_owner(self):
         meta = MetaData()
         parent = Table(

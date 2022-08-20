@@ -1,4 +1,5 @@
 # coding: utf-8
+import dataclasses
 import datetime
 import itertools
 import logging
@@ -35,6 +36,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
+from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_BATCH
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_PLAIN
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
@@ -43,6 +45,7 @@ from sqlalchemy.engine import url
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -54,6 +57,7 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
+from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import ne_
 
 if True:
@@ -64,6 +68,29 @@ if True:
 
 class DialectTest(fixtures.TestBase):
     """python-side dialect tests."""
+
+    def test_range_constructor(self):
+        """test kwonly argments in the range constructor, as we had
+        to do dataclasses backwards compat operations"""
+
+        r1 = Range(None, 5)
+        eq_(dataclasses.astuple(r1), (None, 5, "[)", False))
+
+        r1 = Range(10, 5, bounds="()")
+        eq_(dataclasses.astuple(r1), (10, 5, "()", False))
+
+        with expect_raises(TypeError):
+            Range(10, 5, "()")  # type: ignore
+
+        with expect_raises(TypeError):
+            Range(None, None, "()", True)  # type: ignore
+
+    def test_range_frozen(self):
+        r1 = Range(None, 5)
+        eq_(dataclasses.astuple(r1), (None, 5, "[)", False))
+
+        with expect_raises(dataclasses.FrozenInstanceError):
+            r1.lower = 8  # type: ignore
 
     def test_version_parsing(self):
         def mock_conn(res):
@@ -200,24 +227,93 @@ $$ LANGUAGE plpgsql;"""
         eq_(cargs, [])
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
-    def test_psycopg2_nonempty_connection_string_w_query_two(self):
-        dialect = psycopg2_dialect.dialect()
-        url_string = "postgresql+psycopg2://USER:PASS@/DB?host=hostA"
-        u = url.make_url(url_string)
-        cargs, cparams = dialect.create_connect_args(u)
-        eq_(cargs, [])
-        eq_(cparams["host"], "hostA")
-
-    def test_psycopg2_nonempty_connection_string_w_query_three(self):
-        dialect = psycopg2_dialect.dialect()
-        url_string = (
+    @testing.combinations(
+        (
+            "postgresql+psycopg2://USER:PASS@/DB?host=hostA",
+            {
+                "dbname": "DB",
+                "user": "USER",
+                "password": "PASS",
+                "host": "hostA",
+            },
+        ),
+        (
             "postgresql+psycopg2://USER:PASS@/DB"
-            "?host=hostA:portA&host=hostB&host=hostC"
-        )
+            "?host=hostA&host=hostB&host=hostC",
+            {
+                "dbname": "DB",
+                "user": "USER",
+                "password": "PASS",
+                "host": "hostA,hostB,hostC",
+                "port": ",,",
+            },
+        ),
+        (
+            "postgresql+psycopg2://USER:PASS@/DB"
+            "?host=hostA&host=hostB:portB&host=hostC:portC",
+            {
+                "dbname": "DB",
+                "user": "USER",
+                "password": "PASS",
+                "host": "hostA,hostB,hostC",
+                "port": ",portB,portC",
+            },
+        ),
+        (
+            "postgresql+psycopg2://USER:PASS@/DB?"
+            "host=hostA:portA&host=hostB:portB&host=hostC:portC",
+            {
+                "dbname": "DB",
+                "user": "USER",
+                "password": "PASS",
+                "host": "hostA,hostB,hostC",
+                "port": "portA,portB,portC",
+            },
+        ),
+        (
+            "postgresql+psycopg2:///"
+            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
+            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+        ),
+        (
+            "postgresql+psycopg2:///"
+            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
+            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+        ),
+        (
+            "postgresql+psycopg2:///"
+            "?host=hostA,hostB,hostC&port=portA,portB,portC",
+            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+        ),
+        argnames="url_string,expected",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_psycopg_multi_hosts(self, dialect, url_string, expected):
         u = url.make_url(url_string)
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
-        eq_(cparams["host"], "hostA:portA,hostB,hostC")
+        eq_(cparams, expected)
+
+    @testing.combinations(
+        "postgresql+psycopg2:///?host=H&host=H&port=5432,5432",
+        "postgresql+psycopg2://user:pass@/dbname?host=H&host=H&port=5432,5432",
+        argnames="url_string",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_psycopg_no_mix_hosts(self, dialect, url_string):
+        with expect_raises_message(
+            exc.ArgumentError, "Can't mix 'multihost' formats together"
+        ):
+            u = url.make_url(url_string)
+            dialect.create_connect_args(u)
 
     def test_psycopg2_disconnect(self):
         class Error(Exception):
@@ -254,6 +350,38 @@ $$ LANGUAGE plpgsql;"""
             eq_(dialect.is_disconnect(Error(error), None, None), True)
 
         eq_(dialect.is_disconnect("not an error", None, None), False)
+
+
+class BackendDialectTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.only_on(["+psycopg", "+psycopg2"])
+    @testing.combinations(
+        "host=H:P&host=H:P&host=H:P",
+        "host=H:P&host=H&host=H",
+        "host=H:P&host=H&host=H:P",
+        "host=H&host=H:P&host=H",
+        "host=H,H,H&port=P,P,P",
+    )
+    def test_connect_psycopg_multiple_hosts(self, pattern):
+        """test the fix for #4392"""
+
+        tdb_url = testing.db.url
+
+        host = tdb_url.host
+        if host == "127.0.0.1":
+            host = "localhost"
+        port = str(tdb_url.port) if tdb_url.port else "5432"
+
+        query_str = pattern.replace("H", host).replace("P", port)
+        url_string = (
+            f"{tdb_url.drivername}://{tdb_url.username}:"
+            f"{tdb_url.password}@/{tdb_url.database}?{query_str}"
+        )
+
+        e = create_engine(url_string)
+        with e.connect() as conn:
+            eq_(conn.exec_driver_sql("select 1").scalar(), 1)
 
 
 class PGCodeTest(fixtures.TestBase):
@@ -1105,7 +1233,7 @@ class MiscBackendTest(
                 dbapi_conn.rollback()
             eq_(val, "off")
 
-    @testing.requires.psycopg_compatibility
+    @testing.requires.any_psycopg_compatibility
     def test_psycopg_non_standard_err(self):
         # note that psycopg2 is sometimes called psycopg2cffi
         # depending on platform
@@ -1128,7 +1256,7 @@ class MiscBackendTest(
         assert isinstance(exception, exc.OperationalError)
 
     @testing.requires.no_coverage
-    @testing.requires.psycopg_compatibility
+    @testing.requires.any_psycopg_compatibility
     def test_notice_logging(self):
         log = logging.getLogger("sqlalchemy.dialects.postgresql")
         buf = logging.handlers.BufferingHandler(100)

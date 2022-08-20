@@ -12,6 +12,7 @@ from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import Computed
 from sqlalchemy import create_engine
+from sqlalchemy import DDL
 from sqlalchemy import DefaultClause
 from sqlalchemy import event
 from sqlalchemy import exc
@@ -50,6 +51,7 @@ from sqlalchemy.testing import combinations
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -970,6 +972,21 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                 "INTEGER) AS anon_1 FROM t" % subst,
             )
+
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=sqlite.SQLiteDialect())),
+            "INSERT INTO t (description) VALUES (lower(?)) "
+            "RETURNING myid, name, description",
+        )
 
     def test_true_false(self):
         self.assert_compile(sql.false(), "0")
@@ -3382,3 +3399,74 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
             conn.scalar(sql.select(bind_targets.c.data)),
             "new updated data processed",
         )
+
+
+class ReflectInternalSchemaTables(fixtures.TablesTest):
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "sqliteatable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("other", String(42)),
+            sqlite_autoincrement=True,
+        )
+        view = "CREATE VIEW sqliteview AS SELECT * FROM sqliteatable"
+        event.listen(metadata, "after_create", DDL(view))
+        event.listen(metadata, "before_drop", DDL("DROP VIEW sqliteview"))
+
+    def test_get_table_names(self, connection):
+        insp = inspect(connection)
+
+        res = insp.get_table_names(sqlite_include_internal=True)
+        eq_(res, ["sqlite_sequence", "sqliteatable"])
+        res = insp.get_table_names()
+        eq_(res, ["sqliteatable"])
+
+        meta = MetaData()
+        meta.reflect(connection)
+        eq_(len(meta.tables), 1)
+        eq_(set(meta.tables), {"sqliteatable"})
+
+    def test_get_view_names(self, connection):
+        insp = inspect(connection)
+
+        res = insp.get_view_names(sqlite_include_internal=True)
+        eq_(res, ["sqliteview"])
+        res = insp.get_view_names()
+        eq_(res, ["sqliteview"])
+
+    def test_get_temp_table_names(self, connection, metadata):
+        Table(
+            "sqlitetemptable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("other", String(42)),
+            sqlite_autoincrement=True,
+            prefixes=["TEMPORARY"],
+        ).create(connection)
+        insp = inspect(connection)
+
+        res = insp.get_temp_table_names(sqlite_include_internal=True)
+        eq_(res, ["sqlite_sequence", "sqlitetemptable"])
+        res = insp.get_temp_table_names()
+        eq_(res, ["sqlitetemptable"])
+
+    def test_get_temp_view_names(self, connection):
+
+        view = (
+            "CREATE TEMPORARY VIEW sqlitetempview AS "
+            "SELECT * FROM sqliteatable"
+        )
+        connection.exec_driver_sql(view)
+        insp = inspect(connection)
+        try:
+            res = insp.get_temp_view_names(sqlite_include_internal=True)
+            eq_(res, ["sqlitetempview"])
+            res = insp.get_temp_view_names()
+            eq_(res, ["sqlitetempview"])
+        finally:
+            connection.exec_driver_sql("DROP VIEW sqlitetempview")

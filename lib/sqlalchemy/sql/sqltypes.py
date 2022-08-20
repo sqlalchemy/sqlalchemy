@@ -2419,6 +2419,8 @@ class JSON(Indexable, TypeEngine[Any]):
 
         """
 
+        __visit_name__ = "json_path"
+
     class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 8401
+
+    Hardened the cache key strategy for the :func:`_orm.aliased` and
+    :func:`_orm.with_polymorphic` constructs. While no issue involving actual
+    statements being cached can easily be demonstrated (if at all), these two
+    constructs were not including enough of what makes them unique in their
+    cache keys for caching on the aliased construct alone to be accurate.

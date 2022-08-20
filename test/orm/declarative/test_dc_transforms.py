@@ -24,6 +24,7 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
@@ -42,6 +43,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.util import compat
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -483,6 +485,18 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             ),
         )
 
+    @testing.only_if(lambda: compat.py310, "python 3.10 is required")
+    def test_kw_only(self, dc_decl_base: Type[MappedAsDataclass]):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(kw_only=True)
+
+        fas = pyinspect.getfullargspec(A.__init__)
+        eq_(fas.args, ["self", "id"])
+        eq_(fas.kwonlyargs, ["data"])
+
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
     def test_list(self, dc_decl_base: Type[MappedAsDataclass]):
@@ -679,6 +693,8 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
 
 class DataclassArgsTest(fixtures.TestBase):
     dc_arg_names = ("init", "repr", "eq", "order", "unsafe_hash")
+    if compat.py310:
+        dc_arg_names += ("match_args", "kw_only")
 
     @testing.fixture(params=product(dc_arg_names, (True, False)))
     def dc_argument_fixture(self, request: Any, registry: _RegistryType):
@@ -695,6 +711,8 @@ class DataclassArgsTest(fixtures.TestBase):
                 "order": False,
                 "unsafe_hash": False,
             }
+            if compat.py310:
+                default |= {"match_args": True, "kw_only": False}
             to_apply = {k: v for k, v in args.items() if v}
             effective = {**default, **to_apply}
             return to_apply, effective
@@ -743,7 +761,10 @@ class DataclassArgsTest(fixtures.TestBase):
         if dc_arguments["init"]:
 
             def create(data, x):
-                return cls(data, x)
+                if dc_arguments.get("kw_only"):
+                    return cls(data=data, x=x)
+                else:
+                    return cls(data, x)
 
         else:
 
@@ -760,7 +781,7 @@ class DataclassArgsTest(fixtures.TestBase):
                 getattr(self, f"_assert_not_{n}")(cls, create, dc_arguments)
 
             if dc_arguments["init"]:
-                a1 = cls("some data")
+                a1 = cls(data="some data")
                 eq_(a1.x, 7)
 
         a1 = create("some data", 15)
@@ -841,10 +862,11 @@ class DataclassArgsTest(fixtures.TestBase):
         eq_regex(repr(a1), r"<.*A object at 0x.*>")
 
     def _assert_init(self, cls, create, dc_arguments):
-        a1 = cls("some data", 5)
+        if not dc_arguments.get("kw_only", False):
+            a1 = cls("some data", 5)
 
-        eq_(a1.data, "some data")
-        eq_(a1.x, 5)
+            eq_(a1.data, "some data")
+            eq_(a1.x, 5)
 
         a2 = cls(data="some data", x=5)
         eq_(a2.data, "some data")
@@ -871,6 +893,31 @@ class DataclassArgsTest(fixtures.TestBase):
 
         # no constructor, it sets None for x...ok
         eq_(a1.x, None)
+
+    def _assert_match_args(self, cls, create, dc_arguments):
+        if not dc_arguments["kw_only"]:
+            is_true(len(cls.__match_args__) > 0)
+
+    def _assert_not_match_args(self, cls, create, dc_arguments):
+        is_false(hasattr(cls, "__match_args__"))
+
+    def _assert_kw_only(self, cls, create, dc_arguments):
+        if dc_arguments["init"]:
+            fas = pyinspect.getfullargspec(cls.__init__)
+            eq_(fas.args, ["self"])
+            eq_(
+                len(fas.kwonlyargs),
+                len(pyinspect.signature(cls.__init__).parameters) - 1,
+            )
+
+    def _assert_not_kw_only(self, cls, create, dc_arguments):
+        if dc_arguments["init"]:
+            fas = pyinspect.getfullargspec(cls.__init__)
+            eq_(
+                len(fas.args),
+                len(pyinspect.signature(cls.__init__).parameters),
+            )
+            eq_(fas.kwonlyargs, [])
 
     def test_dc_arguments_decorator(
         self,
@@ -957,6 +1004,8 @@ class DataclassArgsTest(fixtures.TestBase):
             "order": True,
             "unsafe_hash": False,
         }
+        if compat.py310:
+            effective |= {"match_args": True, "kw_only": False}
         self._assert_cls(A, effective)
 
     def test_dc_base_unsupported_argument(self, registry: _RegistryType):
@@ -1032,6 +1081,31 @@ class DataclassArgsTest(fixtures.TestBase):
                 _sa_apply_dc_transforms = {"slots": True, "unknown": 5}
 
                 id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+    @testing.combinations(True, False)
+    def test_attribute_options(self, args):
+        if args:
+            kw = {
+                "init": True,
+                "repr": True,
+                "default": True,
+                "default_factory": list,
+                "kw_only": True,
+            }
+            exp = interfaces._AttributeOptions(True, True, True, list, True)
+        else:
+            kw = {}
+            exp = interfaces._DEFAULT_ATTRIBUTE_OPTIONS
+
+        for prop in [
+            mapped_column(**kw),
+            synonym("some_int", **kw),
+            column_property(Column(Integer), **kw),
+            deferred(Column(Integer), **kw),
+            composite("foo", **kw),
+            relationship("Foo", **kw),
+        ]:
+            eq_(prop._attribute_options, exp)
 
 
 class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):

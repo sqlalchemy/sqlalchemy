@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 8210
-
-    Fixed issues that prevented the new usage patterns for using DML with ORM
-    objects presented at :ref:`orm_dml_returning_objects` from working
-    correctly with the SQL Server pyodbc dialect.
-

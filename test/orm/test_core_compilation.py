@@ -71,6 +71,26 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         eq_(s1.subquery().c.keys(), ["id"])
         eq_(s1.subquery().c.keys(), ["id"])
 
+    def test_integration_w_8285_subc(self):
+        Address = self.classes.Address
+
+        s1 = select(
+            Address.id, Address.__table__.c["user_id", "email_address"]
+        )
+        self.assert_compile(
+            s1,
+            "SELECT addresses.id, addresses.user_id, "
+            "addresses.email_address FROM addresses",
+        )
+
+        subq = s1.subquery()
+        self.assert_compile(
+            select(subq.c.user_id, subq.c.id),
+            "SELECT anon_1.user_id, anon_1.id FROM (SELECT addresses.id AS "
+            "id, addresses.user_id AS user_id, addresses.email_address "
+            "AS email_address FROM addresses) AS anon_1",
+        )
+
     def test_scalar_subquery_from_subq_same_source(self):
         """test #6394, ensure all_selected_columns is generated each time"""
         User = self.classes.User

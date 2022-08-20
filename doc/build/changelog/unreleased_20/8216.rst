@@ -1,0 +1,12 @@
+.. change::
+    :tags: postgresql, schema
+    :tickets: 8216
+
+    Introduced the type :class:`_postgresql.JSONPATH` that can be used
+    in cast expressions. This is required by some PostgreSQL dialects
+    when using functions such as ``jsonb_path_exists`` or
+    ``jsonb_path_match`` that accept a ``jsonpath`` as input.
+
+    .. seealso::
+
+        :ref:`postgresql_json_types` - PostgreSQL JSON types.

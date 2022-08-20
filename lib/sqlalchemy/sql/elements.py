@@ -696,8 +696,6 @@ class ClauseElement(
     def __bool__(self):
         raise TypeError("Boolean value of this clause is not defined")
 
-    __nonzero__ = __bool__
-
     def __repr__(self):
         friendly = self.description
         if friendly is None:
@@ -4827,10 +4825,11 @@ class quoted_name(util.MemoizedSlots, str):
     an unconditionally quoted name::
 
         from sqlalchemy import create_engine
+        from sqlalchemy import inspect
         from sqlalchemy.sql import quoted_name
 
         engine = create_engine("oracle+cx_oracle://some_dsn")
-        engine.has_table(quoted_name("some_table", True))
+        print(inspect(engine).has_table(quoted_name("some_table", True)))
 
     The above logic will run the "has table" logic against the Oracle backend,
     passing the name exactly as ``"some_table"`` without converting to

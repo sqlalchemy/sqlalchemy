@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8403
+
+    Added new parameter :paramref:`.AbstractConcreteBase.strict_attrs` to the
+    :class:`.AbstractConcreteBase` declarative mixin class. The effect of this
+    parameter is that the scope of attributes on subclasses is correctly
+    limited to the subclass in which each attribute is declared, rather than
+    the previous behavior where all attributes of the entire hierarchy are
+    applied to the base "abstract" class. This produces a cleaner, more correct
+    mapping where subclasses no longer have non-useful attributes on them which
+    are only relevant to sibling classes. The default for this parameter is
+    False, which leaves the previous behavior unchanged; this is to support
+    existing code that makes explicit use of these attributes in queries.
+    To migrate to the newer approach, apply explicit attributes to the abstract
+    base class as needed.

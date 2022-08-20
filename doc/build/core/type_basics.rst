@@ -1,34 +1,176 @@
-Column and Data Types
+The Type Hierarchy
 =====================
 
 .. module:: sqlalchemy.types
 
 SQLAlchemy provides abstractions for most common database data types,
-and a mechanism for specifying your own custom data types.
+as well as several techniques for customization of datatypes.
 
-The methods and attributes of type objects are rarely used directly.
-Type objects are supplied to :class:`~sqlalchemy.schema.Table` definitions
-and can be supplied as type hints to `functions` for occasions where
-the database driver returns an incorrect type.
+Database types are represented using Python classes, all of which ultimately
+extend from the base type class known as :class:`_types.TypeEngine`. There are
+two general categories of datatypes, each of which express themselves within
+the typing hierarchy in different ways. The category used by an individual
+datatype class can be identified based on the use of two different naming
+conventions, which are "CamelCase" and "UPPERCASE".
 
-.. code-block:: pycon
+.. seealso::
 
-  >>> users = Table('users', metadata,
-  ...               Column('id', Integer, primary_key=True),
-  ...               Column('login', String(32))
-  ...              )
+    :ref:`tutorial_core_metadata` - in the :ref:`unified_tutorial`.  Illustrates
+    the most rudimental use of :class:`_types.TypeEngine` type objects to
+    define :class:`_schema.Table` metadata and introduces the concept
+    of type objects in tutorial form.
 
-SQLAlchemy will use the ``Integer`` and ``String(32)`` type
-information when issuing a ``CREATE TABLE`` statement and will use it
-again when reading back rows ``SELECTed`` from the database.
-Functions that accept a type (such as :func:`~sqlalchemy.schema.Column`) will
-typically accept a type class or instance; ``Integer`` is equivalent
-to ``Integer()`` with no construction arguments in this case.
+The "CamelCase" datatypes
+-------------------------
+
+The rudimental types have "CamelCase" names such as :class:`_types.String`,
+:class:`_types.Numeric`, :class:`_types.Integer`, and :class:`_types.DateTime`.
+All of the immediate subclasses of :class:`_types.TypeEngine` are
+"CamelCase" types. The "CamelCase" types are to the greatest degree possible
+**database agnostic**, meaning they can all be used on any database backend
+where they will behave in such a way as appropriate to that backend in order to
+produce the desired behavior.
+
+An example of a straightforward "CamelCase" datatype is :class:`_types.String`.
+On most backends, using this datatype in a
+:ref:`table specification <metadata_describing>` will correspond to the
+``VARCHAR`` database type being used on the target backend, delivering string
+values to and from the database, as in the example below::
+
+    from sqlalchemy import MetaData
+    from sqlalchemy import Table, Column, Integer, String
+
+    metadata_obj = MetaData()
+
+    user = Table(
+        'user',
+        metadata_obj,
+        Column('user_name', String, primary_key=True),
+        Column('email_address', String(60)),
+    )
+
+When using a particular :class:`_types.TypeEngine` class in a
+:class:`_schema.Table` definition or in any SQL expression overall, if no
+arguments are required it may be passed as the class itself, that is, without
+instantiating it with ``()``. If arguments are needed, such as the length
+argument of 60 in the ``"email_address"`` column above, the type may be
+instantiated.
+
+Another "CamelCase" datatype that expresses more backend-specific behavior
+is the :class:`_types.Boolean` datatype. Unlike :class:`_types.String`,
+which represents a string datatype that all databases have,
+not every backend has a real "boolean" datatype; some make use of integers
+or BIT values 0 and 1, some have boolean literal constants ``true`` and
+``false`` while others dont.   For this datatype, :class:`_types.Boolean`
+may render ``BOOLEAN`` on a backend such as PostgreSQL, ``BIT`` on the
+MySQL backend and ``SMALLINT`` on Oracle.  As data is sent and received
+from the database using this type, based on the dialect in use it may be
+interpreting Python numeric or boolean values.
+
+The typical SQLAlchemy application will likely wish to use primarily
+"CamelCase" types in the general case, as they will generally provide the best
+basic behavior and be automatically portable to all backends.
+
+Reference for the general set of "CamelCase" datatypes is below at
+:ref:`types_generic`.
+
+The "UPPERCASE" datatypes
+-------------------------
+
+In contrast to the "CamelCase" types are the "UPPERCASE" datatypes. These
+datatypes are always inherited from a particular "CamelCase" datatype, and
+always represent an **exact** datatype.   When using an "UPPERCASE" datatype,
+the name of the type is always rendered exactly as given, without regard for
+whether or not the current backend supports it.   Therefore the use
+of "UPPERCASE" types in a SQLAlchemy application indicates that specific
+datatypes are required, which then implies that the application would normally,
+without additional steps taken,
+be limited to those backends which use the type exactly as given.   Examples
+of UPPERCASE types include :class:`_types.VARCHAR`, :class:`_types.NUMERIC`,
+:class:`_types.INTEGER`, and :class:`_types.TIMESTAMP`, which inherit directly
+from the previously mentioned "CamelCase" types
+:class:`_types.String`,
+:class:`_types.Numeric`, :class:`_types.Integer`, and :class:`_types.DateTime`,
+respectively.
+
+The "UPPERCASE" datatypes that are part of ``sqlalchemy.types`` are common
+SQL types that typically expect to be available on at least two backends
+if not more.
+
+Reference for the general set of "UPPERCASE" datatypes is below at
+:ref:`types_sqlstandard`.
+
+
+
+.. _types_vendor:
+
+Backend-specific "UPPERCASE" datatypes
+--------------------------------------
+
+Most databases also have their own datatypes that
+are either fully specific to those databases, or add additional arguments
+that are specific to those databases.   For these datatypes, specific
+SQLAlchemy dialects provide **backend-specific** "UPPERCASE" datatypes, for a
+SQL type that has no analogue on other backends.  Examples of backend-specific
+uppercase datatypes include PostgreSQL's :class:`_postgresql.JSONB`, SQL Server's
+:class:`_mssql.IMAGE` and MySQL's :class:`_mysql.TINYTEXT`.
+
+Specific backends may also include "UPPERCASE" datatypes that extend the
+arguments available from that same "UPPERCASE" datatype as found in the
+``sqlalchemy.types`` module. An example is when creating a MySQL string
+datatype, one might want to specify MySQL-specific arguments such as ``charset``
+or ``national``, which are available from the MySQL version
+of :class:`_mysql.VARCHAR` as the MySQL-only parameters
+:paramref:`_mysql.VARCHAR.charset` and :paramref:`_mysql.VARCHAR.national`.
+
+API documentation for backend-specific types are in the dialect-specific
+documentation, listed at :ref:`dialect_toplevel`.
+
+
+Using "UPPERCASE" and Backend-specific types for multiple backends
+------------------------------------------------------------------
+
+Reviewing the presence of "UPPERCASE" and "CamelCase" types leads to the natural
+use case of how to make use of "UPPERCASE" datatypes for backend-specific
+options, but only when that backend is in use.   To tie together the
+database-agnostic "CamelCase" and backend-specific "UPPERCASE" systems, one
+makes use of the :meth:`_types.TypeEngine.with_variant` method in order to
+**compose** types together to work with specific behaviors on specific backends.
+
+Such as, to use the :class:`_types.String` datatype, but when running on MySQL
+to make use of the :paramref:`_mysql.VARCHAR.charset` parameter of
+:class:`_mysql.VARCHAR` when the table is created on MySQL or MariaDB,
+:meth:`_types.TypeEngine.with_variant` may be used as below::
+
+    from sqlalchemy import MetaData
+    from sqlalchemy import Table, Column, Integer, String
+    from sqlalchemy.dialects.mysql import VARCHAR
+
+    metadata_obj = MetaData()
+
+    user = Table(
+        "user",
+        metadata_obj,
+        Column("user_name", String(100), primary_key=True),
+        Column(
+            "bio",
+            String(255).with_variant(VARCHAR(255, charset="utf8"), "mysql", "mariadb"),
+        ),
+    )
+
+In the above table definition, the ``"bio"`` column will have string-behaviors
+on all backends. On most backends it will render in DDL as ``VARCHAR``. However
+on MySQL and MariaDB (indicated by database URLs that start with ``mysql`` or
+``mariadb``), it will render as ``VARCHAR(255) CHARACTER SET utf8``.
+
+.. seealso::
+
+    :meth:`_types.TypeEngine.with_variant` - additional usage examples and notes
 
 .. _types_generic:
 
-Generic Types
--------------
+Generic "CamelCase" Types
+-------------------------
 
 Generic types specify a column that can read, write and store a
 particular type of Python data.  SQLAlchemy will choose the best
@@ -103,8 +245,8 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 
 .. _types_sqlstandard:
 
-SQL Standard and Multiple Vendor Types
---------------------------------------
+SQL Standard and Multiple Vendor "UPPERCASE" Types
+--------------------------------------------------
 
 This category of types refers to types that are either part of the
 SQL standard, or are potentially found within a subset of database backends.
@@ -191,60 +333,4 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 .. autoclass:: VARCHAR
 
-
-.. _types_vendor:
-
-Vendor-Specific Types
----------------------
-
-Database-specific types are also available for import from each
-database's dialect module. See the :ref:`dialect_toplevel`
-reference for the database you're interested in.
-
-For example, MySQL has a ``BIGINT`` type and PostgreSQL has an
-``INET`` type.  To use these, import them from the module explicitly::
-
-    from sqlalchemy.dialects import mysql
-
-    table = Table('foo', metadata,
-        Column('id', mysql.BIGINT),
-        Column('enumerates', mysql.ENUM('a', 'b', 'c'))
-    )
-
-Or some PostgreSQL types::
-
-    from sqlalchemy.dialects import postgresql
-
-    table = Table('foo', metadata,
-        Column('ipaddress', postgresql.INET),
-        Column('elements', postgresql.ARRAY(String))
-    )
-
-Each dialect provides the full set of database types supported by
-that backend within its own module, so they may all be used
-against the module directly without the need to differentiate between
-which types are specific to that backend or not::
-
-    from sqlalchemy.dialects import postgresql
-
-    t = Table('mytable', metadata,
-               Column('id', postgresql.INTEGER, primary_key=True),
-               Column('name', postgresql.VARCHAR(300)),
-               Column('inetaddr', postgresql.INET)
-    )
-
-Where above, the INTEGER and VARCHAR types are ultimately from
-sqlalchemy.types, and INET is specific to the PostgreSQL dialect.
-
-Some dialect level types have the same name as the SQL standard type,
-but also provide additional arguments.  For example, MySQL implements
-the full range of character and string types including additional arguments
-such as `collation` and `charset`::
-
-    from sqlalchemy.dialects.mysql import VARCHAR, TEXT
-
-    table = Table('foo', metadata_obj,
-        Column('col1', VARCHAR(200, collation='binary')),
-        Column('col2', TEXT(charset='latin1'))
-    )
 

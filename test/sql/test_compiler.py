@@ -4914,6 +4914,21 @@ class StringifySpecialTest(fixtures.TestBase):
         stmt = table1.insert().values()
         eq_ignore_whitespace(str(stmt), "INSERT INTO mytable () VALUES ()")
 
+    def test_insert_return_defaults(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt),
+            "INSERT INTO t (description) VALUES (lower(:lower_1)) "
+            "RETURNING t.myid, t.name, t.description",
+        )
+
     def test_multirow_insert(self):
         stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
         eq_ignore_whitespace(

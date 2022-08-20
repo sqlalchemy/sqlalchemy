@@ -60,7 +60,9 @@ on a URL.  These URLs follow `RFC-1738
 <https://www.ietf.org/rfc/rfc1738.txt>`_, and usually can include username, password,
 hostname, database name as well as optional keyword arguments for additional configuration.
 In some cases a file path is accepted, and in others a "data source name" replaces
-the "host" and "database" portions.  The typical form of a database URL is::
+the "host" and "database" portions.  The typical form of a database URL is:
+
+.. sourcecode:: none
 
     dialect+driver://username:password@host:port/database
 
@@ -71,31 +73,47 @@ the database using all lowercase letters. If not specified, a "default" DBAPI
 will be imported if available - this default is typically the most widely
 known driver available for that backend.
 
+Escaping Special Characters such as @ signs in Passwords
+----------------------------------------------------------
+
 As the URL is like any other URL, **special characters such as those that may
 be used in the user and password need to be URL encoded to be parsed correctly.**.
-Below is an example of a URL that includes the password ``"kx%jj5/g"``, where the
-percent sign and slash characters are represented as ``%25`` and ``%2F``,
-respectively::
+**This includes the @ sign**.
 
-  postgresql+pg8000://dbuser:kx%25jj5%2Fg@pghost10/appdb
+Below is an example of a URL that includes the password ``"kx@jj5/g"``, where the
+"at" sign and slash characters are represented as ``%40`` and ``%2F``,
+respectively:
+
+.. sourcecode:: none
+
+    postgresql+pg8000://dbuser:kx%40jj5%2Fg@pghost10/appdb
 
 
 The encoding for the above password can be generated using
 `urllib.parse <https://docs.python.org/3/library/urllib.parse.html>`_::
 
   >>> import urllib.parse
-  >>> urllib.parse.quote_plus("kx%jj5/g")
-  'kx%25jj5%2Fg'
+  >>> urllib.parse.quote_plus("kx@jj5/g")
+  'kx%40jj5%2Fg'
+
+.. versionchanged:: 1.4
+
+    Support for ``@`` signs in hostnames and database names has been
+    fixed.   As a side effect of this fix, ``@`` signs in passwords must be
+    escaped.
+
+Backend-Specific URLs
+----------------------
 
 Examples for common connection styles follow below.  For a full index of
 detailed information on all included dialects as well as links to third-party
 dialects, see :ref:`dialect_toplevel`.
 
 PostgreSQL
-----------
+^^^^^^^^^^
 
-The PostgreSQL dialect uses psycopg2 as the default DBAPI.  pg8000 is
-also available as a pure-Python substitute::
+The PostgreSQL dialect uses psycopg2 as the default DBAPI.  Other
+PostgreSQL DBAPIs include pg8000 and asyncpg::
 
     # default
     engine = create_engine('postgresql://scott:tiger@localhost/mydatabase')
@@ -109,10 +127,10 @@ also available as a pure-Python substitute::
 More notes on connecting to PostgreSQL at :ref:`postgresql_toplevel`.
 
 MySQL
------
+^^^^^^^^^^
 
-The MySQL dialect uses mysql-python as the default DBAPI.  There are many
-MySQL DBAPIs available, including MySQL-connector-python and OurSQL::
+The MySQL dialect uses mysqlclient as the default DBAPI.  There are other
+MySQL DBAPIs available, including PyMySQL::
 
     # default
     engine = create_engine('mysql://scott:tiger@localhost/foo')
@@ -126,7 +144,7 @@ MySQL DBAPIs available, including MySQL-connector-python and OurSQL::
 More notes on connecting to MySQL at :ref:`mysql_toplevel`.
 
 Oracle
-------
+^^^^^^^^^^
 
 The Oracle dialect uses cx_oracle as the default DBAPI::
 
@@ -137,7 +155,7 @@ The Oracle dialect uses cx_oracle as the default DBAPI::
 More notes on connecting to Oracle at :ref:`oracle_toplevel`.
 
 Microsoft SQL Server
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 The SQL Server dialect uses pyodbc as the default DBAPI.  pymssql is
 also available::
@@ -151,7 +169,7 @@ also available::
 More notes on connecting to SQL Server at :ref:`mssql_toplevel`.
 
 SQLite
-------
+^^^^^^^
 
 SQLite connects to file-based databases, using the Python built-in
 module ``sqlite3`` by default.
@@ -182,7 +200,7 @@ To use a SQLite ``:memory:`` database, specify an empty URL::
 More notes on connecting to SQLite at :ref:`sqlite_toplevel`.
 
 Others
-------
+^^^^^^
 
 See :ref:`dialect_toplevel`, the top-level page for all additional dialect
 documentation.

@@ -108,9 +108,9 @@ Class level feature configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Support for dataclasses features is partial.  Currently **supported** are
-the ``init``, ``repr``, ``eq``, ``order`` and ``unsafe_hash`` features.
-Currently **not supported** are the ``frozen``, ``slots``, ``match_args``,
-and ``kw_only`` features.
+the ``init``, ``repr``, ``eq``, ``order`` and ``unsafe_hash`` features,
+``match_args`` and ``kw_only`` are supported on Python 3.10+.
+Currently **not supported** are the ``frozen`` and ``slots`` features.
 
 When using the mixin class form with :class:`_orm.MappedAsDataclass`,
 class configuration arguments are passed as class-level parameters::

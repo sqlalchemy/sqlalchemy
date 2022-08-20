@@ -1,5 +1,6 @@
 from sqlalchemy import desc
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import exists
 from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy import testing
@@ -63,6 +64,44 @@ class _PolymorphicTestBase:
             cls.c2_employees,
         )
         e1, e2, e3, b1, m1 = cls.e1, cls.e2, cls.e3, cls.b1, cls.m1
+
+    @testing.requires.ctes
+    def test_cte_clone_issue(self):
+        """test #8357"""
+
+        sess = fixture_session()
+
+        cte = select(Engineer.person_id).cte(name="test_cte")
+
+        stmt = (
+            select(Engineer)
+            .where(exists().where(Engineer.person_id == cte.c.person_id))
+            .where(exists().where(Engineer.person_id == cte.c.person_id))
+        ).order_by(Engineer.person_id)
+
+        self.assert_compile(
+            stmt,
+            "WITH test_cte AS (SELECT engineers.person_id AS person_id "
+            "FROM people JOIN engineers ON people.person_id = "
+            "engineers.person_id) SELECT engineers.person_id, "
+            "people.person_id AS person_id_1, people.company_id, "
+            "people.name, people.type, engineers.status, "
+            "engineers.engineer_name, engineers.primary_language FROM people "
+            "JOIN engineers ON people.person_id = engineers.person_id WHERE "
+            "(EXISTS (SELECT * FROM test_cte WHERE engineers.person_id = "
+            "test_cte.person_id)) AND (EXISTS (SELECT * FROM test_cte "
+            "WHERE engineers.person_id = test_cte.person_id)) "
+            "ORDER BY engineers.person_id",
+        )
+        result = sess.scalars(stmt)
+        eq_(
+            result.all(),
+            [
+                Engineer(name="dilbert"),
+                Engineer(name="wally"),
+                Engineer(name="vlad"),
+            ],
+        )
 
     def test_loads_at_once(self):
         """

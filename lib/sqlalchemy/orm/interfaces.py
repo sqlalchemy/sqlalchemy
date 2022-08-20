@@ -49,6 +49,8 @@ from .base import InspectionAttr as InspectionAttr  # noqa: F401
 from .base import InspectionAttrInfo as InspectionAttrInfo
 from .base import MANYTOMANY as MANYTOMANY  # noqa: F401
 from .base import MANYTOONE as MANYTOONE  # noqa: F401
+from .base import NO_KEY as NO_KEY  # noqa: F401
+from .base import NO_VALUE as NO_VALUE  # noqa: F401
 from .base import NotExtension as NotExtension  # noqa: F401
 from .base import ONETOMANY as ONETOMANY  # noqa: F401
 from .base import RelationshipDirection as RelationshipDirection  # noqa: F401
@@ -77,6 +79,7 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .context import _MapperEntity
     from .context import ORMCompileState
+    from .context import QueryContext
     from .decl_api import RegistryType
     from .loading import _PopulatorDict
     from .mapper import Mapper
@@ -187,6 +190,7 @@ class _AttributeOptions(NamedTuple):
     dataclasses_repr: Union[_NoArg, bool]
     dataclasses_default: Union[_NoArg, Any]
     dataclasses_default_factory: Union[_NoArg, Callable[[], Any]]
+    dataclasses_kw_only: Union[_NoArg, bool]
 
     def _as_dataclass_field(self) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
@@ -200,6 +204,8 @@ class _AttributeOptions(NamedTuple):
             kw["init"] = self.dataclasses_init
         if self.dataclasses_repr is not _NoArg.NO_ARG:
             kw["repr"] = self.dataclasses_repr
+        if self.dataclasses_kw_only is not _NoArg.NO_ARG:
+            kw["kw_only"] = self.dataclasses_kw_only
 
         return dataclasses.field(**kw)
 
@@ -226,7 +232,7 @@ class _AttributeOptions(NamedTuple):
 
 
 _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
-    _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG
+    _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG, _NoArg.NO_ARG
 )
 
 
@@ -329,6 +335,27 @@ class MapperProperty(
     """behavioral options for ORM-enabled Python attributes
 
     .. versionadded:: 2.0
+
+    """
+
+    info: _InfoType
+    """Info dictionary associated with the object, allowing user-defined
+    data to be associated with this :class:`.InspectionAttr`.
+
+    The dictionary is generated when first accessed.  Alternatively,
+    it can be specified as a constructor argument to the
+    :func:`.column_property`, :func:`_orm.relationship`, or :func:`.composite`
+    functions.
+
+    .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
+        from :class:`.MapperProperty` so that it can apply to a wider
+        variety of ORM and extension constructs.
+
+    .. seealso::
+
+        :attr:`.QueryableAttribute.info`
+
+        :attr:`.SchemaItem.info`
 
     """
 
@@ -1067,6 +1094,50 @@ class ORMOption(ExecutableOption):
     _is_criteria_option = False
 
     _is_strategy_option = False
+
+    def _adapt_cached_option_to_uncached_option(
+        self, context: QueryContext, uncached_opt: ORMOption
+    ) -> ORMOption:
+        """adapt this option to the "uncached" version of itself in a
+        loader strategy context.
+
+        given "self" which is an option from a cached query, as well as the
+        corresponding option from the uncached version of the same query,
+        return the option we should use in a new query, in the context of a
+        loader strategy being asked to load related rows on behalf of that
+        cached query, which is assumed to be building a new query based on
+        entities passed to us from the cached query.
+
+        Currently this routine chooses between "self" and "uncached" without
+        manufacturing anything new. If the option is itself a loader strategy
+        option which has a path, that path needs to match to the entities being
+        passed to us by the cached query, so the :class:`_orm.Load` subclass
+        overrides this to return "self". For all other options, we return the
+        uncached form which may have changing state, such as a
+        with_loader_criteria() option which will very often have new state.
+
+        This routine could in the future involve
+        generating a new option based on both inputs if use cases arise,
+        such as if with_loader_criteria() needed to match up to
+        ``AliasedClass`` instances given in the parent query.
+
+        However, longer term it might be better to restructure things such that
+        ``AliasedClass`` entities are always matched up on their cache key,
+        instead of identity, in things like paths and such, so that this whole
+        issue of "the uncached option does not match the entities" goes away.
+        However this would make ``PathRegistry`` more complicated and difficult
+        to debug as well as potentially less performant in that it would be
+        hashing enormous cache keys rather than a simple AliasedInsp. UNLESS,
+        we could get cache keys overall to be reliably hashed into something
+        like an md5 key.
+
+        .. versionadded:: 1.4.41
+
+        """
+        if uncached_opt is not None:
+            return uncached_opt
+        else:
+            return self
 
 
 class CompileStateOption(HasCacheKey, ORMOption):

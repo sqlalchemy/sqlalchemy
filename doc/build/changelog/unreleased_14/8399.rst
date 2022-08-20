@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8399
+
+    Fixed issue involving :func:`_orm.with_loader_criteria` where a closure
+    variable used as bound parameter value within the lambda would not carry
+    forward correctly into additional relationship loaders such as
+    :func:`_orm.selectinload` and :func:`_orm.lazyload` after the statement
+    were cached, using the stale originally-cached value instead.
+

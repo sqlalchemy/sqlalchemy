@@ -3196,10 +3196,19 @@ class SQLCompiler(Compiled):
 
                 del self.level_name_by_cte[existing_cte_reference_cte]
             else:
-                raise exc.CompileError(
-                    "Multiple, unrelated CTEs found with "
-                    "the same name: %r" % cte_name
-                )
+                # if the two CTEs are deep-copy identical, consider them
+                # the same, **if** they are clones, that is, they came from
+                # the ORM or other visit method
+                if (
+                    cte._is_clone_of is not None
+                    or existing_cte._is_clone_of is not None
+                ) and cte.compare(existing_cte):
+                    is_new_cte = False
+                else:
+                    raise exc.CompileError(
+                        "Multiple, unrelated CTEs found with "
+                        "the same name: %r" % cte_name
+                    )
 
         if not asfrom and not is_new_cte:
             return None

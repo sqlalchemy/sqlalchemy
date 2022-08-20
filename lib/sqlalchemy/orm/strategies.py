@@ -1026,7 +1026,6 @@ class LazyLoader(
 
         if extra_options:
             stmt._with_options += extra_options
-
         stmt._compile_options += {"_current_path": effective_path}
 
         if use_get:
@@ -3092,29 +3091,25 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         # cached query, meaning it won't match on paths and loader lookups
         # and loaders like this one will be skipped if it is used in options.
         #
-        # Now we want to transfer loader options from the parent query to the
-        # "selectinload" query we're about to run.   Which query do we transfer
-        # the options from?  We use the cached query, because the options in
-        # that query will be in terms of the effective entity we were just
-        # handed.
+        # as it turns out, standard loader options like selectinload(),
+        # lazyload() that have a path need
+        # to come from the cached query so that the AliasedInsp etc. objects
+        # that are in the query line up with the object that's in the path
+        # of the strategy object. however other options like
+        # with_loader_criteria() that doesn't have a path (has a fixed entity)
+        # and needs to have access to the latest closure state in order to
+        # be correct, we need to use the uncached one.
         #
-        # But now the selectinload query we are running is *also*
-        # cached.  What if it's cached and running from some previous iteration
-        # of that AliasedInsp?  Well in that case it will also use the previous
-        # iteration of the loader options.   If the query expires and
-        # gets generated again, it will be handed the current effective_entity
-        # and the current _with_options, again in terms of whatever
-        # compile_state.select_statement happens to be right now, so the
-        # query will still be internally consistent and loader callables
-        # will be correctly invoked.
+        # as of #8399 we let the loader option itself figure out what it
+        # wants to do given cached and uncached version of itself.
 
         effective_path = path[self.parent_property]
 
         if orig_query is context.query:
-            options = new_options = orig_query._with_options
-            user_defined_options = []
+            new_options = orig_query._with_options
         else:
-            options = orig_query._with_options
+            cached_options = orig_query._with_options
+            uncached_options = context.query._with_options
 
             # propagate compile state options from the original query,
             # updating their "extra_criteria" as necessary.
@@ -3122,20 +3117,13 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # "orig" options if extra_criteria is present, because the copy
             # of extra_criteria will have different boundparam than that of
             # the QueryableAttribute in the path
-
             new_options = [
-                orig_opt._adjust_for_extra_criteria(context)
-                if orig_opt._is_strategy_option
-                else orig_opt
-                for orig_opt in options
-                if orig_opt._is_compile_state or orig_opt._is_legacy_option
-            ]
-
-            # propagate user defined options from the current query
-            user_defined_options = [
-                opt
-                for opt in context.query._with_options
-                if not opt._is_compile_state and not opt._is_legacy_option
+                orig_opt._adapt_cached_option_to_uncached_option(
+                    context, uncached_opt
+                )
+                for orig_opt, uncached_opt in zip(
+                    cached_options, uncached_options
+                )
             ]
 
         if loadopt and loadopt._extra_criteria:
@@ -3149,13 +3137,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         if recursion_depth is not None:
             effective_path = effective_path._truncate_recursive()
 
-        q = q.options(*new_options)._update_compile_options(
-            {"_current_path": effective_path}
-        )
+        q = q.options(*new_options)
 
-        if user_defined_options:
-            q = q.options(*user_defined_options)
-
+        q = q._update_compile_options({"_current_path": effective_path})
         if context.populate_existing:
             q = q.execution_options(populate_existing=True)
 

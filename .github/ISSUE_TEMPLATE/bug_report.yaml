@@ -28,6 +28,13 @@ If your issue is actually a bug, we will open a new bug report with what we need
 "
   - type: markdown
     attributes:
+      value: "**IF YOUR ISSUE RELATES TO AN @ SIGN IN YOUR PASSWORD.  THIS IS NOT A BUG.**
+
+Please URL escape @ signs in passwords using `%40`.
+See [Engine URLs](https://docs.sqlalchemy.org/en/stable/core/engines.html#escaping-special-characters-such-as-signs-in-passwords)
+    "
+  - type: markdown
+    attributes:
       value: "
 
 **GUIDELINES FOR REPORTING BUGS**

@@ -67,6 +67,7 @@ if typing.TYPE_CHECKING:
     from .context import QueryContext
     from .interfaces import _StrategyKey
     from .interfaces import MapperProperty
+    from .interfaces import ORMOption
     from .mapper import Mapper
     from .path_registry import _PathRepresentation
     from ..sql._typing import _ColumnExpressionArgument
@@ -1072,6 +1073,11 @@ class Load(_AbstractLoad):
         load.propagate_to_loaders = False
         return load
 
+    def _adapt_cached_option_to_uncached_option(
+        self, context: QueryContext, uncached_opt: ORMOption
+    ) -> ORMOption:
+        return self._adjust_for_extra_criteria(context)
+
     def _adjust_for_extra_criteria(self, context: QueryContext) -> Load:
         """Apply the current bound parameters in a QueryContext to all
         occurrences "extra_criteria" stored within this ``Load`` object,
@@ -1082,12 +1088,15 @@ class Load(_AbstractLoad):
 
         orig_cache_key: Optional[CacheKey] = None
         replacement_cache_key: Optional[CacheKey] = None
+        found_crit = False
 
         def process(opt: _LoadElement) -> _LoadElement:
             if not opt._extra_criteria:
                 return opt
 
-            nonlocal orig_cache_key, replacement_cache_key
+            nonlocal orig_cache_key, replacement_cache_key, found_crit
+
+            found_crit = True
 
             # avoid generating cache keys for the queries if we don't
             # actually have any extra_criteria options, which is the
@@ -1107,14 +1116,17 @@ class Load(_AbstractLoad):
             )
             return opt
 
-        cloned = self._generate()
+        new_context = tuple(
+            process(value._clone()) if value._extra_criteria else value
+            for value in self.context
+        )
 
-        if self.context:
-            cloned.context = tuple(
-                process(value._clone()) for value in self.context
-            )
-
-        return cloned
+        if found_crit:
+            cloned = self._clone()
+            cloned.context = new_context
+            return cloned
+        else:
+            return self
 
     def _reconcile_query_entities_with_us(self, mapper_entities, raiseerr):
         """called at process time to allow adjustment of the root

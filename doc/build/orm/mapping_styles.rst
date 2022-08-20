@@ -311,6 +311,8 @@ method which passes them along to the :class:`_orm.Mapper` class.
 The full range of parameters accepted are documented at  :class:`_orm.Mapper`.
 
 
+.. _orm_mapped_class_behavior:
+
 
 Mapped Class Behavior
 =====================

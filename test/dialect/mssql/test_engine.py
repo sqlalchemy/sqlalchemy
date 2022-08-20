@@ -1,6 +1,7 @@
 # -*- encoding: utf-8
 
 from decimal import Decimal
+import re
 from unittest.mock import Mock
 
 from sqlalchemy import Column
@@ -24,6 +25,7 @@ from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -645,7 +647,7 @@ class RealIsolationLevelTest(fixtures.TestBase):
 
 
 class IsolationLevelDetectTest(fixtures.TestBase):
-    def _fixture(self, view):
+    def _fixture(self, view_result):
         class Error(Exception):
             pass
 
@@ -658,15 +660,25 @@ class IsolationLevelDetectTest(fixtures.TestBase):
         def fail_on_exec(
             stmt,
         ):
-            if view is not None and view in stmt:
+            result.clear()
+            if "SELECT name FROM sys.system_views" in stmt:
+                if view_result:
+                    result.append((view_result,))
+            elif re.match(
+                ".*SELECT CASE transaction_isolation_level.*FROM sys.%s"
+                % (view_result,),
+                stmt,
+                re.S,
+            ):
                 result.append(("SERIALIZABLE",))
             else:
-                raise Error("that didn't work")
+                assert False
 
         connection = Mock(
             cursor=Mock(
                 return_value=Mock(
-                    execute=fail_on_exec, fetchone=lambda: result[0]
+                    execute=fail_on_exec,
+                    fetchone=lambda: result[0] if result else None,
                 )
             )
         )
@@ -686,13 +698,12 @@ class IsolationLevelDetectTest(fixtures.TestBase):
     def test_not_supported(self):
         dialect, connection = self._fixture(None)
 
-        with expect_warnings("Could not fetch transaction isolation level"):
-            assert_raises_message(
-                NotImplementedError,
-                "Can't fetch isolation",
-                dialect.get_isolation_level,
-                connection,
-            )
+        assert_raises_message(
+            NotImplementedError,
+            "Can't fetch isolation level on this particular ",
+            dialect.get_isolation_level,
+            connection,
+        )
 
 
 class InvalidTransactionFalsePositiveTest(fixtures.TablesTest):
@@ -730,3 +741,44 @@ class InvalidTransactionFalsePositiveTest(fixtures.TablesTest):
         # "Can't reconnect until invalid transaction is rolled back."
         result = connection.execute(t.select()).fetchall()
         eq_(len(result), 1)
+
+
+class IgnoreNotransOnRollbackTest(fixtures.TestBase):
+    def test_ignore_no_transaction_on_rollback(self):
+        """test #8231"""
+
+        class ProgrammingError(Exception):
+            pass
+
+        dialect = base.dialect(ignore_no_transaction_on_rollback=True)
+        dialect.dbapi = mock.Mock(ProgrammingError=ProgrammingError)
+
+        connection = mock.Mock(
+            rollback=mock.Mock(
+                side_effect=ProgrammingError("Error 111214 happened")
+            )
+        )
+        with expect_warnings(
+            "ProgrammingError 111214 'No corresponding transaction found.' "
+            "has been suppressed via ignore_no_transaction_on_rollback=True"
+        ):
+            dialect.do_rollback(connection)
+
+    def test_other_programming_error_on_rollback(self):
+        """test #8231"""
+
+        class ProgrammingError(Exception):
+            pass
+
+        dialect = base.dialect(ignore_no_transaction_on_rollback=True)
+        dialect.dbapi = mock.Mock(ProgrammingError=ProgrammingError)
+
+        connection = mock.Mock(
+            rollback=mock.Mock(
+                side_effect=ProgrammingError("Some other error happened")
+            )
+        )
+        with expect_raises_message(
+            ProgrammingError, "Some other error happened"
+        ):
+            dialect.do_rollback(connection)

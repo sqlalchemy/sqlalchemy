@@ -61,6 +61,7 @@ from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -144,6 +145,25 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             select(table),
             expected_mdb if expect_mariadb else expected_mysql,
             dialect=dialect,
+        )
+
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=mysql.dialect(is_mariadb=True))),
+            "INSERT INTO t (description) VALUES (lower(%s)) "
+            "RETURNING t.myid, t.name, t.description",
+        )
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=mysql.dialect())),
+            "INSERT INTO t (description) VALUES (lower(%s))",
         )
 
     def test_create_index_simple(self):

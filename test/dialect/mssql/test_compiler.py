@@ -53,6 +53,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(sql.false(), "0")
         self.assert_compile(sql.true(), "1")
 
+    def test_plain_stringify_returning(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("myid", Integer, primary_key=True),
+            Column("name", String, server_default="some str"),
+            Column("description", String, default=func.lower("hi")),
+        )
+        stmt = t.insert().values().return_defaults()
+        eq_ignore_whitespace(
+            str(stmt.compile(dialect=mssql.dialect())),
+            "INSERT INTO t (description) "
+            "OUTPUT inserted.myid, inserted.name, inserted.description "
+            "VALUES (lower(:lower_1))",
+        )
+
     @testing.combinations(
         ("plain", "sometable", "sometable"),
         ("matched_square_brackets", "colo[u]r", "[colo[u]]r]"),

@@ -4,6 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
+from __future__ import annotations
 
 import decimal
 
@@ -131,20 +132,27 @@ class _PGDialect_common_psycopg(PGDialect):
         if "host" in url.query:
             is_multihost = isinstance(url.query["host"], (list, tuple))
 
-        if opts:
+        if opts or url.query:
+            if not opts:
+                opts = {}
             if "port" in opts:
                 opts["port"] = int(opts["port"])
             opts.update(url.query)
             if is_multihost:
-                opts["host"] = ",".join(url.query["host"])
-            # send individual dbname, user, password, host, port
-            # parameters to psycopg2.connect()
-            return ([], opts)
-        elif url.query:
-            # any other connection arguments, pass directly
-            opts.update(url.query)
-            if is_multihost:
-                opts["host"] = ",".join(url.query["host"])
+                hosts, ports = zip(
+                    *[
+                        token.split(":") if ":" in token else (token, "")
+                        for token in url.query["host"]
+                    ]
+                )
+                opts["host"] = ",".join(hosts)
+                if "port" in opts:
+                    raise exc.ArgumentError(
+                        "Can't mix 'multihost' formats together; use "
+                        '"host=h1,h2,h3&port=p1,p2,p3" or '
+                        '"host=h1:p1&host=h2:p2&host=h3:p3" separately'
+                    )
+                opts["port"] = ",".join(ports)
             return ([], opts)
         else:
             # no connection arguments whatsoever; psycopg2.connect()

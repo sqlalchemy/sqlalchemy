@@ -39,10 +39,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -124,7 +124,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Get python version
         id: linux-py-version
@@ -177,7 +177,7 @@ jobs:
           pip-wheel-args: "-w ./dist -v --no-deps"
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ steps.linux-py-version.outputs.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -241,7 +241,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
@@ -298,7 +298,7 @@ jobs:
       - name: Set up Python for twine
         # Setup python after creating the wheel, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 

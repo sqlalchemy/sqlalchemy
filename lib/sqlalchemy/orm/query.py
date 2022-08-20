@@ -97,9 +97,9 @@ if TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
+    from .bulk_persistence import _SynchronizeSessionArgument
     from .mapper import Mapper
     from .path_registry import PathRegistry
-    from .persistence import _SynchronizeSessionArgument
     from .session import _PKIdentityArgument
     from .session import Session
     from .state import InstanceState
@@ -2783,6 +2783,13 @@ class Query(
 
         return _column_descriptions(self, legacy=True)
 
+    @util.deprecated(
+        "2.0",
+        "The :meth:`_orm.Query.instances` method is deprecated and will "
+        "be removed in a future release. "
+        "Use the Select.from_statement() method or aliased() construct in "
+        "conjunction with Session.execute() instead.",
+    )
     def instances(
         self,
         result_proxy: CursorResult[Any],
@@ -3021,7 +3028,9 @@ class Query(
             self.session.execute(
                 delete_,
                 self._params,
-                execution_options={"synchronize_session": synchronize_session},
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_del.result = result  # type: ignore
@@ -3113,7 +3122,9 @@ class Query(
             self.session.execute(
                 upd,
                 self._params,
-                execution_options={"synchronize_session": synchronize_session},
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_ud.result = result  # type: ignore

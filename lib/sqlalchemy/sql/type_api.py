@@ -290,8 +290,8 @@ class TypeEngine(Visitable, Generic[_T]):
     ] = util.EMPTY_DICT
 
     def evaluates_none(self: SelfTypeEngine) -> SelfTypeEngine:
-        """Return a copy of this type which has the :attr:`.should_evaluate_none`
-        flag set to True.
+        """Return a copy of this type which has the
+        :attr:`.should_evaluate_none` flag set to True.
 
         E.g.::
 
@@ -1356,7 +1356,8 @@ class Emulated(TypeEngineMixin):
         impltype: Type[Union[TypeEngine[Any], TypeEngineMixin]],
         **kw: Any,
     ) -> TypeEngine[Any]:
-        """Given an impl class, adapt this type to the impl assuming "emulated".
+        """Given an impl class, adapt this type to the impl assuming
+        "emulated".
 
         The impl should also be an "emulated" version of this type,
         most likely the same class as this type itself.
@@ -1428,7 +1429,8 @@ class NativeForEmulated(TypeEngineMixin):
         **kw: Any,
     ) -> TypeEngine[Any]:
 
-        """Given an impl, adapt this type's class to the impl assuming "native".
+        """Given an impl, adapt this type's class to the impl assuming
+        "native".
 
         The impl will be an :class:`.Emulated` class but not a
         :class:`.NativeForEmulated`.

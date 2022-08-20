@@ -117,22 +117,51 @@ Specifying multiple fallback hosts
 psycopg2 supports multiple connection points in the connection string.
 When the ``host`` parameter is used multiple times in the query section of
 the URL, SQLAlchemy will create a single string of the host and port
-information provided to make the connections::
+information provided to make the connections.  Tokens may consist of
+``host::port`` or just ``host``; in the latter case, the default port
+is selected by libpq.  In the example below, three host connections
+are specified, for ``HostA::PortA``, ``HostB`` connecting to the default port,
+and ``HostC::PortC``::
 
     create_engine(
-        "postgresql+psycopg2://user:password@/dbname?host=HostA:port1&host=HostB&host=HostC"
+        "postgresql+psycopg2://user:password@/dbname?host=HostA:PortA&host=HostB&host=HostC:PortC"
     )
 
-A connection to each host is then attempted until either a connection is successful
-or all connections are unsuccessful in which case an error is raised.
+As an alternative, libpq query string format also may be used; this specifies
+``host`` and ``port`` as single query string arguments with comma-separated
+lists - the default port can be chosen by indicating an empty value
+in the comma separated list::
+
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=HostA,HostB,HostC&port=PortA,,PortC"
+    )
+
+With either URL style, connections to each host is attempted based on a
+configurable strategy, which may be configured using the libpq
+``target_session_attrs`` parameter.  Per libpq this defaults to ``any``
+which indicates a connection to each host is then attempted until a connection is successful.
+Other strategies include ``primary``, ``prefer-standby``, etc.  The complete
+list is documented by PostgreSQL at
+`libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_.
+
+For example, to indicate two hosts using the ``primary`` strategy::
+
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=HostA:PortA&host=HostB&host=HostC:PortC&target_session_attrs=primary"
+    )
+
+.. versionchanged:: 1.4.40 Port specification in psycopg2 multiple host format
+   is repaired, previously ports were not correctly interpreted in this context.
+   libpq comma-separated format is also now supported.
 
 .. versionadded:: 1.3.20 Support for multiple hosts in PostgreSQL connection
    string.
 
 .. seealso::
 
-    `PQConnString \
-    <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
+    `libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_ - please refer
+    to this section in the libpq documentation for complete background on multiple host support.
+
 
 Empty DSN Connections / Environment Variable Connections
 ---------------------------------------------------------
@@ -445,10 +474,14 @@ place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2``
 which may be more performant.
 
 """  # noqa
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import logging
 import re
+from typing import cast
 
+from . import ranges
 from ._psycopg_common import _PGDialect_common_psycopg
 from ._psycopg_common import _PGExecutionContext_common_psycopg
 from .base import PGCompiler
@@ -461,7 +494,6 @@ from ...engine import cursor as _cursor
 from ...util import FastIntFlag
 from ...util import parse_user_argument_for_enum
 
-
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
 
@@ -473,6 +505,56 @@ class _PGJSON(JSON):
 class _PGJSONB(JSONB):
     def result_processor(self, dialect, coltype):
         return None
+
+
+class _Psycopg2Range(ranges.AbstractRange):
+    _psycopg2_range_cls = "none"
+
+    def bind_processor(self, dialect):
+        Range = getattr(
+            cast(PGDialect_psycopg2, dialect)._psycopg2_extras,
+            self._psycopg2_range_cls,
+        )
+
+        NoneType = type(None)
+
+        def to_range(value):
+            if not isinstance(value, (str, NoneType)):
+                value = Range(
+                    value.lower, value.upper, value.bounds, value.empty
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                value = ranges.Range(
+                    value._lower,
+                    value._upper,
+                    bounds=value._bounds if value._bounds else "[)",
+                    empty=not value._bounds,
+                )
+            return value
+
+        return to_range
+
+
+class _Psycopg2NumericRange(_Psycopg2Range):
+    _psycopg2_range_cls = "NumericRange"
+
+
+class _Psycopg2DateRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateRange"
+
+
+class _Psycopg2DateTimeRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateTimeRange"
+
+
+class _Psycopg2DateTimeTZRange(_Psycopg2Range):
+    _psycopg2_range_cls = "DateTimeTZRange"
 
 
 class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
@@ -560,6 +642,12 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
+            ranges.INT4RANGE: _Psycopg2NumericRange,
+            ranges.INT8RANGE: _Psycopg2NumericRange,
+            ranges.NUMRANGE: _Psycopg2NumericRange,
+            ranges.DATERANGE: _Psycopg2DateRange,
+            ranges.TSRANGE: _Psycopg2DateTimeRange,
+            ranges.TSTZRANGE: _Psycopg2DateTimeTZRange,
         },
     )
 

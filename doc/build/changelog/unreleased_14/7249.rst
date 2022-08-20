@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, types
-    :tickets: 7249
-
-    Fixed issue where :class:`.TypeDecorator` would not correctly proxy the
-    ``__getitem__()`` operator when decorating the :class:`.ARRAY` datatype,
-    without explicit workarounds.

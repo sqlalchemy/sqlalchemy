@@ -129,6 +129,8 @@ Class Mapping API
 
 .. autofunction:: polymorphic_union
 
+.. autofunction:: reconstructor
+
 .. autoclass:: Mapper
    :members:
 

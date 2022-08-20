@@ -1,3 +1,5 @@
+:orphan:
+
 =========
 Basic Use
 =========
@@ -20,11 +22,7 @@ This section has moved to :ref:`orm_declarative_metadata`.
 Class Constructor
 =================
 
-As a convenience feature, the :func:`declarative_base` sets a default
-constructor on classes which takes keyword arguments, and assigns them
-to the named attributes::
-
-    e = Engineer(primary_language='python')
+This section has moved to :ref:`orm_mapper_configuration_overview`.
 
 Mapper Configuration
 ====================

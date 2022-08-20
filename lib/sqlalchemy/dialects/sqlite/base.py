@@ -850,11 +850,42 @@ dialect in conjunction with the :class:`_schema.Table` construct:
     `SQLite CREATE TABLE options
     <https://www.sqlite.org/lang_createtable.html>`_
 
+
+.. _sqlite_include_internal:
+
+Reflecting internal schema tables
+----------------------------------
+
+Reflection methods that return lists of tables will omit so-called
+"SQLite internal schema object" names, which are referred towards by SQLite
+as any object name that is prefixed with ``sqlite_``.  An example of
+such an object is the ``sqlite_sequence`` table that's generated when
+the ``AUTOINCREMENT`` column parameter is used.   In order to return
+these objects, the parameter ``sqlite_include_internal=True`` may be
+passed to methods such as :meth:`_schema.MetaData.reflect` or
+:meth:`.Inspector.get_table_names`.
+
+.. versionadded:: 2.0  Added the ``sqlite_include_internal=True`` parameter.
+   Previously, these tables were not ignored by SQLAlchemy reflection
+   methods.
+
+.. note::
+
+    The ``sqlite_include_internal`` parameter does not refer to the
+    "system" tables that are present in schemas such as ``sqlite_master``.
+
+.. seealso::
+
+    `SQLite Internal Schema Objects <https://www.sqlite.org/fileformat2.html#intschema>`_ - in the SQLite
+    documentation.
+
 """  # noqa
+from __future__ import annotations
 
 import datetime
 import numbers
 import re
+from typing import Optional
 
 from .json import JSON
 from .json import JSONIndexType
@@ -1899,6 +1930,9 @@ class SQLiteDialect(default.DefaultDialect):
     tuple_in_values = True
     supports_statement_cache = True
     insert_null_pk_still_autoincrements = True
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext
@@ -2006,10 +2040,10 @@ class SQLiteDialect(default.DefaultDialect):
                 14,
             )
 
-            if self.dbapi.sqlite_version_info >= (3, 35):
+            if self.dbapi.sqlite_version_info < (3, 35):
                 self.update_returning = (
                     self.delete_returning
-                ) = self.insert_returning = True
+                ) = self.insert_returning = False
 
     _isolation_lookup = util.immutabledict(
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
@@ -2062,27 +2096,53 @@ class SQLiteDialect(default.DefaultDialect):
             name = table_name
         return name
 
-    @reflection.cache
-    def get_table_names(self, connection, schema=None, **kw):
-        main = self._format_schema(schema, "sqlite_master")
-        s = f"SELECT name FROM {main} WHERE type='table' ORDER BY name"
-        names = connection.exec_driver_sql(s).scalars().all()
-        return names
-
-    @reflection.cache
-    def get_temp_table_names(self, connection, **kw):
-        main = "sqlite_temp_master"
-        s = f"SELECT name FROM {main} WHERE type='table' ORDER BY name"
-        names = connection.exec_driver_sql(s).scalars().all()
-        return names
-
-    @reflection.cache
-    def get_temp_view_names(self, connection, **kw):
-        s = (
-            "SELECT name FROM sqlite_temp_master "
-            "WHERE type='view' ORDER BY name "
+    def _sqlite_main_query(
+        self,
+        table: str,
+        type_: str,
+        schema: Optional[str],
+        sqlite_include_internal: bool,
+    ):
+        main = self._format_schema(schema, table)
+        if not sqlite_include_internal:
+            filter_table = " AND name NOT LIKE 'sqlite~_%' ESCAPE '~'"
+        else:
+            filter_table = ""
+        query = (
+            f"SELECT name FROM {main} "
+            f"WHERE type='{type_}'{filter_table} "
+            "ORDER BY name"
         )
-        names = connection.exec_driver_sql(s).scalars().all()
+        return query
+
+    @reflection.cache
+    def get_table_names(
+        self, connection, schema=None, sqlite_include_internal=False, **kw
+    ):
+        query = self._sqlite_main_query(
+            "sqlite_master", "table", schema, sqlite_include_internal
+        )
+        names = connection.exec_driver_sql(query).scalars().all()
+        return names
+
+    @reflection.cache
+    def get_temp_table_names(
+        self, connection, sqlite_include_internal=False, **kw
+    ):
+        query = self._sqlite_main_query(
+            "sqlite_temp_master", "table", None, sqlite_include_internal
+        )
+        names = connection.exec_driver_sql(query).scalars().all()
+        return names
+
+    @reflection.cache
+    def get_temp_view_names(
+        self, connection, sqlite_include_internal=False, **kw
+    ):
+        query = self._sqlite_main_query(
+            "sqlite_temp_master", "view", None, sqlite_include_internal
+        )
+        names = connection.exec_driver_sql(query).scalars().all()
         return names
 
     @reflection.cache
@@ -2098,10 +2158,13 @@ class SQLiteDialect(default.DefaultDialect):
         return "main"
 
     @reflection.cache
-    def get_view_names(self, connection, schema=None, **kw):
-        main = self._format_schema(schema, "sqlite_master")
-        s = f"SELECT name FROM {main} WHERE type='view' ORDER BY name"
-        names = connection.exec_driver_sql(s).scalars().all()
+    def get_view_names(
+        self, connection, schema=None, sqlite_include_internal=False, **kw
+    ):
+        query = self._sqlite_main_query(
+            "sqlite_master", "view", schema, sqlite_include_internal
+        )
+        names = connection.exec_driver_sql(query).scalars().all()
         return names
 
     @reflection.cache

@@ -13,51 +13,6 @@ Session and sessionmaker()
 .. autoclass:: ORMExecuteState
     :members:
 
-    .. attribute::  session
-
-        The :class:`_orm.Session` in use.
-
-    .. attribute:: statement
-
-        The SQL statement being invoked.  For an ORM selection as would
-        be retrieved from :class:`_orm.Query`, this is an instance of
-        :class:`_future.select` that was generated from the ORM query.
-
-    .. attribute:: parameters
-
-        Dictionary of parameters that was passed to :meth:`_orm.Session.execute`.
-
-    .. attribute:: bind_arguments
-
-        The dictionary passed as the
-        :paramref:`_orm.Session.execute.bind_arguments` dictionary.  This
-        dictionary may be used by extensions to :class:`_orm.Session` to pass
-        arguments that will assist in determining amongst a set of database
-        connections which one should be used to invoke this statement.
-
-    .. attribute:: local_execution_options
-
-        Dictionary view of the execution options passed to the
-        :meth:`.Session.execute` method.  This does not include options
-        that may be associated with the statement being invoked.
-
-        .. seealso::
-
-            :attr:`_orm.ORMExecuteState.execution_options`
-
-    .. attribute:: execution_options
-
-        The complete dictionary of current execution options.
-        This is a merge of the statement level options with the
-        locally passed execution options.
-
-        .. seealso::
-
-            :attr:`_orm.ORMExecuteState.local_execution_options`
-
-            :meth:`_sql.Executable.execution_options`
-
-            :ref:`orm_queryguide_execution_options`
 
 .. autoclass:: Session
    :members:

@@ -41,17 +41,25 @@ from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
 from .json import JSONB
+from .json import JSONPATH
 from .named_types import CreateDomainType
 from .named_types import CreateEnumType
 from .named_types import DropDomainType
 from .named_types import DropEnumType
 from .named_types import ENUM
 from .named_types import NamedType
+from .ranges import DATEMULTIRANGE
 from .ranges import DATERANGE
+from .ranges import INT4MULTIRANGE
 from .ranges import INT4RANGE
+from .ranges import INT8MULTIRANGE
 from .ranges import INT8RANGE
+from .ranges import NUMMULTIRANGE
 from .ranges import NUMRANGE
+from .ranges import Range
+from .ranges import TSMULTIRANGE
 from .ranges import TSRANGE
+from .ranges import TSTZMULTIRANGE
 from .ranges import TSTZRANGE
 from .types import BIT
 from .types import BYTEA
@@ -110,11 +118,18 @@ __all__ = (
     "INT8RANGE",
     "NUMRANGE",
     "DATERANGE",
+    "INT4MULTIRANGE",
+    "INT8MULTIRANGE",
+    "NUMMULTIRANGE",
+    "DATEMULTIRANGE",
     "TSVECTOR",
     "TSRANGE",
     "TSTZRANGE",
+    "TSMULTIRANGE",
+    "TSTZMULTIRANGE",
     "JSON",
     "JSONB",
+    "JSONPATH",
     "Any",
     "All",
     "DropEnumType",
@@ -123,6 +138,7 @@ __all__ = (
     "NamedType",
     "CreateEnumType",
     "ExcludeConstraint",
+    "Range",
     "aggregate_order_by",
     "array_agg",
     "insert",

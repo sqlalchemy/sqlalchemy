@@ -1,0 +1,17 @@
+.. change::
+    :tags: postgresql, usecase
+    :tickets: 7156
+
+    Adds support for PostgreSQL multirange types, introduced in PostgreSQL 14.
+    Support for PostgreSQL ranges and multiranges has now been generalized to
+    the psycopg3, psycopg2 and asyncpg backends, with room for further dialect
+    support, using a backend-agnostic :class:`_postgresql.Range` data object
+    that's constructor-compatible with the previously used psycopg2 object. See
+    the new documentation for usage patterns.
+
+    Thanks very much to @zeeeeeb for the pull request implementing and testing
+    the new datatypes and psycopg support.
+
+    .. seealso::
+
+        :ref:`postgresql_ranges`

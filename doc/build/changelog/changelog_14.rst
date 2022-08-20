@@ -14,8 +14,183 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.40
+    :version: 1.4.41
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.40
+    :released: August 8, 2022
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8357
+
+        Fixed issue where referencing a CTE multiple times in conjunction with a
+        polymorphic SELECT could result in multiple "clones" of the same CTE being
+        constructed, which would then trigger these two CTEs as duplicates. To
+        resolve, the two CTEs are deep-compared when this occurs to ensure that
+        they are equivalent, then are treated as equivalent.
+
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8190
+
+        Fixed issue where a hierarchy of classes set up as an abstract or mixin
+        declarative classes could not declare standalone columns on a superclass
+        that would then be copied correctly to a :class:`_orm.declared_attr`
+        callable that wanted to make use of them on a descendant class.
+
+    .. change::
+        :tags: bug, types
+        :tickets: 7249
+
+        Fixed issue where :class:`.TypeDecorator` would not correctly proxy the
+        ``__getitem__()`` operator when decorating the :class:`_types.ARRAY`
+        datatype, without explicit workarounds.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 8145
+
+        Added ``asyncio.shield()`` to the connection and session release process
+        specifically within the ``__aexit__()`` context manager exit, when using
+        :class:`.AsyncConnection` or :class:`.AsyncSession` as a context manager
+        that releases the object when the context manager is complete. This appears
+        to help with task cancellation when using alternate concurrency libraries
+        such as ``anyio``, ``uvloop`` that otherwise don't provide an async context
+        for the connection pool to release the connection properly during task
+        cancellation.
+
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4392
+
+        Fixed issue in psycopg2 dialect where the "multiple hosts" feature
+        implemented for :ticket:`4392`, where multiple ``host:port`` pairs could be
+        passed in the query string as
+        ``?host=host1:port1&host=host2:port2&host=host3:port3`` was not implemented
+        correctly, as it did not propagate the "port" parameter appropriately.
+        Connections that didn't use a different "port" likely worked without issue,
+        and connections that had "port" for some of the entries may have
+        incorrectly passed on that hostname. The format is now corrected to pass
+        hosts/ports appropriately.
+
+        As part of this change, maintained support for another multihost style that
+        worked unintentionally, which is comma-separated
+        ``?host=h1,h2,h3&port=p1,p2,p3``. This format is more consistent with
+        libpq's query-string format, whereas the previous format is inspired by a
+        different aspect of libpq's URI format but is not quite the same thing.
+
+        If the two styles are mixed together, an error is raised as this is
+        ambiguous.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8253
+
+        Adjusted the SQL compilation for string containment functions
+        ``.contains()``, ``.startswith()``, ``.endswith()`` to force the use of the
+        string concatenation operator, rather than relying upon the overload of the
+        addition operator, so that non-standard use of these operators with for
+        example bytestrings still produces string concatenation operators.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8235
+
+        A :func:`_sql.select` construct that is passed a sole '*' argument for
+        ``SELECT *``, either via string, :func:`_sql.text`, or
+        :func:`_sql.literal_column`, will be interpreted as a Core-level SQL
+        statement rather than as an ORM level statement. This is so that the ``*``,
+        when expanded to match any number of columns, will result in all columns
+        returned in the result. the ORM- level interpretation of
+        :func:`_sql.select` needs to know the names and types of all ORM columns up
+        front which can't be achieved when ``'*'`` is used.
+
+        If ``'*`` is used amongst other expressions simultaneously with an ORM
+        statement, an error is raised as this can't be interpreted correctly by the
+        ORM.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 8210
+
+        Fixed issues that prevented the new usage patterns for using DML with ORM
+        objects presented at :ref:`orm_dml_returning_objects` from working
+        correctly with the SQL Server pyodbc dialect.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 8231
+
+        Fixed issue where the SQL Server dialect's query for the current isolation
+        level would fail on Azure Synapse Analytics, due to the way in which this
+        database handles transaction rollbacks after an error has occurred. The
+        initial query has been modified to no longer rely upon catching an error
+        when attempting to detect the appropriate system view. Additionally, to
+        better support this database's very specific "rollback" behavior,
+        implemented new parameter ``ignore_no_transaction_on_rollback`` indicating
+        that a rollback should ignore Azure Synapse error 'No corresponding
+        transaction found. (111214)', which is raised if no transaction is present
+        in conflict with the Python DBAPI.
+
+        Initial patch and valuable debugging assistance courtesy of @ww2406.
+
+        .. seealso::
+
+            :ref:`azure_synapse_ignore_no_transaction_on_rollback`
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 8196
+
+        Fixed a crash of the mypy plugin when using a lambda as a Column
+        default. Pull request curtesy of tchapi.
+
+
+    .. change::
+        :tags: usecase, engine
+
+        Implemented new :paramref:`_engine.Connection.execution_options.yield_per`
+        execution option for :class:`_engine.Connection` in Core, to mirror that of
+        the same :ref:`yield_per <orm_queryguide_yield_per>` option available in
+        the ORM. The option sets both the
+        :paramref:`_engine.Connection.execution_options.stream_results` option at
+        the same time as invoking :meth:`_engine.Result.yield_per`, to provide the
+        most common streaming result configuration which also mirrors that of the
+        ORM use case in its usage pattern.
+
+        .. seealso::
+
+            :ref:`engine_stream_results` - revised documentation
+
+
+    .. change::
+        :tags: bug, engine
+
+        Fixed bug in :class:`_engine.Result` where the usage of a buffered result
+        strategy would not be used if the dialect in use did not support an
+        explicit "server side cursor" setting, when using
+        :paramref:`_engine.Connection.execution_options.stream_results`. This is in
+        error as DBAPIs such as that of SQLite and Oracle already use a
+        non-buffered result fetching scheme, which still benefits from usage of
+        partial result fetching.   The "buffered" strategy is now used in all
+        cases where :paramref:`_engine.Connection.execution_options.stream_results`
+        is set.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8199
+
+        Added :meth:`.FilterResult.yield_per` so that result implementations
+        such as :class:`.MappingResult`, :class:`.ScalarResult` and
+        :class:`.AsyncResult` have access to this method.
 
 .. changelog::
     :version: 1.4.39
@@ -155,7 +330,7 @@ This document details individual issue-level changes made throughout
         with a :class:`.Numeric` datatype would produce errors when attempting to
         reconcile the "autoincrement" column, preventing construction of the
         :class:`.Column` from using the :paramref:`.Column.autoincrement` parameter
-        as well as emitting errors when attempting to invoke an :class:`.Insert`
+        as well as emitting errors when attempting to invoke an :class:`_dml.Insert`
         construct.
 
 
@@ -195,7 +370,7 @@ This document details individual issue-level changes made throughout
         :tickets: 8073
 
         An informative error is raised for the use case where
-        :meth:`.Insert.from_select` is being passed a "compound select" object such
+        :meth:`_dml.Insert.from_select` is being passed a "compound select" object such
         as a UNION, yet the INSERT statement needs to append additional columns to
         support Python-side or explicit SQL defaults from the table metadata. In
         this case a subquery of the compound object should be passed.
@@ -233,8 +408,8 @@ This document details individual issue-level changes made throughout
 
         Fixed an issue where using :func:`.bindparam` with no explicit data or type
         given could be coerced into the incorrect type when used in expressions
-        such as when using :meth:`.ARRAY.Comparator.any` and
-        :meth:`.ARRAY.Comparator.all`.
+        such as when using :meth:`_types.ARRAY.Comparator.any` and
+        :meth:`_types.ARRAY.Comparator.all`.
 
 
     .. change::

@@ -143,6 +143,8 @@ class DefaultDialect(Dialect):
     insert_null_pk_still_autoincrements = False
     update_returning = False
     delete_returning = False
+    update_returning_multifrom = False
+    delete_returning_multifrom = False
     insert_returning = False
     insert_executemany_returning = False
 
@@ -902,6 +904,10 @@ class StrCompileDialect(DefaultDialect):
     ddl_compiler = compiler.DDLCompiler
     type_compiler_cls = compiler.StrSQLTypeCompiler
     preparer = compiler.IdentifierPreparer
+
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
 
     supports_statement_cache = True
 

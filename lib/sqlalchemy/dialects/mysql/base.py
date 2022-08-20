@@ -241,7 +241,7 @@ the database connection will return true for the value of
 ``SELECT @@autocommit;``.
 
 There are also more options for isolation level configurations, such as
-"sub-engine" objects linked to a main :class:`.Engine` which each apply
+"sub-engine" objects linked to a main :class:`_engine.Engine` which each apply
 different isolation level settings.  See the discussion at
 :ref:`dbapi_autocommit` for background.
 
@@ -2568,6 +2568,12 @@ class MySQLDialect(default.DefaultDialect):
             # this would have been set by the default dialect already,
             # so set it again
             self.identifier_preparer = self.preparer(self)
+
+            # this will be updated on first connect in initialize()
+            # if using older mariadb version
+            self.delete_returning = True
+            self.insert_returning = True
+
         self.is_mariadb = is_mariadb
 
     def do_begin_twophase(self, connection, xid):

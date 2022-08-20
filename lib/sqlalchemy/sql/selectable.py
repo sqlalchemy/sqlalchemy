@@ -1807,8 +1807,8 @@ class TableValuedAlias(LateralFromClause, Alias):
         return tva
 
     def lateral(self, name: Optional[str] = None) -> LateralFromClause:
-        """Return a new :class:`_sql.TableValuedAlias` with the lateral flag set,
-        so that it renders as LATERAL.
+        """Return a new :class:`_sql.TableValuedAlias` with the lateral flag
+        set, so that it renders as LATERAL.
 
         .. seealso::
 
@@ -5280,10 +5280,9 @@ class Select(
         *,
         full: bool = False,
     ) -> SelfSelect:
-        r"""Create a SQL LEFT OUTER JOIN against this :class:`_expression.Select`
-        object's criterion
-        and apply generatively, returning the newly resulting
-        :class:`_expression.Select`.
+        r"""Create a SQL LEFT OUTER JOIN against this
+        :class:`_expression.Select` object's criterion and apply generatively,
+        returning the newly resulting :class:`_expression.Select`.
 
         Usage is the same as that of :meth:`_selectable.Select.join_from`.
 
@@ -6559,7 +6558,8 @@ class Exists(UnaryExpression[bool]):
         self: SelfExists,
         *fromclauses: Union[Literal[None, False], _FromClauseArgument],
     ) -> SelfExists:
-        """Apply correlation to the subquery noted by this :class:`_sql.Exists`.
+        """Apply correlation to the subquery noted by this
+        :class:`_sql.Exists`.
 
         .. seealso::
 
@@ -6576,7 +6576,8 @@ class Exists(UnaryExpression[bool]):
         self: SelfExists,
         *fromclauses: Union[Literal[None, False], _FromClauseArgument],
     ) -> SelfExists:
-        """Apply correlation to the subquery noted by this :class:`_sql.Exists`.
+        """Apply correlation to the subquery noted by this
+        :class:`_sql.Exists`.
 
         .. seealso::
 

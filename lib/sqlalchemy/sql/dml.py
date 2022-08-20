@@ -359,6 +359,7 @@ class DeleteDMLState(DMLState):
         t, ef = self._make_extra_froms(statement)
         self._primary_table = t
         self._extra_froms = ef
+        self.is_multitable = ef
 
 
 SelfUpdateBase = typing.TypeVar("SelfUpdateBase", bound="UpdateBase")
@@ -590,8 +591,8 @@ class UpdateBase(
 
     @property
     def entity_description(self) -> Dict[str, Any]:
-        """Return a :term:`plugin-enabled` description of the table and/or entity
-        which this DML construct is operating against.
+        """Return a :term:`plugin-enabled` description of the table and/or
+        entity which this DML construct is operating against.
 
         This attribute is generally useful when using the ORM, as an
         extended structure which includes information about mapped
@@ -989,10 +990,26 @@ class ValuesBase(UpdateBase):
             :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
+
+        if self._return_defaults:
+            # note _return_defaults_columns = () means return all columns,
+            # so if we have been here before, only update collection if there
+            # are columns in the collection
+            if self._return_defaults_columns and cols:
+                self._return_defaults_columns = tuple(
+                    set(self._return_defaults_columns).union(
+                        coercions.expect(roles.ColumnsClauseRole, c)
+                        for c in cols
+                    )
+                )
+            else:
+                # set for all columns
+                self._return_defaults_columns = ()
+        else:
+            self._return_defaults_columns = tuple(
+                coercions.expect(roles.ColumnsClauseRole, c) for c in cols
+            )
         self._return_defaults = True
-        self._return_defaults_columns = tuple(
-            coercions.expect(roles.ColumnsClauseRole, c) for c in cols
-        )
         return self
 
 

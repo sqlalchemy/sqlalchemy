@@ -1,0 +1,18 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 6195
+
+    Added RETURNING support for the SQLite dialect.  SQLite supports RETURNING
+    since version 3.35.
+
+
+.. change::
+    :tags: usecase, mariadb
+    :tickets: 7011
+
+    Added INSERT..RETURNING and DELETE..RETURNING support for the MariaDB
+    dialect.  UPDATE..RETURNING is not yet supported by MariaDB.  MariaDB
+    supports INSERT..RETURNING as of 10.5.0 and DELETE..RETURNING as of
+    10.0.5.
+
+

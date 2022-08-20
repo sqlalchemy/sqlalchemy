@@ -1,3 +1,5 @@
+:orphan:
+
 .. automodule:: sqlalchemy.ext.declarative
 
 ===============

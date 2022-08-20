@@ -1,0 +1,19 @@
+.. change::
+    :tags: schema, mysql, mariadb
+    :tickets: 4038
+
+    Add support for Partitioning and Sample pages on MySQL and MariaDB
+    reflected options.
+    The options are stored in the table dialect options dictionary, so
+    the following keyword need to be prefixed with ``mysql_`` or ``mariadb_``
+    depending on the backend.
+    Supported options are:
+
+    * ``stats_sample_pages``
+    * ``partition_by``
+    * ``partitions``
+    * ``subpartition_by``
+
+    These options are also reflected when loading a table from database,
+    and will populate the table :attr:`_schema.Table.dialect_options`.
+    Pull request courtesy of Ramon Will.

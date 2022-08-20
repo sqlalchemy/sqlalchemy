@@ -123,19 +123,23 @@ class AbstractConcreteBase(ConcreteBase):
     :class:`.AbstractConcreteBase` will use the :func:`.polymorphic_union`
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
-    ``__declare_last__()`` function, which is essentially
-    a hook for the :meth:`.after_configured` event.
+    ``__declare_first__()`` function, which is essentially
+    a hook for the :meth:`.before_configured` event.
 
-    :class:`.AbstractConcreteBase` does produce a mapped class
-    for the base class, however it is not persisted to any table; it
-    is instead mapped directly to the "polymorphic" selectable directly
-    and is only used for selecting.  Compare to :class:`.ConcreteBase`,
-    which does create a persisted table for the base class.
+    :class:`.AbstractConcreteBase` applies :class:`_orm.Mapper` for its
+    immediately inheriting class, as would occur for any other
+    declarative mapped class. However, the :class:`_orm.Mapper` is not
+    mapped to any particular :class:`.Table` object.  Instead, it's
+    mapped directly to the "polymorphic" selectable produced by
+    :func:`.polymorphic_union`, and performs no persistence operations on its
+    own.  Compare to :class:`.ConcreteBase`, which maps its
+    immediately inheriting class to an actual
+    :class:`.Table` that stores rows directly.
 
     .. note::
 
-        The :class:`.AbstractConcreteBase` class does not intend to set up  the
-        mapping for the base class until all the subclasses have been defined,
+        The :class:`.AbstractConcreteBase` delays the mapper creation of the
+        base class until all the subclasses have been defined,
         as it needs to create a mapping against a selectable that will include
         all subclass tables.  In order to achieve this, it waits for the
         **mapper configuration event** to occur, at which point it scans
@@ -145,22 +149,21 @@ class AbstractConcreteBase(ConcreteBase):
         While this event is normally invoked automatically, in the case of
         :class:`.AbstractConcreteBase`, it may be necessary to invoke it
         explicitly after **all** subclass mappings are defined, if the first
-        operation is to be a query against this base class.  To do so, invoke
-        :func:`.configure_mappers` once all the desired classes have been
-        configured::
+        operation is to be a query against this base class. To do so, once all
+        the desired classes have been configured, the
+        :meth:`_orm.registry.configure` method on the :class:`_orm.registry`
+        in use can be invoked, which is available in relation to a particular
+        declarative base class::
 
-            from sqlalchemy.orm import configure_mappers
-
-            configure_mappers()
-
-        .. seealso::
-
-            :func:`_orm.configure_mappers`
-
+            Base.registry.configure()
 
     Example::
 
+        from sqlalchemy.orm import DeclarativeBase
         from sqlalchemy.ext.declarative import AbstractConcreteBase
+
+        class Base(DeclarativeBase):
+            pass
 
         class Employee(AbstractConcreteBase, Base):
             pass
@@ -173,26 +176,31 @@ class AbstractConcreteBase(ConcreteBase):
 
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
-                'concrete':True}
+                'concrete':True
+            }
 
-        configure_mappers()
+        Base.registry.configure()
 
     The abstract base class is handled by declarative in a special way;
     at class configuration time, it behaves like a declarative mixin
     or an ``__abstract__`` base class.   Once classes are configured
     and mappings are produced, it then gets mapped itself, but
     after all of its descendants.  This is a very unique system of mapping
-    not found in any other SQLAlchemy system.
+    not found in any other SQLAlchemy API feature.
 
     Using this approach, we can specify columns and properties
     that will take place on mapped subclasses, in the way that
     we normally do as in :ref:`declarative_mixins`::
+
+        from sqlalchemy.ext.declarative import AbstractConcreteBase
 
         class Company(Base):
             __tablename__ = 'company'
             id = Column(Integer, primary_key=True)
 
         class Employee(AbstractConcreteBase, Base):
+            strict_attrs = True
+
             employee_id = Column(Integer, primary_key=True)
 
             @declared_attr
@@ -211,24 +219,32 @@ class AbstractConcreteBase(ConcreteBase):
 
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
-                'concrete':True}
+                'concrete':True
+            }
 
-        configure_mappers()
+        Base.registry.configure()
 
     When we make use of our mappings however, both ``Manager`` and
     ``Employee`` will have an independently usable ``.company`` attribute::
 
-        session.query(Employee).filter(Employee.company.has(id=5))
+        session.execute(
+            select(Employee).filter(Employee.company.has(id=5))
+        )
 
-    .. versionchanged:: 1.0.0 - The mechanics of :class:`.AbstractConcreteBase`
-       have been reworked to support relationships established directly
-       on the abstract base, without any special configurational steps.
+    :param strict_attrs: when specified on the base class, "strict" attribute
+     mode is enabled which attempts to limit ORM mapped attributes on the
+     base class to only those that are immediately present, while still
+     preserving "polymorphic" loading behavior.
+
+     .. versionadded:: 2.0
 
     .. seealso::
 
         :class:`.ConcreteBase`
 
         :ref:`concrete_inheritance`
+
+        :ref:`abstract_concrete_base`
 
     """
 
@@ -270,27 +286,46 @@ class AbstractConcreteBase(ConcreteBase):
         # In that case, ensure we update the properties entry
         # to the correct column from the pjoin target table.
         declared_cols = set(to_map.declared_columns)
+        declared_col_keys = {c.key for c in declared_cols}
         for k, v in list(to_map.properties.items()):
             if v in declared_cols:
                 to_map.properties[k] = pjoin.c[v.key]
+                declared_col_keys.remove(v.key)
 
         to_map.local_table = pjoin
+
+        strict_attrs = cls.__dict__.get("strict_attrs", False)
 
         m_args = to_map.mapper_args_fn or dict
 
         def mapper_args():
             args = m_args()
             args["polymorphic_on"] = pjoin.c[discriminator_name]
+            if strict_attrs:
+                args["include_properties"] = (
+                    set(pjoin.primary_key)
+                    | declared_col_keys
+                    | {discriminator_name}
+                )
+                args["with_polymorphic"] = ("*", pjoin)
             return args
 
         to_map.mapper_args_fn = mapper_args
 
-        m = to_map.map()
+        to_map.map()
 
-        for scls in cls.__subclasses__():
+        stack = [cls]
+        while stack:
+            scls = stack.pop(0)
+            stack.extend(scls.__subclasses__())
             sm = _mapper_or_none(scls)
-            if sm and sm.concrete and cls in scls.__bases__:
-                sm._set_concrete_base(m)
+            if sm and sm.concrete and sm.inherits is None:
+                for sup_ in scls.__mro__[1:]:
+                    sup_sm = _mapper_or_none(sup_)
+                    if sup_sm:
+
+                        sm._set_concrete_base(sup_sm)
+                        break
 
     @classmethod
     def _sa_raise_deferred_config(cls):

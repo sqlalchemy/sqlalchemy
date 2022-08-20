@@ -47,7 +47,7 @@ def track_cascade_events(descriptor, prop):
     """
     key = prop.key
 
-    def append(state, item, initiator):
+    def append(state, item, initiator, **kw):
         # process "save_update" cascade rules for when
         # an instance is appended to the list of another instance
 
@@ -70,7 +70,7 @@ def track_cascade_events(descriptor, prop):
                 sess._save_or_update_state(item_state)
         return item
 
-    def remove(state, item, initiator):
+    def remove(state, item, initiator, **kw):
         if item is None:
             return
 
@@ -104,7 +104,7 @@ def track_cascade_events(descriptor, prop):
                     # item
                     item_state._orphaned_outside_of_session = True
 
-    def set_(state, newvalue, oldvalue, initiator):
+    def set_(state, newvalue, oldvalue, initiator, **kw):
         # process "save_update" cascade rules for when an instance
         # is attached to another instance
         if oldvalue is newvalue:
@@ -141,10 +141,18 @@ def track_cascade_events(descriptor, prop):
                     sess.expunge(oldvalue)
         return newvalue
 
-    event.listen(descriptor, "append_wo_mutation", append, raw=True)
-    event.listen(descriptor, "append", append, raw=True, retval=True)
-    event.listen(descriptor, "remove", remove, raw=True, retval=True)
-    event.listen(descriptor, "set", set_, raw=True, retval=True)
+    event.listen(
+        descriptor, "append_wo_mutation", append, raw=True, include_key=True
+    )
+    event.listen(
+        descriptor, "append", append, raw=True, retval=True, include_key=True
+    )
+    event.listen(
+        descriptor, "remove", remove, raw=True, retval=True, include_key=True
+    )
+    event.listen(
+        descriptor, "set", set_, raw=True, retval=True, include_key=True
+    )
 
 
 class UOWTransaction:

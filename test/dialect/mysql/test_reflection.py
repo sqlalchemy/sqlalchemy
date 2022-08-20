@@ -320,6 +320,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_avg_row_length="3",
                 mysql_password="secret",
                 mysql_connection="fish",
+                mysql_stats_sample_pages="4",
             )
 
         def_table = Table(
@@ -364,20 +365,186 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             assert def_table.kwargs["mysql_avg_row_length"] == "3"
             assert def_table.kwargs["mysql_password"] == "secret"
             assert def_table.kwargs["mysql_connection"] == "fish"
+            assert def_table.kwargs["mysql_stats_sample_pages"] == "4"
 
             assert reflected.kwargs["mysql_engine"] == "MEMORY"
 
             assert reflected.comment == comment
             assert reflected.kwargs["mysql_comment"] == comment
-            assert reflected.kwargs["mysql_default charset"] == "utf8"
+            assert reflected.kwargs["mysql_default charset"] in (
+                "utf8",
+                "utf8mb3",
+            )
             assert reflected.kwargs["mysql_avg_row_length"] == "3"
             assert reflected.kwargs["mysql_connection"] == "fish"
+            assert reflected.kwargs["mysql_stats_sample_pages"] == "4"
 
             # This field doesn't seem to be returned by mysql itself.
             # assert reflected.kwargs['mysql_password'] == 'secret'
 
             # This is explicitly ignored when reflecting schema.
             # assert reflected.kwargs['mysql_auto_increment'] == '5'
+
+    def _norm_str(self, value, is_definition=False):
+        if is_definition:
+            # partition names on MariaDB contain backticks
+            return value.replace("`", "")
+        else:
+            return value.replace("`", "").replace(" ", "").lower()
+
+    def _norm_reflected_table(self, dialect_name, kwords):
+        dialect_name += "_"
+        normalised_table = {}
+        for k, v in kwords.items():
+            option = k.replace(dialect_name, "")
+            normalised_table[option] = self._norm_str(v)
+        return normalised_table
+
+    def _get_dialect_key(self):
+        if testing.against("mariadb"):
+            return "mariadb"
+        else:
+            return "mysql"
+
+    def test_reflection_with_partition_options(self, metadata, connection):
+        base_kwargs = dict(
+            engine="InnoDB",
+            default_charset="utf8",
+            partition_by="HASH(MONTH(c2))",
+            partitions="6",
+        )
+        dk = self._get_dialect_key()
+
+        kwargs = {f"{dk}_{key}": v for key, v in base_kwargs.items()}
+
+        def_table = Table(
+            "mysql_def",
+            metadata,
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs,
+        )
+        eq_(def_table.kwargs[f"{dk}_partition_by"], "HASH(MONTH(c2))")
+        eq_(def_table.kwargs[f"{dk}_partitions"], "6")
+
+        metadata.create_all(connection)
+        reflected = Table("mysql_def", MetaData(), autoload_with=connection)
+        ref_kw = self._norm_reflected_table(dk, reflected.kwargs)
+        eq_(ref_kw["partition_by"], "hash(month(c2))")
+        eq_(ref_kw["partitions"], "6")
+
+    def test_reflection_with_subpartition_options(self, connection, metadata):
+
+        subpartititon_text = """HASH (TO_DAYS (c2))
+                                SUBPARTITIONS 2(
+                                 PARTITION p0 VALUES LESS THAN (1990),
+                                 PARTITION p1 VALUES LESS THAN (2000),
+                                 PARTITION p2 VALUES LESS THAN MAXVALUE
+                             );"""
+
+        base_kwargs = dict(
+            engine="InnoDB",
+            default_charset="utf8",
+            partition_by="RANGE(YEAR(c2))",
+            subpartition_by=subpartititon_text,
+        )
+        dk = self._get_dialect_key()
+        kwargs = {f"{dk}_{key}": v for key, v in base_kwargs.items()}
+
+        def_table = Table(
+            "mysql_def",
+            metadata,
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs,
+        )
+
+        eq_(def_table.kwargs[f"{dk}_partition_by"], "RANGE(YEAR(c2))")
+        metadata.create_all(connection)
+
+        reflected = Table("mysql_def", MetaData(), autoload_with=connection)
+        ref_kw = self._norm_reflected_table(dk, reflected.kwargs)
+        opts = reflected.dialect_options[dk]
+
+        eq_(ref_kw["partition_by"], "range(year(c2))")
+        eq_(ref_kw["subpartition_by"], "hash(to_days(c2))")
+        eq_(ref_kw["subpartitions"], "2")
+        part_definitions = (
+            "PARTITION p0 VALUES LESS THAN (1990) ENGINE = InnoDB,"
+            " PARTITION p1 VALUES LESS THAN (2000) ENGINE = InnoDB,"
+            " PARTITION p2 VALUES LESS THAN MAXVALUE ENGINE = InnoDB"
+        )
+        eq_(
+            self._norm_str(opts["partition_definitions"], True),
+            part_definitions,
+        )
+
+    def test_reflection_with_subpartition_options_two(
+        self, connection, metadata
+    ):
+        partititon_text = """RANGE (YEAR (c2))
+                                SUBPARTITION BY HASH( TO_DAYS(c2))(
+                                 PARTITION p0 VALUES LESS THAN (1990)(
+                                 SUBPARTITION s0,
+                                 SUBPARTITION s1
+                                 ),
+                                 PARTITION p1 VALUES LESS THAN (2000)(
+                                 SUBPARTITION s2,
+                                 SUBPARTITION s3
+                                 ),
+                                PARTITION p2 VALUES LESS THAN MAXVALUE(
+                                 SUBPARTITION s4,
+                                 SUBPARTITION s5
+                                 )
+                             );"""
+
+        base_kwargs = dict(
+            engine="InnoDB",
+            default_charset="utf8",
+            partition_by=partititon_text,
+        )
+        dk = self._get_dialect_key()
+        kwargs = {f"{dk}_{key}": v for key, v in base_kwargs.items()}
+
+        def_table = Table(
+            "mysql_def",
+            metadata,
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs,
+        )
+        eq_(def_table.kwargs[f"{dk}_partition_by"], partititon_text)
+
+        metadata.create_all(connection)
+        reflected = Table("mysql_def", MetaData(), autoload_with=connection)
+
+        ref_kw = self._norm_reflected_table(dk, reflected.kwargs)
+        opts = reflected.dialect_options[dk]
+        eq_(ref_kw["partition_by"], "range(year(c2))")
+        eq_(ref_kw["subpartition_by"], "hash(to_days(c2))")
+
+        part_definitions = (
+            "PARTITION p0 VALUES LESS THAN (1990),"
+            " PARTITION p1 VALUES LESS THAN (2000),"
+            " PARTITION p2 VALUES LESS THAN MAXVALUE"
+        )
+        subpart_definitions = (
+            "SUBPARTITION s0 ENGINE = InnoDB,"
+            " SUBPARTITION s1 ENGINE = InnoDB,"
+            " SUBPARTITION s2 ENGINE = InnoDB,"
+            " SUBPARTITION s3 ENGINE = InnoDB,"
+            " SUBPARTITION s4 ENGINE = InnoDB,"
+            " SUBPARTITION s5 ENGINE = InnoDB"
+        )
+
+        eq_(
+            self._norm_str(opts["partition_definitions"], True),
+            part_definitions,
+        )
+        eq_(
+            self._norm_str(opts["subpartition_definitions"], True),
+            subpart_definitions,
+        )
 
     def test_reflection_on_include_columns(self, metadata, connection):
         """Test reflection of include_columns to be sure they respect case."""

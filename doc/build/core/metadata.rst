@@ -34,7 +34,11 @@ primary arguments are the table name, then the
 The remaining positional arguments are mostly
 :class:`~sqlalchemy.schema.Column` objects describing each column::
 
-    user = Table('user', metadata_obj,
+    from sqlalchemy import Table, Column, Integer, String
+
+    user = Table(
+        'user',
+        metadata_obj,
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16), nullable=False),
         Column('email_address', String(60)),
@@ -98,6 +102,10 @@ table include::
     # via string
     employees.c['employee_id']
 
+    # a tuple of columns may be returned using multiple strings
+    # (new in 2.0)
+    emp_id, name, type = employees.c['employee_id', "name", "type"]
+
     # iterate through all columns
     for c in employees.c:
         print(c)
@@ -112,9 +120,6 @@ table include::
 
     # access the table's MetaData:
     employees.metadata
-
-    # access the table's bound Engine or Connection, if its MetaData is bound:
-    employees.bind
 
     # access a column's name, type, nullable, primary key, foreign key
     employees.c.employee_id.name

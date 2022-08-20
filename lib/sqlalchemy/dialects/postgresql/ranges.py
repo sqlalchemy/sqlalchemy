@@ -5,28 +5,91 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+from __future__ import annotations
+
+import dataclasses
+from typing import Any
+from typing import Generic
+from typing import Optional
+from typing import TypeVar
 
 from ... import types as sqltypes
+from ...util import py310
+from ...util.typing import Literal
+
+_T = TypeVar("_T", bound=Any)
 
 
-__all__ = ("INT4RANGE", "INT8RANGE", "NUMRANGE")
+if py310:
+    dc_slots = {"slots": True}
+    dc_kwonly = {"kw_only": True}
+else:
+    dc_slots = {}
+    dc_kwonly = {}
 
 
-class RangeOperators:
+@dataclasses.dataclass(frozen=True, **dc_slots)
+class Range(Generic[_T]):
+    """Represent a PostgreSQL range.
+
+    E.g.::
+
+        r = Range(10, 50, bounds="()")
+
+    The calling style is similar to that of psycopg and psycopg2, in part
+    to allow easier migration from previous SQLAlchemy versions that used
+    these objects directly.
+
+    :param lower: Lower bound value, or None
+    :param upper: Upper bound value, or None
+    :param bounds: keyword-only, optional string value that is one of
+     ``"()"``, ``"[)"``, ``"(]"``, ``"[]"``.  Defaults to ``"[)"``.
+    :param empty: keyword-only, optional bool indicating this is an "empty"
+     range
+
+    .. versionadded:: 2.0
+
     """
-    This mixin provides functionality for the Range Operators
-    listed in the Range Operators table of the `PostgreSQL documentation`__
-    for Range Functions and Operators. It is used by all the range types
-    provided in the ``postgres`` dialect and can likely be used for
-    any range types you create yourself.
 
-    __ https://www.postgresql.org/docs/current/static/functions-range.html
+    lower: Optional[_T] = None
+    """the lower bound"""
 
-    No extra support is provided for the Range Functions listed in the Range
-    Functions table of the PostgreSQL documentation. For these, the normal
-    :func:`~sqlalchemy.sql.expression.func` object should be used.
+    upper: Optional[_T] = None
+    """the upper bound"""
 
+    bounds: Literal["()", "[)", "(]", "[]"] = dataclasses.field(
+        default="[)", **dc_kwonly
+    )
+    empty: bool = dataclasses.field(default=False, **dc_kwonly)
+
+    if not py310:
+
+        def __init__(
+            self, lower=None, upper=None, *, bounds="[)", empty=False
+        ):
+            # no __slots__ either so we can update dict
+            self.__dict__.update(
+                {
+                    "lower": lower,
+                    "upper": upper,
+                    "bounds": bounds,
+                    "empty": empty,
+                }
+            )
+
+    def __bool__(self) -> bool:
+        return self.empty
+
+
+class AbstractRange(sqltypes.TypeEngine):
     """
+    Base for PostgreSQL RANGE types.
+
+    .. seealso::
+
+        `PostgreSQL range functions <https://www.postgresql.org/docs/current/static/functions-range.html>`_
+
+    """  # noqa: E501
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for range types."""
@@ -34,9 +97,7 @@ class RangeOperators:
         def __ne__(self, other):
             "Boolean expression. Returns true if two ranges are not equal"
             if other is None:
-                return super(RangeOperators.comparator_factory, self).__ne__(
-                    other
-                )
+                return super().__ne__(other)
             else:
                 return self.expr.op("<>", is_comparison=True)(other)
 
@@ -104,37 +165,77 @@ class RangeOperators:
             return self.expr.op("+")(other)
 
 
-class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
+class AbstractMultiRange(AbstractRange):
+    """base for PostgreSQL MULTIRANGE types"""
+
+
+class INT4RANGE(AbstractRange):
     """Represent the PostgreSQL INT4RANGE type."""
 
     __visit_name__ = "INT4RANGE"
 
 
-class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
+class INT8RANGE(AbstractRange):
     """Represent the PostgreSQL INT8RANGE type."""
 
     __visit_name__ = "INT8RANGE"
 
 
-class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
+class NUMRANGE(AbstractRange):
     """Represent the PostgreSQL NUMRANGE type."""
 
     __visit_name__ = "NUMRANGE"
 
 
-class DATERANGE(RangeOperators, sqltypes.TypeEngine):
+class DATERANGE(AbstractRange):
     """Represent the PostgreSQL DATERANGE type."""
 
     __visit_name__ = "DATERANGE"
 
 
-class TSRANGE(RangeOperators, sqltypes.TypeEngine):
+class TSRANGE(AbstractRange):
     """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSRANGE"
 
 
-class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
+class TSTZRANGE(AbstractRange):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZRANGE"
+
+
+class INT4MULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL INT4MULTIRANGE type."""
+
+    __visit_name__ = "INT4MULTIRANGE"
+
+
+class INT8MULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL INT8MULTIRANGE type."""
+
+    __visit_name__ = "INT8MULTIRANGE"
+
+
+class NUMMULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL NUMMULTIRANGE type."""
+
+    __visit_name__ = "NUMMULTIRANGE"
+
+
+class DATEMULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL DATEMULTIRANGE type."""
+
+    __visit_name__ = "DATEMULTIRANGE"
+
+
+class TSMULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL TSRANGE type."""
+
+    __visit_name__ = "TSMULTIRANGE"
+
+
+class TSTZMULTIRANGE(AbstractMultiRange):
+    """Represent the PostgreSQL TSTZRANGE type."""
+
+    __visit_name__ = "TSTZMULTIRANGE"

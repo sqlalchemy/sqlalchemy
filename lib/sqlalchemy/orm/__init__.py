@@ -46,9 +46,11 @@ from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
 from .base import class_mapper as class_mapper
 from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
+from .base import LoaderCallableStatus as LoaderCallableStatus
 from .base import Mapped as Mapped
 from .base import NotExtension as NotExtension
 from .base import ORMDescriptor as ORMDescriptor
+from .base import PassiveFlag as PassiveFlag
 from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
@@ -82,8 +84,11 @@ from .interfaces import InspectionAttrInfo as InspectionAttrInfo
 from .interfaces import MANYTOMANY as MANYTOMANY
 from .interfaces import MANYTOONE as MANYTOONE
 from .interfaces import MapperProperty as MapperProperty
+from .interfaces import NO_KEY as NO_KEY
+from .interfaces import NO_VALUE as NO_VALUE
 from .interfaces import ONETOMANY as ONETOMANY
 from .interfaces import PropComparator as PropComparator
+from .interfaces import RelationshipDirection as RelationshipDirection
 from .interfaces import UserDefinedOption as UserDefinedOption
 from .loading import merge_frozen_result as merge_frozen_result
 from .loading import merge_result as merge_result

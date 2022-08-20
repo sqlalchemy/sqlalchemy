@@ -436,7 +436,7 @@ Valid values for ``isolation_level`` include:
 * ``SNAPSHOT`` - specific to SQL Server
 
 There are also more options for isolation level configurations, such as
-"sub-engine" objects linked to a main :class:`.Engine` which each apply
+"sub-engine" objects linked to a main :class:`_engine.Engine` which each apply
 different isolation level settings.  See the discussion at
 :ref:`dbapi_autocommit` for background.
 
@@ -2596,6 +2596,62 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += " PERSISTED"
         return text
 
+    def visit_set_table_comment(self, create):
+        schema = self.preparer.schema_for_object(create.element)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return (
+            "execute sp_addextendedproperty 'MS_Description', "
+            "{0}, 'schema', {1}, 'table', {2}".format(
+                self.sql_compiler.render_literal_value(
+                    create.element.comment, sqltypes.NVARCHAR()
+                ),
+                self.preparer.quote_schema(schema_name),
+                self.preparer.format_table(create.element, use_schema=False),
+            )
+        )
+
+    def visit_drop_table_comment(self, drop):
+        schema = self.preparer.schema_for_object(drop.element)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return (
+            "execute sp_dropextendedproperty 'MS_Description', 'schema', "
+            "{0}, 'table', {1}".format(
+                self.preparer.quote_schema(schema_name),
+                self.preparer.format_table(drop.element, use_schema=False),
+            )
+        )
+
+    def visit_set_column_comment(self, create):
+        schema = self.preparer.schema_for_object(create.element.table)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return (
+            "execute sp_addextendedproperty 'MS_Description', "
+            "{0}, 'schema', {1}, 'table', {2}, 'column', {3}".format(
+                self.sql_compiler.render_literal_value(
+                    create.element.comment, sqltypes.NVARCHAR()
+                ),
+                self.preparer.quote_schema(schema_name),
+                self.preparer.format_table(
+                    create.element.table, use_schema=False
+                ),
+                self.preparer.format_column(create.element),
+            )
+        )
+
+    def visit_drop_column_comment(self, drop):
+        schema = self.preparer.schema_for_object(drop.element.table)
+        schema_name = schema if schema else self.dialect.default_schema_name
+        return (
+            "execute sp_dropextendedproperty 'MS_Description', 'schema', "
+            "{0}, 'table', {1}, 'column', {2}".format(
+                self.preparer.quote_schema(schema_name),
+                self.preparer.format_table(
+                    drop.element.table, use_schema=False
+                ),
+                self.preparer.format_column(drop.element),
+            )
+        )
+
     def visit_create_sequence(self, create, **kw):
         prefix = None
         if create.element.data_type is not None:
@@ -2789,6 +2845,8 @@ class MSDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
 
+    supports_comments = True
+
     # supports_native_uuid is partial here, so we implement our
     # own impl type
 
@@ -2800,6 +2858,8 @@ class MSDialect(default.DefaultDialect):
     insert_returning = True
     update_returning = True
     delete_returning = True
+    update_returning_multifrom = True
+    delete_returning_multifrom = True
 
     colspecs = {
         sqltypes.DateTime: _MSDateTime,
@@ -2863,6 +2923,7 @@ class MSDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
+        ignore_no_transaction_on_rollback=False,
         **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2870,6 +2931,9 @@ class MSDialect(default.DefaultDialect):
 
         self.use_scope_identity = use_scope_identity
         self.deprecate_large_types = deprecate_large_types
+        self.ignore_no_transaction_on_rollback = (
+            ignore_no_transaction_on_rollback
+        )
 
         if legacy_schema_aliasing is not None:
             util.warn_deprecated(
@@ -2893,6 +2957,22 @@ class MSDialect(default.DefaultDialect):
         # SQL Server does not support RELEASE SAVEPOINT
         pass
 
+    def do_rollback(self, dbapi_connection):
+        try:
+            super(MSDialect, self).do_rollback(dbapi_connection)
+        except self.dbapi.ProgrammingError as e:
+            if self.ignore_no_transaction_on_rollback and re.match(
+                r".*\b111214\b", str(e)
+            ):
+                util.warn(
+                    "ProgrammingError 111214 "
+                    "'No corresponding transaction found.' "
+                    "has been suppressed via "
+                    "ignore_no_transaction_on_rollback=True"
+                )
+            else:
+                raise
+
     _isolation_lookup = set(
         [
             "SERIALIZABLE",
@@ -2914,46 +2994,41 @@ class MSDialect(default.DefaultDialect):
             dbapi_connection.commit()
 
     def get_isolation_level(self, dbapi_connection):
-        last_error = None
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT name FROM sys.system_views WHERE name IN "
+                "('dm_exec_sessions', 'dm_pdw_nodes_exec_sessions')"
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise NotImplementedError(
+                    "Can't fetch isolation level on this particular "
+                    "SQL Server version."
+                )
 
-        views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
-        for view in views:
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(
-                    f"""
-                  SELECT CASE transaction_isolation_level
+            view_name = "sys.{}".format(row[0])
+            cursor.execute(
+                """
+                    SELECT CASE transaction_isolation_level
                     WHEN 0 THEN NULL
                     WHEN 1 THEN 'READ UNCOMMITTED'
                     WHEN 2 THEN 'READ COMMITTED'
                     WHEN 3 THEN 'REPEATABLE READ'
                     WHEN 4 THEN 'SERIALIZABLE'
                     WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM {view}
+                    FROM {}
                     where session_id = @@SPID
-                  """
+                """.format(
+                    view_name
                 )
-                val = cursor.fetchone()[0]
-            except self.dbapi.Error as err:
-                # Python3 scoping rules
-                last_error = err
-                continue
-            else:
-                return val.upper()
-            finally:
-                cursor.close()
-        else:
-            # note that the NotImplementedError is caught by
-            # DefaultDialect, so the warning here is all that displays
-            util.warn(
-                "Could not fetch transaction isolation level, "
-                f"tried views: {views}; final error was: {last_error}"
             )
-            raise NotImplementedError(
-                "Can't fetch isolation level on this particular "
-                f"SQL Server version. tried views: {views}; final "
-                f"error was: {last_error}"
-            )
+            row = cursor.fetchone()
+            assert row is not None
+            val = row[0]
+        finally:
+            cursor.close()
+        return val.upper()
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
@@ -3245,6 +3320,33 @@ class MSDialect(default.DefaultDialect):
         else:
             raise exc.NoSuchTableError(f"{owner}.{viewname}")
 
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        schema_name = schema if schema else self.default_schema_name
+        COMMENT_SQL = """
+            SELECT cast(com.value as nvarchar(max))
+            FROM fn_listextendedproperty('MS_Description',
+                'schema', :schema, 'table', :table, NULL, NULL
+            ) as com;
+        """
+
+        comment = connection.execute(
+            sql.text(COMMENT_SQL).bindparams(
+                sql.bindparam("schema", schema_name, ischema.CoerceUnicode()),
+                sql.bindparam("table", table_name, ischema.CoerceUnicode()),
+            )
+        ).scalar()
+        if comment:
+            return {"text": comment}
+        else:
+            return self._default_or_error(
+                connection,
+                table_name,
+                None,
+                ReflectionDefaults.table_comment,
+                **kw,
+            )
+
     def _temp_table_name_like_pattern(self, tablename):
         # LIKE uses '%' to match zero or more characters and '_' to match any
         # single character. We want to match literal underscores, so T-SQL
@@ -3305,24 +3407,6 @@ class MSDialect(default.DefaultDialect):
             whereclause = columns.c.table_name == tablename
             full_name = columns.c.table_name
 
-        join = columns.join(
-            computed_cols,
-            onclause=sql.and_(
-                computed_cols.c.object_id == func.object_id(full_name),
-                computed_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
-            ),
-            isouter=True,
-        ).join(
-            identity_cols,
-            onclause=sql.and_(
-                identity_cols.c.object_id == func.object_id(full_name),
-                identity_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
-            ),
-            isouter=True,
-        )
-
         if self._supports_nvarchar_max:
             computed_definition = computed_cols.c.definition
         else:
@@ -3331,17 +3415,53 @@ class MSDialect(default.DefaultDialect):
                 computed_cols.c.definition, NVARCHAR(4000)
             )
 
+        object_id = func.object_id(full_name)
+
         s = (
             sql.select(
-                columns,
+                columns.c.column_name,
+                columns.c.data_type,
+                columns.c.is_nullable,
+                columns.c.character_maximum_length,
+                columns.c.numeric_precision,
+                columns.c.numeric_scale,
+                columns.c.column_default,
+                columns.c.collation_name,
                 computed_definition,
                 computed_cols.c.is_persisted,
                 identity_cols.c.is_identity,
                 identity_cols.c.seed_value,
                 identity_cols.c.increment_value,
+                ischema.extended_properties.c.value.label("comment"),
+            )
+            .select_from(columns)
+            .outerjoin(
+                computed_cols,
+                onclause=sql.and_(
+                    computed_cols.c.object_id == object_id,
+                    computed_cols.c.name
+                    == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                ),
+            )
+            .outerjoin(
+                identity_cols,
+                onclause=sql.and_(
+                    identity_cols.c.object_id == object_id,
+                    identity_cols.c.name
+                    == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                ),
+            )
+            .outerjoin(
+                ischema.extended_properties,
+                onclause=sql.and_(
+                    ischema.extended_properties.c["class"] == 1,
+                    ischema.extended_properties.c.major_id == object_id,
+                    ischema.extended_properties.c.minor_id
+                    == columns.c.ordinal_position,
+                    ischema.extended_properties.c.name == "MS_Description",
+                ),
             )
             .where(whereclause)
-            .select_from(join)
             .order_by(columns.c.ordinal_position)
         )
 
@@ -3362,6 +3482,7 @@ class MSDialect(default.DefaultDialect):
             is_identity = row[identity_cols.c.is_identity]
             identity_start = row[identity_cols.c.seed_value]
             identity_increment = row[identity_cols.c.increment_value]
+            comment = row[ischema.extended_properties.c.value]
 
             coltype = self.ischema_names.get(type_, None)
 
@@ -3403,6 +3524,7 @@ class MSDialect(default.DefaultDialect):
                 "nullable": nullable,
                 "default": default,
                 "autoincrement": is_identity is not None,
+                "comment": comment,
             }
 
             if definition is not None and is_persisted is not None:

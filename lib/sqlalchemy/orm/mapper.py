@@ -28,6 +28,7 @@ from typing import cast
 from typing import Collection
 from typing import Deque
 from typing import Dict
+from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
@@ -496,14 +497,17 @@ class Mapper(
           SQL expression used to determine the target class for an
           incoming row, when inheriting classes are present.
 
-          This value is commonly a :class:`_schema.Column` object that's
-          present in the mapped :class:`_schema.Table`::
+          May be specified as a string attribute name, or as a SQL
+          expression such as a :class:`_schema.Column` or in a Declarative
+          mapping a :func:`_orm.mapped_column` object.  It is typically
+          expected that the SQL expression corresponds to a column in the
+          base-most mapped :class:`.Table`::
 
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key=True)
-                discriminator = Column(String(50))
+                id: Mapped[int] = mapped_column(primary_key=True)
+                discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
                     "polymorphic_on":discriminator,
@@ -518,8 +522,8 @@ class Mapper(
             class Employee(Base):
                 __tablename__ = 'employee'
 
-                id = Column(Integer, primary_key=True)
-                discriminator = Column(String(50))
+                id: Mapped[int] = mapped_column(primary_key=True)
+                discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
                     "polymorphic_on":case([
@@ -529,24 +533,18 @@ class Mapper(
                     "polymorphic_identity":"employee"
                 }
 
-          It may also refer to any attribute
-          configured with :func:`.column_property`, or to the
-          string name of one::
+          It may also refer to any attribute using its string name,
+          which is of particular use when using annotated column
+          configurations::
 
                 class Employee(Base):
                     __tablename__ = 'employee'
 
-                    id = Column(Integer, primary_key=True)
-                    discriminator = Column(String(50))
-                    employee_type = column_property(
-                        case([
-                            (discriminator == "EN", "engineer"),
-                            (discriminator == "MA", "manager"),
-                        ], else_="employee")
-                    )
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    discriminator: Mapped[str]
 
                     __mapper_args__ = {
-                        "polymorphic_on": "employee_type",
+                        "polymorphic_on": "discriminator",
                         "polymorphic_identity": "employee"
                     }
 
@@ -2397,15 +2395,21 @@ class Mapper(
         )
 
     @HasMemoized.memoized_attribute
-    def _server_default_cols(self):
+    def _server_default_cols(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
         return dict(
             (
                 table,
                 frozenset(
                     [
-                        col.key
-                        for col in columns
+                        col
+                        for col in cast("Iterable[Column[Any]]", columns)
                         if col.server_default is not None
+                        or (
+                            col.default is not None
+                            and col.default.is_clause_element
+                        )
                     ]
                 ),
             )
@@ -2413,34 +2417,59 @@ class Mapper(
         )
 
     @HasMemoized.memoized_attribute
-    def _server_default_plus_onupdate_propkeys(self):
-        result = set()
-
-        for table, columns in self._cols_by_table.items():
-            for col in columns:
-                if (
-                    col.server_default is not None
-                    or col.server_onupdate is not None
-                ) and col in self._columntoproperty:
-                    result.add(self._columntoproperty[col].key)
-
-        return result
-
-    @HasMemoized.memoized_attribute
-    def _server_onupdate_default_cols(self):
+    def _server_onupdate_default_cols(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
         return dict(
             (
                 table,
                 frozenset(
                     [
-                        col.key
-                        for col in columns
+                        col
+                        for col in cast("Iterable[Column[Any]]", columns)
                         if col.server_onupdate is not None
+                        or (
+                            col.onupdate is not None
+                            and col.onupdate.is_clause_element
+                        )
                     ]
                 ),
             )
             for table, columns in self._cols_by_table.items()
         )
+
+    @HasMemoized.memoized_attribute
+    def _server_default_col_keys(self) -> Mapping[FromClause, FrozenSet[str]]:
+        return {
+            table: frozenset(col.key for col in cols if col.key is not None)
+            for table, cols in self._server_default_cols.items()
+        }
+
+    @HasMemoized.memoized_attribute
+    def _server_onupdate_default_col_keys(
+        self,
+    ) -> Mapping[FromClause, FrozenSet[str]]:
+        return {
+            table: frozenset(col.key for col in cols if col.key is not None)
+            for table, cols in self._server_onupdate_default_cols.items()
+        }
+
+    @HasMemoized.memoized_attribute
+    def _server_default_plus_onupdate_propkeys(self) -> Set[str]:
+        result: Set[str] = set()
+
+        col_to_property = self._columntoproperty
+        for table, columns in self._server_default_cols.items():
+            result.update(
+                col_to_property[col].key
+                for col in columns.intersection(col_to_property)
+            )
+        for table, columns in self._server_onupdate_default_cols.items():
+            result.update(
+                col_to_property[col].key
+                for col in columns.intersection(col_to_property)
+            )
+        return result
 
     @HasMemoized.memoized_instancemethod
     def __clause_element__(self):
@@ -3789,6 +3818,12 @@ def reconstructor(fn):
     method that will be called by the ORM after the instance has been
     loaded from the database or otherwise reconstituted.
 
+    .. tip::
+
+        The :func:`_orm.reconstructor` decorator makes use of the
+        :meth:`_orm.InstanceEvents.load` event hook, which can be
+        used directly.
+
     The reconstructor will be invoked with no arguments.  Scalar
     (non-collection) database-mapped attributes of the instance will
     be available for use within the function.  Eagerly-loaded
@@ -3798,8 +3833,6 @@ def reconstructor(fn):
     the activity within a reconstructor should be conservative.
 
     .. seealso::
-
-        :ref:`mapping_constructors`
 
         :meth:`.InstanceEvents.load`
 

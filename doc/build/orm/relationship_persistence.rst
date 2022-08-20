@@ -58,7 +58,8 @@ be placed on just *one* of the relationships, preferably the
 many-to-one side.  Below we illustrate
 a complete example, including two :class:`_schema.ForeignKey` constructs::
 
-    from sqlalchemy import Integer, ForeignKey, Column
+    from sqlalchemy import Integer, ForeignKey
+    from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
@@ -117,8 +118,9 @@ that also refers to this ``Widget``.  We can use a composite foreign key,
 as illustrated below::
 
     from sqlalchemy import Integer, ForeignKey, String, \
-            Column, UniqueConstraint, ForeignKeyConstraint
+            UniqueConstraint, ForeignKeyConstraint
     from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
 
     class Base(DeclarativeBase):

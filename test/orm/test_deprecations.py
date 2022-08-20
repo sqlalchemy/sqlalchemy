@@ -1594,7 +1594,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         # the statement where it would be able to create an adapter
         def go():
             with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context"
+                r"Using the Query.instances\(\) method without a context",
+                r"The Query.instances\(\) method is deprecated and will be "
+                r"removed in a future release.",
+                raise_on_any_unexpected=True,
             ):
                 result = list(
                     q.options(
@@ -1638,7 +1641,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context"
+                r"Using the Query.instances\(\) method without a context",
+                r"The Query.instances\(\) method is deprecated and will be "
+                r"removed in a future release.",
+                raise_on_any_unexpected=True,
             ):
                 result = list(
                     q.options(

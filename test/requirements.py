@@ -168,7 +168,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def comment_reflection(self):
-        return only_on(["postgresql", "mysql", "mariadb", "oracle"])
+        return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
 
     @property
     def constraint_comment_reflection(self):
@@ -467,11 +467,11 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def delete_from(self):
+    def delete_using(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
             ["postgresql", "mssql", "mysql", "mariadb"],
-            "Backend does not support DELETE..FROM",
+            "Backend does not support DELETE..USING or equivalent",
         )
 
     @property
@@ -1353,17 +1353,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def range_types(self):
-        def check_range_types(config):
-            if not self.psycopg_compatibility.enabled:
-                return False
-            try:
-                with config.db.connect() as conn:
-                    conn.exec_driver_sql("select '[1,2)'::int4range;").scalar()
-                return True
-            except Exception:
-                return False
+        return only_on(["+psycopg2", "+psycopg", "+asyncpg"])
 
-        return only_if(check_range_types)
+    @property
+    def multirange_types(self):
+        return only_on(["+psycopg", "+asyncpg"]) + only_on("postgresql >= 14")
 
     @property
     def async_dialect(self):
@@ -1414,14 +1408,14 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def native_hstore(self):
-        return self.psycopg_compatibility
+        return self.any_psycopg_compatibility
 
     @property
     def psycopg2_compatibility(self):
         return only_on(["postgresql+psycopg2", "postgresql+psycopg2cffi"])
 
     @property
-    def psycopg_compatibility(self):
+    def any_psycopg_compatibility(self):
         return only_on(
             [
                 "postgresql+psycopg2",
@@ -1431,8 +1425,12 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def psycopg_only_compatibility(self):
+        return only_on(["postgresql+psycopg"])
+
+    @property
     def psycopg_or_pg8000_compatibility(self):
-        return only_on([self.psycopg_compatibility, "postgresql+pg8000"])
+        return only_on([self.any_psycopg_compatibility, "postgresql+pg8000"])
 
     @property
     def percent_schema_names(self):

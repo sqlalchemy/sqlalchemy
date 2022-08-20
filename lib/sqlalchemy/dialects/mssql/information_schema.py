@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-
 from ... import cast
 from ... import Column
 from ... import MetaData
@@ -16,6 +15,7 @@ from ...sql import expression
 from ...types import Boolean
 from ...types import Integer
 from ...types import Numeric
+from ...types import NVARCHAR
 from ...types import String
 from ...types import TypeDecorator
 from ...types import Unicode
@@ -198,7 +198,7 @@ sequences = Table(
 )
 
 
-class IdentitySqlVariant(TypeDecorator):
+class NumericSqlVariant(TypeDecorator):
     r"""This type casts sql_variant columns in the identity_columns view
     to numeric. This is required because:
 
@@ -220,9 +220,34 @@ identity_columns = Table(
     Column("object_id", Integer),
     Column("name", CoerceUnicode),
     Column("is_identity", Boolean),
-    Column("seed_value", IdentitySqlVariant),
-    Column("increment_value", IdentitySqlVariant),
-    Column("last_value", IdentitySqlVariant),
+    Column("seed_value", NumericSqlVariant),
+    Column("increment_value", NumericSqlVariant),
+    Column("last_value", NumericSqlVariant),
     Column("is_not_for_replication", Boolean),
+    schema="sys",
+)
+
+
+class NVarcharSqlVariant(TypeDecorator):
+    """This type casts sql_variant columns in the extended_properties view
+    to nvarchar. This is required because pyodbc does not support sql_variant
+    """
+
+    impl = Unicode
+    cache_ok = True
+
+    def column_expression(self, colexpr):
+        return cast(colexpr, NVARCHAR)
+
+
+extended_properties = Table(
+    "extended_properties",
+    ischema,
+    Column("class", Integer),  # TINYINT
+    Column("class_desc", CoerceUnicode),
+    Column("major_id", Integer),
+    Column("minor_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("value", NVarcharSqlVariant),
     schema="sys",
 )

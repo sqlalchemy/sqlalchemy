@@ -125,6 +125,7 @@ from typing import TypeVar
 from typing import Union
 import weakref
 
+from .base import NO_KEY
 from .. import exc as sa_exc
 from .. import util
 from ..util.compat import inspect_getfullargspec
@@ -614,9 +615,7 @@ class CollectionAdapter:
     def __bool__(self):
         return True
 
-    __nonzero__ = __bool__
-
-    def fire_append_wo_mutation_event(self, item, initiator=None):
+    def fire_append_wo_mutation_event(self, item, initiator=None, key=NO_KEY):
         """Notify that a entity is entering the collection but is already
         present.
 
@@ -637,12 +636,12 @@ class CollectionAdapter:
                 self._reset_empty()
 
             return self.attr.fire_append_wo_mutation_event(
-                self.owner_state, self.owner_state.dict, item, initiator
+                self.owner_state, self.owner_state.dict, item, initiator, key
             )
         else:
             return item
 
-    def fire_append_event(self, item, initiator=None):
+    def fire_append_event(self, item, initiator=None, key=NO_KEY):
         """Notify that a entity has entered the collection.
 
         Initiator is a token owned by the InstrumentedAttribute that
@@ -659,12 +658,12 @@ class CollectionAdapter:
                 self._reset_empty()
 
             return self.attr.fire_append_event(
-                self.owner_state, self.owner_state.dict, item, initiator
+                self.owner_state, self.owner_state.dict, item, initiator, key
             )
         else:
             return item
 
-    def fire_remove_event(self, item, initiator=None):
+    def fire_remove_event(self, item, initiator=None, key=NO_KEY):
         """Notify that a entity has been removed from the collection.
 
         Initiator is the InstrumentedAttribute that initiated the membership
@@ -680,10 +679,10 @@ class CollectionAdapter:
                 self._reset_empty()
 
             self.attr.fire_remove_event(
-                self.owner_state, self.owner_state.dict, item, initiator
+                self.owner_state, self.owner_state.dict, item, initiator, key
             )
 
-    def fire_pre_remove_event(self, initiator=None):
+    def fire_pre_remove_event(self, initiator=None, key=NO_KEY):
         """Notify that an entity is about to be removed from the collection.
 
         Only called if the entity cannot be removed after calling
@@ -693,7 +692,10 @@ class CollectionAdapter:
         if self.invalidated:
             self._warn_invalidated()
         self.attr.fire_pre_remove_event(
-            self.owner_state, self.owner_state.dict, initiator=initiator
+            self.owner_state,
+            self.owner_state.dict,
+            initiator=initiator,
+            key=key,
         )
 
     def __getstate__(self):
@@ -1027,10 +1029,12 @@ def __set_wo_mutation(collection, item, _sa_initiator=None):
     if _sa_initiator is not False:
         executor = collection._sa_adapter
         if executor:
-            executor.fire_append_wo_mutation_event(item, _sa_initiator)
+            executor.fire_append_wo_mutation_event(
+                item, _sa_initiator, key=None
+            )
 
 
-def __set(collection, item, _sa_initiator=None):
+def __set(collection, item, _sa_initiator, key):
     """Run set events.
 
     This event always occurs before the collection is actually mutated.
@@ -1040,11 +1044,11 @@ def __set(collection, item, _sa_initiator=None):
     if _sa_initiator is not False:
         executor = collection._sa_adapter
         if executor:
-            item = executor.fire_append_event(item, _sa_initiator)
+            item = executor.fire_append_event(item, _sa_initiator, key=key)
     return item
 
 
-def __del(collection, item, _sa_initiator=None):
+def __del(collection, item, _sa_initiator, key):
     """Run del events.
 
     This event occurs before the collection is actually mutated, *except*
@@ -1056,7 +1060,7 @@ def __del(collection, item, _sa_initiator=None):
     if _sa_initiator is not False:
         executor = collection._sa_adapter
         if executor:
-            executor.fire_remove_event(item, _sa_initiator)
+            executor.fire_remove_event(item, _sa_initiator, key=key)
 
 
 def __before_pop(collection, _sa_initiator=None):
@@ -1075,7 +1079,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
     def append(fn):
         def append(self, item, _sa_initiator=None):
-            item = __set(self, item, _sa_initiator)
+            item = __set(self, item, _sa_initiator, NO_KEY)
             fn(self, item)
 
         _tidy(append)
@@ -1083,7 +1087,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
-            __del(self, value, _sa_initiator)
+            __del(self, value, _sa_initiator, NO_KEY)
             # testlib.pragma exempt:__eq__
             fn(self, value)
 
@@ -1092,7 +1096,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
     def insert(fn):
         def insert(self, index, value):
-            value = __set(self, value)
+            value = __set(self, value, None, index)
             fn(self, index, value)
 
         _tidy(insert)
@@ -1103,8 +1107,8 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             if not isinstance(index, slice):
                 existing = self[index]
                 if existing is not None:
-                    __del(self, existing)
-                value = __set(self, value)
+                    __del(self, existing, None, index)
+                value = __set(self, value, None, index)
                 fn(self, index, value)
             else:
                 # slice assignment requires __delitem__, insert, __len__
@@ -1146,14 +1150,14 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         def __delitem__(self, index):
             if not isinstance(index, slice):
                 item = self[index]
-                __del(self, item)
+                __del(self, item, None, index)
                 fn(self, index)
             else:
                 # slice deletion requires __getslice__ and a slice-groking
                 # __getitem__ for stepped deletion
                 # note: not breaking this into atomic dels
                 for item in self[index]:
-                    __del(self, item)
+                    __del(self, item, None, index)
                 fn(self, index)
 
         _tidy(__delitem__)
@@ -1182,7 +1186,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         def pop(self, index=-1):
             __before_pop(self)
             item = fn(self, index)
-            __del(self, item)
+            __del(self, item, None, index)
             return item
 
         _tidy(pop)
@@ -1191,7 +1195,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def clear(fn):
         def clear(self, index=-1):
             for item in self:
-                __del(self, item)
+                __del(self, item, None, index)
             fn(self)
 
         _tidy(clear)
@@ -1219,8 +1223,8 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def __setitem__(fn):
         def __setitem__(self, key, value, _sa_initiator=None):
             if key in self:
-                __del(self, self[key], _sa_initiator)
-            value = __set(self, value, _sa_initiator)
+                __del(self, self[key], _sa_initiator, key)
+            value = __set(self, value, _sa_initiator, key)
             fn(self, key, value)
 
         _tidy(__setitem__)
@@ -1229,7 +1233,7 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def __delitem__(fn):
         def __delitem__(self, key, _sa_initiator=None):
             if key in self:
-                __del(self, self[key], _sa_initiator)
+                __del(self, self[key], _sa_initiator, key)
             fn(self, key)
 
         _tidy(__delitem__)
@@ -1238,7 +1242,7 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def clear(fn):
         def clear(self):
             for key in self:
-                __del(self, self[key])
+                __del(self, self[key], None, key)
             fn(self)
 
         _tidy(clear)
@@ -1253,7 +1257,7 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             else:
                 item = fn(self, key, default)
             if _to_del:
-                __del(self, item)
+                __del(self, item, None, key)
             return item
 
         _tidy(pop)
@@ -1263,7 +1267,7 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         def popitem(self):
             __before_pop(self)
             item = fn(self)
-            __del(self, item[1])
+            __del(self, item[1], None, 1)
             return item
 
         _tidy(popitem)
@@ -1343,7 +1347,7 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def add(fn):
         def add(self, value, _sa_initiator=None):
             if value not in self:
-                value = __set(self, value, _sa_initiator)
+                value = __set(self, value, _sa_initiator, NO_KEY)
             else:
                 __set_wo_mutation(self, value, _sa_initiator)
             # testlib.pragma exempt:__hash__
@@ -1356,7 +1360,7 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         def discard(self, value, _sa_initiator=None):
             # testlib.pragma exempt:__hash__
             if value in self:
-                __del(self, value, _sa_initiator)
+                __del(self, value, _sa_initiator, NO_KEY)
                 # testlib.pragma exempt:__hash__
             fn(self, value)
 
@@ -1367,7 +1371,7 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         def remove(self, value, _sa_initiator=None):
             # testlib.pragma exempt:__hash__
             if value in self:
-                __del(self, value, _sa_initiator)
+                __del(self, value, _sa_initiator, NO_KEY)
             # testlib.pragma exempt:__hash__
             fn(self, value)
 
@@ -1380,7 +1384,7 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             item = fn(self)
             # for set in particular, we have no way to access the item
             # that will be popped before pop is called.
-            __del(self, item)
+            __del(self, item, None, NO_KEY)
             return item
 
         _tidy(pop)

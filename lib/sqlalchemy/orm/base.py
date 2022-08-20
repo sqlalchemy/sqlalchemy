@@ -191,12 +191,33 @@ class PassiveFlag(FastIntFlag):
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
 DEFAULT_STATE_ATTR = "_sa_instance_state"
 
-EXT_CONTINUE = util.symbol("EXT_CONTINUE")
-EXT_STOP = util.symbol("EXT_STOP")
-EXT_SKIP = util.symbol("EXT_SKIP")
+
+class EventConstants(Enum):
+    EXT_CONTINUE = 1
+    EXT_STOP = 2
+    EXT_SKIP = 3
+    NO_KEY = 4
+    """indicates an :class:`.AttributeEvent` event that did not have any
+    key argument.
+
+    .. versionadded:: 2.0
+
+    """
+
+
+EXT_CONTINUE, EXT_STOP, EXT_SKIP, NO_KEY = tuple(EventConstants)
 
 
 class RelationshipDirection(Enum):
+    """enumeration which indicates the 'direction' of a
+    :class:`_orm.Relationship`.
+
+    :class:`.RelationshipDirection` is accessible from the
+    :attr:`_orm.Relationship.direction` attribute of
+    :class:`_orm.Relationship`.
+
+    """
+
     ONETOMANY = 1
     """Indicates the one-to-many direction for a :func:`_orm.relationship`.
 

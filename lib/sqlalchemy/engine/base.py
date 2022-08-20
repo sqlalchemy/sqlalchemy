@@ -891,6 +891,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             :meth:`_engine.Connection.begin`
 
+            :ref:`session_begin_nested` - ORM support for SAVEPOINT
+
         """
         if self._transaction is None:
             self._autobegin()

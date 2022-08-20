@@ -178,7 +178,7 @@ To set using per-connection execution options::
             # ... work with transaction
 
 There are also more options for isolation level configurations, such as
-"sub-engine" objects linked to a main :class:`.Engine` which each apply
+"sub-engine" objects linked to a main :class:`_engine.Engine` which each apply
 different isolation level settings.  See the discussion at
 :ref:`dbapi_autocommit` for background.
 
@@ -1317,134 +1317,6 @@ itself::
 .. versionadded:: 1.4.0b2
 
 
-ARRAY Types
------------
-
-The PostgreSQL dialect supports arrays, both as multidimensional column types
-as well as array literals:
-
-* :class:`_postgresql.ARRAY` - ARRAY datatype
-
-* :class:`_postgresql.array` - array literal
-
-* :func:`_postgresql.array_agg` - ARRAY_AGG SQL function
-
-* :class:`_postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
-  function syntax.
-
-JSON Types
-----------
-
-The PostgreSQL dialect supports both JSON and JSONB datatypes, including
-psycopg2's native support and support for all of PostgreSQL's special
-operators:
-
-* :class:`_postgresql.JSON`
-
-* :class:`_postgresql.JSONB`
-
-HSTORE Type
------------
-
-The PostgreSQL HSTORE type as well as hstore literals are supported:
-
-* :class:`_postgresql.HSTORE` - HSTORE datatype
-
-* :class:`_postgresql.hstore` - hstore literal
-
-ENUM Types
-----------
-
-PostgreSQL has an independently creatable TYPE structure which is used
-to implement an enumerated type.   This approach introduces significant
-complexity on the SQLAlchemy side in terms of when this type should be
-CREATED and DROPPED.   The type object is also an independently reflectable
-entity.   The following sections should be consulted:
-
-* :class:`_postgresql.ENUM` - DDL and typing support for ENUM.
-
-* :meth:`.PGInspector.get_enums` - retrieve a listing of current ENUM types
-
-* :meth:`.postgresql.ENUM.create` , :meth:`.postgresql.ENUM.drop` - individual
-  CREATE and DROP commands for ENUM.
-
-.. _postgresql_array_of_enum:
-
-Using ENUM with ARRAY
-^^^^^^^^^^^^^^^^^^^^^
-
-The combination of ENUM and ARRAY is not directly supported by backend
-DBAPIs at this time.   Prior to SQLAlchemy 1.3.17, a special workaround
-was needed in order to allow this combination to work, described below.
-
-.. versionchanged:: 1.3.17 The combination of ENUM and ARRAY is now directly
-   handled by SQLAlchemy's implementation without any workarounds needed.
-
-.. sourcecode:: python
-
-    from sqlalchemy import TypeDecorator
-    from sqlalchemy.dialects.postgresql import ARRAY
-
-    class ArrayOfEnum(TypeDecorator):
-        impl = ARRAY
-
-        def bind_expression(self, bindvalue):
-            return sa.cast(bindvalue, self)
-
-        def result_processor(self, dialect, coltype):
-            super_rp = super(ArrayOfEnum, self).result_processor(
-                dialect, coltype)
-
-            def handle_raw_string(value):
-                inner = re.match(r"^{(.*)}$", value).group(1)
-                return inner.split(",") if inner else []
-
-            def process(value):
-                if value is None:
-                    return None
-                return super_rp(handle_raw_string(value))
-            return process
-
-E.g.::
-
-    Table(
-        'mydata', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', ArrayOfEnum(ENUM('a', 'b, 'c', name='myenum')))
-
-    )
-
-This type is not included as a built-in type as it would be incompatible
-with a DBAPI that suddenly decides to support ARRAY of ENUM directly in
-a new version.
-
-.. _postgresql_array_of_json:
-
-Using JSON/JSONB with ARRAY
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Similar to using ENUM, prior to SQLAlchemy 1.3.17, for an ARRAY of JSON/JSONB
-we need to render the appropriate CAST.   Current psycopg2 drivers accommodate
-the result set correctly without any special steps.
-
-.. versionchanged:: 1.3.17 The combination of JSON/JSONB and ARRAY is now
-   directly handled by SQLAlchemy's implementation without any workarounds
-   needed.
-
-.. sourcecode:: python
-
-    class CastingArray(ARRAY):
-        def bind_expression(self, bindvalue):
-            return sa.cast(bindvalue, self)
-
-E.g.::
-
-    Table(
-        'mydata', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', CastingArray(JSONB))
-    )
-
 
 """  # noqa: E501
 
@@ -1640,7 +1512,7 @@ colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
     sqltypes.Interval: INTERVAL,
     sqltypes.Enum: ENUM,
-    sqltypes.JSON.JSONPathType: _json.JSONPathType,
+    sqltypes.JSON.JSONPathType: _json.JSONPATH,
     sqltypes.JSON: _json.JSON,
     UUID: PGUuid,
 }
@@ -1656,6 +1528,12 @@ ischema_names = {
     "daterange": _ranges.DATERANGE,
     "tsrange": _ranges.TSRANGE,
     "tstzrange": _ranges.TSTZRANGE,
+    "int4multirange": _ranges.INT4MULTIRANGE,
+    "int8multirange": _ranges.INT8MULTIRANGE,
+    "nummultirange": _ranges.NUMMULTIRANGE,
+    "datemultirange": _ranges.DATEMULTIRANGE,
+    "tsmultirange": _ranges.TSMULTIRANGE,
+    "tstzmultirange": _ranges.TSTZMULTIRANGE,
     "integer": INTEGER,
     "bigint": BIGINT,
     "smallint": SMALLINT,
@@ -2500,6 +2378,24 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_JSONB(self, type_, **kw):
         return "JSONB"
 
+    def visit_INT4MULTIRANGE(self, type_, **kw):
+        return "INT4MULTIRANGE"
+
+    def visit_INT8MULTIRANGE(self, type_, **kw):
+        return "INT8MULTIRANGE"
+
+    def visit_NUMMULTIRANGE(self, type_, **kw):
+        return "NUMMULTIRANGE"
+
+    def visit_DATEMULTIRANGE(self, type_, **kw):
+        return "DATEMULTIRANGE"
+
+    def visit_TSMULTIRANGE(self, type_, **kw):
+        return "TSMULTIRANGE"
+
+    def visit_TSTZMULTIRANGE(self, type_, **kw):
+        return "TSTZMULTIRANGE"
+
     def visit_INT4RANGE(self, type_, **kw):
         return "INT4RANGE"
 
@@ -2606,6 +2502,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             inner,
             count=1,
         )
+
+    def visit_json_path(self, type_, **kw):
+        return self.visit_JSONPATH(type_, **kw)
+
+    def visit_JSONPATH(self, type_, **kw):
+        return "JSONPATH"
 
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
@@ -2924,6 +2826,8 @@ class PGDialect(default.DefaultDialect):
     update_returning = True
     delete_returning = True
     insert_returning = True
+    update_returning_multifrom = True
+    delete_returning_multifrom = True
 
     connection_characteristics = (
         default.DefaultDialect.connection_characteristics
