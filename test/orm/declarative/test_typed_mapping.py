@@ -19,6 +19,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
@@ -437,6 +438,14 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(User.__table__.c.lnl_rnnl.nullable)
         is_true(User.__table__.c.lnl_rnl.nullable)
 
+        # test #8410
+        is_false(User.__table__.c.lnnl_rndf._copy().nullable)
+        is_false(User.__table__.c.lnnl_rnnl._copy().nullable)
+        is_true(User.__table__.c.lnnl_rnl._copy().nullable)
+        is_true(User.__table__.c.lnl_rndf._copy().nullable)
+        is_false(User.__table__.c.lnl_rnnl._copy().nullable)
+        is_true(User.__table__.c.lnl_rnl._copy().nullable)
+
     def test_fwd_refs(self, decl_base: Type[DeclarativeBase]):
         class MyClass(decl_base):
             __tablename__ = "my_table"
@@ -652,6 +661,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("onupdate", func.foo()),
         ("server_onupdate", func.foo()),
         ("server_default", func.foo()),
+        ("server_default", Identity()),
         ("nullable", True),
         ("nullable", False),
         ("type", BigInteger()),
@@ -690,24 +700,89 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             else:
                 data: Mapped[element_ref]
 
+        data_col = Element.__table__.c.data
         if paramname in (
             "default",
             "onupdate",
             "server_default",
             "server_onupdate",
         ):
-            default = getattr(Element.__table__.c.data, paramname)
-            is_(default.arg, value)
-            is_(default.column, Element.__table__.c.data)
+            default = getattr(data_col, paramname)
+            if default.is_server_default and default.has_argument:
+                is_(default.arg, value)
+            is_(default.column, data_col)
         elif paramname == "type":
-            assert type(Element.__table__.c.data.type) is type(value)
+            assert type(data_col.type) is type(value)
         else:
-            is_(getattr(Element.__table__.c.data, paramname), value)
+            is_(getattr(data_col, paramname), value)
 
-        if paramname != "nullable":
-            is_(Element.__table__.c.data.nullable, optional)
+            # test _copy() for #8410
+            is_(getattr(data_col._copy(), paramname), value)
+
+        sd = data_col.server_default
+        if sd is not None and isinstance(sd, Identity):
+            if paramname == "nullable" and value:
+                is_(data_col.nullable, True)
+            else:
+                is_(data_col.nullable, False)
+        elif paramname != "nullable":
+            is_(data_col.nullable, optional)
         else:
-            is_(Element.__table__.c.data.nullable, value)
+            is_(data_col.nullable, value)
+
+    @testing.combinations(True, False, argnames="specify_identity")
+    @testing.combinations(True, False, None, argnames="specify_nullable")
+    @testing.combinations(True, False, argnames="optional")
+    @testing.combinations(True, False, argnames="include_existing_col")
+    def test_combine_args_from_pep593_identity_nullable(
+        self,
+        decl_base: Type[DeclarativeBase],
+        specify_identity,
+        specify_nullable,
+        optional,
+        include_existing_col,
+    ):
+        intpk = Annotated[int, mapped_column(primary_key=True)]
+
+        if specify_identity:
+            args = [Identity()]
+        else:
+            args = []
+
+        if specify_nullable is not None:
+            params = {"nullable": specify_nullable}
+        else:
+            params = {}
+
+        element_ref = Annotated[int, mapped_column(*args, **params)]
+        if optional:
+            element_ref = Optional[element_ref]
+
+        class Element(decl_base):
+            __tablename__ = "element"
+
+            id: Mapped[intpk]
+
+            if include_existing_col:
+                data: Mapped[element_ref] = mapped_column()
+            else:
+                data: Mapped[element_ref]
+
+        # test identity + _copy() for #8410
+        for col in (
+            Element.__table__.c.data,
+            Element.__table__.c.data._copy(),
+        ):
+            if specify_nullable is True:
+                is_(col.nullable, True)
+            elif specify_identity:
+                is_(col.nullable, False)
+            elif specify_nullable is False:
+                is_(col.nullable, False)
+            elif not optional:
+                is_(col.nullable, False)
+            else:
+                is_(col.nullable, True)
 
     @testing.combinations(
         ("default", lambda ctx: 10, lambda ctx: 15),

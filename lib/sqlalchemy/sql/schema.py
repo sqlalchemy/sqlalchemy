@@ -2241,9 +2241,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         if isinstance(type_, SchemaEventTarget):
             type_ = type_.copy(**kw)
 
-        if self._user_defined_nullable is not NULL_UNSPECIFIED:
-            column_kwargs["nullable"] = self._user_defined_nullable
-
         # TODO: DefaultGenerator is not copied here!  it's just used again
         # with _set_parent() pointing to the old column.  see the new
         # use of _copy() in the new _merge() method
@@ -2267,6 +2264,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             *args,
             **column_kwargs,
         )
+
+        # copy the state of "nullable" exactly, to accommodate for
+        # ORM flipping the .nullable flag directly
+        c.nullable = self.nullable
+        c._user_defined_nullable = self._user_defined_nullable
+
         return self._schema_item_copy(c)
 
     def _merge(self, other: Column[Any]) -> None:
@@ -2300,6 +2303,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             and other._user_defined_nullable is NULL_UNSPECIFIED
         ):
             other.nullable = self.nullable
+            other._user_defined_nullable = self._user_defined_nullable
 
         if self.default is not None and other.default is None:
             new_default = self.default._copy()

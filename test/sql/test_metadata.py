@@ -4223,31 +4223,83 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         source._merge(target)
 
-        if isinstance(value, (Computed, Identity)):
-            default = target.server_default
-            assert isinstance(default, type(value))
-        elif isinstance(value, Sequence):
-            default = target.default
-            assert isinstance(default, type(value))
-
-        elif paramname in (
-            "default",
-            "onupdate",
-            "server_default",
-            "server_onupdate",
+        target_copy = target._copy()
+        for col in (
+            target,
+            target_copy,
         ):
-            default = getattr(target, paramname)
-            is_(default.arg, value)
-            is_(default.column, target)
-        elif paramname == "type":
-            assert type(target.type) is type(value)
+            if isinstance(value, (Computed, Identity)):
+                default = col.server_default
+                assert isinstance(default, type(value))
+                is_(default.column, col)
+            elif isinstance(value, Sequence):
+                default = col.default
 
-            if isinstance(target.type, Enum):
-                target.name = "data"
-                t = Table("t", MetaData(), target)
-                assert CheckConstraint in [type(c) for c in t.constraints]
+                # TODO: sequence mutated in place
+                is_(default.column, target_copy)
+
+                assert isinstance(default, type(value))
+
+            elif paramname in (
+                "default",
+                "onupdate",
+                "server_default",
+                "server_onupdate",
+            ):
+                default = getattr(col, paramname)
+                is_(default.arg, value)
+
+                # TODO: _copy() seems to note that it isn't copying
+                # server defaults or defaults outside of Computed, Identity,
+                # so here it's getting mutated in place.   this is a bug
+                is_(default.column, target_copy)
+
+            elif paramname == "type":
+                assert type(col.type) is type(value)
+
+                if isinstance(col.type, Enum):
+                    col.name = "data"
+                    t = Table("t", MetaData(), col)
+                    assert CheckConstraint in [type(c) for c in t.constraints]
+            else:
+                is_(getattr(col, paramname), value)
+
+    @testing.combinations(True, False, argnames="specify_identity")
+    @testing.combinations(True, False, None, argnames="specify_nullable")
+    def test_merge_column_identity(
+        self,
+        specify_identity,
+        specify_nullable,
+    ):
+        if specify_identity:
+            args = [Identity()]
         else:
-            is_(getattr(target, paramname), value)
+            args = []
+
+        if specify_nullable is not None:
+            params = {"nullable": specify_nullable}
+        else:
+            params = {}
+
+        source = Column(*args, **params)
+
+        target = Column()
+
+        source._merge(target)
+
+        # test identity + _copy() for #8410
+        for col in (
+            target,
+            target._copy(),
+        ):
+            if specify_nullable is True:
+                is_(col.nullable, True)
+            elif specify_identity:
+                is_(col.nullable, False)
+            elif specify_nullable is False:
+                is_(col.nullable, False)
+            else:
+                is_(col.nullable, True)
 
     @testing.combinations(
         ("default", lambda ctx: 10, lambda ctx: 15),
