@@ -2396,19 +2396,24 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
         insp = inspect(connection)
 
+        get_indexes = insp.get_indexes("t")
         eq_(
-            insp.get_indexes("t"),
+            get_indexes,
             [
                 {
                     "name": "t_idx",
                     "column_names": ["x"],
                     "include_columns": ["y"],
                     "unique": False,
-                    "dialect_options": {
-                        "%s_include" % connection.engine.name: ["y"]
-                    },
+                    "dialect_options": mock.ANY,
                 }
             ],
+        )
+        eq_(
+            get_indexes[0]["dialect_options"][
+                "%s_include" % connection.engine.name
+            ],
+            ["y"],
         )
 
         t2 = Table("t", MetaData(), autoload_with=connection)
