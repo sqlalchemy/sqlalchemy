@@ -115,7 +115,7 @@ autodoc_class_signature = "separated"
 
 autodoc_default_options = {
     "exclude-members": "__new__",
-    "undoc-members": False,
+    "no-undoc-members": True,
 }
 
 # enable "annotation" indicator.  doesn't actually use this
