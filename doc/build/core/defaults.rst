@@ -656,7 +656,7 @@ shares most of its option to control the database behaviour with
 
 Example::
 
-    from sqlalchemy import Table, Column, MetaData, Integer, Computed
+    from sqlalchemy import Table, Column, MetaData, Integer, Identity, String
 
     metadata = MetaData()
 
