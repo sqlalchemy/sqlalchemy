@@ -572,7 +572,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         in the columns or where clause, for a backend such as PostgreSQL.
 
         For a full table-valued expression, use the
-        :meth:`_function.FunctionElement.table_valued` method first to
+        :meth:`_functions.FunctionElement.table_valued` method first to
         establish named columns.
 
         e.g.::
