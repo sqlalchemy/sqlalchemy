@@ -25,9 +25,6 @@ namespace as well as classes that may be used for extensibility.
    :exclude-members: inherit_cache, __new__
 
 .. autoclass:: Function
-   :members:
-   :inherited-members: ColumnElement
-   :exclude-members: inherit_cache, __new__
 
 .. autoclass:: FunctionElement
    :members:
