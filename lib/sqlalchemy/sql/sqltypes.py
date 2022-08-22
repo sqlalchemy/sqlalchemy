@@ -996,6 +996,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         inherit_schema: bool = False,
         quote: Optional[bool] = None,
         _create_events: bool = True,
+        _adapted_from: Optional[SchemaType] = None,
     ):
         if name is not None:
             self.name = quoted_name(name, quote)
@@ -1017,6 +1018,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 "after_drop",
                 util.portable_instancemethod(self._on_metadata_drop),
             )
+
+        if _adapted_from:
+            self.dispatch = self.dispatch._join(_adapted_from.dispatch)
 
     def _set_parent(self, column, **kw):
         # set parent hook is when this type is associated with a column.
@@ -1106,6 +1110,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
     ) -> TypeEngine[Any]:
         kw.setdefault("_create_events", False)
+        kw.setdefault("_adapted_from", self)
         return super().adapt(cls, **kw)
 
     def create(self, bind, checkfirst=False):
@@ -1457,6 +1462,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             inherit_schema=kw.pop("inherit_schema", False),
             quote=kw.pop("quote", None),
             _create_events=kw.pop("_create_events", True),
+            _adapted_from=kw.pop("_adapted_from", None),
         )
 
     def _parse_into_values(self, enums, kw):
@@ -1820,6 +1826,7 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         create_constraint: bool = False,
         name: Optional[str] = None,
         _create_events: bool = True,
+        _adapted_from: Optional[SchemaType] = None,
     ):
         """Construct a Boolean.
 
@@ -1845,6 +1852,8 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         self.create_constraint = create_constraint
         self.name = name
         self._create_events = _create_events
+        if _adapted_from:
+            self.dispatch = self.dispatch._join(_adapted_from.dispatch)
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):

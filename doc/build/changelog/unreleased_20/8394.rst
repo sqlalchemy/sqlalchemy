@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, schema
+    :tickets: 8394
+
+    Implemented the DDL event hooks :meth:`.DDLEvents.before_create`,
+    :meth:`.DDLEvents.after_create`, :meth:`.DDLEvents.before_drop`,
+    :meth:`.DDLEvents.after_drop` for all :class:`.SchemaItem` objects that
+    include a distinct CREATE or DROP step, when that step is invoked as a
+    distinct SQL statement, including for :class:`.ForeignKeyConstraint`,
+    :class:`.Sequence`, :class:`.Index`, and PostgreSQL's
+    :class:`_postgresql.ENUM`.

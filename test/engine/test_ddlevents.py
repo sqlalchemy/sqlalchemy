@@ -15,6 +15,8 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import DropConstraint
+from sqlalchemy.schema import ForeignKeyConstraint
+from sqlalchemy.schema import Sequence
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -374,6 +376,222 @@ class DDLEventTest(fixtures.TestBase):
             ],
         )
         eq_(metadata_canary.mock_calls, [])
+
+
+class DDLEventHarness:
+    creates_implicitly_with_table = True
+    drops_implicitly_with_table = True
+
+    @testing.fixture
+    def produce_subject(self):
+        raise NotImplementedError()
+
+    @testing.fixture
+    def produce_event_target(self, produce_subject, connection):
+        """subclasses may want to override this for cases where the target
+        sent to the event is not the same object as that which was
+        listened on.
+
+        the example here is for :class:`.SchemaType` objects like
+        :class:`.Enum` that produce a dialect-specific implementation
+        which is where the actual CREATE/DROP happens.
+
+        """
+        return produce_subject
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        raise NotImplementedError()
+
+    def test_table_integrated(
+        self,
+        metadata,
+        connection,
+        produce_subject,
+        produce_table_integrated_subject,
+        produce_event_target,
+    ):
+        subject = produce_subject
+        assert_subject = produce_event_target
+
+        canary = mock.Mock()
+        event.listen(subject, "before_create", canary.before_create)
+        event.listen(subject, "after_create", canary.after_create)
+        event.listen(subject, "before_drop", canary.before_drop)
+        event.listen(subject, "after_drop", canary.after_drop)
+
+        metadata.create_all(connection, checkfirst=False)
+
+        if self.creates_implicitly_with_table:
+            create_calls = []
+        else:
+            create_calls = [
+                mock.call.before_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+                mock.call.after_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+            ]
+        eq_(canary.mock_calls, create_calls)
+        metadata.drop_all(connection, checkfirst=False)
+
+        if self.drops_implicitly_with_table:
+            eq_(canary.mock_calls, create_calls + [])
+        else:
+            eq_(
+                canary.mock_calls,
+                create_calls
+                + [
+                    mock.call.before_drop(
+                        assert_subject,
+                        connection,
+                        _ddl_runner=mock.ANY,
+                    ),
+                    mock.call.after_drop(
+                        assert_subject,
+                        connection,
+                        _ddl_runner=mock.ANY,
+                    ),
+                ],
+            )
+
+
+class DDLEventWCreateHarness(DDLEventHarness):
+
+    requires_table_to_exist = True
+
+    def test_straight_create_drop(
+        self,
+        metadata,
+        connection,
+        produce_subject,
+        produce_table_integrated_subject,
+        produce_event_target,
+    ):
+        subject = produce_subject
+        assert_subject = produce_event_target
+
+        if self.requires_table_to_exist:
+            metadata.create_all(connection, checkfirst=False)
+            subject.drop(connection)
+
+        canary = mock.Mock()
+        event.listen(subject, "before_create", canary.before_create)
+        event.listen(subject, "after_create", canary.after_create)
+        event.listen(subject, "before_drop", canary.before_drop)
+        event.listen(subject, "after_drop", canary.after_drop)
+
+        subject.create(connection)
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+                mock.call.after_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+            ],
+        )
+
+        subject.drop(connection)
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.before_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+                mock.call.after_create(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+                mock.call.before_drop(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+                mock.call.after_drop(
+                    assert_subject,
+                    connection,
+                    _ddl_runner=mock.ANY,
+                ),
+            ],
+        )
+
+
+class SequenceDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+    __requires__ = ("sequences",)
+
+    creates_implicitly_with_table = False
+    drops_implicitly_with_table = False
+    supports_standalone_create = True
+
+    @testing.fixture
+    def produce_subject(self):
+        return Sequence("my_seq")
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        return Table(
+            "t",
+            metadata,
+            Column("id", Integer, produce_subject, primary_key=True),
+        )
+
+
+class IndexDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+    creates_implicitly_with_table = False
+    drops_implicitly_with_table = True
+    supports_standalone_create = False
+
+    @testing.fixture
+    def produce_subject(self):
+        return Index("my_idx", "key")
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        return Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("key", String(50)),
+            produce_subject,
+        )
+
+
+class ForeignKeyConstraintDDLEventTest(DDLEventHarness, fixtures.TestBase):
+    creates_implicitly_with_table = True
+    drops_implicitly_with_table = True
+    supports_standalone_create = False
+
+    @testing.fixture
+    def produce_subject(self):
+        return ForeignKeyConstraint(["related_id"], ["related.id"], name="fkc")
+
+    @testing.fixture
+    def produce_table_integrated_subject(self, metadata, produce_subject):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("related_id", Integer),
+            produce_subject,
+        )
+        Table("related", metadata, Column("id", Integer, primary_key=True))
 
 
 class DDLExecutionTest(AssertsCompiledSQL, fixtures.TestBase):
