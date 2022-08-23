@@ -231,6 +231,7 @@ class DefaultDialect(interfaces.Dialect):
     CACHING_DISABLED = CACHING_DISABLED
     NO_CACHE_KEY = NO_CACHE_KEY
     NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
+    has_terminate = False
 
     @util.deprecated_params(
         convert_unicode=(
@@ -683,6 +684,9 @@ class DefaultDialect(interfaces.Dialect):
 
     def do_commit(self, dbapi_connection):
         dbapi_connection.commit()
+
+    def do_terminate(self, dbapi_connection):
+        self.do_close(dbapi_connection)
 
     def do_close(self, dbapi_connection):
         dbapi_connection.close()

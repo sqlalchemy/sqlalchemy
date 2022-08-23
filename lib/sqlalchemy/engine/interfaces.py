@@ -583,6 +583,23 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def do_terminate(self, dbapi_connection):
+        """Provide an implementation of ``connection.close()`` that tries as
+        much as possible to not block, given a DBAPI
+        connection.
+
+        In the vast majority of cases this just calls .close(), however
+        for some asyncio dialects may call upon different API features.
+
+        This hook is called by the :class:`_pool.Pool`
+        when a connection is being recycled or has been invalidated.
+
+        .. versionadded:: 1.4.41
+
+        """
+
+        raise NotImplementedError()
+
     def do_close(self, dbapi_connection):
         """Provide an implementation of ``connection.close()``, given a DBAPI
         connection.

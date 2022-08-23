@@ -748,6 +748,9 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
 
         self.await_(self._connection.close())
 
+    def terminate(self):
+        self._connection.terminate()
+
 
 class AsyncAdaptFallback_asyncpg_connection(AsyncAdapt_asyncpg_connection):
     __slots__ = ()
@@ -891,6 +894,7 @@ class PGDialect_asyncpg(PGDialect):
     supports_server_side_cursors = True
 
     supports_unicode_binds = True
+    has_terminate = True
 
     default_paramstyle = "format"
     supports_sane_multi_rowcount = False
@@ -986,6 +990,9 @@ class PGDialect_asyncpg(PGDialect):
 
     def get_deferrable(self, connection):
         return connection.deferrable
+
+    def do_terminate(self, dbapi_connection) -> None:
+        dbapi_connection.terminate()
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")

@@ -92,10 +92,13 @@ class PoolTestBase(fixtures.TestBase):
     def _queuepool_dbapi_fixture(self, **kw):
         dbapi = MockDBAPI()
         _is_asyncio = kw.pop("_is_asyncio", False)
+        _has_terminate = kw.pop("_has_terminate", False)
         p = pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw)
         if _is_asyncio:
             p._is_asyncio = True
             p._dialect = _AsyncConnDialect()
+        if _has_terminate:
+            p._dialect.has_terminate = True
         return dbapi, p
 
 
@@ -468,8 +471,10 @@ class PoolEventsTest(PoolTestBase):
 
         return p, canary
 
-    def _checkin_event_fixture(self, _is_asyncio=False):
-        p = self._queuepool_fixture(_is_asyncio=_is_asyncio)
+    def _checkin_event_fixture(self, _is_asyncio=False, _has_terminate=False):
+        p = self._queuepool_fixture(
+            _is_asyncio=_is_asyncio, _has_terminate=_has_terminate
+        )
         canary = []
 
         @event.listens_for(p, "checkin")
@@ -744,9 +749,13 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
-    @testing.combinations((True, testing.requires.python3), (False,))
-    def test_checkin_event_gc(self, detach_gced):
-        p, canary = self._checkin_event_fixture(_is_asyncio=detach_gced)
+    @testing.combinations((True,), (False,), argnames="is_asyncio")
+    @testing.combinations((True,), (False,), argnames="has_terminate")
+    @testing.requires.python3
+    def test_checkin_event_gc(self, is_asyncio, has_terminate):
+        p, canary = self._checkin_event_fixture(
+            _is_asyncio=is_asyncio, _has_terminate=has_terminate
+        )
 
         c1 = p.connect()
 
@@ -755,6 +764,8 @@ class PoolEventsTest(PoolTestBase):
         eq_(canary, [])
         del c1
         lazy_gc()
+
+        detach_gced = is_asyncio and not has_terminate
 
         if detach_gced:
             # "close_detached" is not called because for asyncio the
