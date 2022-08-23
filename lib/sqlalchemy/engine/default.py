@@ -237,6 +237,8 @@ class DefaultDialect(Dialect):
 
     is_async = False
 
+    has_terminate = False
+
     # TODO: this is not to be part of 2.0.  implement rudimentary binary
     # literals for SQLite, PostgreSQL, MySQL only within
     # _Binary.literal_processor
@@ -619,6 +621,9 @@ class DefaultDialect(Dialect):
 
     def do_commit(self, dbapi_connection):
         dbapi_connection.commit()
+
+    def do_terminate(self, dbapi_connection):
+        self.do_close(dbapi_connection)
 
     def do_close(self, dbapi_connection):
         dbapi_connection.close()

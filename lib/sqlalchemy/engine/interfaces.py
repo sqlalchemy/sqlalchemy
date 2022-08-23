@@ -966,6 +966,10 @@ class Dialect(EventTarget):
     is_async: bool
     """Whether or not this dialect is intended for asyncio use."""
 
+    has_terminate: bool
+    """Whether or not this dialect has a separate "terminate" implementation
+    that does not block or require awaiting."""
+
     engine_config_types: Mapping[str, Any]
     """a mapping of string keys that can be in an engine config linked to
     type conversion functions.
@@ -1779,6 +1783,23 @@ class Dialect(EventTarget):
 
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
+
+        """
+
+        raise NotImplementedError()
+
+    def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:
+        """Provide an implementation of ``connection.close()`` that tries as
+        much as possible to not block, given a DBAPI
+        connection.
+
+        In the vast majority of cases this just calls .close(), however
+        for some asyncio dialects may call upon different API features.
+
+        This hook is called by the :class:`_pool.Pool`
+        when a connection is being recycled or has been invalidated.
+
+        .. versionadded:: 1.4.41
 
         """
 

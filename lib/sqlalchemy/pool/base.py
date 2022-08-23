@@ -72,12 +72,16 @@ class _ConnDialect:
     """
 
     is_async = False
+    has_terminate = False
 
     def do_rollback(self, dbapi_connection: PoolProxiedConnection) -> None:
         dbapi_connection.rollback()
 
     def do_commit(self, dbapi_connection: PoolProxiedConnection) -> None:
         dbapi_connection.commit()
+
+    def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:
+        dbapi_connection.close()
 
     def do_close(self, dbapi_connection: DBAPIConnection) -> None:
         dbapi_connection.close()
@@ -310,10 +314,19 @@ class Pool(log.Identified, event.EventTarget):
             creator_fn = cast(_CreatorFnType, creator)
             return lambda rec: creator_fn()
 
-    def _close_connection(self, connection: DBAPIConnection) -> None:
-        self.logger.debug("Closing connection %r", connection)
+    def _close_connection(
+        self, connection: DBAPIConnection, *, terminate: bool = False
+    ) -> None:
+        self.logger.debug(
+            "%s connection %r",
+            "Hard-closing" if terminate else "Closing",
+            connection,
+        )
         try:
-            self._dialect.do_close(connection)
+            if terminate:
+                self._dialect.do_terminate(connection)
+            else:
+                self._dialect.do_close(connection)
         except Exception:
             self.logger.error(
                 "Exception closing connection %r", connection, exc_info=True
@@ -742,7 +755,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         if soft:
             self._soft_invalidate_time = time.time()
         else:
-            self.__close()
+            self.__close(terminate=True)
             self.dbapi_connection = None
 
     def get_connection(self) -> DBAPIConnection:
@@ -789,7 +802,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
             recycle = True
 
         if recycle:
-            self.__close()
+            self.__close(terminate=True)
             self.info.clear()  # type: ignore  # our info is always present
 
             self.__connect()
@@ -804,12 +817,14 @@ class _ConnectionRecord(ConnectionPoolEntry):
             or (self._soft_invalidate_time > self.starttime)
         )
 
-    def __close(self) -> None:
+    def __close(self, *, terminate: bool = False) -> None:
         self.finalize_callback.clear()
         if self.__pool.dispatch.close:
             self.__pool.dispatch.close(self.dbapi_connection, self)
         assert self.dbapi_connection is not None
-        self.__pool._close_connection(self.dbapi_connection)
+        self.__pool._close_connection(
+            self.dbapi_connection, terminate=terminate
+        )
         self.dbapi_connection = None
 
     def __connect(self) -> None:
@@ -877,7 +892,9 @@ def _finalize_fairy(
         dbapi_connection = connection_record.dbapi_connection
 
     # null pool is not _is_asyncio but can be used also with async dialects
-    dont_restore_gced = pool._dialect.is_async
+    dont_restore_gced = (
+        pool._dialect.is_async and not pool._dialect.has_terminate
+    )
 
     if dont_restore_gced:
         detach = connection_record is None or is_gc_cleanup
@@ -923,8 +940,9 @@ def _finalize_fairy(
                     message = (
                         "The garbage collector is trying to clean up "
                         f"connection {dbapi_connection!r}. This feature is "
-                        "unsupported on async "
-                        "dbapi, since no IO can be performed at this stage to "
+                        "unsupported on asyncio "
+                        'dbapis that lack a "terminate" feature, since no '
+                        "IO can be performed at this stage to "
                         "reset the connection. Please close out all "
                         "connections when they are no longer used, calling "
                         "``close()`` or using a context manager to "
