@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 8419
+
+    Integrated support for asyncpg's ``terminate()`` method call for cases
+    where the connection pool is recycling a possibly timed-out connection,
+    where a connection is being garbage collected that wasn't gracefully
+    closed, as well as when the connection has been invalidated. This allows
+    asyncpg to abandon the connection without waiting for a response that may
+    incur long timeouts.

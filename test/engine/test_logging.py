@@ -453,7 +453,7 @@ class PoolLoggingTest(fixtures.TestBase):
                 "Connection %r checked out from pool",
                 "Connection %r being returned to pool%s",
                 "Connection %s rollback-on-return",
-                "Closing connection %r",
+                "%s connection %r",
             ]
             + (["Pool disposed. %s"] if dispose else []),
         )
