@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, mssql
+    :tickets: 8288
+
+    Implemented reflection of the "clustered index" flag ``mssql_clustered``
+    for the SQL Server dialect. Pull request courtesy John Lennox.
