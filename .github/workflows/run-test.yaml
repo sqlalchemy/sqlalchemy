@@ -37,6 +37,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
+          - "3.11.0-rc - 3.11"
           # waiting on https://foss.heptapod.net/pypy/pypy/-/issues/3690
           # which also seems to be in 3.9
           # - "pypy-3.9"
@@ -105,6 +106,7 @@ jobs:
           - cp38-cp38
           - cp39-cp39
           - cp310-cp310
+          - cp311-cp311
         build-type:
           - "cext"
           - "nocext"
@@ -146,7 +148,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-
+          - "3.11.0-rc - 3.11"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
@@ -178,7 +180,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.9"
+          - "3.10"
 
       fail-fast: false
 

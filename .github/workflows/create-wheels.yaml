@@ -29,6 +29,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
+          - "3.11.0-rc - 3.11"
         architecture:
           - x64
           - x86
@@ -137,6 +138,7 @@ jobs:
           - cp38-cp38
           - cp39-cp39
           - cp310-cp310
+          - cp311-cp311
         architecture:
           - x64
 
@@ -291,6 +293,7 @@ jobs:
           - cp38-cp38
           - cp39-cp39
           - cp310-cp310
+          - cp311-cp311
 
       fail-fast: false
 
