@@ -381,7 +381,7 @@ Selecting Entities from Subqueries
 -----------------------------------
 
 The :func:`_orm.aliased` construct discussed in the previous section
-can be used with any :class:`_sql.Subuqery` construct that comes from a
+can be used with any :class:`_sql.Subquery` construct that comes from a
 method such as :meth:`_sql.Select.subquery` to link ORM entities to the
 columns returned by that subquery; there must be a **column correspondence**
 relationship between the columns delivered by the subquery and the columns
