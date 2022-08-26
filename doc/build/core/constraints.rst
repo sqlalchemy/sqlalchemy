@@ -78,7 +78,7 @@ And then a table ``invoice_item`` with a composite foreign key referencing
         Column('item_name', String(60), nullable=False),
         Column('invoice_id', Integer, nullable=False),
         Column('ref_num', Integer, nullable=False),
-        ForeignKeyConstraint(['invoice_id', 'ref_num'], ['invoice.invoice_id', 'invoice.ref_num'])
+        ForeignKeyConstraint(('invoice_id', 'ref_num'), ['invoice.invoice_id', 'invoice.ref_num'])
     )
 
 It's important to note that the
