@@ -1,4 +1,3 @@
-import asyncio
 import inspect as stdlib_inspect
 
 from sqlalchemy import Column
@@ -507,7 +506,8 @@ class AsyncEngineTest(EngineFixture):
     @async_test
     async def test_init_once_concurrency(self, async_engine):
         async with async_engine.connect() as c1, async_engine.connect() as c2:
-            await asyncio.wait([c1, c2])
+            eq_(await c1.scalar(select(1)), 1)
+            eq_(await c2.scalar(select(1)), 1)
 
     @async_test
     async def test_connect_ctxmanager(self, async_engine):
