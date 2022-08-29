@@ -264,6 +264,7 @@ class ColumnLoader(LoaderStrategy):
     ):
         # look through list of columns represented here
         # to see which, if any, is present in the row.
+
         for col in self.columns:
             if adapter:
                 col = adapter.columns[col]

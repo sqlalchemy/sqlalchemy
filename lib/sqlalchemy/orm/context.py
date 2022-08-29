@@ -490,6 +490,10 @@ class ORMCompileState(AbstractORMCompileState):
         ]
 
     def _create_with_polymorphic_adapter(self, ext_info, selectable):
+        """given MapperEntity or ORMColumnEntity, setup polymorphic loading
+        if appropriate
+
+        """
         if (
             not ext_info.is_aliased_class
             and ext_info.mapper.persist_selectable
@@ -2423,14 +2427,7 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic_mappers = ext_info.with_polymorphic_mappers
         self._polymorphic_discriminator = ext_info.polymorphic_on
 
-        if (
-            mapper.with_polymorphic
-            # controversy - only if inheriting mapper is also
-            # polymorphic?
-            # or (mapper.inherits and mapper.inherits.with_polymorphic)
-            or mapper.inherits
-            or mapper._requires_row_aliasing
-        ):
+        if mapper._should_select_with_poly_adapter:
             compile_state._create_with_polymorphic_adapter(
                 ext_info, self.selectable
             )
@@ -2923,11 +2920,7 @@ class _ORMColumnEntity(_ColumnEntity):
 
         self._extra_entities = (self.expr, self.column)
 
-        if (
-            mapper.with_polymorphic
-            or mapper.inherits
-            or mapper._requires_row_aliasing
-        ):
+        if mapper._should_select_with_poly_adapter:
             compile_state._create_with_polymorphic_adapter(
                 ezero, ezero.selectable
             )

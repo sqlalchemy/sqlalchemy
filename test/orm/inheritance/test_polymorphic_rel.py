@@ -503,6 +503,7 @@ class _PolymorphicTestBase:
     def test_join_from_polymorphic_explicit_aliased_three(self):
         sess = fixture_session()
         pa = aliased(Paperwork)
+
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
@@ -2063,6 +2064,41 @@ class _PolymorphicTestBase:
 
 
 class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
+    def test_joined_aliasing_unrelated_subuqery(self):
+        """test #8456"""
+
+        inner = select(Engineer).where(Engineer.name == "vlad").subquery()
+
+        crit = select(inner.c.person_id)
+
+        outer = select(Engineer).where(Engineer.person_id.in_(crit))
+
+        # this query will not work at all for any "polymorphic" case
+        # as it will adapt the inner query as well.  for those cases,
+        # aliased() has to be used for the inner entity to disambiguate it.
+        self.assert_compile(
+            outer,
+            "SELECT engineers.person_id, people.person_id AS person_id_1, "
+            "people.company_id, people.name, people.type, engineers.status, "
+            "engineers.engineer_name, engineers.primary_language "
+            "FROM people JOIN engineers "
+            "ON people.person_id = engineers.person_id "
+            "WHERE engineers.person_id IN "
+            "(SELECT anon_1.person_id FROM "
+            "(SELECT engineers.person_id AS person_id, "
+            "people.person_id AS person_id_1, "
+            "people.company_id AS company_id, people.name AS name, "
+            "people.type AS type, engineers.status AS status, "
+            "engineers.engineer_name AS engineer_name, "
+            "engineers.primary_language AS primary_language FROM people "
+            "JOIN engineers ON people.person_id = engineers.person_id "
+            "WHERE people.name = :name_1) "
+            "AS anon_1)",
+        )
+
+        sess = fixture_session()
+        eq_(sess.scalars(outer).all(), [Engineer(name="vlad")])
+
     def test_primary_eager_aliasing_three_dont_reset_selectable(self):
         """test now related to #7262
 

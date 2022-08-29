@@ -2297,6 +2297,41 @@ class Mapper(
             return None
 
     @HasMemoized.memoized_attribute
+    def _should_select_with_poly_adapter(self):
+        """determine if _MapperEntity or _ORMColumnEntity will need to use
+        polymorphic adaption when setting up a SELECT as well as fetching
+        rows for mapped classes and subclasses against this Mapper.
+
+        moved here from context.py for #8456 to generalize the ruleset
+        for this condition.
+
+        """
+
+        # this has been simplified as of #8456.
+        # rule is: if we have a with_polymorphic or a concrete-style
+        # polymorphic selectable, *or* if the base mapper has either of those,
+        # we turn on the adaption thing.  if not, we do *no* adaption.
+        #
+        # this splits the behavior among the "regular" joined inheritance
+        # and single inheritance mappers, vs. the "weird / difficult"
+        # concrete and joined inh mappings that use a with_polymorphic of
+        # some kind or polymorphic_union.
+        #
+        # note we have some tests in test_polymorphic_rel that query against
+        # a subclass, then refer to the superclass that has a with_polymorphic
+        # on it (such as test_join_from_polymorphic_explicit_aliased_three).
+        # these tests actually adapt the polymorphic selectable (like, the
+        # UNION or the SELECT subquery with JOIN in it) to be just the simple
+        # subclass table.   Hence even if we are a "plain" inheriting mapper
+        # but our base has a wpoly on it, we turn on adaption.
+        return (
+            self.with_polymorphic
+            or self._requires_row_aliasing
+            or self.base_mapper.with_polymorphic
+            or self.base_mapper._requires_row_aliasing
+        )
+
+    @HasMemoized.memoized_attribute
     def _with_polymorphic_mappers(self) -> Sequence[Mapper[Any]]:
         self._check_configure()
 
