@@ -1,169 +1,81 @@
+from __future__ import annotations
+
 import os
 import platform
-import sys
+from typing import cast
+from typing import TYPE_CHECKING
 
-from setuptools import __version__
 from setuptools import setup
 
-if not int(__version__.partition(".")[0]) >= 47:
-    raise RuntimeError(f"Setuptools >= 47 required. Found {__version__}")
-
-# attempt to use pep-632 imports for setuptools symbols; however,
-# since these symbols were only added to setuptools as of 59.0.1,
-# fall back to the distutils symbols otherwise
-try:
-    from setuptools.errors import CCompilerError
-    from setuptools.errors import DistutilsExecError
-    from setuptools.errors import DistutilsPlatformError
-except ImportError:
-    from distutils.errors import CCompilerError
-    from distutils.errors import DistutilsExecError
-    from distutils.errors import DistutilsPlatformError
+if TYPE_CHECKING:
+    from setuptools import Extension
 
 try:
-    from Cython.Distutils.old_build_ext import old_build_ext
-    from Cython.Distutils.extension import Extension
+    from Cython.Build import build_ext as _cy_build_ext
+    from Cython.Distutils.extension import Extension as _cy_Extension
 
-    CYTHON = True
+    HAS_CYTHON = True
 except ImportError:
-    CYTHON = False
+    _cy_build_ext = _cy_Extension = None
+    HAS_CYTHON = False
 
-cmdclass = {}
+IS_CPYTHON = platform.python_implementation() == "CPython"
+DISABLE_EXTENSION = bool(os.environ.get("DISABLE_SQLALCHEMY_CEXT"))
+REQUIRE_EXTENSION = bool(os.environ.get("REQUIRE_SQLALCHEMY_CEXT"))
 
-cpython = platform.python_implementation() == "CPython"
+if DISABLE_EXTENSION and REQUIRE_EXTENSION:
+    raise RuntimeError(
+        "Cannot set both 'DISABLE_SQLALCHEMY_CEXT' and "
+        "'REQUIRE_SQLALCHEMY_CEXT' environment variables"
+    )
 
-ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
-extra_compile_args = []
-if sys.platform == "win32":
-    # Work around issue https://github.com/pypa/setuptools/issues/1902
-    ext_errors += (IOError, TypeError)
 
-cython_files = [
-    "collections.pyx",
-    "immutabledict.pyx",
-    "processors.pyx",
-    "resultproxy.pyx",
-    "util.pyx",
-]
-cython_directives = {"language_level": "3"}
+if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
+    assert _cy_Extension is not None
+    assert _cy_build_ext is not None
 
-if CYTHON:
+    cython_files = [
+        "collections.pyx",
+        "immutabledict.pyx",
+        "processors.pyx",
+        "resultproxy.pyx",
+        "util.pyx",
+    ]
+    cython_directives = {"language_level": "3"}
 
-    def get_ext_modules():
-        module_prefix = "sqlalchemy.cyextension."
-        source_prefix = "lib/sqlalchemy/cyextension/"
+    module_prefix = "sqlalchemy.cyextension."
+    source_prefix = "lib/sqlalchemy/cyextension/"
 
-        ext_modules = []
-        for file in cython_files:
-            name, _ = os.path.splitext(file)
-            ext_modules.append(
-                Extension(
-                    module_prefix + name,
-                    sources=[source_prefix + file],
-                    extra_compile_args=extra_compile_args,
-                    cython_directives=cython_directives,
-                )
+    ext_modules = cast(
+        "list[Extension]",
+        [
+            _cy_Extension(
+                f"{module_prefix}{os.path.splitext(file)[0]}",
+                sources=[f"{source_prefix}{file}"],
+                cython_directives=cython_directives,
+                optional=not REQUIRE_EXTENSION,
             )
-        return ext_modules
+            for file in cython_files
+        ],
+    )
 
-    class BuildFailed(Exception):
-        pass
+    cmdclass = {"build_ext": _cy_build_ext}
 
-    class ve_build_ext(old_build_ext):
-        # This class allows Cython building to fail.
+elif REQUIRE_EXTENSION:
 
-        def run(self):
-            try:
-                super().run()
-            except DistutilsPlatformError:
-                raise BuildFailed()
+    reasons = []
+    if not HAS_CYTHON:
+        reasons.append("Cython is missing")
+    if not IS_CPYTHON:
+        reasons.append("Not CPython, build is supported only on it")
+    raise RuntimeError(
+        "Cython extension build is required because REQUIRE_SQLALCHEMY_CEXT "
+        f"is set but it was deselected because: {'; '.join(reasons)}; "
+        "will not degrade to pure python install"
+    )
 
-        def build_extension(self, ext):
-            try:
-                super().build_extension(ext)
-            except ext_errors as e:
-                raise BuildFailed() from e
-            except ValueError as e:
-                # this can happen on Windows 64 bit, see Python issue 7511
-                if "'path'" in str(e):
-                    raise BuildFailed() from e
-                raise
-
-    cmdclass["build_ext"] = ve_build_ext
-    ext_modules = get_ext_modules()
 else:
     ext_modules = []
+    cmdclass = {}
 
-
-def status_msgs(*msgs):
-    print("*" * 75)
-    for msg in msgs:
-        print(msg)
-    print("*" * 75)
-
-
-def run_setup(with_cext):
-    kwargs = {}
-    if with_cext:
-        kwargs["ext_modules"] = ext_modules
-    else:
-        if os.environ.get("REQUIRE_SQLALCHEMY_CEXT"):
-            raise AssertionError(
-                "Can't build on this platform with REQUIRE_SQLALCHEMY_CEXT"
-                " set. Cython is required to build compiled extensions"
-            )
-
-        kwargs["ext_modules"] = []
-
-    setup(cmdclass=cmdclass, **kwargs)
-
-
-if not cpython:
-    run_setup(False)
-    status_msgs(
-        "WARNING: Cython extensions are not supported on "
-        "this Python platform, speedups are not enabled.",
-        "Plain-Python build succeeded.",
-    )
-elif not CYTHON:
-    run_setup(False)
-    status_msgs(
-        "WARNING: Cython is required to build the compiled "
-        "extensions, speedups are not enabled.",
-        "Plain-Python build succeeded.",
-    )
-elif os.environ.get("DISABLE_SQLALCHEMY_CEXT"):
-    run_setup(False)
-    status_msgs(
-        "DISABLE_SQLALCHEMY_CEXT is set; "
-        "not attempting to build Cython extensions.",
-        "Plain-Python build succeeded.",
-    )
-else:
-    try:
-        run_setup(True)
-    except BuildFailed as exc:
-
-        if os.environ.get("REQUIRE_SQLALCHEMY_CEXT"):
-            status_msgs(
-                "NOTE: Cython extension build is required because "
-                "REQUIRE_SQLALCHEMY_CEXT is set, and the build has failed; "
-                "will not degrade to non-C extensions"
-            )
-            raise
-
-        status_msgs(
-            exc.__cause__,
-            "WARNING: The Cython extension could not be compiled, "
-            "speedups are not enabled.",
-            "Failure information, if any, is above.",
-            "Retrying the build without the C extension now.",
-        )
-
-        run_setup(False)
-
-        status_msgs(
-            "WARNING: The Cython extension could not be compiled, "
-            "speedups are not enabled.",
-            "Plain-Python build succeeded.",
-        )
+setup(cmdclass=cmdclass, ext_modules=ext_modules)
