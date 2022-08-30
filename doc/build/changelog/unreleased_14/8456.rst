@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 8456
+
+    Fixed regression appearing in the 1.4 series where a joined-inheritance
+    query placed as a subquery within an enclosing query for that same entity
+    would fail to render the JOIN correctly for the inner query. The issue
+    manifested in two different ways prior and subsequent to version 1.4.18
+    (related issue #6595), in one case rendering JOIN twice, in the other
+    losing the JOIN entirely. To resolve, the conditions under which
+    "polymorphic loading" are applied have been scaled back to not be invoked
+    for simple joined inheritance queries.
