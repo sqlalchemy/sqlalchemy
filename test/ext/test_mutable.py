@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -26,6 +27,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -159,6 +161,49 @@ class MiscTest(fixtures.TestBase):
                     a = inspect(f2).attrs[other_attr].history
                     b = ((), [data[other_attr]], ())
                     eq_(a, b)
+
+    @testing.combinations("key_present", "key_non_present", argnames="present")
+    @testing.combinations(
+        ("transient", True),
+        ("detached", True),
+        ("detached", False),
+        argnames="merge_subject, load",
+    )
+    @testing.requires.json_type
+    def test_session_merge(
+        self, decl_base, connection, present, load, merge_subject
+    ):
+        """test #8446"""
+
+        class Thing(decl_base):
+            __tablename__ = "thing"
+            id = Column(Integer, primary_key=True)
+            data = Column(MutableDict.as_mutable(JSON))
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as sess:
+            sess.add(Thing(id=1, data={"foo": "bar"}))
+            sess.commit()
+
+        if merge_subject == "transient":
+            t1_to_merge = Thing(id=1, data={"foo": "bar"})
+        elif merge_subject == "detached":
+            with Session(connection) as sess:
+                t1_to_merge = sess.get(Thing, 1)
+
+        with Session(connection) as sess:
+            already_present = None
+            if present == "key_present":
+                already_present = sess.get(Thing, 1)
+
+            t1_merged = sess.merge(t1_to_merge, load=load)
+
+            t1_merged.data["foo"] = "bat"
+            if present == "key_present":
+                is_(t1_merged, already_present)
+
+            is_true(inspect(t1_merged).attrs.data.history.added)
 
 
 class _MutableDictTestBase(_MutableDictTestFixture):

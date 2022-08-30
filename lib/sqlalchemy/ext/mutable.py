@@ -511,6 +511,14 @@ class MutableBase(object):
                     for val in state_dict["ext.mutable.values"][key]:
                         val._parents[state] = key
 
+        event.listen(
+            parent_cls,
+            "_sa_event_merge_wo_load",
+            load,
+            raw=True,
+            propagate=True,
+        )
+
         event.listen(parent_cls, "load", load, raw=True, propagate=True)
         event.listen(
             parent_cls, "refresh", load_attrs, raw=True, propagate=True
