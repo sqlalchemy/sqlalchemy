@@ -325,6 +325,23 @@ class InstanceEvents(event.Events):
 
         """
 
+    def _sa_event_merge_wo_load(self, target, context):
+        """receive an object instance after it was the subject of a merge()
+        call, when load=False was passed.
+
+        The target would be the already-loaded object in the Session which
+        would have had its attributes overwritten by the incoming object. This
+        overwrite operation does not use attribute events, instead just
+        populating dict directly. Therefore the purpose of this event is so
+        that extensions like sqlalchemy.ext.mutable know that object state has
+        changed and incoming state needs to be set up for "parents" etc.
+
+        This functionality is acceptable to be made public in a later release.
+
+        .. versionadded:: 1.4.41
+
+        """
+
     def load(self, target, context):
         """Receive an object instance after it has been created via
         ``__new__``, and after initial attribute population has

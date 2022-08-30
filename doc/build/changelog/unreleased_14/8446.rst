@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 8446
+
+    Fixed issue in :mod:`sqlalchemy.ext.mutable` extension where collection
+    links to the parent object would be lost if the object were merged with
+    :meth:`.Session.merge` while also passing :paramref:`.Session.merge.load`
+    as False.
