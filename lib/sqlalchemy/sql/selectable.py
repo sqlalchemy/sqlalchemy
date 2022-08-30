@@ -2923,6 +2923,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
             InternalTraversal.dp_fromclause_canonical_column_collection,
         ),
         ("name", InternalTraversal.dp_string),
+        ("schema", InternalTraversal.dp_string),
     ]
 
     _is_table = True
