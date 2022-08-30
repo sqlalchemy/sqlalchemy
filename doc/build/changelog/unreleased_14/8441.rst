@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8441
+
+    Fixed issue where use of the :func:`_sql.table` construct, passing a string
+    for the :paramref:`_sql.table.schema` parameter, would fail to take the
+    "schema" string into account when producing a cache key, thus leading to
+    caching collisions if multiple, same-named :func:`_sql.table` constructs
+    with different schemas were used.
+
