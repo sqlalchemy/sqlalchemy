@@ -2253,10 +2253,14 @@ class JSON(Indexable, TypeEngine):
 
     The :class:`_types.JSON` type, when used with the SQLAlchemy ORM, does not
     detect in-place mutations to the structure.  In order to detect these, the
-    :mod:`sqlalchemy.ext.mutable` extension must be used.  This extension will
+    :mod:`sqlalchemy.ext.mutable` extension must be used, most typically
+    using the :class:`.MutableDict` class.  This extension will
     allow "in-place" changes to the datastructure to produce events which
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
     for a simple example involving a dictionary.
+
+    Alternatively, assigning a JSON structure to an ORM element that
+    replaces the old one will always trigger a change event.
 
     **Support for JSON null vs. SQL NULL**
 
@@ -2763,6 +2767,31 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     :meth:`.types.ARRAY.Comparator.any` and
     :meth:`.types.ARRAY.Comparator.all`. The PostgreSQL-specific version of
     :class:`_types.ARRAY` also provides additional operators.
+
+    .. container:: topic
+
+        **Detecting Changes in ARRAY columns when using the ORM**
+
+        The :class:`_sqltypes.ARRAY` type, when used with the SQLAlchemy ORM,
+        does not detect in-place mutations to the array. In order to detect
+        these, the :mod:`sqlalchemy.ext.mutable` extension must be used, using
+        the :class:`.MutableList` class::
+
+            from sqlalchemy import ARRAY
+            from sqlalchemy.ext.mutable import MutableList
+
+            class SomeOrmClass(Base):
+                # ...
+
+                data = Column(MutableList.as_mutable(ARRAY(Integer)))
+
+        This extension will allow "in-place" changes such to the array
+        such as ``.append()`` to produce events which will be detected by the
+        unit of work.  Note that changes to elements **inside** the array,
+        including subarrays that are mutated in place, are **not** detected.
+
+        Alternatively, assigning a new array value to an ORM element that
+        replaces the old one will always trigger a change event.
 
     .. versionadded:: 1.1.0
 

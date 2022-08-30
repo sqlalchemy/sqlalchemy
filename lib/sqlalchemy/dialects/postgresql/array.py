@@ -190,6 +190,31 @@ class ARRAY(sqltypes.ARRAY):
     conjunction with the :class:`.ENUM` type.  For a workaround, see the
     special type at :ref:`postgresql_array_of_enum`.
 
+    .. container:: topic
+
+        **Detecting Changes in ARRAY columns when using the ORM**
+
+        The :class:`_postgresql.ARRAY` type, when used with the SQLAlchemy ORM,
+        does not detect in-place mutations to the array. In order to detect
+        these, the :mod:`sqlalchemy.ext.mutable` extension must be used, using
+        the :class:`.MutableList` class::
+
+            from sqlalchemy.dialects.postgresql import ARRAY
+            from sqlalchemy.ext.mutable import MutableList
+
+            class SomeOrmClass(Base):
+                # ...
+
+                data = Column(MutableList.as_mutable(ARRAY(Integer)))
+
+        This extension will allow "in-place" changes such to the array
+        such as ``.append()`` to produce events which will be detected by the
+        unit of work.  Note that changes to elements **inside** the array,
+        including subarrays that are mutated in place, are **not** detected.
+
+        Alternatively, assigning a new array value to an ORM element that
+        replaces the old one will always trigger a change event.
+
     .. seealso::
 
         :class:`_types.ARRAY` - base array type

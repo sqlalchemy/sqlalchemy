@@ -96,34 +96,38 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     For a full list of special methods see
     :class:`.HSTORE.comparator_factory`.
 
-    For usage with the SQLAlchemy ORM, it may be desirable to combine
-    the usage of :class:`.HSTORE` with :class:`.MutableDict` dictionary
-    now part of the :mod:`sqlalchemy.ext.mutable`
-    extension.  This extension will allow "in-place" changes to the
-    dictionary, e.g. addition of new keys or replacement/removal of existing
-    keys to/from the current dictionary, to produce events which will be
-    detected by the unit of work::
+    .. container:: topic
 
-        from sqlalchemy.ext.mutable import MutableDict
+        **Detecting Changes in HSTORE columns when using the ORM**
 
-        class MyClass(Base):
-            __tablename__ = 'data_table'
+        For usage with the SQLAlchemy ORM, it may be desirable to combine the
+        usage of :class:`.HSTORE` with :class:`.MutableDict` dictionary now
+        part of the :mod:`sqlalchemy.ext.mutable` extension. This extension
+        will allow "in-place" changes to the dictionary, e.g. addition of new
+        keys or replacement/removal of existing keys to/from the current
+        dictionary, to produce events which will be detected by the unit of
+        work::
 
-            id = Column(Integer, primary_key=True)
-            data = Column(MutableDict.as_mutable(HSTORE))
+            from sqlalchemy.ext.mutable import MutableDict
 
-        my_object = session.query(MyClass).one()
+            class MyClass(Base):
+                __tablename__ = 'data_table'
 
-        # in-place mutation, requires Mutable extension
-        # in order for the ORM to detect
-        my_object.data['some_key'] = 'some value'
+                id = Column(Integer, primary_key=True)
+                data = Column(MutableDict.as_mutable(HSTORE))
 
-        session.commit()
+            my_object = session.query(MyClass).one()
 
-    When the :mod:`sqlalchemy.ext.mutable` extension is not used, the ORM
-    will not be alerted to any changes to the contents of an existing
-    dictionary, unless that dictionary value is re-assigned to the
-    HSTORE-attribute itself, thus generating a change event.
+            # in-place mutation, requires Mutable extension
+            # in order for the ORM to detect
+            my_object.data['some_key'] = 'some value'
+
+            session.commit()
+
+        When the :mod:`sqlalchemy.ext.mutable` extension is not used, the ORM
+        will not be alerted to any changes to the contents of an existing
+        dictionary, unless that dictionary value is re-assigned to the
+        HSTORE-attribute itself, thus generating a change event.
 
     .. seealso::
 
