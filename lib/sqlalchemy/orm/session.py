@@ -3590,6 +3590,9 @@ class Session(_SessionClassMethods, EventTarget):
         if not load:
             # remove any history
             merged_state._commit_all(merged_dict, self.identity_map)
+            merged_state.manager.dispatch._sa_event_merge_wo_load(
+                merged_state, None
+            )
 
         if new_instance:
             merged_state.manager.dispatch.load(merged_state, None)
