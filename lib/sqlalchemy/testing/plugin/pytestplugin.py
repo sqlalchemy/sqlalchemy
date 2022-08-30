@@ -69,10 +69,10 @@ def pytest_addoption(parser):
         group.addoption(name, **kw)
 
     plugin_base.setup_options(make_option)
-    plugin_base.read_config()
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config):
+    plugin_base.read_config(config.rootpath)
     if plugin_base.exclude_tags or plugin_base.include_tags:
         new_expr = " and ".join(
             list(plugin_base.include_tags)

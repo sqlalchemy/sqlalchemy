@@ -3,7 +3,6 @@ import platform
 import sys
 
 from setuptools import __version__
-from setuptools import Distribution as _Distribution
 from setuptools import setup
 
 if not int(__version__.partition(".")[0]) >= 47:
@@ -96,17 +95,6 @@ else:
     ext_modules = []
 
 
-class Distribution(_Distribution):
-    def has_ext_modules(self):
-        # We want to always claim that we have ext_modules. This will be fine
-        # if we don't actually have them (such as on PyPy) because nothing
-        # will get built, however we don't want to provide an overally broad
-        # Wheel package when building a wheel without C support. This will
-        # ensure that Wheel knows to treat us as if the build output is
-        # platform specific.
-        return True
-
-
 def status_msgs(*msgs):
     print("*" * 75)
     for msg in msgs:
@@ -127,7 +115,7 @@ def run_setup(with_cext):
 
         kwargs["ext_modules"] = []
 
-    setup(cmdclass=cmdclass, distclass=Distribution, **kwargs)
+    setup(cmdclass=cmdclass, **kwargs)
 
 
 if not cpython:

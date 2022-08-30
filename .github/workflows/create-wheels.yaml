@@ -6,46 +6,35 @@ on:
     types: [created]
 
 env:
-  # set this so the sqlalchemy test uses the installed version and not the local one
-  PYTHONNOUSERSITE: 1
   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
   # TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
 
 jobs:
-  # two jobs are defined make-wheel-win-osx and make-wheel-linux.
-  # they do the the same steps, but linux wheels need to be build to target manylinux
-  make-wheel-win-osx:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
+  build_wheels:
+    name: Build ${{ matrix.wheel_mode }} wheels on ${{ matrix.os }} ${{ matrix.linux_archs }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-          - "windows-latest"
-          - "macos-latest"
-        python-version:
-          - "3.7"
-          - "3.8"
-          - "3.9"
-          - "3.10"
-        architecture:
-          - x64
-          - x86
-
-        exclude:
-          - os: "macos-latest"
-            architecture: x86
+        include:
+          - os: windows-2022
+            wheel_mode: compiled
+          - os: macos-12
+            wheel_mode: compiled
+          # emulated wheels on linux take too much time, so run two jobs
+          - os: ubuntu-22.04
+            wheel_mode: compiled
+            linux_archs: "x86_64"
+          - os: ubuntu-22.04
+            wheel_mode: compiled
+            linux_archs: "aarch64"
+          # create pure python build
+          - os: ubuntu-22.04
+            wheel_mode: pure-python
 
       fail-fast: false
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
+      - uses: actions/checkout@v3
 
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
@@ -60,37 +49,44 @@ jobs:
         run: |
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
-      - name: Create wheel
-        # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
+      # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
+      - name: Set up QEMU on linux
+        if: ${{ runner.os == 'Linux' }}
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: all
+
+      - name: Build compiled wheels
+        if: ${{ matrix.wheel_mode == 'compiled' }}
+        uses: pypa/cibuildwheel@v2.9.0
+        env:
+          CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
+
+
+      - name: Set up Python for twine and pure-python wheel
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Build pure-python wheel
+        if: ${{ matrix.wheel_mode == 'pure-python' && runner.os == 'Linux' }}
         run: |
           python -m pip install --upgrade pip
           pip --version
-          pip install 'setuptools>=44' 'wheel>=0.34'
+          pip install build
           pip list
-          pip wheel -w dist -v --no-deps .
+          DISABLE_SQLALCHEMY_CEXT=y python -m build --wheel --outdir ./wheelhouse
 
-      - name: Install wheel
-        # install the created wheel without using the pypi index
-        run: |
-          pip install greenlet "importlib-metadata;python_version<'3.8'" &&
-          pip install -f dist --no-index sqlalchemy
-
-      - name: Check c extensions
-        run: |
-          python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
-
-      - name: Test created wheel
-        # the mock reconnect test seems to fail on the ci in windows
-        run: |
-          pip install pytest pytest-xdist ${{ matrix.extra-requires }}
-          pytest -n2 -q test --nomemory --notimingintensive
+      # - uses: actions/upload-artifact@v3
+      #   with:
+      #     path: ./wheelhouse/*.whl
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'dist/*.whl'
+          files: './wheelhouse/*.whl'
 
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
@@ -102,215 +98,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.pypi_token }}
         run: |
           pip install -U twine
-          twine upload --skip-existing dist/*
-
-  make-wheel-linux:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          # the versions are <python tag>-<abi tag> as specified in PEP 425.
-          - cp37-cp37m
-          - cp38-cp38
-          - cp39-cp39
-          - cp310-cp310
-        architecture:
-          - x64
-
-      fail-fast: false
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Get python version
-        id: linux-py-version
-        env:
-          py_tag: ${{ matrix.python-version }}
-        # the command `echo "::set-output ...` is used to create an step output that can be used in following steps
-        # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
-        run: |
-          version="`echo $py_tag | sed --regexp-extended 's/cp([0-9])([0-9]+)-.*/\1.\2/g'`"
-          echo $version
-          echo "::set-output name=python-version::$version"
-
-      - name: Remove tag_build from setup.cfg
-        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
-        # otherwise it gets tagged with `dev0`
-        shell: pwsh
-        # This is equivalent to the sed commands:
-        # `sed -i '/tag_build=dev/d' setup.cfg`
-        # `sed -i '/tag_build = dev/d' setup.cfg`
-
-        # `-replace` uses a regexp match
-        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
-        run: |
-          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
-
-      - name: Create wheel for manylinux1 and manylinux2010
-        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
-        # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
-        # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
-        # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
-        with:
-          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
-          python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=47 wheel>=0.34 cython>=0.29.24"
-          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist -v --no-deps"
-
-      - name: Create wheel for manylinux2014
-        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
-        # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
-        # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_x86_64
-        # this action generates 2 wheels in dist/. linux and manylinux2014
-        with:
-          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
-          python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=47 wheel>=0.34 cython>=0.29.24"
-          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist -v --no-deps"
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ steps.linux-py-version.outputs.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Check created wheel
-        # check that the wheel is compatible with the current installation.
-        # If it is then does:
-        # - install the created wheel without using the pypi index
-        # - check the c extension
-        # - runs the tests
-        run: |
-          pip install 'packaging>=20.4'
-          if python .github/workflows/scripts/can_install.py "${{ matrix.python-version }}"
-          then
-            pip install greenlet "importlib-metadata;python_version<'3.8'"
-            pip install -f dist --no-index sqlalchemy
-            python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
-            pip install pytest pytest-xdist ${{ matrix.extra-requires }}
-            pytest -n2 -q test --nomemory --notimingintensive
-          else
-            echo Not compatible. Skipping install.
-          fi
-
-      - name: Upload wheels to release
-        # upload the generated wheels to the github release
-        uses: sqlalchemyorg/upload-release-assets@sa
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'dist/*manylinux*'
-
-      - name: Publish wheel
-        # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
-        # additional options
-        # We upload both manylinux1 and manylinux2010 wheels. pip will download the appropriate one according to the system.
-        # manylinux1 is an older format and is now not very used since many environments can use manylinux2010
-        # currently (April 2020) manylinux2014 is still wip, so we do not generate it.
-        env:
-          TWINE_USERNAME: __token__
-          # replace TWINE_PASSWORD with token for real pypi
-          # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-          TWINE_PASSWORD: ${{ secrets.pypi_token }}
-        run: |
-          pip install -U twine
-          twine upload --skip-existing dist/*manylinux*
-
-  make-wheel-linux-arm64:
-    name: ${{ matrix.python-version }}-arm64-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          # the versions are <python tag>-<abi tag> as specified in PEP 425.
-          - cp37-cp37m
-          - cp38-cp38
-          - cp39-cp39
-          - cp310-cp310
-
-      fail-fast: false
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Remove tag_build from setup.cfg
-        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
-        # otherwise it gets tagged with `dev0`
-        shell: pwsh
-        # This is equivalent to the sed commands:
-        # `sed -i '/tag_build=dev/d' setup.cfg`
-        # `sed -i '/tag_build = dev/d' setup.cfg`
-
-        # `-replace` uses a regexp match
-        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
-        run: |
-          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
-
-      - name: Set up emulation
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-      - name: Create wheel for manylinux2014
-        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
-        # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
-        # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_aarch64
-        # this action generates 2 wheels in dist/. linux and manylinux2014
-        with:
-          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
-          python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=47 wheel>=0.34 cython>=0.29.24"
-          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist -v --no-deps"
-
-      - name: Check created wheel
-        # check that the wheel is compatible with the current installation.
-        # - runs the tests
-        uses: docker://quay.io/pypa/manylinux2014_aarch64
-        with:
-          args: |
-            bash -c "
-            export PATH=/opt/python/${{ matrix.python-version }}/bin:$PATH &&
-            python --version &&
-            pip install greenlet \"importlib-metadata;python_version<'3.8'\" &&
-            pip install -f dist --no-index sqlalchemy &&
-            python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()' &&
-            pip install pytest pytest-xdist ${{ matrix.extra-requires }} &&
-            pytest -n2 -q test --nomemory --notimingintensive"
-
-      - name: Upload wheels to release
-        # upload the generated wheels to the github release
-        uses: sqlalchemyorg/upload-release-assets@sa
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'dist/*manylinux*'
-
-      - name: Set up Python for twine
-        # Setup python after creating the wheel, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
-        # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: Publish wheel
-        # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
-        # additional options
-        # We upload manylinux2014 arm64 wheels. pip will download the appropriate one according to the system.
-        env:
-          TWINE_USERNAME: __token__
-          # replace TWINE_PASSWORD with token for real pypi
-          # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-          TWINE_PASSWORD: ${{ secrets.pypi_token }}
-        run: |
-          pip install -U twine
-          twine upload --skip-existing dist/*manylinux*
+          twine upload --skip-existing ./wheelhouse/*
