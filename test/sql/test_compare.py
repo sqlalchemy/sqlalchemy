@@ -268,6 +268,8 @@ class CoreFixtures:
         ),
         lambda: (
             table("a", column("x"), column("y")),
+            table("a", column("x"), column("y"), schema="q"),
+            table("a", column("x"), column("y"), schema="y"),
             table("a", column("x"), column("y"))._annotate({"orm": True}),
             table("b", column("x"), column("y"))._annotate({"orm": True}),
         ),
