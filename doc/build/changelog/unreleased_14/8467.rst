@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, events, orm
+    :tickets: 8467
+
+    Fixed event listening issue where event listeners added to a superclass
+    would be lost if a subclass were created which then had its own listeners
+    associated. The practical example is that of the :class:`.sessionmaker`
+    class created after events have been associated with the
+    :class:`_orm.Session` class.
