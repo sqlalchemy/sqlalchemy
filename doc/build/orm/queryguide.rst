@@ -702,7 +702,7 @@ Joining to Subqueries
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 The target of a join may be any "selectable" entity which usefully includes
-subuqeries.   When using the ORM, it is typical
+subqueries.   When using the ORM, it is typical
 that these targets are stated in terms of an
 :func:`_orm.aliased` construct, but this is not strictly required particularly
 if the joined entity is not being returned in the results.  For example, to join from the
