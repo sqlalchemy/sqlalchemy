@@ -677,6 +677,35 @@ class ClsLevelListenTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         eq_(len(SubTarget().dispatch.event_one), 2)
 
+    @testing.combinations(True, False, argnames="m1")
+    @testing.combinations(True, False, argnames="m2")
+    @testing.combinations(True, False, argnames="m3")
+    @testing.combinations(True, False, argnames="use_insert")
+    def test_subclass_gen_after_clslisten(self, m1, m2, m3, use_insert):
+        """test #8467"""
+        m1 = Mock() if m1 else None
+        m2 = Mock() if m2 else None
+        m3 = Mock() if m3 else None
+
+        if m1:
+            event.listen(self.TargetOne, "event_one", m1, insert=use_insert)
+
+        class SubTarget(self.TargetOne):
+            pass
+
+        if m2:
+            event.listen(SubTarget, "event_one", m2, insert=use_insert)
+
+        if m3:
+            event.listen(self.TargetOne, "event_one", m3, insert=use_insert)
+
+        st = SubTarget()
+        st.dispatch.event_one()
+
+        for m in m1, m2, m3:
+            if m:
+                eq_(m.mock_calls, [call()])
+
     def test_lis_multisub_lis(self):
         @event.listens_for(self.TargetOne, "event_one")
         def handler1(x, y):

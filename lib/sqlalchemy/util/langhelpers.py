@@ -152,7 +152,7 @@ class safe_reraise:
             raise value.with_traceback(traceback)
 
 
-def walk_subclasses(cls: type) -> Iterator[type]:
+def walk_subclasses(cls: Type[_T]) -> Iterator[Type[_T]]:
     seen: Set[Any] = set()
 
     stack = [cls]

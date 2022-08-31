@@ -559,7 +559,8 @@ def _new_annotation_type(
 
 
 def _prepare_annotations(
-    target_hierarchy: Type[SupportsAnnotations], base_cls: Type[Annotated]
+    target_hierarchy: Type[SupportsWrappingAnnotations],
+    base_cls: Type[Annotated],
 ) -> None:
     for cls in util.walk_subclasses(target_hierarchy):
         _new_annotation_type(cls, base_cls)

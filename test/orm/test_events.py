@@ -2195,6 +2195,35 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         s = fixture_session()
         assert my_listener in s.dispatch.before_flush
 
+    @testing.combinations(True, False, argnames="m1")
+    @testing.combinations(True, False, argnames="m2")
+    @testing.combinations(True, False, argnames="m3")
+    @testing.combinations(True, False, argnames="use_insert")
+    def test_sessionmaker_gen_after_session_listen(
+        self, m1, m2, m3, use_insert
+    ):
+        m1 = Mock() if m1 else None
+        m2 = Mock() if m2 else None
+        m3 = Mock() if m3 else None
+
+        if m1:
+            event.listen(Session, "before_flush", m1, insert=use_insert)
+
+        factory = sessionmaker()
+
+        if m2:
+            event.listen(factory, "before_flush", m2, insert=use_insert)
+
+        if m3:
+            event.listen(factory, "before_flush", m3, insert=use_insert)
+
+        st = factory()
+        st.dispatch.before_flush()
+
+        for m in m1, m2, m3:
+            if m:
+                eq_(m.mock_calls, [call()])
+
     def test_sessionmaker_listen(self):
         """test that listen can be applied to individual
         scoped_session() classes."""
