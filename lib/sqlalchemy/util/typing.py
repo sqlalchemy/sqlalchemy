@@ -169,7 +169,7 @@ def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
 def expand_unions(
     type_: Type[Any], include_union: bool = False, discard_none: bool = False
 ) -> Tuple[Type[Any], ...]:
-    """Return a type as as a tuple of individual types, expanding for
+    """Return a type as a tuple of individual types, expanding for
     ``Union`` types."""
 
     if is_union(type_):
@@ -191,7 +191,12 @@ def is_optional(type_):
         type_,
         "Optional",
         "Union",
+        "UnionType",
     )
+
+
+def is_optional_union(type_: Any) -> bool:
+    return is_optional(type_) and NoneType in typing_get_args(type_)
 
 
 def is_union(type_):
@@ -204,7 +209,7 @@ def is_origin_of(
     """return True if the given type has an __origin__ with the given name
     and optional module."""
 
-    origin = getattr(type_, "__origin__", None)
+    origin = typing_get_origin(type_)
     if origin is None:
         return False
 
