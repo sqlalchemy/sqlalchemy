@@ -52,8 +52,8 @@ from ..sql.schema import SchemaConst
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
+from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
-from ..util.typing import NoneType
 from ..util.typing import Self
 from ..util.typing import typing_get_args
 
@@ -652,17 +652,15 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
-        nullable = False
+        if is_fwd_ref(argument):
+            argument = de_stringify_annotation(cls, argument)
 
-        if hasattr(argument, "__origin__"):
-            nullable = NoneType in argument.__args__  # type: ignore
+        nullable = is_optional_union(argument)
 
         if not self._has_nullable:
             self.column.nullable = nullable
 
         our_type = de_optionalize_union_types(argument)
-        if is_fwd_ref(our_type):
-            our_type = de_stringify_annotation(cls, our_type)
 
         use_args_from = None
         if is_pep593(our_type):
