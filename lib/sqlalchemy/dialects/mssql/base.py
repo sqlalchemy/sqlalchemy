@@ -2842,27 +2842,40 @@ class MSDialect(default.DefaultDialect):
                 )
 
             view_name = "sys.{}".format(row[0])
-            cursor.execute(
-                """
-                    SELECT CASE transaction_isolation_level
-                    WHEN 0 THEN NULL
-                    WHEN 1 THEN 'READ UNCOMMITTED'
-                    WHEN 2 THEN 'READ COMMITTED'
-                    WHEN 3 THEN 'REPEATABLE READ'
-                    WHEN 4 THEN 'SERIALIZABLE'
-                    WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM {}
-                    where session_id = @@SPID
-                """.format(
-                    view_name
+
+            try:
+                cursor.execute(
+                    """
+                        SELECT CASE transaction_isolation_level
+                        WHEN 0 THEN NULL
+                        WHEN 1 THEN 'READ UNCOMMITTED'
+                        WHEN 2 THEN 'READ COMMITTED'
+                        WHEN 3 THEN 'REPEATABLE READ'
+                        WHEN 4 THEN 'SERIALIZABLE'
+                        WHEN 5 THEN 'SNAPSHOT' END
+                        AS TRANSACTION_ISOLATION_LEVEL
+                        FROM {}
+                        where session_id = @@SPID
+                    """.format(
+                        view_name
+                    )
                 )
-            )
-            row = cursor.fetchone()
-            assert row is not None
-            val = row[0]
+            except self.dbapi.Error as err:
+                util.raise_(
+                    NotImplementedError(
+                        "Can't fetch isolation level;  encountered "
+                        "error {} when "
+                        'attempting to query the "{}" view.'.format(
+                            err, view_name
+                        )
+                    ),
+                    from_=err,
+                )
+            else:
+                row = cursor.fetchone()
+                return row[0].upper()
         finally:
             cursor.close()
-        return val.upper()
 
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)

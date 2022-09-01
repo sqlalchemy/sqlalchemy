@@ -649,7 +649,7 @@ class RealIsolationLevelTest(fixtures.TestBase):
 
 
 class IsolationLevelDetectTest(fixtures.TestBase):
-    def _fixture(self, view_result):
+    def _fixture(self, view_result, simulate_perm_failure=False):
         class Error(Exception):
             pass
 
@@ -672,6 +672,10 @@ class IsolationLevelDetectTest(fixtures.TestBase):
                 stmt,
                 re.S,
             ):
+                if simulate_perm_failure:
+                    raise dialect.dbapi.Error(
+                        "SQL Server simulated permission error"
+                    )
                 result.append(("SERIALIZABLE",))
             else:
                 assert False
@@ -703,6 +707,20 @@ class IsolationLevelDetectTest(fixtures.TestBase):
         assert_raises_message(
             NotImplementedError,
             "Can't fetch isolation level on this particular ",
+            dialect.get_isolation_level,
+            connection,
+        )
+
+    def test_dont_have_table_perms(self):
+        dialect, connection = self._fixture(
+            "dm_pdw_nodes_exec_sessions", simulate_perm_failure=True
+        )
+
+        assert_raises_message(
+            NotImplementedError,
+            r"Can\'t fetch isolation level;  encountered error SQL Server "
+            r"simulated permission error when attempting to query the "
+            r'"sys.dm_pdw_nodes_exec_sessions" view.',
             dialect.get_isolation_level,
             connection,
         )
