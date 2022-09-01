@@ -879,9 +879,14 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             decimal_data: Mapped[Decimal] = mapped_column()
 
             if compat.py310:
-                pep604_data: Mapped["float | Decimal"] = mapped_column()
-                pep604_reverse: Mapped["Decimal | float"] = mapped_column()
+                pep604_data: Mapped[float | Decimal] = mapped_column()
+                pep604_reverse: Mapped[Decimal | float] = mapped_column()
                 pep604_optional: Mapped[
+                    Decimal | float | None
+                ] = mapped_column()
+                pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
+                pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
+                pep604_optional_fwd: Mapped[
                     "Decimal | float | None"
                 ] = mapped_column()
 
@@ -900,12 +905,16 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(User.__table__.c.decimal_data.type, our_type)
 
         if compat.py310:
-            is_(User.__table__.c.pep604_data.type, our_type)
-            is_false(User.__table__.c.pep604_data.nullable)
-            is_(User.__table__.c.pep604_reverse.type, our_type)
-            is_false(User.__table__.c.pep604_reverse.nullable)
-            is_(User.__table__.c.pep604_optional.type, our_type)
-            is_true(User.__table__.c.pep604_optional.nullable)
+            for suffix in ("", "_fwd"):
+                data_col = User.__table__.c[f"pep604_data{suffix}"]
+                reverse_col = User.__table__.c[f"pep604_reverse{suffix}"]
+                optional_col = User.__table__.c[f"pep604_optional{suffix}"]
+                is_(data_col.type, our_type)
+                is_false(data_col.nullable)
+                is_(reverse_col.type, our_type)
+                is_false(reverse_col.nullable)
+                is_(optional_col.type, our_type)
+                is_true(optional_col.nullable)
 
     def test_missing_mapped_lhs(self, decl_base):
         with expect_raises_message(
