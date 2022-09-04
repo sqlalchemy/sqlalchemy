@@ -34,6 +34,7 @@ if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     assert _cy_Extension is not None
     assert _cy_build_ext is not None
 
+    # when adding a cython module, also update the imports in _has_cy
     cython_files = [
         "collections.pyx",
         "immutabledict.pyx",

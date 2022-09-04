@@ -2,6 +2,7 @@
 
 import copy
 import inspect
+from pathlib import Path
 import pickle
 import sys
 
@@ -33,6 +34,8 @@ from sqlalchemy.util import langhelpers
 from sqlalchemy.util import preloaded
 from sqlalchemy.util import WeakSequence
 from sqlalchemy.util._collections import merge_lists_w_ordering
+from sqlalchemy.util._has_cy import _import_cy_extensions
+from sqlalchemy.util._has_cy import HAS_CYEXTENSION
 
 
 class WeakSequenceTest(fixtures.TestBase):
@@ -3346,3 +3349,18 @@ class MethodOveriddenTest(fixtures.TestBase):
                 pass
 
         is_true(util.method_is_overridden(HoHo(), Bat.bar))
+
+
+class CyExtensionTest(fixtures.TestBase):
+    @testing.only_if(lambda: HAS_CYEXTENSION, "No Cython")
+    def test_all_cyext_imported(self):
+        ext = _import_cy_extensions()
+        lib_folder = (Path(__file__).parent / ".." / ".." / "lib").resolve()
+        sa_folder = lib_folder / "sqlalchemy"
+        cython_files = [f.resolve() for f in sa_folder.glob("**/*.pyx")]
+        eq_(len(ext), len(cython_files))
+        names = {
+            ".".join(f.relative_to(lib_folder).parts).replace(".pyx", "")
+            for f in cython_files
+        }
+        eq_({m.__name__ for m in ext}, set(names))
