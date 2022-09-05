@@ -765,6 +765,14 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         i = Index("xyz", t.c.x)
         self.assert_compile(schema.CreateIndex(i), "CREATE INDEX xyz ON t (x)")
 
+    def test_create_index_if_not_exists(self):
+        t = Table("t", MetaData(), Column("x", Integer))
+        i = Index("xyz", t.c.x)
+        self.assert_compile(
+            schema.CreateIndex(i, if_not_exists=True),
+            "CREATE INDEX IF NOT EXISTS xyz ON t (x)",
+        )
+
     def test_drop_index_plain_unattached(self):
         self.assert_compile(
             schema.DropIndex(Index(name="xyz")), "DROP INDEX xyz"
@@ -773,6 +781,12 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_drop_index_plain(self):
         self.assert_compile(
             schema.DropIndex(Index(name="xyz")), "DROP INDEX xyz"
+        )
+
+    def test_drop_index_if_exists(self):
+        self.assert_compile(
+            schema.DropIndex(Index(name="xyz"), if_exists=True),
+            "DROP INDEX IF EXISTS xyz",
         )
 
     def test_create_index_schema(self):

@@ -93,7 +93,17 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            CreateSequence(Sequence("foo_seq"), if_not_exists=True),
+            "CREATE SEQUENCE IF NOT EXISTS foo_seq START WITH 1",
+        )
+
+        self.assert_compile(
             DropSequence(Sequence("foo_seq")), "DROP SEQUENCE foo_seq"
+        )
+
+        self.assert_compile(
+            DropSequence(Sequence("foo_seq"), if_exists=True),
+            "DROP SEQUENCE IF EXISTS foo_seq",
         )
 
 
