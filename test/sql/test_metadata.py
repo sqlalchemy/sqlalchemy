@@ -2621,7 +2621,15 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateSchema("sa_schema"), "CREATE SCHEMA sa_schema"
         )
         self.assert_compile(
+            schema.CreateSchema("sa_schema", if_not_exists=True),
+            "CREATE SCHEMA IF NOT EXISTS sa_schema",
+        )
+        self.assert_compile(
             schema.DropSchema("sa_schema"), "DROP SCHEMA sa_schema"
+        )
+        self.assert_compile(
+            schema.DropSchema("sa_schema", if_exists=True),
+            "DROP SCHEMA IF EXISTS sa_schema",
         )
         self.assert_compile(
             schema.DropSchema("sa_schema", cascade=True),

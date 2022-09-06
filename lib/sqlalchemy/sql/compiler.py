@@ -5396,12 +5396,16 @@ class DDLCompiler(Compiled):
         return self.sql_compiler.post_process_text(ddl.statement % context)
 
     def visit_create_schema(self, create, **kw):
-        schema = self.preparer.format_schema(create.element)
-        return "CREATE SCHEMA " + schema
+        text = "CREATE SCHEMA "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+        return text + self.preparer.format_schema(create.element)
 
     def visit_drop_schema(self, drop, **kw):
-        schema = self.preparer.format_schema(drop.element)
-        text = "DROP SCHEMA " + schema
+        text = "DROP SCHEMA "
+        if drop.if_exists:
+            text += "IF EXISTS "
+        text += self.preparer.format_schema(drop.element)
         if drop.cascade:
             text += " CASCADE"
         return text
@@ -5650,9 +5654,11 @@ class DDLCompiler(Compiled):
         return " ".join(text)
 
     def visit_create_sequence(self, create, prefix=None, **kw):
-        text = "CREATE SEQUENCE %s" % self.preparer.format_sequence(
-            create.element
-        )
+        text = "CREATE SEQUENCE "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+        text += self.preparer.format_sequence(create.element)
+
         if prefix:
             text += prefix
         if create.element.start is None:
@@ -5663,7 +5669,10 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_drop_sequence(self, drop, **kw):
-        return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
+        text = "DROP SEQUENCE "
+        if drop.if_exists:
+            text += "IF EXISTS "
+        return text + self.preparer.format_sequence(drop.element)
 
     def visit_drop_constraint(self, drop, **kw):
         constraint = drop.element

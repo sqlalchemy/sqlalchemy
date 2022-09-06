@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7354
+
+    Added ``if_exists`` and ``if_not_exists`` parameters for all "Create" /
+    "Drop" constructs including :class:`.CreateSequence`,
+    :class:`.DropSequence`, :class:`.CreateIndex`, :class:`.DropIndex`, etc.
+    allowing generic "IF EXISTS" / "IF NOT EXISTS" phrases to be rendered
+    within DDL. Pull request courtesy Jesse Bakker.
+

@@ -40,6 +40,7 @@ if typing.TYPE_CHECKING:
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
     from .schema import SchemaItem
+    from .schema import Sequence
     from .schema import Table
     from ..engine.base import _CompiledCacheType
     from ..engine.base import Connection
@@ -434,12 +435,8 @@ class _CreateDropBase(ExecutableDDLElement):
     def __init__(
         self,
         element,
-        if_exists=False,
-        if_not_exists=False,
     ):
         self.element = self.target = element
-        self.if_exists = if_exists
-        self.if_not_exists = if_not_exists
         self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
@@ -457,7 +454,19 @@ class _CreateDropBase(ExecutableDDLElement):
         return False
 
 
-class CreateSchema(_CreateDropBase):
+class _CreateBase(_CreateDropBase):
+    def __init__(self, element, if_not_exists=False):
+        super().__init__(element)
+        self.if_not_exists = if_not_exists
+
+
+class _DropBase(_CreateDropBase):
+    def __init__(self, element, if_exists=False):
+        super().__init__(element)
+        self.if_exists = if_exists
+
+
+class CreateSchema(_CreateBase):
     """Represent a CREATE SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -469,19 +478,14 @@ class CreateSchema(_CreateDropBase):
     def __init__(
         self,
         name,
-        quote=None,
-        if_exists=False,
         if_not_exists=False,
     ):
         """Create a new :class:`.CreateSchema` construct."""
 
-        self.quote = quote
-        self.element = name
-        self.if_exists = if_exists
-        self.if_not_exists = if_not_exists
+        super().__init__(element=name, if_not_exists=if_not_exists)
 
 
-class DropSchema(_CreateDropBase):
+class DropSchema(_DropBase):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -493,22 +497,16 @@ class DropSchema(_CreateDropBase):
     def __init__(
         self,
         name,
-        quote=None,
         cascade=False,
         if_exists=False,
-        if_not_exists=False,
     ):
         """Create a new :class:`.DropSchema` construct."""
 
-        self.quote = quote
+        super().__init__(element=name, if_exists=if_exists)
         self.cascade = cascade
-        self.quote = quote
-        self.element = name
-        self.if_exists = if_exists
-        self.if_not_exists = if_not_exists
 
 
-class CreateTable(_CreateDropBase):
+class CreateTable(_CreateBase):
     """Represent a CREATE TABLE statement."""
 
     __visit_name__ = "create_table"
@@ -544,7 +542,7 @@ class CreateTable(_CreateDropBase):
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
-class _DropView(_CreateDropBase):
+class _DropView(_DropBase):
     """Semi-public 'DROP VIEW' construct.
 
     Used by the test suite for dialect-agnostic drops of views.
@@ -669,7 +667,7 @@ class CreateColumn(BaseDDLElement):
         self.element = element
 
 
-class DropTable(_CreateDropBase):
+class DropTable(_DropBase):
     """Represent a DROP TABLE statement."""
 
     __visit_name__ = "drop_table"
@@ -689,19 +687,25 @@ class DropTable(_CreateDropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class CreateSequence(_CreateDropBase):
+class CreateSequence(_CreateBase):
     """Represent a CREATE SEQUENCE statement."""
 
     __visit_name__ = "create_sequence"
 
+    def __init__(self, element: Sequence, if_not_exists: bool = False):
+        super().__init__(element, if_not_exists=if_not_exists)
 
-class DropSequence(_CreateDropBase):
+
+class DropSequence(_DropBase):
     """Represent a DROP SEQUENCE statement."""
 
     __visit_name__ = "drop_sequence"
 
+    def __init__(self, element: Sequence, if_exists: bool = False):
+        super().__init__(element, if_exists=if_exists)
 
-class CreateIndex(_CreateDropBase):
+
+class CreateIndex(_CreateBase):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
@@ -711,7 +715,6 @@ class CreateIndex(_CreateDropBase):
 
         :param element: a :class:`_schema.Index` that's the subject
          of the CREATE.
-        :param on: See the description for 'on' in :class:`.DDL`.
         :param if_not_exists: if True, an IF NOT EXISTS operator will be
          applied to the construct.
 
@@ -721,7 +724,7 @@ class CreateIndex(_CreateDropBase):
         super().__init__(element, if_not_exists=if_not_exists)
 
 
-class DropIndex(_CreateDropBase):
+class DropIndex(_DropBase):
     """Represent a DROP INDEX statement."""
 
     __visit_name__ = "drop_index"
@@ -731,7 +734,6 @@ class DropIndex(_CreateDropBase):
 
         :param element: a :class:`_schema.Index` that's the subject
          of the DROP.
-        :param on: See the description for 'on' in :class:`.DDL`.
         :param if_exists: if True, an IF EXISTS operator will be applied to the
          construct.
 
@@ -741,26 +743,26 @@ class DropIndex(_CreateDropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class AddConstraint(_CreateDropBase):
+class AddConstraint(_CreateBase):
     """Represent an ALTER TABLE ADD CONSTRAINT statement."""
 
     __visit_name__ = "add_constraint"
 
-    def __init__(self, element, *args, **kw):
-        super().__init__(element, *args, **kw)
+    def __init__(self, element):
+        super().__init__(element)
         element._create_rule = util.portable_instancemethod(
             self._create_rule_disable
         )
 
 
-class DropConstraint(_CreateDropBase):
+class DropConstraint(_DropBase):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
 
-    def __init__(self, element, cascade=False, **kw):
+    def __init__(self, element, cascade=False, if_exists=False, **kw):
         self.cascade = cascade
-        super().__init__(element, **kw)
+        super().__init__(element, if_exists=if_exists, **kw)
         element._create_rule = util.portable_instancemethod(
             self._create_rule_disable
         )
