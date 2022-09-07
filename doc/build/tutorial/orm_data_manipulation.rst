@@ -173,8 +173,8 @@ the ``id`` attribute::
    INSERT many rows at once while still being able to retrieve the primary key
    values.
 
-Identity Map
-^^^^^^^^^^^^
+Getting Objects by Primary Key from the Identity Map
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The primary key identity of the objects are significant to the :class:`_orm.Session`,
 as the objects are now linked to this identity in memory using a feature
