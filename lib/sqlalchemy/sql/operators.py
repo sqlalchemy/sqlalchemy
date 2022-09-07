@@ -65,11 +65,11 @@ class OperatorType(Protocol):
     __name__: str
 
     def __call__(
-            self,
-            left: "Operators",
-            right: Optional[Any] = None,
-            *other: Any,
-            **kwargs: Any,
+        self,
+        left: "Operators",
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
     ) -> "Operators":
         ...
 
@@ -179,14 +179,14 @@ class Operators:
         return self.operate(inv)
 
     def op(
-            self,
-            opstring: str,
-            precedence: int = 0,
-            is_comparison: bool = False,
-            return_type: Optional[
-                Union[Type["TypeEngine[Any]"], "TypeEngine[Any]"]
-            ] = None,
-            python_impl: Optional[Callable[..., Any]] = None,
+        self,
+        opstring: str,
+        precedence: int = 0,
+        is_comparison: bool = False,
+        return_type: Optional[
+            Union[Type["TypeEngine[Any]"], "TypeEngine[Any]"]
+        ] = None,
+        python_impl: Optional[Callable[..., Any]] = None,
     ) -> Callable[[Any], Operators]:
         """Produce a generic operator function.
 
@@ -279,10 +279,10 @@ class Operators:
         return against
 
     def bool_op(
-            self,
-            opstring: str,
-            precedence: int = 0,
-            python_impl: Optional[Callable[..., Any]] = None,
+        self,
+        opstring: str,
+        precedence: int = 0,
+        python_impl: Optional[Callable[..., Any]] = None,
     ) -> Callable[[Any], Operators]:
         """Return a custom boolean operator.
 
@@ -306,7 +306,7 @@ class Operators:
         )
 
     def operate(
-            self, op: OperatorType, *other: Any, **kwargs: Any
+        self, op: OperatorType, *other: Any, **kwargs: Any
     ) -> Operators:
         r"""Operate on an argument.
 
@@ -336,7 +336,7 @@ class Operators:
     __sa_operate__ = operate
 
     def reverse_operate(
-            self, op: OperatorType, other: Any, **kwargs: Any
+        self, op: OperatorType, other: Any, **kwargs: Any
     ) -> Operators:
         """Reverse operate on an argument.
 
@@ -385,16 +385,16 @@ class custom_op(OperatorType, Generic[_T]):
     )
 
     def __init__(
-            self,
-            opstring: str,
-            precedence: int = 0,
-            is_comparison: bool = False,
-            return_type: Optional[
-                Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
-            ] = None,
-            natural_self_precedent: bool = False,
-            eager_grouping: bool = False,
-            python_impl: Optional[Callable[..., Any]] = None,
+        self,
+        opstring: str,
+        precedence: int = 0,
+        is_comparison: bool = False,
+        return_type: Optional[
+            Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
+        ] = None,
+        natural_self_precedent: bool = False,
+        eager_grouping: bool = False,
+        python_impl: Optional[Callable[..., Any]] = None,
     ):
         self.opstring = opstring
         self.precedence = precedence
@@ -413,11 +413,11 @@ class custom_op(OperatorType, Generic[_T]):
         return id(self)
 
     def __call__(
-            self,
-            left: Operators,
-            right: Optional[Any] = None,
-            *other: Any,
-            **kwargs: Any,
+        self,
+        left: Operators,
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
     ) -> Operators:
         if hasattr(left, "__sa_operate__"):
             return left.operate(self, right, *other, **kwargs)
@@ -475,13 +475,14 @@ class ColumnOperators(Operators):
     """Hack, allows datetime objects to be compared on the LHS."""
 
     if typing.TYPE_CHECKING:
+
         def operate(
-                self, op: OperatorType, *other: Any, **kwargs: Any
+            self, op: OperatorType, *other: Any, **kwargs: Any
         ) -> ColumnOperators:
             ...
 
         def reverse_operate(
-                self, op: OperatorType, other: Any, **kwargs: Any
+            self, op: OperatorType, other: Any, **kwargs: Any
         ) -> ColumnOperators:
             ...
 
@@ -625,7 +626,7 @@ class ColumnOperators(Operators):
         return self.reverse_operate(concat_op, other)
 
     def like(
-            self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: Optional[str] = None
     ) -> ColumnOperators:
         r"""Implement the ``like`` operator.
 
@@ -652,7 +653,7 @@ class ColumnOperators(Operators):
         return self.operate(like_op, other, escape=escape)
 
     def ilike(
-            self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: Optional[str] = None
     ) -> ColumnOperators:
         r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
@@ -803,7 +804,7 @@ class ColumnOperators(Operators):
     notin_ = not_in
 
     def not_like(
-            self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: Optional[str] = None
     ) -> ColumnOperators:
         """implement the ``NOT LIKE`` operator.
 
@@ -825,7 +826,7 @@ class ColumnOperators(Operators):
     notlike = not_like
 
     def not_ilike(
-            self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: Optional[str] = None
     ) -> ColumnOperators:
         """implement the ``NOT ILIKE`` operator.
 
@@ -880,10 +881,10 @@ class ColumnOperators(Operators):
     isnot = is_not
 
     def startswith(
-            self,
-            other: Any,
-            escape: Optional[str] = None,
-            autoescape: bool = False,
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``startswith`` operator.
 
@@ -974,8 +975,8 @@ class ColumnOperators(Operators):
         r"""Implement the ``istartswith`` operator, e.g. case insensitive
         version of :meth:`.ColumnOperators.startswith`.
 
-                Produces a LIKE expression that tests against an insensitive match for the start
-        of a string value::
+        Produces a LIKE expression that tests against an insensitive
+        match for the start of a string value::
 
             lower(column) LIKE lower(<other>) || '%'
 
@@ -991,9 +992,9 @@ class ColumnOperators(Operators):
         may be set to ``True`` to apply escaping to occurrences of these
         characters within the string value so that they match as themselves
         and not as wildcard characters.  Alternatively, the
-        :paramref:`.ColumnOperators.istartswith.escape` parameter will establish
-        a given character as an escape character which can be of use when
-        the target expression is not a literal string.
+        :paramref:`.ColumnOperators.istartswith.escape` parameter will
+        establish a given character as an escape character which can be of
+        use when the target expression is not a literal string.
 
         :param other: expression to be compared.   This is usually a plain
           string value, but can also be an arbitrary SQL expression.  LIKE
@@ -1048,10 +1049,10 @@ class ColumnOperators(Operators):
         )
 
     def endswith(
-            self,
-            other: Any,
-            escape: Optional[str] = None,
-            autoescape: bool = False,
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the 'endswith' operator.
 
@@ -1142,8 +1143,8 @@ class ColumnOperators(Operators):
         r"""Implement the ``iendswith`` operator, e.g. case insensitive
         version of :meth:`.ColumnOperators.endswith`.
 
-                Produces a LIKE expression that tests against an insensitive match for the end
-        of a string value::
+        Produces a LIKE expression that tests against an insensitive match
+        for the end of a string value::
 
             lower(column) LIKE '%' || lower(<other>)
 
@@ -1299,8 +1300,8 @@ class ColumnOperators(Operators):
         r"""Implement the ``icontains`` operator, e.g. case insensitive
         version of :meth:`.ColumnOperators.contains`.
 
-                Produces a LIKE expression that tests against an insensitive match for the middle
-        of a string value::
+        Produces a LIKE expression that tests against an insensitive match
+        for the middle of a string value::
 
             lower(column) LIKE '%' || lower(<other>) || '%'
 
@@ -1402,7 +1403,7 @@ class ColumnOperators(Operators):
         return self.operate(match_op, other, **kwargs)
 
     def regexp_match(
-            self, pattern: Any, flags: Optional[str] = None
+        self, pattern: Any, flags: Optional[str] = None
     ) -> ColumnOperators:
         """Implements a database-specific 'regexp match' operator.
 
@@ -1452,7 +1453,7 @@ class ColumnOperators(Operators):
         return self.operate(regexp_match_op, pattern, flags=flags)
 
     def regexp_replace(
-            self, pattern: Any, replacement: Any, flags: Optional[str] = None
+        self, pattern: Any, replacement: Any, flags: Optional[str] = None
     ) -> ColumnOperators:
         """Implements a database-specific 'regexp replace' operator.
 
@@ -1578,7 +1579,7 @@ class ColumnOperators(Operators):
         return self.reverse_operate(mod, other)
 
     def between(
-            self, cleft: Any, cright: Any, symmetric: bool = False
+        self, cleft: Any, cright: Any, symmetric: bool = False
     ) -> ColumnOperators:
         """Produce a :func:`_expression.between` clause against
         the parent object, given the lower and upper range.
@@ -1885,7 +1886,7 @@ def all_op(a: Any) -> Any:
 
 
 def _escaped_like_impl(
-        fn: Callable[..., Any], other: Any, escape: Optional[str], autoescape: bool
+    fn: Callable[..., Any], other: Any, escape: Optional[str], autoescape: bool
 ) -> Any:
     if autoescape:
         if autoescape is not True:
@@ -1909,7 +1910,7 @@ def _escaped_like_impl(
 @comparison_op
 @_operator_fn
 def startswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.startswith, b, escape, autoescape)
 
@@ -1917,7 +1918,7 @@ def startswith_op(
 @comparison_op
 @_operator_fn
 def not_startswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.startswith, b, escape, autoescape)
 
@@ -1945,7 +1946,7 @@ def not_istartswith_op(
 @comparison_op
 @_operator_fn
 def endswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.endswith, b, escape, autoescape)
 
@@ -1953,7 +1954,7 @@ def endswith_op(
 @comparison_op
 @_operator_fn
 def not_endswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.endswith, b, escape, autoescape)
 
@@ -1981,7 +1982,7 @@ def not_iendswith_op(
 @comparison_op
 @_operator_fn
 def contains_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.contains, b, escape, autoescape)
 
@@ -1989,7 +1990,7 @@ def contains_op(
 @comparison_op
 @_operator_fn
 def not_contains_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.contains, b, escape, autoescape)
 
@@ -2034,7 +2035,7 @@ def not_regexp_match_op(a: Any, b: Any, flags: Optional[str] = None) -> Any:
 
 @_operator_fn
 def regexp_replace_op(
-        a: Any, b: Any, replacement: Any, flags: Optional[str] = None
+    a: Any, b: Any, replacement: Any, flags: Optional[str] = None
 ) -> Any:
     return a.regexp_replace(b, replacement=replacement, flags=flags)
 
@@ -2121,9 +2122,9 @@ def is_ordering_modifier(op: OperatorType) -> bool:
 
 def is_natural_self_precedent(op: OperatorType) -> bool:
     return (
-            op in _natural_self_precedent
-            or isinstance(op, custom_op)
-            and op.natural_self_precedent
+        op in _natural_self_precedent
+        or isinstance(op, custom_op)
+        and op.natural_self_precedent
     )
 
 
