@@ -15,7 +15,91 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.41
-    :include_notes_from: unreleased_14
+    :released: September 6, 2022
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8441
+
+        Fixed issue where use of the :func:`_sql.table` construct, passing a string
+        for the :paramref:`_sql.table.schema` parameter, would fail to take the
+        "schema" string into account when producing a cache key, thus leading to
+        caching collisions if multiple, same-named :func:`_sql.table` constructs
+        with different schemas were used.
+
+
+    .. change::
+        :tags: bug, events, orm
+        :tickets: 8467
+
+        Fixed event listening issue where event listeners added to a superclass
+        would be lost if a subclass were created which then had its own listeners
+        associated. The practical example is that of the :class:`.sessionmaker`
+        class created after events have been associated with the
+        :class:`_orm.Session` class.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 8401
+
+        Hardened the cache key strategy for the :func:`_orm.aliased` and
+        :func:`_orm.with_polymorphic` constructs. While no issue involving actual
+        statements being cached can easily be demonstrated (if at all), these two
+        constructs were not including enough of what makes them unique in their
+        cache keys for caching on the aliased construct alone to be accurate.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 8456
+
+        Fixed regression appearing in the 1.4 series where a joined-inheritance
+        query placed as a subquery within an enclosing query for that same entity
+        would fail to render the JOIN correctly for the inner query. The issue
+        manifested in two different ways prior and subsequent to version 1.4.18
+        (related issue :ticket:`6595`), in one case rendering JOIN twice, in the
+        other losing the JOIN entirely. To resolve, the conditions under which
+        "polymorphic loading" are applied have been scaled back to not be invoked
+        for simple joined inheritance queries.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8446
+
+        Fixed issue in :mod:`sqlalchemy.ext.mutable` extension where collection
+        links to the parent object would be lost if the object were merged with
+        :meth:`.Session.merge` while also passing :paramref:`.Session.merge.load`
+        as False.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8399
+
+        Fixed issue involving :func:`_orm.with_loader_criteria` where a closure
+        variable used as bound parameter value within the lambda would not carry
+        forward correctly into additional relationship loaders such as
+        :func:`_orm.selectinload` and :func:`_orm.lazyload` after the statement
+        were cached, using the stale originally-cached value instead.
+
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 8475
+
+        Fixed regression caused by the fix for :ticket:`8231` released in 1.4.40
+        where connection would fail if the user did not have permission to query
+        the ``dm_exec_sessions`` or ``dm_pdw_nodes_exec_sessions`` system views
+        when trying to determine the current transaction isolation level.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 8419
+
+        Integrated support for asyncpg's ``terminate()`` method call for cases
+        where the connection pool is recycling a possibly timed-out connection,
+        where a connection is being garbage collected that wasn't gracefully
+        closed, as well as when the connection has been invalidated. This allows
+        asyncpg to abandon the connection without waiting for a response that may
+        incur long timeouts.
 
 .. changelog::
     :version: 1.4.40
