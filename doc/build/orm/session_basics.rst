@@ -503,6 +503,29 @@ behavior.
     :ref:`faq_session_rollback` - further background on why
     :meth:`_orm.Session.rollback` must be called when a flush fails.
 
+.. _session_get:
+
+Get by Primary Key
+------------------
+
+As the :class:`_orm.Session` makes use of an :term:`identity map` which refers
+to current in-memory objects by primary key, the :meth:`_orm.Session.get`
+method is provided as a means of locating objects by primary key, first
+looking within the current identity map and then querying the database
+for non present values.  Such as, to locate a ``User`` entity with primary key
+identity ``(5, )``::
+
+    my_user = session.get(User, 5)
+
+The :meth:`_orm.Session.get` also includes calling forms for composite primary
+key values, which may be passed as tuples or dictionaries, as well as
+additional parameters which allow for specific loader and execution options.
+See :meth:`_orm.Session.get` for the complete parameter list.
+
+.. seealso::
+
+    :meth:`_orm.Session.get`
+
 .. _session_expiring:
 
 Expiring / Refreshing
@@ -555,9 +578,11 @@ ways to refresh its contents with new data from the current transaction:
 
   ..
 
-* **the populate_existing() method** - this method is actually on the
-  :class:`_orm.Query` object as :meth:`_orm.Query.populate_existing`
-  and indicates that it should return objects that are unconditionally
+* **the populate_existing() method or execution option** - This is now
+  an execution option documented at :ref:`orm_queryguide_populate_existing`; in
+  legacy form it's found on the :class:`_orm.Query` object as the
+  :meth:`_orm.Query.populate_existing` method. This operation in either form
+  indicates that objects being returned from a query should be unconditionally
   re-populated from their contents in the database::
 
     u2 = session.scalars(
