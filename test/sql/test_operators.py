@@ -3952,6 +3952,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
+
 class CustomOpTest(fixtures.TestBase):
     def test_is_comparison_legacy(self):
         c = column("x")

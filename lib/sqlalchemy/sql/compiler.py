@@ -2704,14 +2704,16 @@ class SQLCompiler(Compiled):
         binary = binary._clone()
         percent = self._like_percent_literal
         binary.left = functions.func.lower(binary.left)
-        binary.right = percent.concat(functions.func.lower(binary.right)).concat(percent)
+        binary.right = percent.concat(functions.func.lower(binary.right)).\
+            concat(percent)
         return self.visit_like_op_binary(binary, operator, **kw)
 
     def visit_not_icontains_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
         binary.left = functions.func.lower(binary.left)
-        binary.right = percent.concat(functions.func.lower(binary.right)).concat(percent)
+        binary.right = percent.concat(functions.func.lower(binary.right)).\
+            concat(percent)
         return self.visit_not_like_op_binary(binary, operator, **kw)
 
     def visit_startswith_op_binary(self, binary, operator, **kw):
