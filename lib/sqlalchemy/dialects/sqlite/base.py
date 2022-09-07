@@ -1381,6 +1381,15 @@ class SQLiteCompiler(compiler.SQLCompiler):
         # sqlite has no "FOR UPDATE" AFAICT
         return ""
 
+    def update_from_clause(
+        self, update_stmt, from_table, extra_froms, from_hints, **kw
+    ):
+        kw["asfrom"] = True
+        return "FROM " + ", ".join(
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
+            for t in extra_froms
+        )
+
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
         return "%s IS NOT %s" % (
             self.process(binary.left),
@@ -1933,6 +1942,7 @@ class SQLiteDialect(default.DefaultDialect):
     insert_returning = True
     update_returning = True
     delete_returning = True
+    update_returning_multifrom = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext

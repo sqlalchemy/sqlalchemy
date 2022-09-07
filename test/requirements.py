@@ -461,8 +461,8 @@ class DefaultRequirements(SuiteRequirements):
     def update_from(self):
         """Target must support UPDATE..FROM syntax"""
 
-        return only_on(
-            ["postgresql", "mssql", "mysql", "mariadb"],
+        return skip_if(
+            "oracle",
             "Backend does not support UPDATE..FROM",
         )
 

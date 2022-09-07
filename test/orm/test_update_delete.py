@@ -2038,11 +2038,12 @@ class InheritTest(fixtures.DeclarativeMappedTest):
     def test_update_from(self, synchronize_session):
         """test an UPDATE that uses multiple tables.
 
-        The limitation that MariaDB has with DELETE does not apply here
-        at the moment as MariaDB doesn't support UPDATE..RETURNING at all.
-        However, the logic from DELETE is still implemented in
-        persistence.py. If MariaDB adds UPDATE...RETURNING, or SQLite adds
-        UPDATE..FROM, etc., then it will be useful.
+        The limitation that MariaDB has with DELETE does not apply here at the
+        moment as MariaDB doesn't support UPDATE..RETURNING at all. However,
+        the logic from DELETE is still implemented in persistence.py. If
+        MariaDB adds UPDATE...RETURNING, then it may be useful. SQLite,
+        PostgreSQL, MSSQL all support UPDATE..FROM however RETURNING seems to
+        function correctly for all three.
 
         """
         Engineer = self.classes.Engineer
