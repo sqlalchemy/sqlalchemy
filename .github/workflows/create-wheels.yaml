@@ -46,10 +46,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -106,7 +106,7 @@ jobs:
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
 
@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Get python version
         id: linux-py-version
@@ -162,6 +162,7 @@ jobs:
         # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
         run: |
           version="`echo $py_tag | sed --regexp-extended 's/cp([0-9])([0-9]+)-.*/\1.\2/g'`"
+          version=$([[ $version = "3.11" ]] && echo 3.11.0-rc - 3.11 || echo $version )
           echo $version
           echo "::set-output name=python-version::$version"
 
@@ -179,11 +180,11 @@ jobs:
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel for manylinux1 and manylinux2010 for py3
-        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' && matrix.python-version != 'cp311-cp311' }}
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2010_x86_64
         # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -199,7 +200,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -215,7 +216,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux1_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux1_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux1
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -227,7 +228,7 @@ jobs:
           pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ steps.linux-py-version.outputs.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -260,7 +261,7 @@ jobs:
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
 
@@ -299,7 +300,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
@@ -322,7 +323,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_aarch64
+        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_aarch64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
@@ -358,7 +359,7 @@ jobs:
       - name: Set up Python for twine
         # Setup python after creating the wheel, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.8"
 
