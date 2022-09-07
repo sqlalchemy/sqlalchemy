@@ -967,10 +967,10 @@ class ColumnOperators(Operators):
         )
 
     def istartswith(
-            self,
-            other: Any,
-            escape: Optional[str] = None,
-            autoescape: bool = False,
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``istartswith`` operator, e.g. case insensitive
         version of :meth:`.ColumnOperators.startswith`.
@@ -1135,10 +1135,10 @@ class ColumnOperators(Operators):
         )
 
     def iendswith(
-            self,
-            other: Any,
-            escape: Optional[str] = None,
-            autoescape: bool = False,
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``iendswith`` operator, e.g. case insensitive
         version of :meth:`.ColumnOperators.endswith`.
@@ -1930,7 +1930,7 @@ notstartswith_op = not_startswith_op
 @comparison_op
 @_operator_fn
 def istartswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.istartswith, b, escape, autoescape)
 
@@ -1938,7 +1938,7 @@ def istartswith_op(
 @comparison_op
 @_operator_fn
 def not_istartswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.istartswith, b, escape, autoescape)
 
@@ -1966,7 +1966,7 @@ notendswith_op = not_endswith_op
 @comparison_op
 @_operator_fn
 def iendswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.iendswith, b, escape, autoescape)
 
@@ -1974,7 +1974,7 @@ def iendswith_op(
 @comparison_op
 @_operator_fn
 def not_iendswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.iendswith, b, escape, autoescape)
 
@@ -2002,7 +2002,7 @@ notcontains_op = not_contains_op
 @comparison_op
 @_operator_fn
 def icontains_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.icontains, b, escape, autoescape)
 
@@ -2010,7 +2010,7 @@ def icontains_op(
 @comparison_op
 @_operator_fn
 def not_icontains_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.icontains, b, escape, autoescape)
 

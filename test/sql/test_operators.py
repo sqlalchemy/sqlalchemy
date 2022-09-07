@@ -3917,7 +3917,8 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_iendswith_text(self):
         self.assert_compile(
             column("x").iendswith(text("y")),
-            "lower(x) LIKE '%' || lower(y)", checkparams={}
+            "lower(x) LIKE '%' || lower(y)",
+            checkparams={},
         )
 
     def test_iendswith_mysql(self):
