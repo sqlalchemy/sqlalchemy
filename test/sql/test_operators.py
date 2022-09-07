@@ -3198,6 +3198,155 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
+    def test_icontains(self):
+        """
+        case insensitive contains method
+        """
+        self.assert_compile(
+            column("x").icontains("y"),
+            "lower(x) LIKE '%' || lower(:x_1) || '%'",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_icontains_encoded(self):
+        self.assert_compile(
+            column("x").icontains(b"y"),
+            "lower(x) LIKE '%' || lower(:x_1) || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_not_icontains_encoded(self):
+        self.assert_compile(
+            ~column("x").icontains(b"y"),
+            "lower(x) NOT LIKE '%' || lower(:x_1) || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_icontains_encoded_mysql(self):
+        self.assert_compile(
+            column("x").icontains(b"y"),
+            "lower(x) LIKE concat('%%', lower(%s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_icontains_encoded_mysql(self):
+        self.assert_compile(
+            ~column("x").icontains(b"y"),
+            "lower(x) NOT LIKE concat('%%', lower(%s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_icontains(self):
+        """
+        same as test_icontains but negate the statement
+        """
+        self.assert_compile(
+            ~column("x").icontains("y"),
+            "lower(x) NOT LIKE '%' || lower(:x_1) || '%'",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_icontains_escape(self):
+        """
+        render same SQL statement as icontains but include the ESCAPE
+        keyword to establish that character as the escape character
+        """
+        self.assert_compile(
+            column("x").icontains("a%b_c", escape="\\"),
+            "lower(x) LIKE '%' || lower(:x_1) || '%' ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_not_icontains_escape(self):
+        """
+        same as test_icontains_escape but negate the statement
+        """
+        self.assert_compile(
+            ~column("x").icontains("a%b_c", escape="\\"),
+            "lower(x) NOT LIKE '%' || lower(:x_1) || '%' ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_icontains_autoescape(self):
+        """
+        apply the escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").icontains("a%b_c/d", autoescape=True),
+            "lower(x) LIKE '%' || lower(:x_1) || '%' ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_icontains_autoescape_custom_escape(self):
+        """
+        set an escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").icontains("foo%bar^bat", escape="^", autoescape=True),
+            "lower(x) LIKE '%' || lower(:x_1) || '%' ESCAPE '^'",
+            checkparams={"x_1": "foo^%bar^^bat"},
+        )
+
+    def test_not_icontains_autoescape(self):
+        """
+        same as test_icontains_autoescape but negate the statement
+        """
+        self.assert_compile(
+            ~column("x").icontains("a%b_c/d", autoescape=True),
+            "lower(x) NOT LIKE '%' || lower(:x_1) || '%' ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_icontains_literal(self):
+        self.assert_compile(
+            column("x").icontains(literal_column("y")),
+            "lower(x) LIKE '%' || lower(y) || '%'",
+            checkparams={},
+        )
+
+    def test_icontains_text(self):
+        self.assert_compile(
+            column("x").icontains(text("y")),
+            "lower(x) LIKE '%' || lower(y) || '%'",
+            checkparams={},
+        )
+
+    def test_icontains_concat(self):
+        self.assert_compile(
+            column("x").icontains("y"),
+            "lower(x) LIKE concat('%%', lower(%s), '%%')",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_not_icontains_concat(self):
+        self.assert_compile(
+            ~column("x").icontains("y"),
+            "lower(x) NOT LIKE concat('%%', lower(%s), '%%')",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_icontains_literal_concat(self):
+        self.assert_compile(
+            column("x").icontains(literal_column("y")),
+            "lower(x) LIKE concat('%%', lower(y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
+    def test_icontains_text_concat(self):
+        self.assert_compile(
+            column("x").icontains(text("y")),
+            "lower(x) LIKE concat('%%', lower(y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
     def test_like(self):
         self.assert_compile(
             column("x").like("y"), "x LIKE :x_1", checkparams={"x_1": "y"}
@@ -3377,6 +3526,149 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
+    def test_istartswith(self):
+        """
+        case insensitive startswith method
+        """
+        self.assert_compile(
+            column("x").istartswith("y"),
+            "lower(x) LIKE lower(:x_1) || '%'",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_not_istartswith(self):
+        """
+        same as test_istartswith but negate the statement
+        """
+        self.assert_compile(
+            ~column("x").istartswith("y"),
+            "lower(x) NOT LIKE lower(:x_1) || '%'",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_istartswith_escape(self):
+        """
+        render same SQL statement as istartswith but include the ESCAPE
+        keyword to establish that character as the escape character
+        """
+        self.assert_compile(
+            column("x").istartswith("a%b_c", escape="\\"),
+            "lower(x) LIKE lower(:x_1) || '%' ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_not_istartswith_escape(self):
+        self.assert_compile(
+            ~column("x").istartswith("a%b_c", escape="\\"),
+            "lower(x) NOT LIKE lower(:x_1) || '%' ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_istartswith_autoescape(self):
+        """
+        apply the escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").istartswith("a%b_c/d", autoescape=True),
+            "lower(x) LIKE lower(:x_1) || '%' ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_not_istartswith_autoescape(self):
+        self.assert_compile(
+            ~column("x").istartswith("a%b_c/d", autoescape=True),
+            "lower(x) NOT LIKE lower(:x_1) || '%' ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_istartswith_autoescape_custom_escape(self):
+        """
+        set an escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").istartswith("a%b_c/d^e", autoescape=True, escape="^"),
+            "lower(x) LIKE lower(:x_1) || '%' ESCAPE '^'",
+            checkparams={"x_1": "a^%b^_c/d^^e"},
+        )
+
+    def test_istartswith_encoded(self):
+        self.assert_compile(
+            column("x").istartswith(b"y"),
+            "lower(x) LIKE lower(:x_1) || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_not_istartswith_encoded(self):
+        self.assert_compile(
+            ~column("x").istartswith(b"y"),
+            "lower(x) NOT LIKE lower(:x_1) || '%'",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_istartswith_encoded_mysql(self):
+        self.assert_compile(
+            column("x").istartswith(b"y"),
+            "lower(x) LIKE concat(lower(%s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_not_istartswith_encoded_mysql(self):
+        self.assert_compile(
+            ~column("x").istartswith(b"y"),
+            "lower(x) NOT LIKE concat(lower(%s), '%%')",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_istartswith_literal(self):
+        self.assert_compile(
+            column("x").istartswith(literal_column("y")),
+            "lower(x) LIKE lower(y) || '%'",
+            checkparams={},
+        )
+
+    def test_istartswith_text(self):
+        self.assert_compile(
+            column("x").istartswith(text("y")),
+            "lower(x) LIKE lower(y) || '%'",
+            checkparams={},
+        )
+
+    def test_istartswith_concat(self):
+        self.assert_compile(
+            column("x").istartswith("y"),
+            "lower(x) LIKE concat(lower(%s), '%%')",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_not_istartswith_concat(self):
+        self.assert_compile(
+            ~column("x").istartswith("y"),
+            "lower(x) NOT LIKE concat(lower(%s), '%%')",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_istartswith_literal_mysql(self):
+        self.assert_compile(
+            column("x").istartswith(literal_column("y")),
+            "lower(x) LIKE concat(lower(y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
+    def test_istartswith_text_mysql(self):
+        self.assert_compile(
+            column("x").istartswith(text("y")),
+            "lower(x) LIKE concat(lower(y), '%%')",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
     def test_endswith(self):
         self.assert_compile(
             column("x").endswith("y"),
@@ -3509,6 +3801,156 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
+    def test_iendswith(self):
+        """
+        case insensitive endswith method
+        """
+        self.assert_compile(
+            column("x").iendswith("y"),
+            "lower(x) LIKE '%' || lower(:x_1)",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_not_iendswith(self):
+        """
+        same as test_iendswith but negate the statement
+        """
+        self.assert_compile(
+            ~column("x").iendswith("y"),
+            "lower(x) NOT LIKE '%' || lower(:x_1)",
+            checkparams={"x_1": "y"},
+        )
+
+    def test_iendswith_encoded(self):
+        self.assert_compile(
+            column("x").iendswith(b"y"),
+            "lower(x) LIKE '%' || lower(:x_1)",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_not_iendswith_encoded(self):
+        self.assert_compile(
+            ~column("x").iendswith(b"y"),
+            "lower(x) NOT LIKE '%' || lower(:x_1)",
+            checkparams={"x_1": b"y"},
+        )
+
+    def test_iendswith_encoded_mysql(self):
+        self.assert_compile(
+            column("x").iendswith(b"y"),
+            "lower(x) LIKE concat('%%', lower(%s))",
+            checkparams={"x_1": b"y"},
+            dialect="mysql",
+        )
+
+    def test_iendswith_escape(self):
+        """
+        render same SQL statement as iendswith but include the ESCAPE
+        keyword to establish that character as the escape character
+        """
+        self.assert_compile(
+            column("x").iendswith("a%b_c", escape="\\"),
+            "lower(x) LIKE '%' || lower(:x_1) ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_not_iendswith_escape(self):
+        self.assert_compile(
+            ~column("x").iendswith("a%b_c", escape="\\"),
+            "lower(x) NOT LIKE '%' || lower(:x_1) ESCAPE '\\'",
+            checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_iendswith_autoescape(self):
+        """
+        apply the escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").iendswith("a%b_c/d", autoescape=True),
+            "lower(x) LIKE '%' || lower(:x_1) ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_not_iendswith_autoescape(self):
+        self.assert_compile(
+            ~column("x").iendswith("a%b_c/d", autoescape=True),
+            "lower(x) NOT LIKE '%' || lower(:x_1) ESCAPE '/'",
+            checkparams={"x_1": "a/%b/_c//d"},
+        )
+
+    def test_iendswith_autoescape_custom_escape(self):
+        """
+        set an escape character to all occurrences of "%", "_" and
+        the escape character itself
+        """
+        self.assert_compile(
+            column("x").iendswith("a%b_c/d^e", autoescape=True, escape="^"),
+            "lower(x) LIKE '%' || lower(:x_1) ESCAPE '^'",
+            checkparams={"x_1": "a^%b^_c/d^^e"},
+        )
+
+    def test_iendswith_autoescape_warning(self):
+        with expect_warnings("The autoescape parameter is now a simple"):
+            self.assert_compile(
+                column("x").iendswith("a%b_c/d", autoescape="P"),
+                "lower(x) LIKE '%' || lower(:x_1) ESCAPE '/'",
+                checkparams={"x_1": "a/%b/_c//d"},
+            )
+
+    def test_iendswith_autoescape_nosqlexpr(self):
+        assert_raises_message(
+            TypeError,
+            "String value expected when autoescape=True",
+            column("x").iendswith,
+            literal_column("'a%b_c/d'"),
+            autoescape=True,
+        )
+
+    def test_iendswith_literal(self):
+        self.assert_compile(
+            column("x").iendswith(literal_column("y")),
+            "lower(x) LIKE '%' || lower(y)",
+            checkparams={},
+        )
+
+    def test_iendswith_text(self):
+        self.assert_compile(
+            column("x").iendswith(text("y")),
+            "lower(x) LIKE '%' || lower(y)", checkparams={}
+        )
+
+    def test_iendswith_mysql(self):
+        self.assert_compile(
+            column("x").iendswith("y"),
+            "lower(x) LIKE concat('%%', lower(%s))",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_not_iendswith_mysql(self):
+        self.assert_compile(
+            ~column("x").iendswith("y"),
+            "lower(x) NOT LIKE concat('%%', lower(%s))",
+            checkparams={"x_1": "y"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_iendswith_literal_mysql(self):
+        self.assert_compile(
+            column("x").iendswith(literal_column("y")),
+            "lower(x) LIKE concat('%%', lower(y))",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
+    def test_iendswith_text_mysql(self):
+        self.assert_compile(
+            column("x").iendswith(text("y")),
+            "lower(x) LIKE concat('%%', lower(y))",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
 
 class CustomOpTest(fixtures.TestBase):
     def test_is_comparison_legacy(self):
