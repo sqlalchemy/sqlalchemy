@@ -1645,6 +1645,9 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
+    def visit_ilike_case_insensitive_operand(self, element, **kw):
+        return element.element._compiler_dispatch(self, **kw)
+
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
 

@@ -1,0 +1,14 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 3482
+
+      Added long-requested case-insensitive string operators
+      :meth:`_sql.ColumnOperators.icontains`,
+      :meth:`_sql.ColumnOperators.istartswith`,
+      :meth:`_sql.ColumnOperators.iendswith`, which produce case-insensitive
+      LIKE compositions (using ILIKE on PostgreSQL, and the LOWER() function on
+      all other backends) to complement the existing LIKE composition operators
+      :meth:`_sql.ColumnOperators.contains`,
+      :meth:`_sql.ColumnOperators.startswith`, etc. Huge thanks to Matias
+      Martinez Rebori for their meticulous and complete efforts in implementing
+      these new methods.

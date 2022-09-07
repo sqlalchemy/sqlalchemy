@@ -747,6 +747,8 @@ class CompilerColumnElement(
 
     __slots__ = ()
 
+    _propagate_attrs = util.EMPTY_DICT
+
 
 # SQLCoreOperations should be suiting the ExpressionElementRole
 # and ColumnsClauseRole.   however the MRO issues become too elaborate
