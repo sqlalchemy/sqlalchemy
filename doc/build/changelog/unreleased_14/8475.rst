@@ -3,6 +3,6 @@
     :tickets: 8475
 
     Fixed regression caused by the fix for :ticket:`8231` released in 1.4.40
-    where connection would fail if the user does not have permission to query
-    the dm_exec_sessions or dm_pdw_nodes_exec_sessions system view when trying
-    to determine the current transaction isolation level.
+    where connection would fail if the user did not have permission to query
+    the ``dm_exec_sessions`` or ``dm_pdw_nodes_exec_sessions`` system views
+    when trying to determine the current transaction isolation level.
