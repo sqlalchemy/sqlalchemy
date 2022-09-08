@@ -120,6 +120,19 @@ def de_stringify_annotation(
     return annotation  # type: ignore
 
 
+def de_stringify_union_elements(
+    cls: Type[Any],
+    annotation: _AnnotationScanType,
+    str_cleanup_fn: Optional[Callable[[str], str]] = None,
+) -> Type[Any]:
+    return make_union_type(
+        *[
+            de_stringify_annotation(cls, anno, str_cleanup_fn)
+            for anno in annotation.__args__  # type: ignore
+        ]
+    )
+
+
 def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
@@ -186,7 +199,7 @@ def expand_unions(
         return (type_,)
 
 
-def is_optional(type_):
+def is_optional(type_: Any) -> bool:
     return is_origin_of(
         type_,
         "Optional",
@@ -199,7 +212,7 @@ def is_optional_union(type_: Any) -> bool:
     return is_optional(type_) and NoneType in typing_get_args(type_)
 
 
-def is_union(type_):
+def is_union(type_: Any) -> bool:
     return is_origin_of(type_, "Union")
 
 
