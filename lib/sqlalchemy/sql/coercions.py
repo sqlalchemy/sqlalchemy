@@ -354,7 +354,11 @@ def expect(
 
     if not isinstance(
         element,
-        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
+        (
+            elements.CompilerElement,
+            schema.SchemaItem,
+            schema.FetchedValue,
+        ),
     ):
         resolved = None
 

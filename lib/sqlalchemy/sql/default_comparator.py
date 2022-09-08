@@ -468,13 +468,25 @@ operator_lookup: Dict[
         _boolean_compare,
         util.immutabledict({"negate_op": operators.not_contains_op}),
     ),
+    "icontains_op": (
+        _boolean_compare,
+        util.immutabledict({"negate_op": operators.not_icontains_op}),
+    ),
     "startswith_op": (
         _boolean_compare,
         util.immutabledict({"negate_op": operators.not_startswith_op}),
     ),
+    "istartswith_op": (
+        _boolean_compare,
+        util.immutabledict({"negate_op": operators.not_istartswith_op}),
+    ),
     "endswith_op": (
         _boolean_compare,
         util.immutabledict({"negate_op": operators.not_endswith_op}),
+    ),
+    "iendswith_op": (
+        _boolean_compare,
+        util.immutabledict({"negate_op": operators.not_iendswith_op}),
     ),
     "desc_op": (
         _scalar,
