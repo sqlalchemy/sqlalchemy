@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 7185
+
+    The SQLite dialect now supports UPDATE..FROM syntax, for UPDATE statements
+    that may refer to additional tables within the WHERE criteria of the
+    statement without the need to use subqueries. This syntax is invoked
+    automatically when using the :class:`_dml.Update` construct when more than
+    one table or other entity or selectable is used.
