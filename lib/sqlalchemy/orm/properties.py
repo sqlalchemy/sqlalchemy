@@ -51,9 +51,11 @@ from ..sql.schema import Column
 from ..sql.schema import SchemaConst
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
+from ..util.typing import de_stringify_union_elements
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
+from ..util.typing import is_union
 from ..util.typing import Self
 from ..util.typing import typing_get_args
 
@@ -655,6 +657,9 @@ class MappedColumn(
         if is_fwd_ref(argument):
             argument = de_stringify_annotation(cls, argument)
 
+        if is_union(argument):
+            argument = de_stringify_union_elements(cls, argument)
+
         nullable = is_optional_union(argument)
 
         if not self._has_nullable:
@@ -690,6 +695,7 @@ class MappedColumn(
                 checks = (our_type,)
 
             for check_type in checks:
+
                 if registry.type_annotation_map:
                     new_sqltype = registry.type_annotation_map.get(check_type)
                 if new_sqltype is None:
