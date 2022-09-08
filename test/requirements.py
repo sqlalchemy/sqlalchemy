@@ -462,7 +462,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target must support UPDATE..FROM syntax"""
 
         return skip_if(
-            "oracle",
+            ["oracle", "sqlite<3.33.0"],
             "Backend does not support UPDATE..FROM",
         )
 
