@@ -1210,6 +1210,12 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_random_func(self, fn, **kw):
         return "rand%s" % self.function_argspec(fn)
 
+    def visit_rollup_func(self, fn, **kw):
+        clause = ", ".join(
+            elem._compiler_dispatch(self, **kw) for elem in fn.clauses
+        )
+        return f"{clause} WITH ROLLUP"
+
     def visit_sequence(self, seq, **kw):
         return "nextval(%s)" % self.preparer.format_sequence(seq)
 
