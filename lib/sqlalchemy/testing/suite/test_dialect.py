@@ -8,6 +8,7 @@ from .. import config
 from .. import engines
 from .. import eq_
 from .. import fixtures
+from .. import is_true
 from .. import ne_
 from .. import provide_metadata
 from ..assertions import expect_raises_message
@@ -22,6 +23,16 @@ from ... import Integer
 from ... import literal_column
 from ... import select
 from ... import String
+
+
+class PingTest(fixtures.TestBase):
+    __backend__ = True
+
+    def test_do_ping(self):
+        with testing.db.connect() as conn:
+            is_true(
+                testing.db.dialect.do_ping(conn.connection.dbapi_connection)
+            )
 
 
 class ExceptionTest(fixtures.TablesTest):
