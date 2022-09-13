@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-
 import asyncio
 
 from . import engine
@@ -628,7 +627,8 @@ class AsyncSession(ReversibleProxy):
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        await asyncio.shield(self.close())
+        task = asyncio.create_task(self.close())
+        await asyncio.shield(task)
 
     def _maker_context_manager(self):
         # no @contextlib.asynccontextmanager until python3.7, gr
@@ -649,7 +649,8 @@ class _AsyncSessionContextManager:
             await self.trans.__aexit__(type_, value, traceback)
             await self.async_session.__aexit__(type_, value, traceback)
 
-        await asyncio.shield(go())
+        task = asyncio.create_task(go())
+        await asyncio.shield(task)
 
 
 class AsyncSessionTransaction(ReversibleProxy, StartableContext):
