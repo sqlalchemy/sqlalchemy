@@ -16,6 +16,8 @@ from .. import inspect
 from .. import util
 from ..sql import and_
 from ..sql import operators
+from ..sql.sqltypes import Integer
+from ..sql.sqltypes import Numeric
 
 
 class UnevaluatableError(exc.InvalidRequestError):
@@ -120,7 +122,7 @@ class EvaluatorCompiler:
         dispatch = f"visit_{clause.operator.__name__.rstrip('_')}_binary_op"
         meth = getattr(self, dispatch, None)
         if meth:
-            return meth(clause.operator, eval_left, eval_right)
+            return meth(clause.operator, eval_left, eval_right, clause)
         else:
             raise UnevaluatableError(
                 f"Cannot evaluate {type(clause).__name__} with "
@@ -165,9 +167,13 @@ class EvaluatorCompiler:
 
         return evaluate
 
-    def visit_custom_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_custom_op_binary_op(
+        self, operator, eval_left, eval_right, clause
+    ):
         if operator.python_impl:
-            return self._straight_evaluate(operator, eval_left, eval_right)
+            return self._straight_evaluate(
+                operator, eval_left, eval_right, clause
+            )
         else:
             raise UnevaluatableError(
                 f"Custom operator {operator.opstring!r} can't be evaluated "
@@ -175,19 +181,19 @@ class EvaluatorCompiler:
                 "`.python_impl`."
             )
 
-    def visit_is_binary_op(self, operator, eval_left, eval_right):
+    def visit_is_binary_op(self, operator, eval_left, eval_right, clause):
         def evaluate(obj):
             return eval_left(obj) == eval_right(obj)
 
         return evaluate
 
-    def visit_is_not_binary_op(self, operator, eval_left, eval_right):
+    def visit_is_not_binary_op(self, operator, eval_left, eval_right, clause):
         def evaluate(obj):
             return eval_left(obj) != eval_right(obj)
 
         return evaluate
 
-    def _straight_evaluate(self, operator, eval_left, eval_right):
+    def _straight_evaluate(self, operator, eval_left, eval_right, clause):
         def evaluate(obj):
             left_val = eval_left(obj)
             right_val = eval_right(obj)
@@ -197,11 +203,25 @@ class EvaluatorCompiler:
 
         return evaluate
 
-    visit_add_binary_op = _straight_evaluate
-    visit_mul_binary_op = _straight_evaluate
-    visit_sub_binary_op = _straight_evaluate
-    visit_mod_binary_op = _straight_evaluate
-    visit_truediv_binary_op = _straight_evaluate
+    def _straight_evaluate_numeric_only(
+        self, operator, eval_left, eval_right, clause
+    ):
+        if clause.left.type._type_affinity not in (
+            Numeric,
+            Integer,
+        ) or clause.right.type._type_affinity not in (Numeric, Integer):
+            raise UnevaluatableError(
+                f'Cannot evaluate math operator "{operator.__name__}" for '
+                f"datatypes {clause.left.type}, {clause.right.type}"
+            )
+
+        return self._straight_evaluate(operator, eval_left, eval_right, clause)
+
+    visit_add_binary_op = _straight_evaluate_numeric_only
+    visit_mul_binary_op = _straight_evaluate_numeric_only
+    visit_sub_binary_op = _straight_evaluate_numeric_only
+    visit_mod_binary_op = _straight_evaluate_numeric_only
+    visit_truediv_binary_op = _straight_evaluate_numeric_only
     visit_lt_binary_op = _straight_evaluate
     visit_le_binary_op = _straight_evaluate
     visit_ne_binary_op = _straight_evaluate
@@ -209,33 +229,43 @@ class EvaluatorCompiler:
     visit_ge_binary_op = _straight_evaluate
     visit_eq_binary_op = _straight_evaluate
 
-    def visit_in_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_in_op_binary_op(self, operator, eval_left, eval_right, clause):
         return self._straight_evaluate(
             lambda a, b: a in b if a is not _NO_OBJECT else None,
             eval_left,
             eval_right,
+            clause,
         )
 
-    def visit_not_in_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_not_in_op_binary_op(
+        self, operator, eval_left, eval_right, clause
+    ):
         return self._straight_evaluate(
             lambda a, b: a not in b if a is not _NO_OBJECT else None,
             eval_left,
             eval_right,
+            clause,
         )
 
-    def visit_concat_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_concat_op_binary_op(
+        self, operator, eval_left, eval_right, clause
+    ):
         return self._straight_evaluate(
-            lambda a, b: a + b, eval_left, eval_right
+            lambda a, b: a + b, eval_left, eval_right, clause
         )
 
-    def visit_startswith_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_startswith_op_binary_op(
+        self, operator, eval_left, eval_right, clause
+    ):
         return self._straight_evaluate(
-            lambda a, b: a.startswith(b), eval_left, eval_right
+            lambda a, b: a.startswith(b), eval_left, eval_right, clause
         )
 
-    def visit_endswith_op_binary_op(self, operator, eval_left, eval_right):
+    def visit_endswith_op_binary_op(
+        self, operator, eval_left, eval_right, clause
+    ):
         return self._straight_evaluate(
-            lambda a, b: a.endswith(b), eval_left, eval_right
+            lambda a, b: a.endswith(b), eval_left, eval_right, clause
         )
 
     def visit_unary(self, clause):
