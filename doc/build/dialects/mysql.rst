@@ -194,6 +194,11 @@ PyMySQL
 
 .. automodule:: sqlalchemy.dialects.mysql.pymysql
 
+MariaDB-Connector
+------------------
+
+.. automodule:: sqlalchemy.dialects.mysql.mariadbconnector
+
 MySQL-Connector
 ---------------
 
