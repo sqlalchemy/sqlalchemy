@@ -11,6 +11,8 @@ from .. import inspect
 from .. import util
 from ..sql import and_
 from ..sql import operators
+from ..sql.sqltypes import Integer
+from ..sql.sqltypes import Numeric
 
 
 class UnevaluatableError(Exception):
@@ -30,18 +32,24 @@ _NO_OBJECT = _NoObject()
 _straight_ops = set(
     getattr(operators, op)
     for op in (
-        "add",
-        "mul",
-        "sub",
-        "div",
-        "mod",
-        "truediv",
         "lt",
         "le",
         "ne",
         "gt",
         "ge",
         "eq",
+    )
+)
+
+_math_only_straight_ops = set(
+    getattr(operators, op)
+    for op in (
+        "add",
+        "mul",
+        "sub",
+        "div",
+        "mod",
+        "truediv",
     )
 )
 
@@ -62,7 +70,6 @@ _notimplemented_ops = set(
         "startswith_op",
         "between_op",
         "endswith_op",
-        "concat_op",
     )
 )
 
@@ -191,6 +198,11 @@ class EvaluatorCompiler(object):
             def evaluate(obj):
                 return eval_left(obj) != eval_right(obj)
 
+        elif operator is operators.concat_op:
+
+            def evaluate(obj):
+                return eval_left(obj) + eval_right(obj)
+
         elif operator in _extended_ops:
 
             def evaluate(obj):
@@ -200,6 +212,28 @@ class EvaluatorCompiler(object):
                     return None
 
                 return _extended_ops[operator](left_val, right_val)
+
+        elif operator in _math_only_straight_ops:
+            if (
+                clause.left.type._type_affinity
+                not in (
+                    Numeric,
+                    Integer,
+                )
+                or clause.right.type._type_affinity not in (Numeric, Integer)
+            ):
+                raise UnevaluatableError(
+                    'Cannot evaluate math operator "%s" for '
+                    "datatypes %s, %s"
+                    % (operator.__name__, clause.left.type, clause.right.type)
+                )
+
+            def evaluate(obj):
+                left_val = eval_left(obj)
+                right_val = eval_right(obj)
+                if left_val is None or right_val is None:
+                    return None
+                return operator(eval_left(obj), eval_right(obj))
 
         elif operator in _straight_ops:
 

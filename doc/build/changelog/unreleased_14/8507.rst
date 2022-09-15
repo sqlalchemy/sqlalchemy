@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 8507
+
+    Fixed regression where using ORM update() with synchronize_session='fetch'
+    would fail due to the use of evaluators that are now used to determine the
+    in-Python value for expressions in the the SET clause when refreshing
+    objects; if the evaluators make use of math operators against non-numeric
+    values such as PostgreSQL JSONB, the non-evaluable condition would fail to
+    be detected correctly. The evaluator now limits the use of math mutation
+    operators to numeric types only, with the exception of "+" that continues
+    to work for strings as well. SQLAlchemy 2.0 may alter this further by
+    fetching the SET values completely rather than using evaluation.
