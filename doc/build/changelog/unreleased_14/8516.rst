@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 8516
+
+    Improved implementation of ``asyncio.shield()`` used in context managers as
+    added in :ticket:`8145`, such that the "close" operation is enclosed within
+    an ``asyncio.Task`` which is then strongly referenced as the operation
+    proceeds. This is per Python documentation indicating that the task is
+    otherwise not strongly referenced.
