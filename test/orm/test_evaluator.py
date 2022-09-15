@@ -5,6 +5,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy import String
@@ -16,6 +17,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -53,6 +55,7 @@ class EvaluateTest(fixtures.MappedTest):
             Column("id", Integer, primary_key=True),
             Column("name", String(64)),
             Column("othername", String(64)),
+            Column("json", JSON),
         )
 
     @classmethod
@@ -342,6 +345,67 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(name="notname"), False),
             ],
         )
+
+    @testing.combinations(
+        (lambda User: User.id + 5, "id", 10, 15, None),
+        (
+            # note this one uses concat_op, not operator.add
+            lambda User: User.name + " name",
+            "name",
+            "some value",
+            "some value name",
+            None,
+        ),
+        (
+            lambda User: User.id + "name",
+            "id",
+            10,
+            evaluator.UnevaluatableError,
+            r"Cannot evaluate math operator \"add\" for "
+            r"datatypes INTEGER, VARCHAR",
+        ),
+        (
+            lambda User: User.json + 12,
+            "json",
+            {"foo": "bar"},
+            evaluator.UnevaluatableError,
+            r"Cannot evaluate math operator \"add\" for "
+            r"datatypes JSON, INTEGER",
+        ),
+        (
+            lambda User: User.json - 12,
+            "json",
+            {"foo": "bar"},
+            evaluator.UnevaluatableError,
+            r"Cannot evaluate math operator \"sub\" for "
+            r"datatypes JSON, INTEGER",
+        ),
+        (
+            lambda User: User.json - "foo",
+            "json",
+            {"foo": "bar"},
+            evaluator.UnevaluatableError,
+            r"Cannot evaluate math operator \"sub\" for "
+            r"datatypes JSON, VARCHAR",
+        ),
+    )
+    def test_math_op_type_exclusions(
+        self, expr, attrname, initial_value, expected, message
+    ):
+        """test #8507"""
+
+        User = self.classes.User
+
+        expr = testing.resolve_lambda(expr, User=User)
+
+        if expected is evaluator.UnevaluatableError:
+            with expect_raises_message(evaluator.UnevaluatableError, message):
+                compiler.process(expr)
+        else:
+            obj = User(**{attrname: initial_value})
+
+            new_value = compiler.process(expr)(obj)
+            eq_(new_value, expected)
 
 
 class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
