@@ -505,6 +505,10 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         else:
             self.do_commit(connection.connection)
 
+    @util.memoized_property
+    def _dialect_specific_select_one(self):
+        return ";"
+
 
 class AsyncAdapt_psycopg_cursor:
     __slots__ = ("_cursor", "await_", "_rows")

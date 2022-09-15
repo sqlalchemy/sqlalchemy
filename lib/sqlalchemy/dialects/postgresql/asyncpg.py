@@ -741,6 +741,12 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
         else:
             self.isolation_level = self._isolation_setting
 
+    def ping(self):
+        try:
+            _ = self.await_(self._connection.fetchrow(";"))
+        except Exception as error:
+            self._handle_exception(error)
+
     def set_isolation_level(self, level):
         if self._started:
             self.rollback()
@@ -995,6 +1001,17 @@ class PGDialect_asyncpg(PGDialect):
         util.coerce_kw_type(opts, "prepared_statement_cache_size", int)
         util.coerce_kw_type(opts, "port", int)
         return ([], opts)
+
+    def do_ping(self, dbapi_connection):
+        try:
+            dbapi_connection.ping()
+        except self.dbapi.Error as err:
+            if self.is_disconnect(err, dbapi_connection, None):
+                return False
+            else:
+                raise
+        else:
+            return True
 
     @classmethod
     def get_pool_class(cls, url):

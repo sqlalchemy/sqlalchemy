@@ -559,5 +559,9 @@ class PGDialect_pg8000(PGDialect):
         else:
             return None
 
+    @util.memoized_property
+    def _dialect_specific_select_one(self):
+        return ";"
+
 
 dialect = PGDialect_pg8000
