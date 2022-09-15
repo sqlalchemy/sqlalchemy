@@ -1373,6 +1373,16 @@ class QueuePoolTest(PoolTestBase):
     def test_max_overflow(self):
         self._test_overflow(40, 5)
 
+    @testing.combinations(42, 0, -5, 1)
+    def test_unlimited(self, max_overflow):
+        p = self._queuepool_fixture(pool_size=0, max_overflow=max_overflow)
+        eq_(p.overflow(), 0)
+        c1 = p.connect()
+        c2 = p.connect()
+        eq_(p.overflow(), 0)
+        c1.close()
+        c2.close()
+
     def test_overflow_no_gc(self):
         p = self._queuepool_fixture(pool_size=2, max_overflow=2)
 
