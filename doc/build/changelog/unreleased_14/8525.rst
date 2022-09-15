@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mssql, regression
+    :tickets: 8525
+
+    Fixed yet another regression in SQL Server isolation level fetch (see
+    :ticket:`8231`, :ticket:`8475`), this time with "Microsoft Dynamics CRM
+    Database via Azure Active Directory", which apparently lacks the
+    ``system_views`` view entirely. Error catching has been extended that under
+    no circumstances will this method ever fail, provided database connectivity
+    is present.
