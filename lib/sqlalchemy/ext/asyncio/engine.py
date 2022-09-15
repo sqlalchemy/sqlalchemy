@@ -551,7 +551,8 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         return self.start().__await__()
 
     async def __aexit__(self, type_, value, traceback):
-        await asyncio.shield(self.close())
+        task = asyncio.create_task(self.close())
+        await asyncio.shield(task)
 
 
 @util.create_proxy_methods(
@@ -606,7 +607,8 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
                 await self.transaction.__aexit__(type_, value, traceback)
                 await self.conn.close()
 
-            await asyncio.shield(go())
+            task = asyncio.create_task(go())
+            await asyncio.shield(task)
 
     def __init__(self, sync_engine):
         if not sync_engine.dialect.is_async:
