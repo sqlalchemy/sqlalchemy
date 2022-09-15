@@ -627,7 +627,7 @@ class AsyncSession(ReversibleProxy):
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        task = asyncio.create_task(self.close())
+        task = asyncio.get_running_loop().create_task(self.close())
         await asyncio.shield(task)
 
     def _maker_context_manager(self):
@@ -649,7 +649,7 @@ class _AsyncSessionContextManager:
             await self.trans.__aexit__(type_, value, traceback)
             await self.async_session.__aexit__(type_, value, traceback)
 
-        task = asyncio.create_task(go())
+        task = asyncio.get_running_loop().create_task(go())
         await asyncio.shield(task)
 
 
