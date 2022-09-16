@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, pool
+    :tickets: 8523
+
+    The :class:`_pool.QueuePool` now ignores ``max_overflow`` when
+    ``pool_size=0``, properly making the pool unlimited in all cases.

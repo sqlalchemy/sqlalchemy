@@ -126,7 +126,7 @@ class QueuePool(Pool):
         Pool.__init__(self, creator, **kw)
         self._pool = self._queue_class(pool_size, use_lifo=use_lifo)
         self._overflow = 0 - pool_size
-        self._max_overflow = max_overflow
+        self._max_overflow = -1 if pool_size == 0 else max_overflow
         self._timeout = timeout
         self._overflow_lock = threading.Lock()
 
@@ -241,7 +241,7 @@ class QueuePool(Pool):
         return self._pool.qsize()
 
     def overflow(self) -> int:
-        return self._overflow
+        return self._overflow if self._pool.maxsize else 0
 
     def checkedout(self) -> int:
         return self._pool.maxsize - self._pool.qsize() + self._overflow
