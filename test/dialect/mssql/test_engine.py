@@ -647,7 +647,12 @@ class RealIsolationLevelTest(fixtures.TestBase):
 
 
 class IsolationLevelDetectTest(fixtures.TestBase):
-    def _fixture(self, view_result, simulate_perm_failure=False):
+    def _fixture(
+        self,
+        view_result,
+        simulate_perm_failure=False,
+        simulate_no_system_views=False,
+    ):
         class Error(Exception):
             pass
 
@@ -662,8 +667,13 @@ class IsolationLevelDetectTest(fixtures.TestBase):
         ):
             result.clear()
             if "SELECT name FROM sys.system_views" in stmt:
-                if view_result:
-                    result.append((view_result,))
+                if simulate_no_system_views:
+                    raise dialect.dbapi.Error(
+                        "SQL Server simulated no system_views error"
+                    )
+                else:
+                    if view_result:
+                        result.append((view_result,))
             elif re.match(
                 ".*SELECT CASE transaction_isolation_level.*FROM sys.%s"
                 % (view_result,),
@@ -705,6 +715,23 @@ class IsolationLevelDetectTest(fixtures.TestBase):
         assert_raises_message(
             NotImplementedError,
             "Can't fetch isolation level on this particular ",
+            dialect.get_isolation_level,
+            connection,
+        )
+
+    @testing.combinations(True, False)
+    def test_no_system_views(self, simulate_perm_failure_also):
+        dialect, connection = self._fixture(
+            "dm_pdw_nodes_exec_sessions",
+            simulate_perm_failure=simulate_perm_failure_also,
+            simulate_no_system_views=True,
+        )
+
+        assert_raises_message(
+            NotImplementedError,
+            r"Can\'t fetch isolation level;  encountered error SQL Server "
+            r"simulated no system_views error when attempting to query the "
+            r'"sys.system_views" view.',
             dialect.get_isolation_level,
             connection,
         )
