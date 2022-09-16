@@ -551,7 +551,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         return self.start().__await__()
 
     async def __aexit__(self, type_, value, traceback):
-        task = asyncio.get_running_loop().create_task(self.close())
+        task = asyncio.get_event_loop().create_task(self.close())
         await asyncio.shield(task)
 
 
@@ -607,7 +607,7 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
                 await self.transaction.__aexit__(type_, value, traceback)
                 await self.conn.close()
 
-            task = asyncio.get_running_loop().create_task(go())
+            task = asyncio.get_event_loop().create_task(go())
             await asyncio.shield(task)
 
     def __init__(self, sync_engine):
