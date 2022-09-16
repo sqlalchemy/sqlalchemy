@@ -2829,10 +2829,13 @@ class MSDialect(default.DefaultDialect):
 
     def get_isolation_level(self, dbapi_connection):
         cursor = dbapi_connection.cursor()
+        view_name = "sys.system_views"
         try:
             cursor.execute(
-                "SELECT name FROM sys.system_views WHERE name IN "
-                "('dm_exec_sessions', 'dm_pdw_nodes_exec_sessions')"
+                (
+                    "SELECT name FROM {} WHERE name IN "
+                    "('dm_exec_sessions', 'dm_pdw_nodes_exec_sessions')"
+                ).format(view_name)
             )
             row = cursor.fetchone()
             if not row:
@@ -2843,37 +2846,33 @@ class MSDialect(default.DefaultDialect):
 
             view_name = "sys.{}".format(row[0])
 
-            try:
-                cursor.execute(
-                    """
-                        SELECT CASE transaction_isolation_level
-                        WHEN 0 THEN NULL
-                        WHEN 1 THEN 'READ UNCOMMITTED'
-                        WHEN 2 THEN 'READ COMMITTED'
-                        WHEN 3 THEN 'REPEATABLE READ'
-                        WHEN 4 THEN 'SERIALIZABLE'
-                        WHEN 5 THEN 'SNAPSHOT' END
-                        AS TRANSACTION_ISOLATION_LEVEL
-                        FROM {}
-                        where session_id = @@SPID
-                    """.format(
-                        view_name
-                    )
+            cursor.execute(
+                """
+                    SELECT CASE transaction_isolation_level
+                    WHEN 0 THEN NULL
+                    WHEN 1 THEN 'READ UNCOMMITTED'
+                    WHEN 2 THEN 'READ COMMITTED'
+                    WHEN 3 THEN 'REPEATABLE READ'
+                    WHEN 4 THEN 'SERIALIZABLE'
+                    WHEN 5 THEN 'SNAPSHOT' END
+                    AS TRANSACTION_ISOLATION_LEVEL
+                    FROM {}
+                    where session_id = @@SPID
+                """.format(
+                    view_name
                 )
-            except self.dbapi.Error as err:
-                util.raise_(
-                    NotImplementedError(
-                        "Can't fetch isolation level;  encountered "
-                        "error {} when "
-                        'attempting to query the "{}" view.'.format(
-                            err, view_name
-                        )
-                    ),
-                    from_=err,
-                )
-            else:
-                row = cursor.fetchone()
-                return row[0].upper()
+            )
+        except self.dbapi.Error as err:
+            util.raise_(
+                NotImplementedError(
+                    "Can't fetch isolation level;  encountered error {} when "
+                    'attempting to query the "{}" view.'.format(err, view_name)
+                ),
+                from_=err,
+            )
+        else:
+            row = cursor.fetchone()
+            return row[0].upper()
         finally:
             cursor.close()
 
