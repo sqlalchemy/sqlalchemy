@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, mysql, mariadb
+    :tickets: 8503
+
+    The ``ROLLUP`` function will now correctly render ``WITH ROLLUP`` on
+    MySql and MariaDB, allowing the use of group by rollup with these
+    backend.
