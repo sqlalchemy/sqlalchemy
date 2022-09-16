@@ -3175,7 +3175,7 @@ This document details individual issue-level changes made throughout
         ``@validates`` validator function or a ``@reconstructor`` reconstruction
         function, to check for "callable" more liberally such as to accommodate
         objects based on fundamental attributes like ``__func__`` and
-        ``__call___``, rather than testing for ``MethodType`` / ``FunctionType``,
+        ``__call__``, rather than testing for ``MethodType`` / ``FunctionType``,
         allowing things like cython functions to work properly. Pull request
         courtesy Miłosz Stypiński.
 

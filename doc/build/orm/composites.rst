@@ -144,7 +144,7 @@ the same expression that the base "greater than" does::
 
 
     class Vertex(Base):
-        ___tablename__ = "vertices"
+        __tablename__ = "vertices"
 
         id = Column(Integer, primary_key=True)
         x1 = Column(Integer)
