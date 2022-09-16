@@ -2681,7 +2681,7 @@
 
         Fixed bug where the :attr:`_orm.Mapper.all_orm_descriptors` accessor would
         return an entry for the :class:`_orm.Mapper` itself under the declarative
-        ``__mapper___`` key, when this is not a descriptor.  The ``.is_attribute``
+        ``__mapper__`` key, when this is not a descriptor.  The ``.is_attribute``
         flag that's present on all :class:`.InspectionAttr` objects is now
         consulted, which has also been modified to be ``True`` for an association
         proxy, as it was erroneously set to False for this object.
