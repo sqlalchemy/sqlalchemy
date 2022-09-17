@@ -1057,7 +1057,11 @@
         :tickets:
 
       create_engine now takes only RFC-1738-style strings:
-      driver://user:password@host:port/database
+      ``driver://user:password@host:port/database``
+
+      **update** this format is generally but not exactly RFC-1738,
+      including that underscores, not dashes or periods, are accepted in the
+      "scheme" portion.
 
     .. change::
         :tags:

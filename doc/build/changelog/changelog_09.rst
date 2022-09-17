@@ -2647,11 +2647,11 @@
         :tags: bug, engine
         :tickets: 2873
 
-        The :func:`_sa.create_engine` routine and the related
-        :func:`.make_url` function no longer considers the ``+`` sign
-        to be a space within the password field.  The parsing has been
-        adjusted to match RFC 1738 exactly, in that both ``username``
-        and ``password`` expect only ``:``, ``@``, and ``/`` to be
+        The :func:`_sa.create_engine` routine and the related :func:`.make_url`
+        function no longer considers the ``+`` sign to be a space within the
+        password field. The parsing in this area has been adjusted to match
+        more closely to how RFC 1738 handles these tokens, in that both
+        ``username`` and ``password`` expect only ``:``, ``@``, and ``/`` to be
         encoded.
 
         .. seealso::

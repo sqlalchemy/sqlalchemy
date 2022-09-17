@@ -55,12 +55,14 @@ See the section :ref:`dialect_toplevel` for information on the various backends 
 Database URLs
 =============
 
-The :func:`_sa.create_engine` function produces an :class:`_engine.Engine` object based
-on a URL.  These URLs follow `RFC-1738
-<https://www.ietf.org/rfc/rfc1738.txt>`_, and usually can include username, password,
-hostname, database name as well as optional keyword arguments for additional configuration.
-In some cases a file path is accepted, and in others a "data source name" replaces
-the "host" and "database" portions.  The typical form of a database URL is:
+The :func:`_sa.create_engine` function produces an :class:`_engine.Engine`
+object based on a URL. The format of the URL generally follows `RFC-1738
+<https://www.ietf.org/rfc/rfc1738.txt>`_, with some exceptions, including that
+underscores, not dashes or periods, are accepted within the "scheme" portion.
+URLs typically include username, password, hostname, database name fields, as
+well as optional keyword arguments for additional configuration. In some cases
+a file path is accepted, and in others a "data source name" replaces the "host"
+and "database" portions. The typical form of a database URL is:
 
 .. sourcecode:: none
 
