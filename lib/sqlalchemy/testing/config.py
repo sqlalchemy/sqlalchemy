@@ -13,6 +13,8 @@ import collections
 import typing
 from typing import Any
 from typing import Iterable
+from typing import Optional
+from typing import overload
 from typing import Tuple
 from typing import Union
 
@@ -35,6 +37,15 @@ if typing.TYPE_CHECKING:
     _fixture_functions: FixtureFunctions
 else:
     _fixture_functions = None  # installed by plugin_base
+
+
+@overload
+def combinations(
+    *comb: Union[Any, Tuple[Any, ...]],
+    argnames: Optional[str] = None,
+    id_: Optional[str] = None,
+):
+    ...
 
 
 def combinations(*comb: Union[Any, Tuple[Any, ...]], **kw: str):

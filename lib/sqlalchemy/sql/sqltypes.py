@@ -3065,6 +3065,8 @@ class ARRAY(
                     dim - 1 if dim is not None else None,
                     collection_callable,
                 )
+                if x is not None
+                else None
                 for x in arr
             )
 

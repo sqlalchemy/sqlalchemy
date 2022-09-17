@@ -36,6 +36,7 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
 from sqlalchemy.dialects.postgresql import DATERANGE
@@ -1900,6 +1901,48 @@ class ArrayRoundTripTest:
 
         stmt = select(func.array_agg(values_table.c.value)[2:4])
         eq_(connection.execute(stmt).scalar(), [2, 3, 4])
+
+    def test_array_agg_json(self, metadata, connection):
+        table = Table(
+            "values", metadata, Column("id", Integer), Column("bar", JSON)
+        )
+        metadata.create_all(connection)
+        connection.execute(
+            table.insert(),
+            [{"id": 1, "bar": [{"buz": 1}]}, {"id": 2, "bar": None}],
+        )
+
+        arg = aggregate_order_by(table.c.bar, table.c.id)
+        stmt = select(sa.func.array_agg(arg))
+        eq_(connection.execute(stmt).scalar(), [[{"buz": 1}], None])
+
+        arg = aggregate_order_by(table.c.bar, table.c.id.desc())
+        stmt = select(sa.func.array_agg(arg))
+        eq_(connection.execute(stmt).scalar(), [None, [{"buz": 1}]])
+
+    @testing.combinations(ARRAY, postgresql.ARRAY, argnames="cls")
+    def test_array_none(self, connection, metadata, cls):
+        table = Table(
+            "values", metadata, Column("id", Integer), Column("bar", cls(JSON))
+        )
+        metadata.create_all(connection)
+        connection.execute(
+            table.insert().values(
+                [
+                    {
+                        "id": 1,
+                        "bar": sa.text("""array['[{"x": 1}]'::json, null]"""),
+                    },
+                    {"id": 2, "bar": None},
+                ]
+            )
+        )
+
+        stmt = select(table.c.bar).order_by(table.c.id)
+        eq_(connection.scalars(stmt).all(), [[[{"x": 1}], None], None])
+
+        stmt = select(table.c.bar).order_by(table.c.id.desc())
+        eq_(connection.scalars(stmt).all(), [None, [[{"x": 1}], None]])
 
     def test_array_index_slice_exprs(self, connection):
         """test a variety of expressions that sometimes need parenthesizing"""
