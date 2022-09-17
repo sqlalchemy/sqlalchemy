@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7083
+
+    The :class:`_functions.array_agg` will now set the array dimensions to 1.
+    Improved :class:`_types.ARRAY` processing to accept ``None`` values as
+    value of a multi-array.

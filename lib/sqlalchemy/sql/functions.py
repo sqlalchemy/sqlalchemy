@@ -1407,7 +1407,9 @@ class array_agg(GenericFunction[_T]):
             if isinstance(type_from_args, sqltypes.ARRAY):
                 kwargs["type_"] = type_from_args
             else:
-                kwargs["type_"] = default_array_type(type_from_args)
+                kwargs["type_"] = default_array_type(
+                    type_from_args, dimensions=1
+                )
         kwargs["_parsed_args"] = fn_args
         super(array_agg, self).__init__(*fn_args, **kwargs)
 

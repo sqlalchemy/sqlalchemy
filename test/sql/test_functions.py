@@ -948,11 +948,14 @@ class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
         expr = func.array_agg(column("data", Integer))
         is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
+        is_(expr.type.dimensions, 1)
 
     def test_array_agg_array_datatype(self):
-        expr = func.array_agg(column("data", ARRAY(Integer)))
+        col = column("data", ARRAY(Integer))
+        expr = func.array_agg(col)
         is_(expr.type._type_affinity, ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
+        eq_(expr.type.dimensions, col.type.dimensions)
 
     def test_array_agg_array_literal_implicit_type(self):
         from sqlalchemy.dialects.postgresql import array, ARRAY as PG_ARRAY
