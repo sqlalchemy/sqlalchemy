@@ -47,9 +47,10 @@ class URL(NamedTuple):
     Represent the components of a URL used to connect to a database.
 
     This object is suitable to be passed directly to a
-    :func:`_sa.create_engine` call.  The fields of the URL are parsed
-    from a string by the :func:`.make_url` function.  The string
-    format of the URL is an RFC-1738-style string.
+    :func:`_sa.create_engine` call. The fields of the URL are parsed from a
+    string by the :func:`.make_url` function. The string format of the URL
+    generally follows `RFC-1738 <https://www.ietf.org/rfc/rfc1738.txt>`_, with
+    some exceptions.
 
     To create a new :class:`_engine.URL` object, use the
     :func:`.make_url` function.  To construct a :class:`_engine.URL`
@@ -614,12 +615,12 @@ class URL(NamedTuple):
         """
         s = self.drivername + "://"
         if self.username is not None:
-            s += _rfc_1738_quote(self.username)
+            s += _sqla_url_quote(self.username)
             if self.password is not None:
                 s += ":" + (
                     "***"
                     if hide_password
-                    else _rfc_1738_quote(str(self.password))
+                    else _sqla_url_quote(str(self.password))
                 )
             s += "@"
         if self.host is not None:
@@ -817,8 +818,12 @@ class URL(NamedTuple):
 def make_url(name_or_url: Union[str, URL]) -> URL:
     """Given a string, produce a new URL instance.
 
-    The given string is parsed according to the RFC 1738 spec.  If an
-    existing URL object is passed, just returns the object.
+    The format of the URL generally follows `RFC-1738
+    <https://www.ietf.org/rfc/rfc1738.txt>`_, with some exceptions, including
+    that underscores, and not dashes or periods, are accepted within the
+    "scheme" portion.
+
+    If a :class:`.URL` object is passed, it is returned as is.
 
     .. seealso::
 
@@ -827,12 +832,12 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
     """
 
     if isinstance(name_or_url, str):
-        return _parse_rfc1738_args(name_or_url)
+        return _parse_url(name_or_url)
     else:
         return name_or_url
 
 
-def _parse_rfc1738_args(name: str) -> URL:
+def _parse_url(name: str) -> URL:
     pattern = re.compile(
         r"""
             (?P<name>[\w\+]+)://
@@ -871,10 +876,10 @@ def _parse_rfc1738_args(name: str) -> URL:
         components["query"] = query
 
         if components["username"] is not None:
-            components["username"] = _rfc_1738_unquote(components["username"])
+            components["username"] = _sqla_url_unquote(components["username"])
 
         if components["password"] is not None:
-            components["password"] = _rfc_1738_unquote(components["password"])
+            components["password"] = _sqla_url_unquote(components["password"])
 
         ipv4host = components.pop("ipv4host")
         ipv6host = components.pop("ipv6host")
@@ -888,12 +893,12 @@ def _parse_rfc1738_args(name: str) -> URL:
 
     else:
         raise exc.ArgumentError(
-            "Could not parse rfc1738 URL from string '%s'" % name
+            "Could not parse SQLAlchemy URL from string '%s'" % name
         )
 
 
-def _rfc_1738_quote(text: str) -> str:
+def _sqla_url_quote(text: str) -> str:
     return re.sub(r"[:@/]", lambda m: "%%%X" % ord(m.group(0)), text)
 
 
-_rfc_1738_unquote = unquote
+_sqla_url_unquote = unquote
