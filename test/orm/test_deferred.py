@@ -2317,6 +2317,19 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
             "x",
         )
 
+    def test_load_only_raise_option_raise_column_plain(self):
+        A = self.classes.A
+        s = fixture_session()
+
+        a1 = s.query(A).options(load_only(A.y, A.z, raiseload=True)).first()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.x' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "x",
+        )
+
     def test_deferred_raise_option_load_column_unexpire(self):
         A = self.classes.A
         s = fixture_session()

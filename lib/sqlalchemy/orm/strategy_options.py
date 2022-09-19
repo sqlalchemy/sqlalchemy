@@ -165,9 +165,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return cloned
 
     def load_only(
-        self: Self_AbstractLoad, *attrs: _AttrType
+        self: Self_AbstractLoad, *attrs: _AttrType, raiseload: bool = False
     ) -> Self_AbstractLoad:
-        """Indicate that for a particular entity, only the given list
+        r"""Indicate that for a particular entity, only the given list
         of column-based attribute names should be loaded; all others will be
         deferred.
 
@@ -200,14 +200,27 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             if the column property is defined with ``deferred=True``
             for the :func:`.column_property` function.
 
+        :param \*attrs: Attributes to be loaded, all others will be deferred.
+
+        :param raiseload: raise :class:`.InvalidRequestError` rather than
+         lazy loading a value when a deferred attribute is accessed. Used
+         to prevent unwanted SQL from being emitted.
+
+         .. versionadded:: 2.0
+
         """
         cloned = self._set_column_strategy(
             attrs,
             {"deferred": False, "instrument": True},
         )
+
+        wildcard_strategy = {"deferred": True, "instrument": True}
+        if raiseload:
+            wildcard_strategy["raiseload"] = True
+
         cloned = cloned._set_column_strategy(
             ("*",),
-            {"deferred": True, "instrument": True},
+            wildcard_strategy,
         )
         return cloned
 
@@ -612,9 +625,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         :param key: Attribute to be deferred.
 
-        :param raiseload: raise :class:`.InvalidRequestError` if the column
-         value is to be loaded from emitting SQL.   Used to prevent unwanted
-         SQL from being emitted.
+        :param raiseload: raise :class:`.InvalidRequestError` rather than
+         lazy loading a value when the deferred attribute is accessed. Used
+         to prevent unwanted SQL from being emitted.
 
         .. versionadded:: 1.4
 
@@ -2397,11 +2410,11 @@ def contains_eager(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def load_only(*attrs: _AttrType) -> _AbstractLoad:
+def load_only(*attrs: _AttrType, raiseload: bool = False) -> _AbstractLoad:
     # TODO: attrs against different classes.  we likely have to
     # add some extra state to Load of some kind
     _, lead_element, _ = _parse_attr_argument(attrs[0])
-    return Load(lead_element).load_only(*attrs)
+    return Load(lead_element).load_only(*attrs, raiseload=raiseload)
 
 
 @loader_unbound_fn
@@ -2453,7 +2466,9 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def defer(key: _AttrType, *addl_attrs: _AttrType, **kw: Any) -> _AbstractLoad:
+def defer(
+    key: _AttrType, *addl_attrs: _AttrType, raiseload: bool = False
+) -> _AbstractLoad:
     if addl_attrs:
         util.warn_deprecated(
             "The *addl_attrs on orm.defer is deprecated.  Please use "
@@ -2461,6 +2476,12 @@ def defer(key: _AttrType, *addl_attrs: _AttrType, **kw: Any) -> _AbstractLoad:
             "indicate a path.",
             version="1.3",
         )
+
+    if raiseload:
+        kw = {"raiseload": raiseload}
+    else:
+        kw = {}
+
     return _generate_from_keys(Load.defer, (key,) + addl_attrs, False, kw)
 
 
