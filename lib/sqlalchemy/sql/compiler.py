@@ -611,6 +611,20 @@ class SQLCompiler(Compiled):
     _textual_ordered_columns = False
     """tell the result object that the column names as rendered are important,
     but they are also "ordered" vs. what is in the compiled object here.
+
+    As of 1.4.42 this condition is only present when the statement is a
+    TextualSelect, e.g. text("....").columns(...), where it is required
+    that the columns are considered positionally and not by name.
+
+    """
+
+    _ad_hoc_textual = False
+    """tell the result that we encountered text() or '*' constructs in the
+    middle of the result columns, but we also have compiled columns, so
+    if the number of columns in cursor.description does not match how many
+    expressions we have, that means we can't rely on positional at all and
+    should match on name.
+
     """
 
     _ordered_columns = True
@@ -3024,7 +3038,7 @@ class SQLCompiler(Compiled):
     def _add_to_result_map(self, keyname, name, objects, type_):
         if keyname is None or keyname == "*":
             self._ordered_columns = False
-            self._textual_ordered_columns = True
+            self._ad_hoc_textual = True
         if type_._is_tuple_type:
             raise exc.CompileError(
                 "Most backends don't support SELECTing "

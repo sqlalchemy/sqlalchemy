@@ -1020,6 +1020,50 @@ class CursorResultTest(fixtures.TablesTest):
             set([True]),
         )
 
+    @testing.combinations(
+        (("name_label", "*"), False),
+        (("*", "name_label"), False),
+        (("user_id", "name_label", "user_name"), False),
+        (("user_id", "name_label", "*", "user_name"), True),
+        argnames="cols,other_cols_are_ambiguous",
+    )
+    @testing.requires.select_star_mixed
+    def test_label_against_star(
+        self, connection, cols, other_cols_are_ambiguous
+    ):
+        """test #8536"""
+        users = self.tables.users
+
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
+
+        stmt = select(
+            *[
+                text("*")
+                if colname == "*"
+                else users.c.user_name.label("name_label")
+                if colname == "name_label"
+                else users.c[colname]
+                for colname in cols
+            ]
+        )
+
+        row = connection.execute(stmt).first()
+
+        eq_(row._mapping["name_label"], "john")
+
+        if other_cols_are_ambiguous:
+            with expect_raises_message(
+                exc.InvalidRequestError, "Ambiguous column name"
+            ):
+                row._mapping["user_id"]
+            with expect_raises_message(
+                exc.InvalidRequestError, "Ambiguous column name"
+            ):
+                row._mapping["user_name"]
+        else:
+            eq_(row._mapping["user_id"], 1)
+            eq_(row._mapping["user_name"], "john")
+
     def test_loose_matching_one(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 8536
+
+    Fixed issue where mixing "*" with additional explicitly-named column
+    expressions within the columns clause of a :func:`_sql.select` construct
+    would cause result-column targeting to sometimes consider the label name or
+    other non-repeated names to be an ambiguous target.

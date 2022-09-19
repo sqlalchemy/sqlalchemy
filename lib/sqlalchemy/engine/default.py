@@ -975,6 +975,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._result_columns,
             compiled._ordered_columns,
             compiled._textual_ordered_columns,
+            compiled._ad_hoc_textual,
             compiled._loose_column_name_matching,
         )
         self.isinsert = compiled.isinsert

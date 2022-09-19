@@ -364,6 +364,17 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["+pyodbc"], "no driver support")
 
     @property
+    def select_star_mixed(self):
+        r"""target supports expressions like "SELECT x, y, \*, z FROM table"
+
+        apparently MySQL / MariaDB, Oracle doesn't handle this.
+
+        We only need a few backends so just cover SQLite / PG
+
+        """
+        return only_on(["sqlite", "postgresql"])
+
+    @property
     def independent_connections(self):
         """
         Target must support simultaneous, independent database connections.
