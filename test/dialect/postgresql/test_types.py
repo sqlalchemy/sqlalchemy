@@ -3690,10 +3690,24 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             sqltypes.BOOLEANTYPE,
         )
 
+    def test_where_equal_obj(self):
+        self._test_clause(
+            self.col == self._data_obj(),
+            f"data_table.range = %(range_1)s::{self._col_str}",
+            sqltypes.BOOLEANTYPE,
+        )
+
     def test_where_not_equal(self):
         self._test_clause(
             self.col != self._data_str(),
             "data_table.range <> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
+        )
+
+    def test_where_not_equal_obj(self):
+        self._test_clause(
+            self.col != self._data_obj(),
+            f"data_table.range <> %(range_1)s::{self._col_str}",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -3741,6 +3755,13 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
         self._test_clause(
             self.col.contains(self._data_str()),
             "data_table.range @> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
+        )
+
+    def test_contains_obj(self):
+        self._test_clause(
+            self.col.contains(self._data_obj()),
+            f"data_table.range @> %(range_1)s::{self._col_str}",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -3839,6 +3860,26 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
             Column("range", cls._col_type, primary_key=True),
         )
         cls.col = table.c.range
+
+    def test_auto_cast_back_to_type(self, connection):
+        """test that a straight pass of the range type without any context
+        will send appropriate casting info so that the driver can round
+        trip it.
+
+        This doesn't happen in general across other backends and not for
+        types like JSON etc., although perhaps it should, as we now have
+        pretty straightforward infrastructure to turn it on; asyncpg
+        for example does cast JSONs now in place.  But that's a
+        bigger issue; for PG ranges it's likely useful to do this for
+        PG backends as this is a fairly narrow use case.
+
+        Brought up in #8540.
+
+        """
+        data_obj = self._data_obj()
+        stmt = select(literal(data_obj, type_=self._col_type))
+        round_trip = connection.scalar(stmt)
+        eq_(round_trip, data_obj)
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
@@ -4093,10 +4134,24 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             sqltypes.BOOLEANTYPE,
         )
 
+    def test_where_equal_obj(self):
+        self._test_clause(
+            self.col == self._data_obj(),
+            f"data_table.multirange = %(multirange_1)s::{self._col_str}",
+            sqltypes.BOOLEANTYPE,
+        )
+
     def test_where_not_equal(self):
         self._test_clause(
             self.col != self._data_str(),
             "data_table.multirange <> %(multirange_1)s",
+            sqltypes.BOOLEANTYPE,
+        )
+
+    def test_where_not_equal_obj(self):
+        self._test_clause(
+            self.col != self._data_obj(),
+            f"data_table.multirange <> %(multirange_1)s::{self._col_str}",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -4156,6 +4211,13 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             sqltypes.BOOLEANTYPE,
         )
 
+    def test_contained_by_obj(self):
+        self._test_clause(
+            self.col.contained_by(self._data_obj()),
+            f"data_table.multirange <@ %(multirange_1)s::{self._col_str}",
+            sqltypes.BOOLEANTYPE,
+        )
+
     def test_overlaps(self):
         self._test_clause(
             self.col.overlaps(self._data_str()),
@@ -4208,6 +4270,13 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             sqltypes.BOOLEANTYPE,
         )
 
+    def test_adjacent_to_obj(self):
+        self._test_clause(
+            self.col.adjacent_to(self._data_obj()),
+            f"data_table.multirange -|- %(multirange_1)s::{self._col_str}",
+            sqltypes.BOOLEANTYPE,
+        )
+
     def test_union(self):
         self._test_clause(
             self.col + self.col,
@@ -4244,6 +4313,26 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
             Column("range", cls._col_type, primary_key=True),
         )
         cls.col = table.c.range
+
+    def test_auto_cast_back_to_type(self, connection):
+        """test that a straight pass of the range type without any context
+        will send appropriate casting info so that the driver can round
+        trip it.
+
+        This doesn't happen in general across other backends and not for
+        types like JSON etc., although perhaps it should, as we now have
+        pretty straightforward infrastructure to turn it on; asyncpg
+        for example does cast JSONs now in place.  But that's a
+        bigger issue; for PG ranges it's likely useful to do this for
+        PG backends as this is a fairly narrow use case.
+
+        Brought up in #8540.
+
+        """
+        data_obj = self._data_obj()
+        stmt = select(literal(data_obj, type_=self._col_type))
+        round_trip = connection.scalar(stmt)
+        eq_(round_trip, data_obj)
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)

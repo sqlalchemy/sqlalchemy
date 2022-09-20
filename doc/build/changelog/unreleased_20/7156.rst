@@ -1,6 +1,6 @@
 .. change::
     :tags: postgresql, usecase
-    :tickets: 7156
+    :tickets: 7156, 8540
 
     Adds support for PostgreSQL multirange types, introduced in PostgreSQL 14.
     Support for PostgreSQL ranges and multiranges has now been generalized to
@@ -8,6 +8,12 @@
     support, using a backend-agnostic :class:`_postgresql.Range` data object
     that's constructor-compatible with the previously used psycopg2 object. See
     the new documentation for usage patterns.
+
+    In addition, range type handling has been enhanced so that it automatically
+    renders type casts, so that in-place round trips for statements that don't
+    provide the database with any context don't require the :func:`_sql.cast`
+    construct to be explicit for the database to know the desired type
+    (discussed at :ticket:`8540`).
 
     Thanks very much to @zeeeeeb for the pull request implementing and testing
     the new datatypes and psycopg support.

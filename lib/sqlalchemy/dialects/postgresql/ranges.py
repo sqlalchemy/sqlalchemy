@@ -91,6 +91,35 @@ class AbstractRange(sqltypes.TypeEngine):
 
     """  # noqa: E501
 
+    render_bind_cast = True
+
+    def adapt(self, impltype):
+        """dynamically adapt a range type to an abstract impl.
+
+        For example ``INT4RANGE().adapt(_Psycopg2NumericRange)`` should
+        produce a type that will have ``_Psycopg2NumericRange`` behaviors
+        and also render as ``INT4RANGE`` in SQL and DDL.
+
+        """
+        if issubclass(impltype, AbstractRangeImpl):
+            # two ways to do this are:  1. create a new type on the fly
+            # or 2. have AbstractRangeImpl(visit_name) constructor and a
+            # visit_abstract_range_impl() method in the PG compiler.
+            # I'm choosing #1 as the resulting type object
+            # will then make use of the same mechanics
+            # as if we had made all these sub-types explicitly, and will
+            # also look more obvious under pdb etc.
+            # The adapt() operation here is cached per type-class-per-dialect,
+            # so is not much of a performance concern
+            visit_name = self.__visit_name__
+            return type(
+                f"{visit_name}RangeImpl",
+                (impltype, self.__class__),
+                {"__visit_name__": visit_name},
+            )()
+        else:
+            return super().adapt(impltype)
+
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for range types."""
 
@@ -165,8 +194,18 @@ class AbstractRange(sqltypes.TypeEngine):
             return self.expr.op("+")(other)
 
 
+class AbstractRangeImpl(AbstractRange):
+    """marker for AbstractRange that will apply a subclass-specific
+    adaptation"""
+
+
 class AbstractMultiRange(AbstractRange):
     """base for PostgreSQL MULTIRANGE types"""
+
+
+class AbstractMultiRangeImpl(AbstractRangeImpl, AbstractMultiRange):
+    """marker for AbstractRange that will apply a subclass-specific
+    adaptation"""
 
 
 class INT4RANGE(AbstractRange):

@@ -291,7 +291,7 @@ class AsyncpgCHAR(sqltypes.CHAR):
     render_bind_cast = True
 
 
-class _AsyncpgRange(ranges.AbstractRange):
+class _AsyncpgRange(ranges.AbstractRangeImpl):
     def bind_processor(self, dialect):
         Range = dialect.dbapi.asyncpg.Range
 
@@ -326,7 +326,7 @@ class _AsyncpgRange(ranges.AbstractRange):
         return to_range
 
 
-class _AsyncpgMultiRange(ranges.AbstractMultiRange):
+class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
     def bind_processor(self, dialect):
         Range = dialect.dbapi.asyncpg.Range
 

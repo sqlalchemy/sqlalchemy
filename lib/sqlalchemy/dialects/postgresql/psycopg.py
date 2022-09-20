@@ -162,7 +162,7 @@ class _PGBoolean(sqltypes.Boolean):
     render_bind_cast = True
 
 
-class _PsycopgRange(ranges.AbstractRange):
+class _PsycopgRange(ranges.AbstractRangeImpl):
     def bind_processor(self, dialect):
         Range = cast(PGDialect_psycopg, dialect)._psycopg_Range
 
@@ -191,7 +191,7 @@ class _PsycopgRange(ranges.AbstractRange):
         return to_range
 
 
-class _PsycopgMultiRange(ranges.AbstractMultiRange):
+class _PsycopgMultiRange(ranges.AbstractMultiRangeImpl):
     def bind_processor(self, dialect):
         Range = cast(PGDialect_psycopg, dialect)._psycopg_Range
         Multirange = cast(PGDialect_psycopg, dialect)._psycopg_Multirange
