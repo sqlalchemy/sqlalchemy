@@ -237,6 +237,7 @@ class CursorResultMetaData(ResultMetaData):
                 result_columns,
                 cols_are_ordered,
                 textual_ordered,
+                ad_hoc_textual,
                 loose_column_name_matching,
             ) = context.result_column_struct
             num_ctx_cols = len(result_columns)
@@ -245,6 +246,8 @@ class CursorResultMetaData(ResultMetaData):
                 cols_are_ordered
             ) = (
                 num_ctx_cols
+            ) = (
+                ad_hoc_textual
             ) = loose_column_name_matching = textual_ordered = False
 
         # merge cursor.description with the column info
@@ -256,6 +259,7 @@ class CursorResultMetaData(ResultMetaData):
             num_ctx_cols,
             cols_are_ordered,
             textual_ordered,
+            ad_hoc_textual,
             loose_column_name_matching,
         )
 
@@ -282,8 +286,11 @@ class CursorResultMetaData(ResultMetaData):
             }
 
             if len(by_key) != num_ctx_cols:
-                # if by-primary-string dictionary smaller (or bigger?!) than
-                # number of columns, assume we have dupes, rewrite
+                # if by-primary-string dictionary smaller than
+                # number of columns, assume we have dupes; (this check
+                # is also in place if string dictionary is bigger, as
+                # can occur when '*' was used as one of the compiled columns,
+                # which may or may not be suggestive of dupes), rewrite
                 # dupe records with "None" for index which results in
                 # ambiguous column exception when accessed.
                 #
@@ -368,6 +375,7 @@ class CursorResultMetaData(ResultMetaData):
         num_ctx_cols,
         cols_are_ordered,
         textual_ordered,
+        ad_hoc_textual,
         loose_column_name_matching,
     ):
         """Merge a cursor.description with compiled result column information.
@@ -461,7 +469,9 @@ class CursorResultMetaData(ResultMetaData):
             # name-based or text-positional cases, where we need
             # to read cursor.description names
 
-            if textual_ordered:
+            if textual_ordered or (
+                ad_hoc_textual and len(cursor_description) == num_ctx_cols
+            ):
                 self._safe_for_cache = True
                 # textual positional case
                 raw_iterator = self._merge_textual_cols_by_position(

@@ -939,7 +939,7 @@ class DefaultExecutionContext(ExecutionContext):
     executemany = False
     compiled: Optional[Compiled] = None
     result_column_struct: Optional[
-        Tuple[List[ResultColumnsEntry], bool, bool, bool]
+        Tuple[List[ResultColumnsEntry], bool, bool, bool, bool]
     ] = None
     returned_default_rows: Optional[Sequence[Row[Any]]] = None
 
@@ -1057,6 +1057,7 @@ class DefaultExecutionContext(ExecutionContext):
             compiled._result_columns,
             compiled._ordered_columns,
             compiled._textual_ordered_columns,
+            compiled._ad_hoc_textual,
             compiled._loose_column_name_matching,
         )
 
