@@ -167,7 +167,7 @@ def _generate_driver_urls(url, extra_drivers):
     extra_drivers.discard(main_driver)
 
     url = generate_driver_url(url, main_driver, "")
-    yield str(url)
+    yield url
 
     for drv in list(extra_drivers):
 
@@ -183,7 +183,7 @@ def _generate_driver_urls(url, extra_drivers):
         if new_url:
             extra_drivers.remove(drv)
 
-            yield str(new_url)
+            yield new_url
 
 
 @register.init

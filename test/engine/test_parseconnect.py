@@ -83,36 +83,57 @@ class URLTest(fixtures.TestBase):
             "E:/work/src/LEM/db/hello.db",
             None,
         ), u.database
-        eq_(str(u), text)
+        eq_(u.render_as_string(hide_password=False), text)
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
         eq_(u.password, "pass word + other:words")
-        eq_(str(u), "dbtype://user:pass word + other%3Awords@host/dbname")
+        eq_(str(u), "dbtype://user:***@host/dbname")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://user:pass word + other%3Awords@host/dbname",
+        )
 
         u = url.make_url(
             "dbtype://username:apples%2Foranges@hostspec/database"
         )
         eq_(u.password, "apples/oranges")
-        eq_(str(u), "dbtype://username:apples%2Foranges@hostspec/database")
+        eq_(str(u), "dbtype://username:***@hostspec/database")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://username:apples%2Foranges@hostspec/database",
+        )
 
         u = url.make_url(
             "dbtype://username:apples%40oranges%40%40@hostspec/database"
         )
         eq_(u.password, "apples@oranges@@")
+        eq_(str(u), "dbtype://username:***@hostspec/database")
         eq_(
-            str(u),
+            u.render_as_string(hide_password=False),
             "dbtype://username:apples%40oranges%40%40@hostspec/database",
         )
 
         u = url.make_url("dbtype://username%40:@hostspec/database")
         eq_(u.password, "")
         eq_(u.username, "username@")
-        eq_(str(u), "dbtype://username%40:@hostspec/database")
+        eq_(
+            # Do not reveal an empty password
+            str(u),
+            "dbtype://username%40:***@hostspec/database",
+        )
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://username%40:@hostspec/database",
+        )
 
         u = url.make_url("dbtype://username:pass%2Fword@hostspec/database")
         eq_(u.password, "pass/word")
-        eq_(str(u), "dbtype://username:pass%2Fword@hostspec/database")
+        eq_(str(u), "dbtype://username:***@hostspec/database")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://username:pass%2Fword@hostspec/database",
+        )
 
     def test_password_custom_obj(self):
         class SecurePassword(str):
@@ -128,58 +149,76 @@ class URLTest(fixtures.TestBase):
         )
 
         eq_(u.password, "secured_password")
-        eq_(str(u), "dbtype://x:secured_password@localhost")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://x:secured_password@localhost",
+        )
 
         # test in-place modification
         sp.value = "new_secured_password"
         eq_(u.password, sp)
-        eq_(str(u), "dbtype://x:new_secured_password@localhost")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dbtype://x:new_secured_password@localhost",
+        )
 
         u = u.set(password="hi")
 
         eq_(u.password, "hi")
-        eq_(str(u), "dbtype://x:hi@localhost")
+        eq_(u.render_as_string(hide_password=False), "dbtype://x:hi@localhost")
 
         u = u._replace(password=None)
 
         is_(u.password, None)
-        eq_(str(u), "dbtype://x@localhost")
+        eq_(u.render_as_string(hide_password=False), "dbtype://x@localhost")
 
     def test_query_string(self):
         u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
-        eq_(str(u), "dialect://user:pass@host/db?arg1=param1&arg2=param2")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2",
+        )
 
         u = url.make_url("dialect://user:pass@host/?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
         eq_(u.database, "")
-        eq_(str(u), "dialect://user:pass@host/?arg1=param1&arg2=param2")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dialect://user:pass@host/?arg1=param1&arg2=param2",
+        )
 
         u = url.make_url("dialect://user:pass@host?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
         eq_(u.database, None)
-        eq_(str(u), "dialect://user:pass@host?arg1=param1&arg2=param2")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dialect://user:pass@host?arg1=param1&arg2=param2",
+        )
 
         u = url.make_url(
             "dialect://user:pass@host:450?arg1=param1&arg2=param2"
         )
         eq_(u.port, 450)
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
-        eq_(str(u), "dialect://user:pass@host:450?arg1=param1&arg2=param2")
+        eq_(
+            u.render_as_string(hide_password=False),
+            "dialect://user:pass@host:450?arg1=param1&arg2=param2",
+        )
 
         u = url.make_url(
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3"
         )
         eq_(u.query, {"arg1": "param1", "arg2": ("param2", "param3")})
         eq_(
-            str(u),
+            u.render_as_string(hide_password=False),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
 
         test_url = "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
         u = url.make_url(test_url)
         eq_(u.query, {"arg1=": "param1", "arg2": "param 2"})
-        eq_(str(u), test_url)
+        eq_(u.render_as_string(hide_password=False), test_url)
 
     def test_comparison(self):
         common_url = (
@@ -727,7 +766,10 @@ class CreateEngineTest(fixtures.TestBase):
         assert e.url.drivername == e2.url.drivername == "mysql+mysqldb"
         assert e.url.username == e2.url.username == "scott"
         assert e2.url is u
-        assert str(u) == "mysql+mysqldb://scott:tiger@localhost/test"
+        eq_(
+            u.render_as_string(hide_password=False),
+            "mysql+mysqldb://scott:tiger@localhost/test",
+        )
         assert repr(u) == "mysql+mysqldb://scott:***@localhost/test"
         assert repr(e) == "Engine(mysql+mysqldb://scott:***@localhost/test)"
         assert repr(e2) == "Engine(mysql+mysqldb://scott:***@localhost/test)"
