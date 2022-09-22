@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 8547
+
+    For improved security, :class:`engine.URL` gets its ``__str__`` method
+    removed to avoid accidental password leakage. ``str(engine.URL())`` will
+    now fallback to :method:`engine.URL.__repr__` which censors the password.
+    :method:`engine.URL.render_as_string(hide_password=False)` is still
+    available for cases when clear text password is necessary.
