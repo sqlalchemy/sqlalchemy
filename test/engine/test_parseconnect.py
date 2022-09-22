@@ -83,7 +83,7 @@ class URLTest(fixtures.TestBase):
             "E:/work/src/LEM/db/hello.db",
             None,
         ), u.database
-        u.render_as_string(hide_password=False)
+        eq_(u.render_as_string(hide_password=False), text)
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
