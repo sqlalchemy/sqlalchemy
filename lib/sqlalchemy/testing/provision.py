@@ -167,7 +167,7 @@ def _generate_driver_urls(url, extra_drivers):
     extra_drivers.discard(main_driver)
 
     url = generate_driver_url(url, main_driver, "")
-    yield str(url)
+    yield url.render_as_string(hide_password=False)
 
     for drv in list(extra_drivers):
 
