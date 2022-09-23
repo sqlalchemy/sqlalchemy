@@ -57,7 +57,7 @@ What's New in SQLAlchemy 2.0?
 
 
 New Typing Support in Core and ORM - Stubs / Extensions no longer used
-=======================================================================
+-----------------------------------------------------------------------
 
 
 The approach to typing for Core and ORM has been completely reworked, compared
@@ -72,7 +72,7 @@ for fully typed ORM models that integrate all the way from statement to
 result set.
 
 SQL Expression / Statement / Result Set Typing
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This section provides background and examples for SQLAlchemy's new
 SQL expression typing approach, which extends from base :class:`.ColumnElement`
@@ -363,7 +363,7 @@ SQLAlchemy from its own stubs source.
 .. _whatsnew_20_orm_declarative_typing:
 
 ORM Declarative Models
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 1.4 introduced the first SQLAlchemy-native ORM typing support
 using a combination of sqlalchemy2-stubs_ and the :ref:`Mypy Plugin <mypy_toplevel>`.
@@ -418,7 +418,7 @@ on to illustrate some more options.
 
 
 Step one - :func:`_orm.declarative_base` is superseded by :class:`_orm.DeclarativeBase`.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 One observed limitation in Python typing is that there seems to be
 no ability to have a class dynamically generated from a function which then
@@ -433,7 +433,7 @@ with using the :class:`_orm.DeclarativeBase` class, which produces the same
         pass
 
 Step two - replace Declarative use of :class:`_schema.Column` with :func:`_orm.mapped_column`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The :func:`_orm.mapped_column` is an ORM-typing aware construct that can
 be swapped directly for the use of :class:`_schema.Column`.  Given a
@@ -500,7 +500,7 @@ instance-level manipulation, all of which will **pass mypy --strict mode** with 
 plugins.
 
 Step three - apply exact Python types as needed using :class:`_orm.Mapped`.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 This can be done for all attributes for which exact typing is desired;
 attributes that are fine being left as ``Any`` may be skipped.   For
@@ -542,7 +542,7 @@ constructs.   We now can proceed to pare down redundancy in the mapping
 declaration.
 
 Step four - remove :func:`_orm.mapped_column` directives where no longer needed
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 All ``nullable`` parameters can be implied using ``Optional[]``; in
 the absence of ``Optional[]``, ``nullable`` defaults to ``False``. All SQL
@@ -581,7 +581,7 @@ for ten years already ;) )::
 
 
 Step five - make use of pep-593 ``Annotated`` to package common directives into types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 This is a radical new
 capability that presents an alternative, or complementary approach, to
@@ -667,7 +667,7 @@ or ``Mapped[user_fk]`` draw from both the
 and column configurations.
 
 Step six - turn mapped classes into dataclasses_
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++++++++++++++++
 
 We can turn mapped classes into dataclasses_, where a key advantage
 is that we can build a strictly-typed ``__init__()`` method with explicit
@@ -678,7 +678,7 @@ model.
 
 
 Typing is supported from step 3 onwards
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++++++
 
 With the above examples, any example from "step 3" on forward will include
 that the attributes
@@ -708,7 +708,7 @@ and :class:`_engine.Row` objects::
 .. _whatsnew_20_dataclasses:
 
 Native Support for Dataclasses Mapped as ORM Models
------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The new ORM Declarative features introduced above at
 :ref:`whatsnew_20_orm_declarative_typing` introduced the
@@ -811,3 +811,478 @@ positional arguments as configured::
 
     :ref:`orm_declarative_native_dataclasses`
 
+
+.. _change_7311:
+
+Installation is now fully pep-517 enabled
+------------------------------------------
+
+The source distribution now includes a ``pyproject.toml`` file to allow for
+complete :pep:`517` support. In particular this allows a local source build
+using ``pip`` to automatically install the Cython_ optional dependency.
+
+:ticket:`7311`
+
+.. _change_7256:
+
+C Extensions now ported to Cython
+----------------------------------
+
+The SQLAlchemy C extensions have been replaced with all new extensions written
+in Cython_. While Cython was evaluated back in 2010 when the C extensions were
+first created, the nature and focus of the C extensions in use today has
+changed quite a bit from that time. At the same time, Cython has apparently
+evolved significantly, as has the Python build / distribution toolchain which
+made it feasible for us to revisit it.
+
+The move to Cython provides dramatic new advantages with
+no apparent downsides:
+
+* The Cython extensions that replace specific C extensions have all benchmarked
+  as **faster**, often slightly, but sometimes significantly, than
+  virtually all the C code that SQLAlchemy previously
+  included. While this seems amazing, it appears to be a product of
+  non-obvious optimizations within Cython's implementation that would not be
+  present in a direct Python to C port of a function, as was particularly the
+  case for many of the custom collection types added to the C extensions.
+
+* Cython extensions are much easier to write, maintain and debug compared to
+  raw C code, and in most cases are line-per-line equivalent to the Python
+  code.   It is expected that many more elements of SQLAlchemy will be
+  ported to Cython in the coming releases which should open many new doors
+  to performance improvements that were previously out of reach.
+
+* Cython is very mature and widely used, including being the basis of some
+  of the prominent database drivers supported by SQLAlchemy including
+  ``asyncpg``, ``psycopg3`` and ``asyncmy``.
+
+Like the previous C extensions, the Cython extensions are pre-built within
+SQLAlchemy's wheel distributions which are automatically available to ``pip``
+from PyPi.  Manual build instructions are also unchanged with the exception
+of the Cython requirement.
+
+.. seealso::
+
+    :ref:`c_extensions`
+
+
+:ticket:`7256`
+
+
+.. _change_4379:
+
+Major Architectural, Performance and API Enhancements for Database Reflection
+-----------------------------------------------------------------------------
+
+The internal system by which :class:`.Table` objects and their components are
+:ref:`reflected <metadata_reflection>` has been completely rearchitected to
+allow high performance bulk reflection of thousands of tables at once for
+participating dialects. Currently, the **PostgreSQL** and **Oracle** dialects
+participate in the new architecture, where the PostgreSQL dialect can now
+reflect a large series of :class:`.Table` objects nearly three times faster,
+and the Oracle dialect can now reflect a large series of :class:`.Table`
+objects ten times faster.
+
+The rearchitecture applies most directly to dialects that make use of SELECT
+queries against system catalog tables to reflect tables, and the remaining
+included dialect that can benefit from this approach will be the SQL Server
+dialect. The MySQL/MariaDB and SQLite dialects by contrast make use of
+non-relational systems to reflect database tables, and were not subject to a
+pre-existing performance issue.
+
+The new API is backwards compatible with the previous system, and should
+require no changes to third party dialects to retain compatibility; third party
+dialects can also opt into the new system by implementing batched queries for
+schema reflection.
+
+Along with this change, the API and behavior of the :class:`.Inspector`
+object has been improved and enhanced with more consistent cross-dialect
+behaviors as well as new methods and new performance features.
+
+Performance Overview
+~~~~~~~~~~~~~~~~~~~~
+
+The source distribution includes a script
+``test/perf/many_table_reflection.py`` which benches both existing reflection
+features as well as new ones. A limited set of its tests may be run on older
+versions of SQLAlchemy, where here we use it to illustrate differences in
+performance to invoke ``metadata.reflect()`` to reflect 250 :class:`.Table`
+objects at once over a local network connection:
+
+===========================  ==================================  ====================    ====================
+Dialect                      Operation                           SQLA 1.4 Time (secs)    SQLA 2.0 Time (secs)
+---------------------------  ----------------------------------  --------------------    --------------------
+postgresql+psycopg2          ``metadata.reflect()``, 250 tables  8.2                     3.3
+oracle+cx_oracle             ``metadata.reflect()``, 250 tables  60.4                    6.8
+===========================  ==================================  ====================    ====================
+
+
+
+Behavioral Changes for ``Inspector()``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For SQLAlchemy-included dialects for SQLite, PostgreSQL, MySQL/MariaDB,
+Oracle, and SQL Server, the :meth:`.Inspector.has_table`,
+:meth:`.Inspector.has_sequence`, :meth:`.Inspector.has_index`,
+:meth:`.Inspector.get_table_names` and
+:meth:`.Inspector.get_sequence_names` now all behave consistently in terms
+of caching: they all fully cache their result after being called the first
+time for a particular :class:`.Inspector` object. Programs that create or
+drop tables/sequences while calling upon the same :class:`.Inspector`
+object will not receive updated status after the state of the database has
+changed. A call to :meth:`.Inspector.clear_cache` or a new
+:class:`.Inspector` should be used when DDL changes are to be executed.
+Previously, the :meth:`.Inspector.has_table`,
+:meth:`.Inspector.has_sequence` methods did not implement caching nor did
+the :class:`.Inspector` support caching for these methods, while the
+:meth:`.Inspector.get_table_names` and
+:meth:`.Inspector.get_sequence_names` methods were, leading to inconsistent
+results between the two types of method.
+
+Behavior for third party dialects is dependent on whether or not they
+implement the "reflection cache" decorator for the dialect-level
+implementation of these methods.
+
+New Methods and Improvements for ``Inspector()``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* added a method
+  :meth:`.Inspector.has_schema` that returns if a schema
+  is present in the target database
+* added a method :meth:`.Inspector.has_index` that returns if a table has
+  a particular index.
+* Inspection methods such as :meth:`.Inspector.get_columns` that work
+  on a single table at a time should now all consistently
+  raise :class:`_exc.NoSuchTableError` if a
+  table or view is not found; this change is specific to individual
+  dialects, so may not be the case for existing third-party dialects.
+* Separated the handling of "views" and "materialized views", as in
+  real world use cases, these two constructs make use of different DDL
+  for CREATE and DROP; this includes that there are now separate
+  :meth:`.Inspector.get_view_names` and
+  :meth:`.Inspector.get_materialized_view_names` methods.
+
+
+:ticket:`4379`
+
+
+.. _ticket_6842:
+
+Dialect support for psycopg 3 (a.k.a. "psycopg")
+-------------------------------------------------
+
+Added dialect support for the `psycopg 3 <https://pypi.org/project/psycopg/>`_
+DBAPI, which despite the number "3" now goes by the package name ``psycopg``,
+superseding the previous ``psycopg2`` package that for the time being remains
+SQLAlchemy's "default" driver for the ``postgresql`` dialects. ``psycopg`` is a
+completely reworked and modernized database adapter for PostgreSQL which
+supports concepts such as prepared statements as well as Python asyncio.
+
+``psycopg`` is the first DBAPI supported by SQLAlchemy which provides
+both a pep-249 synchronous API as well as an asyncio driver.  The same
+``psycopg`` database URL may be used with the :func:`_sa.create_engine`
+and :func:`_asyncio.create_async_engine` engine-creation functions, and the
+corresponding sync or asyncio version of the dialect will be selected
+automatically.
+
+.. seealso::
+
+    :ref:`postgresql_psycopg`
+
+.. _ticket_7631:
+
+New Conditional DDL for Constraints and Indexes
+-----------------------------------------------
+
+A new method :meth:`_schema.Constraint.ddl_if` and :meth:`_schema.Index.ddl_if`
+allows constructs such as :class:`_schema.CheckConstraint`, :class:`_schema.UniqueConstraint`
+and :class:`_schema.Index` to be rendered conditionally for a given
+:class:`_schema.Table`, based on the same kinds of criteria that are accepted
+by the :meth:`_schema.DDLElement.execute_if` method.  In the example below,
+the CHECK constraint and index will only be produced against a PostgreSQL
+backend::
+
+    meta = MetaData()
+
+
+    my_table = Table(
+        "my_table",
+        meta,
+        Column("id", Integer, primary_key=True),
+        Column("num", Integer),
+        Column("data", String),
+        Index("my_pg_index", "data").ddl_if(dialect="postgresql"),
+        CheckConstraint("num > 5").ddl_if(dialect="postgresql"),
+    )
+
+    e1 = create_engine("sqlite://", echo=True)
+    meta.create_all(e1)  # will not generate CHECK and INDEX
+
+
+    e2 = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    meta.create_all(e2)  # will generate CHECK and INDEX
+
+.. seealso::
+
+    :ref:`schema_ddl_ddl_if`
+
+:ticket:`7631`
+
+Behavioral Changes
+------------------
+
+This section covers behavioral changes made in SQLAlchemy 2.0 which are
+not otherwise part of the major 1.4->2.0 migration path; changes here are
+not expected to have significant effects on backwards compatibility.
+
+
+.. _Cython: https://cython.org/
+
+.. _change_6980:
+
+"with_variant()" clones the original TypeEngine rather than changing the type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :meth:`_sqltypes.TypeEngine.with_variant` method, which is used to apply
+alternate per-database behaviors to a particular type, now returns a copy of
+the original :class:`_sqltypes.TypeEngine` object with the variant information
+stored internally, rather than wrapping it inside the ``Variant`` class.
+
+While the previous ``Variant`` approach was able to maintain all the in-Python
+behaviors of the original type using dynamic attribute getters, the improvement
+here is that when calling upon a variant, the returned type remains an instance
+of the original type, which works more smoothly with type checkers such as mypy
+and pylance.  Given a program as below::
+
+    import typing
+
+
+    from sqlalchemy import String
+    from sqlalchemy.dialects.mysql import VARCHAR
+
+
+    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql", "mariadb")
+
+    if typing.TYPE_CHECKING:
+        reveal_type(type_)
+
+A type checker like pyright will now report the type as::
+
+    info: Type of "type_" is "String"
+
+In addition, as illustrated above, multiple dialect names may be passed for
+single type, in particular this is helpful for the pair of ``"mysql"`` and
+``"mariadb"`` dialects which are considered separately as of SQLAlchemy 1.4.
+
+:ticket:`6980`
+
+
+.. _change_4926:
+
+Python division operator performs true division for all backends; added floor division
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Core expression language now supports both "true division" (i.e. the ``/``
+Python operator) and "floor division" (i.e. the ``//`` Python operator)
+including backend-specific behaviors to normalize different databases in this
+regard.
+
+Given a "true division" operation against two integer values::
+
+    expr = literal(5, Integer) / literal(10, Integer)
+
+The SQL division operator on PostgreSQL for example normally acts as "floor division"
+when used against integers, meaning the above result would return the integer
+"0".  For this and similar backends, SQLAlchemy now renders the SQL using
+a form which is equivalent towards::
+
+    %(param_1)s / CAST(%(param_2)s AS NUMERIC)
+
+With param_1=5, param_2=10, so that the return expression will be of type
+NUMERIC, typically as the Python value ``decimal.Decimal("0.5")``.
+
+Given a "floor division" operation against two integer values::
+
+    expr = literal(5, Integer) // literal(10, Integer)
+
+The SQL division operator on MySQL and Oracle for example normally acts
+as "true division" when used against integers, meaning the above result
+would return the floating point value "0.5".  For these and similar backends,
+SQLAlchemy now renders the SQL using a form which is equivalent towards::
+
+    FLOOR(%(param_1)s / %(param_2)s)
+
+With param_1=5, param_2=10, so that the return expression will be of type
+INTEGER, as the Python value ``0``.
+
+The backwards-incompatible change here would be if an application using
+PostgreSQL, SQL Server, or SQLite which relied on the Python "truediv" operator
+to return an integer value in all cases.  Applications which rely upon this
+behavior should instead use the Python "floor division" operator ``//``
+for these operations, or for forwards compatibility when using a previous
+SQLAlchemy version, the floor function::
+
+    expr = func.floor(literal(5, Integer) / literal(10, Integer))
+
+The above form would be needed on any SQLAlchemy version prior to 2.0
+in order to provide backend-agnostic floor division.
+
+:ticket:`4926`
+
+.. _change_7433:
+
+Session raises proactively when illegal concurrent or reentrant access is detected
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_orm.Session` can now trap more errors related to illegal concurrent
+state changes within multithreaded or other concurrent scenarios as well as for
+event hooks which perform unexpected state changes.
+
+One error that's been known to occur when a :class:`_orm.Session` is used in
+multiple threads simultaneously is
+``AttributeError: 'NoneType' object has no attribute 'twophase'``, which is
+completely cryptic. This error occurs when a thread calls
+:meth:`_orm.Session.commit` which internally invokes the
+:meth:`_orm.SessionTransaction.close` method to end the transactional context,
+at the same time that another thread is in progress running a query
+as from :meth:`_orm.Session.execute`.  Within :meth:`_orm.Session.execute`,
+the internal method that acquires a database connection for the current
+transaction first begins by asserting that the session is "active", but
+after this assertion passes, the concurrent call to :meth:`_orm.Session.close`
+interferes with this state which leads to the undefined condition above.
+
+The change applies guards to all state-changing methods surrounding the
+:class:`_orm.SessionTransaction` object so that in the above case, the
+:meth:`_orm.Session.commit` method will instead fail as it will seek to change
+the state to one that is disallowed for the duration of the already-in-progress
+method that wants to get the current connection to run a database query.
+
+Using the test script illustrated at :ticket:`7433`, the previous
+error case looks like::
+
+    Traceback (most recent call last):
+    File "/home/classic/dev/sqlalchemy/test3.py", line 30, in worker
+        sess.execute(select(A)).all()
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1691, in execute
+        conn = self._connection_for_bind(bind)
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1532, in _connection_for_bind
+        return self._transaction._connection_for_bind(
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 754, in _connection_for_bind
+        if self.session.twophase and self._parent is None:
+    AttributeError: 'NoneType' object has no attribute 'twophase'
+
+Where the ``_connection_for_bind()`` method isn't able to continue since
+concurrent access placed it into an invalid state.  Using the new approach, the
+originator of the state change throws the error instead::
+
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1785, in close
+       self._close_impl(invalidate=False)
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1827, in _close_impl
+       transaction.close(invalidate)
+    File "<string>", line 2, in close
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 506, in _go
+       raise sa_exc.InvalidRequestError(
+    sqlalchemy.exc.InvalidRequestError: Method 'close()' can't be called here;
+    method '_connection_for_bind()' is already in progress and this would cause
+    an unexpected state change to symbol('CLOSED')
+
+The state transition checks intentionally don't use explicit locks to detect
+concurrent thread activity, instead relying upon simple attribute set / value
+test operations that inherently fail when unexpected concurrent changes occur.
+The rationale is that the approach can detect illegal state changes that occur
+entirely within a single thread, such as an event handler that runs on session
+transaction events calls a state-changing method that's not expected, or under
+asyncio if a particular :class:`_orm.Session` were shared among multiple
+asyncio tasks, as well as when using patching-style concurrency approaches
+such as gevent.
+
+:ticket:`7433`
+
+
+.. _change_7490:
+
+The SQLite dialect uses QueuePool for file-based databases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The SQLite dialect now defaults to :class:`_pool.QueuePool` when a file
+based database is used. This is set along with setting the
+``check_same_thread`` parameter to ``False``. It has been observed that the
+previous approach of defaulting to :class:`_pool.NullPool`, which does not
+hold onto database connections after they are released, did in fact have a
+measurable negative performance impact. As always, the pool class is
+customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
+
+.. seealso::
+
+    :ref:`pysqlite_threading_pooling`
+
+
+:ticket:`7490`
+
+.. _change_5465_oracle:
+
+New Oracle FLOAT type with binary precision; decimal precision not accepted directly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A new datatype :class:`_oracle.FLOAT` has been added to the Oracle dialect, to
+accompany the addition of :class:`_sqltypes.Double` and database-specific
+:class:`_sqltypes.DOUBLE`, :class:`_sqltypes.DOUBLE_PRECISION` and
+:class:`_sqltypes.REAL` datatypes. Oracle's ``FLOAT`` accepts a so-called
+"binary precision" parameter that per Oracle documentation is roughly a
+standard "precision" value divided by 0.3103::
+
+    from sqlalchemy.dialects import oracle
+
+    Table(
+        "some_table", metadata,
+        Column("value", oracle.FLOAT(126))
+    )
+
+A binary precision value of 126 is synonymous with using the
+:class:`_sqltypes.DOUBLE_PRECISION` datatype, and a value of 63 is equivalent
+to using the :class:`_sqltypes.REAL` datatype.  Other precision values are
+specific to the :class:`_oracle.FLOAT` type itself.
+
+The SQLAlchemy :class:`_sqltypes.Float` datatype also accepts a "precision"
+parameter, but this is decimal precision which is not accepted by
+Oracle.  Rather than attempting to guess the conversion, the Oracle dialect
+will now raise an informative error if :class:`_sqltypes.Float` is used with
+a precision value against the Oracle backend.  To specify a
+:class:`_sqltypes.Float` datatype with an explicit precision value for
+supporting backends, while also supporting other backends, use
+the :meth:`_types.TypeEngine.with_variant` method as follows::
+
+    from sqlalchemy.types import Float
+    from sqlalchemy.dialects import oracle
+
+    Table(
+        "some_table", metadata,
+        Column("value", Float(5).with_variant(oracle.FLOAT(16), "oracle"))
+    )
+
+
+.. _change_7086:
+
+``match()`` operator on PostgreSQL uses ``plainto_tsquery()`` rather than ``to_tsquery()``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :meth:`.Operators.match` function now renders
+``col @@ plainto_tsquery(expr)`` on the PostgreSQL backend, rather than
+``col @@ to_tsquery()``.  ``plainto_tsquery()`` accepts plain text whereas
+``to_tsquery()`` accepts specialized query symbols, and is therefore less
+cross-compatible with other backends.
+
+All PostgreSQL search functions and operators are available through use of
+:data:`.func` to generate PostgreSQL-specific functions and
+:meth:`.Operators.bool_op` (a boolean-typed version of :meth:`.Operators.op`)
+to generate arbitrary operators, in the same manner as they are available
+in previous versions.  See the examples at :ref:`postgresql_match`.
+
+Existing SQLAlchemy projects that make use of PG-specific directives within
+:meth:`.Operators.match` should make use of ``func.to_tsquery()`` directly.
+To render SQL in exactly the same form as would be present
+in 1.4, see the version note at :ref:`postgresql_simple_match`.
+
+
+
+:ticket:`7086`

@@ -446,10 +446,13 @@ def main(db, schema_name, table_number, min_cols, max_cols, args):
     timing = timer()
     if args.pool_class:
         engine = sa.create_engine(
-            db, echo=args.echo, poolclass=getattr(sa.pool, args.pool_class)
+            db,
+            echo=args.echo,
+            poolclass=getattr(sa.pool, args.pool_class),
+            future=True,
         )
     else:
-        engine = sa.create_engine(db, echo=args.echo)
+        engine = sa.create_engine(db, echo=args.echo, future=True)
 
     if engine.name == "oracle":
         # clear out oracle caches so that we get the real-world time the
