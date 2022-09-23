@@ -397,6 +397,7 @@ class ORMFromStatementCompileState(ORMCompileState):
 
     _has_orm_entities = False
     multi_row_eager_loaders = False
+    eager_adding_joins = False
     compound_eager_adapter = None
 
     extra_criteria_entities = _EMPTY_DICT
@@ -592,6 +593,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     _has_orm_entities = False
     multi_row_eager_loaders = False
+    eager_adding_joins = False
     compound_eager_adapter = None
 
     correlate = None
@@ -900,7 +902,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         if self.order_by is False:
             self.order_by = None
 
-        if self.multi_row_eager_loaders and self._should_nest_selectable:
+        if (
+            self.multi_row_eager_loaders
+            and self.eager_adding_joins
+            and self._should_nest_selectable
+        ):
             self.statement = self._compound_eager_statement()
         else:
             self.statement = self._simple_statement()

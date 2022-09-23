@@ -5463,6 +5463,24 @@ class YieldTest(_fixtures.FixtureTest):
             q.all,
         )
 
+    def test_no_contains_eager_opt(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+        sess = fixture_session()
+        q = (
+            sess.query(User)
+            .join(User.addresses)
+            .options(contains_eager(User.addresses))
+            .yield_per(1)
+        )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "Can't use yield_per with eager loaders that require "
+            "uniquing or row buffering",
+            q.all,
+        )
+
     def test_no_subqueryload_opt(self):
         self._eagerload_mappings()
 

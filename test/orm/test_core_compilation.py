@@ -2,6 +2,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import delete
 from sqlalchemy import exc
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
@@ -10,6 +11,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union
@@ -1023,19 +1025,34 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         self.mapper_registry.map_imperatively(
             User,
             users,
+            properties={
+                "addresses": relationship(Address, back_populates="user")
+            },
         )
 
         self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
-                "user": relationship(
-                    User,
-                )
+                "user": relationship(User, back_populates="addresses")
             },
         )
 
         return User, Address
+
+    @testing.fixture
+    def hard_labeled_self_ref_fixture(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            data = Column(String)
+            data_lower = column_property(func.lower(data).label("hardcoded"))
+
+            as_ = relationship("A")
+
+        return A
 
     def test_no_joinedload_embedded(self, plain_fixture):
         User, Address = plain_fixture
@@ -1145,22 +1162,84 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             "ON users_1.id = addresses.user_id",
         )
 
-    def test_contains_eager_outermost(self, plain_fixture):
+    def test_joinedload_outermost_w_wrapping_elements(self, plain_fixture):
         User, Address = plain_fixture
 
         stmt = (
-            select(Address)
-            .join(Address.user)
-            .options(contains_eager(Address.user))
+            select(User)
+            .options(joinedload(User.addresses))
+            .limit(10)
+            .distinct()
         )
 
-        # render joined eager loads with stringify
         self.assert_compile(
             stmt,
-            "SELECT users.id, users.name, addresses.id AS id_1, "
-            "addresses.user_id, "
-            "addresses.email_address "
-            "FROM addresses JOIN users ON users.id = addresses.user_id",
+            "SELECT anon_1.id, anon_1.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM "
+            "(SELECT DISTINCT users.id AS id, users.name AS name FROM users "
+            "LIMIT :param_1) "
+            "AS anon_1 LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.id = addresses_1.user_id",
+        )
+
+    def test_contains_eager_outermost_w_wrapping_elements(self, plain_fixture):
+        """test #8569"""
+
+        User, Address = plain_fixture
+
+        stmt = (
+            select(User)
+            .join(User.addresses)
+            .options(contains_eager(User.addresses))
+            .limit(10)
+            .distinct()
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT addresses.id, addresses.user_id, "
+            "addresses.email_address, users.id AS id_1, users.name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "LIMIT :param_1",
+        )
+
+    def test_joinedload_hard_labeled_selfref(
+        self, hard_labeled_self_ref_fixture
+    ):
+        """test #8569"""
+
+        A = hard_labeled_self_ref_fixture
+
+        stmt = select(A).options(joinedload(A.as_)).distinct()
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.hardcoded, anon_1.id, anon_1.a_id, anon_1.data, "
+            "lower(a_1.data) AS lower_1, a_1.id AS id_1, a_1.a_id AS a_id_1, "
+            "a_1.data AS data_1 FROM (SELECT DISTINCT lower(a.data) AS "
+            "hardcoded, a.id AS id, a.a_id AS a_id, a.data AS data FROM a) "
+            "AS anon_1 LEFT OUTER JOIN a AS a_1 ON anon_1.id = a_1.a_id",
+        )
+
+    def test_contains_eager_hard_labeled_selfref(
+        self, hard_labeled_self_ref_fixture
+    ):
+        """test #8569"""
+
+        A = hard_labeled_self_ref_fixture
+
+        a1 = aliased(A)
+        stmt = (
+            select(A)
+            .join(A.as_.of_type(a1))
+            .options(contains_eager(A.as_.of_type(a1)))
+            .distinct()
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT lower(a.data) AS hardcoded, "
+            "lower(a_1.data) AS hardcoded, a_1.id, a_1.a_id, a_1.data, "
+            "a.id AS id_1, a.a_id AS a_id_1, a.data AS data_1 "
+            "FROM a JOIN a AS a_1 ON a.id = a_1.a_id",
         )
 
     def test_column_properties(self, column_property_fixture):

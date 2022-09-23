@@ -4636,7 +4636,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         # when a label name conflicts with other columns and select()
         # is attempting to disambiguate an explicit label, which is not what
         # the user would want.   See issue #6090.
-        if key != self.name:
+        if key != self.name and not isinstance(self.name, _anonymous_label):
             raise exc.InvalidRequestError(
                 "Label name %s is being renamed to an anonymous label due "
                 "to disambiguation "
