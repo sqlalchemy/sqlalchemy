@@ -2108,6 +2108,9 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         if user_defined_adapter is not False:
+
+            # setup an adapter but dont create any JOIN, assume it's already
+            # in the query
             (
                 clauses,
                 adapter,
@@ -2119,6 +2122,11 @@ class JoinedLoader(AbstractRelationshipLoader):
                 adapter,
                 user_defined_adapter,
             )
+
+            # don't do "wrap" for multi-row, we want to wrap
+            # limited/distinct SELECT,
+            # because we want to put the JOIN on the outside.
+
         else:
             # if not via query option, check for
             # a cycle
@@ -2129,6 +2137,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 elif path.contains_mapper(self.mapper):
                     return
 
+            # add the JOIN and create an adapter
             (
                 clauses,
                 adapter,
@@ -2144,6 +2153,10 @@ class JoinedLoader(AbstractRelationshipLoader):
                 parentmapper,
                 chained_from_outerjoin,
             )
+
+            # for multi-row, we want to wrap limited/distinct SELECT,
+            # because we want to put the JOIN on the outside.
+            compile_state.eager_adding_joins = True
 
         with_poly_entity = path.get(
             compile_state.attributes, "path_with_polymorphic", None

@@ -3152,10 +3152,14 @@ class SelectUniqueTest(_fixtures.FixtureTest):
 
         eq_(result.scalars().all(), self.static.address_user_result)
 
-    def test_unique_error(self):
+    @testing.combinations(joinedload, contains_eager)
+    def test_unique_error(self, opt):
         User = self.classes.User
 
-        stmt = select(User).options(joinedload(User.addresses))
+        stmt = select(User).options(opt(User.addresses))
+        if opt is contains_eager:
+            stmt = stmt.join(User.addresses)
+
         s = fixture_session()
         result = s.execute(stmt)
 
