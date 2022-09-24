@@ -989,6 +989,18 @@ automatically.
 
     :ref:`postgresql_psycopg`
 
+.. _ticket_8054:
+
+Dialect support for oracledb
+----------------------------
+
+Added dialect support for the `oracledb <https://pypi.org/project/oracledb/>`_
+DBAPI, which is the renamed, new major release of the popular cx_Oracle driver.
+
+.. seealso::
+
+    :ref:`oracledb`
+
 .. _ticket_7631:
 
 New Conditional DDL for Constraints and Indexes

@@ -3,3 +3,9 @@
     :tickets: 8054
 
     Add support for the new oracle driver ``oracledb``.
+
+    .. seealso::
+
+        :ref:`ticket_8054`
+
+        :ref:`oracledb`
