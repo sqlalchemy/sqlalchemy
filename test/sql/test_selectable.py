@@ -50,6 +50,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -57,6 +58,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.provision import normalize_sequence
 
 
 metadata = MetaData()
@@ -2705,7 +2707,9 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
             Column(
                 "person_id",
                 Integer,
-                Sequence("person_id_seq", optional=True),
+                normalize_sequence(
+                    config, Sequence("person_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("name", String(50)),

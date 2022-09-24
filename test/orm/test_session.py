@@ -42,6 +42,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -61,7 +62,9 @@ class ExecutionTest(_fixtures.FixtureTest):
     def test_sequence_execute(
         self, connection, metadata, add_do_orm_execute_event, use_scalar
     ):
-        seq = Sequence("some_sequence", metadata=metadata)
+        seq = normalize_sequence(
+            config, Sequence("some_sequence", metadata=metadata)
+        )
         metadata.create_all(connection)
         sess = Session(connection)
 

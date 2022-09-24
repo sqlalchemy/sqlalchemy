@@ -475,3 +475,13 @@ def upsert(cfg, table, returning, set_lambda=None):
     raise NotImplementedError(
         f"backend does not include an upsert implementation: {cfg.db.url}"
     )
+
+
+@register.init
+def normalize_sequence(cfg, sequence):
+    """Normalize sequence parameters for dialect that don't start with 1
+    by default.
+
+    The default implementation does nothing
+    """
+    return sequence

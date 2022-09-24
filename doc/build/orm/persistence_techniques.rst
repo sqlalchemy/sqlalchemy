@@ -373,7 +373,7 @@ the :class:`.Sequence` construct::
     class MyOracleModel(Base):
         __tablename__ = "my_table"
 
-        id = mapped_column(Integer, Sequence("my_sequence"), primary_key=True)
+        id = mapped_column(Integer, Sequence("my_sequence", start=1), primary_key=True)
         data = mapped_column(String(50))
 
 The INSERT for a model as above on Oracle looks like:

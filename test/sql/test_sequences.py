@@ -10,6 +10,7 @@ from sqlalchemy.schema import CreateSequence
 from sqlalchemy.schema import DropSequence
 from sqlalchemy.sql import select
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
@@ -18,6 +19,7 @@ from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -26,75 +28,104 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
     __backend__ = True
 
-    def test_create_drop_ddl(self):
+    @testing.combinations(
+        (Sequence("foo_seq"), ""),
+        (Sequence("foo_seq", start=5), "START WITH 5"),
+        (Sequence("foo_seq", increment=2), "INCREMENT BY 2"),
+        (
+            Sequence("foo_seq", increment=2, start=5),
+            "INCREMENT BY 2 START WITH 5",
+        ),
+        (
+            Sequence("foo_seq", increment=2, start=0, minvalue=0),
+            "INCREMENT BY 2 START WITH 0 MINVALUE 0",
+        ),
+        (
+            Sequence("foo_seq", increment=2, start=1, maxvalue=5),
+            "INCREMENT BY 2 START WITH 1 MAXVALUE 5",
+        ),
+        (
+            Sequence("foo_seq", increment=2, start=1, nomaxvalue=True),
+            "INCREMENT BY 2 START WITH 1 NO MAXVALUE",
+        ),
+        (
+            Sequence("foo_seq", increment=2, start=0, nominvalue=True),
+            "INCREMENT BY 2 START WITH 0 NO MINVALUE",
+        ),
+        (
+            Sequence("foo_seq", start=1, maxvalue=10, cycle=True),
+            "START WITH 1 MAXVALUE 10 CYCLE",
+        ),
+        (
+            Sequence("foo_seq", cache=1000, order=True),
+            "CACHE 1000 ORDER",
+        ),
+        (Sequence("foo_seq", order=True), "ORDER"),
+        (Sequence("foo_seq", minvalue=42), "MINVALUE 42"),
+        (Sequence("foo_seq", minvalue=-42), "MINVALUE -42"),
+        (
+            Sequence("foo_seq", minvalue=42, increment=2),
+            "INCREMENT BY 2 MINVALUE 42",
+        ),
+        (
+            Sequence("foo_seq", minvalue=-42, increment=2),
+            "INCREMENT BY 2 MINVALUE -42",
+        ),
+        (
+            Sequence("foo_seq", minvalue=42, increment=-2),
+            "INCREMENT BY -2 MINVALUE 42",
+        ),
+        (
+            Sequence("foo_seq", minvalue=-42, increment=-2),
+            "INCREMENT BY -2 MINVALUE -42",
+        ),
+        (Sequence("foo_seq", maxvalue=99), "MAXVALUE 99"),
+        (Sequence("foo_seq", maxvalue=-99), "MAXVALUE -99"),
+        (
+            Sequence("foo_seq", maxvalue=99, increment=2),
+            "INCREMENT BY 2 MAXVALUE 99",
+        ),
+        (
+            Sequence("foo_seq", maxvalue=99, increment=-2),
+            "INCREMENT BY -2 MAXVALUE 99",
+        ),
+        (
+            Sequence("foo_seq", maxvalue=-99, increment=-2),
+            "INCREMENT BY -2 MAXVALUE -99",
+        ),
+        (
+            Sequence("foo_seq", minvalue=42, maxvalue=99),
+            "MINVALUE 42 MAXVALUE 99",
+        ),
+        (
+            Sequence("foo_seq", minvalue=42, maxvalue=99, increment=2),
+            "INCREMENT BY 2 MINVALUE 42 MAXVALUE 99",
+        ),
+        (
+            Sequence("foo_seq", minvalue=-42, maxvalue=-9, increment=2),
+            "INCREMENT BY 2 MINVALUE -42 MAXVALUE -9",
+        ),
+        (
+            Sequence("foo_seq", minvalue=42, maxvalue=99, increment=-2),
+            "INCREMENT BY -2 MINVALUE 42 MAXVALUE 99",
+        ),
+        (
+            Sequence("foo_seq", minvalue=-42, maxvalue=-9, increment=-2),
+            "INCREMENT BY -2 MINVALUE -42 MAXVALUE -9",
+        ),
+    )
+    def test_create_ddl(self, sequence, sql):
+        before = sequence.start
         self.assert_compile(
-            CreateSequence(Sequence("foo_seq")),
-            "CREATE SEQUENCE foo_seq START WITH 1",
+            CreateSequence(sequence),
+            ("CREATE SEQUENCE foo_seq " + sql).strip(),
         )
+        eq_(sequence.start, before)
 
-        self.assert_compile(
-            CreateSequence(Sequence("foo_seq", start=5)),
-            "CREATE SEQUENCE foo_seq START WITH 5",
-        )
-
-        self.assert_compile(
-            CreateSequence(Sequence("foo_seq", increment=2)),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1",
-        )
-
-        self.assert_compile(
-            CreateSequence(Sequence("foo_seq", increment=2, start=5)),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 5",
-        )
-
-        self.assert_compile(
-            CreateSequence(
-                Sequence("foo_seq", increment=2, start=0, minvalue=0)
-            ),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 MINVALUE 0",
-        )
-
-        self.assert_compile(
-            CreateSequence(
-                Sequence("foo_seq", increment=2, start=1, maxvalue=5)
-            ),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 MAXVALUE 5",
-        )
-
-        self.assert_compile(
-            CreateSequence(
-                Sequence("foo_seq", increment=2, start=1, nomaxvalue=True)
-            ),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 NO MAXVALUE",
-        )
-
-        self.assert_compile(
-            CreateSequence(
-                Sequence("foo_seq", increment=2, start=0, nominvalue=True)
-            ),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 0 NO MINVALUE",
-        )
-
-        self.assert_compile(
-            CreateSequence(
-                Sequence("foo_seq", start=1, maxvalue=10, cycle=True)
-            ),
-            "CREATE SEQUENCE foo_seq START WITH 1 MAXVALUE 10 CYCLE",
-        )
-
-        self.assert_compile(
-            CreateSequence(Sequence("foo_seq", cache=1000, order=True)),
-            "CREATE SEQUENCE foo_seq START WITH 1 CACHE 1000 ORDER",
-        )
-
-        self.assert_compile(
-            CreateSequence(Sequence("foo_seq", order=True)),
-            "CREATE SEQUENCE foo_seq START WITH 1 ORDER",
-        )
-
+    def test_drop_ddl(self):
         self.assert_compile(
             CreateSequence(Sequence("foo_seq"), if_not_exists=True),
-            "CREATE SEQUENCE IF NOT EXISTS foo_seq START WITH 1",
+            "CREATE SEQUENCE IF NOT EXISTS foo_seq",
         )
 
         self.assert_compile(
@@ -113,7 +144,7 @@ class SequenceExecTest(fixtures.TestBase):
 
     @classmethod
     def setup_test_class(cls):
-        cls.seq = Sequence("my_sequence")
+        cls.seq = normalize_sequence(config, Sequence("my_sequence"))
         cls.seq.create(testing.db)
 
     @classmethod
@@ -127,12 +158,12 @@ class SequenceExecTest(fixtures.TestBase):
         assert ret >= testing.db.dialect.default_sequence_base
 
     def test_execute(self, connection):
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         self._assert_seq_result(connection.scalar(s))
 
     def test_execute_deprecated(self, connection):
 
-        s = Sequence("my_sequence", optional=True)
+        s = normalize_sequence(config, Sequence("my_sequence", optional=True))
 
         with expect_deprecated(
             r"Using the .execute\(\) method to invoke a "
@@ -145,27 +176,27 @@ class SequenceExecTest(fixtures.TestBase):
         """test dialect executes a Sequence, returns nextval, whether
         or not "optional" is set"""
 
-        s = Sequence("my_sequence", optional=True)
+        s = normalize_sequence(config, Sequence("my_sequence", optional=True))
         self._assert_seq_result(connection.scalar(s))
 
     def test_execute_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
         with connectionless execution."""
 
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         self._assert_seq_result(connection.scalar(s.next_value()))
 
     def test_execute_optional_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
         with connectionless execution."""
 
-        s = Sequence("my_sequence", optional=True)
+        s = normalize_sequence(config, Sequence("my_sequence", optional=True))
         self._assert_seq_result(connection.scalar(s.next_value()))
 
     def test_func_embedded_select(self, connection):
         """test can use next_value() in select column expr"""
 
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         self._assert_seq_result(connection.scalar(select(s.next_value())))
 
     @testing.requires.sequences_in_other_clauses
@@ -177,7 +208,7 @@ class SequenceExecTest(fixtures.TestBase):
         t1 = Table("t", metadata, Column("x", Integer))
         t1.create(testing.db)
         connection.execute(t1.insert(), [{"x": 1}, {"x": 300}, {"x": 301}])
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         eq_(
             list(
                 connection.execute(t1.select().where(t1.c.x > s.next_value()))
@@ -196,7 +227,7 @@ class SequenceExecTest(fixtures.TestBase):
             Column("x", Integer),
         )
         t1.create(testing.db)
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         connection.execute(t1.insert().values(x=s.next_value()))
         self._assert_seq_result(connection.scalar(t1.select()))
 
@@ -212,7 +243,9 @@ class SequenceExecTest(fixtures.TestBase):
             Column("x", Integer, primary_key=True),
             implicit_returning=False,
         )
-        s = Sequence("my_sequence_here", metadata=metadata)
+        s = normalize_sequence(
+            config, Sequence("my_sequence_here", metadata=metadata)
+        )
 
         conn = connection
         t1.create(conn)
@@ -245,7 +278,12 @@ class SequenceExecTest(fixtures.TestBase):
         t1 = Table(
             "t",
             metadata,
-            Column("x", Integer, Sequence("my_seq"), primary_key=True),
+            Column(
+                "x",
+                Integer,
+                normalize_sequence(config, Sequence("my_seq")),
+                primary_key=True,
+            ),
             Column("data", String(50)),
             implicit_returning=_implicit_returning,
         )
@@ -302,7 +340,12 @@ class SequenceExecTest(fixtures.TestBase):
         t1 = Table(
             "t",
             metadata,
-            Column("x", Integer, Sequence("my_seq"), primary_key=True),
+            Column(
+                "x",
+                Integer,
+                normalize_sequence(config, Sequence("my_seq")),
+                primary_key=True,
+            ),
             Column("data", String(50)),
             implicit_returning=_implicit_returning,
         )
@@ -339,7 +382,7 @@ class SequenceExecTest(fixtures.TestBase):
         """test inserted_primary_key contains the result when
         pk_col=next_value(), when implicit returning is used."""
 
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         t1 = Table(
             "t",
             metadata,
@@ -366,6 +409,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         (Sequence("foo_seq", increment=5),),
     )
     def test_start_increment(self, seq):
+        seq = normalize_sequence(config, seq)
         seq.create(testing.db)
         try:
             with testing.db.connect() as conn:
@@ -384,7 +428,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """test next_value() used on non-sequence platform
         raises NotImplementedError."""
 
-        s = Sequence("my_seq")
+        s = normalize_sequence(config, Sequence("my_seq"))
         d = sqlite.dialect()
         assert_raises_message(
             NotImplementedError,
@@ -394,7 +438,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_checkfirst_sequence(self, connection):
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         s.create(connection, checkfirst=False)
         assert self._has_sequence(connection, "my_sequence")
         s.create(connection, checkfirst=True)
@@ -414,7 +458,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_checkfirst_table(self, connection):
         m = MetaData()
-        s = Sequence("my_sequence")
+        s = normalize_sequence(config, Sequence("my_sequence"))
         t = Table("t", m, Column("c", Integer, s, primary_key=True))
         t.create(connection, checkfirst=False)
         assert self._has_sequence(connection, "my_sequence")
@@ -426,9 +470,9 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.provide_metadata
     def test_table_overrides_metadata_create(self, connection):
         metadata = self.metadata
-        Sequence("s1", metadata=metadata)
-        s2 = Sequence("s2", metadata=metadata)
-        s3 = Sequence("s3")
+        normalize_sequence(config, Sequence("s1", metadata=metadata))
+        s2 = normalize_sequence(config, Sequence("s2", metadata=metadata))
+        s3 = normalize_sequence(config, Sequence("s3"))
         t = Table("t", metadata, Column("c", Integer, s3, primary_key=True))
         assert s3.metadata is metadata
 
@@ -463,8 +507,8 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 Integer,
                 autoincrement=True,
                 primary_key=True,
-                default=Sequence(
-                    "my_sequence", metadata=self.metadata
+                default=normalize_sequence(
+                    config, Sequence("my_sequence", metadata=self.metadata)
                 ).next_value(),
             ),
         )
@@ -477,7 +521,9 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.provide_metadata
     def test_shared_sequence(self, connection):
         # test case for #6071
-        common_seq = Sequence("common_sequence", metadata=self.metadata)
+        common_seq = normalize_sequence(
+            config, Sequence("common_sequence", metadata=self.metadata)
+        )
         Table(
             "table_1",
             self.metadata,
@@ -511,7 +557,9 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(testing.db.dialect.has_table(connection, "table_2"))
 
     def test_next_value_type(self):
-        seq = Sequence("my_sequence", data_type=BigInteger)
+        seq = normalize_sequence(
+            config, Sequence("my_sequence", data_type=BigInteger)
+        )
         assert isinstance(seq.next_value().type, BigInteger)
 
 
@@ -528,7 +576,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
                 Column(
                     "cart_id",
                     Integer,
-                    Sequence("cart_id_seq"),
+                    normalize_sequence(config, Sequence("cart_id_seq")),
                     primary_key=True,
                     autoincrement=False,
                 ),
@@ -544,13 +592,15 @@ class TableBoundSequenceTest(fixtures.TablesTest):
                 Column(
                     "obj_id",
                     Integer,
-                    Sequence("obj_id_seq"),
+                    normalize_sequence(config, Sequence("obj_id_seq")),
                 ),
                 Column("name", String(128)),
                 Column(
                     "id",
                     Integer,
-                    Sequence("Manager_id_seq", optional=True),
+                    normalize_sequence(
+                        config, Sequence("Manager_id_seq", optional=True)
+                    ),
                     primary_key=True,
                 ),
                 implicit_returning=implicit_returning,
@@ -647,7 +697,7 @@ class SequenceAsServerDefaultTest(
     def define_tables(cls, metadata):
         m = metadata
 
-        s = Sequence("t_seq", metadata=m)
+        s = normalize_sequence(config, Sequence("t_seq", metadata=m))
         Table(
             "t_seq_test",
             m,
@@ -655,7 +705,7 @@ class SequenceAsServerDefaultTest(
             Column("data", String(50)),
         )
 
-        s2 = Sequence("t_seq_2", metadata=m)
+        s2 = normalize_sequence(config, Sequence("t_seq_2", metadata=m))
         Table(
             "t_seq_test_2",
             m,

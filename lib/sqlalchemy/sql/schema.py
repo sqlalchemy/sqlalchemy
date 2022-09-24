@@ -3323,7 +3323,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         some_table = Table(
             'some_table', metadata,
-            Column('id', Integer, Sequence('some_table_seq'),
+            Column('id', Integer, Sequence('some_table_seq', start=1),
             primary_key=True)
         )
 
@@ -3375,9 +3375,16 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         :param start: the starting index of the sequence.  This value is
          used when the CREATE SEQUENCE command is emitted to the database
-         as the value of the "START WITH" clause.   If ``None``, the
+         as the value of the "START WITH" clause. If ``None``, the
          clause is omitted, which on most platforms indicates a starting
          value of 1.
+
+         .. versionchanged:: 2.0 The :paramref:`.Sequence.start` parameter
+            is required in order to have DDL emit "START WITH".  This is a
+            reversal of a change made in version 1.4 which would implicitly
+            render "START WITH 1" if the :paramref:`.Sequence.start` were
+            not included.  See :ref:`change_7211` for more detail.
+
         :param increment: the increment value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "INCREMENT BY" clause.  If ``None``,

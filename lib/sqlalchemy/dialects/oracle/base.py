@@ -66,14 +66,14 @@ specify sequences, use the sqlalchemy.schema.Sequence object which is passed
 to a Column construct::
 
   t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq'), primary_key=True),
+        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
         Column(...), ...
   )
 
 This step is also required when using table reflection, i.e. autoload_with=engine::
 
   t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq'), primary_key=True),
+        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
         autoload_with=engine
   )
 

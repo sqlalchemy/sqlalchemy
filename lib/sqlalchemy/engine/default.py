@@ -129,8 +129,7 @@ class DefaultDialect(Dialect):
     include_set_input_sizes: Optional[Set[Any]] = None
     exclude_set_input_sizes: Optional[Set[Any]] = None
 
-    # the first value we'd get for an autoincrement
-    # column.
+    # the first value we'd get for an autoincrement column.
     default_sequence_base = 1
 
     # most DBAPIs happy with this for execute().

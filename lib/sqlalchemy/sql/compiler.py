@@ -5674,8 +5674,6 @@ class DDLCompiler(Compiled):
 
         if prefix:
             text += prefix
-        if create.element.start is None:
-            create.element.start = self.dialect.default_sequence_base
         options = self.get_identity_options(create.element)
         if options:
             text += " " + options

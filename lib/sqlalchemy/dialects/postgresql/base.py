@@ -27,9 +27,13 @@ default corresponding to the column.
 To specify a specific named sequence to be used for primary key generation,
 use the :func:`~sqlalchemy.schema.Sequence` construct::
 
-    Table('sometable', metadata,
-            Column('id', Integer, Sequence('some_id_seq'), primary_key=True)
+    Table(
+        "sometable",
+        metadata,
+        Column(
+            "id", Integer, Sequence("some_id_seq", start=1), primary_key=True
         )
+    )
 
 When SQLAlchemy issues a single INSERT statement, to fulfill the contract of
 having the "last insert identifier" available, a RETURNING clause is added to

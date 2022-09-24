@@ -44,11 +44,13 @@ from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.engines import all_dialects
+from sqlalchemy.testing.provision import normalize_sequence
 
 
 table1 = table(
@@ -1070,7 +1072,7 @@ class ExecuteTest(fixtures.TestBase):
             Column(
                 "id",
                 Integer,
-                Sequence("t1idseq", optional=True),
+                normalize_sequence(config, Sequence("t1idseq", optional=True)),
                 primary_key=True,
             ),
             Column("value", Integer),
@@ -1081,7 +1083,7 @@ class ExecuteTest(fixtures.TestBase):
             Column(
                 "id",
                 Integer,
-                Sequence("t2idseq", optional=True),
+                normalize_sequence(config, Sequence("t2idseq", optional=True)),
                 primary_key=True,
             ),
             Column("value", Integer, default=7),

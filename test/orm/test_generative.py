@@ -4,9 +4,11 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import testing
 from sqlalchemy.orm import relationship
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -21,7 +23,12 @@ class GenerativeQueryTest(fixtures.MappedTest):
         Table(
             "foo",
             metadata,
-            Column("id", Integer, sa.Sequence("foo_id_seq"), primary_key=True),
+            Column(
+                "id",
+                Integer,
+                normalize_sequence(config, sa.Sequence("foo_id_seq")),
+                primary_key=True,
+            ),
             Column("bar", Integer),
             Column("range", Integer),
         )

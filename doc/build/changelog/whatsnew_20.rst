@@ -1468,6 +1468,7 @@ automatically.
 
     :ref:`postgresql_psycopg`
 
+
 .. _ticket_8054:
 
 Dialect support for oracledb
@@ -1564,6 +1565,60 @@ as ``False``::
 
 
 :ticket:`8567`
+
+
+.. _change_7211:
+
+The ``Sequence`` construct reverts to not having any explicit default "start" value; impacts MS SQL Server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prior to SQLAlchemy 1.4, the :class:`.Sequence` construct would emit only
+simple ``CREATE SEQUENCE`` DDL, if no additional arguments were specified::
+
+    >>> # SQLAlchemy 1.3 (and 2.0)
+    >>> from sqlalchemy import Sequence
+    >>> from sqlalchemy.schema import CreateSequence
+    >>> print(CreateSequence(Sequence("my_seq")))
+    CREATE SEQUENCE my_seq
+
+However, as :class:`.Sequence` support was added for MS SQL Server, where the
+default start value is inconveniently set to ``-2**63``,
+version 1.4 decided to default the DDL to emit a start value of 1, if
+:paramref:`.Sequence.start` were not otherwise provided::
+
+    >>> # SQLAlchemy 1.4 (only)
+    >>> from sqlalchemy import Sequence
+    >>> from sqlalchemy.schema import CreateSequence
+    >>> print(CreateSequence(Sequence("my_seq")))
+    CREATE SEQUENCE my_seq START WITH 1
+
+This change has introduced other complexities, including that when
+the :paramref:`.Sequence.min_value` parameter is included, this default of
+``1`` should in fact default to what :paramref:`.Sequence.min_value`
+states, else a min_value that's below the start_value may be seen as
+contradictory.     As looking at this issue started to become a bit of a
+rabbit hole of other various edge cases, we decided to instead revert this
+change and restore the original behavior of :class:`.Sequence` which is
+to have no opinion, and just emit CREATE SEQUENCE, allowing the database
+itself to make its decisions on how the various parameters of ``SEQUENCE``
+should interact with each other.
+
+Therefore, to ensure that the start value is 1 on all backends,
+**the start value of 1 may be indicated explicitly**, as below::
+
+    >>> # All SQLAlchemy versions
+    >>> from sqlalchemy import Sequence
+    >>> from sqlalchemy.schema import CreateSequence
+    >>> print(CreateSequence(Sequence("my_seq", start=1)))
+    CREATE SEQUENCE my_seq START WITH 1
+
+Beyond all of that, for autogeneration of integer primary keys on modern
+backends including PostgreSQL, Oracle, SQL Server, the :class:`.Identity`
+construct should be preferred, which also works the same way in 1.4 and 2.0
+with no changes in behavior.
+
+
+:ticket:`7211`
 
 
 .. _change_6980:

@@ -485,7 +485,7 @@ object, it can be invoked with its "next value" instruction by
 passing it directly to a SQL execution method::
 
     with my_engine.connect() as conn:
-        seq = Sequence("some_sequence")
+        seq = Sequence("some_sequence", start=1)
         nextid = conn.execute(seq)
 
 In order to embed the "next value" function of a :class:`.Sequence`
@@ -493,7 +493,7 @@ inside of a SQL statement like a SELECT or INSERT, use the :meth:`.Sequence.next
 method, which will render at statement compilation time a SQL function that is
 appropriate for the target backend::
 
-    >>> my_seq = Sequence("some_sequence")
+    >>> my_seq = Sequence("some_sequence", start=1)
     >>> stmt = select(my_seq.next_value())
     >>> print(stmt.compile(dialect=postgresql.dialect()))
     SELECT nextval('some_sequence') AS next_value_1
@@ -529,8 +529,8 @@ allows for the following behaviors:
 
 * The :class:`.Sequence` will inherit the :paramref:`_schema.MetaData.schema`
   parameter specified to the target :class:`_schema.MetaData`, which
-  affects the production of CREATE / DROP DDL, if any.
-
+  affects the production of CREATE / DROP DDL as well as how the
+  :meth:`.Sequence.next_value` function is rendered in SQL statements.
 
 * The :meth:`_schema.MetaData.create_all` and :meth:`_schema.MetaData.drop_all`
   methods will emit CREATE / DROP for this :class:`.Sequence`,
@@ -548,7 +548,10 @@ The preceding sections illustrate how to associate a :class:`.Sequence` with a
 :class:`_schema.Column` as the **Python side default generator**::
 
     Column(
-        "cart_id", Integer, Sequence("cart_id_seq", metadata=metadata_obj), primary_key=True
+        "cart_id",
+        Integer,
+        Sequence("cart_id_seq", metadata=metadata_obj, start=1),
+        primary_key=True,
     )
 
 In the above case, the :class:`.Sequence` will automatically be subject
@@ -565,7 +568,7 @@ we illustrate the same :class:`.Sequence` being associated with the
 :class:`_schema.Column` both as the Python-side default generator as well as
 the server-side default generator::
 
-    cart_id_seq = Sequence("cart_id_seq", metadata=metadata_obj)
+    cart_id_seq = Sequence("cart_id_seq", metadata=metadata_obj, start=1)
     table = Table(
         "cartitems",
         metadata_obj,
@@ -585,7 +588,7 @@ or with the ORM::
     class CartItem(Base):
         __tablename__ = "cartitems"
 
-        cart_id_seq = Sequence("cart_id_seq", metadata=Base.metadata)
+        cart_id_seq = Sequence("cart_id_seq", metadata=Base.metadata, start=1)
         cart_id = Column(
             Integer, cart_id_seq, server_default=cart_id_seq.next_value(), primary_key=True
         )

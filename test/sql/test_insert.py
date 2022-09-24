@@ -26,10 +26,12 @@ from sqlalchemy.sql import crud
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.provision import normalize_sequence
 
 
 class ORMExpr:
@@ -143,7 +145,13 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_insert_literal_binds_sequence_notimplemented(self):
-        table = Table("x", MetaData(), Column("y", Integer, Sequence("y_seq")))
+        table = Table(
+            "x",
+            MetaData(),
+            Column(
+                "y", Integer, normalize_sequence(config, Sequence("y_seq"))
+            ),
+        )
         dialect = default.DefaultDialect()
         dialect.supports_sequences = True
 
@@ -407,7 +415,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         t1 = Table(
             "t",
             m,
-            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column(
+                "id",
+                Integer,
+                normalize_sequence(config, Sequence("id_seq")),
+                primary_key=True,
+            ),
             Column("data", String),
         )
 
@@ -428,7 +441,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         t1 = Table(
             "t",
             m,
-            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column(
+                "id",
+                Integer,
+                normalize_sequence(config, Sequence("id_seq")),
+                primary_key=True,
+            ),
             Column("data", String),
         )
 
@@ -453,7 +471,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "t",
             m,
             Column("id", Integer, primary_key=True),
-            Column("counter", Sequence("counter_seq")),
+            Column(
+                "counter", normalize_sequence(config, Sequence("counter_seq"))
+            ),
             Column("data", String),
         )
 
@@ -534,7 +554,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         t1 = Table(
             "t",
             m,
-            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column(
+                "id",
+                Integer,
+                normalize_sequence(config, Sequence("id_seq")),
+                primary_key=True,
+            ),
             Column("data", String),
         )
 

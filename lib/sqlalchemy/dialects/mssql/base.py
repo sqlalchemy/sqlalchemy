@@ -335,12 +335,31 @@ This is an auxiliary use case suitable for testing and bulk insert scenarios.
 SEQUENCE support
 ----------------
 
-The :class:`.Sequence` object now creates "real" sequences, i.e.,
-``CREATE SEQUENCE``. To provide compatibility with other dialects,
-:class:`.Sequence` defaults to a start value of 1, even though the
-T-SQL defaults is -9223372036854775808.
+The :class:`.Sequence` object creates "real" sequences, i.e.,
+``CREATE SEQUENCE``::
 
-.. versionadded:: 1.4.0
+    >>> from sqlalchemy import Sequence
+    >>> from sqlalchemy.schema import CreateSequence
+    >>> from sqlalchemy.dialects import mssql
+    >>> print(CreateSequence(Sequence("my_seq", start=1)).compile(dialect=mssql.dialect()))
+    CREATE SEQUENCE my_seq START WITH 1
+
+For integer primary key generation, SQL Server's ``IDENTITY`` construct should
+generally be preferred vs. sequence.
+
+..tip::
+
+    The default start value for T-SQL is ``-2**63`` instead of 1 as
+    in most other SQL databases. Users should explicitly set the
+    :paramref:`.Sequence.start` to 1 if that's the expected default::
+
+        seq = Sequence("my_sequence", start=1)
+
+.. versionadded:: 1.4 added SQL Server support for :class:`.Sequence`
+
+.. versionchanged:: 2.0 The SQL Server dialect will no longer implicitly
+   render "START WITH 1" for ``CREATE SEQUENCE``, which was the behavior
+   first implemented in version 1.4.
 
 MAX on VARCHAR / NVARCHAR
 -------------------------
@@ -2907,7 +2926,9 @@ class MSDialect(default.DefaultDialect):
 
     supports_sequences = True
     sequences_optional = True
-    # T-SQL's actual default is -9223372036854775808
+    # This is actually used for autoincrement, where itentity is used that
+    # starts with 1.
+    # for sequences T-SQL's actual default is -9223372036854775808
     default_sequence_base = 1
 
     supports_native_boolean = False

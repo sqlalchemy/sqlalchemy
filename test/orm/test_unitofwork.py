@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
@@ -31,6 +32,7 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedDict
@@ -1110,7 +1112,7 @@ class DefaultTest(fixtures.MappedTest):
                 Column(
                     "secondary_id",
                     Integer,
-                    sa.Sequence("sec_id_seq"),
+                    normalize_sequence(config, sa.Sequence("sec_id_seq")),
                     unique=True,
                 )
             )

@@ -18,9 +18,11 @@ from sqlalchemy.schema import DropConstraint
 from sqlalchemy.schema import ForeignKeyConstraint
 from sqlalchemy.schema import Sequence
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -542,7 +544,7 @@ class SequenceDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
 
     @testing.fixture
     def produce_subject(self):
-        return Sequence("my_seq")
+        return normalize_sequence(config, Sequence("my_seq"))
 
     @testing.fixture
     def produce_table_integrated_subject(self, metadata, produce_subject):

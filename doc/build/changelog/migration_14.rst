@@ -2898,7 +2898,9 @@ integer primary key column of a table::
     Table(
         "some_table",
         metadata,
-        Column("id", Integer, Sequence("some_seq", optional=True), primary_key=True),
+        Column(
+            "id", Integer, Sequence("some_seq", start=1, optional=True), primary_key=True
+        ),
     )
 
 The above :class:`.Sequence` is only used for DDL and INSERT statements if the

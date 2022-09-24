@@ -27,10 +27,12 @@ from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -48,7 +50,9 @@ class RelationshipTest1(fixtures.MappedTest):
             Column(
                 "person_id",
                 Integer,
-                Sequence("person_id_seq", optional=True),
+                normalize_sequence(
+                    config, Sequence("person_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column(

@@ -14,6 +14,7 @@ from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
+from ...testing.provision import normalize_sequence
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
 
@@ -116,3 +117,10 @@ def drop_all_schema_objects_pre_tables(cfg, eng):
                             )
                         )
                     )
+
+
+@normalize_sequence.for_db("mssql")
+def normalize_sequence(cfg, sequence):
+    if sequence.start is None:
+        sequence.start = 1
+    return sequence

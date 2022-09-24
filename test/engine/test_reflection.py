@@ -38,6 +38,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing import skip
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -1391,7 +1392,9 @@ class CreateDropTest(fixtures.TablesTest):
             Column(
                 "user_id",
                 sa.Integer,
-                sa.Sequence("user_id_seq", optional=True),
+                normalize_sequence(
+                    config, sa.Sequence("user_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("user_name", sa.String(40)),
@@ -1403,7 +1406,9 @@ class CreateDropTest(fixtures.TablesTest):
             Column(
                 "address_id",
                 sa.Integer,
-                sa.Sequence("address_id_seq", optional=True),
+                normalize_sequence(
+                    config, sa.Sequence("address_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("user_id", sa.Integer, sa.ForeignKey("users.user_id")),
@@ -1416,7 +1421,9 @@ class CreateDropTest(fixtures.TablesTest):
             Column(
                 "order_id",
                 sa.Integer,
-                sa.Sequence("order_id_seq", optional=True),
+                normalize_sequence(
+                    config, sa.Sequence("order_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("user_id", sa.Integer, sa.ForeignKey("users.user_id")),
@@ -1429,7 +1436,9 @@ class CreateDropTest(fixtures.TablesTest):
             Column(
                 "item_id",
                 sa.INT,
-                sa.Sequence("items_id_seq", optional=True),
+                normalize_sequence(
+                    config, sa.Sequence("items_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("order_id", sa.INT, sa.ForeignKey("orders")),
@@ -1597,7 +1606,7 @@ class UnicodeReflectionTest(fixtures.TablesTest):
                 Column(
                     "id",
                     sa.Integer,
-                    sa.Sequence(cname + "_id_seq"),
+                    normalize_sequence(config, sa.Sequence(cname + "_id_seq")),
                     primary_key=True,
                 ),
                 Column(cname, Integer),

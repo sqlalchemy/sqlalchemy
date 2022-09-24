@@ -38,6 +38,7 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -3446,7 +3447,7 @@ class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
     @testing.requires.insert_returning
     def test_b(self, base, run_test):
 
-        seq = Sequence("x_seq")
+        seq = normalize_sequence(config, Sequence("x_seq"))
 
         class A(base):
             __tablename__ = "a"

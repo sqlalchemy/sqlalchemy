@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -28,6 +29,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import is_false
+from sqlalchemy.testing.provision import normalize_sequence
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
@@ -76,7 +78,9 @@ class AsyncSessionTest(AsyncFixture):
     async def test_sequence_execute(
         self, async_session: AsyncSession, metadata, use_scalar
     ):
-        seq = Sequence("some_sequence", metadata=metadata)
+        seq = normalize_sequence(
+            config, Sequence("some_sequence", metadata=metadata)
+        )
 
         sync_connection = (await async_session.connection()).sync_connection
 

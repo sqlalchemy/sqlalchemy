@@ -1622,7 +1622,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             ddl.CreateSequence(
                 Sequence("my_seq", nomaxvalue=True, nominvalue=True)
             ),
-            "CREATE SEQUENCE my_seq START WITH 1 NOMINVALUE NOMAXVALUE",
+            "CREATE SEQUENCE my_seq NOMINVALUE NOMAXVALUE",
             dialect=oracle.OracleDialect(),
         )
 

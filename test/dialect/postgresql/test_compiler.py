@@ -91,11 +91,11 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
         (SmallInteger, "AS SMALLINT "),
         (BigInteger, "AS BIGINT "),
     )
-    def test_create_index_concurrently(self, type_, text):
+    def test_compile_type(self, type_, text):
         s = Sequence("s1", data_type=type_)
         self.assert_compile(
             schema.CreateSequence(s),
-            "CREATE SEQUENCE s1 %sSTART WITH 1" % text,
+            f"CREATE SEQUENCE s1 {text}".strip(),
             dialect=postgresql.dialect(),
         )
 

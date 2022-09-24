@@ -17,11 +17,13 @@ from sqlalchemy import testing
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -268,7 +270,9 @@ class InsertExecTest(fixtures.TablesTest):
                 Column(
                     "id",
                     Integer,
-                    Sequence("t4_id_seq", optional=True),
+                    normalize_sequence(
+                        config, Sequence("t4_id_seq", optional=True)
+                    ),
                     primary_key=True,
                 ),
                 Column("foo", String(30), primary_key=True),
@@ -296,7 +300,7 @@ class InsertExecTest(fixtures.TablesTest):
                 Column(
                     "id",
                     Integer,
-                    Sequence("t4_id_seq"),
+                    normalize_sequence(config, Sequence("t4_id_seq")),
                     primary_key=True,
                 ),
                 Column("foo", String(30)),
@@ -471,7 +475,7 @@ class TableInsertTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Sequence("t_id_seq"),
+                normalize_sequence(config, Sequence("t_id_seq")),
                 primary_key=True,
             ),
             Column("data", String(50)),
@@ -547,7 +551,11 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             connection,
             t.insert().values(
-                id=func.next_value(Sequence("t_id_seq")), data="data", x=5
+                id=func.next_value(
+                    normalize_sequence(config, Sequence("t_id_seq"))
+                ),
+                data="data",
+                x=5,
             ),
             (testing.db.dialect.default_sequence_base, "data", 5),
         )

@@ -19,11 +19,13 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import text
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
@@ -1030,7 +1032,9 @@ class PKIncrementTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Sequence("ai_id_seq", optional=True),
+                normalize_sequence(
+                    config, Sequence("ai_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("int1", Integer),
@@ -1171,7 +1175,7 @@ class AutoIncrementTest(fixtures.TestBase):
         # and autoincrement=False.  Using a ForeignKey
         # would have the same effect
 
-        some_seq = Sequence("some_seq")
+        some_seq = normalize_sequence(config, Sequence("some_seq"))
 
         dataset_no_autoinc = Table(
             "x",
@@ -1313,7 +1317,7 @@ class SpecialTypePKTest(fixtures.TestBase):
         self._run_test(default=literal_column("1", type_=self.MyInteger))
 
     def test_sequence(self):
-        self._run_test(Sequence("foo_seq"))
+        self._run_test(normalize_sequence(config, Sequence("foo_seq")))
 
     def test_text_clause_default_no_type(self):
         self._run_test(default=text("1"))

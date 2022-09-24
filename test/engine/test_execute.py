@@ -53,6 +53,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -1222,7 +1223,7 @@ class MockStrategyTest(fixtures.TestBase):
             Column(
                 "pk",
                 Integer,
-                Sequence("testtable_pk_seq"),
+                normalize_sequence(config, Sequence("testtable_pk_seq")),
                 primary_key=True,
             ),
         )
@@ -2408,7 +2409,7 @@ class EngineEventsTest(fixtures.TestBase):
             Column(
                 "x",
                 Integer,
-                Sequence("t_id_seq"),
+                normalize_sequence(config, Sequence("t_id_seq")),
                 primary_key=True,
             ),
             implicit_returning=False,

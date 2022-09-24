@@ -6,9 +6,11 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.provision import normalize_sequence
 
 
 class InheritTest(fixtures.MappedTest):
@@ -27,7 +29,9 @@ class InheritTest(fixtures.MappedTest):
             Column(
                 "principal_id",
                 Integer,
-                Sequence("principal_id_seq", optional=False),
+                normalize_sequence(
+                    config, Sequence("principal_id_seq", optional=False)
+                ),
                 primary_key=True,
             ),
             Column("name", String(50), nullable=False),
@@ -131,7 +135,9 @@ class InheritTest2(fixtures.MappedTest):
             Column(
                 "id",
                 Integer,
-                Sequence("foo_id_seq", optional=True),
+                normalize_sequence(
+                    config, Sequence("foo_id_seq", optional=True)
+                ),
                 primary_key=True,
             ),
             Column("data", String(20)),
@@ -239,7 +245,7 @@ class InheritTest3(fixtures.MappedTest):
             Column(
                 "id",
                 Integer,
-                Sequence("foo_seq", optional=True),
+                normalize_sequence(config, Sequence("foo_seq", optional=True)),
                 primary_key=True,
             ),
             Column("data", String(20)),

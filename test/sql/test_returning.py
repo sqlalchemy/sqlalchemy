@@ -591,7 +591,7 @@ class SequenceReturningTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        seq = Sequence("tid_seq")
+        seq = provision.normalize_sequence(config, Sequence("tid_seq"))
         Table(
             "returning_tbl",
             metadata,
