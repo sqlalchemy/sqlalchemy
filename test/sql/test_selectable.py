@@ -404,8 +404,10 @@ class SelectableTest(
 
     @testing.combinations((True,), (False,))
     def test_broken_select_same_named_explicit_cols(self, use_anon):
-        # this is issue #6090.  the query is "wrong" and we dont know how
+        """test for #6090. the query is "wrong" and we dont know how
         # to render this right now.
+
+        """
         stmt = select(
             table1.c.col1,
             table1.c.col2,
@@ -431,6 +433,24 @@ class SelectableTest(
                 "unique names for explicit labels.",
             ):
                 select(stmt.subquery()).compile()
+
+    def test_same_anon_named_explicit_cols(self):
+        """test for #8569.  This adjusts the change in #6090 to not apply
+        to anonymous labels.
+
+        """
+        lc = literal_column("col2").label(None)
+
+        subq1 = select(lc).subquery()
+
+        stmt2 = select(subq1, lc).subquery()
+
+        self.assert_compile(
+            select(stmt2),
+            "SELECT anon_1.col2_1, anon_1.col2_1_1 FROM "
+            "(SELECT anon_2.col2_1 AS col2_1, col2 AS col2_1 FROM "
+            "(SELECT col2 AS col2_1) AS anon_2) AS anon_1",
+        )
 
     def test_correlate_none_arg_error(self):
         stmt = select(table1)
