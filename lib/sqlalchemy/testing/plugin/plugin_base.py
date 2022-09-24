@@ -436,7 +436,10 @@ def _engine_uri(options, file_config):
 
         if options.write_idents and provision.FOLLOWER_IDENT:
             with open(options.write_idents, "a") as file_:
-                file_.write(provision.FOLLOWER_IDENT + " " + db_url + "\n")
+                file_.write(
+                    f"{provision.FOLLOWER_IDENT} "
+                    f"{db_url.render_as_string(hide_password=False)}\n"
+                )
 
         cfg = provision.setup_config(
             db_url, options, file_config, provision.FOLLOWER_IDENT

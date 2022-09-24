@@ -1038,6 +1038,43 @@ not expected to have significant effects on backwards compatibility.
 
 .. _Cython: https://cython.org/
 
+.. _change_8567:
+
+``str(engine.url)`` will obfuscate the password by default
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To avoid leakage of database passwords, calling ``str()`` on a
+:class:`.URL` will now enable the password obfuscation feature by default.
+Previously, this obfuscation would be in place for ``__repr__()`` calls
+but not ``__str__()``.   This change will impact applications and test suites
+that attempt to invoke :func:`_sa.create_engine` given the stringified URL
+from another engine, such as::
+
+    >>> e1 = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
+    >>> e2 = create_engine(str(e1.url))
+
+The above engine ``e2`` will not have the correct password; it will have the
+obfuscated string ``"***"``.
+
+The preferred approach for the above pattern is to pass the
+:class:`.URL` object directly, there's no need to stringify::
+
+    >>> e1 = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
+    >>> e2 = create_engine(e1.url)
+
+Otherwise, for a stringified URL with cleartext password, use the
+:meth:`_url.URL.render_as_string` method, passing the
+:paramref:`_url.URL.render_as_string.hide_password` parameter
+as ``False``::
+
+    >>> e1 = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
+    >>> url_string = e1.url.render_as_string(hide_password=False)
+    >>> e2 = create_engine(url_string)
+
+
+:ticket:`8567`
+
+
 .. _change_6980:
 
 "with_variant()" clones the original TypeEngine rather than changing the type

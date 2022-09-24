@@ -642,9 +642,6 @@ class URL(NamedTuple):
             )
         return s
 
-    def __str__(self) -> str:
-        return self.render_as_string(hide_password=False)
-
     def __repr__(self) -> str:
         return self.render_as_string()
 

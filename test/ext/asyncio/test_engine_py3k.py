@@ -635,7 +635,9 @@ class AsyncEngineTest(EngineFixture):
 
     def test_async_engine_from_config(self):
         config = {
-            "sqlalchemy.url": str(testing.db.url),
+            "sqlalchemy.url": testing.db.url.render_as_string(
+                hide_password=False
+            ),
             "sqlalchemy.echo": "true",
         }
         engine = async_engine_from_config(config)

@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 8567
+
+    For improved security, the :class:`_url.URL` object will now use password
+    obfuscation by default when ``str(url)`` is called. To stringify a URL with
+    cleartext password, the :meth:`_url.URL.render_as_string` may be used,
+    passing the :paramref:`_url.URL.render_as_string.hide_password` parameter
+    as ``False``. Thanks to our contributors for this pull request.
+
+    .. seealso::
+
+        :ref:`change_8567`
