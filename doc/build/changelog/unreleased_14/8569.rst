@@ -1,0 +1,13 @@
+.. change::
+    :tags: orm, bug, regression
+    :tickets: 8569
+
+    Fixed regression for 1.4 in :func:`_orm.contains_eager` where the "wrap in
+    subquery" logic of :func:`_orm.joinedload` would be inadvertently triggered
+    for use of the :func:`_orm.contains_eager` function with similar statements
+    (e.g. those that use ``distinct()``, ``limit()`` or ``offset()``), which
+    would then lead to secondary issues with queries that used some
+    combinations of SQL label names and aliasing. This "wrapping" is not
+    appropriate for :func:`_orm.contains_eager` which has always had the
+    contract that the user-defined SQL statement is unmodified with the
+    exception of adding the appropriate columns to be fetched.
