@@ -77,6 +77,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import call
@@ -105,7 +106,6 @@ from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
 from .test_transaction import _LocalFixture
-from ..sql.test_compare import CacheKeyFixture
 
 
 join_aliased_dep = (

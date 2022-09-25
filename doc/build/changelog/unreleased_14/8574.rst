@@ -1,0 +1,5 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 8574
+
+    :class:`_postgresql.aggregate_order_by` now supports cache generation.
