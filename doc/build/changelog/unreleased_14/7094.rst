@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7094
+
+    A warning is emitted in ORM configurations when an explicit
+    :func:`_orm.remote` annotation is applied to columns that are local to the
+    immediate mapped class, when the referenced class does not include any of
+    the same table columns. Ideally this would raise an error at some point as
+    it's not correct from a mapping point of view.
