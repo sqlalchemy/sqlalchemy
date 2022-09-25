@@ -1335,6 +1335,7 @@ from . import hstore as _hstore
 from . import json as _json
 from . import pg_catalog
 from . import ranges as _ranges
+from .ext import aggregate_order_by
 from .named_types import CreateDomainType as CreateDomainType  # noqa: F401
 from .named_types import CreateEnumType as CreateEnumType  # noqa: F401
 from .named_types import DOMAIN as DOMAIN  # noqa: F401
@@ -3652,6 +3653,7 @@ class PGDialect(default.DefaultDialect):
                 con_sq.c.conrelid,
                 con_sq.c.conname,
                 con_sq.c.description,
+                con_sq.c.ord,
                 pg_catalog.pg_attribute.c.attname,
             )
             .select_from(pg_catalog.pg_attribute)
@@ -3662,14 +3664,15 @@ class PGDialect(default.DefaultDialect):
                     pg_catalog.pg_attribute.c.attrelid == con_sq.c.conrelid,
                 ),
             )
-            .order_by(con_sq.c.conname, con_sq.c.ord)
             .subquery("attr")
         )
 
         return (
             select(
                 attr_sq.c.conrelid,
-                sql.func.array_agg(attr_sq.c.attname).label("cols"),
+                sql.func.array_agg(
+                    aggregate_order_by(attr_sq.c.attname, attr_sq.c.ord)
+                ).label("cols"),
                 attr_sq.c.conname,
                 sql.func.min(attr_sq.c.description).label("description"),
             )
@@ -3967,6 +3970,7 @@ class PGDialect(default.DefaultDialect):
             select(
                 idx_sq.c.indexrelid,
                 idx_sq.c.indrelid,
+                idx_sq.c.ord,
                 # NOTE: always using pg_get_indexdef is too slow so just
                 # invoke when the element is an expression
                 sql.case(
@@ -3990,20 +3994,21 @@ class PGDialect(default.DefaultDialect):
                 ),
             )
             .where(idx_sq.c.indrelid.in_(bindparam("oids")))
-            .order_by(idx_sq.c.indexrelid, idx_sq.c.ord)
             .subquery("idx_attr")
         )
 
         cols_sq = (
             select(
                 attr_sq.c.indexrelid,
-                attr_sq.c.indrelid,
-                sql.func.array_agg(attr_sq.c.element).label("elements"),
-                sql.func.array_agg(attr_sq.c.is_expr).label(
-                    "elements_is_expr"
-                ),
+                sql.func.min(attr_sq.c.indrelid),
+                sql.func.array_agg(
+                    aggregate_order_by(attr_sq.c.element, attr_sq.c.ord)
+                ).label("elements"),
+                sql.func.array_agg(
+                    aggregate_order_by(attr_sq.c.is_expr, attr_sq.c.ord)
+                ).label("elements_is_expr"),
             )
-            .group_by(attr_sq.c.indexrelid, attr_sq.c.indrelid)
+            .group_by(attr_sq.c.indexrelid)
             .subquery("idx_cols")
         )
 
@@ -4012,7 +4017,7 @@ class PGDialect(default.DefaultDialect):
         else:
             indnkeyatts = sql.null().label("indnkeyatts")
 
-        query = (
+        return (
             select(
                 pg_catalog.pg_index.c.indrelid,
                 pg_class_index.c.relname.label("relname_index"),
@@ -4069,7 +4074,6 @@ class PGDialect(default.DefaultDialect):
             )
             .order_by(pg_catalog.pg_index.c.indrelid, pg_class_index.c.relname)
         )
-        return query
 
     def get_multi_indexes(
         self, connection, schema, filter_names, scope, kind, **kw
@@ -4406,23 +4410,17 @@ class PGDialect(default.DefaultDialect):
 
     @lru_cache()
     def _enum_query(self, schema):
-        lbl_sq = (
-            select(
-                pg_catalog.pg_enum.c.enumtypid, pg_catalog.pg_enum.c.enumlabel
-            )
-            .order_by(
-                pg_catalog.pg_enum.c.enumtypid,
-                pg_catalog.pg_enum.c.enumsortorder,
-            )
-            .subquery("lbl")
-        )
-
         lbl_agg_sq = (
             select(
-                lbl_sq.c.enumtypid,
-                sql.func.array_agg(lbl_sq.c.enumlabel).label("labels"),
+                pg_catalog.pg_enum.c.enumtypid,
+                sql.func.array_agg(
+                    aggregate_order_by(
+                        pg_catalog.pg_enum.c.enumlabel,
+                        pg_catalog.pg_enum.c.enumsortorder,
+                    )
+                ).label("labels"),
             )
-            .group_by(lbl_sq.c.enumtypid)
+            .group_by(pg_catalog.pg_enum.c.enumtypid)
             .subquery("lbl_agg")
         )
 
