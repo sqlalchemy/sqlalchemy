@@ -3195,6 +3195,22 @@ class JoinCondition(object):
                 "condition that are on the remote side of "
                 "the relationship." % (self.prop,)
             )
+        else:
+
+            not_target = util.column_set(
+                self.parent_persist_selectable.c
+            ).difference(self.child_persist_selectable.c)
+
+            for _, rmt in self.local_remote_pairs:
+                if rmt in not_target:
+                    util.warn(
+                        "Expression %s is marked as 'remote', but these "
+                        "column(s) are local to the local side.  The "
+                        "remote() annotation is needed only for a "
+                        "self-referential relationship where both sides "
+                        "of the relationship refer to the same tables."
+                        % (rmt,)
+                    )
 
     def _check_foreign_cols(self, join_condition, primary):
         """Check the foreign key columns collected and emit error

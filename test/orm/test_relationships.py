@@ -2588,6 +2588,55 @@ class JoinConditionErrorTest(fixtures.TestBase):
         registry.map_imperatively(C2, t3)
         assert C1.c2.property.primaryjoin.compare(t1.c.id == t3.c.t1id)
 
+    @testing.combinations(
+        "annotation", "local_remote", argnames="remote_anno_type"
+    )
+    @testing.combinations("orm_col", "core_col", argnames="use_col_from")
+    def test_no_remote_on_local_only_cols(
+        self, decl_base, remote_anno_type, use_col_from
+    ):
+        """test #7094.
+
+        a warning should be emitted for an inappropriate remote_side argument
+
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            if remote_anno_type == "annotation":
+                if use_col_from == "core_col":
+                    bs = relationship(
+                        "B",
+                        primaryjoin=lambda: remote(A.__table__.c.id)
+                        == B.__table__.c.a_id,
+                    )
+                elif use_col_from == "orm_col":
+                    bs = relationship(
+                        "B", primaryjoin="remote(A.id) == B.a_id"
+                    )
+            elif remote_anno_type == "local_remote":
+                if use_col_from == "core_col":
+                    bs = relationship(
+                        "B", remote_side=lambda: A.__table__.c.id
+                    )
+                elif use_col_from == "orm_col":
+                    bs = relationship("B", remote_side="A.id")
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        with expect_warnings(
+            r"Expression a.id is marked as 'remote', but these column\(s\) "
+            r"are local to the local side. "
+        ):
+            decl_base.registry.configure()
+
     def test_join_error_raised(self, registry):
         m = MetaData()
         t1 = Table("t1", m, Column("id", Integer, primary_key=True))
