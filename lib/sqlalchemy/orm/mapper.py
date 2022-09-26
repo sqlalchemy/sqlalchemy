@@ -118,6 +118,8 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T", bound=Any)
 _MP = TypeVar("_MP", bound="MapperProperty[Any]")
+_Fn = TypeVar("_Fn", bound="Callable[..., Any]")
+
 
 _WithPolymorphicArg = Union[
     Literal["*"],
@@ -3895,7 +3897,9 @@ def reconstructor(fn):
     return fn
 
 
-def validates(*names, **kw):
+def validates(
+    *names: str, include_removes: bool = False, include_backrefs: bool = False
+) -> Callable[[_Fn], _Fn]:
     r"""Decorate a method as a 'validator' for one or more named properties.
 
     Designates a method as a validator, a method which receives the
@@ -3930,12 +3934,10 @@ def validates(*names, **kw):
       :ref:`simple_validators` - usage examples for :func:`.validates`
 
     """
-    include_removes = kw.pop("include_removes", False)
-    include_backrefs = kw.pop("include_backrefs", True)
 
-    def wrap(fn):
-        fn.__sa_validators__ = names
-        fn.__sa_validation_opts__ = {
+    def wrap(fn: _Fn) -> _Fn:
+        fn.__sa_validators__ = names  # type: ignore[attr-defined]
+        fn.__sa_validation_opts__ = {  # type: ignore[attr-defined]
             "include_removes": include_removes,
             "include_backrefs": include_backrefs,
         }
