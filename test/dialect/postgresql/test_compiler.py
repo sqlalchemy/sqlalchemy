@@ -3347,3 +3347,36 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT 1 " + exp,
             checkparams=params,
         )
+
+
+class CacheKeyTest(fixtures.CacheKeyFixture, fixtures.TestBase):
+    def test_aggregate_order_by(self):
+        """test #8574"""
+
+        self._run_cache_key_fixture(
+            lambda: (
+                aggregate_order_by(column("a"), column("a")),
+                aggregate_order_by(column("a"), column("b")),
+                aggregate_order_by(column("a"), column("a").desc()),
+                aggregate_order_by(column("a"), column("a").nulls_first()),
+                aggregate_order_by(
+                    column("a"), column("a").desc().nulls_first()
+                ),
+                aggregate_order_by(column("a", Integer), column("b")),
+                aggregate_order_by(column("a"), column("b"), column("c")),
+                aggregate_order_by(column("a"), column("c"), column("b")),
+                aggregate_order_by(
+                    column("a"), column("b").desc(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a"), column("b").nulls_first(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a"), column("b").desc().nulls_first(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a", Integer), column("a"), column("b")
+                ),
+            ),
+            compare_values=False,
+        )

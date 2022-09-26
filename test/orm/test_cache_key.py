@@ -42,7 +42,6 @@ from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
-from ..sql.test_compare import CacheKeyFixture
 
 
 def stmt_20(*elements):
@@ -52,7 +51,7 @@ def stmt_20(*elements):
     )
 
 
-class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
+class CacheKeyTest(fixtures.CacheKeyFixture, _fixtures.FixtureTest):
     run_setup_mappers = "once"
     run_inserts = None
     run_deletes = None
@@ -586,7 +585,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
         )
 
 
-class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
+class PolyCacheKeyTest(fixtures.CacheKeyFixture, _poly_fixtures._Polymorphic):
     run_setup_mappers = "once"
     run_inserts = None
     run_deletes = None

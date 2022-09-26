@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import contextlib
+import itertools
 import re
 import sys
 
@@ -13,6 +14,8 @@ import sqlalchemy as sa
 from . import assertions
 from . import config
 from . import schema
+from .assertions import eq_
+from .assertions import ne_
 from .entities import BasicEntity
 from .entities import ComparableEntity
 from .entities import ComparableMixin  # noqa
@@ -24,6 +27,8 @@ from ..orm import declarative_base
 from ..orm import registry
 from ..orm.decl_api import DeclarativeMeta
 from ..schema import sort_tables_and_constraints
+from ..sql import visitors
+from ..sql.elements import ClauseElement
 
 
 @config.mark_base_test_class()
@@ -868,3 +873,106 @@ class ComputedReflectionFixtureTest(TablesTest):
                         Computed("normal * 42", persisted=True),
                     )
                 )
+
+
+class CacheKeyFixture(object):
+    def _compare_equal(self, a, b, compare_values):
+        a_key = a._generate_cache_key()
+        b_key = b._generate_cache_key()
+
+        if a_key is None:
+            assert a._annotations.get("nocache")
+
+            assert b_key is None
+        else:
+
+            eq_(a_key.key, b_key.key)
+            eq_(hash(a_key.key), hash(b_key.key))
+
+            for a_param, b_param in zip(a_key.bindparams, b_key.bindparams):
+                assert a_param.compare(b_param, compare_values=compare_values)
+        return a_key, b_key
+
+    def _run_cache_key_fixture(self, fixture, compare_values):
+        case_a = fixture()
+        case_b = fixture()
+
+        for a, b in itertools.combinations_with_replacement(
+            range(len(case_a)), 2
+        ):
+            if a == b:
+                a_key, b_key = self._compare_equal(
+                    case_a[a], case_b[b], compare_values
+                )
+                if a_key is None:
+                    continue
+            else:
+                a_key = case_a[a]._generate_cache_key()
+                b_key = case_b[b]._generate_cache_key()
+
+                if a_key is None or b_key is None:
+                    if a_key is None:
+                        assert case_a[a]._annotations.get("nocache")
+                    if b_key is None:
+                        assert case_b[b]._annotations.get("nocache")
+                    continue
+
+                if a_key.key == b_key.key:
+                    for a_param, b_param in zip(
+                        a_key.bindparams, b_key.bindparams
+                    ):
+                        if not a_param.compare(
+                            b_param, compare_values=compare_values
+                        ):
+                            break
+                    else:
+                        # this fails unconditionally since we could not
+                        # find bound parameter values that differed.
+                        # Usually we intended to get two distinct keys here
+                        # so the failure will be more descriptive using the
+                        # ne_() assertion.
+                        ne_(a_key.key, b_key.key)
+                else:
+                    ne_(a_key.key, b_key.key)
+
+            # ClauseElement-specific test to ensure the cache key
+            # collected all the bound parameters that aren't marked
+            # as "literal execute"
+            if isinstance(case_a[a], ClauseElement) and isinstance(
+                case_b[b], ClauseElement
+            ):
+                assert_a_params = []
+                assert_b_params = []
+
+                for elem in visitors.iterate(case_a[a]):
+                    if elem.__visit_name__ == "bindparam":
+                        assert_a_params.append(elem)
+
+                for elem in visitors.iterate(case_b[b]):
+                    if elem.__visit_name__ == "bindparam":
+                        assert_b_params.append(elem)
+
+                # note we're asserting the order of the params as well as
+                # if there are dupes or not.  ordering has to be
+                # deterministic and matches what a traversal would provide.
+                eq_(
+                    sorted(a_key.bindparams, key=lambda b: b.key),
+                    sorted(
+                        util.unique_list(assert_a_params), key=lambda b: b.key
+                    ),
+                )
+                eq_(
+                    sorted(b_key.bindparams, key=lambda b: b.key),
+                    sorted(
+                        util.unique_list(assert_b_params), key=lambda b: b.key
+                    ),
+                )
+
+    def _run_cache_key_equal_fixture(self, fixture, compare_values):
+        case_a = fixture()
+        case_b = fixture()
+
+        for a, b in itertools.combinations_with_replacement(
+            range(len(case_a)), 2
+        ):
+            self._compare_equal(case_a[a], case_b[b], compare_values)

@@ -14,6 +14,7 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import schema
 from ...sql.schema import ColumnCollectionConstraint
+from ...sql.visitors import InternalTraversal
 
 
 class aggregate_order_by(expression.ColumnElement):
@@ -54,7 +55,11 @@ class aggregate_order_by(expression.ColumnElement):
     __visit_name__ = "aggregate_order_by"
 
     stringify_dialect = "postgresql"
-    inherit_cache = False
+    _traverse_internals = [
+        ("target", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+        ("order_by", InternalTraversal.dp_clauseelement),
+    ]
 
     def __init__(self, target, *order_by):
         self.target = coercions.expect(roles.ExpressionElementRole, target)
