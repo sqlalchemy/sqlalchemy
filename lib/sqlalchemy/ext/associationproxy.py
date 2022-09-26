@@ -199,7 +199,7 @@ class _ProxyFactoryProtocol(Protocol):
         creator: _CreatorProtocol[Any],
         value_attr: str,
         parent: AssociationProxyInstance[Any],
-    ) -> _T:
+    ) -> Any:
         ...
 
 
