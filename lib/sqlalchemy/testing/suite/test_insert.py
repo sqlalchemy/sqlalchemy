@@ -338,6 +338,7 @@ class ReturningTest(fixtures.TablesTest):
         r = connection.execute(
             table.insert().returning(table.c.id), dict(data="some data")
         )
+
         pk = r.first()[0]
         fetched_pk = connection.scalar(select(table.c.id))
         eq_(fetched_pk, pk)
@@ -356,6 +357,26 @@ class ReturningTest(fixtures.TablesTest):
         )
         pk = connection.scalar(select(self.tables.autoinc_pk.c.id))
         eq_(r.inserted_primary_key, (pk,))
+
+    @requirements.insert_executemany_returning
+    def test_insertmanyvalues_returning(self, connection):
+        r = connection.execute(
+            self.tables.autoinc_pk.insert().returning(
+                self.tables.autoinc_pk.c.id
+            ),
+            [
+                {"data": "d1"},
+                {"data": "d2"},
+                {"data": "d3"},
+                {"data": "d4"},
+                {"data": "d5"},
+            ],
+        )
+        rall = r.all()
+
+        pks = connection.execute(select(self.tables.autoinc_pk.c.id))
+
+        eq_(rall, pks.all())
 
 
 __all__ = ("LastrowidTest", "InsertBehaviorTest", "ReturningTest")

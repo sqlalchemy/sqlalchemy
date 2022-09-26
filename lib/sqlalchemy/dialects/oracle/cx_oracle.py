@@ -897,6 +897,8 @@ class OracleDialect_cx_oracle(OracleDialect):
     supports_sane_multi_rowcount = True
 
     insert_executemany_returning = True
+    update_executemany_returning = True
+    delete_executemany_returning = True
 
     bind_typing = interfaces.BindTyping.SETINPUTSIZES
 

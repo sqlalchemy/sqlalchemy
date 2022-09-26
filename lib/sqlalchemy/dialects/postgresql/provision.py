@@ -14,6 +14,7 @@ from ...testing.provision import log
 from ...testing.provision import prepare_for_drop_tables
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import upsert
 
 
 @create_db.for_db("postgresql")
@@ -125,3 +126,20 @@ def prepare_for_drop_tables(config, connection):
             "idle in transaction: %s"
             % ("; ".join(row._mapping["query"] for row in rows))
         )
+
+
+@upsert.for_db("postgresql")
+def _upsert(cfg, table, returning, set_lambda=None):
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(table)
+
+    if set_lambda:
+        stmt = stmt.on_conflict_do_update(
+            index_elements=table.primary_key, set_=set_lambda(stmt.excluded)
+        )
+    else:
+        stmt = stmt.on_conflict_do_nothing()
+
+    stmt = stmt.returning(*returning)
+    return stmt

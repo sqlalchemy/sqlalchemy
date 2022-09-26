@@ -812,6 +812,161 @@ positional arguments as configured::
     :ref:`orm_declarative_native_dataclasses`
 
 
+.. _change_6047:
+
+Optimized ORM bulk insert now implemented for all backends other than MySQL
+----------------------------------------------------------------------------
+
+The dramatic performance improvement introduced in the 1.4 series and described
+at :ref:`change_5263` has now been generalized to all included backends that
+support RETURNING, which is all backends other than MySQL: SQLite, MariaDB,
+PostgreSQL (all drivers), Oracle, and SQL Server. While the original feature
+was most critical for the psycopg2 driver which otherwise had major performance
+issues when using ``cursor.executemany()``, the change is also critical for
+other PostgreSQL drivers such as asyncpg, as when using RETURNING,
+single-statement INSERT statements are still unacceptably slow, as well
+as when using SQL Server that also seems to have very slow executemany
+speed for INSERT statements regardless of whether or not RETURNING is used.
+
+The performance of the new feature provides an almost across-the-board
+order of magnitude performance increase for basically every driver when
+INSERTing ORM objects that don't have a pre-assigned primary key value, as
+indicated in the table below, in most cases specific to the use of RETURNING
+which is not normally supported with executemany().
+
+The psycopg2 "fast execution helper" approach consists of transforming an
+INSERT..RETURNING statement with a single parameter set into a single
+statement that INSERTs many parameter sets, using multiple "VALUES..."
+clauses so that it can accommodate many parameter sets at once.
+Parameter sets are then typically batched into groups of 1000
+or similar, so that no single INSERT statement is excessively large, and the
+INSERT statement is then invoked for each batch of parameters, rather than
+for each individual parameter set.  Primary key values and server defaults
+are returned by RETURNING, which continues to work as each statement execution
+is invoked using ``cursor.execute()``, rather than ``cursor.executemany()``.
+
+This allows many rows to be inserted in one statement while also being able to
+return newly-generated primary key values as well as SQL and server defaults.
+SQLAlchemy historically has always needed to invoke one statement per parameter
+set, as it relied upon Python DBAPI Features such as ``cursor.lastrowid`` which
+do not support multiple rows.
+
+With most databases now offering RETURNING (with the conspicuous exception of
+MySQL, given that MariaDB supports it), the new change generalizes the psycopg2
+"fast execution helper" approach to all dialects that support RETURNING, which
+now includes SQlite and MariaDB, and for which no other approach for
+"executemany plus RETURNING" is possible, which includes SQLite, MariaDB, all
+PG drivers, and SQL Server. The cx_Oracle and oracledb drivers used for Oracle
+support RETURNING with executemany natively, and this has also been implemented
+to provide equivalent performance improvements. With SQLite and MariaDB now
+offering RETURNING support, ORM use of ``cursor.lastrowid`` is nearly a thing
+of the past, with only MySQL still relying upon it.
+
+For INSERT statements that don't use RETURNING, traditional executemany()
+behavior is used for most backends, with the current exceptions of psycopg2
+and mssql+pyodbc, which both have very slow executemany() performance overall
+and are still improved by the "insertmanyvalues" approach.
+
+Benchmarks
+~~~~~~~~~~
+
+SQLAlchemy includes a :ref:`Performance Suite <examples_performance>` within
+the ``examples/`` directory, where we can make use of the ``bulk_insert``
+suite to benchmark INSERTs of many rows using both Core and ORM in different
+ways.
+
+For the tests below, we are inserting **100,000 objects**, and in all cases we
+actually have 100,000 real Python ORM objects in memory, either created up
+front or generated on the fly. All databases other than SQLite are run over a
+local network connection, not localhost; this causes the "slower" results to be
+extremely slow.
+
+Operations that are improved by this feature include:
+
+* unit of work flushes for objects added to the session using
+  :meth:`_orm.Session.add` and :meth:`_orm.Session.add_all`.
+* the :class:`_orm.Session` "bulk" operations described at
+  :ref:`bulk_operations`
+* An upcoming feature known as "ORM Enabled Insert Statements" that will be
+  an improvement upon the existing :ref:`orm_dml_returning_objects` first
+  introduced as an experimental feature in SQLAlchemy 1.4.
+
+To get a sense of the scale of the operation, below are performance
+measurements using the ``test_flush_no_pk`` performance suite, which
+historically represents SQLAlchemy's worst-case INSERT performance task,
+where objects that don't have primary key values need to be INSERTed, and
+then the newly generated primary key values must be fetched so that the
+objects can be used for subsequent flush operations, such as establishment
+within relationships, flushing joined-inheritance models, etc::
+
+    @Profiler.profile
+    def test_flush_no_pk(n):
+        """INSERT statements via the ORM (batched with RETURNING if available),
+        fetching generated row id"""
+        session = Session(bind=engine)
+        for chunk in range(0, n, 1000):
+            session.add_all(
+                [
+                    Customer(
+                        name="customer name %d" % i,
+                        description="customer description %d" % i,
+                    )
+                    for i in range(chunk, chunk + 1000)
+                ]
+            )
+            session.flush()
+        session.commit()
+
+This test can be run from any SQLAlchemy source tree as follows::
+
+    python -m examples.performance.bulk_inserts --test test_flush_no_pk
+
+The table below summarizes performance measurements with
+the latest 1.4 series of SQLAlchemy compared to 2.0, both running
+the same test:
+
+============================   ====================    ====================
+Driver                         SQLA 1.4 Time (secs)    SQLA 2.0 Time (secs)
+----------------------------   --------------------    --------------------
+sqlite+pysqlite2 (memory)      6.204843                3.554856
+postgresql+asyncpg (network)   88.292285               4.561492
+postgresql+psycopg (network)   N/A (psycopg3)          4.861368
+oracle+cx_Oracle (network)     92.603953               4.809520
+mssql+pyodbc (network)         158.396667              4.825139
+mariadb+mysqldb (network)      71.705197               4.075377
+============================   ====================    ====================
+
+Two additional drivers have no change in performance; the psycopg2 drivers,
+for which fast executemany was already implemented in SQLAlchemy 1.4,
+and MySQL, which continues to not offer RETURNING support:
+
+=============================   ====================    ====================
+Driver                          SQLA 1.4 Time (secs)    SQLA 2.0 Time (secs)
+-----------------------------   --------------------    --------------------
+postgresql+psycopg2 (network)   4.704876                4.699883
+mysql+mysqldb (network)         77.281997               76.132995
+=============================   ====================    ====================
+
+Summary of Changes
+~~~~~~~~~~~~~~~~~~
+
+The following bullets list the individual changes made within 2.0 in order to
+get all drivers to this state:
+
+* RETURNING implemented for SQLite - :ticket:`6195`
+* RETURNING implemented for MariaDB - :ticket:`7011`
+* Fix multi-row RETURNING for Oracle - :ticket:`6245`
+* make insert() executemany() support RETURNING for as many dialects as
+  possible, usually with VALUES() - :ticket:`6047`
+* Emit a warning when RETURNING w/ executemany is used for non-supporting
+  backend (currently no RETURNING backend has this limitation) - :ticket:`7907`
+
+.. seealso::
+
+    :ref:`engine_insertmanyvalues` - Documentation and background on the
+    new feature as well as how to configure it
+
+
 .. _change_7311:
 
 Installation is now fully pep-517 enabled

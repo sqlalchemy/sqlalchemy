@@ -250,6 +250,19 @@ The process for fetching this value has several variants:
 
     INSERT INTO t (x) OUTPUT inserted.id VALUES (?)
 
+  As of SQLAlchemy 2.0, the :ref:`engine_insertmanyvalues` feature is also
+  used by default to optimize many-row INSERT statements; for SQL Server
+  the feature takes place for both RETURNING and-non RETURNING
+  INSERT statements.
+
+* The value of :paramref:`_sa.create_engine.insertmanyvalues_page_size`
+  defaults to 1000, however the ultimate page size for a particular INSERT
+  statement may be limited further, based on an observed limit of
+  2100 bound parameters for a single statement in SQL Server.
+  The page size may also be modified on a per-engine
+  or per-statement basis; see the section
+  :ref:`engine_insertmanyvalues_page_size` for details.
+
 * When RETURNING is not available or has been disabled via
   ``implicit_returning=False``, either the ``scope_identity()`` function or
   the ``@@identity`` variable is used; behavior varies by backend:
@@ -258,9 +271,13 @@ The process for fetching this value has several variants:
     appended to the end of the INSERT statement; a second result set will be
     fetched in order to receive the value.  Given a table as::
 
-        t = Table('t', m, Column('id', Integer, primary_key=True),
-                Column('x', Integer),
-                implicit_returning=False)
+        t = Table(
+            't',
+            metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            implicit_returning=False
+        )
 
     an INSERT will look like:
 
@@ -731,6 +748,8 @@ compatibility level information. Because of this, if running under
 a backwards compatibility mode SQLAlchemy may attempt to use T-SQL
 statements that are unable to be parsed by the database server.
 
+.. _mssql_triggers:
+
 Triggers
 --------
 
@@ -754,9 +773,6 @@ Declarative form::
         # ...
         __table_args__ = {'implicit_returning':False}
 
-
-This option can also be specified engine-wide using the
-``implicit_returning=False`` argument on :func:`_sa.create_engine`.
 
 .. _mssql_rowcount_versioning:
 
@@ -2846,6 +2862,12 @@ class MSDialect(default.DefaultDialect):
     supports_empty_insert = False
 
     supports_comments = True
+    supports_default_metavalue = False
+    """dialect supports INSERT... VALUES (DEFAULT) syntax -
+    SQL Server **does** support this, but **not** for the IDENTITY column,
+    so we can't turn this on.
+
+    """
 
     # supports_native_uuid is partial here, so we implement our
     # own impl type
@@ -2892,6 +2914,19 @@ class MSDialect(default.DefaultDialect):
     non_native_boolean_check_constraint = False
     supports_unicode_binds = True
     postfetch_lastrowid = True
+
+    # may be changed at server inspection time for older SQL server versions
+    supports_multivalues_insert = True
+
+    use_insertmanyvalues = True
+
+    use_insertmanyvalues_wo_returning = True
+
+    # "The incoming request has too many parameters. The server supports a "
+    # "maximum of 2100 parameters."
+    # in fact you can have 2099 parameters.
+    insertmanyvalues_max_parameters = 2099
+
     _supports_offset_fetch = False
     _supports_nvarchar_max = False
 
@@ -3054,6 +3089,9 @@ class MSDialect(default.DefaultDialect):
 
         if self.server_version_info >= MS_2008_VERSION:
             self.supports_multivalues_insert = True
+        else:
+            self.supports_multivalues_insert = False
+
         if self.deprecate_large_types is None:
             self.deprecate_large_types = (
                 self.server_version_info >= MS_2012_VERSION

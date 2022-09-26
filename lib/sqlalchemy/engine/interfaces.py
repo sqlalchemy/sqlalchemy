@@ -18,6 +18,7 @@ from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -62,6 +63,7 @@ if TYPE_CHECKING:
     from ..sql.elements import ClauseElement
     from ..sql.schema import Column
     from ..sql.schema import DefaultGenerator
+    from ..sql.schema import SchemaItem
     from ..sql.schema import Sequence as Sequence_SchemaItem
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
@@ -78,6 +80,28 @@ class CacheStats(Enum):
     CACHING_DISABLED = 2
     NO_CACHE_KEY = 3
     NO_DIALECT_SUPPORT = 4
+
+
+class ExecuteStyle(Enum):
+    """indicates the :term:`DBAPI` cursor method that will be used to invoke
+    a statement."""
+
+    EXECUTE = 0
+    """indicates cursor.execute() will be used"""
+
+    EXECUTEMANY = 1
+    """indicates cursor.executemany() will be used."""
+
+    INSERTMANYVALUES = 2
+    """indicates cursor.execute() will be used with an INSERT where the
+    VALUES expression will be expanded to accommodate for multiple
+    parameter sets
+
+    .. seealso::
+
+        :ref:`engine_insertmanyvalues`
+
+    """
 
 
 class DBAPIConnection(Protocol):
@@ -234,6 +258,8 @@ _SchemaTranslateMapType = Mapping[str, str]
 _ImmutableExecuteOptions = immutabledict[str, Any]
 
 _ParamStyle = Literal["qmark", "numeric", "named", "format", "pyformat"]
+
+_GenericSetInputSizesType = List[Tuple[str, Any, "TypeEngine[Any]"]]
 
 _IsolationLevel = Literal[
     "SERIALIZABLE",
@@ -608,6 +634,8 @@ class Dialect(EventTarget):
     driver: str
     """identifying name for the dialect's DBAPI"""
 
+    dialect_description: str
+
     dbapi: Optional[ModuleType]
     """A reference to the DBAPI module object itself.
 
@@ -748,23 +776,125 @@ class Dialect(EventTarget):
       executemany.
     """
 
+    supports_empty_insert: bool
+    """dialect supports INSERT () VALUES (), i.e. a plain INSERT with no
+    columns in it.
+
+    This is not usually supported; an "empty" insert is typically
+    suited using either "INSERT..DEFAULT VALUES" or
+    "INSERT ... (col) VALUES (DEFAULT)".
+
+    """
+
     supports_default_values: bool
     """dialect supports INSERT... DEFAULT VALUES syntax"""
 
     supports_default_metavalue: bool
-    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+    """dialect supports INSERT...(col) VALUES (DEFAULT) syntax.
 
-    supports_empty_insert: bool
-    """dialect supports INSERT () VALUES ()"""
+    Most databases support this in some way, e.g. SQLite supports it using
+    ``VALUES (NULL)``.    MS SQL Server supports the syntax also however
+    is the only included dialect where we have this disabled, as
+    MSSQL does not support the field for the IDENTITY column, which is
+    usually where we like to make use of the feature.
+
+    """
+
+    default_metavalue_token: str = "DEFAULT"
+    """for INSERT... VALUES (DEFAULT) syntax, the token to put in the
+    parenthesis.
+
+    E.g. for SQLite this is the keyword "NULL".
+
+    """
 
     supports_multivalues_insert: bool
     """Target database supports INSERT...VALUES with multiple value
-    sets"""
+    sets, i.e. INSERT INTO table (cols) VALUES (...), (...), (...), ...
+
+    """
+
+    insert_executemany_returning: bool
+    """dialect / driver / database supports some means of providing
+    INSERT...RETURNING support when dialect.do_executemany() is used.
+
+    """
+
+    update_executemany_returning: bool
+    """dialect supports UPDATE..RETURNING with executemany."""
+
+    delete_executemany_returning: bool
+    """dialect supports DELETE..RETURNING with executemany."""
+
+    use_insertmanyvalues: bool
+    """if True, indicates "insertmanyvalues" functionality should be used
+    to allow for ``insert_executemany_returning`` behavior, if possible.
+
+    In practice, setting this to True means:
+
+    if ``supports_multivalues_insert``, ``insert_returning`` and
+    ``use_insertmanyvalues`` are all True, the SQL compiler will produce
+    an INSERT that will be interpreted by the :class:`.DefaultDialect`
+    as an :attr:`.ExecuteStyle.INSERTMANYVALUES` execution that allows
+    for INSERT of many rows with RETURNING by rewriting a single-row
+    INSERT statement to have multiple VALUES clauses, also executing
+    the statement multiple times for a series of batches when large numbers
+    of rows are given.
+
+    The parameter is False for the default dialect, and is set to
+    True for SQLAlchemy internal dialects SQLite, MySQL/MariaDB, PostgreSQL,
+    SQL Server.   It remains at False for Oracle, which provides native
+    "executemany with RETURNING" support and also does not support
+    ``supports_multivalues_insert``.    For MySQL/MariaDB, those MySQL
+    dialects that don't support RETURNING will not report
+    ``insert_executemany_returning`` as True.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :ref:`engine_insertmanyvalues`
+
+    """
+
+    use_insertmanyvalues_wo_returning: bool
+    """if True, and use_insertmanyvalues is also True, INSERT statements
+    that don't include RETURNING will also use "insertmanyvalues".
+
+    .. versionadded:: 2.0
+
+    """
+
+    insertmanyvalues_page_size: int
+    """Number of rows to render into an individual INSERT..VALUES() statement
+    for :attr:`.ExecuteStyle.INSERTMANYVALUES` executions.
+
+    The default dialect defaults this to 1000.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :paramref:`_engine.Connection.execution_options.insertmanyvalues_page_size` -
+        execution option available on :class:`_engine.Connection`, statements
+
+    """  # noqa: E501
+
+    insertmanyvalues_max_parameters: int
+    """Alternate to insertmanyvalues_page_size, will additionally limit
+    page size based on number of parameters total in the statement.
+
+
+    """
 
     preexecute_autoincrement_sequences: bool
     """True if 'implicit' primary key functions must be executed separately
-      in order to get their value.   This is currently oriented towards
-      PostgreSQL.
+      in order to get their value, if RETURNING is not used.
+
+      This is currently oriented towards PostgreSQL when the
+      ``implicit_returning=False`` parameter is used on a :class:`.Table`
+      object.
+
     """
 
     insert_returning: bool
@@ -809,6 +939,13 @@ class Dialect(EventTarget):
     cursor.lastrowid tends to be more performant on most backends.
 
     """
+
+    supports_identity_columns: bool
+    """target database supports IDENTITY"""
+
+    cte_follows_insert: bool
+    """target database, when given a CTE with an INSERT statement, needs
+    the CTE to be below the INSERT"""
 
     colspecs: MutableMapping[Type["TypeEngine[Any]"], Type["TypeEngine[Any]"]]
     """A dictionary of TypeEngine classes from sqlalchemy.types mapped
@@ -860,7 +997,7 @@ class Dialect(EventTarget):
     """
 
     construct_arguments: Optional[
-        List[Tuple[Type[ClauseElement], Mapping[str, Any]]]
+        List[Tuple[Type[Union[SchemaItem, ClauseElement]], Mapping[str, Any]]]
     ] = None
     """Optional set of argument specifiers for various SQLAlchemy
     constructs, typically schema items.
@@ -1006,19 +1143,6 @@ class Dialect(EventTarget):
     """target database supports tuple IN, i.e. (x, y) IN ((q, p), (r, z))"""
 
     _bind_typing_render_casts: bool
-
-    supports_identity_columns: bool
-    """target database supports IDENTITY"""
-
-    cte_follows_insert: bool
-    """target database, when given a CTE with an INSERT statement, needs
-    the CTE to be below the INSERT"""
-
-    insert_executemany_returning: bool
-    """dialect / driver / database supports some means of providing RETURNING
-    support when dialect.do_executemany() is used.
-
-    """
 
     _type_memos: MutableMapping[TypeEngine[Any], "_TypeMemoDict"]
 
@@ -1826,8 +1950,8 @@ class Dialect(EventTarget):
     def do_set_input_sizes(
         self,
         cursor: DBAPICursor,
-        list_of_tuples: List[Tuple[str, Any, TypeEngine[Any]]],
-        context: "ExecutionContext",
+        list_of_tuples: _GenericSetInputSizesType,
+        context: ExecutionContext,
     ) -> Any:
         """invoke the cursor.setinputsizes() method with appropriate arguments
 
@@ -1961,12 +2085,35 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
+    def _deliver_insertmanyvalues_batches(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        generic_setinputsizes: Optional[_GenericSetInputSizesType],
+        context: ExecutionContext,
+    ) -> Iterator[
+        Tuple[
+            str,
+            _DBAPISingleExecuteParams,
+            _GenericSetInputSizesType,
+            int,
+            int,
+        ]
+    ]:
+        """convert executemany parameters for an INSERT into an iterator
+        of statement/single execute values, used by the insertmanyvalues
+        feature.
+
+        """
+        raise NotImplementedError()
+
     def do_executemany(
         self,
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
-        context: Optional["ExecutionContext"] = None,
+        context: Optional[ExecutionContext] = None,
     ) -> None:
         """Provide an implementation of ``cursor.executemany(statement,
         parameters)``."""
@@ -2743,7 +2890,9 @@ class ExecutionContext:
 
     These are always stored as a list of parameter entries.  A single-element
     list corresponds to a ``cursor.execute()`` call and a multiple-element
-    list corresponds to ``cursor.executemany()``.
+    list corresponds to ``cursor.executemany()``, except in the case
+    of :attr:`.ExecuteStyle.INSERTMANYVALUES` which will use
+    ``cursor.execute()`` one or more times.
 
     """
 
@@ -2756,8 +2905,23 @@ class ExecutionContext:
     isupdate: bool
     """True if the statement is an UPDATE."""
 
+    execute_style: ExecuteStyle
+    """the style of DBAPI cursor method that will be used to execute
+    a statement.
+
+    .. versionadded:: 2.0
+
+    """
+
     executemany: bool
-    """True if the parameters have determined this to be an executemany"""
+    """True if the context has a list of more than one parameter set.
+
+    Historically this attribute links to whether ``cursor.execute()`` or
+    ``cursor.executemany()`` will be used.  It also can now mean that
+    "insertmanyvalues" may be used which indicates one or more
+    ``cursor.execute()`` calls.
+
+    """
 
     prefetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
     """a list of Column objects for which a client-side default
@@ -2824,7 +2988,9 @@ class ExecutionContext:
     ) -> Any:
         raise NotImplementedError()
 
-    def _set_input_sizes(self) -> None:
+    def _prepare_set_input_sizes(
+        self,
+    ) -> Optional[List[Tuple[str, Any, TypeEngine[Any]]]]:
         raise NotImplementedError()
 
     def _get_cache_stats(self) -> str:

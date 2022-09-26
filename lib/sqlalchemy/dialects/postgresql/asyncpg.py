@@ -418,7 +418,6 @@ class AsyncAdapt_asyncpg_cursor:
         "description",
         "arraysize",
         "rowcount",
-        "_inputsizes",
         "_cursor",
         "_invalidate_schema_cache_asof",
     )
@@ -433,7 +432,6 @@ class AsyncAdapt_asyncpg_cursor:
         self.description = None
         self.arraysize = 1
         self.rowcount = -1
-        self._inputsizes = None
         self._invalidate_schema_cache_asof = 0
 
     def close(self):

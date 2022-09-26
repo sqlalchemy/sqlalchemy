@@ -1489,7 +1489,7 @@ def _postfetch(
 
     prefetch_cols = result.context.compiled.prefetch
     postfetch_cols = result.context.compiled.postfetch
-    returning_cols = result.context.compiled.returning
+    returning_cols = result.context.compiled.effective_returning
 
     if (
         mapper.version_id_col is not None

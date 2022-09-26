@@ -647,8 +647,9 @@ class Table(
             server side defaults, on those backends which support RETURNING.
 
             In modern SQLAlchemy there is generally no reason to alter this
-            setting, except in the case of some backends such as SQL Server
-            when INSERT triggers are used for that table.
+            setting, except for some backend specific cases
+            (see :ref:`mssql_triggers` in the SQL Server dialect documentation
+            for one such example).
 
         :param include_columns: A list of strings indicating a subset of
             columns to be loaded via the ``autoload`` operation; table columns who
@@ -3158,7 +3159,6 @@ class ScalarElementColumnDefault(ColumnDefault):
         )
 
 
-# _SQLExprDefault = Union["ColumnElement[Any]", "TextClause", "SelectBase"]
 _SQLExprDefault = Union["ColumnElement[Any]", "TextClause"]
 
 

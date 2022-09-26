@@ -6,6 +6,7 @@ from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import generate_driver_url
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import upsert
 
 
 @generate_driver_url.for_db("mysql", "mariadb")
@@ -78,3 +79,19 @@ def _mysql_drop_db(cfg, eng, ident):
 @temp_table_keyword_args.for_db("mysql", "mariadb")
 def _mysql_temp_table_keyword_args(cfg, eng):
     return {"prefixes": ["TEMPORARY"]}
+
+
+@upsert.for_db("mariadb")
+def _upsert(cfg, table, returning, set_lambda=None):
+    from sqlalchemy.dialects.mysql import insert
+
+    stmt = insert(table)
+
+    if set_lambda:
+        stmt = stmt.on_duplicate_key_update(**set_lambda(stmt.inserted))
+    else:
+        pk1 = table.primary_key.c[0]
+        stmt = stmt.on_duplicate_key_update({pk1.key: pk1})
+
+    stmt = stmt.returning(*returning)
+    return stmt
