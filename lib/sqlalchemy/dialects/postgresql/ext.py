@@ -5,8 +5,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
+from __future__ import annotations
 
 from itertools import zip_longest
+from typing import TYPE_CHECKING
 
 from .array import ARRAY
 from ...sql import coercions
@@ -16,6 +18,10 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import schema
 from ...sql.schema import ColumnCollectionConstraint
+from ...sql.visitors import InternalTraversal
+
+if TYPE_CHECKING:
+    from ...sql.visitors import _TraverseInternalsType
 
 
 class aggregate_order_by(expression.ColumnElement):
@@ -56,7 +62,11 @@ class aggregate_order_by(expression.ColumnElement):
     __visit_name__ = "aggregate_order_by"
 
     stringify_dialect = "postgresql"
-    inherit_cache = False
+    _traverse_internals: _TraverseInternalsType = [
+        ("target", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+        ("order_by", InternalTraversal.dp_clauseelement),
+    ]
 
     def __init__(self, target, *order_by):
         self.target = coercions.expect(roles.ExpressionElementRole, target)
