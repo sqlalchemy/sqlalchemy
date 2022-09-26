@@ -238,6 +238,7 @@ class LogParamsTest(fixtures.TestBase):
             "298, 299], 5]]",
         )
 
+    @testing.requires.insertmanyvalues
     def test_log_insertmanyvalues(self):
         """test the full logging for insertmanyvalues added for #6047.
 

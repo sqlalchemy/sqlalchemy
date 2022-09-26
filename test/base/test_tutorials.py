@@ -12,8 +12,8 @@ from sqlalchemy.testing import requires
 
 
 class DocTest(fixtures.TestBase):
-    __requires__ = ("python310",)
-    __only_on__ = "sqlite"
+    __requires__ = ("python310", "insert_returning", "insertmanyvalues")
+    __only_on__ = "sqlite+pysqlite"
 
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")

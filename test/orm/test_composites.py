@@ -308,7 +308,11 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(e1.end, Point(17, 8))
 
     @testing.combinations(
-        "legacy", "statement", "values", "stmt_returning", "values_returning"
+        ("legacy",),
+        ("statement",),
+        ("values",),
+        ("stmt_returning", testing.requires.insertmanyvalues),
+        ("values_returning", testing.requires.insert_returning),
     )
     def test_bulk_insert(self, type_):
         Edge, Point = (self.classes.Edge, self.classes.Point)
