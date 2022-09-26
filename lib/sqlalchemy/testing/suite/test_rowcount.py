@@ -89,8 +89,13 @@ class RowCountTest(fixtures.TablesTest):
         eq_(r.rowcount, 3)
 
     @testing.requires.update_returning
-    @testing.requires.sane_rowcount_w_returning
     def test_update_rowcount_return_defaults(self, connection):
+        """note this test should succeed for all RETURNING backends
+        as of 2.0.  In
+        Idf28379f8705e403a3c6a937f6a798a042ef2540 we changed rowcount to use
+        len(rows) when we have implicit returning
+
+        """
         employees_table = self.tables.employees
 
         department = employees_table.c.department

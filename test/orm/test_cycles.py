@@ -1122,7 +1122,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                 [
                     CompiledSQL(
                         "INSERT INTO ball (person_id, data) "
-                        "VALUES (:person_id, :data)",
+                        "VALUES (:person_id, :data) RETURNING ball.id",
                         [
                             {"person_id": None, "data": "some data"},
                             {"person_id": None, "data": "some data"},

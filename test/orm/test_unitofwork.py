@@ -2868,12 +2868,14 @@ class SaveTest2(_fixtures.FixtureTest):
                 testing.db.dialect.insert_executemany_returning,
                 [
                     CompiledSQL(
-                        "INSERT INTO users (name) VALUES (:name)",
+                        "INSERT INTO users (name) VALUES (:name) "
+                        "RETURNING users.id",
                         [{"name": "u1"}, {"name": "u2"}],
                     ),
                     CompiledSQL(
                         "INSERT INTO addresses (user_id, email_address) "
-                        "VALUES (:user_id, :email_address)",
+                        "VALUES (:user_id, :email_address) "
+                        "RETURNING addresses.id",
                         [
                             {"user_id": 1, "email_address": "a1"},
                             {"user_id": 2, "email_address": "a2"},

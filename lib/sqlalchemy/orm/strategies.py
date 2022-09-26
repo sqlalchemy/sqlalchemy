@@ -227,6 +227,11 @@ class ColumnLoader(LoaderStrategy):
         fetch = self.columns[0]
         if adapter:
             fetch = adapter.columns[fetch]
+            if fetch is None:
+                # None happens here only for dml bulk_persistence cases
+                # when context.DMLReturningColFilter is used
+                return
+
         memoized_populators[self.parent_property] = fetch
 
     def init_class_attribute(self, mapper):
@@ -318,6 +323,12 @@ class ExpressionColumnLoader(ColumnLoader):
         fetch = columns[0]
         if adapter:
             fetch = adapter.columns[fetch]
+            if fetch is None:
+                # None is not expected to be the result of any
+                # adapter implementation here, however there may be theoretical
+                # usages of returning() with context.DMLReturningColFilter
+                return
+
         memoized_populators[self.parent_property] = fetch
 
     def create_row_processor(

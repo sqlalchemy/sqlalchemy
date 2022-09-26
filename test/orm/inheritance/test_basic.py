@@ -2012,7 +2012,8 @@ class JoinedNoFKSortingTest(fixtures.MappedTest):
                 and testing.db.dialect.supports_default_metavalue,
                 [
                     CompiledSQL(
-                        "INSERT INTO a (id) VALUES (DEFAULT)", [{}, {}, {}, {}]
+                        "INSERT INTO a (id) VALUES (DEFAULT) RETURNING a.id",
+                        [{}, {}, {}, {}],
                     ),
                 ],
                 [

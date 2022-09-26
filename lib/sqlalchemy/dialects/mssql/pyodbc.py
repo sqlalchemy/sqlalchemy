@@ -301,7 +301,7 @@ Fast Executemany Mode
    The SQL Server ``fast_executemany`` parameter may be used at the same time
    as ``insertmanyvalues`` is enabled; however, the parameter will not be used
    in as many cases as INSERT statements that are invoked using Core
-   :class:`.Insert` constructs as well as all ORM use no longer use the
+   :class:`_dml.Insert` constructs as well as all ORM use no longer use the
    ``.executemany()`` DBAPI cursor method.
 
 The PyODBC driver includes support for a "fast executemany" mode of execution

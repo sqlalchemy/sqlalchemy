@@ -23,7 +23,6 @@ from .util import adict
 from .util import drop_all_tables_from_metadata
 from .. import event
 from .. import util
-from ..orm import declarative_base
 from ..orm import DeclarativeBase
 from ..orm import MappedAsDataclass
 from ..orm import registry
@@ -117,7 +116,7 @@ class TestBase:
             metadata=metadata,
             type_annotation_map={
                 str: sa.String().with_variant(
-                    sa.String(50), "mysql", "mariadb"
+                    sa.String(50), "mysql", "mariadb", "oracle"
                 )
             },
         )
@@ -132,7 +131,7 @@ class TestBase:
             metadata = _md
             type_annotation_map = {
                 str: sa.String().with_variant(
-                    sa.String(50), "mysql", "mariadb"
+                    sa.String(50), "mysql", "mariadb", "oracle"
                 )
             }
 
@@ -780,18 +779,19 @@ class DeclarativeMappedTest(MappedTest):
     def _with_register_classes(cls, fn):
         cls_registry = cls.classes
 
-        class DeclarativeBasic:
+        class _DeclBase(DeclarativeBase):
             __table_cls__ = schema.Table
+            metadata = cls._tables_metadata
+            type_annotation_map = {
+                str: sa.String().with_variant(
+                    sa.String(50), "mysql", "mariadb", "oracle"
+                )
+            }
 
-            def __init_subclass__(cls) -> None:
+            def __init_subclass__(cls, **kw) -> None:
                 assert cls_registry is not None
                 cls_registry[cls.__name__] = cls
-                super().__init_subclass__()
-
-        _DeclBase = declarative_base(
-            metadata=cls._tables_metadata,
-            cls=DeclarativeBasic,
-        )
+                super().__init_subclass__(**kw)
 
         cls.DeclarativeBasic = _DeclBase
 

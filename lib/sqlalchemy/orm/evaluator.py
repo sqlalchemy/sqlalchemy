@@ -9,8 +9,8 @@
 
 from __future__ import annotations
 
-import operator
-
+from .base import LoaderCallableStatus
+from .base import PassiveFlag
 from .. import exc
 from .. import inspect
 from .. import util
@@ -32,7 +32,16 @@ class _NoObject(operators.ColumnOperators):
         return None
 
 
+class _ExpiredObject(operators.ColumnOperators):
+    def operate(self, *arg, **kw):
+        return self
+
+    def reverse_operate(self, *arg, **kw):
+        return self
+
+
 _NO_OBJECT = _NoObject()
+_EXPIRED_OBJECT = _ExpiredObject()
 
 
 class EvaluatorCompiler:
@@ -73,6 +82,24 @@ class EvaluatorCompiler:
                     f"alternate class {parentmapper.class_}"
                 )
             key = parentmapper._columntoproperty[clause].key
+            impl = parentmapper.class_manager[key].impl
+
+            if impl is not None:
+
+                def get_corresponding_attr(obj):
+                    if obj is None:
+                        return _NO_OBJECT
+                    state = inspect(obj)
+                    dict_ = state.dict
+
+                    value = impl.get(
+                        state, dict_, passive=PassiveFlag.PASSIVE_NO_FETCH
+                    )
+                    if value is LoaderCallableStatus.PASSIVE_NO_RESULT:
+                        return _EXPIRED_OBJECT
+                    return value
+
+                return get_corresponding_attr
         else:
             key = clause.key
             if (
@@ -85,15 +112,16 @@ class EvaluatorCompiler:
                     "make use of the actual mapped columns in ORM-evaluated "
                     "UPDATE / DELETE expressions."
                 )
+
             else:
                 raise UnevaluatableError(f"Cannot evaluate column: {clause}")
 
-        get_corresponding_attr = operator.attrgetter(key)
-        return (
-            lambda obj: get_corresponding_attr(obj)
-            if obj is not None
-            else _NO_OBJECT
-        )
+        def get_corresponding_attr(obj):
+            if obj is None:
+                return _NO_OBJECT
+            return getattr(obj, key, _EXPIRED_OBJECT)
+
+        return get_corresponding_attr
 
     def visit_tuple(self, clause):
         return self.visit_clauselist(clause)
@@ -134,7 +162,9 @@ class EvaluatorCompiler:
             has_null = False
             for sub_evaluate in evaluators:
                 value = sub_evaluate(obj)
-                if value:
+                if value is _EXPIRED_OBJECT:
+                    return _EXPIRED_OBJECT
+                elif value:
                     return True
                 has_null = has_null or value is None
             if has_null:
@@ -147,6 +177,9 @@ class EvaluatorCompiler:
         def evaluate(obj):
             for sub_evaluate in evaluators:
                 value = sub_evaluate(obj)
+                if value is _EXPIRED_OBJECT:
+                    return _EXPIRED_OBJECT
+
                 if not value:
                     if value is None or value is _NO_OBJECT:
                         return None
@@ -160,7 +193,9 @@ class EvaluatorCompiler:
             values = []
             for sub_evaluate in evaluators:
                 value = sub_evaluate(obj)
-                if value is None or value is _NO_OBJECT:
+                if value is _EXPIRED_OBJECT:
+                    return _EXPIRED_OBJECT
+                elif value is None or value is _NO_OBJECT:
                     return None
                 values.append(value)
             return tuple(values)
@@ -183,13 +218,21 @@ class EvaluatorCompiler:
 
     def visit_is_binary_op(self, operator, eval_left, eval_right, clause):
         def evaluate(obj):
-            return eval_left(obj) == eval_right(obj)
+            left_val = eval_left(obj)
+            right_val = eval_right(obj)
+            if left_val is _EXPIRED_OBJECT or right_val is _EXPIRED_OBJECT:
+                return _EXPIRED_OBJECT
+            return left_val == right_val
 
         return evaluate
 
     def visit_is_not_binary_op(self, operator, eval_left, eval_right, clause):
         def evaluate(obj):
-            return eval_left(obj) != eval_right(obj)
+            left_val = eval_left(obj)
+            right_val = eval_right(obj)
+            if left_val is _EXPIRED_OBJECT or right_val is _EXPIRED_OBJECT:
+                return _EXPIRED_OBJECT
+            return left_val != right_val
 
         return evaluate
 
@@ -197,8 +240,11 @@ class EvaluatorCompiler:
         def evaluate(obj):
             left_val = eval_left(obj)
             right_val = eval_right(obj)
-            if left_val is None or right_val is None:
+            if left_val is _EXPIRED_OBJECT or right_val is _EXPIRED_OBJECT:
+                return _EXPIRED_OBJECT
+            elif left_val is None or right_val is None:
                 return None
+
             return operator(eval_left(obj), eval_right(obj))
 
         return evaluate
@@ -274,7 +320,9 @@ class EvaluatorCompiler:
 
             def evaluate(obj):
                 value = eval_inner(obj)
-                if value is None:
+                if value is _EXPIRED_OBJECT:
+                    return _EXPIRED_OBJECT
+                elif value is None:
                     return None
                 return not value
 

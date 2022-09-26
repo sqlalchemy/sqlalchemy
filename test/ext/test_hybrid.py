@@ -3,6 +3,7 @@ from decimal import Decimal
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -1017,15 +1018,43 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             params={"first_name": "Dr."},
         )
 
-    def test_update_expr(self):
+    @testing.combinations("attr", "str", "kwarg", argnames="keytype")
+    def test_update_expr(self, keytype):
         Person = self.classes.Person
 
-        statement = update(Person).values({Person.name: "Dr. No"})
+        if keytype == "attr":
+            statement = update(Person).values({Person.name: "Dr. No"})
+        elif keytype == "str":
+            statement = update(Person).values({"name": "Dr. No"})
+        elif keytype == "kwarg":
+            statement = update(Person).values(name="Dr. No")
+        else:
+            assert False
 
         self.assert_compile(
             statement,
             "UPDATE person SET first_name=:first_name, last_name=:last_name",
-            params={"first_name": "Dr.", "last_name": "No"},
+            checkparams={"first_name": "Dr.", "last_name": "No"},
+        )
+
+    @testing.combinations("attr", "str", "kwarg", argnames="keytype")
+    def test_insert_expr(self, keytype):
+        Person = self.classes.Person
+
+        if keytype == "attr":
+            statement = insert(Person).values({Person.name: "Dr. No"})
+        elif keytype == "str":
+            statement = insert(Person).values({"name": "Dr. No"})
+        elif keytype == "kwarg":
+            statement = insert(Person).values(name="Dr. No")
+        else:
+            assert False
+
+        self.assert_compile(
+            statement,
+            "INSERT INTO person (first_name, last_name) VALUES "
+            "(:first_name, :last_name)",
+            checkparams={"first_name": "Dr.", "last_name": "No"},
         )
 
     # these tests all run two UPDATES to assert that caching is not

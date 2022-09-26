@@ -2978,7 +2978,7 @@ class Query(
         )
 
     def delete(
-        self, synchronize_session: _SynchronizeSessionArgument = "evaluate"
+        self, synchronize_session: _SynchronizeSessionArgument = "auto"
     ) -> int:
         r"""Perform a DELETE with an arbitrary WHERE clause.
 
@@ -3042,7 +3042,7 @@ class Query(
     def update(
         self,
         values: Dict[_DMLColumnArgument, Any],
-        synchronize_session: _SynchronizeSessionArgument = "evaluate",
+        synchronize_session: _SynchronizeSessionArgument = "auto",
         update_args: Optional[Dict[Any, Any]] = None,
     ) -> int:
         r"""Perform an UPDATE with an arbitrary WHERE clause.

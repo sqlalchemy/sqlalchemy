@@ -326,6 +326,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         ),
         (
             lambda User: update(User)
+            .execution_options(synchronize_session=False)
             .values(name="not ed")
             .where(User.name == "ed"),
             lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
@@ -392,7 +393,15 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected_engine_name]
 
         with mock.patch(
-            "sqlalchemy.orm.context.ORMCompileState.orm_setup_cursor_result"
+            "sqlalchemy.orm.context." "ORMCompileState.orm_setup_cursor_result"
+        ), mock.patch(
+            "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
+        ), mock.patch(
+            "sqlalchemy.orm.bulk_persistence."
+            "BulkORMInsert.orm_execute_statement"
+        ), mock.patch(
+            "sqlalchemy.orm.bulk_persistence."
+            "BulkUDCompileState.orm_setup_cursor_result"
         ):
             sess.execute(statement)
 

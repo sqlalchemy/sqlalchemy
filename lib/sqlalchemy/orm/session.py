@@ -1828,12 +1828,13 @@ class Session(_SessionClassMethods, EventTarget):
             statement._propagate_attrs.get("compile_state_plugin", None)
             == "orm"
         ):
-            # note that even without "future" mode, we need
             compile_state_cls = CompileState._get_plugin_class_for_plugin(
                 statement, "orm"
             )
             if TYPE_CHECKING:
-                assert isinstance(compile_state_cls, ORMCompileState)
+                assert isinstance(
+                    compile_state_cls, context.AbstractORMCompileState
+                )
         else:
             compile_state_cls = None
 
@@ -1897,18 +1898,18 @@ class Session(_SessionClassMethods, EventTarget):
                 statement, params or {}, execution_options=execution_options
             )
 
-        result: Result[Any] = conn.execute(
-            statement, params or {}, execution_options=execution_options
-        )
-
         if compile_state_cls:
-            result = compile_state_cls.orm_setup_cursor_result(
+            result: Result[Any] = compile_state_cls.orm_execute_statement(
                 self,
                 statement,
-                params,
+                params or {},
                 execution_options,
                 bind_arguments,
-                result,
+                conn,
+            )
+        else:
+            result = conn.execute(
+                statement, params or {}, execution_options=execution_options
             )
 
         if _scalar_result:
@@ -2066,7 +2067,7 @@ class Session(_SessionClassMethods, EventTarget):
     def scalars(
         self,
         statement: TypedReturnsRows[Tuple[_T]],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -2078,7 +2079,7 @@ class Session(_SessionClassMethods, EventTarget):
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -2089,7 +2090,7 @@ class Session(_SessionClassMethods, EventTarget):
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,

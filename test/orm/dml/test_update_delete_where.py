@@ -1,3 +1,4 @@
+from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
@@ -7,6 +8,7 @@ from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
 from sqlalchemy import MetaData
@@ -17,6 +19,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -26,6 +29,7 @@ from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
@@ -123,6 +127,25 @@ class UpdateDeleteTest(fixtures.MappedTest):
             },
         )
 
+    def test_update_dont_use_col_key(self):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        # make sure objects are present to synchronize
+        _ = s.query(User).all()
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Attribute name not found, can't be synchronized back "
+            "to objects: 'age_int'",
+        ):
+            s.execute(update(User).values(age_int=5))
+
+        stmt = update(User).values(age=5)
+        s.execute(stmt)
+        eq_(s.scalars(select(User.age)).all(), [5, 5, 5, 5])
+
     @testing.combinations("table", "mapper", "both", argnames="bind_type")
     @testing.combinations(
         "update", "insert", "delete", argnames="statement_type"
@@ -162,7 +185,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         assert_raises_message(
             exc.ArgumentError,
             "Valid strategies for session synchronization "
-            "are 'evaluate', 'fetch', False",
+            "are 'auto', 'evaluate', 'fetch', False",
             s.query(User).update,
             {},
             synchronize_session="fake",
@@ -351,6 +374,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_evaluate_dont_refresh_expired_objects(
         self, expire_jane_age, add_filter_criteria
     ):
+        """test #5664.
+
+        approach is revised in SQLAlchemy 2.0 to not pre-emptively
+        unexpire the involved attributes
+
+        """
         User = self.classes.User
 
         sess = fixture_session()
@@ -379,15 +408,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         if add_filter_criteria:
             if expire_jane_age:
                 asserter.assert_(
-                    # it has to unexpire jane.name, because jane is not fully
-                    # expired and the criteria needs to look at this particular
-                    # key
-                    CompiledSQL(
-                        "SELECT users.age_int AS users_age_int, "
-                        "users.name AS users_name FROM users "
-                        "WHERE users.id = :pk_1",
-                        [{"pk_1": 4}],
-                    ),
+                    # previously, this would unexpire the attribute and
+                    # cause an additional SELECT.  The
+                    # 2.0 approach is that if the object has expired attrs
+                    # we just expire the whole thing, avoiding SQL up front
                     CompiledSQL(
                         "UPDATE users "
                         "SET age_int=(users.age_int + :age_int_1) "
@@ -397,14 +421,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 )
             else:
                 asserter.assert_(
-                    # it has to unexpire jane.name, because jane is not fully
-                    # expired and the criteria needs to look at this particular
-                    # key
-                    CompiledSQL(
-                        "SELECT users.name AS users_name FROM users "
-                        "WHERE users.id = :pk_1",
-                        [{"pk_1": 4}],
-                    ),
+                    # previously, this would unexpire the attribute and
+                    # cause an additional SELECT.  The
+                    # 2.0 approach is that if the object has expired attrs
+                    # we just expire the whole thing, avoiding SQL up front
                     CompiledSQL(
                         "UPDATE users SET "
                         "age_int=(users.age_int + :age_int_1) "
@@ -443,9 +463,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
             ),
         ]
 
-        if expire_jane_age and not add_filter_criteria:
+        if expire_jane_age:
             to_assert.append(
-                # refresh jane
+                # refresh jane for partial attributes
                 CompiledSQL(
                     "SELECT users.age_int AS users_age_int, "
                     "users.name AS users_name FROM users "
@@ -454,6 +474,75 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 )
             )
         asserter.assert_(*to_assert)
+
+    @testing.combinations(True, False, argnames="is_evaluable")
+    def test_auto_synchronize(self, is_evaluable):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        if is_evaluable:
+            crit = or_(User.name == "jack", User.name == "jane")
+        else:
+            crit = case((User.name.in_(["jack", "jane"]), True), else_=False)
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(update(User).where(crit).values(age=User.age + 10))
+
+        if is_evaluable:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + :age_int_1) "
+                    "WHERE users.name = :name_1 OR users.name = :name_2",
+                    [{"age_int_1": 10, "name_1": "jack", "name_2": "jane"}],
+                ),
+            )
+        elif testing.db.dialect.update_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + :age_int_1) "
+                    "WHERE CASE WHEN (users.name IN (__[POSTCOMPILE_name_1])) "
+                    "THEN :param_1 ELSE :param_2 END = 1 RETURNING users.id",
+                    [
+                        {
+                            "age_int_1": 10,
+                            "name_1": ["jack", "jane"],
+                            "param_1": True,
+                            "param_2": False,
+                        }
+                    ],
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users WHERE CASE WHEN "
+                    "(users.name IN (__[POSTCOMPILE_name_1])) "
+                    "THEN :param_1 ELSE :param_2 END = 1",
+                    [
+                        {
+                            "name_1": ["jack", "jane"],
+                            "param_1": True,
+                            "param_2": False,
+                        }
+                    ],
+                ),
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + :age_int_1) "
+                    "WHERE CASE WHEN (users.name IN (__[POSTCOMPILE_name_1])) "
+                    "THEN :param_1 ELSE :param_2 END = 1",
+                    [
+                        {
+                            "age_int_1": 10,
+                            "name_1": ["jack", "jane"],
+                            "param_1": True,
+                            "param_2": False,
+                        }
+                    ],
+                ),
+            )
 
     def test_fetch_dont_refresh_expired_objects(self):
         User = self.classes.User
@@ -518,17 +607,25 @@ class UpdateDeleteTest(fixtures.MappedTest):
             ),
         )
 
-    def test_delete(self):
+    @testing.combinations(False, None, "auto", "evaluate", "fetch")
+    def test_delete(self, synchronize_session):
         User = self.classes.User
 
         sess = fixture_session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(
-            or_(User.name == "john", User.name == "jill")
-        ).delete()
 
-        assert john not in sess and jill not in sess
+        stmt = delete(User).filter(
+            or_(User.name == "john", User.name == "jill")
+        )
+        if synchronize_session is not None:
+            stmt = stmt.execution_options(
+                synchronize_session=synchronize_session
+            )
+        sess.execute(stmt)
+
+        if synchronize_session not in (False, None):
+            assert john not in sess and jill not in sess
 
         eq_(sess.query(User).order_by(User.id).all(), [jack, jane])
 
@@ -629,6 +726,33 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack, jill, jane])
 
+    def test_update_multirow_not_supported(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "WHERE clause with bulk ORM UPDATE not supported " "right now.",
+        ):
+            sess.execute(
+                update(User).where(User.id == bindparam("id")),
+                [{"id": 1, "age": 27}, {"id": 2, "age": 37}],
+            )
+
+    def test_delete_bulk_not_supported(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            exc.InvalidRequestError, "Bulk ORM DELETE not supported right now."
+        ):
+            sess.execute(
+                delete(User),
+                [{"id": 1}, {"id": 2}],
+            )
+
     def test_update(self):
         User, users = self.classes.User, self.tables.users
 
@@ -640,6 +764,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+
         eq_(
             sess.query(User.age).order_by(User.id).all(),
             list(zip([25, 37, 29, 27])),
@@ -974,7 +1099,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             )
 
     @testing.requires.update_returning
-    def test_update_explicit_returning(self):
+    def test_update_evaluate_w_explicit_returning(self):
         User = self.classes.User
 
         sess = fixture_session()
@@ -987,6 +1112,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 .filter(User.age > 29)
                 .values({"age": User.age - 10})
                 .returning(User.id)
+                .execution_options(synchronize_session="evaluate")
             )
 
             rows = sess.execute(stmt).all()
@@ -1006,24 +1132,41 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
     @testing.requires.update_returning
-    def test_no_fetch_w_explicit_returning(self):
+    @testing.combinations("update", "delete", argnames="crud_type")
+    def test_fetch_w_explicit_returning(self, crud_type):
         User = self.classes.User
 
         sess = fixture_session()
 
-        stmt = (
-            update(User)
-            .filter(User.age > 29)
-            .values({"age": User.age - 10})
-            .execution_options(synchronize_session="fetch")
-            .returning(User.id)
-        )
-        with expect_raises_message(
-            exc.InvalidRequestError,
-            r"Can't use synchronize_session='fetch' "
-            r"with explicit returning\(\)",
-        ):
-            sess.execute(stmt)
+        if crud_type == "update":
+            stmt = (
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .execution_options(synchronize_session="fetch")
+                .returning(User, User.name)
+            )
+            expected = [
+                (User(age=37), "jack"),
+                (User(age=27), "jane"),
+            ]
+        elif crud_type == "delete":
+            stmt = (
+                delete(User)
+                .filter(User.age > 29)
+                .execution_options(synchronize_session="fetch")
+                .returning(User, User.name)
+            )
+            expected = [
+                (User(age=47), "jack"),
+                (User(age=37), "jane"),
+            ]
+        else:
+            assert False
+
+        result = sess.execute(stmt)
+
+        eq_(result.all(), expected)
 
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_delete_fetch_returning(self, implicit_returning):
@@ -1142,7 +1285,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 47, 44, 37])),
         )
 
-    def test_update_changes_resets_dirty(self):
+    @testing.combinations("orm", "bulk")
+    def test_update_changes_resets_dirty(self, update_type):
         User = self.classes.User
 
         sess = fixture_session(autoflush=False)
@@ -1155,9 +1299,30 @@ class UpdateDeleteTest(fixtures.MappedTest):
         # autoflush is false.  therefore our '50' and '37' are getting
         # blown away by this operation.
 
-        sess.query(User).filter(User.age > 29).update(
-            {"age": User.age - 10}, synchronize_session="evaluate"
-        )
+        if update_type == "orm":
+            sess.execute(
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10}),
+                execution_options=dict(synchronize_session="evaluate"),
+            )
+        elif update_type == "bulk":
+
+            data = [
+                {"id": john.id, "age": 25},
+                {"id": jack.id, "age": 37},
+                {"id": jill.id, "age": 29},
+                {"id": jane.id, "age": 27},
+            ]
+
+            sess.execute(
+                update(User),
+                data,
+                execution_options=dict(synchronize_session="evaluate"),
+            )
+
+        else:
+            assert False
 
         for x in (john, jack, jill, jane):
             assert not sess.is_modified(x)
@@ -1170,6 +1335,93 @@ class UpdateDeleteTest(fixtures.MappedTest):
         assert jill not in sess.dirty
         assert not sess.is_modified(john)
         assert not sess.is_modified(jack)
+
+    @testing.combinations(
+        None, False, "evaluate", "fetch", argnames="synchronize_session"
+    )
+    @testing.combinations(True, False, argnames="homogeneous_keys")
+    def test_bulk_update_synchronize_session(
+        self, synchronize_session, homogeneous_keys
+    ):
+        User = self.classes.User
+
+        sess = fixture_session(expire_on_commit=False)
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        if homogeneous_keys:
+            data = [
+                {"id": john.id, "age": 35},
+                {"id": jack.id, "age": 27},
+                {"id": jill.id, "age": 30},
+            ]
+        else:
+            data = [
+                {"id": john.id, "age": 35},
+                {"id": jack.id, "name": "new jack"},
+                {"id": jill.id, "age": 30, "name": "new jill"},
+            ]
+
+        with self.sql_execution_asserter() as asserter:
+            if synchronize_session is not None:
+                opts = {"synchronize_session": synchronize_session}
+            else:
+                opts = {}
+
+            if synchronize_session == "fetch":
+                with expect_raises_message(
+                    exc.InvalidRequestError,
+                    "The 'fetch' synchronization strategy is not available "
+                    "for 'bulk' ORM updates",
+                ):
+                    sess.execute(update(User), data, execution_options=opts)
+                return
+            else:
+                sess.execute(update(User), data, execution_options=opts)
+
+        if homogeneous_keys:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=:age_int "
+                    "WHERE users.id = :users_id",
+                    [
+                        {"age_int": 35, "users_id": 1},
+                        {"age_int": 27, "users_id": 2},
+                        {"age_int": 30, "users_id": 3},
+                    ],
+                )
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=:age_int "
+                    "WHERE users.id = :users_id",
+                    [{"age_int": 35, "users_id": 1}],
+                ),
+                CompiledSQL(
+                    "UPDATE users SET name=:name WHERE users.id = :users_id",
+                    [{"name": "new jack", "users_id": 2}],
+                ),
+                CompiledSQL(
+                    "UPDATE users SET name=:name, age_int=:age_int "
+                    "WHERE users.id = :users_id",
+                    [{"name": "new jill", "age_int": 30, "users_id": 3}],
+                ),
+            )
+
+        if synchronize_session is False:
+            eq_(jill.name, "jill")
+            eq_(jack.name, "jack")
+            eq_(jill.age, 29)
+            eq_(jack.age, 47)
+        else:
+            if not homogeneous_keys:
+                eq_(jill.name, "new jill")
+                eq_(jack.name, "new jack")
+                eq_(jack.age, 47)
+            else:
+                eq_(jack.age, 27)
+            eq_(jill.age, 30)
 
     def test_update_changes_with_autoflush(self):
         User = self.classes.User
@@ -1214,7 +1466,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
     @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
-    def test_update_returns_rowcount(self):
+    @testing.combinations("auto", "fetch", "evaluate")
+    def test_update_returns_rowcount(self, synchronize_session):
         User = self.classes.User
 
         sess = fixture_session()
@@ -1222,20 +1475,25 @@ class UpdateDeleteTest(fixtures.MappedTest):
         rowcount = (
             sess.query(User)
             .filter(User.age > 29)
-            .update({"age": User.age + 0})
+            .update(
+                {"age": User.age + 0}, synchronize_session=synchronize_session
+            )
         )
         eq_(rowcount, 2)
 
         rowcount = (
             sess.query(User)
             .filter(User.age > 29)
-            .update({"age": User.age - 10})
+            .update(
+                {"age": User.age - 10}, synchronize_session=synchronize_session
+            )
         )
         eq_(rowcount, 2)
 
         # test future
         result = sess.execute(
-            update(User).where(User.age > 19).values({"age": User.age - 10})
+            update(User).where(User.age > 19).values({"age": User.age - 10}),
+            execution_options={"synchronize_session": synchronize_session},
         )
         eq_(result.rowcount, 4)
 
@@ -1327,12 +1585,17 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         assert john not in sess
 
-    def test_evaluate_before_update(self):
+    @testing.combinations(True, False)
+    def test_evaluate_before_update(self, full_expiration):
         User = self.classes.User
 
         sess = fixture_session()
         john = sess.query(User).filter_by(name="john").one()
-        sess.expire(john, ["age"])
+
+        if full_expiration:
+            sess.expire(john)
+        else:
+            sess.expire(john, ["age"])
 
         # eval must be before the update.  otherwise
         # we eval john, age has been expired and doesn't
@@ -1356,17 +1619,47 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(john.name, "j2")
         eq_(john.age, 40)
 
-    def test_evaluate_before_delete(self):
+    @testing.combinations(True, False)
+    def test_evaluate_before_delete(self, full_expiration):
         User = self.classes.User
 
         sess = fixture_session()
         john = sess.query(User).filter_by(name="john").one()
-        sess.expire(john, ["age"])
+        jill = sess.query(User).filter_by(name="jill").one()
+        jane = sess.query(User).filter_by(name="jane").one()
 
-        sess.query(User).filter_by(name="john").filter_by(age=25).delete(
+        if full_expiration:
+            sess.expire(jill)
+            sess.expire(john)
+        else:
+            sess.expire(jill, ["age"])
+            sess.expire(john, ["age"])
+
+        sess.query(User).filter(or_(User.age == 25, User.age == 37)).delete(
             synchronize_session="evaluate"
         )
-        assert john not in sess
+
+        # was fully deleted
+        assert jane not in sess
+
+        # deleted object was expired, but not otherwise affected
+        assert jill in sess
+
+        # deleted object was expired, but not otherwise affected
+        assert john in sess
+
+        # partially expired row fully expired
+        assert inspect(jill).expired
+
+        # non-deleted row still present
+        eq_(jill.age, 29)
+
+        # partially expired row fully expired
+        assert inspect(john).expired
+
+        # is deleted
+        with expect_raises(orm_exc.ObjectDeletedError):
+            john.name
 
     def test_fetch_before_delete(self):
         User = self.classes.User
@@ -1378,6 +1671,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess.query(User).filter_by(name="john").filter_by(age=25).delete(
             synchronize_session="fetch"
         )
+
         assert john not in sess
 
     def test_update_unordered_dict(self):
@@ -1494,6 +1788,60 @@ class UpdateDeleteTest(fixtures.MappedTest):
             ).compiled.compile_state.statement._ordered_values
         ]
         eq_(["name", "age_int"], cols)
+
+    @testing.requires.sqlite
+    def test_sharding_extension_returning_mismatch(self, testing_engine):
+        """test one horizontal shard case where the given binds don't match
+        for RETURNING support; we dont support this.
+
+        See test/ext/test_horizontal_shard.py for complete round trip
+        test cases for ORM update/delete
+
+        """
+        e1 = testing_engine("sqlite://")
+        e2 = testing_engine("sqlite://")
+        e1.connect().close()
+        e2.connect().close()
+
+        e1.dialect.update_returning = True
+        e2.dialect.update_returning = False
+
+        engines = [e1, e2]
+
+        # a simulated version of the horizontal sharding extension
+        def execute_and_instances(orm_context):
+            execution_options = dict(orm_context.local_execution_options)
+            partial = []
+            for engine in engines:
+                bind_arguments = dict(orm_context.bind_arguments)
+                bind_arguments["bind"] = engine
+                result_ = orm_context.invoke_statement(
+                    bind_arguments=bind_arguments,
+                    execution_options=execution_options,
+                )
+
+                partial.append(result_)
+            return partial[0].merge(*partial[1:])
+
+        User = self.classes.User
+        session = Session()
+
+        event.listen(
+            session, "do_orm_execute", execute_and_instances, retval=True
+        )
+
+        stmt = (
+            update(User)
+            .filter(User.id == 15)
+            .values(age=123)
+            .execution_options(synchronize_session="fetch")
+        )
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "For synchronize_session='fetch', can't mix multiple backends "
+            "where some support RETURNING and others don't",
+        ):
+            session.execute(stmt)
 
 
 class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
@@ -1748,6 +2096,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             "Could not evaluate current criteria in Python.",
             q.update,
             {"samename": "ed"},
+            synchronize_session="evaluate",
         )
 
     @testing.requires.multi_table_update
@@ -1901,7 +2250,7 @@ class ExpressionUpdateTest(fixtures.MappedTest):
         sess.commit()
         eq_(d1.cnt, 0)
 
-        sess.query(Data).update({Data.cnt: Data.cnt + 1})
+        sess.query(Data).update({Data.cnt: Data.cnt + 1}, "evaluate")
         sess.flush()
 
         eq_(d1.cnt, 1)
@@ -2443,7 +2792,8 @@ class LoadFromReturningTest(fixtures.MappedTest):
         )
 
     @testing.requires.update_returning
-    def test_load_from_update(self, connection):
+    @testing.combinations(True, False, argnames="use_from_statement")
+    def test_load_from_update(self, connection, use_from_statement):
         User = self.classes.User
 
         stmt = (
@@ -2453,7 +2803,16 @@ class LoadFromReturningTest(fixtures.MappedTest):
             .returning(User)
         )
 
-        stmt = select(User).from_statement(stmt)
+        if use_from_statement:
+            # this is now a legacy-ish case, because as of 2.0 you can just
+            # use returning() directly to get the objects back.
+            #
+            # when from_statement is used, the UPDATE statement is no
+            # longer interpreted by
+            # BulkUDCompileState.orm_pre_session_exec or
+            # BulkUDCompileState.orm_setup_cursor_result.  The compilation
+            # level routines still take place though
+            stmt = select(User).from_statement(stmt)
 
         with Session(connection) as sess:
             rows = sess.execute(stmt).scalars().all()
@@ -2468,7 +2827,8 @@ class LoadFromReturningTest(fixtures.MappedTest):
         ("multiple", testing.requires.multivalues_inserts),
         argnames="params",
     )
-    def test_load_from_insert(self, connection, params):
+    @testing.combinations(True, False, argnames="use_from_statement")
+    def test_load_from_insert(self, connection, params, use_from_statement):
         User = self.classes.User
 
         if params == "multiple":
@@ -2484,7 +2844,8 @@ class LoadFromReturningTest(fixtures.MappedTest):
 
         stmt = insert(User).values(values).returning(User)
 
-        stmt = select(User).from_statement(stmt)
+        if use_from_statement:
+            stmt = select(User).from_statement(stmt)
 
         with Session(connection) as sess:
             rows = sess.execute(stmt).scalars().all()
@@ -2505,3 +2866,25 @@ class LoadFromReturningTest(fixtures.MappedTest):
                 )
             else:
                 assert False
+
+    @testing.requires.delete_returning
+    @testing.combinations(True, False, argnames="use_from_statement")
+    def test_load_from_delete(self, connection, use_from_statement):
+        User = self.classes.User
+
+        stmt = (
+            delete(User).where(User.name.in_(["jack", "jill"])).returning(User)
+        )
+
+        if use_from_statement:
+            stmt = select(User).from_statement(stmt)
+
+        with Session(connection) as sess:
+            rows = sess.execute(stmt).scalars().all()
+
+            eq_(
+                rows,
+                [User(name="jack", age=47), User(name="jill", age=29)],
+            )
+
+            # TODO: state of above objects should be "deleted"

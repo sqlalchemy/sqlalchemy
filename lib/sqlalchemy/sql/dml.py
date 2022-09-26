@@ -165,15 +165,32 @@ class DMLState(CompileState):
             ...
 
     @classmethod
+    def _get_multi_crud_kv_pairs(
+        cls,
+        statement: UpdateBase,
+        multi_kv_iterator: Iterable[Dict[_DMLColumnArgument, Any]],
+    ) -> List[Dict[_DMLColumnElement, Any]]:
+        return [
+            {
+                coercions.expect(roles.DMLColumnRole, k): v
+                for k, v in mapping.items()
+            }
+            for mapping in multi_kv_iterator
+        ]
+
+    @classmethod
     def _get_crud_kv_pairs(
         cls,
         statement: UpdateBase,
         kv_iterator: Iterable[Tuple[_DMLColumnArgument, Any]],
+        needs_to_be_cacheable: bool,
     ) -> List[Tuple[_DMLColumnElement, Any]]:
         return [
             (
                 coercions.expect(roles.DMLColumnRole, k),
-                coercions.expect(
+                v
+                if not needs_to_be_cacheable
+                else coercions.expect(
                     roles.ExpressionElementRole,
                     v,
                     type_=NullType(),
@@ -269,7 +286,7 @@ class InsertDMLState(DMLState):
     def _insert_col_keys(self) -> List[str]:
         # this is also done in crud.py -> _key_getters_for_crud_column
         return [
-            coercions.expect_as_key(roles.DMLColumnRole, col)
+            coercions.expect(roles.DMLColumnRole, col, as_key=True)
             for col in self._dict_parameters or ()
         ]
 
@@ -326,7 +343,6 @@ class UpdateDMLState(DMLState):
         self._extra_froms = ef
 
         self.is_multitable = mt = ef
-
         self.include_table_with_column_exprs = bool(
             mt and compiler.render_table_with_column_in_update_from
         )
@@ -389,6 +405,7 @@ class UpdateBase(
     _return_defaults_columns: Optional[
         Tuple[_ColumnsClauseElement, ...]
     ] = None
+    _supplemental_returning: Optional[Tuple[_ColumnsClauseElement, ...]] = None
     _returning: Tuple[_ColumnsClauseElement, ...] = ()
 
     is_dml = True
@@ -432,6 +449,215 @@ class UpdateBase(
 
         """
         self._validate_dialect_kwargs(opt)
+        return self
+
+    @_generative
+    def return_defaults(
+        self: SelfUpdateBase,
+        *cols: _DMLColumnArgument,
+        supplemental_cols: Optional[Iterable[_DMLColumnArgument]] = None,
+    ) -> SelfUpdateBase:
+        """Make use of a :term:`RETURNING` clause for the purpose
+        of fetching server-side expressions and defaults, for supporting
+        backends only.
+
+        .. deepalchemy::
+
+            The :meth:`.UpdateBase.return_defaults` method is used by the ORM
+            for its internal work in fetching newly generated primary key
+            and server default values, in particular to provide the underyling
+            implementation of the :paramref:`_orm.Mapper.eager_defaults`
+            ORM feature as well as to allow RETURNING support with bulk
+            ORM inserts.  Its behavior is fairly idiosyncratic
+            and is not really intended for general use.  End users should
+            stick with using :meth:`.UpdateBase.returning` in order to
+            add RETURNING clauses to their INSERT, UPDATE and DELETE
+            statements.
+
+        Normally, a single row INSERT statement will automatically populate the
+        :attr:`.CursorResult.inserted_primary_key` attribute when executed,
+        which stores the primary key of the row that was just inserted in the
+        form of a :class:`.Row` object with column names as named tuple keys
+        (and the :attr:`.Row._mapping` view fully populated as well). The
+        dialect in use chooses the strategy to use in order to populate this
+        data; if it was generated using server-side defaults and / or SQL
+        expressions, dialect-specific approaches such as ``cursor.lastrowid``
+        or ``RETURNING`` are typically used to acquire the new primary key
+        value.
+
+        However, when the statement is modified by calling
+        :meth:`.UpdateBase.return_defaults` before executing the statement,
+        additional behaviors take place **only** for backends that support
+        RETURNING and for :class:`.Table` objects that maintain the
+        :paramref:`.Table.implicit_returning` parameter at its default value of
+        ``True``. In these cases, when the :class:`.CursorResult` is returned
+        from the statement's execution, not only will
+        :attr:`.CursorResult.inserted_primary_key` be populated as always, the
+        :attr:`.CursorResult.returned_defaults` attribute will also be
+        populated with a :class:`.Row` named-tuple representing the full range
+        of server generated
+        values from that single row, including values for any columns that
+        specify :paramref:`_schema.Column.server_default` or which make use of
+        :paramref:`_schema.Column.default` using a SQL expression.
+
+        When invoking INSERT statements with multiple rows using
+        :ref:`insertmanyvalues <engine_insertmanyvalues>`, the
+        :meth:`.UpdateBase.return_defaults` modifier will have the effect of
+        the :attr:`_engine.CursorResult.inserted_primary_key_rows` and
+        :attr:`_engine.CursorResult.returned_defaults_rows` attributes being
+        fully populated with lists of :class:`.Row` objects representing newly
+        inserted primary key values as well as newly inserted server generated
+        values for each row inserted. The
+        :attr:`.CursorResult.inserted_primary_key` and
+        :attr:`.CursorResult.returned_defaults` attributes will also continue
+        to be populated with the first row of these two collections.
+
+        If the backend does not support RETURNING or the :class:`.Table` in use
+        has disabled :paramref:`.Table.implicit_returning`, then no RETURNING
+        clause is added and no additional data is fetched, however the
+        INSERT, UPDATE or DELETE statement proceeds normally.
+
+        E.g.::
+
+            stmt = table.insert().values(data='newdata').return_defaults()
+
+            result = connection.execute(stmt)
+
+            server_created_at = result.returned_defaults['created_at']
+
+        When used against an UPDATE statement
+        :meth:`.UpdateBase.return_defaults` instead looks for columns that
+        include :paramref:`_schema.Column.onupdate` or
+        :paramref:`_schema.Column.server_onupdate` parameters assigned, when
+        constructing the columns that will be included in the RETURNING clause
+        by default if explicit columns were not specified. When used against a
+        DELETE statement, no columns are included in RETURNING by default, they
+        instead must be specified explicitly as there are no columns that
+        normally change values when a DELETE statement proceeds.
+
+        .. versionadded:: 2.0  :meth:`.UpdateBase.return_defaults` is supported
+           for DELETE statements also and has been moved from
+           :class:`.ValuesBase` to :class:`.UpdateBase`.
+
+        The :meth:`.UpdateBase.return_defaults` method is mutually exclusive
+        against the :meth:`.UpdateBase.returning` method and errors will be
+        raised during the SQL compilation process if both are used at the same
+        time on one statement. The RETURNING clause of the INSERT, UPDATE or
+        DELETE statement is therefore controlled by only one of these methods
+        at a time.
+
+        The :meth:`.UpdateBase.return_defaults` method differs from
+        :meth:`.UpdateBase.returning` in these ways:
+
+        1. :meth:`.UpdateBase.return_defaults` method causes the
+           :attr:`.CursorResult.returned_defaults` collection to be populated
+           with the first row from the RETURNING result. This attribute is not
+           populated when using :meth:`.UpdateBase.returning`.
+
+        2. :meth:`.UpdateBase.return_defaults` is compatible with existing
+           logic used to fetch auto-generated primary key values that are then
+           populated into the :attr:`.CursorResult.inserted_primary_key`
+           attribute. By contrast, using :meth:`.UpdateBase.returning` will
+           have the effect of the :attr:`.CursorResult.inserted_primary_key`
+           attribute being left unpopulated.
+
+        3. :meth:`.UpdateBase.return_defaults` can be called against any
+           backend. Backends that don't support RETURNING will skip the usage
+           of the feature, rather than raising an exception. The return value
+           of :attr:`_engine.CursorResult.returned_defaults` will be ``None``
+           for backends that don't support RETURNING or for which the target
+           :class:`.Table` sets :paramref:`.Table.implicit_returning` to
+           ``False``.
+
+        4. An INSERT statement invoked with executemany() is supported if the
+           backend database driver supports the
+           :ref:`insertmanyvalues <engine_insertmanyvalues>`
+           feature which is now supported by most SQLAlchemy-included backends.
+           When executemany is used, the
+           :attr:`_engine.CursorResult.returned_defaults_rows` and
+           :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors
+           will return the inserted defaults and primary keys.
+
+           .. versionadded:: 1.4 Added
+              :attr:`_engine.CursorResult.returned_defaults_rows` and
+              :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors.
+              In version 2.0, the underlying implementation which fetches and
+              populates the data for these attributes was generalized to be
+              supported by most backends, whereas in 1.4 they were only
+              supported by the ``psycopg2`` driver.
+
+
+        :param cols: optional list of column key names or
+         :class:`_schema.Column` that acts as a filter for those columns that
+         will be fetched.
+        :param supplemental_cols: optional list of RETURNING expressions,
+          in the same form as one would pass to the
+          :meth:`.UpdateBase.returning` method. When present, the additional
+          columns will be included in the RETURNING clause, and the
+          :class:`.CursorResult` object will be "rewound" when returned, so
+          that methods like :meth:`.CursorResult.all` will return new rows
+          mostly as though the statement used :meth:`.UpdateBase.returning`
+          directly. However, unlike when using :meth:`.UpdateBase.returning`
+          directly, the **order of the columns is undefined**, so can only be
+          targeted using names or :attr:`.Row._mapping` keys; they cannot
+          reliably be targeted positionally.
+
+          .. versionadded:: 2.0
+
+        .. seealso::
+
+            :meth:`.UpdateBase.returning`
+
+            :attr:`_engine.CursorResult.returned_defaults`
+
+            :attr:`_engine.CursorResult.returned_defaults_rows`
+
+            :attr:`_engine.CursorResult.inserted_primary_key`
+
+            :attr:`_engine.CursorResult.inserted_primary_key_rows`
+
+        """
+
+        if self._return_defaults:
+            # note _return_defaults_columns = () means return all columns,
+            # so if we have been here before, only update collection if there
+            # are columns in the collection
+            if self._return_defaults_columns and cols:
+                self._return_defaults_columns = tuple(
+                    util.OrderedSet(self._return_defaults_columns).union(
+                        coercions.expect(roles.ColumnsClauseRole, c)
+                        for c in cols
+                    )
+                )
+            else:
+                # set for all columns
+                self._return_defaults_columns = ()
+        else:
+            self._return_defaults_columns = tuple(
+                coercions.expect(roles.ColumnsClauseRole, c) for c in cols
+            )
+        self._return_defaults = True
+
+        if supplemental_cols:
+            # uniquifying while also maintaining order (the maintain of order
+            # is for test suites but also for vertical splicing
+            supplemental_col_tup = (
+                coercions.expect(roles.ColumnsClauseRole, c)
+                for c in supplemental_cols
+            )
+
+            if self._supplemental_returning is None:
+                self._supplemental_returning = tuple(
+                    util.unique_list(supplemental_col_tup)
+                )
+            else:
+                self._supplemental_returning = tuple(
+                    util.unique_list(
+                        self._supplemental_returning
+                        + tuple(supplemental_col_tup)
+                    )
+                )
+
         return self
 
     @_generative
@@ -500,7 +726,7 @@ class UpdateBase(
 
         .. seealso::
 
-          :meth:`.ValuesBase.return_defaults` - an alternative method tailored
+          :meth:`.UpdateBase.return_defaults` - an alternative method tailored
           towards efficient fetching of server-side defaults and triggers
           for single-row INSERTs or UPDATEs.
 
@@ -703,7 +929,6 @@ class ValuesBase(UpdateBase):
 
     _select_names: Optional[List[str]] = None
     _inline: bool = False
-    _returning: Tuple[_ColumnsClauseElement, ...] = ()
 
     def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
@@ -859,7 +1084,15 @@ class ValuesBase(UpdateBase):
                 )
 
             elif isinstance(arg, collections_abc.Sequence):
-                if arg and isinstance(arg[0], (list, dict, tuple)):
+
+                if arg and isinstance(arg[0], dict):
+                    multi_kv_generator = DMLState.get_plugin_class(
+                        self
+                    )._get_multi_crud_kv_pairs
+                    self._multi_values += (multi_kv_generator(self, arg),)
+                    return self
+
+                if arg and isinstance(arg[0], (list, tuple)):
                     self._multi_values += (arg,)
                     return self
 
@@ -888,171 +1121,11 @@ class ValuesBase(UpdateBase):
         # and ensures they get the "crud"-style name when rendered.
 
         kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
-        coerced_arg = {k: v for k, v in kv_generator(self, arg.items())}
+        coerced_arg = dict(kv_generator(self, arg.items(), True))
         if self._values:
             self._values = self._values.union(coerced_arg)
         else:
             self._values = util.immutabledict(coerced_arg)
-        return self
-
-    @_generative
-    def return_defaults(
-        self: SelfValuesBase, *cols: _DMLColumnArgument
-    ) -> SelfValuesBase:
-        """Make use of a :term:`RETURNING` clause for the purpose
-        of fetching server-side expressions and defaults, for supporting
-        backends only.
-
-        .. tip::
-
-            The :meth:`.ValuesBase.return_defaults` method is used by the ORM
-            for its internal work in fetching newly generated primary key
-            and server default values, in particular to provide the underyling
-            implementation of the :paramref:`_orm.Mapper.eager_defaults`
-            ORM feature.  Its behavior is fairly idiosyncratic
-            and is not really intended for general use.  End users should
-            stick with using :meth:`.UpdateBase.returning` in order to
-            add RETURNING clauses to their INSERT, UPDATE and DELETE
-            statements.
-
-        Normally, a single row INSERT statement will automatically populate the
-        :attr:`.CursorResult.inserted_primary_key` attribute when executed,
-        which stores the primary key of the row that was just inserted in the
-        form of a :class:`.Row` object with column names as named tuple keys
-        (and the :attr:`.Row._mapping` view fully populated as well). The
-        dialect in use chooses the strategy to use in order to populate this
-        data; if it was generated using server-side defaults and / or SQL
-        expressions, dialect-specific approaches such as ``cursor.lastrowid``
-        or ``RETURNING`` are typically used to acquire the new primary key
-        value.
-
-        However, when the statement is modified by calling
-        :meth:`.ValuesBase.return_defaults` before executing the statement,
-        additional behaviors take place **only** for backends that support
-        RETURNING and for :class:`.Table` objects that maintain the
-        :paramref:`.Table.implicit_returning` parameter at its default value of
-        ``True``. In these cases, when the :class:`.CursorResult` is returned
-        from the statement's execution, not only will
-        :attr:`.CursorResult.inserted_primary_key` be populated as always, the
-        :attr:`.CursorResult.returned_defaults` attribute will also be
-        populated with a :class:`.Row` named-tuple representing the full range
-        of server generated
-        values from that single row, including values for any columns that
-        specify :paramref:`_schema.Column.server_default` or which make use of
-        :paramref:`_schema.Column.default` using a SQL expression.
-
-        When invoking INSERT statements with multiple rows using
-        :ref:`insertmanyvalues <engine_insertmanyvalues>`, the
-        :meth:`.ValuesBase.return_defaults` modifier will have the effect of
-        the :attr:`_engine.CursorResult.inserted_primary_key_rows` and
-        :attr:`_engine.CursorResult.returned_defaults_rows` attributes being
-        fully populated with lists of :class:`.Row` objects representing newly
-        inserted primary key values as well as newly inserted server generated
-        values for each row inserted. The
-        :attr:`.CursorResult.inserted_primary_key` and
-        :attr:`.CursorResult.returned_defaults` attributes will also continue
-        to be populated with the first row of these two collections.
-
-        If the backend does not support RETURNING or the :class:`.Table` in use
-        has disabled :paramref:`.Table.implicit_returning`, then no RETURNING
-        clause is added and no additional data is fetched, however the
-        INSERT or UPDATE statement proceeds normally.
-
-
-        E.g.::
-
-            stmt = table.insert().values(data='newdata').return_defaults()
-
-            result = connection.execute(stmt)
-
-            server_created_at = result.returned_defaults['created_at']
-
-
-        The :meth:`.ValuesBase.return_defaults` method is mutually exclusive
-        against the :meth:`.UpdateBase.returning` method and errors will be
-        raised during the SQL compilation process if both are used at the same
-        time on one statement. The RETURNING clause of the INSERT or UPDATE
-        statement is therefore controlled by only one of these methods at a
-        time.
-
-        The :meth:`.ValuesBase.return_defaults` method differs from
-        :meth:`.UpdateBase.returning` in these ways:
-
-        1. :meth:`.ValuesBase.return_defaults` method causes the
-           :attr:`.CursorResult.returned_defaults` collection to be populated
-           with the first row from the RETURNING result. This attribute is not
-           populated when using :meth:`.UpdateBase.returning`.
-
-        2. :meth:`.ValuesBase.return_defaults` is compatible with existing
-           logic used to fetch auto-generated primary key values that are then
-           populated into the :attr:`.CursorResult.inserted_primary_key`
-           attribute. By contrast, using :meth:`.UpdateBase.returning` will
-           have the effect of the :attr:`.CursorResult.inserted_primary_key`
-           attribute being left unpopulated.
-
-        3. :meth:`.ValuesBase.return_defaults` can be called against any
-           backend. Backends that don't support RETURNING will skip the usage
-           of the feature, rather than raising an exception. The return value
-           of :attr:`_engine.CursorResult.returned_defaults` will be ``None``
-           for backends that don't support RETURNING or for which the target
-           :class:`.Table` sets :paramref:`.Table.implicit_returning` to
-           ``False``.
-
-        4. An INSERT statement invoked with executemany() is supported if the
-           backend database driver supports the
-           :ref:`insertmanyvalues <engine_insertmanyvalues>`
-           feature which is now supported by most SQLAlchemy-included backends.
-           When executemany is used, the
-           :attr:`_engine.CursorResult.returned_defaults_rows` and
-           :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors
-           will return the inserted defaults and primary keys.
-
-           .. versionadded:: 1.4 Added
-              :attr:`_engine.CursorResult.returned_defaults_rows` and
-              :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors.
-              In version 2.0, the underlying implementation which fetches and
-              populates the data for these attributes was generalized to be
-              supported by most backends, whereas in 1.4 they were only
-              supported by the ``psycopg2`` driver.
-
-
-        :param cols: optional list of column key names or
-         :class:`_schema.Column` that acts as a filter for those columns that
-         will be fetched.
-
-        .. seealso::
-
-            :meth:`.UpdateBase.returning`
-
-            :attr:`_engine.CursorResult.returned_defaults`
-
-            :attr:`_engine.CursorResult.returned_defaults_rows`
-
-            :attr:`_engine.CursorResult.inserted_primary_key`
-
-            :attr:`_engine.CursorResult.inserted_primary_key_rows`
-
-        """
-
-        if self._return_defaults:
-            # note _return_defaults_columns = () means return all columns,
-            # so if we have been here before, only update collection if there
-            # are columns in the collection
-            if self._return_defaults_columns and cols:
-                self._return_defaults_columns = tuple(
-                    set(self._return_defaults_columns).union(
-                        coercions.expect(roles.ColumnsClauseRole, c)
-                        for c in cols
-                    )
-                )
-            else:
-                # set for all columns
-                self._return_defaults_columns = ()
-        else:
-            self._return_defaults_columns = tuple(
-                coercions.expect(roles.ColumnsClauseRole, c) for c in cols
-            )
-        self._return_defaults = True
         return self
 
 
@@ -1459,7 +1532,7 @@ class Update(DMLWhereBase, ValuesBase):
             )
 
         kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
-        self._ordered_values = kv_generator(self, args)
+        self._ordered_values = kv_generator(self, args, True)
         return self
 
     @_generative

@@ -1,8 +1,10 @@
 import dataclasses
 import operator
+import random
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -233,7 +235,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             is g.edges[1]
         )
 
-    def test_bulk_update_sql(self):
+    def test_update_crit_sql(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
         sess = self._fixture()
@@ -258,7 +260,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             dialect="default",
         )
 
-    def test_bulk_update_evaluate(self):
+    def test_update_crit_evaluate(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
         sess = self._fixture()
@@ -287,7 +289,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         eq_(e1.end, Point(17, 8))
 
-    def test_bulk_update_fetch(self):
+    def test_update_crit_fetch(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
         sess = self._fixture()
@@ -304,6 +306,205 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         q.update({Edge.end: Point(17, 8)}, synchronize_session="fetch")
 
         eq_(e1.end, Point(17, 8))
+
+    @testing.combinations(
+        "legacy", "statement", "values", "stmt_returning", "values_returning"
+    )
+    def test_bulk_insert(self, type_):
+        Edge, Point = (self.classes.Edge, self.classes.Point)
+        Graph = self.classes.Graph
+
+        sess = self._fixture()
+
+        graph = Graph(id=2)
+        sess.add(graph)
+        sess.flush()
+        graph_id = 2
+
+        data = [
+            {
+                "start": Point(random.randint(1, 50), random.randint(1, 50)),
+                "end": Point(random.randint(1, 50), random.randint(1, 50)),
+                "graph_id": graph_id,
+            }
+            for i in range(25)
+        ]
+        returning = False
+        if type_ == "statement":
+            sess.execute(insert(Edge), data)
+        elif type_ == "stmt_returning":
+            result = sess.scalars(insert(Edge).returning(Edge), data)
+            returning = True
+        elif type_ == "values":
+            sess.execute(insert(Edge).values(data))
+        elif type_ == "values_returning":
+            result = sess.scalars(insert(Edge).values(data).returning(Edge))
+            returning = True
+        elif type_ == "legacy":
+            sess.bulk_insert_mappings(Edge, data)
+        else:
+            assert False
+
+        if returning:
+            eq_(result.all(), [Edge(rec["start"], rec["end"]) for rec in data])
+
+        edges = self.tables.edges
+        eq_(
+            sess.execute(
+                select(edges.c["x1", "y1", "x2", "y2"])
+                .where(edges.c.graph_id == graph_id)
+                .order_by(edges.c.id)
+            ).all(),
+            [
+                (e["start"].x, e["start"].y, e["end"].x, e["end"].y)
+                for e in data
+            ],
+        )
+
+    @testing.combinations("legacy", "statement")
+    def test_bulk_insert_heterogeneous(self, type_):
+        Edge, Point = (self.classes.Edge, self.classes.Point)
+        Graph = self.classes.Graph
+
+        sess = self._fixture()
+
+        graph = Graph(id=2)
+        sess.add(graph)
+        sess.flush()
+        graph_id = 2
+
+        d1 = [
+            {
+                "start": Point(random.randint(1, 50), random.randint(1, 50)),
+                "end": Point(random.randint(1, 50), random.randint(1, 50)),
+                "graph_id": graph_id,
+            }
+            for i in range(3)
+        ]
+        d2 = [
+            {
+                "start": Point(random.randint(1, 50), random.randint(1, 50)),
+                "graph_id": graph_id,
+            }
+            for i in range(2)
+        ]
+        d3 = [
+            {
+                "x2": random.randint(1, 50),
+                "y2": random.randint(1, 50),
+                "graph_id": graph_id,
+            }
+            for i in range(2)
+        ]
+        data = d1 + d2 + d3
+        random.shuffle(data)
+
+        assert_data = [
+            {
+                "start": d["start"] if "start" in d else None,
+                "end": d["end"]
+                if "end" in d
+                else Point(d["x2"], d["y2"])
+                if "x2" in d
+                else None,
+                "graph_id": d["graph_id"],
+            }
+            for d in data
+        ]
+
+        if type_ == "statement":
+            sess.execute(insert(Edge), data)
+        elif type_ == "legacy":
+            sess.bulk_insert_mappings(Edge, data)
+        else:
+            assert False
+
+        edges = self.tables.edges
+        eq_(
+            sess.execute(
+                select(edges.c["x1", "y1", "x2", "y2"])
+                .where(edges.c.graph_id == graph_id)
+                .order_by(edges.c.id)
+            ).all(),
+            [
+                (
+                    e["start"].x if e["start"] else None,
+                    e["start"].y if e["start"] else None,
+                    e["end"].x if e["end"] else None,
+                    e["end"].y if e["end"] else None,
+                )
+                for e in assert_data
+            ],
+        )
+
+    @testing.combinations("legacy", "statement")
+    def test_bulk_update(self, type_):
+        Edge, Point = (self.classes.Edge, self.classes.Point)
+        Graph = self.classes.Graph
+
+        sess = self._fixture()
+
+        graph = Graph(id=2)
+        sess.add(graph)
+        sess.flush()
+        graph_id = 2
+
+        data = [
+            {
+                "start": Point(random.randint(1, 50), random.randint(1, 50)),
+                "end": Point(random.randint(1, 50), random.randint(1, 50)),
+                "graph_id": graph_id,
+            }
+            for i in range(25)
+        ]
+        sess.execute(insert(Edge), data)
+
+        inserted_data = [
+            dict(row._mapping)
+            for row in sess.execute(
+                select(Edge.id, Edge.start, Edge.end, Edge.graph_id)
+                .where(Edge.graph_id == graph_id)
+                .order_by(Edge.id)
+            )
+        ]
+
+        to_update = []
+        updated_pks = {}
+        for rec in random.choices(inserted_data, k=7):
+            rec_copy = dict(rec)
+            updated_pks[rec_copy["id"]] = rec_copy
+            rec_copy["start"] = Point(
+                random.randint(1, 50), random.randint(1, 50)
+            )
+            rec_copy["end"] = Point(
+                random.randint(1, 50), random.randint(1, 50)
+            )
+            to_update.append(rec_copy)
+
+        expected_dataset = [
+            updated_pks[row["id"]] if row["id"] in updated_pks else row
+            for row in inserted_data
+        ]
+
+        if type_ == "statement":
+            sess.execute(update(Edge), to_update)
+        elif type_ == "legacy":
+            sess.bulk_update_mappings(Edge, to_update)
+        else:
+            assert False
+
+        edges = self.tables.edges
+        eq_(
+            sess.execute(
+                select(edges.c["x1", "y1", "x2", "y2"])
+                .where(edges.c.graph_id == graph_id)
+                .order_by(edges.c.id)
+            ).all(),
+            [
+                (e["start"].x, e["start"].y, e["end"].x, e["end"].y)
+                for e in expected_dataset
+            ],
+        )
 
     def test_get_history(self):
         Edge = self.classes.Edge

@@ -854,6 +854,7 @@ class Mapper(
     _memoized_values: Dict[Any, Callable[[], Any]]
     _inheriting_mappers: util.WeakSequence[Mapper[Any]]
     _all_tables: Set[Table]
+    _polymorphic_attr_key: Optional[str]
 
     _pks_by_table: Dict[FromClause, OrderedSet[ColumnClause[Any]]]
     _cols_by_table: Dict[FromClause, OrderedSet[ColumnElement[Any]]]
@@ -1653,6 +1654,7 @@ class Mapper(
 
         """
         setter = False
+        polymorphic_key: Optional[str] = None
 
         if self.polymorphic_on is not None:
             setter = True
@@ -1772,23 +1774,31 @@ class Mapper(
                         self._set_polymorphic_identity = (
                             mapper._set_polymorphic_identity
                         )
+                        self._polymorphic_attr_key = (
+                            mapper._polymorphic_attr_key
+                        )
                         self._validate_polymorphic_identity = (
                             mapper._validate_polymorphic_identity
                         )
                     else:
                         self._set_polymorphic_identity = None
+                        self._polymorphic_attr_key = None
                     return
 
         if setter:
 
             def _set_polymorphic_identity(state):
                 dict_ = state.dict
+                # TODO: what happens if polymorphic_on column attribute name
+                # does not match .key?
                 state.get_impl(polymorphic_key).set(
                     state,
                     dict_,
                     state.manager.mapper.polymorphic_identity,
                     None,
                 )
+
+            self._polymorphic_attr_key = polymorphic_key
 
             def _validate_polymorphic_identity(mapper, state, dict_):
                 if (
@@ -1808,6 +1818,7 @@ class Mapper(
                 _validate_polymorphic_identity
             )
         else:
+            self._polymorphic_attr_key = None
             self._set_polymorphic_identity = None
 
     _validate_polymorphic_identity = None
@@ -3560,6 +3571,10 @@ class Mapper(
     @HasMemoized.memoized_attribute
     def _compiled_cache(self):
         return util.LRUCache(self._compiled_cache_size)
+
+    @HasMemoized.memoized_attribute
+    def _multiple_persistence_tables(self):
+        return len(self.tables) > 1
 
     @HasMemoized.memoized_attribute
     def _sorted_tables(self):

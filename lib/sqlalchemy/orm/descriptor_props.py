@@ -19,6 +19,7 @@ import operator
 import typing
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import List
 from typing import NoReturn
 from typing import Optional
@@ -601,6 +602,31 @@ class Composite(
     @util.memoized_property
     def _attribute_keys(self) -> Sequence[str]:
         return [prop.key for prop in self.props]
+
+    def _populate_composite_bulk_save_mappings_fn(
+        self,
+    ) -> Callable[[Dict[str, Any]], None]:
+
+        if self._generated_composite_accessor:
+            get_values = self._generated_composite_accessor
+        else:
+
+            def get_values(val: Any) -> Tuple[Any]:
+                return val.__composite_values__()  # type: ignore
+
+        attrs = [prop.key for prop in self.props]
+
+        def populate(dest_dict: Dict[str, Any]) -> None:
+            dest_dict.update(
+                {
+                    key: val
+                    for key, val in zip(
+                        attrs, get_values(dest_dict.pop(self.key))
+                    )
+                }
+            )
+
+        return populate
 
     def get_history(
         self,

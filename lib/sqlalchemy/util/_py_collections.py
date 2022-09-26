@@ -11,6 +11,7 @@ from __future__ import annotations
 from itertools import filterfalse
 from typing import AbstractSet
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import Collection
 from typing import Dict
@@ -481,7 +482,9 @@ class IdentitySet:
         return "%s(%r)" % (type(self).__name__, list(self._members.values()))
 
 
-def unique_list(seq, hashfunc=None):
+def unique_list(
+    seq: Iterable[_T], hashfunc: Optional[Callable[[_T], int]] = None
+) -> List[_T]:
     seen: Set[Any] = set()
     seen_add = seen.add
     if not hashfunc:

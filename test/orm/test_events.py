@@ -661,8 +661,17 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
 
         canary = self._flag_fixture(sess)
 
-        sess.execute(delete(User).filter_by(id=18))
-        sess.execute(update(User).filter_by(id=18).values(name="eighteen"))
+        sess.execute(
+            delete(User)
+            .filter_by(id=18)
+            .execution_options(synchronize_session="evaluate")
+        )
+        sess.execute(
+            update(User)
+            .filter_by(id=18)
+            .values(name="eighteen")
+            .execution_options(synchronize_session="evaluate")
+        )
 
         eq_(
             canary.mock_calls,

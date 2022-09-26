@@ -1007,6 +1007,7 @@ class DefaultExecutionContext(ExecutionContext):
 
     _is_implicit_returning = False
     _is_explicit_returning = False
+    _is_supplemental_returning = False
     _is_server_side = False
 
     _soft_closed = False
@@ -1125,18 +1126,19 @@ class DefaultExecutionContext(ExecutionContext):
         self.is_text = compiled.isplaintext
 
         if ii or iu or id_:
+            dml_statement = compiled.compile_state.statement  # type: ignore
             if TYPE_CHECKING:
-                assert isinstance(compiled.statement, UpdateBase)
+                assert isinstance(dml_statement, UpdateBase)
             self.is_crud = True
-            self._is_explicit_returning = ier = bool(
-                compiled.statement._returning
-            )
-            self._is_implicit_returning = iir = is_implicit_returning = bool(
+            self._is_explicit_returning = ier = bool(dml_statement._returning)
+            self._is_implicit_returning = iir = bool(
                 compiled.implicit_returning
             )
-            assert not (
-                is_implicit_returning and compiled.statement._returning
-            )
+            if iir and dml_statement._supplemental_returning:
+                self._is_supplemental_returning = True
+
+            # dont mix implicit and explicit returning
+            assert not (iir and ier)
 
             if (ier or iir) and compiled.for_executemany:
                 if ii and not self.dialect.insert_executemany_returning:
@@ -1711,7 +1713,14 @@ class DefaultExecutionContext(ExecutionContext):
                 # are that the result has only one row, until executemany()
                 # support is added here.
                 assert result._metadata.returns_rows
-                result._soft_close()
+
+                # Insert statement has both return_defaults() and
+                # returning().  rewind the result on the list of rows
+                # we just used.
+                if self._is_supplemental_returning:
+                    result._rewind(rows)
+                else:
+                    result._soft_close()
             elif not self._is_explicit_returning:
                 result._soft_close()
 
@@ -1721,21 +1730,18 @@ class DefaultExecutionContext(ExecutionContext):
                 # function so this is not necessarily true.
                 # assert not result.returns_rows
 
-        elif self.isupdate and self._is_implicit_returning:
-            # get rowcount
-            # (which requires open cursor on some drivers)
-            # we were not doing this in 1.4, however
-            # test_rowcount -> test_update_rowcount_return_defaults
-            # is testing this, and psycopg will no longer return
-            # rowcount after cursor is closed.
-            result.rowcount
+        elif self._is_implicit_returning:
+            rows = result.all()
+
+            if rows:
+                self.returned_default_rows = rows
+            result.rowcount = len(rows)
             self._has_rowcount = True
 
-            row = result.fetchone()
-            if row is not None:
-                self.returned_default_rows = [row]
-
-            result._soft_close()
+            if self._is_supplemental_returning:
+                result._rewind(rows)
+            else:
+                result._soft_close()
 
             # test that it has a cursor metadata that is accurate.
             # the rows have all been fetched however.
@@ -1750,7 +1756,6 @@ class DefaultExecutionContext(ExecutionContext):
         elif self.isupdate or self.isdelete:
             result.rowcount
             self._has_rowcount = True
-
         return result
 
     @util.memoized_property

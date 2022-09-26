@@ -100,9 +100,54 @@ class CursorResultTest(fixtures.TablesTest):
         Table(
             "test",
             metadata,
-            Column("x", Integer, primary_key=True),
+            Column(
+                "x", Integer, primary_key=True, test_needs_autoincrement=False
+            ),
             Column("y", String(50)),
         )
+
+    @testing.requires.insert_returning
+    def test_splice_horizontally(self, connection):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        r1 = connection.execute(
+            users.insert().returning(users.c.user_name, users.c.user_id),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
+        )
+
+        r2 = connection.execute(
+            addresses.insert().returning(
+                addresses.c.address_id,
+                addresses.c.address,
+                addresses.c.user_id,
+            ),
+            [
+                dict(address_id=1, user_id=1, address="foo@bar.com"),
+                dict(address_id=2, user_id=2, address="bar@bat.com"),
+            ],
+        )
+
+        rows = r1.splice_horizontally(r2).all()
+        eq_(
+            rows,
+            [
+                ("john", 1, 1, "foo@bar.com", 1),
+                ("jack", 2, 2, "bar@bat.com", 2),
+            ],
+        )
+
+        eq_(rows[0]._mapping[users.c.user_id], 1)
+        eq_(rows[0]._mapping[addresses.c.user_id], 1)
+        eq_(rows[1].address, "bar@bat.com")
+
+        with expect_raises_message(
+            exc.InvalidRequestError, "Ambiguous column name 'user_id'"
+        ):
+            rows[0].user_id
 
     def test_keys_no_rows(self, connection):
 
