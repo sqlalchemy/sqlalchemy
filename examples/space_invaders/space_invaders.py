@@ -464,7 +464,9 @@ def draw(session, window, state):
     database and render.
 
     """
-    for gcoord in session.query(GlyphCoordinate).options(joinedload("glyph")):
+    for gcoord in session.query(GlyphCoordinate).options(
+        joinedload(GlyphCoordinate.glyph)
+    ):
         gcoord.render(window, state)
     window.addstr(1, WINDOW_WIDTH - 5, "Score: %.4d" % state["score"])
     window.move(0, 0)

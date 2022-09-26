@@ -76,7 +76,7 @@ SQLAlchemy Documentation
 
     * **ORM Usage:**
       :doc:`Session Usage and Guidelines <orm/session>` |
-      :doc:`Querying Data, Loading Objects <orm/loading_objects>` |
+      :doc:`Querying Guide <orm/queryguide/index>` |
       :doc:`AsyncIO Support <orm/extensions/asyncio>`
 
     * **Configuration Extensions:**

@@ -9,6 +9,8 @@ for the various DBAPIs.
 
 All dialects require that an appropriate DBAPI driver is installed.
 
+.. _included_dialects:
+
 Included Dialects
 -----------------
 

@@ -1222,6 +1222,8 @@ declarative decorator and classical mapping forms.
   :ref:`orm_mapping_classes_toplevel` - all new unified documentation for
   Declarative, classical mapping, dataclasses, attrs, etc.
 
+.. _migration_20_query_usage:
+
 2.0 Migration - ORM Usage
 ---------------------------------------------
 

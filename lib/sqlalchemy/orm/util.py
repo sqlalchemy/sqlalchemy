@@ -886,7 +886,7 @@ class AliasedInsp(
     def _with_polymorphic_factory(
         cls,
         base: Union[_O, Mapper[_O]],
-        classes: Iterable[_EntityType[Any]],
+        classes: Union[Literal["*"], Iterable[_EntityType[Any]]],
         selectable: Union[Literal[False, None], FromClause] = False,
         flat: bool = False,
         polymorphic_on: Optional[ColumnElement[Any]] = None,
@@ -1379,8 +1379,6 @@ class Bundle(
     allowing post-processing as well as custom return types, without
     involving ORM identity-mapped classes.
 
-    .. versionadded:: 0.9.0
-
     .. seealso::
 
         :ref:`bundles`
@@ -1538,11 +1536,35 @@ class Bundle(
     ) -> Callable[[Row[Any]], Any]:
         """Produce the "row processing" function for this :class:`.Bundle`.
 
-        May be overridden by subclasses.
+        May be overridden by subclasses to provide custom behaviors when
+        results are fetched. The method is passed the statement object and a
+        set of "row processor" functions at query execution time; these
+        processor functions when given a result row will return the individual
+        attribute value, which can then be adapted into any kind of return data
+        structure.
 
-        .. seealso::
+        The example below illustrates replacing the usual :class:`.Row`
+        return structure with a straight Python dictionary::
 
-            :ref:`bundles` - includes an example of subclassing.
+            from sqlalchemy.orm import Bundle
+
+            class DictBundle(Bundle):
+                def create_row_processor(self, query, procs, labels):
+                    'Override create_row_processor to return values as
+                    dictionaries'
+
+                    def proc(row):
+                        return dict(
+                            zip(labels, (proc(row) for proc in procs))
+                        )
+                    return proc
+
+        A result from the above :class:`_orm.Bundle` will return dictionary
+        values::
+
+            bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
+            for row in session.execute(select(bn)).where(bn.c.data1 == 'd1'):
+                print(row.mybundle['data1'], row.mybundle['data2'])
 
         """
         keyed_tuple = result_tuple(labels, [() for l in labels])

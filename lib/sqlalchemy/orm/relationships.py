@@ -632,7 +632,7 @@ class Relationship(
             else:
                 return pj
 
-        def of_type(self, class_: _EntityType[_PT]) -> PropComparator[_PT]:
+        def of_type(self, class_: _EntityType[Any]) -> PropComparator[_PT]:
             r"""Redefine this object in terms of a polymorphic subclass.
 
             See :meth:`.PropComparator.of_type` for an example.

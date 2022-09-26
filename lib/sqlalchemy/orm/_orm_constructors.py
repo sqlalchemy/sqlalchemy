@@ -199,12 +199,21 @@ def mapped_column(
 
      .. seealso::
 
-        :ref:`deferred`
+        :ref:`orm_queryguide_deferred_declarative`
 
     :param deferred_group: Implies :paramref:`_orm.mapped_column.deferred`
      to ``True``, and set the :paramref:`_orm.deferred.group` parameter.
+
+     .. seealso::
+
+        :ref:`orm_queryguide_deferred_group`
+
     :param deferred_raiseload: Implies :paramref:`_orm.mapped_column.deferred`
      to ``True``, and set the :paramref:`_orm.deferred.raiseload` parameter.
+
+     .. seealso::
+
+        :ref:`orm_queryguide_deferred_raiseload`
 
     :param default: Passed directly to the
      :paramref:`_schema.Column.default` parameter if the
@@ -372,7 +381,7 @@ def column_property(
 
         .. seealso::
 
-            :ref:`deferred_raiseload`
+            :ref:`orm_queryguide_deferred_raiseload`
 
     .. seealso::
 
@@ -1876,9 +1885,7 @@ def deferred(
 
     .. seealso::
 
-        :ref:`deferred`
-
-        :ref:`deferred_raiseload`
+        :ref:`orm_queryguide_deferred_imperative`
 
     """
     return ColumnProperty(
@@ -1910,22 +1917,12 @@ def query_expression(
 
     :param default_expr: Optional SQL expression object that will be used in
         all cases if not assigned later with :func:`_orm.with_expression`.
-        E.g.::
-
-            from sqlalchemy.sql import literal
-
-            class C(Base):
-                #...
-                my_expr = query_expression(literal(1))
-
-        .. versionadded:: 1.3.18
-
 
     .. versionadded:: 1.2
 
     .. seealso::
 
-        :ref:`mapper_querytime_expression`
+        :ref:`orm_queryguide_with_expression` - background and usage examples
 
     """
     prop = ColumnProperty(
@@ -2123,7 +2120,7 @@ def aliased(
 
 def with_polymorphic(
     base: Union[_O, Mapper[_O]],
-    classes: Iterable[Type[Any]],
+    classes: Union[Literal["*"], Iterable[Type[Any]]],
     selectable: Union[Literal[False, None], FromClause] = False,
     flat: bool = False,
     polymorphic_on: Optional[ColumnElement[Any]] = None,

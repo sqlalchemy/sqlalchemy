@@ -473,17 +473,17 @@ class Mapper(
                CASCADE for joined-table inheritance mappers
 
         :param polymorphic_load: Specifies "polymorphic loading" behavior
-          for a subclass in an inheritance hierarchy (joined and single
-          table inheritance only).   Valid values are:
+         for a subclass in an inheritance hierarchy (joined and single
+         table inheritance only).   Valid values are:
 
-            * "'inline'" - specifies this class should be part of the
-              "with_polymorphic" mappers, e.g. its columns will be included
-              in a SELECT query against the base.
+          * "'inline'" - specifies this class should be part of
+            the "with_polymorphic" mappers, e.g. its columns will be included
+            in a SELECT query against the base.
 
-            * "'selectin'" - specifies that when instances of this class
-              are loaded, an additional SELECT will be emitted to retrieve
-              the columns specific to this subclass.  The SELECT uses
-              IN to fetch multiple subclasses at once.
+          * "'selectin'" - specifies that when instances of this class
+            are loaded, an additional SELECT will be emitted to retrieve
+            the columns specific to this subclass.  The SELECT uses
+            IN to fetch multiple subclasses at once.
 
          .. versionadded:: 1.2
 
@@ -667,10 +667,14 @@ class Mapper(
             indicates a selectable that will be used to query for multiple
             classes.
 
+            The :paramref:`_orm.Mapper.polymorphic_load` parameter may be
+            preferable over the use of :paramref:`_orm.Mapper.with_polymorphic`
+            in modern mappings to indicate a per-subclass technique of
+            indicating polymorphic loading styles.
+
             .. seealso::
 
-              :ref:`with_polymorphic` - discussion of polymorphic querying
-              techniques.
+                :ref:`with_polymorphic_mapper_config`
 
         """
         self.class_ = util.assert_arg_type(class_, type, "class_")

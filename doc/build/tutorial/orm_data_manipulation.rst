@@ -27,15 +27,17 @@ two previous ORM-centric sections in this document:
 
 .. _tutorial_inserting_orm:
 
-Inserting Rows with the ORM
----------------------------
+Inserting Rows using the ORM Unit of Work pattern
+-------------------------------------------------
 
 When using the ORM, the :class:`_orm.Session` object is responsible for
-constructing :class:`_sql.Insert` constructs and emitting them for us in a
-transaction. The way we instruct the :class:`_orm.Session` to do so is by
-**adding** object entries to it; the :class:`_orm.Session` then makes sure
-these new entries will be emitted to the database when they are needed, using
-a process known as a **flush**.
+constructing :class:`_sql.Insert` constructs and emitting them as INSERT
+statements within the ongoing transaction. The way we instruct the
+:class:`_orm.Session` to do so is by **adding** object entries to it; the
+:class:`_orm.Session` then makes sure these new entries will be emitted to the
+database when they are needed, using a process known as a **flush**. The
+overall process used by the :class:`_orm.Session` to persist objects is known
+as the :term:`unit of work` pattern.
 
 Instances of Classes represent Rows
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -233,12 +235,10 @@ which is a state they stay in until the :class:`.Session` is closed
   More on this is at :ref:`tutorial_orm_closing`.
 
 
-
-
 .. _tutorial_orm_updating:
 
-Updating ORM Objects
---------------------
+Updating ORM Objects using the Unit of Work pattern
+----------------------------------------------------
 
 In the preceding section :ref:`tutorial_core_update_delete`, we introduced the
 :class:`_sql.Update` construct that represents a SQL UPDATE statement. When
@@ -246,9 +246,7 @@ using the ORM, there are two ways in which this construct is used. The primary
 way is that it is emitted automatically as part of the :term:`unit of work`
 process used by the :class:`_orm.Session`, where an UPDATE statement is emitted
 on a per-primary key basis corresponding to individual objects that have
-changes on them.   A second form of UPDATE is called an "ORM enabled
-UPDATE" and allows us to use the :class:`_sql.Update` construct with the
-:class:`_orm.Session` explicitly; this is described in the next section.
+changes on them.
 
 Supposing we loaded the ``User`` object for the username ``sandy`` into
 a transaction (also showing off the :meth:`_sql.Select.filter_by` method
@@ -321,53 +319,17 @@ we roll back the transaction.  But first we'll make some more data changes.
     :ref:`session_flushing`- details the flush process as well as information
     about the :paramref:`_orm.Session.autoflush` setting.
 
-.. _tutorial_orm_enabled_update:
-
-ORM-enabled UPDATE statements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-As previously mentioned, there's a second way to emit UPDATE statements in
-terms of the ORM, which is known as an **ORM enabled UPDATE statement**.   This allows the use
-of a generic SQL UPDATE statement that can affect many rows at once.   For example
-to emit an UPDATE that will change the ``User.fullname`` column based on
-a value in the ``User.name`` column:
-
-.. sourcecode:: pycon+sql
-
-    >>> session.execute(
-    ...     update(User).
-    ...     where(User.name == "sandy").
-    ...     values(fullname="Sandy Squirrel Extraordinaire")
-    ... )
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
-    [...] ('Sandy Squirrel Extraordinaire', 'sandy'){stop}
-    <sqlalchemy.engine.cursor.CursorResult object ...>
-
-When invoking the ORM-enabled UPDATE statement, special logic is used to locate
-objects in the current session that match the given criteria, so that they
-are refreshed with the new data.  Above, the ``sandy`` object identity
-was located in memory and refreshed::
-
-    >>> sandy.fullname
-    'Sandy Squirrel Extraordinaire'
-
-The refresh logic is known as the ``synchronize_session`` option, and is described
-in detail in the section :ref:`orm_expression_update_delete`.
-
-.. seealso::
-
-    :ref:`orm_expression_update_delete` - describes ORM use of :func:`_sql.update`
-    and :func:`_sql.delete` as well as ORM synchronization options.
 
 
 .. _tutorial_orm_deleting:
 
 
-Deleting ORM Objects
----------------------
+Deleting ORM Objects using the Unit of Work pattern
+----------------------------------------------------
 
 To round out the basic persistence operations, an individual ORM object
-may be marked for deletion by using the :meth:`_orm.Session.delete` method.
+may be marked for deletion within the :term:`unit of work` process
+by using the :meth:`_orm.Session.delete` method.
 Let's load up ``patrick`` from the database:
 
 .. sourcecode:: pycon+sql
@@ -428,42 +390,43 @@ we've made here is local to an ongoing transaction, which won't become
 permanent if we don't commit it.  As rolling the transaction back is actually
 more interesting at the moment, we will do that in the next section.
 
-.. _tutorial_orm_enabled_delete:
 
-ORM-enabled DELETE Statements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Like UPDATE operations, there is also an ORM-enabled version of DELETE which we can
-illustrate by using the :func:`_sql.delete` construct with
-:meth:`_orm.Session.execute`.  It also has a feature by which **non expired**
-objects (see :term:`expired`) that match the given deletion criteria will be
-automatically marked as ":term:`deleted`" in the :class:`_orm.Session`:
+Bulk / Multi Row INSERT, upsert, UPDATE and DELETE
+---------------------------------------------------
 
-.. sourcecode:: pycon+sql
+The :term:`unit of work` techniques discussed in this section
+are intended to integrate :term:`dml`, or INSERT/UPDATE/DELETE statements,
+with Python object mechanics, often involving complex graphs of
+inter-related objects.  Once objects are added to a :class:`.Session` using
+:meth:`.Session.add`, the unit of work process transparently emits
+INSERT/UPDATE/DELETE on our behalf as attributes on our objects are created
+and modified.
 
-    >>> # refresh the target object for demonstration purposes
-    >>> # only, not needed for the DELETE
-    {sql}>>> squidward = session.get(User, 4)
-    SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
-    user_account.fullname AS user_account_fullname
-    FROM user_account
-    WHERE user_account.id = ?
-    [...] (4,){stop}
+However, the ORM :class:`.Session` also has the ability to process commands
+that allow it to emit INSERT, UPDATE and DELETE statements directly without
+being passed any ORM-persisted objects, instead being passed lists of values to
+be INSERTed, UPDATEd, or upserted, or WHERE criteria so that an UPDATE or
+DELETE statement that matches many rows at once can be invoked. This mode of
+use is of particular importance when large numbers of rows must be affected
+without the need to construct and manipulate mapped objects, which may be
+cumbersome and unnecessary for simplistic, performance-intensive tasks such as
+large bulk inserts.
 
-    >>> session.execute(delete(User).where(User.name == "squidward"))
-    {opensql}DELETE FROM user_account WHERE user_account.name = ?
-    [...] ('squidward',){stop}
-    <sqlalchemy.engine.cursor.CursorResult object at 0x...>
+The Bulk / Multi row features of the ORM :class:`_orm.Session` make use of the
+:func:`_dml.insert`, :func:`_dml.update` and :func:`_dml.delete` constructs
+directly, and their usage resembles how they are used with SQLAlchemy Core
+(first introduced in this tutorial at :ref:`tutorial_core_insert` and
+:ref:`tutorial_core_update_delete`).  When using these constructs
+with the ORM :class:`_orm.Session` instead of a plain :class:`_engine.Connection`,
+their construction, execution and result handling is fully integrated with the ORM.
 
-The ``squidward`` identity, like that of ``patrick``, is now also in a
-deleted state.   Note that we had to re-load ``squidward`` above in order
-to demonstrate this; if the object were expired, the DELETE operation
-would not take the time to refresh expired objects just to see that they
-had been deleted::
+For background and examples on using these features, see the section
+:ref:`orm_expression_update_delete` in the :ref:`queryguide_toplevel`.
 
-    >>> squidward in session
-    False
+.. seealso::
 
+    :ref:`orm_expression_update_delete` - in the :ref:`queryguide_toplevel`
 
 
 Rolling Back

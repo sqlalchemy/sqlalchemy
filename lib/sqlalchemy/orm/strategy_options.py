@@ -196,9 +196,18 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                         Load(Address).load_only(Address.email_address)
                     )
 
-        .. note:: This method will still load a :class:`_schema.Column` even
-            if the column property is defined with ``deferred=True``
-            for the :func:`.column_property` function.
+        :param \*attrs: Attributes to be loaded, all others will be deferred.
+
+        :param raiseload: raise :class:`.InvalidRequestError` rather than
+         lazy loading a value when a deferred attribute is accessed. Used
+         to prevent unwanted SQL from being emitted.
+
+         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`orm_queryguide_column_deferral` - in the
+            :ref:`queryguide_toplevel`
 
         :param \*attrs: Attributes to be loaded, all others will be deferred.
 
@@ -539,7 +548,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             :ref:`prevent_lazy_with_raiseload`
 
-            :ref:`deferred_raiseload`
+            :ref:`orm_queryguide_deferred_raiseload`
 
         """
 
@@ -573,13 +582,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         .. seealso::
 
-            :meth:`_orm.Load.options` - allows for complex hierarchical
-            loader option structures with less verbosity than with individual
-            :func:`.defaultload` directives.
+            :ref:`orm_queryguide_relationship_sub_options`
 
-            :ref:`relationship_loader_options`
-
-            :ref:`deferred_loading_w_multiple`
+            :meth:`_orm.Load.options`
 
         """
         return self._set_relationship_strategy(attr, None)
@@ -633,11 +638,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         .. seealso::
 
-            :ref:`deferred_raiseload`
+            :ref:`orm_queryguide_column_deferral` - in the
+            :ref:`queryguide_toplevel`
 
-        .. seealso::
-
-            :ref:`deferred`
+            :func:`_orm.load_only`
 
             :func:`_orm.undefer`
 
@@ -677,7 +681,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         .. seealso::
 
-            :ref:`deferred`
+            :ref:`orm_queryguide_column_deferral` - in the
+            :ref:`queryguide_toplevel`
 
             :func:`_orm.defer`
 
@@ -708,7 +713,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         .. seealso::
 
-            :ref:`deferred`
+            :ref:`orm_queryguide_column_deferral` - in the
+            :ref:`queryguide_toplevel`
 
             :func:`_orm.defer`
 
@@ -743,15 +749,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         :param expr: SQL expression to be applied to the attribute.
 
-        .. note:: the target attribute is populated only if the target object
-           is **not currently loaded** in the current :class:`_orm.Session`
-           unless the :ref:`orm_queryguide_populate_existing` execution option
-           is used. Please refer to :ref:`mapper_querytime_expression` for
-           complete usage details.
-
         .. seealso::
 
-            :ref:`mapper_querytime_expression`
+            :ref:`orm_queryguide_with_expression` - background and usage
+            examples
 
         """
 
@@ -1013,39 +1014,13 @@ class Load(_AbstractLoad):
 
     The :class:`_orm.Load` object is in most cases used implicitly behind the
     scenes when one makes use of a query option like :func:`_orm.joinedload`,
-    :func:`.defer`, or similar.   However, the :class:`_orm.Load` object
-    can also be used directly, and in some cases can be useful.
-
-    To use :class:`_orm.Load` directly, instantiate it with the target mapped
-    class as the argument.   This style of usage is
-    useful when dealing with a statement
-    that has multiple entities::
-
-        myopt = Load(MyClass).joinedload("widgets")
-
-    The above ``myopt`` can now be used with :meth:`_sql.Select.options` or
-    :meth:`_query.Query.options` where it
-    will only take effect for the ``MyClass`` entity::
-
-        stmt = select(MyClass, MyOtherClass).options(myopt)
-
-    One case where :class:`_orm.Load`
-    is useful as public API is when specifying
-    "wildcard" options that only take effect for a certain class::
-
-        stmt = select(Order).options(Load(Order).lazyload('*'))
-
-    Above, all relationships on ``Order`` will be lazy-loaded, but other
-    attributes on those descendant objects will load using their normal
-    loader strategy.
+    :func:`_orm.defer`, or similar.   It typically is not instantiated directly
+    except for in some very specific cases.
 
     .. seealso::
 
-        :ref:`deferred_options`
-
-        :ref:`deferred_loading_w_multiple`
-
-        :ref:`relationship_loader_options`
+        :ref:`orm_queryguide_relationship_per_entity_wildcard` - illustrates an
+        example where direct use of :class:`_orm.Load` may be useful
 
     """
 
@@ -1239,9 +1214,7 @@ class Load(_AbstractLoad):
 
             :func:`.defaultload`
 
-            :ref:`relationship_loader_options`
-
-            :ref:`deferred_loading_w_multiple`
+            :ref:`orm_queryguide_relationship_sub_options`
 
         """
         for opt in opts:

@@ -83,9 +83,9 @@ relationship using the :func:`.backref` function::
                     backref=backref('parent', remote_side=[id])
                 )
 
-There are several examples included with SQLAlchemy illustrating
-self-referential strategies; these include :ref:`examples_adjacencylist` and
-:ref:`examples_xmlpersistence`.
+.. seealso::
+
+    :ref:`examples_adjacencylist` - working example
 
 Composite Adjacency Lists
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -162,8 +162,6 @@ looks like:
         AND node_1.data = ?
     ['subchild1', 'child2']
 
-For an example of using :func:`_orm.aliased` to join across an arbitrarily long
-chain of self-referential nodes, see :ref:`examples_xmlpersistence`.
 
 .. _self_referential_eager_loading:
 

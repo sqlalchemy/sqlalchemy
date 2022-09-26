@@ -2,8 +2,9 @@
 Session Basics
 ==============
 
+
 What does the Session do ?
-==========================
+--------------------------
 
 In the most general sense, the :class:`~.Session` establishes all conversations
 with the database and represents a "holding zone" for all the objects which
@@ -43,14 +44,14 @@ can resume their normal task of representing database state.
 .. _session_basics:
 
 Basics of Using a Session
-=========================
+-------------------------
 
 The most basic :class:`.Session` use patterns are presented here.
 
 .. _session_getting:
 
 Opening and Closing a Session
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`_orm.Session` may be constructed on its own or by using the
 :class:`_orm.sessionmaker` class.    It typically is passed a single
@@ -97,7 +98,7 @@ be unnecessary.
 .. _session_begin_commit_rollback_block:
 
 Framing out a begin / commit / rollback block
------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We may also enclose the :meth:`_orm.Session.commit` call and the overall
 "framing" of the transaction within a context manager for those cases where
@@ -144,7 +145,7 @@ More succinctly, the two contexts may be combined::
     # outer context calls session.close()
 
 Using a sessionmaker
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 The purpose of :class:`_orm.sessionmaker` is to provide a factory for
 :class:`_orm.Session` objects with a fixed configuration.   As it is typical
@@ -211,113 +212,52 @@ simultaneously.
 
     :class:`_orm.Session`
 
-.. _session_querying_1x:
-
-Querying (1.x Style)
---------------------
-
-The :meth:`~.Session.query` function takes one or more
-**entities** and returns a new :class:`~sqlalchemy.orm.query.Query` object which
-will issue mapper queries within the context of this Session.   By
-"entity" we refer to a mapped class, an attribute of a mapped class, or
-other ORM constructs such as an :func:`_orm.aliased` construct::
-
-    # query from a class
-    results = session.query(User).filter_by(name='ed').all()
-
-    # query with multiple classes, returns tuples
-    results = session.query(User, Address).join('addresses').filter_by(name='ed').all()
-
-    # query using orm-columns, also returns tuples
-    results = session.query(User.name, User.fullname).all()
-
-When ORM objects are returned in results, they are also stored in the identity
-map.  When an incoming database row has a primary key that matches an object
-which is already present, the same object is returned, and those attributes
-of the object which already have a value are not re-populated.
-
-The :class:`_orm.Session` automatically expires all instances along transaction
-boundaries (i.e. when the current transaction is committed or rolled back) so
-that with a normally isolated transaction, data will refresh itself when a new
-transaction begins.
-
-The :class:`_query.Query` object is introduced in great detail in
-:ref:`ormtutorial_toplevel`, and further documented in
-:ref:`query_api_toplevel`.
-
-.. seealso::
-
-    :ref:`ormtutorial_toplevel`
-
-    :meth:`_orm.Session.query`
-
-    :ref:`query_api_toplevel`
 
 .. _session_querying_20:
 
-Querying (2.0 style)
---------------------
+Querying
+~~~~~~~~
 
-.. versionadded:: 1.4
+The primary means of querying is to make use of the :func:`_sql.select`
+construct to create a :class:`_sql.Select` object, which is then executed to
+return a result using methods such as :meth:`_orm.Session.execute` and
+:meth:`_orm.Session.scalars`.  Results are then returned in terms of
+:class:`_result.Result` objects, including sub-variants such as
+:class:`_result.ScalarResult`.
 
-SQLAlchemy 2.0 will standardize the production of SELECT statements across both
-Core and ORM by making direct use of the :class:`_sql.Select` object within the
-ORM, removing the need for there to be a separate :class:`_orm.Query`
-object.    This mode of operation is available in SQLAlchemy 1.4 right now to
-support applications that will be migrating to 2.0.   The :class:`_orm.Session`
-must be instantiated with the
-:paramref:`_orm.Session.future` flag set to ``True``; from that point on the
-:meth:`_orm.Session.execute` method will return ORM results via the
-standard :class:`_engine.Result` object when invoking :func:`_sql.select`
-statements that use ORM entities::
+A complete guide to SQLAlchemy ORM querying can be found at
+:ref:`queryguide_toplevel`.   Some brief examples follow::
 
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
-    session = Session(engine, future=True)
+    with Session(engine) as session:
+        # query for ``User`` objects
+        statement = select(User).filter_by(name="ed")
 
-    # query from a class
-    statement = select(User).filter_by(name="ed")
+        # list of ``User`` objects
+        user_obj = session.scalars(statement).all()
 
-    # list of first element of each row (i.e. User objects)
-    result = session.execute(statement).scalars().all()
 
-    # query with multiple classes
-    statement = select(User, Address).join('addresses').filter_by(name='ed')
+        # query for individual columns
+        statement = select(User.name, User.fullname)
 
-    # list of tuples
-    result = session.execute(statement).all()
+        # list of Row objects
+        rows = session.execute(statement).all()
 
-    # query with ORM columns
-    statement = select(User.name, User.fullname)
+.. versionchanged:: 2.0
 
-    # list of tuples
-    result = session.execute(statement).all()
-
-It's important to note that while methods of :class:`_query.Query` such as
-:meth:`_query.Query.all` and :meth:`_query.Query.one` will return instances
-of ORM mapped objects directly in the case that only a single complete
-entity were requested, the :class:`_engine.Result` object returned
-by :meth:`_orm.Session.execute` will always deliver rows (named tuples)
-by default; this is so that results against single or multiple ORM objects,
-columns, tables, etc. may all be handled identically.
-
-If only one ORM entity was queried, the rows returned will have exactly one
-column, consisting of the ORM-mapped object instance for each row.  To convert
-these rows into object instances without the tuples, the
-:meth:`_engine.Result.scalars` method is used to first apply a "scalars" filter
-to the result; then the :class:`_engine.Result` can be iterated or deliver rows
-via standard methods such as :meth:`_engine.Result.all`,
-:meth:`_engine.Result.first`, etc.
+    "2.0" style querying is now standard.  See
+    :ref:`migration_20_query_usage` for migration notes from the 1.x series.
 
 .. seealso::
 
-    :ref:`migration_20_toplevel`
+   :ref:`queryguide_toplevel`
 
 
 
 Adding New or Existing Items
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :meth:`~.Session.add` is used to place instances in the
 session. For :term:`transient` (i.e. brand new) instances, this will have the effect
@@ -345,7 +285,7 @@ the ``save-update`` cascade. For more details see the section
 
 
 Deleting
---------
+~~~~~~~~
 
 The :meth:`~.Session.delete` method places an instance
 into the Session's list of objects to be marked as deleted::
@@ -425,7 +365,7 @@ the rules are:
 .. _session_flushing:
 
 Flushing
---------
+~~~~~~~~
 
 When the :class:`~sqlalchemy.orm.session.Session` is used with its default
 configuration, the flush step is nearly always done transparently.
@@ -506,7 +446,7 @@ behavior.
 .. _session_get:
 
 Get by Primary Key
-------------------
+~~~~~~~~~~~~~~~~~~
 
 As the :class:`_orm.Session` makes use of an :term:`identity map` which refers
 to current in-memory objects by primary key, the :meth:`_orm.Session.get`
@@ -529,7 +469,7 @@ See :meth:`_orm.Session.get` for the complete parameter list.
 .. _session_expiring:
 
 Expiring / Refreshing
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 An important consideration that will often come up when using the
 :class:`_orm.Session` is that of dealing with the state that is present on
@@ -604,180 +544,24 @@ Further discussion on the refresh / expire concept can be found at
 
 
 
-.. _orm_expression_update_delete:
-
 UPDATE and DELETE with arbitrary WHERE clause
----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The sections above on :meth:`_orm.Session.flush` and :meth:`_orm.Session.delete`
-detail how rows can be inserted, updated and deleted in the database,
-based on primary key identities that are referred towards by mapped Python
-objects in the application.   The :class:`_orm.Session` can also emit UPDATE
-and DELETE statements with arbitrary WHERE clauses as well, and at the same
-time refresh locally present objects which match those rows.
+SQLAlchemy 2.0 includes enhanced capabilities for emitting several varieties
+of ORM-enabled INSERT, UPDATE and DELETE statements.  See the
+document at :doc:`queryguide/dml` for documentation.
 
-To emit an ORM-enabled UPDATE, :meth:`_orm.Session.execute` is used with the
-Core :class:`_sql.Update` construct::
+.. seealso::
 
-    from sqlalchemy import update
+    :doc:`queryguide/dml`
 
-    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
-        execution_options(synchronize_session="fetch")
-
-    result = session.execute(stmt)
-
-Above, an UPDATE will be emitted against all rows that match the name
-"squidward" and be updated to the name "spongebob".  The
-special execution option ``synchronize_session`` referring to
-"fetch" indicates the list of affected primary keys should be fetched either
-via a separate SELECT statement or via RETURNING if the backend database supports it;
-objects locally present in memory will be updated in memory based on these
-primary key identities.
-
-The result object returned is an instance of :class:`_result.CursorResult`; to
-retrieve the number of rows matched by any UPDATE or DELETE statement, use
-:attr:`_result.CursorResult.rowcount`::
-
-    num_rows_matched = result.rowcount
-
-DELETEs work in the same way as UPDATE except there is no "values / set"
-clause established.  When synchronize_session is used, matching objects
-within the :class:`_orm.Session` will be marked as deleted and expunged.
-
-ORM-enabled delete::
-
-    from sqlalchemy import delete
-
-    stmt = delete(User).where(User.name == "squidward").execution_options(synchronize_session="fetch")
-
-    session.execute(stmt)
-
-.. _orm_expression_update_delete_sync:
-
-Selecting a Synchronization Strategy
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-With both the 1.x and 2.0 form of ORM-enabled updates and deletes, the following
-values for ``synchronize_session`` are supported:
-
-* ``'auto'`` - this is the default.   The ``'fetch'`` strategy will be used on
-  backends that support RETURNING, which includes all SQLAlchemy-native drivers
-  except for MySQL.   If RETURNING is not supported, the ``'evaluate'``
-  strategy will be used instead.
-
-  .. versionchanged:: 2.0  Added the ``'auto'`` synchronization strategy.  As
-     most backends now support RETURNING, selecting ``'fetch'`` for these
-     backends specifically is the more efficient and error-free default for
-     these backends. The MySQL backend as well as third party backends without
-     RETURNING support will continue to use ``'evaluate'`` by default.
-
-* ``False`` - don't synchronize the session. This option is the most
-  efficient and is reliable once the session is expired, which
-  typically occurs after a commit(), or explicitly using
-  expire_all(). Before the expiration, objects that were updated or deleted
-  in the database may still
-  remain in the session with stale values, which
-  can lead to confusing results.
-
-* ``'fetch'`` - Retrieves the primary key identity of affected rows by either
-  performing a SELECT before the UPDATE or DELETE, or by using RETURNING if the
-  database supports it, so that in-memory objects which are affected by the
-  operation can be refreshed with new values (updates) or expunged from the
-  :class:`_orm.Session` (deletes). Note that this synchronization strategy is
-  not available if the given :func:`_dml.update` or :func:`_dml.delete`
-  construct specifies columns for :meth:`_dml.UpdateBase.returning` explicitly.
-
-* ``'evaluate'`` - Evaluate the WHERE criteria given in the UPDATE or DELETE
-  statement in Python, to locate matching objects within the
-  :class:`_orm.Session`.   This approach does not add any round trips and in
-  the absence of RETURNING support is more efficient.  For UPDATE or DELETE
-  statements with complex criteria, the ``'evaluate'`` strategy may not be
-  able to evaluate the expression in Python and will raise an error.  If
-  this occurs, use the ``'fetch'`` strategy for the operation instead.
-
-  .. tip::
-
-    If a SQL expression makes use of custom operators using the
-    :meth:`_sql.Operators.op` or :class:`_sql.custom_op` feature, the
-    :paramref:`_sql.Operators.op.python_impl` parameter may be used to indicate
-    a Python function that will be used by the ``"evaluate"`` synchronization
-    strategy.
-
-    .. versionadded:: 2.0
-
-  .. warning::
-
-    The ``"evaluate"`` strategy should be avoided if an UPDATE operation is
-    to run on a :class:`_orm.Session` that has many objects which have
-    been expired, because it will necessarily need to refresh those objects
-    as they are located which will emit a SELECT for each one.   The
-    :class:`_orm.Session` may have expired objects if it is being used
-    across multiple :meth:`_orm.Session.commit` calls and the
-    :paramref:`_orm.Session.expire_on_commit` flag is at its default
-    value of ``True``.
-
-
-.. warning:: **Additional Caveats for ORM-enabled updates and deletes**
-
-    The ORM-enabled UPDATE and DELETE features bypass ORM unit-of-work
-    automation in favor being able to emit a single UPDATE or DELETE statement
-    that matches multiple rows at once without complexity.
-
-    * The operations do not offer in-Python cascading of
-      relationships - it is assumed that ON UPDATE CASCADE and/or
-      ON DELETE CASCADE is
-      configured for any foreign key references which require
-      it, otherwise the database may emit an integrity
-      violation if foreign key references are being enforced.
-
-    * After the UPDATE or DELETE, dependent objects in the
-      :class:`.Session` which were impacted by an ON UPDATE CASCADE or ON
-      DELETE CASCADE on related tables may not contain the current state;
-      this issue is resolved once the :class:`.Session` is expired, which
-      normally occurs upon :meth:`.Session.commit` or can be forced by
-      using
-      :meth:`.Session.expire_all`.
-
-    * The ``'fetch'`` strategy, when run on a database that does not support
-      RETURNING such as MySQL or SQLite, results in an additional SELECT
-      statement emitted which may reduce performance.   Use SQL echoing when
-      developing to evaluate the impact of SQL emitted.
-
-    * ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
-      automatically.   If the operation is against multiple tables, typically
-      individual UPDATE / DELETE statements against the individual tables
-      should be used.   Some databases support multiple table UPDATEs.
-      Similar guidelines as those detailed at :ref:`tutorial_update_from`
-      may be applied.
-
-    * The WHERE criteria needed in order to limit the polymorphic identity to
-      specific subclasses for single-table-inheritance mappings **is included
-      automatically** .   This only applies to a subclass mapper that has no
-      table of its own.
-
-      .. versionchanged:: 1.4  ORM updates/deletes now automatically
-         accommodate for the WHERE criteria added for single-inheritance
-         mappings.
-
-    * The :func:`_orm.with_loader_criteria` option **is supported** by ORM
-      update and delete operations; criteria here will be added to that of the
-      UPDATE or DELETE statement being emitted, as well as taken into account
-      during the "synchronize" process.
-
-    * In order to intercept ORM-enabled UPDATE and DELETE operations with event
-      handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
-
-
-Selecting ORM Objects Inline with UPDATE.. RETURNING or INSERT..RETURNING
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-This section has moved.  See :ref:`orm_dml_returning_objects`.
+    :ref:`orm_queryguide_update_delete_where`
 
 
 .. _session_autobegin:
 
 Auto Begin
-----------
+~~~~~~~~~~
 
 .. versionadded:: 1.4
 
@@ -819,7 +603,7 @@ manager as described at :ref:`session_begin_commit_rollback_block`.
 .. _session_committing:
 
 Committing
-----------
+~~~~~~~~~~
 
 :meth:`~.Session.commit` is used to commit the current
 transaction.   At its core this indicates that it emits ``COMMIT`` on
@@ -857,7 +641,7 @@ set to ``False`` when this behavior is undesirable.
 .. _session_rollback:
 
 Rolling Back
-------------
+~~~~~~~~~~~~
 
 :meth:`~.Session.rollback` rolls back the current transaction, if any.
 When there is no transaction in place, the method passes silently.
@@ -912,7 +696,7 @@ further discussion.
 .. _session_closing:
 
 Closing
--------
+~~~~~~~
 
 The :meth:`~.Session.close` method issues a :meth:`~.Session.expunge_all` which
 removes all ORM-mapped objects from the session, and :term:`releases` any
@@ -946,14 +730,14 @@ that :meth:`_orm.Session.close` is called::
 .. _session_faq:
 
 Session Frequently Asked Questions
-==================================
+----------------------------------
 
 By this point, many users already have questions about sessions.
 This section presents a mini-FAQ (note that we have also a :doc:`real FAQ </faq/index>`)
 of the most basic issues one is presented with when using a :class:`.Session`.
 
 When do I make a :class:`.sessionmaker`?
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Just one time, somewhere in your application's global scope. It should be
 looked upon as part of your application's configuration. If your
@@ -979,7 +763,7 @@ conversations begin.
 .. _session_faq_whentocreate:
 
 When do I construct a :class:`.Session`, when do I commit it, and when do I close it?
--------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. topic:: tl;dr;
 
@@ -1098,7 +882,7 @@ transaction automatically::
    manager without the use of external helper functions.
 
 Is the Session a cache?
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Yeee...no. It's somewhat used as a cache, in that it implements the
 :term:`identity map` pattern, and stores objects keyed to their primary key.
@@ -1121,7 +905,7 @@ a pattern for implementing second level caching using `dogpile.cache <https://do
 via the :ref:`examples_caching` example.
 
 How can I get the :class:`~sqlalchemy.orm.session.Session` for a certain object?
-------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use the :meth:`~.Session.object_session` classmethod
 available on :class:`~sqlalchemy.orm.session.Session`::
@@ -1136,7 +920,7 @@ The newer :ref:`core_inspection_toplevel` system can also be used::
 .. _session_faq_threadsafe:
 
 Is the session thread-safe?
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`.Session` is very much intended to be used in a
 **non-concurrent** fashion, which usually means in only one thread at a

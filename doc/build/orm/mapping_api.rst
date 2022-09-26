@@ -9,6 +9,8 @@ Class Mapping API
 
 .. autofunction:: add_mapped_attribute
 
+.. autofunction:: column_property
+
 .. autofunction:: declarative_base
 
 .. autofunction:: declarative_mixin

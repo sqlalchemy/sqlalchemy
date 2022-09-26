@@ -150,26 +150,61 @@ Glossary
         common constructs are that of the :class:`_schema.Table` and that of the
         :class:`_expression.Select` statement.
 
+    ORM-annotated
     annotations
-        Annotations are a concept used internally by SQLAlchemy in order to store
-        additional information along with :class:`_expression.ClauseElement` objects.  A Python
-        dictionary is associated with a copy of the object, which contains key/value
-        pairs significant to various internal systems, mostly within the ORM::
 
-            some_column = Column('some_column', Integer)
-            some_column_annotated = some_column._annotate({"entity": User})
+        The phrase "ORM-annotated" refers to an internal aspect of SQLAlchemy,
+        where a Core object such as a :class:`_schema.Column` object can carry along
+        additional runtime information that marks it as belonging to a particular
+        ORM mapping.   The term should not be confused with the common phrase
+        "type annotation", which refers to Python source code "type hints" used
+        for static typing as introduced at :pep:`484`.
 
-        The annotation system differs from the public dictionary :attr:`_schema.Column.info`
-        in that the above annotation operation creates a *copy* of the new :class:`_schema.Column`,
-        rather than considering all annotation values to be part of a single
-        unit.  The ORM creates copies of expression objects in order to
-        apply annotations that are specific to their context, such as to differentiate
-        columns that should render themselves as relative to a joined-inheritance
-        entity versus those which should render relative to their immediate parent
-        table alone, as well as to differentiate columns within the "join condition"
-        of a relationship where the column in some cases needs to be expressed
-        in terms of one particular table alias or another, based on its position
-        within the join expression.
+        Most of SQLAlchemy's documented code examples are formatted with a
+        small note regarding "Annotated Example" or "Non-annotated Example".
+        This refers to whether or not the example is :pep:`484` annotated,
+        and is not related to the SQLAlchemy concept of "ORM-annotated".
+
+        When the phrase "ORM-annotated" appears in documentation, it is
+        referring to Core SQL expression objects such as :class:`.Table`,
+        :class:`.Column`, and :class:`.Select` objects, which originate from,
+        or refer to sub-elements that originate from, one or more ORM mappings,
+        and therefore will have ORM-specific interpretations and/or behaviors
+        when passed to ORM methods such as :meth:`_orm.Session.execute`.
+        For example, when we construct a :class:`.Select` object from an ORM
+        mapping, such as the ``User`` class illustrated in the
+        :ref:`ORM Tutorial <tutorial_declaring_mapped_classes>`::
+
+            >>> stmt = select(User)
+
+        The internal state of the above :class:`.Select` refers to the
+        :class:`.Table` to which ``User`` is mapped.   The ``User`` class
+        itself is not immediately referenced.  This is how the :class:`.Select`
+        construct remains compatible with Core-level processes (note that
+        the ``._raw_columns`` member of :class:`.Select` is private and
+        should not be accessed by end-user code)::
+
+            >>> stmt._raw_columns
+            [Table('user_account', MetaData(), Column('id', Integer(), ...)]
+
+        However, when our :class:`.Select` is passed along to an ORM
+        :class:`.Session`, the ORM entities that are indirectly associated
+        with the object are used to interpret this :class:`.Select` in an
+        ORM context.  The actual "ORM annotations" can be seen in another
+        private variable ``._annotations``::
+
+          >>> stmt._raw_columns[0]._annotations
+          immutabledict({
+            'entity_namespace': <Mapper at 0x7f4dd8098c10; User>,
+            'parententity': <Mapper at 0x7f4dd8098c10; User>,
+            'parentmapper': <Mapper at 0x7f4dd8098c10; User>
+          })
+
+        Therefore we refer to ``stmt`` as an **ORM-annotated select()** object.
+        It's a :class:`.Select` statement that contains additional information
+        that will cause it to be interpreted in an ORM-specific way when passed
+        to methods like :meth:`_orm.Session.execute`.
+
 
     plugin
     plugin-enabled
@@ -206,38 +241,41 @@ Glossary
         behavioral differences in comparison to the ``cursor.execute()``
         method which is used for single-statement invocation.   The "executemany"
         method executes the given SQL statement multiple times, once for
-        each set of parameters passed.  As such, DBAPIs generally cannot
-        return result sets when ``cursor.executemany()`` is used.  An additional
-        limitation of ``cursor.executemany()`` is that database drivers which
-        support the ``cursor.lastrowid`` attribute, returning the most recently
-        inserted integer primary key value, also don't support this attribute
-        when using ``cursor.executemany()``.
+        each set of parameters passed.  The general rationale for using
+        executemany is that of improved performance, wherein the DBAPI may
+        use techniques such as preparing the statement just once beforehand,
+        or otherwise optimizing for invoking the same statement many times.
 
-        SQLAlchemy makes use of ``cursor.executemany()`` when the
-        :meth:`_engine.Connection.execute` method is used, passing a list of
-        parameter dictionaries, instead of just a single parameter dictionary.
-        When using this form, the returned :class:`_result.Result` object will
-        not return any rows, even if the given SQL statement uses a form such
-        as RETURNING.
+        SQLAlchemy typically makes use of the ``cursor.executemany()`` method
+        automatically when the :meth:`_engine.Connection.execute` method is
+        used where a list of parameter dictionaries were passed; this indicates
+        to SQLAlchemy Core that the SQL statement and processed parameter sets
+        should be passed to ``cursor.executemany()``, where the statement will
+        be invoked by the driver for each parameter dictionary individually.
 
-        Since "executemany" makes it generally impossible to receive results
-        back that indicate the newly generated values of server-generated
-        identifiers, the SQLAlchemy ORM can use "executemany" style
-        statement invocations only in certain circumstances when INSERTing
-        rows; while "executemany" is generally
-        associated with faster performance for running many INSERT statements
-        at once, the SQLAlchemy ORM can only make use of it in those
-        circumstances where it does not need to fetch newly generated primary
-        key values or server side default values.   Newer versions of SQLAlchemy
-        make use of an alternate form of INSERT which is to pass a single
-        VALUES clause with many parameter sets at once, which does support
-        RETURNING.  This form is available
-        in SQLAlchemy Core using the :meth:`.Insert.values` method.
+        A key limitation of the ``cursor.executemany()`` method as used with
+        all known DBAPIs is that the ``cursor`` is not configured to return
+        rows when this method is used.  For **most** backends (a notable
+        exception being the cx_Oracle, / OracleDB DBAPIs), this means that
+        statements like ``INSERT..RETURNING`` typically cannot be used with
+        ``cursor.executemany()`` directly, since DBAPIs typically do not
+        aggregate the single row from each INSERT execution together.
+
+        To overcome this limitation, SQLAlchemy as of the 2.0 series implements
+        an alternative form of "executemany" which is referred towards as
+        :ref:`engine_insertmanyvalues`. This feature makes use of
+        ``cursor.execute()`` to invoke an INSERT statement that will proceed
+        with multiple parameter sets in one round trip, thus producing the same
+        effect as using ``cursor.executemany()`` while still supporting
+        RETURNING.
 
         .. seealso::
 
             :ref:`tutorial_multiple_parameters` - tutorial introduction to
             "executemany"
+
+            :ref:`engine_insertmanyvalues` - SQLAlchemy feature which allows
+            RETURNING to be used with "executemany"
 
     marshalling
     data marshalling
@@ -422,8 +460,7 @@ Glossary
     discriminator
         A result-set column which is used during :term:`polymorphic` loading
         to determine what kind of mapped class should be applied to a particular
-        incoming result row.   In SQLAlchemy, the classes are always part
-        of a hierarchy mapping using inheritance mapping.
+        incoming result row.
 
         .. seealso::
 
@@ -486,7 +523,21 @@ Glossary
         the complexity and time spent within object fetches can
         sometimes be reduced, in that
         attributes for related tables don't need to be addressed
-        immediately.    Lazy loading is the opposite of :term:`eager loading`.
+        immediately.
+
+        Lazy loading is the opposite of :term:`eager loading`.
+
+        Within SQLAlchemy, lazy loading is a key feature of the ORM, and
+        applies to attributes which are :term:`mapped` on a user-defined class.
+        When attributes that refer to database columns or related objects
+        are accessed, for which no loaded value is present, the ORM makes
+        use of the :class:`_orm.Session` for which the current object is
+        associated with in the :term:`persistent` state, and emits a SELECT
+        statement on the current transaction, starting a new transaction if
+        one was not in progress.   If the object is in the :term:`detached`
+        state and not associated with any :class:`_orm.Session`, this is
+        considered to be an error state and an
+        :ref:`informative exception <error_bhk3>` is raised.
 
         .. seealso::
 
@@ -494,23 +545,36 @@ Glossary
 
             :term:`N plus one problem`
 
-            :doc:`orm/loading_relationships`
+            :ref:`loading_columns` - includes information on lazy loading of
+            ORM mapped columns
+
+            :doc:`orm/queryguide/relationships` - includes information on lazy
+            loading of ORM related objects
+
+            :ref:`asyncio_orm_avoid_lazyloads` - tips on avoiding lazy loading
+            when using the :ref:`asyncio_toplevel` extension
 
     eager load
     eager loads
     eager loaded
     eager loading
+    eagerly load
 
-        In object relational mapping, an "eager load" refers to
-        an attribute that is populated with its database-side value
-        at the same time as when the object itself is loaded from the database.
-        In SQLAlchemy, "eager loading" usually refers to related collections
-        of objects that are mapped using the :func:`_orm.relationship` construct.
+        In object relational mapping, an "eager load" refers to an attribute
+        that is populated with its database-side value at the same time as when
+        the object itself is loaded from the database. In SQLAlchemy, the term
+        "eager loading" usually refers to related collections and instances of
+        objects that are linked between mappings using the
+        :func:`_orm.relationship` construct, but can also refer to additional
+        column attributes being loaded, often from other tables related to a
+        particular table being queried, such as when using
+        :ref:`inheritance <inheritance_toplevel>` mappings.
+
         Eager loading is the opposite of :term:`lazy loading`.
 
         .. seealso::
 
-            :doc:`orm/loading_relationships`
+            :doc:`orm/queryguide/relationships`
 
 
     mapping
@@ -547,7 +611,7 @@ Glossary
 
             :ref:`tutorial_orm_loader_strategies`
 
-            :doc:`orm/loading_relationships`
+            :doc:`orm/queryguide/relationships`
 
     polymorphic
     polymorphically

@@ -334,8 +334,8 @@ Other guidelines include:
 
 * Appropriate loader options should be employed for :func:`_orm.deferred`
   columns, if used at all, in addition to that of :func:`_orm.relationship`
-  constructs as noted above.  See :ref:`deferred` for background on
-  deferred column loading.
+  constructs as noted above.  See :ref:`orm_queryguide_column_deferral` for
+  background on deferred column loading.
 
 .. _dynamic_asyncio:
 

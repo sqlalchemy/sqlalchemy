@@ -1937,6 +1937,7 @@ class SQLiteDialect(default.DefaultDialect):
     insert_null_pk_still_autoincrements = True
     insert_returning = True
     update_returning = True
+    update_returning_multifrom = True
     delete_returning = True
     update_returning_multifrom = True
 
