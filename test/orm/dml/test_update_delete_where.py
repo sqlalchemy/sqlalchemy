@@ -127,6 +127,49 @@ class UpdateDeleteTest(fixtures.MappedTest):
             },
         )
 
+    @testing.combinations("default", "session_disable", "opt_disable")
+    def test_autoflush(self, autoflush_option):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        u1 = User(id=5, name="x1")
+        s.add(u1)
+
+        assert_stmt = (
+            select(User.name)
+            .where(User.name.startswith("x"))
+            .order_by(User.id)
+        )
+        if autoflush_option == "default":
+            s.execute(update(User).values(age=5))
+            assert inspect(u1).persistent
+            eq_(
+                s.scalars(assert_stmt).all(),
+                ["x1"],
+            )
+        elif autoflush_option == "session_disable":
+            with s.no_autoflush:
+                s.execute(update(User).values(age=5))
+                assert inspect(u1).pending
+                eq_(
+                    s.scalars(assert_stmt).all(),
+                    [],
+                )
+        elif autoflush_option == "opt_disable":
+            s.execute(
+                update(User).values(age=5),
+                execution_options={"autoflush": False},
+            )
+            assert inspect(u1).pending
+            with s.no_autoflush:
+                eq_(
+                    s.scalars(assert_stmt).all(),
+                    [],
+                )
+        else:
+            assert False
+
     def test_update_dont_use_col_key(self):
         User = self.classes.User
 

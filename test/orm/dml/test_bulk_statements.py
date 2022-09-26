@@ -104,6 +104,35 @@ class BulkDMLReturningInhTest:
         s.execute(insert(A).values(type="a", data="d", xcol=10))
         eq_(s.scalars(select(A.x)).all(), [10])
 
+    @testing.combinations("default", "session_disable", "opt_disable")
+    def test_autoflush(self, autoflush_option):
+        A = self.classes.A
+
+        s = fixture_session()
+
+        a1 = A(data="x1")
+        s.add(a1)
+
+        if autoflush_option == "default":
+            s.execute(insert(A).values(type="a", data="x2"))
+            assert inspect(a1).persistent
+            eq_(s.scalars(select(A.data).order_by(A.id)).all(), ["x1", "x2"])
+        elif autoflush_option == "session_disable":
+            with s.no_autoflush:
+                s.execute(insert(A).values(type="a", data="x2"))
+                assert inspect(a1).pending
+                eq_(s.scalars(select(A.data).order_by(A.id)).all(), ["x2"])
+        elif autoflush_option == "opt_disable":
+            s.execute(
+                insert(A).values(type="a", data="x2"),
+                execution_options={"autoflush": False},
+            )
+            assert inspect(a1).pending
+            with s.no_autoflush:
+                eq_(s.scalars(select(A.data).order_by(A.id)).all(), ["x2"])
+        else:
+            assert False
+
     @testing.combinations(True, False, argnames="use_returning")
     def test_heterogeneous_keys(self, use_returning):
         A, B = self.classes("A", "B")

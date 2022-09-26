@@ -333,6 +333,7 @@ class CompositeProperty(
         registry: _RegistryType,
         cls: Type[Any],
         key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,

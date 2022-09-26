@@ -94,11 +94,11 @@ if TYPE_CHECKING:
     from ._typing import _O
     from .collections import _AdaptedCollectionProtocol
     from .collections import CollectionAdapter
-    from .dynamic import DynamicAttributeImpl
     from .interfaces import MapperProperty
     from .relationships import RelationshipProperty
     from .state import InstanceState
     from .util import AliasedInsp
+    from .writeonly import WriteOnlyAttributeImpl
     from ..event.base import _Dispatch
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _DMLColumnArgument
@@ -2581,9 +2581,9 @@ def register_attribute_impl(
     impl: AttributeImpl
 
     if impl_class:
-        # TODO: this appears to be the DynamicAttributeImpl constructor
-        # which is hardcoded
-        impl = cast("Type[DynamicAttributeImpl]", impl_class)(
+        # TODO: this appears to be the WriteOnlyAttributeImpl /
+        # DynamicAttributeImpl constructor which is hardcoded
+        impl = cast("Type[WriteOnlyAttributeImpl]", impl_class)(
             class_, key, typecallable, dispatch, **kw
         )
     elif uselist:
@@ -2672,7 +2672,9 @@ def init_state_collection(
         attr._dispose_previous_collection(state, old, old_collection, False)
 
     user_data = attr._default_value(state, dict_)
-    adapter: CollectionAdapter = attr.get_collection(state, dict_, user_data)
+    adapter: CollectionAdapter = attr.get_collection(
+        state, dict_, user_data, passive=PassiveFlag.PASSIVE_NO_FETCH
+    )
     adapter._reset_empty()
 
     return adapter

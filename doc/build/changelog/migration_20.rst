@@ -1992,21 +1992,45 @@ and should be preferred.
 
 .. _migration_20_dynamic_loaders:
 
-Making use of "dynamic" relationship loads without using Query
+"Dynamic" relationship loaders superseded by "Write Only"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
 The ``lazy="dynamic"`` relationship loader strategy, discussed at
 :ref:`dynamic_relationship`, makes use of the :class:`_query.Query` object
-which is legacy in 2.0.
+which is legacy in 2.0. The "dynamic" relationship is not directly compatible
+with asyncio without workarounds, and additionally it does not fulfill its
+original purpose of preventing iteration of large collections as it has several
+behaviors where this iteration occurs implicitly.
 
+A new loader strategy known as ``lazy="write_only"`` is introduced, which
+through the :class:`_orm.WriteOnlyCollection` collection class
+provides a very strict "no implicit iteration" API and additionally integrates
+with 2.0 style statement execution, supporting asyncio as well as
+direct integrations with the new :ref:`ORM-enabled Bulk DML <change_8360>`
+featureset.
+
+At the same time, ``lazy="dynamic"`` remains **fully supported** in version
+2.0; applications can delay migrating this particular pattern until they
+are fully on the 2.0 series.
 
 **Migration to 2.0**
 
-This pattern is still under adjustment for SQLAlchemy 2.0, and it is expected
-that new APIs will be introduced.    In the interim, there are two ways
-to achieve 2.0 style querying that's in terms of a specific relationship:
+The new "write only" feature is only available in SQLAlchemy 2.0, and is
+not part of 1.4.  At the same time, the ``lazy="dynamic"`` loader strategy
+remains fully supported in version 2.0, and even includes new pep-484
+and annotated mapping support.
+
+Therefore the best strategy for migrating from "dynamic" is to **wait until
+the application is fully running on 2.0**, then migrate directly from
+:class:`.AppenderQuery`, which is the collection type used by the "dynamic"
+strategy, to :class:`.WriteOnlyCollection`, which is the collection type
+used by hte "write_only" strategy.
+
+Some techniques are available to use ``lazy="dynamic"`` under 1.4 in a more
+"2.0" style however. There are two ways to achieve 2.0 style querying that's in
+terms of a specific relationship:
 
 * Make use of the :attr:`_orm.Query.statement` attribute on an existing
   ``lazy="dynamic"`` relationship.   We can use methods like
@@ -2043,10 +2067,25 @@ to achieve 2.0 style querying that's in terms of a specific relationship:
 The original idea was that the :func:`_orm.with_parent` function should be
 sufficient, however continuing to make use of special attributes on the
 relationship itself remains appealing, and there's no reason a 2.0 style
-construct can't be made to work here as well.  There will likely be a new
-loader strategy name that sets up an API similar to the example above that
-uses the ``.statement`` attribute, such as
-``jack.posts.select().where(Post.headline == 'headline')``.
+construct can't be made to work here as well.
+
+The new "write_only" loader strategy provides a new kind of collection which
+does not support implicit iteration or item access.  Instead, reading the
+contents of the collection is performed by calling upon its ``.select()``
+method to help construct an appropriate SELECT statement.  The collection
+also includes methods ``.insert()``, ``.update()``, ``.delete()``
+which may be used to emit bulk DML statements for the items in the collection.
+In a manner similar to that of the "dynamic" feature, there are also methods
+``.add()``, ``.add_all()`` and ``.remove()`` which queue individual members
+for addition or removal using the unit of work process.  An introduction to the
+new feature is as :ref:`change_7123`.
+
+.. seealso::
+
+    :ref:`change_7123`
+
+    :ref:`write_only_relationship`
+
 
 .. _migration_20_session_autocommit:
 

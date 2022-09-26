@@ -171,6 +171,11 @@ class DocTest(fixtures.TestBase):
             "orm/queryguide/dml.rst",
         )
 
+    def test_orm_large_collections(self):
+        self._run_doctest(
+            "orm/large_collections.rst",
+        )
+
     def test_orm_queryguide_columns(self):
         self._run_doctest(
             "orm/queryguide/columns.rst",

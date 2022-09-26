@@ -986,6 +986,8 @@ get all drivers to this state:
     :ref:`engine_insertmanyvalues` - Documentation and background on the
     new feature as well as how to configure it
 
+.. _change_8360:
+
 ORM-enabled Insert, Upsert, Update and Delete Statements, with ORM RETURNING
 -----------------------------------------------------------------------------
 
@@ -1151,6 +1153,143 @@ Listed tickets for new ORM DML with RETURNING features:
   automatically apply select().from_statement equiv - :ticket:`7865`
 * given ORM insert, try to carry the bulk methods along, re: inheritance -
   :ticket:`8360`
+
+.. _change_7123:
+
+New "Write Only" relationship strategy supersedes "dynamic"
+-----------------------------------------------------------
+
+The ``lazy="dynamic"`` loader strategy becomes legacy, in that it is hardcoded
+to make use of legacy :class:`_orm.Query`. This loader strategy is both not
+compatible with asyncio, and additionally has many behaviors that implicitly
+iterate its contents, which defeat the original purpose of the "dynamic"
+relationship as being for very large collections that should not be implicitly
+fully loaded into memory at any time.
+
+The "dynamic" strategy is now superseded by a new strategy
+``lazy="write_only"``.  Configuration of "write only" may be achieved using
+the :paramref:`_orm.relationship.lazy` parameter of :func:`_orm.relationship`,
+or when using :ref:`type annotated mappings <whatsnew_20_orm_declarative_typing>`,
+indicating the :class:`.WriteOnlyMapped` annotation as the mapping style::
+
+    from sqlalchemy.orm import WriteOnlyMapped
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Account(Base):
+        __tablename__ = "account"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        identifier: Mapped[str]
+        account_transactions: WriteOnlyMapped["AccountTransaction"] = relationship(
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            order_by="AccountTransaction.timestamp",
+        )
+
+
+    class AccountTransaction(Base):
+        __tablename__ = "account_transaction"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        account_id: Mapped[int] = mapped_column(
+            ForeignKey("account.id", ondelete="cascade")
+        )
+        description: Mapped[str]
+        amount: Mapped[Decimal]
+        timestamp: Mapped[datetime] = mapped_column(default=func.now())
+
+The write-only-mapped collection resembles ``lazy="dynamic"`` in that
+the collection may be assigned up front, and also has methods such as
+:meth:`_orm.WriteOnlyCollection.add` and :meth:`_orm.WriteOnlyCollection.remove`
+to modify the collection on an individual item basis::
+
+    new_account = Account(
+        identifier="account_01",
+        account_transactions=[
+            AccountTransaction(description="initial deposit", amount=Decimal("500.00")),
+            AccountTransaction(description="transfer", amount=Decimal("1000.00")),
+            AccountTransaction(description="withdrawal", amount=Decimal("-29.50")),
+        ],
+    )
+
+    new_account.account_transactions.add(
+        AccountTransaction(description="transfer", amount=Decimal("2000.00"))
+    )
+
+The bigger difference is on the database loading side, where the collection
+has no ability to load objects from the database directly; instead,
+SQL construction methods such as :meth:`_orm.WriteOnlyCollection.select` are used to
+produce SQL constructs such as :class:`_sql.Select` which are then executed
+using :term:`2.0 style` to load the desired objects in an explicit way::
+
+    account_transactions = session.scalars(
+        existing_account.account_transactions.select()
+        .where(AccountTransaction.amount < 0)
+        .limit(10)
+    ).all()
+
+The :class:`_orm.WriteOnlyCollection` also integrates with the new
+:ref:`ORM bulk dml <change_8360>` features, including support for bulk INSERT
+and UPDATE/DELETE with WHERE criteria, all including RETURNING support as
+well.   See the complete documentation at :ref:`write_only_relationship`.
+
+.. seealso::
+
+    :ref:`write_only_relationship`
+
+New pep-484 / type annotated mapping support for Dynamic Relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Even though "dynamic" relationships are legacy in 2.0, as these patterns
+are expected to have a long lifespan,
+:ref:`type annotated mapping <whatsnew_20_orm_declarative_typing>` support
+is now added for "dynamic" relationships in the same way that its available
+for the new ``lazy="write_only"`` approach, using the :class:`_orm.DynamicMapped`
+annotation::
+
+    from sqlalchemy.orm import DynamicMapped
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Account(Base):
+        __tablename__ = "account"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        identifier: Mapped[str]
+        account_transactions: DynamicMapped["AccountTransaction"] = relationship(
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            order_by="AccountTransaction.timestamp",
+        )
+
+
+    class AccountTransaction(Base):
+        __tablename__ = "account_transaction"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        account_id: Mapped[int] = mapped_column(
+            ForeignKey("account.id", ondelete="cascade")
+        )
+        description: Mapped[str]
+        amount: Mapped[Decimal]
+        timestamp: Mapped[datetime] = mapped_column(default=func.now())
+
+The above mapping will provide an ``Account.account_transactions`` collection
+that is typed as returning the :class:`_orm.AppenderQuery` collection type,
+including its element type, e.g. ``AppenderQuery[AccountTransaction]``.  This
+then allows iteration and queries to yield objects which are typed
+as ``AccountTransaction``.
+
+.. seealso::
+
+    :ref:`dynamic_relationship`
+
+
+:ticket:`7123`
+
 
 .. _change_7311:
 

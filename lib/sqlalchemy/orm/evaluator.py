@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from . import exc as orm_exc
 from .base import LoaderCallableStatus
 from .base import PassiveFlag
 from .. import exc
@@ -81,7 +82,14 @@ class EvaluatorCompiler:
                     "Can't evaluate criteria against "
                     f"alternate class {parentmapper.class_}"
                 )
-            key = parentmapper._columntoproperty[clause].key
+
+            try:
+                key = parentmapper._columntoproperty[clause].key
+            except orm_exc.UnmappedColumnError as err:
+                raise UnevaluatableError(
+                    f"Cannot evaluate expression: {err}"
+                ) from err
+
             impl = parentmapper.class_manager[key].impl
 
             if impl is not None:

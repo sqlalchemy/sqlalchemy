@@ -77,6 +77,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import _ORMAdapterProto
     from .attributes import InstrumentedAttribute
+    from .base import Mapped
     from .context import _MapperEntity
     from .context import ORMCompileState
     from .context import QueryContext
@@ -157,6 +158,7 @@ class _IntrospectsAnnotations:
         registry: RegistryType,
         cls: Type[Any],
         key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,

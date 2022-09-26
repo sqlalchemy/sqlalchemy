@@ -44,6 +44,9 @@ or scalar references at once.
 that the attribute is empty and is just never loaded, or that it raises
 an error when it is accessed, in order to guard against unwanted lazy loads.
 
+Summary of Relationship Loading Styles
+--------------------------------------
+
 The primary forms of relationship loading are:
 
 * **lazy loading** - available via ``lazy='select'`` or the :func:`.lazyload`
@@ -62,28 +65,40 @@ The primary forms of relationship loading are:
   so that related rows are loaded in the same result set.   Joined eager loading
   is detailed at :ref:`joined_eager_loading`.
 
-* **subquery loading** - available via ``lazy='subquery'`` or the :func:`.subqueryload`
-  option, this form of loading emits a second SELECT statement which re-states the
-  original query embedded inside of a subquery, then JOINs that subquery to the
-  related table to be loaded to load all members of related collections / scalar
-  references at once.  Subquery eager loading is detailed at :ref:`subquery_eager_loading`.
-
 * **raise loading** - available via ``lazy='raise'``, ``lazy='raise_on_sql'``,
   or the :func:`.raiseload` option, this form of loading is triggered at the
   same time a lazy load would normally occur, except it raises an ORM exception
   in order to guard against the application making unwanted lazy loads.
   An introduction to raise loading is at :ref:`prevent_lazy_with_raiseload`.
 
-* **no loading** - available via ``lazy='noload'``, or the :func:`.noload`
-  option; this loading style turns the attribute into an empty attribute
-  (``None`` or ``[]``) that will never load or have any loading effect. This
-  seldom-used strategy behaves somewhat like an eager loader when objects are
-  loaded in that an empty attribute or collection is placed, but for expired
-  objects relies upon the default value of the attribute being returned on
-  access; the net effect is the same except for whether or not the attribute
-  name appears in the :attr:`.InstanceState.unloaded` collection.   ``noload``
-  may be useful for implementing a "write-only" attribute but this usage is not
-  currently tested or formally supported.
+* **subquery loading** - available via ``lazy='subquery'`` or the :func:`.subqueryload`
+  option, this form of loading emits a second SELECT statement which re-states the
+  original query embedded inside of a subquery, then JOINs that subquery to the
+  related table to be loaded to load all members of related collections / scalar
+  references at once.  Subquery eager loading is detailed at :ref:`subquery_eager_loading`.
+
+* **write only loading** - available via ``lazy='write_only'``, or by
+  annotating the left side of the :class:`_orm.Relationship` object using the
+  :class:`_orm.WriteOnlyMapped` annotation.   This collection-only
+  loader style produces an alternative attribute instrumentation that never
+  implicitly loads records from the database, instead only allowing
+  :meth:`.WriteOnlyCollection.add`,
+  :meth:`.WriteOnlyCollection.add_all` and :meth:`.WriteOnlyCollection.remove`
+  methods.  Querying the collection is performed by invoking a SELECT statement
+  which is constructed using the :meth:`.WriteOnlyCollection.select`
+  method.    Write only loading is discussed at :ref:`write_only_relationship`.
+
+* **dynamic loading** - available via ``lazy='dynamic'``, or by
+  annotating the left side of the :class:`_orm.Relationship` object using the
+  :class:`_orm.DynamicMapped` annotation. This is a legacy collection-only
+  loader style which produces a :class:`_orm.Query` object when the collection
+  is accessed, allowing custom SQL to be emitted against the collection's
+  contents. However, dynamic loaders will implicitly iterate the underlying
+  collection in various circumstances which makes them less useful for managing
+  truly large collections. Dynamic loaders are superseded by
+  :ref:`"write only" <write_only_relationship>` collections, which will prevent
+  the underlying collection from being implicitly loaded under any
+  circumstances. Dynamic loaders are discussed at :ref:`dynamic_relationship`.
 
 
 .. _relationship_lazy_option:

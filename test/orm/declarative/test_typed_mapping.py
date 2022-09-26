@@ -36,10 +36,12 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import DynamicMapped
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import MappedCollection
 from sqlalchemy.schema import CreateTable
@@ -1858,3 +1860,41 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "(person JOIN engineer ON person.person_id = engineer.person_id) "
             "ON company.company_id = person.company_id",
         )
+
+
+class WriteOnlyRelationshipTest(fixtures.TestBase):
+    def _assertions(self, A, B, lazy):
+        is_(A.bs.property.mapper, B.__mapper__)
+
+        is_true(A.bs.property.uselist)
+        eq_(A.bs.property.lazy, lazy)
+
+    def test_dynamic(self, decl_base):
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(
+                ForeignKey("a.id", ondelete="cascade")
+            )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: DynamicMapped[B] = relationship()
+
+        self._assertions(A, B, "dynamic")
+
+    def test_write_only(self, decl_base):
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(
+                ForeignKey("a.id", ondelete="cascade")
+            )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: WriteOnlyMapped[B] = relationship()
+
+        self._assertions(A, B, "write_only")

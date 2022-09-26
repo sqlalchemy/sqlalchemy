@@ -420,7 +420,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
     registry: _RegistryType
     clsdict_view: _ClassDict
-    collected_annotations: Dict[str, Tuple[Any, Any, bool]]
+    collected_annotations: Dict[str, Tuple[Any, Any, Any, bool]]
     collected_attributes: Dict[str, Any]
     local_table: Optional[FromClause]
     persist_selectable: Optional[FromClause]
@@ -997,6 +997,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                 (key, mapped_anno if mapped_anno else raw_anno)
                 for key, (
                     raw_anno,
+                    mapped_container,
                     mapped_anno,
                     is_dc,
                 ) in self.collected_annotations.items()
@@ -1075,7 +1076,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             is_dataclass_field = False
 
         is_dataclass_field = False
-        extracted_mapped_annotation = _extract_mapped_subtype(
+        extracted = _extract_mapped_subtype(
             raw_annotation,
             self.cls,
             name,
@@ -1086,10 +1087,13 @@ class _ClassScanMapperConfig(_MapperConfig):
             and not is_dataclass,  # self.allow_dataclass_fields,
         )
 
-        if extracted_mapped_annotation is None:
+        if extracted is None:
             # ClassVar can come out here
             return attr_value
-        elif attr_value is None:
+
+        extracted_mapped_annotation, mapped_container = extracted
+
+        if attr_value is None:
             for elem in typing_get_args(extracted_mapped_annotation):
                 # look in Annotated[...] for an ORM construct,
                 # such as Annotated[int, mapped_column(primary_key=True)]
@@ -1098,6 +1102,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         self.collected_annotations[name] = (
             raw_annotation,
+            mapped_container,
             extracted_mapped_annotation,
             is_dataclass,
         )
@@ -1252,13 +1257,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                 if isinstance(value, _IntrospectsAnnotations):
                     (
                         annotation,
+                        mapped_container,
                         extracted_mapped_annotation,
                         is_dataclass,
-                    ) = self.collected_annotations.get(k, (None, None, False))
+                    ) = self.collected_annotations.get(
+                        k, (None, None, None, False)
+                    )
                     value.declarative_scan(
                         self.registry,
                         cls,
                         k,
+                        mapped_container,
                         annotation,
                         extracted_mapped_annotation,
                         is_dataclass,

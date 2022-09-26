@@ -2257,6 +2257,7 @@ the need for separate installation.   Use the ``register()`` function as follows
 
     from sqlalchemy.dialects import registry
 
+
     registry.register("mysql.foodialect", "myapp.dialect", "MyMySQLDialect")
 
 The above will respond to ``create_engine("mysql+foodialect://")`` and load the

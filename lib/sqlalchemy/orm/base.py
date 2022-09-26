@@ -42,11 +42,13 @@ if typing.TYPE_CHECKING:
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
     from .attributes import InstrumentedAttribute
+    from .dynamic import AppenderQuery
     from .instrumentation import ClassManager
     from .interfaces import PropComparator
     from .mapper import Mapper
     from .state import InstanceState
     from .util import AliasedClass
+    from .writeonly import WriteOnlyCollection
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
     from ..sql.elements import ColumnElement
@@ -726,7 +728,23 @@ class ORMDescriptor(Generic[_T], TypingOnly):
             ...
 
 
-class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
+class _MappedAnnotationBase(Generic[_T], TypingOnly):
+    """common class for Mapped and similar ORM container classes.
+
+    these are classes that can appear on the left side of an ORM declarative
+    mapping, containing a mapped class or in some cases a collection
+    surrounding a mapped class.
+
+    """
+
+    __slots__ = ()
+
+
+class Mapped(
+    ORMDescriptor[_T],
+    roles.TypedColumnsClauseRole[_T],
+    _MappedAnnotationBase[_T],
+):
     """Represent an ORM mapped attribute on a mapped class.
 
     This class represents the complete descriptor interface for any class
@@ -811,3 +829,91 @@ class _DeclarativeMapped(Mapped[_T], _MappedAttribute[_T]):
     """
 
     __slots__ = ()
+
+
+class DynamicMapped(_MappedAnnotationBase[_T]):
+    """Represent the ORM mapped attribute type for a "dynamic" relationship.
+
+    The :class:`_orm.DynamicMapped` type annotation may be used in an
+    :ref:`Annotated Declarative Table <orm_declarative_mapped_column>` mapping
+    to indicate that the ``lazy="dynamic"`` loader strategy should be used
+    for a particular :func:`_orm.relationship`.
+
+    .. legacy::  The "dynamic" lazy loader strategy is the legacy form of what
+       is now the "write_only" strategy described in the section
+       :ref:`write_only_relationship`.
+
+    E.g.::
+
+        class User(Base):
+            __tablename__ = "user"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            addresses: DynamicMapped[Address] = relationship(
+                cascade="all,delete-orphan"
+            )
+
+    See the section :ref:`dynamic_relationship` for background.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :ref:`dynamic_relationship` - complete background
+
+        :class:`.WriteOnlyMapped` - fully 2.0 style version
+
+    """
+
+    __slots__ = ()
+
+    if TYPE_CHECKING:
+
+        def __get__(
+            self, instance: Optional[object], owner: Any
+        ) -> AppenderQuery[_T]:
+            ...
+
+        def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
+            ...
+
+
+class WriteOnlyMapped(_MappedAnnotationBase[_T]):
+    """Represent the ORM mapped attribute type for a "write only" relationship.
+
+    The :class:`_orm.WriteOnlyMapped` type annotation may be used in an
+    :ref:`Annotated Declarative Table <orm_declarative_mapped_column>` mapping
+    to indicate that the ``lazy="write_only"`` loader strategy should be used
+    for a particular :func:`_orm.relationship`.
+
+    E.g.::
+
+        class User(Base):
+            __tablename__ = "user"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            addresses: WriteOnlyMapped[Address] = relationship(
+                cascade="all,delete-orphan"
+            )
+
+    See the section :ref:`write_only_relationship` for background.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :ref:`write_only_relationship` - complete background
+
+        :class:`.DynamicMapped` - includes legacy :class:`_orm.Query` support
+
+    """
+
+    __slots__ = ()
+
+    if TYPE_CHECKING:
+
+        def __get__(
+            self, instance: Optional[object], owner: Any
+        ) -> WriteOnlyCollection[_T]:
+            ...
+
+        def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
+            ...

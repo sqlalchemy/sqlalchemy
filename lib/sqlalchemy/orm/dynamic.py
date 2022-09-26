@@ -12,83 +12,58 @@
 Dynamic collections act like Query() objects for read operations and support
 basic add/delete mutation.
 
+.. legacy:: the "dynamic" loader is a legacy feature, superseded by the
+ "write_only" loader.
+
+
 """
 
 from __future__ import annotations
 
 from typing import Any
-from typing import Optional
-from typing import overload
+from typing import Iterable
+from typing import Iterator
 from typing import TYPE_CHECKING
-from typing import Union
+from typing import TypeVar
 
 from . import attributes
 from . import exc as orm_exc
-from . import interfaces
 from . import relationships
-from . import strategies
 from . import util as orm_util
-from .base import object_mapper
-from .base import PassiveFlag
 from .query import Query
 from .session import object_session
-from .. import exc
-from .. import log
+from .writeonly import AbstractCollectionWriter
+from .writeonly import WriteOnlyAttributeImpl
+from .writeonly import WriteOnlyHistory
+from .writeonly import WriteOnlyLoader
 from .. import util
 from ..engine import result
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
-    from ._typing import _InstanceDict
-    from .attributes import _AdaptedCollectionProtocol
-    from .attributes import AttributeEventToken
-    from .attributes import CollectionAdapter
-    from .base import LoaderCallableStatus
-    from .state import InstanceState
+    from .session import Session
 
 
-@log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
-class DynaLoader(strategies.AbstractRelationshipLoader, log.Identified):
-    def init_class_attribute(self, mapper):
-        self.is_class_level = True
-        if not self.uselist:
-            raise exc.InvalidRequestError(
-                "On relationship %s, 'dynamic' loaders cannot be used with "
-                "many-to-one/one-to-one relationships and/or "
-                "uselist=False." % self.parent_property
-            )
-        elif self.parent_property.direction not in (
-            interfaces.ONETOMANY,
-            interfaces.MANYTOMANY,
-        ):
-            util.warn(
-                "On relationship %s, 'dynamic' loaders cannot be used with "
-                "many-to-one/one-to-one relationships and/or "
-                "uselist=False.  This warning will be an exception in a "
-                "future release." % self.parent_property
-            )
-
-        strategies._register_attribute(
-            self.parent_property,
-            mapper,
-            useobject=True,
-            impl_class=DynamicAttributeImpl,
-            target_mapper=self.parent_property.mapper,
-            order_by=self.parent_property.order_by,
-            query_class=self.parent_property.query_class,
-        )
+_T = TypeVar("_T", bound=Any)
 
 
-class DynamicAttributeImpl(
-    attributes.HasCollectionAdapter, attributes.AttributeImpl
-):
-    uses_objects = True
-    default_accepts_scalar_loader = False
-    supports_population = False
-    collection = False
-    dynamic = True
-    order_by = ()
+class DynamicCollectionHistory(WriteOnlyHistory):
+    def __init__(self, attr, state, passive, apply_to=None):
+        if apply_to:
+            coll = AppenderQuery(attr, state).autoflush(False)
+            self.unchanged_items = util.OrderedIdentitySet(coll)
+            self.added_items = apply_to.added_items
+            self.deleted_items = apply_to.deleted_items
+            self._reconcile_collection = True
+        else:
+            self.deleted_items = util.OrderedIdentitySet()
+            self.added_items = util.OrderedIdentitySet()
+            self.unchanged_items = util.OrderedIdentitySet()
+            self._reconcile_collection = False
+
+
+class DynamicAttributeImpl(WriteOnlyAttributeImpl):
+    _supports_dynamic_iteration = True
+    collection_history_cls = DynamicCollectionHistory
 
     def __init__(
         self,
@@ -101,8 +76,8 @@ class DynamicAttributeImpl(
         query_class=None,
         **kw,
     ):
-        super(DynamicAttributeImpl, self).__init__(
-            class_, key, typecallable, dispatch, **kw
+        attributes.AttributeImpl.__init__(
+            self, class_, key, typecallable, dispatch, **kw
         )
         self.target_mapper = target_mapper
         if order_by:
@@ -114,261 +89,27 @@ class DynamicAttributeImpl(
         else:
             self.query_class = mixin_user_query(query_class)
 
-    def get(self, state, dict_, passive=attributes.PASSIVE_OFF):
-        if not passive & attributes.SQL_OK:
-            return self._get_collection_history(
-                state, attributes.PASSIVE_NO_INITIALIZE
-            ).added_items
-        else:
-            return self.query_class(self, state)
 
-    @overload
-    def get_collection(
-        self,
-        state: InstanceState[Any],
-        dict_: _InstanceDict,
-        user_data: Literal[None] = ...,
-        passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
-    ) -> CollectionAdapter:
-        ...
-
-    @overload
-    def get_collection(
-        self,
-        state: InstanceState[Any],
-        dict_: _InstanceDict,
-        user_data: _AdaptedCollectionProtocol = ...,
-        passive: PassiveFlag = ...,
-    ) -> CollectionAdapter:
-        ...
-
-    @overload
-    def get_collection(
-        self,
-        state: InstanceState[Any],
-        dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = ...,
-        passive: PassiveFlag = ...,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        ...
-
-    def get_collection(
-        self,
-        state: InstanceState[Any],
-        dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
-        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        if not passive & attributes.SQL_OK:
-            data = self._get_collection_history(state, passive).added_items
-        else:
-            history = self._get_collection_history(state, passive)
-            data = history.added_plus_unchanged
-        return DynamicCollectionAdapter(data)
-
-    @util.memoized_property
-    def _append_token(self):
-        return attributes.AttributeEventToken(self, attributes.OP_APPEND)
-
-    @util.memoized_property
-    def _remove_token(self):
-        return attributes.AttributeEventToken(self, attributes.OP_REMOVE)
-
-    def fire_append_event(
-        self, state, dict_, value, initiator, collection_history=None
-    ):
-        if collection_history is None:
-            collection_history = self._modified_event(state, dict_)
-
-        collection_history.add_added(value)
-
-        for fn in self.dispatch.append:
-            value = fn(state, value, initiator or self._append_token)
-
-        if self.trackparent and value is not None:
-            self.sethasparent(attributes.instance_state(value), state, True)
-
-    def fire_remove_event(
-        self, state, dict_, value, initiator, collection_history=None
-    ):
-        if collection_history is None:
-            collection_history = self._modified_event(state, dict_)
-
-        collection_history.add_removed(value)
-
-        if self.trackparent and value is not None:
-            self.sethasparent(attributes.instance_state(value), state, False)
-
-        for fn in self.dispatch.remove:
-            fn(state, value, initiator or self._remove_token)
-
-    def _modified_event(self, state, dict_):
-
-        if self.key not in state.committed_state:
-            state.committed_state[self.key] = CollectionHistory(self, state)
-
-        state._modified_event(dict_, self, attributes.NEVER_SET)
-
-        # this is a hack to allow the fixtures.ComparableEntity fixture
-        # to work
-        dict_[self.key] = True
-        return state.committed_state[self.key]
-
-    def set(
-        self,
-        state: InstanceState[Any],
-        dict_: _InstanceDict,
-        value: Any,
-        initiator: Optional[AttributeEventToken] = None,
-        passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-        check_old: Any = None,
-        pop: bool = False,
-        _adapt: bool = True,
-    ) -> None:
-        if initiator and initiator.parent_token is self.parent_token:
-            return
-
-        if pop and value is None:
-            return
-
-        iterable = value
-        new_values = list(iterable)
-        if state.has_identity:
-            old_collection = util.IdentitySet(self.get(state, dict_))
-
-        collection_history = self._modified_event(state, dict_)
-        if not state.has_identity:
-            old_collection = collection_history.added_items
-        else:
-            old_collection = old_collection.union(
-                collection_history.added_items
-            )
-
-        idset = util.IdentitySet
-        constants = old_collection.intersection(new_values)
-        additions = idset(new_values).difference(constants)
-        removals = old_collection.difference(constants)
-
-        for member in new_values:
-            if member in additions:
-                self.fire_append_event(
-                    state,
-                    dict_,
-                    member,
-                    None,
-                    collection_history=collection_history,
-                )
-
-        for member in removals:
-            self.fire_remove_event(
-                state,
-                dict_,
-                member,
-                None,
-                collection_history=collection_history,
-            )
-
-    def delete(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def set_committed_value(self, state, dict_, value):
-        raise NotImplementedError(
-            "Dynamic attributes don't support " "collection population."
-        )
-
-    def get_history(self, state, dict_, passive=attributes.PASSIVE_OFF):
-        c = self._get_collection_history(state, passive)
-        return c.as_history()
-
-    def get_all_pending(
-        self, state, dict_, passive=attributes.PASSIVE_NO_INITIALIZE
-    ):
-        c = self._get_collection_history(state, passive)
-        return [(attributes.instance_state(x), x) for x in c.all_items]
-
-    def _get_collection_history(self, state, passive=attributes.PASSIVE_OFF):
-        if self.key in state.committed_state:
-            c = state.committed_state[self.key]
-        else:
-            c = CollectionHistory(self, state)
-
-        if state.has_identity and (passive & attributes.INIT_OK):
-            return CollectionHistory(self, state, apply_to=c)
-        else:
-            return c
-
-    def append(
-        self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF
-    ):
-        if initiator is not self:
-            self.fire_append_event(state, dict_, value, initiator)
-
-    def remove(
-        self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF
-    ):
-        if initiator is not self:
-            self.fire_remove_event(state, dict_, value, initiator)
-
-    def pop(
-        self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF
-    ):
-        self.remove(state, dict_, value, initiator, passive=passive)
+@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
+class DynaLoader(WriteOnlyLoader):
+    impl_class = DynamicAttributeImpl
 
 
-class DynamicCollectionAdapter:
-    """simplified CollectionAdapter for internal API consistency"""
-
-    def __init__(self, data):
-        self.data = data
-
-    def __iter__(self):
-        return iter(self.data)
-
-    def _reset_empty(self):
-        pass
-
-    def __len__(self):
-        return len(self.data)
-
-    def __bool__(self):
-        return True
+class AppenderMixin(AbstractCollectionWriter[_T]):
+    """A mixin that expects to be mixing in a Query class with
+    AbstractAppender.
 
 
-class AppenderMixin:
+    """
+
     query_class = None
 
     def __init__(self, attr, state):
-        super(AppenderMixin, self).__init__(attr.target_mapper, None)
-        self.instance = instance = state.obj()
-        self.attr = attr
+        Query.__init__(self, attr.target_mapper, None)
+        super().__init__(attr, state)
 
-        mapper = object_mapper(instance)
-        prop = mapper._props[self.attr.key]
-
-        if prop.secondary is not None:
-            # this is a hack right now.  The Query only knows how to
-            # make subsequent joins() without a given left-hand side
-            # from self._from_obj[0].  We need to ensure prop.secondary
-            # is in the FROM.  So we purposely put the mapper selectable
-            # in _from_obj[0] to ensure a user-defined join() later on
-            # doesn't fail, and secondary is then in _from_obj[1].
-
-            # note also, we are using the official ORM-annotated selectable
-            # from __clause_element__(), see #7868
-            self._from_obj = (prop.mapper.__clause_element__(), prop.secondary)
-
-        self._where_criteria = (
-            prop._with_parent(instance, alias_secondary=False),
-        )
-
-        if self.attr.order_by:
-            self._order_by_clauses = self.attr.order_by
-
-    def session(self):
+    @property
+    def session(self) -> Session:
         sess = object_session(self.instance)
         if (
             sess is not None
@@ -382,7 +123,9 @@ class AppenderMixin:
         else:
             return sess
 
-    session = property(session, lambda s, x: None)
+    @session.setter
+    def session(self, session: Session) -> None:
+        self.sess = session
 
     def _iter(self):
         sess = self.session
@@ -407,7 +150,12 @@ class AppenderMixin:
         else:
             return self._generate(sess)._iter()
 
-    def __getitem__(self, index):
+    if TYPE_CHECKING:
+
+        def __iter__(self) -> Iterator[_T]:
+            ...
+
+    def __getitem__(self, index: Any) -> _T:
         sess = self.session
         if sess is None:
             return self.attr._get_collection_history(
@@ -417,7 +165,7 @@ class AppenderMixin:
         else:
             return self._generate(sess).__getitem__(index)
 
-    def count(self):
+    def count(self) -> int:
         sess = self.session
         if sess is None:
             return len(
@@ -455,91 +203,74 @@ class AppenderMixin:
 
         return query
 
-    def extend(self, iterator):
-        for item in iterator:
-            self.attr.append(
-                attributes.instance_state(self.instance),
-                attributes.instance_dict(self.instance),
-                item,
-                None,
-            )
+    def add_all(self, iterator: Iterable[_T]) -> None:
+        """Add an iterable of items to this :class:`_orm.AppenderQuery`.
 
-    def append(self, item):
-        self.attr.append(
-            attributes.instance_state(self.instance),
-            attributes.instance_dict(self.instance),
-            item,
-            None,
-        )
+        The given items will be persisted to the database in terms of
+        the parent instance's collection on the next flush.
 
-    def remove(self, item):
-        self.attr.remove(
-            attributes.instance_state(self.instance),
-            attributes.instance_dict(self.instance),
-            item,
-            None,
-        )
+        This method is provided to assist in delivering forwards-compatibility
+        with the :class:`_orm.WriteOnlyCollection` collection class.
+
+        .. versionadded:: 2.0
+
+        """
+        self._add_all_impl(iterator)
+
+    def add(self, item: _T) -> None:
+        """Add an item to this :class:`_orm.AppenderQuery`.
+
+        The given item will be persisted to the database in terms of
+        the parent instance's collection on the next flush.
+
+        This method is provided to assist in delivering forwards-compatibility
+        with the :class:`_orm.WriteOnlyCollection` collection class.
+
+        .. versionadded:: 2.0
+
+        """
+        self._add_all_impl([item])
+
+    def extend(self, iterator: Iterable[_T]) -> None:
+        """Add an iterable of items to this :class:`_orm.AppenderQuery`.
+
+        The given items will be persisted to the database in terms of
+        the parent instance's collection on the next flush.
+
+        """
+        self._add_all_impl(iterator)
+
+    def append(self, item: _T) -> None:
+        """Append an item to this :class:`_orm.AppenderQuery`.
+
+        The given item will be removed from the parent instance's collection on
+        the next flush.
+
+        """
+        self._add_all_impl([item])
+
+    def remove(self, item: _T) -> None:
+        """Remove an item from this :class:`_orm.AppenderQuery`.
+
+        The given item will be removed from the parent instance's collection on
+        the next flush.
+
+        """
+        self._remove_impl(item)
 
 
-class AppenderQuery(AppenderMixin, Query):
-    """A dynamic query that supports basic collection storage operations."""
+class AppenderQuery(AppenderMixin[_T], Query[_T]):
+    """A dynamic query that supports basic collection storage operations.
+
+    Methods on :class:`.AppenderQuery` include all methods of
+    :class:`_orm.Query`, plus additional methods used for collection
+    persistence.
+
+
+    """
 
 
 def mixin_user_query(cls):
     """Return a new class with AppenderQuery functionality layered over."""
     name = "Appender" + cls.__name__
     return type(name, (AppenderMixin, cls), {"query_class": cls})
-
-
-class CollectionHistory:
-    """Overrides AttributeHistory to receive append/remove events directly."""
-
-    def __init__(self, attr, state, apply_to=None):
-        if apply_to:
-            coll = AppenderQuery(attr, state).autoflush(False)
-            self.unchanged_items = util.OrderedIdentitySet(coll)
-            self.added_items = apply_to.added_items
-            self.deleted_items = apply_to.deleted_items
-            self._reconcile_collection = True
-        else:
-            self.deleted_items = util.OrderedIdentitySet()
-            self.added_items = util.OrderedIdentitySet()
-            self.unchanged_items = util.OrderedIdentitySet()
-            self._reconcile_collection = False
-
-    @property
-    def added_plus_unchanged(self):
-        return list(self.added_items.union(self.unchanged_items))
-
-    @property
-    def all_items(self):
-        return list(
-            self.added_items.union(self.unchanged_items).union(
-                self.deleted_items
-            )
-        )
-
-    def as_history(self):
-        if self._reconcile_collection:
-            added = self.added_items.difference(self.unchanged_items)
-            deleted = self.deleted_items.intersection(self.unchanged_items)
-            unchanged = self.unchanged_items.difference(deleted)
-        else:
-            added, unchanged, deleted = (
-                self.added_items,
-                self.unchanged_items,
-                self.deleted_items,
-            )
-        return attributes.History(list(added), list(unchanged), list(deleted))
-
-    def indexed(self, index):
-        return list(self.added_items)[index]
-
-    def add_added(self, value):
-        self.added_items.add(value)
-
-    def add_removed(self, value):
-        if value in self.added_items:
-            self.added_items.remove(value)
-        else:
-            self.deleted_items.add(value)

@@ -371,6 +371,10 @@ class EachOf(AssertRule):
         self.rules = list(rules)
 
     def process_statement(self, execute_observed):
+        if not self.rules:
+            self.is_consumed = True
+            self.consume_statement = False
+
         while self.rules:
             rule = self.rules[0]
             rule.process_statement(execute_observed)

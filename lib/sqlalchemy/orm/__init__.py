@@ -42,12 +42,14 @@ from .attributes import AttributeEventToken as AttributeEventToken
 from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
 from .base import class_mapper as class_mapper
+from .base import DynamicMapped as DynamicMapped
 from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
 from .base import LoaderCallableStatus as LoaderCallableStatus
 from .base import Mapped as Mapped
 from .base import NotExtension as NotExtension
 from .base import ORMDescriptor as ORMDescriptor
 from .base import PassiveFlag as PassiveFlag
+from .base import WriteOnlyMapped as WriteOnlyMapped
 from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
@@ -147,6 +149,7 @@ from .util import object_mapper as object_mapper
 from .util import polymorphic_union as polymorphic_union
 from .util import was_deleted as was_deleted
 from .util import with_parent as with_parent
+from .writeonly import WriteOnlyCollection as WriteOnlyCollection
 from .. import util as _sa_util
 
 

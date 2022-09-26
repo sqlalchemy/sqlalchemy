@@ -65,6 +65,7 @@ if TYPE_CHECKING:
     from ._typing import _InstanceDict
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
+    from .base import Mapped
     from .mapper import Mapper
     from .session import Session
     from .state import _InstallLoaderCallableProto
@@ -196,6 +197,7 @@ class ColumnProperty(
         registry: _RegistryType,
         cls: Type[Any],
         key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
@@ -634,6 +636,7 @@ class MappedColumn(
         registry: _RegistryType,
         cls: Type[Any],
         key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,

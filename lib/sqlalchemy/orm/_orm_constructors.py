@@ -1172,19 +1172,16 @@ def relationship(
         issues a JOIN to the immediate parent object, specifying primary
         key identifiers using an IN clause.
 
-        .. versionadded:: 1.2
-
-      * ``noload`` - no loading should occur at any time.  This is to
-        support "write-only" attributes, or attributes which are
-        populated in some manner specific to the application.
+      * ``noload`` - no loading should occur at any time.  The related
+        collection will remain empty.   The ``noload`` strategy is not
+        recommended for general use.  For a general use "never load"
+        approach, see :ref:`write_only_relationship`
 
       * ``raise`` - lazy loading is disallowed; accessing
         the attribute, if its value were not already loaded via eager
         loading, will raise an :exc:`~sqlalchemy.exc.InvalidRequestError`.
         This strategy can be used when objects are to be detached from
         their attached :class:`.Session` after they are loaded.
-
-        .. versionadded:: 1.1
 
       * ``raise_on_sql`` - lazy loading that emits SQL is disallowed;
         accessing the attribute, if its value were not already loaded via
@@ -1198,11 +1195,51 @@ def relationship(
 
         .. versionadded:: 1.1
 
+      * ``write_only`` - the attribute will be configured with a special
+        "virtual collection" that may receive
+        :meth:`_orm.WriteOnlyCollection.add` and
+        :meth:`_orm.WriteOnlyCollection.remove` commands to add or remove
+        individual objects, but will not under any circumstances load or
+        iterate the full set of objects from the database directly. Instead,
+        methods such as :meth:`_orm.WriteOnlyCollection.select`,
+        :meth:`_orm.WriteOnlyCollection.insert`,
+        :meth:`_orm.WriteOnlyCollection.update` and
+        :meth:`_orm.WriteOnlyCollection.delete` are provided which generate SQL
+        constructs that may be used to load and modify rows in bulk. Used for
+        large collections that are never appropriate to load at once into
+        memory.
+
+        The ``write_only`` loader style is configured automatically when
+        the :class:`_orm.WriteOnlyMapped` annotation is provided on the
+        left hand side within a Declarative mapping.  See the section
+        :ref:`write_only_relationship` for examples.
+
+        .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`write_only_relationship` - in the :ref:`queryguide_toplevel`
+
       * ``dynamic`` - the attribute will return a pre-configured
         :class:`_query.Query` object for all read
         operations, onto which further filtering operations can be
-        applied before iterating the results.  See
-        the section :ref:`dynamic_relationship` for more details.
+        applied before iterating the results.
+
+        The ``dynamic`` loader style is configured automatically when
+        the :class:`_orm.DynamicMapped` annotation is provided on the
+        left hand side within a Declarative mapping.  See the section
+        :ref:`dynamic_relationship` for examples.
+
+        .. legacy::  The "dynamic" lazy loader strategy is the legacy form of
+           what is now the "write_only" strategy described in the section
+           :ref:`write_only_relationship`.
+
+        .. seealso::
+
+            :ref:`dynamic_relationship` - in the :ref:`queryguide_toplevel`
+
+            :ref:`write_only_relationship` - more generally useful approach
+            for large collections that should not fully load into memory
 
       * True - a synonym for 'select'
 
@@ -1212,12 +1249,9 @@ def relationship(
 
       .. seealso::
 
-        :doc:`/orm/loading_relationships` - Full documentation on
-        relationship loader configuration.
+        :ref:`orm_queryguide_relationship_loaders` - Full documentation on
+        relationship loader configuration in the :ref:`queryguide_toplevel`.
 
-        :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
-
-        :ref:`collections_noload_raiseload` - notes on "noload" and "raise"
 
     :param load_on_pending=False:
       Indicates loading behavior for transient or pending parent objects.

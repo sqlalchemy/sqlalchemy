@@ -1638,7 +1638,7 @@ class Query(
             q = q.with_transformation(filter_something(x==5))
 
         This allows ad-hoc recipes to be created for :class:`_query.Query`
-        objects.  See the example at :ref:`hybrid_transformers`.
+        objects.
 
         """
         return fn(self)

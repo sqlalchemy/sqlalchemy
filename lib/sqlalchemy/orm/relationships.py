@@ -47,9 +47,11 @@ from ._typing import is_has_collection_adapter
 from .base import _DeclarativeMapped
 from .base import _is_mapped_class
 from .base import class_mapper
+from .base import DynamicMapped
 from .base import LoaderCallableStatus
 from .base import PassiveFlag
 from .base import state_str
+from .base import WriteOnlyMapped
 from .interfaces import _AttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
@@ -94,6 +96,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import _O
     from ._typing import _RegistryType
+    from .base import Mapped
     from .clsregistry import _class_resolver
     from .clsregistry import _ModNS
     from .dependency import DependencyProcessor
@@ -144,6 +147,7 @@ _LazyLoadArgumentType = Literal[
     "raise_on_sql",
     "noload",
     "immediate",
+    "write_only",
     "dynamic",
     True,
     False,
@@ -1708,6 +1712,7 @@ class RelationshipProperty(
         registry: _RegistryType,
         cls: Type[Any],
         key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
@@ -1723,13 +1728,27 @@ class RelationshipProperty(
 
         argument = extracted_mapped_annotation
 
+        is_write_only = mapped_container is not None and issubclass(
+            mapped_container, WriteOnlyMapped
+        )
+        if is_write_only:
+            self.lazy = "write_only"
+            self.strategy_key = (("lazy", self.lazy),)
+
+        is_dynamic = mapped_container is not None and issubclass(
+            mapped_container, DynamicMapped
+        )
+        if is_dynamic:
+            self.lazy = "dynamic"
+            self.strategy_key = (("lazy", self.lazy),)
+
         if hasattr(argument, "__origin__"):
 
             collection_class = argument.__origin__  # type: ignore
             if issubclass(collection_class, abc.Collection):
                 if self.collection_class is None:
                     self.collection_class = collection_class
-            else:
+            elif not is_write_only and not is_dynamic:
                 self.uselist = False
 
             if argument.__args__:  # type: ignore
@@ -1754,7 +1773,11 @@ class RelationshipProperty(
             # we don't allow the collection class to be a
             # __forward_arg__ right now, so if we see a forward arg here,
             # we know there was no collection class either
-            if self.collection_class is None:
+            if (
+                self.collection_class is None
+                and not is_write_only
+                and not is_dynamic
+            ):
                 self.uselist = False
 
         self.argument = argument
@@ -3344,8 +3367,14 @@ class _ColInAnnotations:
         return self.name in c._annotations
 
 
-class Relationship(RelationshipProperty[_T], _DeclarativeMapped[_T]):
-    """Declarative front-end for the :class:`.RelationshipProperty` class.
+class Relationship(  # type: ignore
+    RelationshipProperty[_T],
+    _DeclarativeMapped[_T],
+    WriteOnlyMapped[_T],  # not compatible with Mapped[_T]
+    DynamicMapped[_T],  # not compatible with Mapped[_T]
+):
+    """Describes an object property that holds a single item or list
+    of items that correspond to a related database table.
 
     Public constructor is the :func:`_orm.relationship` function.
 

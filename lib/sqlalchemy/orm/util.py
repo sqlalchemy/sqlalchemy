@@ -37,6 +37,7 @@ from ._typing import insp_is_aliased_class
 from ._typing import insp_is_mapper
 from ._typing import prop_is_relationship
 from .base import _class_to_mapper as _class_to_mapper
+from .base import _MappedAnnotationBase
 from .base import _never_set as _never_set  # noqa: F401
 from .base import _none_set as _none_set  # noqa: F401
 from .base import attribute_str as attribute_str  # noqa: F401
@@ -76,7 +77,7 @@ from ..sql.elements import KeyedColumnElement
 from ..sql.selectable import FromClause
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation
-from ..util.typing import is_origin_of
+from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
@@ -1994,7 +1995,7 @@ def _is_mapped_annotation(
     except NameError:
         return False
     else:
-        return is_origin_of(annotated, "Mapped", module="sqlalchemy.orm")
+        return is_origin_of_cls(annotated, _MappedAnnotationBase)
 
 
 def _cleanup_mapped_str_annotation(annotation: str) -> str:
@@ -2006,7 +2007,7 @@ def _cleanup_mapped_str_annotation(annotation: str) -> str:
     inner: Optional[Match[str]]
 
     mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
-    if mm and mm.group(1) == "Mapped":
+    if mm and mm.group(1) in ("Mapped", "WriteOnlyMapped", "DynamicMapped"):
         stack = []
         inner = mm
         while True:
@@ -2038,7 +2039,7 @@ def _extract_mapped_subtype(
     is_dataclass_field: bool,
     expect_mapped: bool = True,
     raiseerr: bool = True,
-) -> Optional[Union[type, str]]:
+) -> Optional[Tuple[Union[type, str], Optional[type]]]:
     """given an annotation, figure out if it's ``Mapped[something]`` and if
     so, return the ``something`` part.
 
@@ -2071,10 +2072,10 @@ def _extract_mapped_subtype(
         annotated = raw_annotation  # type: ignore
 
     if is_dataclass_field:
-        return annotated
+        return annotated, None
     else:
-        if not hasattr(annotated, "__origin__") or not is_origin_of(
-            annotated, "Mapped", module="sqlalchemy.orm"
+        if not hasattr(annotated, "__origin__") or not is_origin_of_cls(
+            annotated, _MappedAnnotationBase
         ):
             anno_name = (
                 getattr(annotated, "__name__", None)
@@ -2118,11 +2119,11 @@ def _extract_mapped_subtype(
                     )
 
             else:
-                return annotated
+                return annotated, None
 
         if len(annotated.__args__) != 1:  # type: ignore
             raise sa_exc.ArgumentError(
                 "Expected sub-type for Mapped[] annotation"
             )
 
-        return annotated.__args__[0]  # type: ignore
+        return annotated.__args__[0], annotated.__origin__  # type: ignore

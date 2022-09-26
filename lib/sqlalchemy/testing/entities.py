@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from .. import exc as sa_exc
+from ..orm.writeonly import WriteOnlyCollection
 
 _repr_stack = set()
 
@@ -82,7 +83,11 @@ class ComparableMixin:
             for attr in list(a.__dict__):
                 if attr.startswith("_"):
                     continue
+
                 value = getattr(a, attr)
+
+                if isinstance(value, WriteOnlyCollection):
+                    continue
 
                 try:
                     # handle lazy loader errors

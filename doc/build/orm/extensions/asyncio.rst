@@ -356,6 +356,10 @@ Other guidelines include:
       stmt = user.addresses.statement.where(Address.email_address.startswith("patrick"))
       addresses_filter = (await session.scalars(stmt)).all()
 
+  The :ref:`write only <write_only_relationship>` technique, introduced in
+  version 2.0 of SQLAlchemy, is fully compatible with asyncio and should be
+  preferred.
+
   .. seealso::
 
     :ref:`migration_20_dynamic_loaders` - notes on migration to 2.0 style

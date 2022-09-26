@@ -591,6 +591,7 @@ class BulkUDCompileState(ORMDMLState):
             "_sa_orm_update_options",
             {
                 "synchronize_session",
+                "autoflush",
                 "is_delete_using",
                 "is_update_from",
                 "dml_strategy",
@@ -1079,6 +1080,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         _render_nulls: bool = False
         _return_defaults: bool = False
         _subject_mapper: Optional[Mapper[Any]] = None
+        _autoflush: bool = True
 
     select_statement: Optional[FromStatement] = None
 
@@ -1098,7 +1100,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             execution_options,
         ) = BulkORMInsert.default_insert_options.from_execution_options(
             "_sa_orm_insert_options",
-            {"dml_strategy"},
+            {"dml_strategy", "autoflush"},
             execution_options,
             statement._execution_options,
         )
@@ -1141,6 +1143,9 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
                 execution_options = execution_options.union(
                     context._orm_load_exec_options
                 )
+
+        if insert_options._autoflush:
+            session._autoflush()
 
         statement = statement._annotate(
             {"dml_strategy": insert_options._dml_strategy}

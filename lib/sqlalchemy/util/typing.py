@@ -216,6 +216,19 @@ def is_union(type_: Any) -> bool:
     return is_origin_of(type_, "Union")
 
 
+def is_origin_of_cls(
+    type_: Any, class_obj: Union[Tuple[Type[Any], ...], Type[Any]]
+) -> bool:
+    """return True if the given type has an __origin__ that shares a base
+    with the given class"""
+
+    origin = typing_get_origin(type_)
+    if origin is None:
+        return False
+
+    return isinstance(origin, type) and issubclass(origin, class_obj)
+
+
 def is_origin_of(
     type_: Any, *names: str, module: Optional[str] = None
 ) -> bool:

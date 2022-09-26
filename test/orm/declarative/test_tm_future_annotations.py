@@ -14,10 +14,12 @@ from sqlalchemy import Numeric
 from sqlalchemy import Table
 from sqlalchemy.orm import attribute_mapped_collection
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DynamicMapped
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedCollection
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -25,6 +27,9 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.util import compat
 from .test_typed_mapping import MappedColumnTest as _MappedColumnTest
 from .test_typed_mapping import RelationshipLHSTest as _RelationshipLHSTest
+from .test_typed_mapping import (
+    WriteOnlyRelationshipTest as _WriteOnlyRelationshipTest,
+)
 
 """runs the annotation-sensitive tests from test_typed_mappings while
 having ``from __future__ import annotations`` in effect.
@@ -288,3 +293,35 @@ class RelationshipLHSTest(_RelationshipLHSTest):
         a1.bs.set(b1)
 
         is_(a1.bs["foo"], b1)
+
+
+class WriteOnlyRelationshipTest(_WriteOnlyRelationshipTest):
+    def test_dynamic(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: DynamicMapped[B] = relationship()
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(
+                ForeignKey("a.id", ondelete="cascade")
+            )
+
+        self._assertions(A, B, "dynamic")
+
+    def test_write_only(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: WriteOnlyMapped[B] = relationship()  # noqa: F821
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(
+                ForeignKey("a.id", ondelete="cascade")
+            )
+
+        self._assertions(A, B, "write_only")
