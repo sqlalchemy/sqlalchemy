@@ -2008,8 +2008,7 @@ class JoinedNoFKSortingTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             Conditional(
-                testing.db.dialect.insert_executemany_returning
-                and testing.db.dialect.supports_default_metavalue,
+                testing.db.dialect.insert_executemany_returning,
                 [
                     CompiledSQL(
                         "INSERT INTO a (id) VALUES (DEFAULT) RETURNING a.id",
