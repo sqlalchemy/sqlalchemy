@@ -2327,6 +2327,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             new_onupdate = self.onupdate._copy()
             new_onupdate._set_parent(other)
 
+        if self.index and not other.index:
+            other.index = True
+
+        if self.unique and not other.unique:
+            other.unique = True
+
         for const in self.constraints:
             if not const._type_bound:
                 new_const = const._copy()

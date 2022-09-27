@@ -666,6 +666,8 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("nullable", True),
         ("nullable", False),
         ("type", BigInteger()),
+        ("index", True),
+        ("unique", True),
         argnames="paramname, value",
     )
     @testing.combinations(True, False, argnames="optional")

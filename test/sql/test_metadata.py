@@ -4198,6 +4198,8 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         ("server_default", func.foo()),
         ("nullable", True),
         ("nullable", False),
+        ("index", True),
+        ("unique", True),
         ("type", BigInteger()),
         ("type", Enum("one", "two", "three", create_constraint=True)),
         argnames="paramname, value",
