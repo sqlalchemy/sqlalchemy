@@ -21,8 +21,9 @@ will provide for us the ``fullname``, which is the string concatenation of the t
 
     from sqlalchemy.ext.hybrid import hybrid_property
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         firstname = mapped_column(String(50))
         lastname = mapped_column(String(50))
@@ -39,8 +40,9 @@ class level, so that it is available from an instance::
 
 as well as usable within queries::
 
-    some_user = session.scalars(select(User).where(User.fullname == "John Smith").limit(1)).first()
-
+    some_user = session.scalars(
+        select(User).where(User.fullname == "John Smith").limit(1)
+    ).first()
 
 The string concatenation example is a simple one, where the Python expression
 can be dual purposed at the instance and class level.  Often, the SQL expression
@@ -52,8 +54,9 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
     from sqlalchemy.ext.hybrid import hybrid_property
     from sqlalchemy.sql import case
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         firstname = mapped_column(String(50))
         lastname = mapped_column(String(50))
@@ -67,9 +70,12 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
 
         @fullname.expression
         def fullname(cls):
-            return case([
-                (cls.firstname != None, cls.firstname + " " + cls.lastname),
-            ], else_ = cls.lastname)
+            return case(
+                [
+                    (cls.firstname != None, cls.firstname + " " + cls.lastname),
+                ],
+                else_=cls.lastname,
+            )
 
 .. _mapper_column_property_sql_expressions:
 
@@ -96,8 +102,9 @@ follows::
 
     from sqlalchemy.orm import column_property
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         firstname = mapped_column(String(50))
         lastname = mapped_column(String(50))
@@ -114,31 +121,34 @@ of ``Address`` objects available for a particular ``User``::
 
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = mapped_column(Integer, primary_key=True)
-        user_id = mapped_column(Integer, ForeignKey('user.id'))
+        user_id = mapped_column(Integer, ForeignKey("user.id"))
+
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         address_count = column_property(
-            select(func.count(Address.id)).
-            where(Address.user_id==id).
-            correlate_except(Address).
-            scalar_subquery()
+            select(func.count(Address.id))
+            .where(Address.user_id == id)
+            .correlate_except(Address)
+            .scalar_subquery()
         )
 
 In the above example, we define a :func:`_expression.ScalarSelect` construct like the following::
 
     stmt = (
-        select(func.count(Address.id)).
-        where(Address.user_id==id).
-        correlate_except(Address).
-        scalar_subquery()
+        select(func.count(Address.id))
+        .where(Address.user_id == id)
+        .correlate_except(Address)
+        .scalar_subquery()
     )
 
 Above, we first use :func:`_sql.select` to create a :class:`_sql.Select`
@@ -166,19 +176,20 @@ association table to both tables in a relationship::
 
     from sqlalchemy import and_
 
+
     class Author(Base):
         # ...
 
         book_count = column_property(
-            select(func.count(books.c.id)
-            ).where(
+            select(func.count(books.c.id))
+            .where(
                 and_(
-                    book_authors.c.author_id==authors.c.id,
-                    book_authors.c.book_id==books.c.id
+                    book_authors.c.author_id == authors.c.id,
+                    book_authors.c.book_id == books.c.id,
                 )
-            ).scalar_subquery()
+            )
+            .scalar_subquery()
         )
-
 
 Adding column_property() to an existing Declarative mapped class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,9 +204,7 @@ to add an additional property after the fact::
 
     # only works if a declarative base class is in use
     User.address_count = column_property(
-        select(func.count(Address.id)).
-        where(Address.user_id==User.id).
-        scalar_subquery()
+        select(func.count(Address.id)).where(Address.user_id == User.id).scalar_subquery()
     )
 
 When using mapping styles that don't use Declarative base classes
@@ -207,9 +216,10 @@ which can be obtained using :func:`_sa.inspect`::
 
     reg = registry()
 
+
     @reg.mapped
     class User:
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         # ... additional mapping directives
 
@@ -218,11 +228,12 @@ which can be obtained using :func:`_sa.inspect`::
 
     # works for any kind of mapping
     from sqlalchemy import inspect
+
     inspect(User).add_property(
         column_property(
-           select(func.count(Address.id)).
-           where(Address.user_id==User.id).
-           scalar_subquery()
+            select(func.count(Address.id))
+            .where(Address.user_id == User.id)
+            .scalar_subquery()
         )
     )
 
@@ -251,20 +262,20 @@ attribute, which is itself a :class:`.ColumnProperty`::
 
 
     class File(Base):
-        __tablename__ = 'file'
+        __tablename__ = "file"
 
         id = mapped_column(Integer, primary_key=True)
         name = mapped_column(String(64))
         extension = mapped_column(String(8))
-        filename = column_property(name + '.' + extension)
-        path = column_property('C:/' + filename.expression)
+        filename = column_property(name + "." + extension)
+        path = column_property("C:/" + filename.expression)
 
 When the ``File`` class is used in expressions normally, the attributes
 assigned to ``filename`` and ``path`` are usable directly.  The use of the
 :attr:`.ColumnProperty.expression` attribute is only necessary when using
 the :class:`.ColumnProperty` directly within the mapping definition::
 
-    stmt = select(File.path).where(File.filename == 'foo.txt')
+    stmt = select(File.path).where(File.filename == "foo.txt")
 
 Using Column Deferral with ``column_property()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -276,8 +287,9 @@ to a SQL expression mapped by :func:`_orm.column_property` by using the
 
     from sqlalchemy.orm import deferred
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         firstname: Mapped[str] = mapped_column()
@@ -305,19 +317,18 @@ which is then used to emit a query::
     from sqlalchemy.orm import object_session
     from sqlalchemy import select, func
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         firstname = mapped_column(String(50))
         lastname = mapped_column(String(50))
 
         @property
         def address_count(self):
-            return object_session(self).\
-                scalar(
-                    select(func.count(Address.id)).\
-                        where(Address.user_id==self.id)
-                )
+            return object_session(self).scalar(
+                select(func.count(Address.id)).where(Address.user_id == self.id)
+            )
 
 The plain descriptor approach is useful as a last resort, but is less performant
 in the usual case than both the hybrid and column property approaches, in that

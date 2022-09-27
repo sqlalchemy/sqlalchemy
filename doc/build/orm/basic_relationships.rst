@@ -18,9 +18,9 @@ The setup for each of the following sections is as follows::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
-
 
 Declarative vs. Imperative Forms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,17 +74,15 @@ nonetheless remains preferred by a vocal minority of users), the above
 configuration looks like::
 
     registry.map_imperatively(
-        Parent, parent_table, properties={
-            "children": relationship(
-              "Child", back_populates="parent"
-            )
-        }
+        Parent,
+        parent_table,
+        properties={"children": relationship("Child", back_populates="parent")},
     )
 
     registry.map_imperatively(
-        Child, child_table, properties={
-            "parent": relationship("Parent", back_populates="children")
-        }
+        Child,
+        child_table,
+        properties={"parent": relationship("Parent", back_populates="children")},
     )
 
 Additionally, the default collection style for non-annotated mappings is
@@ -155,6 +153,7 @@ relationship is generated implicitly::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(backref="parent")
+
 
     class Child(Base):
         __tablename__ = "child"
@@ -345,7 +344,6 @@ Declarative configuration below::
         parent_id = mapped_column(ForeignKey("parent.id"))
         parent = relationship("Parent", back_populates="child")
 
-
 .. _relationships_many_to_many:
 
 Many To Many
@@ -371,8 +369,10 @@ with which to link::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     # note for a Core table, we use the sqlalchemy.Column construct,
     # not sqlalchemy.orm.mapped_column
@@ -433,8 +433,10 @@ for each :func:`_orm.relationship` specify the common association table::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     association_table = Table(
         "association",
@@ -461,7 +463,6 @@ for each :func:`_orm.relationship` specify the common association table::
             secondary=association_table, back_populates="children"
         )
 
-
 When using the :paramref:`_orm.relationship.backref` parameter instead of
 :paramref:`_orm.relationship.back_populates`, the backref will automatically
 use the same :paramref:`_orm.relationship.secondary` argument for the
@@ -478,8 +479,10 @@ reverse relationship::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     association_table = Table(
         "association",
@@ -636,8 +639,10 @@ from ``Parent`` to ``Child`` makes explicit use of ``Association``::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Association(Base):
         __tablename__ = "association"
@@ -669,8 +674,10 @@ constructs, linked to the existing ones using :paramref:`_orm.relationship.back_
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Association(Base):
         __tablename__ = "association"
@@ -764,8 +771,10 @@ and ``Child.parent_associations -> Association.parent``::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Association(Base):
         __tablename__ = "association"
@@ -780,16 +789,22 @@ and ``Child.parent_associations -> Association.parent``::
         # association between Assocation -> Parent
         parent: Mapped["Parent"] = relationship(back_populates="child_associations")
 
+
     class Parent(Base):
         __tablename__ = "left"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Child, bypassing the `Association` class
-        children: Mapped[list["Child"]] = relationship(secondary="association", back_populates="parents")
+        children: Mapped[list["Child"]] = relationship(
+            secondary="association", back_populates="parents"
+        )
 
         # association between Parent -> Association -> Child
-        child_associations: Mapped[list["Association"]] = relationship(back_populates="parent")
+        child_associations: Mapped[list["Association"]] = relationship(
+            back_populates="parent"
+        )
+
 
     class Child(Base):
         __tablename__ = "right"
@@ -797,10 +812,14 @@ and ``Child.parent_associations -> Association.parent``::
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Parent, bypassing the `Association` class
-        parents: Mapped[list["Parent"]] = relationship(secondary="association", back_populates="children")
+        parents: Mapped[list["Parent"]] = relationship(
+            secondary="association", back_populates="children"
+        )
 
         # association between Child -> Association -> Parent
-        parent_associations: Mapped[list["Association"]] = relationship(back_populates="child")
+        parent_associations: Mapped[list["Association"]] = relationship(
+            back_populates="child"
+        )
 
 When using this ORM model to make changes, changes made to
 ``Parent.children`` will not be coordinated with changes made to
@@ -851,7 +870,10 @@ additional association columns, as below::
         )
 
         # association between Parent -> Association -> Child
-        child_associations: Mapped[list["Association"]] = relationship(back_populates="parent")
+        child_associations: Mapped[list["Association"]] = relationship(
+            back_populates="parent"
+        )
+
 
     class Child(Base):
         __tablename__ = "right"
@@ -864,7 +886,9 @@ additional association columns, as below::
         )
 
         # association between Child -> Association -> Parent
-        parent_associations: Mapped[list["Association"]] = relationship(back_populates="child")
+        parent_associations: Mapped[list["Association"]] = relationship(
+            back_populates="child"
+        )
 
 The above mapping will not write any changes to ``Parent.children`` or
 ``Child.parents`` to the database, preventing conflicting writes.  However, reads
@@ -915,15 +939,15 @@ or Imperative mappings, a string name is also supported directly by
 the :func:`_orm.relationship` construct::
 
     registry.map_imperatively(
-        Parent, parent_table, properties={
-            "children": relationship("Child", back_populates="parent")
-        }
+        Parent,
+        parent_table,
+        properties={"children": relationship("Child", back_populates="parent")},
     )
 
     registry.map_imperatively(
-        Child, child_table, properties={
-            "parent": relationship("Parent", back_populates="children")
-        }
+        Child,
+        child_table,
+        properties={"parent": relationship("Parent", back_populates="children")},
     )
 
 These string names are resolved into classes in the mapper resolution stage,
@@ -992,7 +1016,6 @@ name within the :class:`_orm.registry`::
             order_by="desc(myapp.mymodel.Child.email_address)",
             primaryjoin="myapp.mymodel.Parent.id == myapp.mymodel.Child.parent_id",
         )
-
 
 The qualified path can be any partial path that removes ambiguity between
 the names.  For example, to disambiguate between
@@ -1136,8 +1159,7 @@ using a lambda as::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(
-            "Child",
-            secondary=lambda: association_table
+            "Child", secondary=lambda: association_table
         )
 
 Or to illustrate locating the same :class:`.Table` object by name,
@@ -1151,7 +1173,6 @@ the :class:`.MetaData` collection::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(secondary="association")
-
 
 .. warning:: When passed as a string,
     :paramref:`_orm.relationship.secondary` argument is interpreted using Python's

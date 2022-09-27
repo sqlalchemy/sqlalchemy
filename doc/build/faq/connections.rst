@@ -27,8 +27,9 @@ How do I pass custom connect arguments to my database API?
 The :func:`_sa.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
 
-    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test",
-                        connect_args={"encoding": "utf8"})
+    e = create_engine(
+        "mysql+mysqldb://scott:tiger@localhost/test", connect_args={"encoding": "utf8"}
+    )
 
 Or for basic string and integer arguments, they can usually be specified
 in the query string of the URL::
@@ -244,59 +245,57 @@ A connection will transparently reconnect for single-parameter and no-parameter
 statement executions::
 
 
-  import time
+    import time
 
-  from sqlalchemy import event
+    from sqlalchemy import event
 
 
-  def reconnecting_engine(engine, num_retries, retry_interval):
-      def _run_with_retries(fn, context, cursor_obj, statement, *arg, **kw):
-          for retry in range(num_retries + 1):
-              try:
-                  fn(cursor_obj, statement, context=context, *arg)
-              except engine.dialect.dbapi.Error as raw_dbapi_err:
-                  connection = context.root_connection
-                  if engine.dialect.is_disconnect(
-                      raw_dbapi_err, connection, cursor_obj
-                  ):
-                      if retry > num_retries:
-                          raise
-                      engine.logger.error(
-                          "disconnection error, retrying operation",
-                          exc_info=True,
-                      )
-                      connection.invalidate()
+    def reconnecting_engine(engine, num_retries, retry_interval):
+        def _run_with_retries(fn, context, cursor_obj, statement, *arg, **kw):
+            for retry in range(num_retries + 1):
+                try:
+                    fn(cursor_obj, statement, context=context, *arg)
+                except engine.dialect.dbapi.Error as raw_dbapi_err:
+                    connection = context.root_connection
+                    if engine.dialect.is_disconnect(raw_dbapi_err, connection, cursor_obj):
+                        if retry > num_retries:
+                            raise
+                        engine.logger.error(
+                            "disconnection error, retrying operation",
+                            exc_info=True,
+                        )
+                        connection.invalidate()
 
-                      # use SQLAlchemy 2.0 API if available
-                      if hasattr(connection, "rollback"):
-                          connection.rollback()
-                      else:
-                          trans = connection.get_transaction()
-                          if trans:
-                              trans.rollback()
+                        # use SQLAlchemy 2.0 API if available
+                        if hasattr(connection, "rollback"):
+                            connection.rollback()
+                        else:
+                            trans = connection.get_transaction()
+                            if trans:
+                                trans.rollback()
 
-                      time.sleep(retry_interval)
-                      context.cursor = cursor_obj = connection.connection.cursor()
-                  else:
-                      raise
-              else:
-                  return True
+                        time.sleep(retry_interval)
+                        context.cursor = cursor_obj = connection.connection.cursor()
+                    else:
+                        raise
+                else:
+                    return True
 
-      e = engine.execution_options(isolation_level="AUTOCOMMIT")
+        e = engine.execution_options(isolation_level="AUTOCOMMIT")
 
-      @event.listens_for(e, "do_execute_no_params")
-      def do_execute_no_params(cursor_obj, statement, context):
-          return _run_with_retries(
-              context.dialect.do_execute_no_params, context, cursor_obj, statement
-          )
+        @event.listens_for(e, "do_execute_no_params")
+        def do_execute_no_params(cursor_obj, statement, context):
+            return _run_with_retries(
+                context.dialect.do_execute_no_params, context, cursor_obj, statement
+            )
 
-      @event.listens_for(e, "do_execute")
-      def do_execute(cursor_obj, statement, parameters, context):
-          return _run_with_retries(
-              context.dialect.do_execute, context, cursor_obj, statement, parameters
-          )
+        @event.listens_for(e, "do_execute")
+        def do_execute(cursor_obj, statement, parameters, context):
+            return _run_with_retries(
+                context.dialect.do_execute, context, cursor_obj, statement, parameters
+            )
 
-      return e
+        return e
 
 Given the above recipe, a reconnection mid-transaction may be demonstrated
 using the following proof of concept script.  Once run, it will emit a
@@ -316,9 +315,7 @@ using the following proof of concept script.  Once run, it will emit a
                     time.sleep(5)
 
         e = reconnecting_engine(
-            create_engine(
-                "mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True
-            ),
+            create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True),
             num_retries=5,
             retry_interval=2,
         )
@@ -374,7 +371,10 @@ configured using ``reset_on_return``::
     from sqlalchemy import create_engine
     from sqlalchemy.pool import QueuePool
 
-    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
+    engine = create_engine(
+        "mysql+mysqldb://scott:tiger@localhost/myisam_database",
+        pool=QueuePool(reset_on_return=False),
+    )
 
 I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -383,8 +383,9 @@ I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 to ``True``, ``False``, and ``None``.   Setting to ``commit`` will cause
 a COMMIT as any connection is returned to the pool::
 
-    engine = create_engine('mssql+pyodbc://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
-
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@mydsn", pool=QueuePool(reset_on_return="commit")
+    )
 
 I am using multiple connections with a SQLite database (typically to test transaction operation), and my test program is not working!
 ----------------------------------------------------------------------------------------------------------------------------------------------------------

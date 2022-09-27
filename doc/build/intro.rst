@@ -240,7 +240,7 @@ Python prompt like this:
 .. sourcecode:: python+sql
 
      >>> import sqlalchemy
-     >>> sqlalchemy.__version__ # doctest: +SKIP
+     >>> sqlalchemy.__version__  # doctest: +SKIP
      2.0.0
 
 Next Steps

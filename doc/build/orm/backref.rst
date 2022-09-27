@@ -42,6 +42,7 @@ Starting with the following example::
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import DeclarativeBase, relationship
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -67,6 +68,7 @@ it's equivalent to the following::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import DeclarativeBase, relationship
+
 
     class Base(DeclarativeBase):
         pass
@@ -108,6 +110,7 @@ which also includes the :paramref:`_orm.relationship.backref` keyword::
 
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import DeclarativeBase, relationship
+
 
     class Base(DeclarativeBase):
         pass

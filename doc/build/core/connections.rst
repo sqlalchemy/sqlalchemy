@@ -21,7 +21,7 @@ Basic Usage
 Recall from :doc:`/core/engines` that an :class:`_engine.Engine` is created via
 the :func:`_sa.create_engine` call::
 
-    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/test')
+    engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test")
 
 The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
@@ -48,7 +48,7 @@ a textual statement to the database looks like::
     with engine.connect() as connection:
         result = connection.execute(text("select username from users"))
         for row in result:
-            print("username:", row['username'])
+            print("username:", row["username"])
 
 Above, the :meth:`_engine.Engine.connect` method returns a :class:`_engine.Connection`
 object, and by using it in a Python context manager (e.g. the ``with:``
@@ -112,7 +112,9 @@ illustrated in the example below::
 
     with engine.connect() as connection:
         connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
-        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
+        connection.execute(
+            some_other_table.insert(), {"q": 8, "p": "this is some more data"}
+        )
 
         connection.commit()  # commit the transaction
 
@@ -175,7 +177,9 @@ once" block::
     with engine.connect() as connection:
         with connection.begin():
             connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
-            connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
+            connection.execute(
+                some_other_table.insert(), {"q": 8, "p": "this is some more data"}
+            )
 
         # transaction is committed
 
@@ -193,7 +197,9 @@ returned by the :meth:`_engine.Connection.begin` method::
 
     with engine.begin() as connection:
         connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
-        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
+        connection.execute(
+            some_other_table.insert(), {"q": 8, "p": "this is some more data"}
+        )
 
     # transaction is committed, and Connection is released to the connection
     # pool
@@ -211,7 +217,6 @@ returned by the :meth:`_engine.Connection.begin` method::
         >>> with e.begin() as conn:
         ...     conn.commit()
         ...     conn.begin()
-        ...
         2021-11-08 09:49:07,517 INFO sqlalchemy.engine.Engine BEGIN (implicit)
         2021-11-08 09:49:07,517 INFO sqlalchemy.engine.Engine COMMIT
         Traceback (most recent call last):
@@ -239,7 +244,9 @@ after a previous call to :meth:`_engine.Connection.commit` or :meth:`_engine.Con
 
         # run a new statement outside of a block. The connection
         # autobegins
-        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
+        connection.execute(
+            some_other_table.insert(), {"q": 8, "p": "this is some more data"}
+        )
 
         # commit explicitly
         connection.commit()
@@ -310,9 +317,11 @@ certain backend, an error is raised.
 For example, to force REPEATABLE READ on a specific connection, then
 begin a transaction::
 
-  with engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
-      with connection.begin():
-          connection.execute(<statement>)
+    with engine.connect().execution_options(
+        isolation_level="REPEATABLE READ"
+    ) as connection:
+        with connection.begin():
+            connection.execute("<statement>")
 
 .. tip::  The return value of
    the :meth:`_engine.Connection.execution_options` method is the same
@@ -342,8 +351,7 @@ parameter to :func:`.sa.create_engine`::
     from sqlalchemy import create_engine
 
     eng = create_engine(
-        "postgresql://scott:tiger@localhost/test",
-        isolation_level="REPEATABLE READ"
+        "postgresql://scott:tiger@localhost/test", isolation_level="REPEATABLE READ"
     )
 
 With the above setting, each new DBAPI connection the moment it's created will
@@ -367,9 +375,7 @@ per-connection isolation level setting::
 
     eng = create_engine(
         "postgresql+psycopg2://scott:tiger@localhost/test",
-        execution_options={
-            "isolation_level": "REPEATABLE READ"
-        }
+        execution_options={"isolation_level": "REPEATABLE READ"},
     )
 
 With the above setting, the DBAPI connection will be set to use a
@@ -435,10 +441,10 @@ of this approach.
 If we wanted to check out a :class:`_engine.Connection` object and use it
 "autocommit" mode, we would proceed as follows::
 
-  with engine.connect() as connection:
-      connection.execution_options(isolation_level="AUTOCOMMIT")
-      connection.execute(<statement>)
-      connection.execute(<statement>)
+    with engine.connect() as connection:
+        connection.execution_options(isolation_level="AUTOCOMMIT")
+        connection.execute("<statement>")
+        connection.execute("<statement>")
 
 Above illustrates normal usage of "DBAPI autocommit" mode.   There is no
 need to make use of methods such as :meth:`_engine.Connection.begin`
@@ -461,13 +467,13 @@ itself just like any other isolation level.
 In the example below, statements remain
 **autocommitting** regardless of SQLAlchemy-level transaction blocks::
 
-  with engine.connect() as connection:
-      connection = connection.execution_options(isolation_level="AUTOCOMMIT")
+    with engine.connect() as connection:
+        connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
-      # this begin() does not affect the DBAPI connection, isolation stays at AUTOCOMMIT
-      with connection.begin() as trans:
-          connection.execute(<statement>)
-          connection.execute(<statement>)
+        # this begin() does not affect the DBAPI connection, isolation stays at AUTOCOMMIT
+        with connection.begin() as trans:
+            connection.execute("<statement>")
+            connection.execute("<statement>")
 
 When we run a block like the above with logging turned on, the logging
 will attempt to indicate that while a DBAPI level ``.commit()`` is called,
@@ -484,15 +490,15 @@ don't impact the DBAPI connection itself**.  To illustrate, the code
 below will raise an error, as :meth:`_engine.Connection.begin` is being
 called after autobegin has already occurred::
 
-  with engine.connect() as connection:
-      connection = connection.execution_options(isolation_level="AUTOCOMMIT")
+    with engine.connect() as connection:
+        connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
-      # "transaction" is autobegin (but has no effect due to autocommit)
-      connection.execute(<statement>)
+        # "transaction" is autobegin (but has no effect due to autocommit)
+        connection.execute("<statement>")
 
-      # this will raise; "transaction" is already begun
-      with connection.begin() as trans:
-          connection.execute(<statement>)
+        # this will raise; "transaction" is already begun
+        with connection.begin() as trans:
+            connection.execute("<statement>")
 
 The above example also demonstrates the same theme that the "autocommit"
 isolation level is a configurational detail of the underlying database
@@ -538,7 +544,7 @@ before we call upon :meth:`_engine.Connection.begin`::
         connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # run statement(s) in autocommit mode
-        connection.execute(<statement>)
+        connection.execute("<statement>")
 
         # "commit" the autobegun "transaction"
         connection.commit()
@@ -548,7 +554,7 @@ before we call upon :meth:`_engine.Connection.begin`::
 
         # use a begin block
         with connection.begin() as trans:
-            connection.execute(<statement>)
+            connection.execute("<statement>")
 
 Above, to manually revert the isolation level we made use of
 :attr:`_engine.Connection.default_isolation_level` to restore the default
@@ -562,11 +568,11 @@ use two blocks ::
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
 
         # run statement in autocommit mode
-        connection.execute(<statement>)
+        connection.execute("<statement>")
 
     # use a regular block
     with engine.begin() as connection:
-        connection.execute(<statement>)
+        connection.execute("<statement>")
 
 To sum up:
 
@@ -675,11 +681,7 @@ combination has includes:
 These three behaviors are illustrated in the example below::
 
     with engine.connect() as conn:
-        result = (
-          conn.
-          execution_options(yield_per=100).
-          execute(text("select * from table"))
-        )
+        result = conn.execution_options(yield_per=100).execute(text("select * from table"))
 
         for partition in result.partitions():
             # partition is an iterable that will be at most 100 items
@@ -764,9 +766,10 @@ to render under different schema names without any changes.
 Given a table::
 
     user_table = Table(
-        'user', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50))
+        "user",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
     )
 
 The "schema" of this :class:`_schema.Table` as defined by the
@@ -776,7 +779,8 @@ that all :class:`_schema.Table` objects with a schema of ``None`` would instead
 render the schema as ``user_schema_one``::
 
     connection = engine.connect().execution_options(
-        schema_translate_map={None: "user_schema_one"})
+        schema_translate_map={None: "user_schema_one"}
+    )
 
     result = connection.execute(user_table.select())
 
@@ -790,10 +794,11 @@ map can specify any number of target->destination schemas::
 
     connection = engine.connect().execution_options(
         schema_translate_map={
-            None: "user_schema_one",     # no schema name -> "user_schema_one"
-            "special": "special_schema", # schema="special" becomes "special_schema"
-            "public": None               # Table objects with schema="public" will render with no schema
-        })
+            None: "user_schema_one",  # no schema name -> "user_schema_one"
+            "special": "special_schema",  # schema="special" becomes "special_schema"
+            "public": None,  # Table objects with schema="public" will render with no schema
+        }
+    )
 
 The :paramref:`.Connection.execution_options.schema_translate_map` parameter
 affects all DDL and SQL constructs generated from the SQL expression language,
@@ -903,7 +908,9 @@ used items when the size of the cache reaches a certain threshold.  The size
 of this cache defaults to 500 and may be configured using the
 :paramref:`_sa.create_engine.query_cache_size` parameter::
 
-    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", query_cache_size=1200)
+    engine = create_engine(
+        "postgresql+psycopg2://scott:tiger@localhost/test", query_cache_size=1200
+    )
 
 The size of the cache can grow to be a factor of 150% of the size given, before
 it's pruned back down to the target size.  A cache of size 1200 above can therefore
@@ -932,45 +939,43 @@ section :ref:`dbengine_logging` for background on logging configuration.
 
 As an example, we will examine the logging produced by the following program::
 
-  from sqlalchemy import Column
-  from sqlalchemy import create_engine
-  from sqlalchemy import ForeignKey
-  from sqlalchemy import Integer
-  from sqlalchemy import String
-  from sqlalchemy.ext.declarative import declarative_base
-  from sqlalchemy.orm import relationship
-  from sqlalchemy.orm import Session
+    from sqlalchemy import Column
+    from sqlalchemy import create_engine
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import Integer
+    from sqlalchemy import String
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import Session
 
-  Base = declarative_base()
-
-
-  class A(Base):
-      __tablename__ = "a"
-
-      id = Column(Integer, primary_key=True)
-      data = Column(String)
-      bs = relationship("B")
+    Base = declarative_base()
 
 
-  class B(Base):
-      __tablename__ = "b"
-      id = Column(Integer, primary_key=True)
-      a_id = Column(ForeignKey("a.id"))
-      data = Column(String)
+    class A(Base):
+        __tablename__ = "a"
+
+        id = Column(Integer, primary_key=True)
+        data = Column(String)
+        bs = relationship("B")
 
 
-  e = create_engine("sqlite://", echo=True)
-  Base.metadata.create_all(e)
+    class B(Base):
+        __tablename__ = "b"
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+        data = Column(String)
 
-  s = Session(e)
 
-  s.add_all(
-      [A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])]
-  )
-  s.commit()
+    e = create_engine("sqlite://", echo=True)
+    Base.metadata.create_all(e)
 
-  for a_rec in s.query(A):
-      print(a_rec.bs)
+    s = Session(e)
+
+    s.add_all([A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])])
+    s.commit()
+
+    for a_rec in s.query(A):
+        print(a_rec.bs)
 
 When run, each SQL statement that's logged will include a bracketed
 cache statistics badge to the left of the parameters passed.   The four
@@ -1164,9 +1169,9 @@ when using the ORM :meth:`_orm.Session.execute` method for SQLAlchemy-2.0
 style invocations.   For example, to run a series of SQL statements and have
 them cached in a particular dictionary::
 
-  my_cache = {}
-  with engine.connect().execution_options(compiled_cache=my_cache) as conn:
-      conn.execute(table.select())
+    my_cache = {}
+    with engine.connect().execution_options(compiled_cache=my_cache) as conn:
+        conn.execute(table.select())
 
 The SQLAlchemy ORM uses the above technique to hold onto per-mapper caches
 within the unit of work "flush" process that are separate from the default
@@ -1176,9 +1181,9 @@ relationship loader queries.
 The cache can also be disabled with this argument by sending a value of
 ``None``::
 
-  # disable caching for this connection
-  with engine.connect().execution_options(compiled_cache=None) as conn:
-      conn.execute(table.select())
+    # disable caching for this connection
+    with engine.connect().execution_options(compiled_cache=None) as conn:
+        conn.execute(table.select())
 
 .. _engine_thirdparty_caching:
 
@@ -1217,6 +1222,7 @@ a SQL string directly, dialect authors can apply the attribute as follows::
 
     from sqlalchemy.engine.default import DefaultDialect
 
+
     class MyDialect(DefaultDialect):
         supports_statement_cache = True
 
@@ -1242,9 +1248,9 @@ like this::
     def limit_clause(self, select, **kw):
         text = ""
         if select._limit is not None:
-            text += " \n LIMIT %d" % (select._limit, )
+            text += " \n LIMIT %d" % (select._limit,)
         if select._offset is not None:
-            text += " \n OFFSET %d" % (select._offset, )
+            text += " \n OFFSET %d" % (select._offset,)
         return text
 
 The above routine renders the :attr:`.Select._limit` and
@@ -1363,12 +1369,14 @@ approach::
 
     from sqlalchemy import lambda_stmt
 
+
     def run_my_statement(connection, parameter):
         stmt = lambda_stmt(lambda: select(table))
         stmt += lambda s: s.where(table.c.col == parameter)
         stmt += lambda s: s.order_by(table.c.id)
 
         return connection.execute(stmt)
+
 
     with engine.connect() as conn:
         result = run_my_statement(some_connection, "some parameter")
@@ -1405,8 +1413,9 @@ Basic guidelines include:
     def upd(id_, newname):
         stmt = lambda_stmt(lambda: users.update())
         stmt += lambda s: s.values(name=newname)
-        stmt += lambda s: s.where(users.c.id==id_)
+        stmt += lambda s: s.where(users.c.id == id_)
         return stmt
+
 
     with engine.begin() as conn:
         conn.execute(upd(7, "foo"))
@@ -1438,12 +1447,10 @@ Basic guidelines include:
         >>> def my_stmt(x, y):
         ...     stmt = lambda_stmt(lambda: select(func.max(x, y)))
         ...     return stmt
-        ...
         >>> engine = create_engine("sqlite://", echo=True)
         >>> with engine.connect() as conn:
         ...     print(conn.scalar(my_stmt(5, 10)))
         ...     print(conn.scalar(my_stmt(12, 8)))
-        ...
         {opensql}SELECT max(?, ?) AS max_1
         [generated in 0.00057s] (5, 10){stop}
         10
@@ -1494,15 +1501,14 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
+    ... 
     ...     def get_y():
     ...         return y
-    ...
+    ... 
     ...     stmt = lambda_stmt(lambda: select(func.max(get_x(), get_y())))
     ...     return stmt
-    ...
     >>> with engine.connect() as conn:
     ...     print(conn.scalar(my_stmt(5, 10)))
-    ...
     Traceback (most recent call last):
       # ...
     sqlalchemy.exc.InvalidRequestError: Can't invoke Python callable get_x()
@@ -1518,9 +1524,10 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
+    ... 
     ...     def get_y():
     ...         return y
-    ...
+    ... 
     ...     x_param, y_param = get_x(), get_y()
     ...     stmt = lambda_stmt(lambda: select(func.max(x_param, y_param)))
     ...     return stmt
@@ -1539,14 +1546,11 @@ Basic guidelines include:
     ...     def __init__(self, x, y):
     ...         self.x = x
     ...         self.y = y
-    ...
     >>> def my_stmt(foo):
     ...     stmt = lambda_stmt(lambda: select(func.max(foo.x, foo.y)))
     ...     return stmt
-    ...
     >>> with engine.connect() as conn:
-    ...    print(conn.scalar(my_stmt(Foo(5, 10))))
-    ...
+    ...     print(conn.scalar(my_stmt(Foo(5, 10))))
     Traceback (most recent call last):
       # ...
     sqlalchemy.exc.InvalidRequestError: Closure variable named 'foo' inside of
@@ -1583,8 +1587,7 @@ Basic guidelines include:
 
     >>> def my_stmt(foo):
     ...     stmt = lambda_stmt(
-    ...         lambda: select(func.max(foo.x, foo.y)),
-    ...         track_closure_variables=False
+    ...         lambda: select(func.max(foo.x, foo.y)), track_closure_variables=False
     ...     )
     ...     return stmt
 
@@ -1600,13 +1603,9 @@ Basic guidelines include:
 
     >>> def my_stmt(self, foo):
     ...     stmt = lambda_stmt(
-    ...         lambda: select(*self.column_expressions),
-    ...         track_closure_variables=False
+    ...         lambda: select(*self.column_expressions), track_closure_variables=False
     ...     )
-    ...     stmt = stmt.add_criteria(
-    ...         lambda: self.where_criteria,
-    ...         track_on=[self]
-    ...     )
+    ...     stmt = stmt.add_criteria(lambda: self.where_criteria, track_on=[self])
     ...     return stmt
 
   Using ``track_on`` means the given objects will be stored long term in the
@@ -1629,7 +1628,7 @@ SQL expression construct by producing a structure that represents all the
 state within the construct::
 
     >>> from sqlalchemy import select, column
-    >>> stmt = select(column('q'))
+    >>> stmt = select(column("q"))
     >>> cache_key = stmt._generate_cache_key()
     >>> print(cache_key)  # somewhat paraphrased
     CacheKey(key=(
@@ -1843,8 +1842,7 @@ To disable the "insertmanyvalues" feature for a given backend for an
 :func:`_sa.create_engine`::
 
     engine = create_engine(
-        "mariadb+mariadbconnector://scott:tiger@host/db",
-        use_insertmanyvalues=False
+        "mariadb+mariadbconnector://scott:tiger@host/db", use_insertmanyvalues=False
     )
 
 The feature can also be disabled from being used implicitly for a particular
@@ -1852,11 +1850,11 @@ The feature can also be disabled from being used implicitly for a particular
 :paramref:`_schema.Table.implicit_returning` parameter as ``False``::
 
       t = Table(
-          't',
+          "t",
           metadata,
-          Column('id', Integer, primary_key=True),
-          Column('x', Integer),
-          implicit_returning=False
+          Column("id", Integer, primary_key=True),
+          Column("x", Integer),
+          implicit_returning=False,
       )
 
 The reason one might want to disable RETURNING for a specific table is to
@@ -1921,13 +1919,15 @@ execution option, such as per execution::
         result = conn.execute(
             table.insert().returning(table.c.id),
             parameterlist,
-            execution_options={"insertmanyvalues_page_size": 100}
+            execution_options={"insertmanyvalues_page_size": 100},
         )
 
 Or configured on the statement itself::
 
-    stmt = table.insert().returning(table.c.id).execution_options(
-        insertmanyvalues_page_size=100
+    stmt = (
+        table.insert()
+        .returning(table.c.id)
+        .execution_options(insertmanyvalues_page_size=100)
     )
     with e.begin() as conn:
         result = conn.execute(stmt, parameterlist)
@@ -2071,7 +2071,6 @@ method may be used::
     with engine.connect() as conn:
         conn.exec_driver_sql("SET param='bar'")
 
-
 .. versionadded:: 1.4  Added the :meth:`_engine.Connection.exec_driver_sql` method.
 
 .. _dbapi_connections_cursor:
@@ -2148,7 +2147,7 @@ may potentially be used with your DBAPI. An example of this pattern is::
     connection = engine.raw_connection()
     try:
         cursor_obj = connection.cursor()
-        cursor_obj.callproc("my_procedure", ['x', 'y', 'z'])
+        cursor_obj.callproc("my_procedure", ["x", "y", "z"])
         results = list(cursor_obj.fetchall())
         cursor_obj.close()
         connection.commit()
@@ -2194,10 +2193,11 @@ Multiple result set support is available from a raw DBAPI cursor using the
     finally:
         connection.close()
 
-
-
 Registering New Dialects
 ========================
+
+.. highlight:: ini
+.. format:off
 
 The :func:`_sa.create_engine` function call locates the given dialect
 using setuptools entrypoints.   These entry points can be established
@@ -2228,6 +2228,9 @@ were in fact a MySQL dialect, the entry point could be established like this::
 
 The above entrypoint would then be accessed as ``create_engine("mysql+foodialect://")``.
 
+.. format:on
+.. highlight:: python
+
 Registering Dialects In-Process
 -------------------------------
 
@@ -2235,6 +2238,7 @@ SQLAlchemy also allows a dialect to be registered within the current process, by
 the need for separate installation.   Use the ``register()`` function as follows::
 
     from sqlalchemy.dialects import registry
+
     registry.register("mysql.foodialect", "myapp.dialect", "MyMySQLDialect")
 
 The above will respond to ``create_engine("mysql+foodialect://")`` and load the

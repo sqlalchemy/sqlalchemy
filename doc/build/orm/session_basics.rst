@@ -63,7 +63,7 @@ may look like::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/")
 
     # create session and add objects
     with Session(engine) as session:
@@ -130,8 +130,8 @@ operations::
     # create session and add objects
     with Session(engine) as session:
         with session.begin():
-          session.add(some_object)
-          session.add(some_other_object)
+            session.add(some_object)
+            session.add(some_other_object)
         # inner context calls session.commit(), if there were no exceptions
     # outer context calls session.close()
 
@@ -158,7 +158,7 @@ scope, the :class:`_orm.sessionmaker` can provide a factory for
 
     # an Engine, which the Session will use for connection
     # resources, typically in module scope
-    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/")
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
@@ -183,7 +183,7 @@ and also maintains a begin/commit/rollback block::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/")
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
@@ -238,7 +238,6 @@ A complete guide to SQLAlchemy ORM querying can be found at
         # list of ``User`` objects
         user_obj = session.scalars(statement).all()
 
-
         # query for individual columns
         statement = select(User.name, User.fullname)
 
@@ -267,12 +266,12 @@ already present and do not need to be added. Instances which are :term:`detached
 (i.e. have been removed from a session) may be re-associated with a session
 using this method::
 
-    user1 = User(name='user1')
-    user2 = User(name='user2')
+    user1 = User(name="user1")
+    user2 = User(name="user2")
     session.add(user1)
     session.add(user2)
 
-    session.commit()     # write changes to the database
+    session.commit()  # write changes to the database
 
 To add a list of items to the session at once, use
 :meth:`~.Session.add_all`::
@@ -526,9 +525,7 @@ ways to refresh its contents with new data from the current transaction:
   re-populated from their contents in the database::
 
     u2 = session.scalars(
-        select(User)
-        .where(User.id == 5)
-        .execution_options(populate_existing=True)
+        select(User).where(User.id == 5).execution_options(populate_existing=True)
     ).one()
 
   ..
@@ -831,6 +828,7 @@ E.g. **don't do this**::
 
     ### this is the **wrong way to do it** ###
 
+
     class ThingOne:
         def go(self):
             session = Session()
@@ -841,6 +839,7 @@ E.g. **don't do this**::
                 session.rollback()
                 raise
 
+
     class ThingTwo:
         def go(self):
             session = Session()
@@ -850,6 +849,7 @@ E.g. **don't do this**::
             except:
                 session.rollback()
                 raise
+
 
     def run_my_program():
         ThingOne().go()
@@ -863,20 +863,22 @@ transaction automatically::
 
     ### this is a **better** (but not the only) way to do it ###
 
+
     class ThingOne:
         def go(self, session):
             session.execute(update(FooBar).values(x=5))
 
+
     class ThingTwo:
         def go(self, session):
             session.execute(update(Widget).values(q=18))
+
 
     def run_my_program():
         with Session() as session:
             with session.begin():
                 ThingOne().go(session)
                 ThingTwo().go(session)
-
 
 .. versionchanged:: 1.4 The :class:`_orm.Session` may be used as a context
    manager without the use of external helper functions.
@@ -915,6 +917,7 @@ available on :class:`~sqlalchemy.orm.session.Session`::
 The newer :ref:`core_inspection_toplevel` system can also be used::
 
     from sqlalchemy import inspect
+
     session = inspect(someobject).session
 
 .. _session_faq_threadsafe:

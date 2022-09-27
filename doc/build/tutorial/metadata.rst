@@ -76,9 +76,9 @@ that will be how we will refer to the table in application code::
     >>> user_table = Table(
     ...     "user_account",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String(30)),
-    ...     Column('fullname', String)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30)),
+    ...     Column("fullname", String),
     ... )
 
 We can observe that the above :class:`_schema.Table` construct looks a lot like
@@ -151,9 +151,9 @@ table::
     >>> address_table = Table(
     ...     "address",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('user_id', ForeignKey('user_account.id'), nullable=False),
-    ...     Column('email_address', String, nullable=False)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", ForeignKey("user_account.id"), nullable=False),
+    ...     Column("email_address", String, nullable=False),
     ... )
 
 The table above also features a third kind of constraint, which in SQL is the
@@ -331,26 +331,26 @@ types::
     >>> from sqlalchemy.orm import relationship
 
     >>> class User(Base):
-    ...     __tablename__ = 'user_account'
-    ...
+    ...     __tablename__ = "user_account"
+    ... 
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str] = mapped_column(String(30))
     ...     fullname: Mapped[Optional[str]]
-    ...
+    ... 
     ...     addresses: Mapped[List["Address"]] = relationship(back_populates="user")
-    ...
+    ... 
     ...     def __repr__(self) -> str:
-    ...        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+    ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
-    ...     __tablename__ = 'address'
-    ...
+    ...     __tablename__ = "address"
+    ... 
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     email_address: Mapped[str]
-    ...     user_id = mapped_column(ForeignKey('user_account.id'))
-    ...
+    ...     user_id = mapped_column(ForeignKey("user_account.id"))
+    ... 
     ...     user: Mapped[User] = relationship(back_populates="addresses")
-    ...
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
@@ -472,7 +472,6 @@ the collection from the ``Base.metadata`` attribute and then using
 
     Base.metadata.create_all(engine)
 
-
 Combining Core Table Declarations with ORM Declarative
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -497,6 +496,7 @@ and should not be run)::
     class Base(DeclarativeBase):
         pass
 
+
     class User(Base):
         __table__ = user_table
 
@@ -504,6 +504,7 @@ and should not be run)::
 
         def __repr__(self):
             return f"User({self.name!r}, {self.fullname!r})"
+
 
     class Address(Base):
         __table__ = address_table

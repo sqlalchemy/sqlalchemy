@@ -14,9 +14,9 @@ The following examples assume a declarative base class as::
 
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
-
 
 All of the examples that follow illustrate a class inheriting from the above
 ``Base``.  The decorator style introduced at :ref:`orm_declarative_decorator`
@@ -43,6 +43,7 @@ Declarative mapping::
     from sqlalchemy import Integer, String
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import mapped_column
+
 
     class Base(DeclarativeBase):
         pass
@@ -153,6 +154,7 @@ Below illustrates the mapping from the previous section, adding the use of
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
+
 
     class Base(DeclarativeBase):
         pass
@@ -316,16 +318,19 @@ the registry and Declarative base could be configured as::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Mapped, mapped_column, registry
 
+
     class Base(DeclarativeBase):
-        registry = registry(type_annotation_map={
-            int: BIGINT,
-            datetime.datetime: TIMESTAMP(timezone=True),
-            str: String().with_variant(NVARCHAR, "mssql"),
-        })
+        registry = registry(
+            type_annotation_map={
+                int: BIGINT,
+                datetime.datetime: TIMESTAMP(timezone=True),
+                str: String().with_variant(NVARCHAR, "mssql"),
+            }
+        )
 
 
     class SomeClass(Base):
-        __tablename__ = 'some_table'
+        __tablename__ = "some_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         date: Mapped[datetime.datetime]
@@ -401,13 +406,16 @@ declare two variants of :class:`.String` and :class:`.Numeric`::
     num_12_4 = Annotated[Decimal, 12]
     num_6_2 = Annotated[Decimal, 6]
 
+
     class Base(DeclarativeBase):
-      registry = registry(type_annotation_map={
-          str_30: String(30),
-          str_50: String(50),
-          num_12_4: Numeric(12, 4),
-          num_6_2: Numeric(6, 2)
-      })
+        registry = registry(
+            type_annotation_map={
+                str_30: String(30),
+                str_50: String(50),
+                num_12_4: Numeric(12, 4),
+                num_6_2: Numeric(6, 2),
+            }
+        )
 
 The Python type passed to the ``Annotated`` container, in the above example the
 ``str`` and ``Decimal`` types, is important only for the benefit of typing
@@ -421,13 +429,13 @@ must be present for the ``Annotated`` construct to be valid. We can then use
 these augmented types directly in our mapping where they will be matched to the
 more specific type constructions, as in the following example::
 
-  class SomeClass(Base):
-      __tablename__ = 'some_table'
+    class SomeClass(Base):
+        __tablename__ = "some_table"
 
-      short_name: Mapped[str_30] = mapped_column(primary_key=True)
-      long_name: Mapped[str_50]
-      num_value: Mapped[num_12_4]
-      short_num_value: Mapped[num_6_2]
+        short_name: Mapped[str_30] = mapped_column(primary_key=True)
+        long_name: Mapped[str_50]
+        num_value: Mapped[num_12_4]
+        short_num_value: Mapped[num_6_2]
 
 a CREATE TABLE for the above mapping will illustrate the different variants
 of ``VARCHAR`` and ``NUMERIC`` we've configured, and looks like::
@@ -543,8 +551,10 @@ of the ``NULL`` / ``NOT NULL`` setting that takes place in the database::
         mapped_column(nullable=False),
     ]
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class SomeClass(Base):
 
@@ -577,19 +587,22 @@ default for the ``created_at`` column::
         mapped_column(nullable=False, server_default=func.CURRENT_TIMESTAMP()),
     ]
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
 
         id: Mapped[intpk]
 
+
     class SomeClass(Base):
-        __tablename__ = 'some_table'
+        __tablename__ = "some_table"
 
         # add ForeignKey to mapped_column(Integer, primary_key=True)
-        id: Mapped[intpk] = mapped_column(ForeignKey('parent.id'))
+        id: Mapped[intpk] = mapped_column(ForeignKey("parent.id"))
 
         # change server default from CURRENT_TIMESTAMP to UTC_TIMESTAMP
         created_at: Mapped[timestamp] = mapped_column(server_default=func.UTC_TIMESTAMP())
@@ -716,8 +729,10 @@ dictionary::
 
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class MyClass(Base):
         __tablename__ = "sometable"
@@ -733,6 +748,7 @@ subclass by assigning to the ``metadata`` attribute directly::
     from sqlalchemy.orm import DeclarativeBase
 
     metadata_obj = MetaData(schema="some_schema")
+
 
     class Base(DeclarativeBase):
         metadata = metadata_obj
@@ -780,10 +796,10 @@ that are commonly used include:
   additional SQL statements::
 
     class User(Base):
-         __tablename__ = "user"
+        __tablename__ = "user"
 
-         id: Mapped[int] = mapped_column(primary_key=True)
-         important_identifier: Mapped[str] = mapped_column(active_history=True)
+        id: Mapped[int] = mapped_column(primary_key=True)
+        important_identifier: Mapped[str] = mapped_column(active_history=True)
 
 See the docstring for :func:`_orm.mapped_column` for a list of supported
 parameters.
@@ -811,10 +827,10 @@ In the example below, the ``User`` class is mapped with alternate names
 given to the columns themselves::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
-        id: Mapped[int] = mapped_column('user_id', primary_key=True)
-        name: Mapped[str] = mapped_column('user_name')
+        id: Mapped[int] = mapped_column("user_id", primary_key=True)
+        name: Mapped[str] = mapped_column("user_name")
 
 Where above ``User.id`` resolves to a column named ``user_id``
 and ``User.name`` resolves to a column named ``user_name``.  We
@@ -822,7 +838,7 @@ may write a :func:`_sql.select` statement using our Python attribute names
 and will see the SQL names generated::
 
     >>> from sqlalchemy import select
-    >>> print(select(User.id, User.name).where(User.name == 'x'))
+    >>> print(select(User.id, User.name).where(User.name == "x"))
     SELECT "user".user_id, "user".user_name
     FROM "user"
     WHERE "user".user_name = :user_name_1
@@ -901,8 +917,10 @@ directly::
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
+
 
     # construct a Table directly.  The Base.metadata collection is
     # usually a good choice for MetaData but any MetaData
@@ -1019,6 +1037,7 @@ directly::
         Column("user_name", String),
     )
 
+
     class User(Base):
         __table__ = user_table
 
@@ -1040,6 +1059,7 @@ declaration, typing tools will be able to match the attribute to the
 
     from sqlalchemy.orm import column_property
     from sqlalchemy.orm import Mapped
+
 
     class User(Base):
         __table__ = user_table
@@ -1085,11 +1105,11 @@ associate additional parameters with the column.   Options include:
         Column("bio", Text),
     )
 
+
     class User(Base):
         __table__ = user_table
 
         bio = deferred(user_table.c.bio)
-
 
  .. seealso::
 
@@ -1101,20 +1121,22 @@ associate additional parameters with the column.   Options include:
   collection when inspecting the history of the attribute.   This may incur
   additional SQL statements::
 
-   from sqlalchemy.orm import deferred
+    from sqlalchemy.orm import deferred
 
-   user_table = Table(
-      "user",
-       Base.metadata,
-       Column("id", Integer, primary_key=True),
-       Column("important_identifier", String)
-   )
+    user_table = Table(
+        "user",
+        Base.metadata,
+        Column("id", Integer, primary_key=True),
+        Column("important_identifier", String),
+    )
 
-   class User(Base):
-       __table__ = user_table
 
-       important_identifier = column_property(user_table.c.important_identifier, active_history=True)
+    class User(Base):
+        __table__ = user_table
 
+        important_identifier = column_property(
+            user_table.c.important_identifier, active_history=True
+        )
 
 .. seealso::
 
@@ -1151,12 +1173,12 @@ use a declarative hybrid mapping, passing the
     from sqlalchemy import Table
     from sqlalchemy.orm import DeclarativeBase
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
+
 
     class Base(DeclarativeBase):
         pass
+
 
     class MyClass(Base):
         __table__ = Table(
@@ -1174,17 +1196,18 @@ objects at once, then refer to them from the :class:`.MetaData`::
     from sqlalchemy import Table
     from sqlalchemy.orm import DeclarativeBase
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
+
 
     class Base(DeclarativeBase):
         pass
 
+
     Base.metadata.reflect(engine)
 
+
     class MyClass(Base):
-        __table__ = Base.metadata.tables['mytable']
+        __table__ = Base.metadata.tables["mytable"]
 
 One caveat to the approach of using ``__table__`` is that the mapped classes cannot
 be declared until the tables have been reflected, which requires the database
@@ -1212,8 +1235,10 @@ use the ``__tablename__`` attribute::
     from sqlalchemy.ext.declarative import DeferredReflection
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Reflected(DeferredReflection):
         __abstract__ = True
@@ -1235,9 +1260,7 @@ the ``Reflected.prepare`` method is called.   The above mapping is not
 complete until we do so, given an :class:`_engine.Engine`::
 
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
     Reflected.prepare(engine)
 
 The purpose of the ``Reflected`` class is to define the scope at which
@@ -1295,6 +1318,7 @@ as illustrated below::
     from sqlalchemy import event
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -1302,14 +1326,13 @@ as illustrated below::
     @event.listens_for(Base.metadata, "column_reflect")
     def column_reflect(inspector, table, column_info):
         # set column.key = "attr_<lower_case_name>"
-        column_info['key'] = "attr_%s" % column_info['name'].lower()
+        column_info["key"] = "attr_%s" % column_info["name"].lower()
 
 With the above event, the reflection of :class:`_schema.Column` objects will be intercepted
 with our event that adds a new ".key" element, such as in a mapping as below::
 
     class MyClass(Base):
-        __table__ = Table("some_table", Base.metadata,
-                    autoload_with=some_engine)
+        __table__ = Table("some_table", Base.metadata, autoload_with=some_engine)
 
 The approach also works with both the :class:`.DeferredReflection` base class
 as well as with the :ref:`automap_toplevel` extension.   For automap
@@ -1363,7 +1386,7 @@ map such a table as in the following example::
         metadata,
         Column("user_id", String(40), nullable=False),
         Column("group_id", String(40), nullable=False),
-        UniqueConstraint("user_id", "group_id")
+        UniqueConstraint("user_id", "group_id"),
     )
 
 
@@ -1373,9 +1396,7 @@ map such a table as in the following example::
 
     class GroupUsers(Base):
         __table__ = group_users
-        __mapper_args__ = {
-            "primary_key": [group_users.c.user_id, group_users.c.group_id]
-        }
+        __mapper_args__ = {"primary_key": [group_users.c.user_id, group_users.c.group_id]}
 
 Above, the ``group_users`` table is an association table of some kind
 with string columns ``user_id`` and ``group_id``, but no primary key is set up;
@@ -1404,9 +1425,7 @@ way.   Example::
 
     class User(Base):
         __table__ = user_table
-        __mapper_args__ = {
-            'include_properties': ['user_id', 'user_name']
-        }
+        __mapper_args__ = {"include_properties": ["user_id", "user_name"]}
 
 In the above example, the ``User`` class will map to the ``user_table`` table, only
 including the ``user_id`` and ``user_name`` columns - the rest are not referenced.
@@ -1415,9 +1434,7 @@ Similarly::
 
     class Address(Base):
         __table__ = address_table
-        __mapper_args__ = {
-            'exclude_properties': ["street", "city", "state", "zip"]
-        }
+        __mapper_args__ = {"exclude_properties": ["street", "city", "state", "zip"]}
 
 will map the ``Address`` class to the ``address_table`` table, including
 all columns present except ``street``, ``city``, ``state``, and ``zip``.
@@ -1431,7 +1448,7 @@ mapping to multi-table constructs that might have repeated names::
     class User(Base):
         __table__ = user_table
         __mapper_args__ = {
-            'include_properties': [user_table.c.user_id, user_table.c.user_name]
+            "include_properties": [user_table.c.user_id, user_table.c.user_name]
         }
 
 When columns are not included in a mapping, these columns will not be

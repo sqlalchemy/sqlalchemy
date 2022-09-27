@@ -17,6 +17,7 @@ Python type::
 
     import dataclasses
 
+
     @dataclasses.dataclass
     class Point:
         x: int
@@ -45,6 +46,7 @@ of the columns to be generated, in this case the names; the
 
     from sqlalchemy.orm import DeclarativeBase, Mapped
     from sqlalchemy.orm import composite, mapped_column
+
 
     class Base(DeclarativeBase):
         pass
@@ -191,6 +193,7 @@ illustrate an equvalent mapping as that of the main section above.
     from sqlalchemy import Integer
     from sqlalchemy.orm import mapped_column, composite
 
+
     class Vertex(Base):
         __tablename__ = "vertices"
 
@@ -210,6 +213,7 @@ illustrate an equvalent mapping as that of the main section above.
   full column constructs::
 
     from sqlalchemy.orm import mapped_column, composite, Mapped
+
 
     class Vertex(Base):
         __tablename__ = "vertices"
@@ -238,7 +242,6 @@ illustrate an equvalent mapping as that of the main section above.
              "end": composite(Point, vertices_table.c.x2, vertices_table.c.y2),
          },
      )
-
 
 .. _composite_legacy_no_dataclass:
 
@@ -269,11 +272,7 @@ not using a dataclass::
             return f"Point(x={self.x!r}, y={self.y!r})"
 
         def __eq__(self, other):
-            return (
-                isinstance(other, Point)
-                and other.x == self.x
-                and other.y == self.y
-            )
+            return isinstance(other, Point) and other.x == self.x and other.y == self.y
 
         def __ne__(self, other):
             return not self.__eq__(other)
@@ -315,6 +314,7 @@ the same expression that the base "greater than" does::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.sql import and_
 
+
     @dataclasses.dataclass
     class Point:
         x: int
@@ -335,8 +335,10 @@ the same expression that the base "greater than" does::
                 ]
             )
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Vertex(Base):
         __tablename__ = "vertices"
@@ -344,14 +346,10 @@ the same expression that the base "greater than" does::
         id: Mapped[int] = mapped_column(primary_key=True)
 
         start: Mapped[Point] = composite(
-            mapped_column("x1"),
-            mapped_column("y1"),
-            comparator_factory=PointComparator
+            mapped_column("x1"), mapped_column("y1"), comparator_factory=PointComparator
         )
         end: Mapped[Point] = composite(
-            mapped_column("x2"),
-            mapped_column("y2"),
-            comparator_factory=PointComparator
+            mapped_column("x2"), mapped_column("y2"), comparator_factory=PointComparator
         )
 
 Since ``Point`` is a dataclass, we may make use of
@@ -405,6 +403,7 @@ four source columns ultimately resides::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     @dataclasses.dataclass
     class Point:
         x: int
@@ -423,9 +422,8 @@ four source columns ultimately resides::
 
         def __composite_values__(self):
             """generate a row from a Vertex"""
-            return (
-                dataclasses.astuple(self.start) + dataclasses.astuple(self.end)
-            )
+            return dataclasses.astuple(self.start) + dataclasses.astuple(self.end)
+
 
     class Base(DeclarativeBase):
         pass
@@ -449,9 +447,7 @@ The above mapping can then be used in terms of ``HasVertex``, ``Vertex``, and
     session.add(hv)
     session.commit()
 
-    stmt = select(HasVertex).where(
-        HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4))
-    )
+    stmt = select(HasVertex).where(HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4)))
 
     hv = session.scalars(stmt).first()
     print(hv.vertex.start)

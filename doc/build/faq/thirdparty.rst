@@ -28,16 +28,17 @@ by queries.   This may be illustrated from code based on the following::
 
     import numpy
 
+
     class A(Base):
         __tablename__ = "a"
 
         id = Column(Integer, primary_key=True)
         data = Column(Integer)
 
+
     # .. later
     session.add(A(data=numpy.int64(10)))
     session.commit()
-
 
 In the latter case, the issue is due to the ``numpy.int64`` datatype overriding
 the ``__eq__()`` method and enforcing that the return type of an expression is
@@ -47,9 +48,9 @@ expressions from Python equality comparisons::
 
     >>> import numpy
     >>> from sqlalchemy import column, Integer
-    >>> print(column('x', Integer) == numpy.int64(10))  # works
+    >>> print(column("x", Integer) == numpy.int64(10))  # works
     x = :x_1
-    >>> print(numpy.int64(10) == column('x', Integer))  # breaks
+    >>> print(numpy.int64(10) == column("x", Integer))  # breaks
     False
 
 These errors are both solved in the same way, which is that special numpy
@@ -61,9 +62,7 @@ applying the Python ``int()`` function to types like ``numpy.int32`` and
 
     session.add(A(data=int(data)))
 
-    result = session.execute(
-        select(A.data).where(int(data) == A.data)
-    )
+    result = session.execute(select(A.data).where(int(data) == A.data))
 
     session.commit()
 

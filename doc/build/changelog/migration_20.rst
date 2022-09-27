@@ -206,22 +206,22 @@ deprecation class is emitted only when an environment variable
 
 Given the example program below::
 
-  from sqlalchemy import column
-  from sqlalchemy import create_engine
-  from sqlalchemy import select
-  from sqlalchemy import table
+    from sqlalchemy import column
+    from sqlalchemy import create_engine
+    from sqlalchemy import select
+    from sqlalchemy import table
 
 
-  engine = create_engine("sqlite://")
+    engine = create_engine("sqlite://")
 
-  engine.execute("CREATE TABLE foo (id integer)")
-  engine.execute("INSERT INTO foo (id) VALUES (1)")
+    engine.execute("CREATE TABLE foo (id integer)")
+    engine.execute("INSERT INTO foo (id) VALUES (1)")
 
 
-  foo = table("foo", column("id"))
-  result = engine.execute(select([foo.c.id]))
+    foo = table("foo", column("id"))
+    result = engine.execute(select([foo.c.id]))
 
-  print(result.fetchall())
+    print(result.fetchall())
 
 The above program uses several patterns that many users will already identify
 as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
@@ -268,32 +268,31 @@ With warnings turned on, our program now has a lot to say::
 With the above guidance, we can migrate our program to use 2.0 styles, and
 as a bonus our program is much clearer::
 
-  from sqlalchemy import column
-  from sqlalchemy import create_engine
-  from sqlalchemy import select
-  from sqlalchemy import table
-  from sqlalchemy import text
+    from sqlalchemy import column
+    from sqlalchemy import create_engine
+    from sqlalchemy import select
+    from sqlalchemy import table
+    from sqlalchemy import text
 
 
-  engine = create_engine("sqlite://")
+    engine = create_engine("sqlite://")
 
-  # don't rely on autocommit for DML and DDL
-  with engine.begin() as connection:
-      # use connection.execute(), not engine.execute()
-      # use the text() construct to execute textual SQL
-      connection.execute(text("CREATE TABLE foo (id integer)"))
-      connection.execute(text("INSERT INTO foo (id) VALUES (1)"))
+    # don't rely on autocommit for DML and DDL
+    with engine.begin() as connection:
+        # use connection.execute(), not engine.execute()
+        # use the text() construct to execute textual SQL
+        connection.execute(text("CREATE TABLE foo (id integer)"))
+        connection.execute(text("INSERT INTO foo (id) VALUES (1)"))
 
 
-  foo = table("foo", column("id"))
+    foo = table("foo", column("id"))
 
-  with engine.connect() as connection:
-      # use connection.execute(), not engine.execute()
-      # select() now accepts column / table expressions positionally
-      result = connection.execute(select(foo.c.id))
+    with engine.connect() as connection:
+        # use connection.execute(), not engine.execute()
+        # select() now accepts column / table expressions positionally
+        result = connection.execute(select(foo.c.id))
 
-  print(result.fetchall())
-
+    print(result.fetchall())
 
 The goal of "2.0 deprecations mode" is that a program which runs with no
 :class:`_exc.RemovedIn20Warning` warnings with "2.0 deprecations mode" turned
@@ -385,8 +384,6 @@ The new engine is described at :class:`_future.Engine` which delivers a new
 
         conn.commit()  # commit as you go
 
-
-
 Migration to 2.0 Step Five - Use the ``future`` flag on Session
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -420,6 +417,7 @@ in 1.4 which are now closely matched to the patterns used by the
 :class:`_orm.Session` may be used as a context manager::
 
     from sqlalchemy.orm import Session
+
     with Session(engine) as session:
         session.add(MyObject())
         session.commit()
@@ -465,7 +463,7 @@ the underlying DBAPI transaction, but in SQLAlchemy
     conn = engine.connect()
 
     # won't autocommit in 2.0
-    conn.execute(some_table.insert().values(foo='bar'))
+    conn.execute(some_table.insert().values(foo="bar"))
 
 Nor will this autocommit::
 
@@ -481,10 +479,7 @@ execution option, will be removed::
     conn = engine.connect()
 
     # won't autocommit in 2.0
-    conn.execute(
-      text("EXEC my_procedural_thing()").execution_options(autocommit=True)
-    )
-
+    conn.execute(text("EXEC my_procedural_thing()").execution_options(autocommit=True))
 
 **Migration to 2.0**
 
@@ -493,13 +488,13 @@ style` execution is to make use of the :meth:`_engine.Connection.begin` method,
 or the :meth:`_engine.Engine.begin` context manager::
 
     with engine.begin() as conn:
-        conn.execute(some_table.insert().values(foo='bar'))
-        conn.execute(some_other_table.insert().values(bat='hoho'))
+        conn.execute(some_table.insert().values(foo="bar"))
+        conn.execute(some_other_table.insert().values(bat="hoho"))
 
     with engine.connect() as conn:
         with conn.begin():
-            conn.execute(some_table.insert().values(foo='bar'))
-            conn.execute(some_other_table.insert().values(bat='hoho'))
+            conn.execute(some_table.insert().values(foo="bar"))
+            conn.execute(some_other_table.insert().values(bat="hoho"))
 
     with engine.begin() as conn:
         conn.execute(text("EXEC my_procedural_thing()"))
@@ -511,8 +506,8 @@ when a statement is first invoked in the absence of an explicit call to
 :meth:`_future.Connection.begin`::
 
     with engine.connect() as conn:
-        conn.execute(some_table.insert().values(foo='bar'))
-        conn.execute(some_other_table.insert().values(bat='hoho'))
+        conn.execute(some_table.insert().values(foo="bar"))
+        conn.execute(some_other_table.insert().values(bat="hoho"))
 
         conn.commit()
 
@@ -550,7 +545,7 @@ explicit as to how the transaction should be used.    For the vast majority
 of Core use cases, it's the pattern that is already recommended::
 
     with engine.begin() as conn:
-        conn.execute(some_table.insert().values(foo='bar'))
+        conn.execute(some_table.insert().values(foo="bar"))
 
 For "commit as you go, or rollback instead" usage, which resembles how the
 :class:`_orm.Session` is normally used today, the "future" version of
@@ -568,7 +563,7 @@ a statement is first invoked::
     engine = create_engine(..., future=True)
 
     with engine.connect() as conn:
-        conn.execute(some_table.insert().values(foo='bar'))
+        conn.execute(some_table.insert().values(foo="bar"))
         conn.commit()
 
         conn.execute(text("some other SQL"))
@@ -618,11 +613,11 @@ execution patterns, is removed::
 
     metadata_obj = MetaData(bind=engine)  # no longer supported
 
-    metadata_obj.create_all()   # requires Engine or Connection
+    metadata_obj.create_all()  # requires Engine or Connection
 
     metadata_obj.reflect()  # requires Engine or Connection
 
-    t = Table('t', metadata_obj, autoload=True)  # use autoload_with=engine
+    t = Table("t", metadata_obj, autoload=True)  # use autoload_with=engine
 
     result = engine.execute(t.select())  # no longer supported
 
@@ -652,7 +647,7 @@ the ORM-level :meth:`_orm.Session.execute` method)::
     metadata_obj.reflect(engine)
 
     # reflect individual table
-    t = Table('t', metadata_obj, autoload_with=engine)
+    t = Table("t", metadata_obj, autoload_with=engine)
 
 
     # connection level:
@@ -667,11 +662,10 @@ the ORM-level :meth:`_orm.Session.execute` method)::
         metadata_obj.reflect(connection)
 
         # reflect individual table
-        t = Table('t', metadata_obj, autoload_with=connection)
+        t = Table("t", metadata_obj, autoload_with=connection)
 
         # execute SQL statements
         result = conn.execute(t.select())
-
 
 **Discussion**
 
@@ -742,36 +736,36 @@ execution and "bound metadata" are no longer as widely used so in 2.0 we seek
 to finally reduce the number of choices for how to execute a statement in
 Core from "many choices"::
 
-  # many choices
+    # many choices
 
-  # bound metadata?
-  metadata_obj = MetaData(engine)
+    # bound metadata?
+    metadata_obj = MetaData(engine)
 
-  # or not?
-  metadata_obj = MetaData()
+    # or not?
+    metadata_obj = MetaData()
 
-  # execute from engine?
-  result = engine.execute(stmt)
+    # execute from engine?
+    result = engine.execute(stmt)
 
-  # or execute the statement itself (but only if you did
-  # "bound metadata" above, which means you can't get rid of "bound" if any
-  # part of your program uses this form)
-  result = stmt.execute()
+    # or execute the statement itself (but only if you did
+    # "bound metadata" above, which means you can't get rid of "bound" if any
+    # part of your program uses this form)
+    result = stmt.execute()
 
-  # execute from connection, but it autocommits?
-  conn = engine.connect()
-  conn.execute(stmt)
+    # execute from connection, but it autocommits?
+    conn = engine.connect()
+    conn.execute(stmt)
 
-  # execute from connection, but autocommit isn't working, so use the special
-  # option?
-  conn.execution_options(autocommit=True).execute(stmt)
+    # execute from connection, but autocommit isn't working, so use the special
+    # option?
+    conn.execution_options(autocommit=True).execute(stmt)
 
-  # or on the statement ?!
-  conn.execute(stmt.execution_options(autocommit=True))
+    # or on the statement ?!
+    conn.execute(stmt.execution_options(autocommit=True))
 
-  # or execute from connection, and we use explicit transaction?
-  with conn.begin():
-      conn.execute(stmt)
+    # or execute from connection, and we use explicit transaction?
+    with conn.begin():
+        conn.execute(stmt)
 
 to "one choice", where by "one choice" we mean "explicit connection with
 explicit transaction"; there are still a few ways to demarcate
@@ -779,23 +773,22 @@ transaction blocks depending on need.  The "one choice" is to procure a
 :class:`_engine.Connection` and then to explicitly demarcate the transaction,
 in the case that the operation is a write operation::
 
-  # one choice - work with explicit connection, explicit transaction
-  # (there remain a few variants on how to demarcate the transaction)
+    # one choice - work with explicit connection, explicit transaction
+    # (there remain a few variants on how to demarcate the transaction)
 
-  # "begin once" - one transaction only per checkout
-  with engine.begin() as conn:
-      result = conn.execute(stmt)
+    # "begin once" - one transaction only per checkout
+    with engine.begin() as conn:
+        result = conn.execute(stmt)
 
-  # "commit as you go" - zero or more commits per checkout
-  with engine.connect() as conn:
-      result = conn.execute(stmt)
-      conn.commit()
+    # "commit as you go" - zero or more commits per checkout
+    with engine.connect() as conn:
+        result = conn.execute(stmt)
+        conn.commit()
 
-  # "commit as you go" but with a transaction block instead of autobegin
-  with engine.connect() as conn:
-      with conn.begin():
-          result = conn.execute(stmt)
-
+    # "commit as you go" but with a transaction block instead of autobegin
+    with engine.connect() as conn:
+        with conn.begin():
+            result = conn.execute(stmt)
 
 execute() method more strict, execution options are more prominent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -809,24 +802,22 @@ available argument patterns.  The new API in the 1.4 series is described at
 require modification::
 
 
-  connection = engine.connect()
+    connection = engine.connect()
 
-  # direct string SQL not supported; use text() or exec_driver_sql() method
-  result = connection.execute("select * from table")
+    # direct string SQL not supported; use text() or exec_driver_sql() method
+    result = connection.execute("select * from table")
 
-  # positional parameters no longer supported, only named
-  # unless using exec_driver_sql()
-  result = connection.execute(table.insert(), ('x', 'y', 'z'))
+    # positional parameters no longer supported, only named
+    # unless using exec_driver_sql()
+    result = connection.execute(table.insert(), ("x", "y", "z"))
 
-  # **kwargs no longer accepted, pass a single dictionary
-  result = connection.execute(table.insert(), x=10, y=5)
+    # **kwargs no longer accepted, pass a single dictionary
+    result = connection.execute(table.insert(), x=10, y=5)
 
-  # multiple *args no longer accepted, pass a list
-  result = connection.execute(
-      table.insert(),
-      {"x": 10, "y": 5}, {"x": 15, "y": 12}, {"x": 9, "y": 8}
-  )
-
+    # multiple *args no longer accepted, pass a list
+    result = connection.execute(
+        table.insert(), {"x": 10, "y": 5}, {"x": 15, "y": 12}, {"x": 9, "y": 8}
+    )
 
 **Migration to 2.0**
 
@@ -835,21 +826,19 @@ argument styles that are accepted by the 1.x :meth:`_engine.Connection.execute`
 method, so the following code is cross-compatible between 1.x and 2.0::
 
 
-  connection = engine.connect()
+    connection = engine.connect()
 
-  from sqlalchemy import text
-  result = connection.execute(text("select * from table"))
+    from sqlalchemy import text
 
-  # pass a single dictionary for single statement execution
-  result = connection.execute(table.insert(), {"x": 10, "y": 5})
+    result = connection.execute(text("select * from table"))
 
-  # pass a list of dictionaries for executemany
-  result = connection.execute(
-      table.insert(),
-      [{"x": 10, "y": 5}, {"x": 15, "y": 12}, {"x": 9, "y": 8}]
-  )
+    # pass a single dictionary for single statement execution
+    result = connection.execute(table.insert(), {"x": 10, "y": 5})
 
-
+    # pass a list of dictionaries for executemany
+    result = connection.execute(
+        table.insert(), [{"x": 10, "y": 5}, {"x": 15, "y": 12}, {"x": 9, "y": 8}]
+    )
 
 **Discussion**
 
@@ -892,10 +881,9 @@ tuples when using "future" mode::
 
         row = result.first()  # suppose the row is (1, 2)
 
-        "x" in row   # evaluates to False, in 1.x / future=False, this would be True
+        "x" in row  # evaluates to False, in 1.x / future=False, this would be True
 
         1 in row  # evaluates to True, in 1.x / future=False, this would be False
-
 
 **Migration to 2.0**
 
@@ -941,10 +929,7 @@ or attribute::
     stmt = select(User, Address).join(User.addresses)
 
     for row in session.execute(stmt).mappings():
-        print("the user is: %s  the address is: %s" % (
-            row[User],
-            row[Address]
-        ))
+        print("the user is: %s  the address is: %s" % (row[User], row[Address]))
 
 .. seealso::
 
@@ -981,13 +966,9 @@ now accepts its WHEN criteria positionally, rather than as a list::
 
     # list emits a deprecation warning
     case_clause = case(
-      [
-        (table.c.x == 5, "five"),
-        (table.c.x == 7, "seven")
-      ],
-      else_="neither five nor seven"
+        [(table.c.x == 5, "five"), (table.c.x == 7, "seven")],
+        else_="neither five nor seven",
     )
-
 
 **Migration to 2.0**
 
@@ -1011,9 +992,7 @@ is cross-compatible with 1.4 and 2.0::
 
     # case conditions passed positionally
     case_clause = case(
-      (table.c.x == 5, "five"),
-      (table.c.x == 7, "seven"),
-      else_="neither five nor seven"
+        (table.c.x == 5, "five"), (table.c.x == 7, "seven"), else_="neither five nor seven"
     )
 
 **Discussion**
@@ -1032,14 +1011,14 @@ documented style in the Core tutorial.
 
 Examples of "structural" vs. "data" elements are as follows::
 
-  # table columns for CREATE TABLE - structural
-  table = Table("table", metadata_obj, Column('x', Integer), Column('y', Integer))
+    # table columns for CREATE TABLE - structural
+    table = Table("table", metadata_obj, Column("x", Integer), Column("y", Integer))
 
-  # columns in a SELECT statement - structural
-  stmt = select(table.c.x, table.c.y)
+    # columns in a SELECT statement - structural
+    stmt = select(table.c.x, table.c.y)
 
-  # literal elements in an IN clause - data
-  stmt = stmt.where(table.c.y.in_([1, 2, 3]))
+    # literal elements in an IN clause - data
+    stmt = stmt.where(table.c.y.in_([1, 2, 3]))
 
 .. seealso::
 
@@ -1066,10 +1045,7 @@ constructor arguments to :func:`_sql.insert`, :func:`_sql.update` and
     stmt = table.delete(table.c.x > 15)
 
     # no longer supported
-    stmt = table.update(
-        table.c.x < 15,
-        preserve_parameter_order=True
-    ).values(
+    stmt = table.update(table.c.x < 15, preserve_parameter_order=True).values(
         [(table.c.y, 20), (table.c.x, table.c.y + 10)]
     )
 
@@ -1088,10 +1064,12 @@ examples::
     stmt = table.delete().where(table.c.x > 15)
 
     # use generative methods, ordered_values() replaces preserve_parameter_order
-    stmt = table.update().where(
-        table.c.x < 15,
-    ).ordered_values(
-        (table.c.y, 20), (table.c.x, table.c.y + 10)
+    stmt = (
+        table.update()
+        .where(
+            table.c.x < 15,
+        )
+        .ordered_values((table.c.y, 20), (table.c.x, table.c.y + 10))
     )
 
 **Discussion**
@@ -1162,9 +1140,7 @@ Code that works with classical mappings should change imports and code from::
     from sqlalchemy.orm import mapper
 
 
-    mapper(SomeClass, some_table, properties={
-        "related": relationship(SomeRelatedClass)
-    })
+    mapper(SomeClass, some_table, properties={"related": relationship(SomeRelatedClass)})
 
 To work from a central :class:`_orm.registry` object::
 
@@ -1172,9 +1148,9 @@ To work from a central :class:`_orm.registry` object::
 
     mapper_reg = registry()
 
-    mapper_reg.map_imperatively(SomeClass, some_table, properties={
-        "related": relationship(SomeRelatedClass)
-    })
+    mapper_reg.map_imperatively(
+        SomeClass, some_table, properties={"related": relationship(SomeRelatedClass)}
+    )
 
 The above :class:`_orm.registry` is also the source for declarative mappings,
 and classical mappings now have access to this registry including string-based
@@ -1186,19 +1162,23 @@ configuration on :func:`_orm.relationship`::
 
     Base = mapper_reg.generate_base()
 
+
     class SomeRelatedClass(Base):
-        __tablename__ = 'related'
+        __tablename__ = "related"
 
         # ...
 
 
-    mapper_reg.map_imperatively(SomeClass, some_table, properties={
-        "related": relationship(
-            "SomeRelatedClass",
-            primaryjoin="SomeRelatedClass.related_id == SomeClass.id"
-        )
-    })
-
+    mapper_reg.map_imperatively(
+        SomeClass,
+        some_table,
+        properties={
+            "related": relationship(
+                "SomeRelatedClass",
+                primaryjoin="SomeRelatedClass.related_id == SomeClass.id",
+            )
+        },
+    )
 
 **Discussion**
 
@@ -1637,7 +1617,6 @@ will all be removed in 2.0::
     # string use removed
     q = session.query(Address).filter(with_parent(u1, "addresses"))
 
-
 **Migration to 2.0**
 
 Modern SQLAlchemy 1.x versions support the recommended technique which
@@ -1684,7 +1663,6 @@ attributes in a list will be removed::
     # chaining removed
     q = session.query(User).join("orders", "items", "keywords")
 
-
 **Migration to 2.0**
 
 Use individual calls to :meth:`_orm.Query.join` for 1.x /2.0 cross compatible
@@ -1720,24 +1698,29 @@ ORM Query - join(..., aliased=True), from_joinpoint removed
 The ``aliased=True`` option on :meth:`_query.Query.join` is removed, as is
 the ``from_joinpoint`` flag::
 
-  # no longer supported
-  q = session.query(Node).\
-    join("children", aliased=True).filter(Node.name == "some sub child").
-    join("children", from_joinpoint=True, aliased=True).\
-    filter(Node.name == 'some sub sub child')
+    # no longer supported
+    q = (
+        session.query(Node)
+        .join("children", aliased=True)
+        .filter(Node.name == "some sub child")
+        .join("children", from_joinpoint=True, aliased=True)
+        .filter(Node.name == "some sub sub child")
+    )
 
 **Migration to 2.0**
 
 Use explicit aliases instead::
 
-  n1 = aliased(Node)
-  n2 = aliased(Node)
+    n1 = aliased(Node)
+    n2 = aliased(Node)
 
-  q = select(Node).join(Node.children.of_type(n1)).\
-      where(n1.name == "some sub child").\
-      join(n1.children.of_type(n2)).\
-      where(n2.name == "some sub child")
-
+    q = (
+        select(Node)
+        .join(Node.children.of_type(n1))
+        .where(n1.name == "some sub child")
+        .join(n1.children.of_type(n2))
+        .where(n2.name == "some sub child")
+    )
 
 **Discussion**
 
@@ -1776,8 +1759,13 @@ as well as "address.email_address" but only return User objects::
 
     # 1.xx code
 
-    result = session.query(User).join(User.addresses).\
-        distinct().order_by(Address.email_address).all()
+    result = (
+        session.query(User)
+        .join(User.addresses)
+        .distinct()
+        .order_by(Address.email_address)
+        .all()
+    )
 
 In version 2.0, the "email_address" column will not be automatically added
 to the columns clause, and the above query will fail, since relational
@@ -1792,8 +1780,12 @@ returning the main entity object, and not the extra column, use the
 
     # 1.4 / 2.0 code
 
-    stmt = select(User, Address.email_address).join(User.addresses).\
-        distinct().order_by(Address.email_address)
+    stmt = (
+        select(User, Address.email_address)
+        .join(User.addresses)
+        .distinct()
+        .order_by(Address.email_address)
+    )
 
     result = session.execute(stmt).columns(User).all()
 
@@ -1820,10 +1812,12 @@ Selecting from the query itself as a subquery, e.g. "from_self()"
 The :meth:`_orm.Query.from_self` method will be removed from :class:`_orm.Query`::
 
     # from_self is removed
-    q = session.query(User, Address.email_address).\
-      join(User.addresses).\
-      from_self(User).order_by(Address.email_address)
-
+    q = (
+        session.query(User, Address.email_address)
+        .join(User.addresses)
+        .from_self(User)
+        .order_by(Address.email_address)
+    )
 
 **Migration to 2.0**
 
@@ -1837,8 +1831,7 @@ since the final query wants to query in terms of both the ``User`` and
 
     from sqlalchemy.orm import aliased
 
-    subq = session.query(User, Address.email_address).\
-      join(User.addresses).subquery()
+    subq = session.query(User, Address.email_address).join(User.addresses).subquery()
 
     ua = aliased(User, subq)
 
@@ -1850,8 +1843,7 @@ The same form may be used in :term:`2.0 style`::
 
     from sqlalchemy.orm import aliased
 
-    subq = select(User, Address.email_address).\
-      join(User.addresses).subquery()
+    subq = select(User, Address.email_address).join(User.addresses).subquery()
 
     ua = aliased(User, subq)
 
@@ -1860,7 +1852,6 @@ The same form may be used in :term:`2.0 style`::
     stmt = select(ua, aa).order_by(aa.email_address)
 
     result = session.execute(stmt)
-
 
 **Discussion**
 
@@ -1892,16 +1883,15 @@ our ``User`` and ``Address`` entities have overlapping column names, we can
 select from both entities at once without having to specify any particular
 labeling::
 
-  # 1.4 / 2.0 code
+    # 1.4 / 2.0 code
 
-  subq = select(User, Address).\
-      join(User.addresses).subquery()
+    subq = select(User, Address).join(User.addresses).subquery()
 
-  ua = aliased(User, subq)
-  aa = aliased(Address, subq)
+    ua = aliased(User, subq)
+    aa = aliased(Address, subq)
 
-  stmt = select(ua, aa).order_by(aa.email_address)
-  result = session.execute(stmt)
+    stmt = select(ua, aa).order_by(aa.email_address)
+    result = session.execute(stmt)
 
 The above query will disambiguate the ``.id`` column of ``User`` and
 ``Address``, where ``Address.id`` is rendered and tracked as ``id_1``::
@@ -1985,9 +1975,7 @@ where the "joined eager loading" loader strategy is used with collections::
 
     # In the new API, uniquing is available but not implicitly
     # enabled
-    result = session.execute(
-        select(User).options(joinedload(User.addresses))
-    )
+    result = session.execute(select(User).options(joinedload(User.addresses)))
 
     # this actually will raise an error to let the user know that
     # uniquing should be applied
@@ -2056,16 +2044,15 @@ to achieve 2.0 style querying that's in terms of a specific relationship:
 
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         posts = relationship(Post, lazy="dynamic")
+
 
     jack = session.get(User, 5)
 
     # filter Jack's blog posts
-    posts = session.scalars(
-        jack.posts.statement.where(Post.headline == "this is a post")
-    )
+    posts = session.scalars(jack.posts.statement.where(Post.headline == "this is a post"))
 
 * Use the :func:`_orm.with_parent` function to construct a :func:`_sql.select`
   construct directly::
@@ -2075,9 +2062,9 @@ to achieve 2.0 style querying that's in terms of a specific relationship:
     jack = session.get(User, 5)
 
     posts = session.scalars(
-        select(Post).
-        where(with_parent(jack, User.posts)).
-        where(Post.headline == "this is a post")
+        select(Post)
+        .where(with_parent(jack, User.posts))
+        .where(Post.headline == "this is a post")
     )
 
 **Discussion**
@@ -2112,7 +2099,6 @@ is, this pattern::
     # commits, won't be supported
     sess.flush()
 
-
 **Migration to 2.0**
 
 The main reason a :class:`_orm.Session` is used in "autocommit" mode
@@ -2128,7 +2114,7 @@ be called::
     sess = Session(engine)
 
     sess.begin()  # begin explicitly; if not called, will autobegin
-                  # when database access is needed
+    # when database access is needed
 
     sess.add(obj)
 
@@ -2166,6 +2152,7 @@ a decorator may be used::
 
     import contextlib
 
+
     @contextlib.contextmanager
     def transaction(session):
         if not session.in_transaction():
@@ -2173,7 +2160,6 @@ a decorator may be used::
                 yield
         else:
             yield
-
 
 The above context manager may be used in the same way the
 "subtransaction" flag works, such as in the following example::
@@ -2184,12 +2170,14 @@ The above context manager may be used in the same way the
         with transaction(session):
             method_b(session)
 
+
     # method_b also starts a transaction, but when
     # called from method_a participates in the ongoing
     # transaction.
     def method_b(session):
         with transaction(session):
-            session.add(SomeObject('bat', 'lala'))
+            session.add(SomeObject("bat", "lala"))
+
 
     Session = sessionmaker(engine)
 
@@ -2204,8 +2192,10 @@ or methods to be concerned with the details of transaction demarcation::
     def method_a(session):
         method_b(session)
 
+
     def method_b(session):
-        session.add(SomeObject('bat', 'lala'))
+        session.add(SomeObject("bat", "lala"))
+
 
     Session = sessionmaker(engine)
 

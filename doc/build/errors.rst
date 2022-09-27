@@ -441,7 +441,7 @@ Normally, a Core SQL construct or ORM :class:`_query.Query` object can be string
 directly, such as when we use ``print()``::
 
   >>> from sqlalchemy import column
-  >>> print(column('x') == 5)
+  >>> print(column("x") == 5)
   x = :x_1
 
 When the above SQL expression is stringified, the :class:`.StrSQLCompiler`
@@ -455,11 +455,9 @@ to turn into a string, such as the PostgreSQL
 
   >>> from sqlalchemy.dialects.postgresql import insert
   >>> from sqlalchemy import table, column
-  >>> my_table = table('my_table', column('x'), column('y'))
-  >>> insert_stmt = insert(my_table).values(x='foo')
-  >>> insert_stmt = insert_stmt.on_conflict_do_nothing(
-  ...     index_elements=['y']
-  ... )
+  >>> my_table = table("my_table", column("x"), column("y"))
+  >>> insert_stmt = insert(my_table).values(x="foo")
+  >>> insert_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["y"])
   >>> print(insert_stmt)
   Traceback (most recent call last):
 
@@ -501,14 +499,12 @@ This often occurs when attempting to use a :func:`.column_property` or
 declarative such as::
 
     class Bar(Base):
-        __tablename__ = 'bar'
+        __tablename__ = "bar"
 
         id = Column(Integer, primary_key=True)
         cprop = deferred(Column(Integer))
 
-        __table_args__ = (
-            CheckConstraint(cprop > 5),
-        )
+        __table_args__ = (CheckConstraint(cprop > 5),)
 
 Above, the ``cprop`` attribute is used inline before it has been mapped,
 however this ``cprop`` attribute is not a :class:`_schema.Column`,
@@ -527,16 +523,12 @@ The solution is to access the :class:`_schema.Column` directly using the
 :attr:`.ColumnProperty.expression` attribute::
 
     class Bar(Base):
-        __tablename__ = 'bar'
+        __tablename__ = "bar"
 
         id = Column(Integer, primary_key=True)
         cprop = deferred(Column(Integer))
 
-        __table_args__ = (
-            CheckConstraint(cprop.expression > 5),
-        )
-
-
+        __table_args__ = (CheckConstraint(cprop.expression > 5),)
 
 .. _error_cd3x:
 
@@ -547,14 +539,14 @@ This error occurs when a statement makes use of :func:`.bindparam` either
 implicitly or explicitly and does not provide a value when the statement
 is executed::
 
- stmt = select(table.c.column).where(table.c.id == bindparam('my_param'))
+    stmt = select(table.c.column).where(table.c.id == bindparam("my_param"))
 
- result = conn.execute(stmt)
+    result = conn.execute(stmt)
 
 Above, no value has been provided for the parameter "my_param".  The correct
 approach is to provide a value::
 
- result = conn.execute(stmt, my_param=12)
+    result = conn.execute(stmt, my_param=12)
 
 When the message takes the form "a value is required for bind parameter <x>
 in parameter group <y>", the message is referring to the "executemany" style
@@ -570,21 +562,19 @@ the final string format of the statement which will be used for each
 set of parameters in the list.  As the second entry does not contain "b",
 this error is generated::
 
- m = MetaData()
- t = Table(
-     't', m,
-     Column('a', Integer),
-     Column('b', Integer),
-     Column('c', Integer)
- )
+    m = MetaData()
+    t = Table("t", m, Column("a", Integer), Column("b", Integer), Column("c", Integer))
 
- e.execute(
-     t.insert(), [
-         {"a": 1, "b": 2, "c": 3},
-         {"a": 2, "c": 4},
-         {"a": 3, "b": 4, "c": 5},
-     ]
- )
+    e.execute(
+        t.insert(),
+        [
+            {"a": 1, "b": 2, "c": 3},
+            {"a": 2, "c": 4},
+            {"a": 3, "b": 4, "c": 5},
+        ],
+    )
+
+.. code-block::
 
  sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError)
  A value is required for bind parameter 'b', in parameter group 1
@@ -593,13 +583,14 @@ this error is generated::
 
 Since "b" is required, pass it as ``None`` so that the INSERT may proceed::
 
- e.execute(
-     t.insert(), [
-         {"a": 1, "b": 2, "c": 3},
-         {"a": 2, "b": None, "c": 4},
-         {"a": 3, "b": 4, "c": 5},
-     ]
- )
+    e.execute(
+        t.insert(),
+        [
+            {"a": 1, "b": 2, "c": 3},
+            {"a": 2, "b": None, "c": 4},
+            {"a": 3, "b": 4, "c": 5},
+        ],
+    )
 
 .. seealso::
 
@@ -620,12 +611,7 @@ Core and the full rationale is discussed at :ref:`change_4617`.
 Given an example as::
 
     m = MetaData()
-    t = Table(
-       't', m,
-       Column('a', Integer),
-       Column('b', Integer),
-       Column('c', Integer)
-    )
+    t = Table("t", m, Column("a", Integer), Column("b", Integer), Column("c", Integer))
     stmt = select(t)
 
 Above, ``stmt`` represents a SELECT statement.  The error is produced when we want
@@ -678,10 +664,12 @@ construct::
 
     a1 = Address.__table__
 
-    q = s.query(User).\
-        join(a1, User.addresses).\
-        filter(Address.email_address == 'ed@foo.com').all()
-
+    q = (
+        s.query(User)
+        .join(a1, User.addresses)
+        .filter(Address.email_address == "ed@foo.com")
+        .all()
+    )
 
 The above pattern also allows an arbitrary selectable, such as
 a Core :class:`_sql.Join` or :class:`_sql.Alias` object,
@@ -690,23 +678,26 @@ Core element would need to be referred towards directly::
 
     a1 = Address.__table__.alias()
 
-    q = s.query(User).\
-        join(a1, User.addresses).\
-        filter(a1.c.email_address == 'ed@foo.com').all()
+    q = (
+        s.query(User)
+        .join(a1, User.addresses)
+        .filter(a1.c.email_address == "ed@foo.com")
+        .all()
+    )
 
 The correct way to specify a join target is always by using the mapped
 class itself or an :class:`_orm.aliased` object, in the latter case using the
 :meth:`_orm.PropComparator.of_type` modifier to set up an alias::
 
     # normal join to relationship entity
-    q = s.query(User).\
-        join(User.addresses).\
-        filter(Address.email_address == 'ed@foo.com')
+    q = s.query(User).join(User.addresses).filter(Address.email_address == "ed@foo.com")
 
     # name Address target explicitly, not necessary but legal
-    q = s.query(User).\
-        join(Address, User.addresses).\
-        filter(Address.email_address == 'ed@foo.com')
+    q = (
+        s.query(User)
+        .join(Address, User.addresses)
+        .filter(Address.email_address == "ed@foo.com")
+    )
 
 Join to an alias::
 
@@ -715,15 +706,14 @@ Join to an alias::
     a1 = aliased(Address)
 
     # of_type() form; recommended
-    q = s.query(User).\
-        join(User.addresses.of_type(a1)).\
-        filter(a1.email_address == 'ed@foo.com')
+    q = (
+        s.query(User)
+        .join(User.addresses.of_type(a1))
+        .filter(a1.email_address == "ed@foo.com")
+    )
 
     # target, onclause form
-    q = s.query(User).\
-        join(a1, User.addresses).\
-        filter(a1.email_address == 'ed@foo.com')
-
+    q = s.query(User).join(a1, User.addresses).filter(a1.email_address == "ed@foo.com")
 
 .. _error_xaj2:
 
@@ -741,7 +731,7 @@ alias to one side or the other; SQLAlchemy applies an alias to the right side
 of the join. For example given a joined inheritance mapping as::
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = Column(Integer, primary_key=True)
         manager_id = Column(ForeignKey("manager.id"))
         name = Column(String(50))
@@ -750,17 +740,18 @@ of the join. For example given a joined inheritance mapping as::
         reports_to = relationship("Manager", foreign_keys=manager_id)
 
         __mapper_args__ = {
-            'polymorphic_identity':'employee',
-            'polymorphic_on':type,
+            "polymorphic_identity": "employee",
+            "polymorphic_on": type,
         }
 
+
     class Manager(Employee):
-        __tablename__ = 'manager'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "manager"
+        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
 
         __mapper_args__ = {
-            'polymorphic_identity':'manager',
-            'inherit_condition': id == Employee.id
+            "polymorphic_identity": "manager",
+            "inherit_condition": id == Employee.id,
         }
 
 The above mapping includes a relationship between the ``Employee`` and
@@ -824,10 +815,10 @@ embedding the join into a new subquery:
 If we then wanted to use :func:`_orm.contains_eager` to populate the
 ``reports_to`` attribute, we refer to the alias::
 
-    >>> stmt =select(Employee).join(
-    ...     Employee.reports_to.of_type(manager_alias)
-    ... ).options(
-    ...     contains_eager(Employee.reports_to.of_type(manager_alias))
+    >>> stmt = (
+    ...     select(Employee)
+    ...     .join(Employee.reports_to.of_type(manager_alias))
+    ...     .options(contains_eager(Employee.reports_to.of_type(manager_alias)))
     ... )
 
 Without using the explicit :func:`_orm.aliased` object, in some more nested
@@ -959,6 +950,7 @@ is set on a many-to-one or many-to-many relationship, such as::
         # this will emit the error message when the mapper
         # configuration step occurs
         a = relationship("A", back_populates="bs", cascade="all, delete-orphan")
+
 
     configure_mappers()
 
@@ -1175,17 +1167,17 @@ silence each warning.
 For the typical example that's missing
 :paramref:`_orm.relationship.back_populates`, given the following mapping::
 
-  class Parent(Base):
-      __tablename__ = "parent"
-      id = Column(Integer, primary_key=True)
-      children = relationship("Child")
+    class Parent(Base):
+        __tablename__ = "parent"
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child")
 
 
-  class Child(Base):
-      __tablename__ = "child"
-      id = Column(Integer, primary_key=True)
-      parent_id = Column(ForeignKey("parent.id"))
-      parent = relationship("Parent")
+    class Child(Base):
+        __tablename__ = "child"
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(ForeignKey("parent.id"))
+        parent = relationship("Parent")
 
 The above mapping will generate warnings::
 
@@ -1196,16 +1188,16 @@ The relationships ``Child.parent`` and ``Parent.children`` appear to be in confl
 The solution is to apply :paramref:`_orm.relationship.back_populates`::
 
   class Parent(Base):
-      __tablename__ = "parent"
-      id = Column(Integer, primary_key=True)
-      children = relationship("Child", back_populates="parent")
+        __tablename__ = "parent"
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", back_populates="parent")
 
 
-  class Child(Base):
-      __tablename__ = "child"
-      id = Column(Integer, primary_key=True)
-      parent_id = Column(ForeignKey("parent.id"))
-      parent = relationship("Parent", back_populates="children")
+    class Child(Base):
+        __tablename__ = "child"
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(ForeignKey("parent.id"))
+        parent = relationship("Parent", back_populates="children")
 
 For more customized relationships where an "overlap" situation may be
 intentional and cannot be resolved, the :paramref:`_orm.relationship.overlaps`
@@ -1215,29 +1207,28 @@ same underlying table that include custom
 :paramref:`_orm.relationship.primaryjoin` conditions that limit the related
 items in each case::
 
-  class Parent(Base):
-      __tablename__ = "parent"
-      id = Column(Integer, primary_key=True)
-      c1 = relationship(
-          "Child",
-          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 0)",
-          backref="parent",
-          overlaps="c2, parent"
-      )
-      c2 = relationship(
-          "Child",
-          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 1)",
-          overlaps="c1, parent"
-      )
+    class Parent(Base):
+        __tablename__ = "parent"
+        id = Column(Integer, primary_key=True)
+        c1 = relationship(
+            "Child",
+            primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 0)",
+            backref="parent",
+            overlaps="c2, parent",
+        )
+        c2 = relationship(
+            "Child",
+            primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 1)",
+            overlaps="c1, parent",
+        )
 
 
-  class Child(Base):
-      __tablename__ = "child"
-      id = Column(Integer, primary_key=True)
-      parent_id = Column(ForeignKey("parent.id"))
+    class Child(Base):
+        __tablename__ = "child"
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(ForeignKey("parent.id"))
 
-      flag = Column(Integer)
-
+        flag = Column(Integer)
 
 Above, the ORM will know that the overlap between ``Parent.c1``,
 ``Parent.c2`` and ``Child.parent`` is intentional.
@@ -1289,8 +1280,7 @@ the ``prebuffer_rows`` execution option may be used as follows::
 
         # result internally pre-fetches all objects
         result = sess.execute(
-            select(User).where(User.id == 7),
-            execution_options={"prebuffer_rows": True}
+            select(User).where(User.id == 7), execution_options={"prebuffer_rows": True}
         )
 
     # context manager is closed, so session_obj above is closed, identity
@@ -1576,17 +1566,17 @@ SQLAlchemy pattern present only in 1.x versions. The issue occurs when one invok
 the :meth:`.Executable.execute` method directly off of a Core expression object
 that is not associated with any :class:`_engine.Engine`::
 
- metadata_obj = MetaData()
- table = Table('t', metadata_obj, Column('q', Integer))
+    metadata_obj = MetaData()
+    table = Table("t", metadata_obj, Column("q", Integer))
 
- stmt = select(table)
- result = stmt.execute()   # <--- raises
+    stmt = select(table)
+    result = stmt.execute()  # <--- raises
 
 What the logic is expecting is that the :class:`_schema.MetaData` object has
 been **bound** to a :class:`_engine.Engine`::
 
- engine = create_engine("mysql+pymysql://user:pass@host/db")
- metadata_obj = MetaData(bind=engine)
+    engine = create_engine("mysql+pymysql://user:pass@host/db")
+    metadata_obj = MetaData(bind=engine)
 
 Where above, any statement that derives from a :class:`_schema.Table` which
 in turn derives from that :class:`_schema.MetaData` will implicitly make use of
@@ -1596,12 +1586,12 @@ Note that the concept of bound metadata is **not present in SQLAlchemy 2.0**.
 The correct way to invoke statements is via
 the :meth:`_engine.Connection.execute` method of a :class:`_engine.Connection`::
 
- with engine.connect() as conn:
-   result = conn.execute(stmt)
+    with engine.connect() as conn:
+    result = conn.execute(stmt)
 
 When using the ORM, a similar facility is available via the :class:`.Session`::
 
- result = session.execute(stmt)
+    result = session.execute(stmt)
 
 .. seealso::
 

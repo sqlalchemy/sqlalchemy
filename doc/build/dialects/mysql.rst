@@ -19,12 +19,42 @@ MySQL Data Types
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with MySQL are importable from the top level dialect::
 
-    from sqlalchemy.dialects.mysql import \
-            BIGINT, BINARY, BIT, BLOB, BOOLEAN, CHAR, DATE, \
-            DATETIME, DECIMAL, DECIMAL, DOUBLE, ENUM, FLOAT, INTEGER, \
-            LONGBLOB, LONGTEXT, MEDIUMBLOB, MEDIUMINT, MEDIUMTEXT, NCHAR, \
-            NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
-            TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
+    from sqlalchemy.dialects.mysql import (
+        BIGINT,
+        BINARY,
+        BIT,
+        BLOB,
+        BOOLEAN,
+        CHAR,
+        DATE,
+        DATETIME,
+        DECIMAL,
+        DECIMAL,
+        DOUBLE,
+        ENUM,
+        FLOAT,
+        INTEGER,
+        LONGBLOB,
+        LONGTEXT,
+        MEDIUMBLOB,
+        MEDIUMINT,
+        MEDIUMTEXT,
+        NCHAR,
+        NUMERIC,
+        NVARCHAR,
+        REAL,
+        SET,
+        SMALLINT,
+        TEXT,
+        TIME,
+        TIMESTAMP,
+        TINYBLOB,
+        TINYINT,
+        TINYTEXT,
+        VARBINARY,
+        VARCHAR,
+        YEAR,
+    )
 
 Types which are specific to MySQL, or have MySQL-specific
 construction arguments, are as follows:

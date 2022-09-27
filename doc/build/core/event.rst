@@ -25,15 +25,18 @@ and that a user-defined listener function should receive two positional argument
     from sqlalchemy.event import listen
     from sqlalchemy.pool import Pool
 
+
     def my_on_connect(dbapi_con, connection_record):
         print("New DBAPI connection:", dbapi_con)
 
-    listen(Pool, 'connect', my_on_connect)
+
+    listen(Pool, "connect", my_on_connect)
 
 To listen with the :func:`.listens_for` decorator looks like::
 
     from sqlalchemy.event import listens_for
     from sqlalchemy.pool import Pool
+
 
     @listens_for(Pool, "connect")
     def my_on_connect(dbapi_con, connection_record):
@@ -54,9 +57,10 @@ that accepts ``**keyword`` arguments, by passing ``named=True`` to either
     from sqlalchemy.event import listens_for
     from sqlalchemy.pool import Pool
 
+
     @listens_for(Pool, "connect", named=True)
     def my_on_connect(**kw):
-        print("New DBAPI connection:", kw['dbapi_connection'])
+        print("New DBAPI connection:", kw["dbapi_connection"])
 
 When using named argument passing, the names listed in the function argument
 specification will be used as keys in the dictionary.
@@ -68,10 +72,11 @@ as long as the names match up::
     from sqlalchemy.event import listens_for
     from sqlalchemy.pool import Pool
 
+
     @listens_for(Pool, "connect", named=True)
     def my_on_connect(dbapi_connection, **kw):
         print("New DBAPI connection:", dbapi_connection)
-        print("Connection record:", kw['connection_record'])
+        print("Connection record:", kw["connection_record"])
 
 Above, the presence of ``**kw`` tells :func:`.listens_for` that
 arguments should be passed to the function by name, rather than positionally.
@@ -95,25 +100,26 @@ and objects::
     from sqlalchemy.engine import Engine
     import psycopg2
 
+
     def connect():
-        return psycopg2.connect(user='ed', host='127.0.0.1', dbname='test')
+        return psycopg2.connect(user="ed", host="127.0.0.1", dbname="test")
+
 
     my_pool = QueuePool(connect)
-    my_engine = create_engine('postgresql+psycopg2://ed@localhost/test')
+    my_engine = create_engine("postgresql+psycopg2://ed@localhost/test")
 
     # associate listener with all instances of Pool
-    listen(Pool, 'connect', my_on_connect)
+    listen(Pool, "connect", my_on_connect)
 
     # associate listener with all instances of Pool
     # via the Engine class
-    listen(Engine, 'connect', my_on_connect)
+    listen(Engine, "connect", my_on_connect)
 
     # associate listener with my_pool
-    listen(my_pool, 'connect', my_on_connect)
+    listen(my_pool, "connect", my_on_connect)
 
     # associate listener with my_engine.pool
-    listen(my_engine, 'connect', my_on_connect)
-
+    listen(my_engine, "connect", my_on_connect)
 
 .. _event_modifiers:
 
@@ -130,11 +136,12 @@ this value can be supported::
     def validate_phone(target, value, oldvalue, initiator):
         """Strip non-numeric characters from a phone number"""
 
-        return re.sub(r'\D', '', value)
+        return re.sub(r"\D", "", value)
+
 
     # setup listener on UserContact.phone attribute, instructing
     # it to use the return value
-    listen(UserContact.phone, 'set', validate_phone, retval=True)
+    listen(UserContact.phone, "set", validate_phone, retval=True)
 
 Event Reference
 ---------------

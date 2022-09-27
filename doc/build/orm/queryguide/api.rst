@@ -297,7 +297,7 @@ same way as the legacy :attr:`.Query.column_descriptions` attribute. The format
 returned is a list of dictionaries::
 
     >>> from pprint import pprint
-    >>> user_alias = aliased(User, name='user2')
+    >>> user_alias = aliased(User, name="user2")
     >>> stmt = select(User, User.id, user_alias)
     >>> pprint(stmt.column_descriptions)
     [{'aliased': False,
