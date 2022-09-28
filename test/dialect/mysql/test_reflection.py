@@ -1285,8 +1285,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class RawReflectionTest(fixtures.TestBase):
-    __backend__ = True
-
     def setup_test(self):
         dialect = mysql.dialect()
         self.parser = _reflection.MySQLTableDefinitionParser(
@@ -1412,3 +1410,14 @@ class RawReflectionTest(fixtures.TestBase):
                 "SET NULL",
             ),
         )
+
+    @testing.combinations(
+        (
+            "CREATE ALGORITHM=UNDEFINED DEFINER=`scott`@`%` SQL SECURITY DEFINER VIEW `v1` AS SELECT",  # noqa: E501
+            True,
+        ),
+        ("CREATE VIEW `v1` AS SELECT", True),
+        ("CREATE TABLE `v1`", False),
+    )
+    def test_is_view(self, sql: str, expected: bool) -> None:
+        is_(self.parser._check_view(sql), expected)
