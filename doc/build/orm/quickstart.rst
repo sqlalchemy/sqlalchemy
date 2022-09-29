@@ -95,7 +95,7 @@ used by SQLAlchemy Core to represent database columns.
 
 All ORM mapped classes require at least one column be declared as part of the
 primary key, typically by using the :paramref:`_schema.Column.primary_key`
-parameter on those :class:`_orm.mapped_column` objects that should be part
+parameter on those :func:`_orm.mapped_column` objects that should be part
 of the key.  In the above example, the ``User.id`` and ``Address.id``
 columns are marked as primary key.
 
