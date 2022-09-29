@@ -15,9 +15,8 @@ description of each of the concepts being illustrated here.
 
 .. versionchanged:: 2.0  The ORM Quickstart is updated for the latest
     :pep:`484`-aware features using new constructs including
-    :func:`_orm.mapped_column`.   At the moment, the rest of the documentation
-    may not be yet updated.   Features such as a new dataclass-native style
-    of mapping are also not documented yet.
+    :func:`_orm.mapped_column`.   See the section
+    :ref:`whatsnew_20_orm_declarative_typing` for migration information.
 
 Declare Models
 ---------------
@@ -65,45 +64,62 @@ real SQL tables that exist, or will exist, in a particular database::
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-Above, new ORM mapped classes are declared as part of a common base, which is
-configured as a user-defined class that inherits from the special
-:class:`_orm.DeclarativeBase` class. Then, the declarative mapping makes use of
-both the :class:`_orm.Mapped` type annotation construct to indicate class
-attributes that are mapped, and then makes use of the
-:func:`_orm.mapped_column` and :func:`_orm.relationship` constructs to further
-qualify the specifics of how these attributes should be mapped where necessary.
-The :func:`_orm.mapped_column` construct indicates the presence of a relational
-database column, which is also implied by default when :class:`_orm.Mapped` is
-annotated without a right-hand side value. The :func:`_orm.relationship`
-construct, by contrast, defines linkages between two :term:`mapped` classes,
-``User`` and ``Address`` above.
+The mapping starts with a base class, which above is called ``Base``, and is
+created by making a simple subclass against the :class:`_orm.DeclarativeBase`
+class.
 
-Most arguments accepted by :func:`_orm.mapped_column` align with the underlying
-construct that represents a database table column, which is the
-:class:`_schema.Column` object. The schema contains necessary elements such as
-primary key constraints set up using the
-:paramref:`_orm.mapped_column.primary_key` parameter, a
-:term:`foreign key constraint` configured using the :class:`_schema.ForeignKey`
-construct, and datatypes for columns including :class:`_types.Integer`, which
-is implied by the use of the Python ``int`` datatype, and
-:class:`_types.String`, which is implied by the use of the Python ``str``
-datatype. The "nullability" of columns by default is inferred by whether or not
-the left-hand :class:`_orm.Mapped` datatype is stated as ``Optional[<type>]``
-or not.
+Individual mapped classes are then created by making subclasses of ``Base``.
+A mapped class typically refers to a single particular database table,
+the name of which is indicated by using the ``__tablename__`` class-level
+attribute.
 
-In all cases, parameters passed to :func:`_orm.mapped_column`, such as specific
-datatype specifications such as ``String(30)``, or use of the the boolean parameter
-:paramref:`_orm.mapped_column.nullable`, will supersede the annotation-implied
+Next, columns that are part of the table are declared, by adding attributes
+that include a special typing annotation called :class:`_orm.Mapped`. The name
+of each attribute corresponds to the column that is to be part of the database
+table. The datatype of each column is taken first from the Python datatype
+that's associated with each :class:`_orm.Mapped` annotation; ``int`` for
+``INTEGER``, ``str`` for ``VARCHAR``, etc. Nullability derives from whether or
+not the ``Optional[]`` type modifier is used. More specific typing information
+may be indicated using SQLAlchemy type objects in the right side
+:func:`_orm.mapped_column` directive, such as the :class:`.String` datatype
+used above in the ``User.name`` column.
+
+The :func:`_orm.mapped_column` directive is used for all column-based
+attributes that require more specific customization. Besides typing
+information, this directive accepts a wide variety of arguments that indicate
+specific details about a database column, including server defaults and
+constraint information, such as membership within the primary key and foreign
+keys. The :func:`_orm.mapped_column` directive accepts a superset of arguments
+that are accepted by the SQLAlchemy :class:`_schema.Column` class, which is
+used by SQLAlchemy Core to represent database columns.
+
+All ORM mapped classes require at least one column be declared as part of the
+primary key, typically by using the :paramref:`_schema.Column.primary_key`
+parameter on those :class:`_orm.mapped_column` objects that should be part
+of the key.  In the above example, the ``User.id`` and ``Address.id``
+columns are marked as primary key.
+
+Taken together, the combination of a string table name as well as a list
+of column declarations is referred towards in SQLAlchemy as :term:`table metadata`.
+Setting up table metadata using both Core and ORM approaches is introduced
+in the :ref:`unified_tutorial` at :ref:`tutorial_working_with_metadata`.
+The above mapping is an example of what's referred towards as
+:ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 configuration.
 
-While the above classes include an explicitly written ``__repr__()`` method,
-which is used here to illustrate usage of the classes, there is also an
-option for methods such as ``__repr__()``, ``__eq__()`` and others to be
-generated automatically using Python dataclasses.  More on dataclass mapping
-at :ref:`orm_declarative_native_dataclasses`.
+Other variants of :class:`_orm.Mapped` are available, most commonly
+the :func:`_orm.relationship` construct indicated above.  In contrast
+to the column-based attributes, :func:`_orm.relationship` denotes a linkage
+between two ORM classes.  In the above example, ``User.addresses`` links
+``User`` to ``Address``, and ``Address.user`` links ``Address`` to ``User``.
+The :func:`_orm.relationship` construct is introduced in the
+:ref:`unified_tutorial` at :ref:`tutorial_orm_related_objects`.
 
-More on table metadata and an intro to ORM declared mapping is in the
-Tutorial at :ref:`tutorial_working_with_metadata`.
+Finally, the above example classes include a ``__repr__()`` method, which is
+not required but is useful for debugging. Mapped classes can be created with
+methods such as ``__repr__()`` generated automatically, using dataclasses. More
+on dataclass mapping at :ref:`orm_declarative_native_dataclasses`.
+
 
 Create an Engine
 ------------------
