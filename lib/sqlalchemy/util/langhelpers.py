@@ -178,7 +178,7 @@ def string_or_unprintable(element: Any) -> str:
 
 def clsname_as_plain_name(cls: Type[Any]) -> str:
     return " ".join(
-        n.lower() for n in re.findall(r"([A-Z][a-z]+)", cls.__name__)
+        n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", cls.__name__)
     )
 
 
@@ -1542,6 +1542,32 @@ class hybridproperty(Generic[_T]):
             return self.func(instance)
 
     def classlevel(self, func: Callable[..., Any]) -> hybridproperty[_T]:
+        self.clslevel = func
+        return self
+
+
+class rw_hybridproperty(Generic[_T]):
+    def __init__(self, func: Callable[..., _T]):
+        self.func = func
+        self.clslevel = func
+        self.setfn: Optional[Callable[..., Any]] = None
+
+    def __get__(self, instance: Any, owner: Any) -> _T:
+        if instance is None:
+            clsval = self.clslevel(owner)
+            return clsval
+        else:
+            return self.func(instance)
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        assert self.setfn is not None
+        self.setfn(instance, value)
+
+    def setter(self, func: Callable[..., Any]) -> rw_hybridproperty[_T]:
+        self.setfn = func
+        return self
+
+    def classlevel(self, func: Callable[..., Any]) -> rw_hybridproperty[_T]:
         self.clslevel = func
         return self
 

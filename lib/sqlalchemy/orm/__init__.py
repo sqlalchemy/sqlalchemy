@@ -26,7 +26,6 @@ from ._orm_constructors import backref as backref
 from ._orm_constructors import clear_mappers as clear_mappers
 from ._orm_constructors import column_property as column_property
 from ._orm_constructors import composite as composite
-from ._orm_constructors import CompositeProperty as CompositeProperty
 from ._orm_constructors import contains_alias as contains_alias
 from ._orm_constructors import create_session as create_session
 from ._orm_constructors import deferred as deferred
@@ -36,9 +35,7 @@ from ._orm_constructors import mapped_column as mapped_column
 from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship
-from ._orm_constructors import RelationshipProperty as RelationshipProperty
 from ._orm_constructors import synonym as synonym
-from ._orm_constructors import SynonymProperty as SynonymProperty
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
 from ._orm_constructors import with_polymorphic as with_polymorphic
 from .attributes import AttributeEventToken as AttributeEventToken
@@ -66,7 +63,9 @@ from .decl_api import MappedAsDataclass as MappedAsDataclass
 from .decl_api import registry as registry
 from .decl_api import synonym_for as synonym_for
 from .descriptor_props import Composite as Composite
+from .descriptor_props import CompositeProperty as CompositeProperty
 from .descriptor_props import Synonym as Synonym
+from .descriptor_props import SynonymProperty as SynonymProperty
 from .dynamic import AppenderQuery as AppenderQuery
 from .events import AttributeEvents as AttributeEvents
 from .events import InstanceEvents as InstanceEvents
@@ -106,10 +105,12 @@ from .mapper import reconstructor as reconstructor
 from .mapper import validates as validates
 from .properties import ColumnProperty as ColumnProperty
 from .properties import MappedColumn as MappedColumn
+from .properties import MappedSQLExpression as MappedSQLExpression
 from .query import AliasOption as AliasOption
 from .query import Query as Query
 from .relationships import foreign as foreign
 from .relationships import Relationship as Relationship
+from .relationships import RelationshipProperty as RelationshipProperty
 from .relationships import remote as remote
 from .scoping import scoped_session as scoped_session
 from .session import close_all_sessions as close_all_sessions

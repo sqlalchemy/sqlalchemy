@@ -57,7 +57,7 @@ from .descriptor_props import Synonym as _orm_synonym
 from .mapper import Mapper
 from .properties import ColumnProperty
 from .properties import MappedColumn
-from .relationships import Relationship
+from .relationships import RelationshipProperty
 from .state import InstanceState
 from .. import exc
 from .. import inspection
@@ -141,7 +141,7 @@ class DeclarativeAttributeIntercept(
 @compat_typing.dataclass_transform(
     field_descriptors=(
         MappedColumn[Any],
-        Relationship[Any],
+        RelationshipProperty[Any],
         Composite[Any],
         ColumnProperty[Any],
         Synonym[Any],
@@ -1290,7 +1290,7 @@ class registry:
     @compat_typing.dataclass_transform(
         field_descriptors=(
             MappedColumn[Any],
-            Relationship[Any],
+            RelationshipProperty[Any],
             Composite[Any],
             ColumnProperty[Any],
             Synonym[Any],

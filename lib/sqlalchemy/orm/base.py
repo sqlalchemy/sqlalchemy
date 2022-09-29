@@ -210,11 +210,11 @@ EXT_CONTINUE, EXT_STOP, EXT_SKIP, NO_KEY = tuple(EventConstants)
 
 class RelationshipDirection(Enum):
     """enumeration which indicates the 'direction' of a
-    :class:`_orm.Relationship`.
+    :class:`_orm.RelationshipProperty`.
 
     :class:`.RelationshipDirection` is accessible from the
     :attr:`_orm.Relationship.direction` attribute of
-    :class:`_orm.Relationship`.
+    :class:`_orm.RelationshipProperty`.
 
     """
 
@@ -795,9 +795,18 @@ class Mapped(ORMDescriptor[_T], roles.TypedColumnsClauseRole[_T], TypingOnly):
             ...
 
 
-class _MappedAttribute(Mapped[_T], TypingOnly):
+class _MappedAttribute(Generic[_T], TypingOnly):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
+
+    """
+
+    __slots__ = ()
+
+
+class _DeclarativeMapped(Mapped[_T], _MappedAttribute[_T]):
+    """Mixin for :class:`.MapperProperty` subclasses that allows them to
+    be compatible with ORM-annotated declarative mappings.
 
     """
 

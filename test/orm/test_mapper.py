@@ -28,8 +28,8 @@ from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import reconstructor
 from sqlalchemy.orm import registry
-from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm.persistence import _sort_states
@@ -3016,7 +3016,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # NOTE: this API changed in 0.8, previously __clause_element__()
         # gave the parent selecatable, now it gives the
         # primaryjoin/secondaryjoin
-        class MyFactory(Relationship.Comparator):
+        class MyFactory(RelationshipProperty.Comparator):
             __hash__ = None
 
             def __eq__(self, other):
@@ -3024,7 +3024,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     self._source_selectable().c.user_id
                 ) == func.foobar(other.id)
 
-        class MyFactory2(Relationship.Comparator):
+        class MyFactory2(RelationshipProperty.Comparator):
             __hash__ = None
 
             def __eq__(self, other):

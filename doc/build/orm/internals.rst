@@ -21,9 +21,9 @@ sections, are listed here.
     :members:
 
 .. autoclass:: Composite
-    :members:
 
-.. autodata:: CompositeProperty
+.. autoclass:: CompositeProperty
+    :members:
 
 .. autoclass:: AttributeEventToken
     :members:
@@ -42,8 +42,7 @@ sections, are listed here.
 
 
 .. autoclass:: InstrumentedAttribute
-    :members: __get__, __set__, __delete__
-    :undoc-members:
+    :members:
 
 .. autoclass:: LoaderCallableStatus
     :members:
@@ -54,6 +53,8 @@ sections, are listed here.
 
 .. autoclass:: MapperProperty
     :members:
+
+.. autoclass:: MappedSQLExpression
 
 .. autoclass:: InspectionAttrExtensionType
     :members:
@@ -71,19 +72,17 @@ sections, are listed here.
     :inherited-members:
 
 .. autoclass:: Relationship
-    :members:
-    :inherited-members:
 
 .. autoclass:: RelationshipDirection
     :members:
 
-.. autodata:: RelationshipProperty
+.. autoclass:: RelationshipProperty
+  :members:
 
 .. autoclass:: Synonym
-    :members:
-    :inherited-members:
 
-.. autodata:: SynonymProperty
+.. autoclass:: SynonymProperty
+    :members:
 
 .. autoclass:: QueryContext
     :members:
@@ -91,7 +90,6 @@ sections, are listed here.
 
 .. autoclass:: QueryableAttribute
     :members:
-    :inherited-members:
 
 .. autoclass:: UOWTransaction
     :members:

@@ -1733,7 +1733,7 @@ class DeclarativeMultiBaseTest(
 
         assert ASub.brap.property is A.data.property
         assert isinstance(
-            ASub.brap.original_property, descriptor_props.Synonym
+            ASub.brap.original_property, descriptor_props.SynonymProperty
         )
 
     def test_alt_name_attr_subclass_relationship_inline(self):
@@ -1755,7 +1755,7 @@ class DeclarativeMultiBaseTest(
 
         assert ASub.brap.property is A.b.property
         assert isinstance(
-            ASub.brap.original_property, descriptor_props.Synonym
+            ASub.brap.original_property, descriptor_props.SynonymProperty
         )
         ASub(brap=B())
 
@@ -1768,7 +1768,9 @@ class DeclarativeMultiBaseTest(
 
         A.brap = A.data
         assert A.brap.property is A.data.property
-        assert isinstance(A.brap.original_property, descriptor_props.Synonym)
+        assert isinstance(
+            A.brap.original_property, descriptor_props.SynonymProperty
+        )
 
     def test_alt_name_attr_subclass_relationship_attrset(
         self, require_metaclass
@@ -1787,7 +1789,9 @@ class DeclarativeMultiBaseTest(
             id = Column("id", Integer, primary_key=True)
 
         assert A.brap.property is A.b.property
-        assert isinstance(A.brap.original_property, descriptor_props.Synonym)
+        assert isinstance(
+            A.brap.original_property, descriptor_props.SynonymProperty
+        )
         A(brap=B())
 
     def test_eager_order_by(self):

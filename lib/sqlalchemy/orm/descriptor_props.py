@@ -33,6 +33,7 @@ import weakref
 
 from . import attributes
 from . import util as orm_util
+from .base import _DeclarativeMapped
 from .base import LoaderCallableStatus
 from .base import Mapped
 from .base import PassiveFlag
@@ -172,18 +173,14 @@ _composite_getters: weakref.WeakKeyDictionary[
 ] = weakref.WeakKeyDictionary()
 
 
-class Composite(
+class CompositeProperty(
     _MapsColumns[_CC], _IntrospectsAnnotations, DescriptorProperty[_CC]
 ):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
 
-    :class:`.Composite` is constructed using the :func:`.composite`
+    :class:`.CompositeProperty` is constructed using the :func:`.composite`
     function.
-
-    .. versionchanged:: 2.0 Renamed :class:`_orm.CompositeProperty`
-       to :class:`_orm.Composite`.  The old name
-       :class:`_orm.CompositeProperty` remains as an alias.
 
     .. seealso::
 
@@ -722,11 +719,11 @@ class Composite(
                 group=False, *self._comparable_elements
             )
 
-        def __clause_element__(self) -> Composite.CompositeBundle[_PT]:
+        def __clause_element__(self) -> CompositeProperty.CompositeBundle[_PT]:
             return self.expression
 
         @util.memoized_property
-        def expression(self) -> Composite.CompositeBundle[_PT]:
+        def expression(self) -> CompositeProperty.CompositeBundle[_PT]:
             clauses = self.clauses._annotate(
                 {
                     "parententity": self._parententity,
@@ -734,7 +731,7 @@ class Composite(
                     "proxy_key": self.prop.key,
                 }
             )
-            return Composite.CompositeBundle(self.prop, clauses)
+            return CompositeProperty.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(
             self, value: Any
@@ -814,6 +811,25 @@ class Composite(
         return str(self.parent.class_.__name__) + "." + self.key
 
 
+class Composite(CompositeProperty[_T], _DeclarativeMapped[_T]):
+    """Declarative-compatible front-end for the :class:`.CompositeProperty`
+    class.
+
+    Public constructor is the :func:`_orm.composite` function.
+
+    .. versionchanged:: 2.0 Added :class:`_orm.Composite` as a Declarative
+       compatible subclass of :class:`_orm.CompositeProperty`.
+
+    .. seealso::
+
+        :ref:`mapper_composite`
+
+    """
+
+    inherit_cache = True
+    """:meta private:"""
+
+
 class ConcreteInheritedProperty(DescriptorProperty[_T]):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
@@ -871,17 +887,13 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
         self.descriptor = NoninheritedConcreteProp()
 
 
-class Synonym(DescriptorProperty[_T]):
+class SynonymProperty(DescriptorProperty[_T]):
     """Denote an attribute name as a synonym to a mapped property,
     in that the attribute will mirror the value and expression behavior
     of another attribute.
 
     :class:`.Synonym` is constructed using the :func:`_orm.synonym`
     function.
-
-    .. versionchanged:: 2.0 Renamed :class:`_orm.SynonymProperty`
-       to :class:`_orm.Synonym`.  The old name
-       :class:`_orm.SynonymProperty` remains as an alias.
 
     .. seealso::
 
@@ -1008,3 +1020,21 @@ class Synonym(DescriptorProperty[_T]):
             p._mapped_by_synonym = self.key
 
         self.parent = parent
+
+
+class Synonym(SynonymProperty[_T], _DeclarativeMapped[_T]):
+    """Declarative front-end for the :class:`.SynonymProperty` class.
+
+    Public constructor is the :func:`_orm.synonym` function.
+
+    .. versionchanged:: 2.0 Added :class:`_orm.Synonym` as a Declarative
+       compatible subclass for :class:`_orm.SynonymProperty`
+
+    .. seealso::
+
+        :ref:`synonyms` - Overview of synonyms
+
+    """
+
+    inherit_cache = True
+    """:meta private:"""

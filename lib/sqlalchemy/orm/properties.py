@@ -27,9 +27,10 @@ from typing import TypeVar
 
 from . import attributes
 from . import strategy_options
-from .descriptor_props import Composite
+from .base import _DeclarativeMapped
+from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
-from .descriptor_props import Synonym
+from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
 from .interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from .interfaces import _IntrospectsAnnotations
@@ -37,7 +38,7 @@ from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
-from .relationships import Relationship
+from .relationships import RelationshipProperty
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
@@ -81,10 +82,10 @@ _NC = TypeVar("_NC", bound="NamedColumn[Any]")
 
 __all__ = [
     "ColumnProperty",
-    "Composite",
+    "CompositeProperty",
     "ConcreteInheritedProperty",
-    "Relationship",
-    "Synonym",
+    "RelationshipProperty",
+    "SynonymProperty",
 ]
 
 
@@ -95,7 +96,8 @@ class ColumnProperty(
     _IntrospectsAnnotations,
     log.Identified,
 ):
-    """Describes an object attribute that corresponds to a table column.
+    """Describes an object attribute that corresponds to a table column
+    or other column expression.
 
     Public constructor is the :func:`_orm.column_property` function.
 
@@ -103,6 +105,8 @@ class ColumnProperty(
 
     strategy_wildcard_key = strategy_options._COLUMN_TOKEN
     inherit_cache = True
+    """:meta private:"""
+
     _links_to_entity = False
 
     columns: List[NamedColumn[Any]]
@@ -474,10 +478,29 @@ class ColumnProperty(
         return str(self.parent.class_.__name__) + "." + self.key
 
 
+class MappedSQLExpression(ColumnProperty[_T], _DeclarativeMapped[_T]):
+    """Declarative front-end for the :class:`.ColumnProperty` class.
+
+    Public constructor is the :func:`_orm.column_property` function.
+
+    .. versionchanged:: 2.0 Added :class:`_orm.MappedSQLExpression` as
+       a Declarative compatible subclass for :class:`_orm.ColumnProperty`.
+
+    .. seealso::
+
+        :class:`.MappedColumn`
+
+    """
+
+    inherit_cache = True
+    """:meta private:"""
+
+
 class MappedColumn(
     SQLCoreOperations[_T],
     _IntrospectsAnnotations,
     _MapsColumns[_T],
+    _DeclarativeMapped[_T],
 ):
     """Maps a single :class:`_schema.Column` on a class.
 

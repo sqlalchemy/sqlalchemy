@@ -559,12 +559,12 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         target_collection = parent.target_collection
         value_attr = parent.value_attr
         prop = cast(
-            "orm.Relationship[_T]",
+            "orm.RelationshipProperty[_T]",
             orm.class_mapper(owning_class).get_property(target_collection),
         )
 
         # this was never asserted before but this should be made clear.
-        if not isinstance(prop, orm.Relationship):
+        if not isinstance(prop, orm.RelationshipProperty):
             raise NotImplementedError(
                 "association proxy to a non-relationship "
                 "intermediary is not supported"

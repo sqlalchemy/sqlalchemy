@@ -95,13 +95,13 @@ if TYPE_CHECKING:
     from ._typing import _RegistryType
     from .decl_api import registry
     from .dependency import DependencyProcessor
-    from .descriptor_props import Composite
-    from .descriptor_props import Synonym
+    from .descriptor_props import CompositeProperty
+    from .descriptor_props import SynonymProperty
     from .events import MapperEvents
     from .instrumentation import ClassManager
     from .path_registry import CachingEntityRegistry
     from .properties import ColumnProperty
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from .state import InstanceState
     from ..engine import Row
     from ..engine import RowMapping
@@ -2782,7 +2782,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
-    def synonyms(self) -> util.ReadOnlyProperties[Synonym[Any]]:
+    def synonyms(self) -> util.ReadOnlyProperties[SynonymProperty[Any]]:
         """Return a namespace of all :class:`.Synonym`
         properties maintained by this :class:`_orm.Mapper`.
 
@@ -2795,7 +2795,7 @@ class Mapper(
         """
         descriptor_props = util.preloaded.orm_descriptor_props
 
-        return self._filter_properties(descriptor_props.Synonym)
+        return self._filter_properties(descriptor_props.SynonymProperty)
 
     @property
     def entity_namespace(self):
@@ -2817,7 +2817,9 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.relationships")
-    def relationships(self) -> util.ReadOnlyProperties[Relationship[Any]]:
+    def relationships(
+        self,
+    ) -> util.ReadOnlyProperties[RelationshipProperty[Any]]:
         """A namespace of all :class:`.Relationship` properties
         maintained by this :class:`_orm.Mapper`.
 
@@ -2841,12 +2843,12 @@ class Mapper(
 
         """
         return self._filter_properties(
-            util.preloaded.orm_relationships.Relationship
+            util.preloaded.orm_relationships.RelationshipProperty
         )
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
-    def composites(self) -> util.ReadOnlyProperties[Composite[Any]]:
+    def composites(self) -> util.ReadOnlyProperties[CompositeProperty[Any]]:
         """Return a namespace of all :class:`.Composite`
         properties maintained by this :class:`_orm.Mapper`.
 
@@ -2858,7 +2860,7 @@ class Mapper(
 
         """
         return self._filter_properties(
-            util.preloaded.orm_descriptor_props.Composite
+            util.preloaded.orm_descriptor_props.CompositeProperty
         )
 
     def _filter_properties(

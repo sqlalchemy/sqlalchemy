@@ -39,6 +39,7 @@ from . import collections
 from . import exc as orm_exc
 from . import interfaces
 from ._typing import insp_is_aliased_class
+from .base import _DeclarativeMapped
 from .base import ATTR_EMPTY
 from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
@@ -95,7 +96,7 @@ if TYPE_CHECKING:
     from .collections import CollectionAdapter
     from .dynamic import DynamicAttributeImpl
     from .interfaces import MapperProperty
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from .state import InstanceState
     from .util import AliasedInsp
     from ..event.base import _Dispatch
@@ -131,7 +132,7 @@ SelfQueryableAttribute = TypeVar(
 @inspection._self_inspects
 class QueryableAttribute(
     roles.ExpressionElementRole[_T],
-    interfaces._MappedAttribute[_T],
+    _DeclarativeMapped[_T],
     interfaces.InspectionAttr,
     interfaces.PropComparator[_T],
     roles.JoinTargetRole,
@@ -408,7 +409,7 @@ class QueryableAttribute(
         self, *clauses: _ColumnExpressionArgument[bool]
     ) -> interfaces.PropComparator[bool]:
         if TYPE_CHECKING:
-            assert isinstance(self.comparator, Relationship.Comparator)
+            assert isinstance(self.comparator, RelationshipProperty.Comparator)
 
         exprs = tuple(
             coercions.expect(roles.WhereHavingRole, clause)
@@ -507,16 +508,23 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
     __slots__ = ()
 
     inherit_cache = True
+    """:meta private:"""
 
-    #    if not TYPE_CHECKING:
+    # hack to make __doc__ writeable on instances of
+    # InstrumentedAttribute, while still keeping classlevel
+    # __doc__ correct
 
-    @property  # type: ignore
+    @util.rw_hybridproperty  # type: ignore
     def __doc__(self) -> Optional[str]:  # type: ignore
         return self._doc
 
-    @__doc__.setter
-    def __doc__(self, value: Optional[str]) -> None:
+    @__doc__.setter  # type: ignore
+    def __doc__(self, value: Optional[str]) -> None:  # type: ignore
         self._doc = value
+
+    @__doc__.classlevel  # type: ignore
+    def __doc__(cls) -> Optional[str]:  # type: ignore
+        return super().__doc__
 
     def __set__(self, instance: object, value: Any) -> None:
         self.impl.set(
@@ -2612,7 +2620,7 @@ def register_descriptor(
         class_, key, comparator=comparator, parententity=parententity
     )
 
-    descriptor.__doc__ = doc
+    descriptor.__doc__ = doc  # type: ignore
 
     manager.instrument_attribute(key, descriptor)
     return descriptor

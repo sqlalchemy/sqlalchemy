@@ -40,8 +40,8 @@ from .attributes import InstrumentedAttribute
 from .attributes import QueryableAttribute
 from .base import _is_mapped_class
 from .base import InspectionAttr
-from .descriptor_props import Composite
-from .descriptor_props import Synonym
+from .descriptor_props import CompositeProperty
+from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MappedAttribute
@@ -1211,7 +1211,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             ):
                 # detect a QueryableAttribute that's already mapped being
                 # assigned elsewhere in userland, turn into a synonym()
-                value = Synonym(value.key)
+                value = SynonymProperty(value.key)
                 setattr(cls, k, value)
 
             if (
@@ -1316,7 +1316,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     del our_stuff[key]
 
                 for col in c.columns_to_assign:
-                    if not isinstance(c, Composite):
+                    if not isinstance(c, CompositeProperty):
                         name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
 
@@ -1736,7 +1736,7 @@ def _add_attribute(
         elif isinstance(value, QueryableAttribute) and value.key != key:
             # detect a QueryableAttribute that's already mapped being
             # assigned elsewhere in userland, turn into a synonym()
-            value = Synonym(value.key)
+            value = SynonymProperty(value.key)
             mapped_cls.__mapper__.add_property(key, value)
         else:
             type.__setattr__(cls, key, value)

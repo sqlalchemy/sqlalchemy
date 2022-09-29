@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from .interfaces import MapperProperty
     from .mapper import Mapper
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from .util import AliasedInsp
     from ..sql.cache_key import _CacheKeyTraversalType
     from ..sql.elements import BindParameter
@@ -573,7 +573,7 @@ class PropRegistry(PathRegistry):
         self.has_entity = prop._links_to_entity
         if prop._is_relationship:
             if TYPE_CHECKING:
-                assert isinstance(prop, Relationship)
+                assert isinstance(prop, RelationshipProperty)
             self.entity = prop.entity
             self.mapper = prop.mapper
         else:

@@ -1263,7 +1263,7 @@ class Query(
 
             for prop in mapper.iterate_properties:
                 if (
-                    isinstance(prop, relationships.Relationship)
+                    isinstance(prop, relationships.RelationshipProperty)
                     and prop.mapper is entity_zero.mapper  # type: ignore
                 ):
                     property = prop  # type: ignore  # noqa: A001

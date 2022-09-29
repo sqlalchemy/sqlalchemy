@@ -454,7 +454,7 @@ class DeferredReflection:
                 for rel in mapper._props.values():
 
                     if (
-                        isinstance(rel, relationships.Relationship)
+                        isinstance(rel, relationships.RelationshipProperty)
                         and rel._init_args.secondary._is_populated()
                     ):
 

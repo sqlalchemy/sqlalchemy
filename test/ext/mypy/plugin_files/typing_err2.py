@@ -3,8 +3,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import registry
-from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import RelationshipProperty
 
 reg: registry = registry()
 
@@ -30,8 +30,8 @@ class Foo:
 
     # EXPECTED: Can't infer type from @declared_attr on function 'some_relationship' # noqa
     @declared_attr
-    # EXPECTED_MYPY: Missing type parameters for generic type "Relationship"
-    def some_relationship(cls) -> Relationship:
+    # EXPECTED_MYPY: Missing type parameters for generic type "RelationshipProperty"
+    def some_relationship(cls) -> RelationshipProperty:
         return relationship("Bar")
 
 

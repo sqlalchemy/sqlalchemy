@@ -271,7 +271,10 @@ class _MapsColumns(_MappedAttribute[_T]):
 # by typing tools
 @inspection._self_inspects
 class MapperProperty(
-    HasCacheKey, _MappedAttribute[_T], InspectionAttrInfo, util.MemoizedSlots
+    HasCacheKey,
+    _MappedAttribute[_T],
+    InspectionAttrInfo,
+    util.MemoizedSlots,
 ):
     """Represent a particular class attribute mapped by :class:`_orm.Mapper`.
 

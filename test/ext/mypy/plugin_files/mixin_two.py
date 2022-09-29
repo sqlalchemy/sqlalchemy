@@ -6,8 +6,8 @@ from sqlalchemy import String
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import registry
-from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.sql.schema import ForeignKey
@@ -37,11 +37,11 @@ class HasAMixin:
         return relationship("A", back_populates="bs")
 
     @declared_attr
-    def a3(cls) -> Relationship["A"]:
+    def a3(cls) -> RelationshipProperty["A"]:
         return relationship("A", back_populates="bs")
 
     @declared_attr
-    def c1(cls) -> Relationship[C]:
+    def c1(cls) -> RelationshipProperty[C]:
         return relationship(C, back_populates="bs")
 
     @declared_attr

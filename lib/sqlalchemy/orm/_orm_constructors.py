@@ -26,9 +26,11 @@ from .descriptor_props import Synonym
 from .interfaces import _AttributeOptions
 from .properties import ColumnProperty
 from .properties import MappedColumn
+from .properties import MappedSQLExpression
 from .query import AliasOption
 from .relationships import _RelationshipArgumentType
 from .relationships import Relationship
+from .relationships import RelationshipProperty
 from .session import Session
 from .util import _ORMJoin
 from .util import AliasedClass
@@ -72,16 +74,6 @@ if TYPE_CHECKING:
 
 
 _T = typing.TypeVar("_T")
-
-
-CompositeProperty = Composite
-"""Alias for :class:`_orm.Composite`."""
-
-RelationshipProperty = Relationship
-"""Alias for :class:`_orm.Relationship`."""
-
-SynonymProperty = Synonym
-"""Alias for :class:`_orm.Synonym`."""
 
 
 @util.deprecated(
@@ -308,7 +300,7 @@ def column_property(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
-) -> ColumnProperty[_T]:
+) -> MappedSQLExpression[_T]:
     r"""Provide a column-level property for use with a mapping.
 
     Column-based properties can normally be applied to the mapper's
@@ -392,7 +384,7 @@ def column_property(
         expressions
 
     """
-    return ColumnProperty(
+    return MappedSQLExpression(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
@@ -772,7 +764,9 @@ def relationship(
     foreign_keys: Optional[_ORMColCollectionArgument] = None,
     remote_side: Optional[_ORMColCollectionArgument] = None,
     join_depth: Optional[int] = None,
-    comparator_factory: Optional[Type[Relationship.Comparator[Any]]] = None,
+    comparator_factory: Optional[
+        Type[RelationshipProperty.Comparator[Any]]
+    ] = None,
     single_parent: bool = False,
     innerjoin: bool = False,
     distinct_target_key: Optional[bool] = None,
@@ -1567,6 +1561,7 @@ def relationship(
 
 
     """
+
     return Relationship(
         argument,
         secondary=secondary,
@@ -1802,7 +1797,7 @@ def _mapper_fn(*arg: Any, **kw: Any) -> NoReturn:
 
 def dynamic_loader(
     argument: Optional[_RelationshipArgumentType[Any]] = None, **kw: Any
-) -> Relationship[Any]:
+) -> RelationshipProperty[Any]:
     """Construct a dynamically-loading mapper property.
 
     This is essentially the same as

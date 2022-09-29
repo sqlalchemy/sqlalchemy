@@ -36,7 +36,7 @@ import weakref
 
 from . import attributes
 from . import interfaces
-from .descriptor_props import Synonym
+from .descriptor_props import SynonymProperty
 from .properties import ColumnProperty
 from .util import class_mapper
 from .. import exc
@@ -46,7 +46,7 @@ from ..sql.schema import _get_table_key
 from ..util.typing import CallableReference
 
 if TYPE_CHECKING:
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from ..sql.schema import MetaData
     from ..sql.schema import Table
 
@@ -350,7 +350,7 @@ class _GetColumns:
             if desc.extension_type is interfaces.NotExtension.NOT_EXTENSION:
                 assert isinstance(desc, attributes.QueryableAttribute)
                 prop = desc.property
-                if isinstance(prop, Synonym):
+                if isinstance(prop, SynonymProperty):
                     key = prop.name
                 elif not isinstance(prop, ColumnProperty):
                     raise exc.InvalidRequestError(
@@ -398,7 +398,7 @@ class _class_resolver:
     )
 
     cls: Type[Any]
-    prop: Relationship[Any]
+    prop: RelationshipProperty[Any]
     fallback: Mapping[str, Any]
     arg: str
     favor_tables: bool
@@ -407,7 +407,7 @@ class _class_resolver:
     def __init__(
         self,
         cls: Type[Any],
-        prop: Relationship[Any],
+        prop: RelationshipProperty[Any],
         fallback: Mapping[str, Any],
         arg: str,
         favor_tables: bool = False,
@@ -520,7 +520,7 @@ _fallback_dict: Mapping[str, Any] = None  # type: ignore
 
 
 def _resolver(
-    cls: Type[Any], prop: Relationship[Any]
+    cls: Type[Any], prop: RelationshipProperty[Any]
 ) -> Tuple[
     Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
     Callable[[str, bool], _class_resolver],

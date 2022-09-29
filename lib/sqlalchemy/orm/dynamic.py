@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy="dynamic")
+@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader, log.Identified):
     def init_class_attribute(self, mapper):
         self.is_class_level = True

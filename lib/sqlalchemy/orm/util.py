@@ -88,7 +88,7 @@ if typing.TYPE_CHECKING:
     from .context import ORMCompileState
     from .mapper import Mapper
     from .query import Query
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from ..engine import Row
     from ..engine import RowMapping
     from ..sql._typing import _CE
@@ -1638,7 +1638,9 @@ class _ORMJoin(expression.Join):
 
         if isinstance(onclause, attributes.QueryableAttribute):
             if TYPE_CHECKING:
-                assert isinstance(onclause.comparator, Relationship.Comparator)
+                assert isinstance(
+                    onclause.comparator, RelationshipProperty.Comparator
+                )
             on_selectable = onclause.comparator._source_selectable()
             prop = onclause.property
             _extra_criteria += onclause._extra_criteria
@@ -1813,7 +1815,7 @@ def with_parent(
       .. versionadded:: 1.2
 
     """
-    prop_t: Relationship[Any]
+    prop_t: RelationshipProperty[Any]
 
     if isinstance(prop, str):
         raise sa_exc.ArgumentError(

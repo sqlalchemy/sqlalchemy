@@ -70,7 +70,18 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
         RELATIONSHIP,
         {
             "sqlalchemy.orm.relationships.Relationship",
+            "sqlalchemy.orm.relationships.RelationshipProperty",
             "sqlalchemy.orm.Relationship",
+            "sqlalchemy.orm.RelationshipProperty",
+        },
+    ),
+    "RelationshipProperty": (
+        RELATIONSHIP,
+        {
+            "sqlalchemy.orm.relationships.Relationship",
+            "sqlalchemy.orm.relationships.RelationshipProperty",
+            "sqlalchemy.orm.Relationship",
+            "sqlalchemy.orm.RelationshipProperty",
         },
     ),
     "registry": (
@@ -83,6 +94,17 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
     "ColumnProperty": (
         COLUMN_PROPERTY,
         {
+            "sqlalchemy.orm.properties.MappedSQLExpression",
+            "sqlalchemy.orm.MappedSQLExpression",
+            "sqlalchemy.orm.properties.ColumnProperty",
+            "sqlalchemy.orm.ColumnProperty",
+        },
+    ),
+    "MappedSQLExpression": (
+        COLUMN_PROPERTY,
+        {
+            "sqlalchemy.orm.properties.MappedSQLExpression",
+            "sqlalchemy.orm.MappedSQLExpression",
             "sqlalchemy.orm.properties.ColumnProperty",
             "sqlalchemy.orm.ColumnProperty",
         },
@@ -92,6 +114,17 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
         {
             "sqlalchemy.orm.descriptor_props.Synonym",
             "sqlalchemy.orm.Synonym",
+            "sqlalchemy.orm.descriptor_props.SynonymProperty",
+            "sqlalchemy.orm.SynonymProperty",
+        },
+    ),
+    "SynonymProperty": (
+        SYNONYM_PROPERTY,
+        {
+            "sqlalchemy.orm.descriptor_props.Synonym",
+            "sqlalchemy.orm.Synonym",
+            "sqlalchemy.orm.descriptor_props.SynonymProperty",
+            "sqlalchemy.orm.SynonymProperty",
         },
     ),
     "Composite": (
@@ -99,6 +132,17 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
         {
             "sqlalchemy.orm.descriptor_props.Composite",
             "sqlalchemy.orm.Composite",
+            "sqlalchemy.orm.descriptor_props.CompositeProperty",
+            "sqlalchemy.orm.CompositeProperty",
+        },
+    ),
+    "CompositeProperty": (
+        COMPOSITE_PROPERTY,
+        {
+            "sqlalchemy.orm.descriptor_props.Composite",
+            "sqlalchemy.orm.Composite",
+            "sqlalchemy.orm.descriptor_props.CompositeProperty",
+            "sqlalchemy.orm.CompositeProperty",
         },
     ),
     "MapperProperty": (

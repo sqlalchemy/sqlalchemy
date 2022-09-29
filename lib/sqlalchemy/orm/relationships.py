@@ -44,6 +44,7 @@ from . import attributes
 from . import strategy_options
 from ._typing import insp_is_aliased_class
 from ._typing import is_has_collection_adapter
+from .base import _DeclarativeMapped
 from .base import _is_mapped_class
 from .base import class_mapper
 from .base import LoaderCallableStatus
@@ -285,7 +286,7 @@ class _RelationshipArgs(NamedTuple):
 
 
 @log.class_logger
-class Relationship(
+class RelationshipProperty(
     _IntrospectsAnnotations, StrategizedProperty[_T], log.Identified
 ):
     """Describes an object property that holds a single item or list
@@ -297,14 +298,11 @@ class Relationship(
 
         :ref:`relationship_config_toplevel`
 
-    .. versionchanged:: 2.0 Renamed :class:`_orm.RelationshipProperty`
-       to :class:`_orm.Relationship`.  The old name
-       :class:`_orm.RelationshipProperty` remains as an alias.
-
     """
 
     strategy_wildcard_key = strategy_options._RELATIONSHIP_TOKEN
     inherit_cache = True
+    """:meta private:"""
 
     _links_to_entity = True
     _is_relationship = True
@@ -372,7 +370,7 @@ class Relationship(
         remote_side: Optional[_ORMColCollectionArgument] = None,
         join_depth: Optional[int] = None,
         comparator_factory: Optional[
-            Type[Relationship.Comparator[Any]]
+            Type[RelationshipProperty.Comparator[Any]]
         ] = None,
         single_parent: bool = False,
         innerjoin: bool = False,
@@ -388,7 +386,7 @@ class Relationship(
         _local_remote_pairs: Optional[_ColumnPairs] = None,
         _legacy_inactive_history_style: bool = False,
     ):
-        super(Relationship, self).__init__(attribute_options=attribute_options)
+        super().__init__(attribute_options=attribute_options)
 
         self.uselist = uselist
         self.argument = argument
@@ -450,7 +448,9 @@ class Relationship(
         self.omit_join = omit_join
         self.local_remote_pairs = _local_remote_pairs
         self.load_on_pending = load_on_pending
-        self.comparator_factory = comparator_factory or Relationship.Comparator
+        self.comparator_factory = (
+            comparator_factory or RelationshipProperty.Comparator
+        )
         util.set_creation_order(self)
 
         if info is not None:
@@ -458,7 +458,7 @@ class Relationship(
 
         self.strategy_key = (("lazy", self.lazy),)
 
-        self._reverse_property: Set[Relationship[Any]] = set()
+        self._reverse_property: Set[RelationshipProperty[Any]] = set()
 
         if overlaps:
             self._overlaps = set(re.split(r"\s*,\s*", overlaps))  # type: ignore  # noqa: E501
@@ -509,7 +509,7 @@ class Relationship(
 
     class Comparator(util.MemoizedSlots, PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
-        :class:`.Relationship` attributes.
+        :class:`.RelationshipProperty` attributes.
 
         See the documentation for :class:`.PropComparator` for a brief
         overview of ORM level operator definition.
@@ -536,18 +536,18 @@ class Relationship(
             "_extra_criteria",
         )
 
-        prop: RODescriptorReference[Relationship[_PT]]
+        prop: RODescriptorReference[RelationshipProperty[_PT]]
         _of_type: Optional[_EntityType[_PT]]
 
         def __init__(
             self,
-            prop: Relationship[_PT],
+            prop: RelationshipProperty[_PT],
             parentmapper: _InternalEntityType[Any],
             adapt_to_entity: Optional[AliasedInsp[Any]] = None,
             of_type: Optional[_EntityType[_PT]] = None,
             extra_criteria: Tuple[ColumnElement[bool], ...] = (),
         ):
-            """Construction of :class:`.Relationship.Comparator`
+            """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
 
             """
@@ -562,7 +562,7 @@ class Relationship(
 
         def adapt_to_entity(
             self, adapt_to_entity: AliasedInsp[Any]
-        ) -> Relationship.Comparator[Any]:
+        ) -> RelationshipProperty.Comparator[Any]:
             return self.__class__(
                 self.prop,
                 self._parententity,
@@ -572,7 +572,7 @@ class Relationship(
 
         entity: _InternalEntityType[_PT]
         """The target entity referred to by this
-        :class:`.Relationship.Comparator`.
+        :class:`.RelationshipProperty.Comparator`.
 
         This is either a :class:`_orm.Mapper` or :class:`.AliasedInsp`
         object.
@@ -584,7 +584,7 @@ class Relationship(
 
         mapper: Mapper[_PT]
         """The target :class:`_orm.Mapper` referred to by this
-        :class:`.Relationship.Comparator`.
+        :class:`.RelationshipProperty.Comparator`.
 
         This is the "target" or "remote" side of the
         :func:`_orm.relationship`.
@@ -639,7 +639,7 @@ class Relationship(
 
 
             """
-            return Relationship.Comparator(
+            return RelationshipProperty.Comparator(
                 self.prop,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -662,7 +662,7 @@ class Relationship(
                 for clause in util.coerce_generator_arg(criteria)
             )
 
-            return Relationship.Comparator(
+            return RelationshipProperty.Comparator(
                 self.prop,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -1124,7 +1124,7 @@ class Relationship(
             else:
                 return _orm_annotate(self.__negated_contains_or_equals(other))
 
-        def _memoized_attr_property(self) -> Relationship[_PT]:
+        def _memoized_attr_property(self) -> RelationshipProperty[_PT]:
             self.prop.parent._check_configure()
             return self.prop
 
@@ -1531,7 +1531,7 @@ class Relationship(
 
     @staticmethod
     def _check_sync_backref(
-        rel_a: Relationship[Any], rel_b: Relationship[Any]
+        rel_a: RelationshipProperty[Any], rel_b: RelationshipProperty[Any]
     ) -> None:
         if rel_a.viewonly and rel_b.sync_backref:
             raise sa_exc.InvalidRequestError(
@@ -1547,7 +1547,7 @@ class Relationship(
 
     def _add_reverse_property(self, key: str) -> None:
         other = self.mapper.get_property(key, _configure_mappers=False)
-        if not isinstance(other, Relationship):
+        if not isinstance(other, RelationshipProperty):
             raise sa_exc.InvalidRequestError(
                 "back_populates on relationship '%s' refers to attribute '%s' "
                 "that is not a relationship.  The back_populates parameter "
@@ -1601,7 +1601,7 @@ class Relationship(
     @util.memoized_property
     def mapper(self) -> Mapper[_T]:
         """Return the targeted :class:`_orm.Mapper` for this
-        :class:`.Relationship`.
+        :class:`.RelationshipProperty`.
 
         """
         return self.entity.mapper
@@ -1616,7 +1616,7 @@ class Relationship(
         self._post_init()
         self._generate_backref()
         self._join_condition._warn_for_conflicting_sync_targets()
-        super(Relationship, self).do_init()
+        super().do_init()
         self._lazy_strategy = cast(
             "LazyLoader", self._get_strategy((("lazy", "select"),))
         )
@@ -1883,7 +1883,7 @@ class Relationship(
     @property
     def cascade(self) -> CascadeOptions:
         """Return the current cascade setting for this
-        :class:`.Relationship`.
+        :class:`.RelationshipProperty`.
         """
         return self._cascade
 
@@ -1963,7 +1963,7 @@ class Relationship(
 
     def _columns_are_mapped(self, *cols: ColumnElement[Any]) -> bool:
         """Return True if all columns in the given collection are
-        mapped by the tables referenced by this :class:`.Relationship`.
+        mapped by the tables referenced by this :class:`.RelationshipProperty`.
 
         """
 
@@ -2041,7 +2041,7 @@ class Relationship(
             kwargs.setdefault("passive_updates", self.passive_updates)
             kwargs.setdefault("sync_backref", self.sync_backref)
             self.back_populates = backref_key
-            relationship = Relationship(
+            relationship = RelationshipProperty(
                 parent,
                 self.secondary,
                 primaryjoin=pj,
@@ -2182,7 +2182,7 @@ class JoinCondition:
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]
     secondary: Optional[FromClause]
-    prop: Relationship[Any]
+    prop: RelationshipProperty[Any]
 
     synchronize_pairs: _ColumnPairs
     secondary_synchronize_pairs: _ColumnPairs
@@ -2201,6 +2201,7 @@ class JoinCondition:
         child_persist_selectable: FromClause,
         parent_local_selectable: FromClause,
         child_local_selectable: FromClause,
+        *,
         primaryjoin: Optional[ColumnElement[bool]] = None,
         secondary: Optional[FromClause] = None,
         secondaryjoin: Optional[ColumnElement[bool]] = None,
@@ -2210,10 +2211,11 @@ class JoinCondition:
         local_remote_pairs: Optional[_ColumnPairs] = None,
         remote_side: Any = None,
         self_referential: Any = False,
-        prop: Optional[Relationship[Any]] = None,
+        prop: RelationshipProperty[Any],
         support_sync: bool = True,
         can_be_synced_fn: Callable[..., bool] = lambda *c: True,
     ):
+
         self.parent_persist_selectable = parent_persist_selectable
         self.parent_local_selectable = parent_local_selectable
         self.child_persist_selectable = child_persist_selectable
@@ -2248,8 +2250,6 @@ class JoinCondition:
         self._log_joins()
 
     def _log_joins(self) -> None:
-        if self.prop is None:
-            return
         log = self.prop.logger
         log.info("%s setup primary join %s", self.prop, self.primaryjoin)
         log.info("%s setup secondary join %s", self.prop, self.secondaryjoin)
@@ -2780,9 +2780,6 @@ class JoinCondition:
         )
 
     def _annotate_parentmapper(self) -> None:
-        if self.prop is None:
-            return
-
         def parentmappers_(element: _CE, **kw: Any) -> Optional[_CE]:
             if "remote" in element._annotations:
                 return element._annotate({"parentmapper": self.prop.mapper})
@@ -3040,7 +3037,9 @@ class JoinCondition:
 
     _track_overlapping_sync_targets: weakref.WeakKeyDictionary[
         ColumnElement[Any],
-        weakref.WeakKeyDictionary[Relationship[Any], ColumnElement[Any]],
+        weakref.WeakKeyDictionary[
+            RelationshipProperty[Any], ColumnElement[Any]
+        ],
     ] = weakref.WeakKeyDictionary()
 
     def _warn_for_conflicting_sync_targets(self) -> None:
@@ -3343,3 +3342,21 @@ class _ColInAnnotations:
 
     def __call__(self, c: ClauseElement) -> bool:
         return self.name in c._annotations
+
+
+class Relationship(RelationshipProperty[_T], _DeclarativeMapped[_T]):
+    """Declarative front-end for the :class:`.RelationshipProperty` class.
+
+    Public constructor is the :func:`_orm.relationship` function.
+
+    .. seealso::
+
+        :ref:`relationship_config_toplevel`
+
+    .. versionchanged:: 2.0 Added :class:`_orm.Relationship` as a Declarative
+       compatible subclass for :class:`_orm.RelationshipProperty`.
+
+    """
+
+    inherit_cache = True
+    """:meta private:"""

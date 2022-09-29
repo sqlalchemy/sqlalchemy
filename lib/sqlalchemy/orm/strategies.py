@@ -58,7 +58,7 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import Select
 
 if TYPE_CHECKING:
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from ..sql.elements import ColumnElement
 
 
@@ -590,7 +590,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(do_nothing=True)
+@relationships.RelationshipProperty.strategy_for(do_nothing=True)
 class DoNothingLoader(LoaderStrategy):
     """Relationship loader that makes no change to the object's state.
 
@@ -602,8 +602,8 @@ class DoNothingLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy="noload")
-@relationships.Relationship.strategy_for(lazy=None)
+@relationships.RelationshipProperty.strategy_for(lazy="noload")
+@relationships.RelationshipProperty.strategy_for(lazy=None)
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.Relationship`
     with "lazy=None".
@@ -643,11 +643,11 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy=True)
-@relationships.Relationship.strategy_for(lazy="select")
-@relationships.Relationship.strategy_for(lazy="raise")
-@relationships.Relationship.strategy_for(lazy="raise_on_sql")
-@relationships.Relationship.strategy_for(lazy="baked_select")
+@relationships.RelationshipProperty.strategy_for(lazy=True)
+@relationships.RelationshipProperty.strategy_for(lazy="select")
+@relationships.RelationshipProperty.strategy_for(lazy="raise")
+@relationships.RelationshipProperty.strategy_for(lazy="raise_on_sql")
+@relationships.RelationshipProperty.strategy_for(lazy="baked_select")
 class LazyLoader(
     AbstractRelationshipLoader, util.MemoizedSlots, log.Identified
 ):
@@ -677,10 +677,10 @@ class LazyLoader(
     _rev_lazywhere: ColumnElement[bool]
     _rev_bind_to_col: Dict[str, ColumnElement[Any]]
 
-    parent_property: Relationship[Any]
+    parent_property: RelationshipProperty[Any]
 
     def __init__(
-        self, parent: Relationship[Any], strategy_key: Tuple[Any, ...]
+        self, parent: RelationshipProperty[Any], strategy_key: Tuple[Any, ...]
     ):
         super(LazyLoader, self).__init__(parent, strategy_key)
         self._raise_always = self.strategy_opts["lazy"] == "raise"
@@ -1336,7 +1336,7 @@ class PostLoader(AbstractRelationshipLoader):
         )
 
 
-@relationships.Relationship.strategy_for(lazy="immediate")
+@relationships.RelationshipProperty.strategy_for(lazy="immediate")
 class ImmediateLoader(PostLoader):
     __slots__ = ()
 
@@ -1426,7 +1426,7 @@ class ImmediateLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy="subquery")
+@relationships.RelationshipProperty.strategy_for(lazy="subquery")
 class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
@@ -2067,8 +2067,8 @@ class SubqueryLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy="joined")
-@relationships.Relationship.strategy_for(lazy=False)
+@relationships.RelationshipProperty.strategy_for(lazy="joined")
+@relationships.RelationshipProperty.strategy_for(lazy=False)
 class JoinedLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.Relationship`
     using joined eager loading.
@@ -2803,7 +2803,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.Relationship.strategy_for(lazy="selectin")
+@relationships.RelationshipProperty.strategy_for(lazy="selectin")
 class SelectInLoader(PostLoader, util.MemoizedSlots):
     __slots__ = (
         "join_depth",

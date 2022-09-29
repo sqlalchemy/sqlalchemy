@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from .interfaces import MapperProperty
     from .interfaces import UserDefinedOption
     from .mapper import Mapper
-    from .relationships import Relationship
+    from .relationships import RelationshipProperty
     from .state import InstanceState
     from .util import AliasedClass
     from .util import AliasedInsp
@@ -132,7 +132,7 @@ if TYPE_CHECKING:
 
     def prop_is_relationship(
         prop: MapperProperty[Any],
-    ) -> TypeGuard[Relationship[Any]]:
+    ) -> TypeGuard[RelationshipProperty[Any]]:
         ...
 
     def is_collection_impl(
