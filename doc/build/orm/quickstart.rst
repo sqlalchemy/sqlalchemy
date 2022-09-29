@@ -59,19 +59,48 @@ real SQL tables that exist, or will exist, in a particular database::
     ...     def __repr__(self):
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-Above, the declarative mapping makes use of :class:`_schema.Column` objects
-to define the basic units of data storage that will be in the database.
-The :func:`_orm.relationship` construct defines linkages between two
-:term:`mapped` classes, ``User`` and ``Address`` above.
 
-The schema contains necessary elements such as primary key constraints set up
-by the :paramref:`_schema.Column.primary_key` parameter, a
-:term:`foreign key constraint` configured using :class:`_schema.ForeignKey`
-(which is used by :func:`_orm.relationship` as well), and datatypes for columns
-including :class:`_types.Integer` and :class:`_types.String`.
+The mapping starts with a base class, which above is called ``Base``, and is
+created by calling upon the :func:`_orm.declarative_base` function, which
+produces a new base class.
 
-More on table metadata and an intro to ORM declared mapping is in the
-Tutorial at :ref:`tutorial_working_with_metadata`.
+Individual mapped classes are then created by making subclasses of ``Base``.
+A mapped class typically refers to a single particular database table,
+the name of which is indicated by using the ``__tablename__`` class-level
+attribute.
+
+Next, columns that are part of the table are declared, by adding attributes
+linked to the :class:`_schema.Column` construct.  :class:`_schema.Column`
+describes all aspects of a database column, including typing
+information with type objects such as :class:`.Integer` and :class:`.String`
+as well as server defaults and
+constraint information, such as membership within the primary key and foreign
+keys.
+
+All ORM mapped classes require at least one column be declared as part of the
+primary key, typically by using the :paramref:`_schema.Column.primary_key`
+parameter on those :class:`_schema.Column` objects that should be part
+of the key.  In the above example, the ``User.id`` and ``Address.id``
+columns are marked as primary key.
+
+Taken together, the combination of a string table name as well as a list
+of column declarations is referred towards in SQLAlchemy as :term:`table metadata`.
+Setting up table metadata using both Core and ORM approaches is introduced
+in the :ref:`unified_tutorial` at :ref:`tutorial_working_with_metadata`.
+The above mapping is an example of what's referred towards as
+:ref:`Declarative Table <orm_declarative_table>`
+configuration.
+
+Other Declarative directives are available, most commonly
+the :func:`_orm.relationship` construct indicated above.  In contrast
+to the column-based attributes, :func:`_orm.relationship` denotes a linkage
+between two ORM classes.  In the above example, ``User.addresses`` links
+``User`` to ``Address``, and ``Address.user`` links ``Address`` to ``User``.
+The :func:`_orm.relationship` construct is introduced in the
+:ref:`unified_tutorial` at :ref:`tutorial_orm_related_objects`.
+
+Finally, the above example classes include a ``__repr__()`` method, which is
+not required but is useful for debugging.
 
 Create an Engine
 ------------------
