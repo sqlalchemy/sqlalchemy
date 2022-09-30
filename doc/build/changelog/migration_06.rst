@@ -73,7 +73,7 @@ will use psycopg2:
 
 ::
 
-    create_engine('postgresql://scott:tiger@localhost/test')
+    create_engine("postgresql://scott:tiger@localhost/test")
 
 However to specify a specific DBAPI backend such as pg8000,
 add it to the "protocol" section of the URL using a plus
@@ -81,7 +81,7 @@ sign "+":
 
 ::
 
-    create_engine('postgresql+pg8000://scott:tiger@localhost/test')
+    create_engine("postgresql+pg8000://scott:tiger@localhost/test")
 
 Important Dialect Links:
 
@@ -138,8 +138,15 @@ set of PG types:
 
 ::
 
-    from sqlalchemy.dialects.postgresql import INTEGER, BIGINT, SMALLINT,\
-                                                VARCHAR, MACADDR, DATE, BYTEA
+    from sqlalchemy.dialects.postgresql import (
+        INTEGER,
+        BIGINT,
+        SMALLINT,
+        VARCHAR,
+        MACADDR,
+        DATE,
+        BYTEA,
+    )
 
 Above, ``INTEGER`` is actually the plain ``INTEGER`` type
 from ``sqlalchemy.types``, but the PG dialect makes it
@@ -164,7 +171,7 @@ object returns another ``ClauseElement``:
 ::
 
     >>> from sqlalchemy.sql import column
-    >>> column('foo') == 5
+    >>> column("foo") == 5
     <sqlalchemy.sql.expression._BinaryExpression object at 0x1252490>
 
 This so that Python expressions produce SQL expressions when
@@ -172,16 +179,15 @@ converted to strings:
 
 ::
 
-    >>> str(column('foo') == 5)
+    >>> str(column("foo") == 5)
     'foo = :foo_1'
 
 But what happens if we say this?
 
 ::
 
-    >>> if column('foo') == 5:
+    >>> if column("foo") == 5:
     ...     print("yes")
-    ...
 
 In previous versions of SQLAlchemy, the returned
 ``_BinaryExpression`` was a plain Python object which
@@ -191,11 +197,11 @@ as to that being compared.  Meaning:
 
 ::
 
-    >>> bool(column('foo') == 5)
+    >>> bool(column("foo") == 5)
     False
-    >>> bool(column('foo') == column('foo'))
+    >>> bool(column("foo") == column("foo"))
     False
-    >>> c = column('foo')
+    >>> c = column("foo")
     >>> bool(c == c)
     True
     >>>
@@ -252,7 +258,7 @@ sets:
 
 ::
 
-    connection.execute(table.insert(), {'data':'row1'}, {'data':'row2'}, {'data':'row3'})
+    connection.execute(table.insert(), {"data": "row1"}, {"data": "row2"}, {"data": "row3"})
 
 When the ``Connection`` object sends off the given
 ``insert()`` construct for compilation, it passes to the
@@ -268,10 +274,12 @@ works:
 
 ::
 
-    connection.execute(table.insert(),
-                            {'timestamp':today, 'data':'row1'},
-                            {'timestamp':today, 'data':'row2'},
-                            {'data':'row3'})
+    connection.execute(
+        table.insert(),
+        {"timestamp": today, "data": "row1"},
+        {"timestamp": today, "data": "row2"},
+        {"data": "row3"},
+    )
 
 Because the third row does not specify the 'timestamp'
 column.  Previous versions of SQLAlchemy would simply insert
@@ -392,7 +400,7 @@ with tables or metadata objects:
 
     from sqlalchemy.schema import DDL
 
-    DDL('CREATE TRIGGER users_trigger ...').execute_at('after-create', metadata)
+    DDL("CREATE TRIGGER users_trigger ...").execute_at("after-create", metadata)
 
 Now the full suite of DDL constructs are available under the
 same system, including those for CREATE TABLE, ADD
@@ -402,7 +410,7 @@ CONSTRAINT, etc.:
 
     from sqlalchemy.schema import Constraint, AddConstraint
 
-    AddContraint(CheckConstraint("value > 5")).execute_at('after-create', mytable)
+    AddContraint(CheckConstraint("value > 5")).execute_at("after-create", mytable)
 
 Additionally, all the DDL objects are now regular
 ``ClauseElement`` objects just like any other SQLAlchemy
@@ -428,19 +436,21 @@ make your own:
     from sqlalchemy.schema import DDLElement
     from sqlalchemy.ext.compiler import compiles
 
-    class AlterColumn(DDLElement):
 
+    class AlterColumn(DDLElement):
         def __init__(self, column, cmd):
             self.column = column
             self.cmd = cmd
+
 
     @compiles(AlterColumn)
     def visit_alter_column(element, compiler, **kw):
         return "ALTER TABLE %s ALTER COLUMN %s %s ..." % (
             element.column.table.name,
             element.column.name,
-            element.cmd
+            element.cmd,
         )
+
 
     engine.execute(AlterColumn(table.c.mycolumn, "SET DEFAULT 'test'"))
 
@@ -566,6 +576,7 @@ To use an inspector:
 ::
 
     from sqlalchemy.engine.reflection import Inspector
+
     insp = Inspector.from_engine(my_engine)
 
     print(insp.get_schema_names())
@@ -578,10 +589,10 @@ such as that of PostgreSQL which provides a
 ::
 
 
-    my_engine = create_engine('postgresql://...')
+    my_engine = create_engine("postgresql://...")
     pg_insp = Inspector.from_engine(my_engine)
 
-    print(pg_insp.get_table_oid('my_table'))
+    print(pg_insp.get_table_oid("my_table"))
 
 RETURNING Support
 =================
@@ -600,10 +611,10 @@ columns will be returned as a regular result set:
 
 
     result = connection.execute(
-                table.insert().values(data='some data').returning(table.c.id, table.c.timestamp)
-            )
+        table.insert().values(data="some data").returning(table.c.id, table.c.timestamp)
+    )
     row = result.first()
-    print("ID:", row['id'], "Timestamp:", row['timestamp'])
+    print("ID:", row["id"], "Timestamp:", row["timestamp"])
 
 The implementation of RETURNING across the four supported
 backends varies wildly, in the case of Oracle requiring an
@@ -740,7 +751,7 @@ that converts unicode back to utf-8, or whatever is desired:
 
         def process_result_value(self, value, dialect):
             if isinstance(value, unicode):
-                value = value.encode('utf-8')
+                value = value.encode("utf-8")
             return value
 
 Note that the ``assert_unicode`` flag is now deprecated.
@@ -968,9 +979,11 @@ At mapper level:
 ::
 
     mapper(Child, child)
-    mapper(Parent, parent, properties={
-        'child':relationship(Child, lazy='joined', innerjoin=True)
-    })
+    mapper(
+        Parent,
+        parent,
+        properties={"child": relationship(Child, lazy="joined", innerjoin=True)},
+    )
 
 At query time level:
 

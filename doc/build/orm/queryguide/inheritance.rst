@@ -201,9 +201,13 @@ this collection on all ``Manager`` objects, where the sub-attributes of
 
     >>> from sqlalchemy.orm import selectinload
     >>> from sqlalchemy.orm import selectin_polymorphic
-    >>> stmt = select(Employee).order_by(Employee.id).options(
-    ...      selectin_polymorphic(Employee, [Manager, Engineer]),
-    ...      selectinload(Manager.paperwork)
+    >>> stmt = (
+    ...     select(Employee)
+    ...     .order_by(Employee.id)
+    ...     .options(
+    ...         selectin_polymorphic(Employee, [Manager, Engineer]),
+    ...         selectinload(Manager.paperwork),
+    ...     )
     ... )
     {opensql}>>> objects = session.scalars(stmt).all()
     BEGIN (implicit)
@@ -244,13 +248,12 @@ as a chained loader option; in this form, the first argument is implicit from
 the previous loader option (in this case :func:`_orm.selectinload`), so
 we only indicate the additional target subclasses we wish to load::
 
-    >>> stmt = (
-    ...      select(Company).
-    ...      options(selectinload(Company.employees).selectin_polymorphic([Manager, Engineer]))
+    >>> stmt = select(Company).options(
+    ...     selectinload(Company.employees).selectin_polymorphic([Manager, Engineer])
     ... )
     >>> for company in session.scalars(stmt):
-    ...      print(f"company: {company.name}")
-    ...      print(f"employees: {company.employees}")
+    ...     print(f"company: {company.name}")
+    ...     print(f"employees: {company.employees}")
     {opensql}SELECT company.id, company.name
     FROM company
     [...] ()
@@ -292,34 +295,33 @@ parameter within ``Engineer`` and ``Manager`` subclasses:
 .. sourcecode:: python
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = mapped_column(Integer, primary_key=True)
         name = mapped_column(String(50))
         type = mapped_column(String(50))
 
-        __mapper_args__ = {
-            'polymorphic_identity': 'employee',
-            'polymorphic_on': type
-        }
+        __mapper_args__ = {"polymorphic_identity": "employee", "polymorphic_on": type}
+
 
     class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "engineer"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         engineer_info = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_load': 'selectin',
-            'polymorphic_identity': 'engineer',
+            "polymorphic_load": "selectin",
+            "polymorphic_identity": "engineer",
         }
 
+
     class Manager(Employee):
-        __tablename__ = 'manager'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "manager"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_load': 'selectin',
-            'polymorphic_identity': 'manager',
+            "polymorphic_load": "selectin",
+            "polymorphic_identity": "manager",
         }
 
 With the above mapping, SELECT statements against the ``Employee`` class will
@@ -406,14 +408,15 @@ construct to create criteria against both classes at once::
     >>> from sqlalchemy import or_
     >>> employee_poly = with_polymorphic(Employee, [Engineer, Manager])
     >>> stmt = (
-    ...      select(employee_poly).
-    ...      where(
-    ...          or_(
-    ...              employee_poly.Manager.manager_name == "Eugene H. Krabs",
-    ...              employee_poly.Engineer.engineer_info == "Senior Customer Engagement Engineer"
-    ...          )
-    ...      ).
-    ...      order_by(employee_poly.id)
+    ...     select(employee_poly)
+    ...     .where(
+    ...         or_(
+    ...             employee_poly.Manager.manager_name == "Eugene H. Krabs",
+    ...             employee_poly.Engineer.engineer_info
+    ...             == "Senior Customer Engagement Engineer",
+    ...         )
+    ...     )
+    ...     .order_by(employee_poly.id)
     ... )
     >>> objects = session.scalars(stmt).all()
     {opensql}SELECT employee.id, employee.name, employee.type, employee.company_id, manager.id AS id_1,
@@ -462,18 +465,18 @@ column along with some additional limiting criteria against the
     >>> manager_employee = with_polymorphic(Employee, [Manager], aliased=True, flat=True)
     >>> engineer_employee = with_polymorphic(Employee, [Engineer], aliased=True, flat=True)
     >>> stmt = (
-    ...     select(manager_employee, engineer_employee).
-    ...     join(
+    ...     select(manager_employee, engineer_employee)
+    ...     .join(
     ...         engineer_employee,
     ...         engineer_employee.company_id == manager_employee.company_id,
-    ...     ).
-    ...     where(
+    ...     )
+    ...     .where(
     ...         or_(
     ...             manager_employee.name == "Mr. Krabs",
-    ...             manager_employee.Manager.manager_name == "Eugene H. Krabs"
+    ...             manager_employee.Manager.manager_name == "Eugene H. Krabs",
     ...         )
-    ...     ).
-    ...     order_by(engineer_employee.name, manager_employee.name)
+    ...     )
+    ...     .order_by(engineer_employee.name, manager_employee.name)
     ... )
     >>> for manager, engineer in session.execute(stmt):
     ...     print(f"{manager} {engineer}")
@@ -506,18 +509,18 @@ subquery, producing a more verbose form::
     >>> manager_employee = with_polymorphic(Employee, [Manager], aliased=True)
     >>> engineer_employee = with_polymorphic(Employee, [Engineer], aliased=True)
     >>> stmt = (
-    ...     select(manager_employee, engineer_employee).
-    ...     join(
+    ...     select(manager_employee, engineer_employee)
+    ...     .join(
     ...         engineer_employee,
     ...         engineer_employee.company_id == manager_employee.company_id,
-    ...     ).
-    ...     where(
+    ...     )
+    ...     .where(
     ...         or_(
     ...             manager_employee.name == "Mr. Krabs",
-    ...             manager_employee.Manager.manager_name == "Eugene H. Krabs"
+    ...             manager_employee.Manager.manager_name == "Eugene H. Krabs",
     ...         )
-    ...     ).
-    ...     order_by(engineer_employee.name, manager_employee.name)
+    ...     )
+    ...     .order_by(engineer_employee.name, manager_employee.name)
     ... )
     >>> print(stmt)
     {opensql}SELECT anon_1.employee_id, anon_1.employee_name, anon_1.employee_type,
@@ -575,34 +578,33 @@ For example, we may state our ``Employee`` mapping using
 .. sourcecode:: python
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = mapped_column(Integer, primary_key=True)
         name = mapped_column(String(50))
         type = mapped_column(String(50))
 
-        __mapper_args__ = {
-            'polymorphic_identity': 'employee',
-            'polymorphic_on': type
-        }
+        __mapper_args__ = {"polymorphic_identity": "employee", "polymorphic_on": type}
+
 
     class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "engineer"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         engineer_info = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_load': 'inline',
-            'polymorphic_identity': 'engineer',
+            "polymorphic_load": "inline",
+            "polymorphic_identity": "engineer",
         }
 
+
     class Manager(Employee):
-        __tablename__ = 'manager'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "manager"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_load': 'inline',
-            'polymorphic_identity': 'manager',
+            "polymorphic_load": "inline",
+            "polymorphic_identity": "manager",
         }
 
 With the above mapping, SELECT statements against the ``Employee`` class will
@@ -652,33 +654,35 @@ LEFT OUTER JOINED, as in:
 .. sourcecode:: python
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = mapped_column(Integer, primary_key=True)
         name = mapped_column(String(50))
         type = mapped_column(String(50))
 
         __mapper_args__ = {
-            'polymorphic_identity': 'employee',
-            'with_polymorphic': '*',
-            'polymorphic_on': type
+            "polymorphic_identity": "employee",
+            "with_polymorphic": "*",
+            "polymorphic_on": type,
         }
 
+
     class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "engineer"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         engineer_info = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_identity': 'engineer',
+            "polymorphic_identity": "engineer",
         }
 
+
     class Manager(Employee):
-        __tablename__ = 'manager'
-        id = mapped_column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "manager"
+        id = mapped_column(Integer, ForeignKey("employee.id"), primary_key=True)
         manager_name = mapped_column(String(30))
 
         __mapper_args__ = {
-            'polymorphic_identity': 'manager',
+            "polymorphic_identity": "manager",
         }
 
 Overall, the LEFT OUTER JOIN format used by :func:`_orm.with_polymorphic` and
@@ -708,12 +712,13 @@ using a :func:`_orm.with_polymorphic` entity as the target::
 
     >>> employee_plus_engineer = with_polymorphic(Employee, [Engineer])
     >>> stmt = (
-    ...     select(Company.name, employee_plus_engineer.name).
-    ...     join(Company.employees.of_type(employee_plus_engineer)).
-    ...     where(
+    ...     select(Company.name, employee_plus_engineer.name)
+    ...     .join(Company.employees.of_type(employee_plus_engineer))
+    ...     .where(
     ...         or_(
     ...             employee_plus_engineer.name == "SpongeBob",
-    ...             employee_plus_engineer.Engineer.engineer_info == "Senior Customer Engagement Engineer"
+    ...             employee_plus_engineer.Engineer.engineer_info
+    ...             == "Senior Customer Engagement Engineer",
     ...         )
     ...     )
     ... )
@@ -732,12 +737,12 @@ particular sub-type of the :func:`_orm.relationship`'s target.  The above
 query could be written strictly in terms of ``Engineer`` targets as follows::
 
     >>> stmt = (
-    ...     select(Company.name, Engineer.name).
-    ...     join(Company.employees.of_type(Engineer)).
-    ...     where(
+    ...     select(Company.name, Engineer.name)
+    ...     .join(Company.employees.of_type(Engineer))
+    ...     .where(
     ...         or_(
     ...             Engineer.name == "SpongeBob",
-    ...             Engineer.engineer_info == "Senior Customer Engagement Engineer"
+    ...             Engineer.engineer_info == "Senior Customer Engagement Engineer",
     ...         )
     ...     )
     ... )
@@ -770,14 +775,11 @@ As a basic example, if we wished to load ``Company`` objects, and additionally
 eagerly load all elements of ``Company.employees`` using the
 :func:`_orm.with_polymorphic` construct against the full hierarchy, we may write::
 
-    >>> all_employees = with_polymorphic(Employee, '*')
-    >>> stmt = (
-    ...      select(Company).
-    ...      options(selectinload(Company.employees.of_type(all_employees)))
-    ... )
+    >>> all_employees = with_polymorphic(Employee, "*")
+    >>> stmt = select(Company).options(selectinload(Company.employees.of_type(all_employees)))
     >>> for company in session.scalars(stmt):
-    ...      print(f"company: {company.name}")
-    ...      print(f"employees: {company.employees}")
+    ...     print(f"company: {company.name}")
+    ...     print(f"employees: {company.employees}")
     {opensql}SELECT company.id, company.name
     FROM company
     [...] ()
@@ -839,7 +841,7 @@ As an example, a query for the single-inheritance example mapping of
 
     >>> stmt = select(Employee).order_by(Employee.id)
     >>> for obj in session.scalars(stmt):
-    ...    print(f"{obj}")
+    ...     print(f"{obj}")
     {opensql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type
     FROM employee ORDER BY employee.id
@@ -906,7 +908,7 @@ option as well as the :func:`_orm.with_polymorphic` option, the latter of which
 simply includes the additional columns and from a SQL perspective is more
 efficient for single-inheritance mappers::
 
-    >>> employees = with_polymorphic(Employee, '*')
+    >>> employees = with_polymorphic(Employee, "*")
     >>> stmt = select(employees).order_by(employees.id)
     >>> objects = session.scalars(stmt).all()
     {opensql}BEGIN (implicit)
@@ -932,31 +934,30 @@ is below::
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
     >>> class Employee(Base):
     ...     __tablename__ = "employee"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str]
     ...     type: Mapped[str]
+    ... 
     ...     def __repr__(self):
     ...         return f"{self.__class__.__name__}({self.name!r})"
+    ... 
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "employee",
     ...         "polymorphic_on": "type",
     ...     }
-    ...
     >>> class Manager(Employee):
     ...     manager_name: Mapped[str] = mapped_column(nullable=True)
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "manager",
-    ...         "polymorphic_load": "inline"
+    ...         "polymorphic_load": "inline",
     ...     }
-    ...
     >>> class Engineer(Employee):
     ...     engineer_info: Mapped[str] = mapped_column(nullable=True)
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "engineer",
-    ...         "polymorphic_load": "inline"
+    ...         "polymorphic_load": "inline",
     ...     }
 
 

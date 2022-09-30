@@ -154,6 +154,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.orm import DeclarativeBase, relationship, selectinload
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -590,7 +591,6 @@ constructs are illustrated below::
 
     asyncio.run(go())
 
-
 The above example prints something along the lines of::
 
     New DBAPI connection: <AdaptedConnection <asyncpg.connection.Connection ...>>
@@ -780,14 +780,14 @@ the usual ``await`` keywords are necessary, including for the
 :meth:`_asyncio.async_scoped_session.remove` method::
 
     async def some_function(some_async_session, some_object):
-       # use the AsyncSession directly
-       some_async_session.add(some_object)
+        # use the AsyncSession directly
+        some_async_session.add(some_object)
 
-       # use the AsyncSession via the context-local proxy
-       await AsyncScopedSession.commit()
+        # use the AsyncSession via the context-local proxy
+        await AsyncScopedSession.commit()
 
-       # "remove" the current proxied AsyncSession for the local context
-       await AsyncScopedSession.remove()
+        # "remove" the current proxied AsyncSession for the local context
+        await AsyncScopedSession.remove()
 
 .. versionadded:: 1.4.19
 

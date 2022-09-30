@@ -60,12 +60,12 @@ as much as possible for many rows::
     >>> session.execute(
     ...     insert(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ],
     ... )
     {opensql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
     [...] [('spongebob', 'Spongebob Squarepants'), ('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star'),
@@ -97,8 +97,10 @@ Getting new objects with RETURNING
 
 ..  Setup code, not for display
 
-  >>> session.rollback(); session.connection()
+  >>> session.rollback()
   ROLLBACK...
+  >>> session.connection()
+  BEGIN (implicit)...
 
 The bulk ORM insert feature supports INSERT..RETURNING for selected
 backends, which can return a :class:`.Result` object that may yield individual
@@ -122,12 +124,12 @@ directly without packaging them into :class:`.Row` objects::
     >>> users = session.scalars(
     ...     insert(User).returning(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ],
     ... )
     {opensql}INSERT INTO user_account (name, fullname)
     VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?) RETURNING id, name, fullname, species
@@ -164,8 +166,10 @@ Using Heterogenous Parameter Dictionaries
 
 ..  Setup code, not for display
 
-  >>> session.rollback(); session.connection()
+  >>> session.rollback()
   ROLLBACK...
+  >>> session.connection()
+  BEGIN (implicit)...
 
 The ORM bulk insert feature supports lists of parameter dictionaries that are
 "heterogenous", which basically means "individual dictionaries can have different
@@ -176,12 +180,20 @@ to each set of keys and batch accordingly into separate INSERT statements::
     >>> users = session.scalars(
     ...     insert(User).returning(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants", "species": "Sea Sponge"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks", "species": "Squirrel"},
-    ...          {"name": "patrick", "species": "Starfish"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles", "species": "Squid"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
-    ...     ]
+    ...         {
+    ...             "name": "spongebob",
+    ...             "fullname": "Spongebob Squarepants",
+    ...             "species": "Sea Sponge",
+    ...         },
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks", "species": "Squirrel"},
+    ...         {"name": "patrick", "species": "Starfish"},
+    ...         {
+    ...             "name": "squidward",
+    ...             "fullname": "Squidward Tentacles",
+    ...             "species": "Squid",
+    ...         },
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
+    ...     ],
     ... )
     {opensql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
     [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge', 'sandy', 'Sandy Cheeks', 'Squirrel')
@@ -202,8 +214,9 @@ Bulk INSERT for Joined Table Inheritance
 
 ..  Setup code, not for display
 
-    >>> session.rollback(); session.connection()
+    >>> session.rollback()
     ROLLBACK
+    >>> session.connection()
     BEGIN...
 
 ORM bulk insert builds upon the internal system that is used by the
@@ -220,9 +233,9 @@ the returned rows include values for all columns inserted::
     >>> managers = session.scalars(
     ...     insert(Manager).returning(Manager),
     ...     [
-    ...          {"name": "sandy", "manager_name": "Sandy Cheeks"},
-    ...          {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"name": "sandy", "manager_name": "Sandy Cheeks"},
+    ...         {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
+    ...     ],
     ... )
     {opensql}INSERT INTO employee (name, type) VALUES (?, ?), (?, ?) RETURNING id, name, type
     [... (insertmanyvalues)] ('sandy', 'manager', 'ehkrabs', 'manager')
@@ -249,6 +262,7 @@ As an example, given an ORM mapping that includes a "timestamp" column:
 
     import datetime
 
+
     class LogRecord(Base):
         __tablename__ = "log_record"
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -264,12 +278,12 @@ and then pass the additional records using "bulk" mode::
     >>> from sqlalchemy import func
     >>> log_record_result = session.scalars(
     ...     insert(LogRecord).values(code="SQLA", timestamp=func.now()).returning(LogRecord),
-    ...        [
-    ...            {"message": "log message #1"},
-    ...            {"message": "log message #2"},
-    ...            {"message": "log message #3"},
-    ...            {"message": "log message #4"},
-    ...        ]
+    ...     [
+    ...         {"message": "log message #1"},
+    ...         {"message": "log message #2"},
+    ...         {"message": "log message #3"},
+    ...         {"message": "log message #4"},
+    ...     ],
     ... )
     {opensql}INSERT INTO log_record (message, code, timestamp)
     VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
@@ -298,12 +312,20 @@ ORM Bulk Insert with Per Row SQL Expressions
     >>> session.execute(
     ...     insert(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants", "species": "Sea Sponge"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks", "species": "Squirrel"},
-    ...          {"name": "patrick", "species": "Starfish"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles", "species": "Squid"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
-    ...     ]
+    ...         {
+    ...             "name": "spongebob",
+    ...             "fullname": "Spongebob Squarepants",
+    ...             "species": "Sea Sponge",
+    ...         },
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks", "species": "Squirrel"},
+    ...         {"name": "patrick", "species": "Starfish"},
+    ...         {
+    ...             "name": "squidward",
+    ...             "fullname": "Squidward Tentacles",
+    ...             "species": "Squid",
+    ...         },
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
+    ...     ],
     ... )
     BEGIN...
 
@@ -323,22 +345,24 @@ and also demonstrates :meth:`_dml.Insert.returning` in this form, is below::
 
   >>> from sqlalchemy import select
   >>> address_result = session.scalars(
-  ...     insert(Address).values(
-  ...       [
-  ...          {
-  ...             "user_id": select(User.id).where(User.name == 'sandy'),
-  ...             "email_address": "sandy@company.com"
-  ...          },
-  ...          {
-  ...             "user_id": select(User.id).where(User.name == 'spongebob'),
-  ...             "email_address": "spongebob@company.com"
-  ...          },
-  ...          {
-  ...                "user_id": select(User.id).where(User.name == 'patrick'),
-  ...                "email_address": "patrick@company.com"
-  ...          },
-  ...       ]
-  ...     ).returning(Address),
+  ...     insert(Address)
+  ...     .values(
+  ...         [
+  ...             {
+  ...                 "user_id": select(User.id).where(User.name == "sandy"),
+  ...                 "email_address": "sandy@company.com",
+  ...             },
+  ...             {
+  ...                 "user_id": select(User.id).where(User.name == "spongebob"),
+  ...                 "email_address": "spongebob@company.com",
+  ...             },
+  ...             {
+  ...                 "user_id": select(User.id).where(User.name == "patrick"),
+  ...                 "email_address": "patrick@company.com",
+  ...             },
+  ...         ]
+  ...     )
+  ...     .returning(Address),
   ... )
   {opensql}INSERT INTO address (user_id, email_address) VALUES
   ((SELECT user_account.id
@@ -396,18 +420,13 @@ for session-synchronization.
 Code which makes use of :meth:`.Session.bulk_insert_mappings` for example
 can port code as follows, starting with this mappings example::
 
-    session.bulk_insert_mappings(
-      User,
-      [{"name": "u1"}, {"name": "u2"}, {"name": "u3"}]
-    )
+    session.bulk_insert_mappings(User, [{"name": "u1"}, {"name": "u2"}, {"name": "u3"}])
 
 The above is expressed using the new API as::
 
     from sqlalchemy import insert
-    session.execute(
-        insert(User),
-        [{"name": "u1"}, {"name": "u2"}, {"name": "u3"}]
-    )
+
+    session.execute(insert(User), [{"name": "u1"}, {"name": "u2"}, {"name": "u3"}])
 
 .. seealso::
 
@@ -456,14 +475,16 @@ as ORM mapped attribute keys, rather than column names:
 
 ..  Setup code, not for display
 
-    >>> session.rollback();
+    >>> session.rollback()
     ROLLBACK
-    >>> session.execute(insert(User).values(
-    ...    [
-    ...        dict(name="sandy"),
-    ...        dict(name="spongebob", fullname="Spongebob Squarepants"),
-    ...    ]
-    ... ))
+    >>> session.execute(
+    ...     insert(User).values(
+    ...         [
+    ...             dict(name="sandy"),
+    ...             dict(name="spongebob", fullname="Spongebob Squarepants"),
+    ...         ]
+    ...     )
+    ... )
     BEGIN...
 
 ::
@@ -471,16 +492,15 @@ as ORM mapped attribute keys, rather than column names:
     >>> from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
     >>> stmt = sqlite_upsert(User).values(
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...  ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ]
     ... )
     >>> stmt = stmt.on_conflict_do_update(
-    ...        index_elements=[User.name],
-    ...        set_=dict(fullname=stmt.excluded.fullname)
+    ...     index_elements=[User.name], set_=dict(fullname=stmt.excluded.fullname)
     ... )
     >>> session.execute(stmt)
     {opensql}INSERT INTO user_account (name, fullname)
@@ -503,7 +523,9 @@ works with upsert statements in the same way as was demonstrated at
 relevant ORM entity class may be passed.  Continuing from the
 example in the previous section::
 
-    >>> result = session.scalars(stmt.returning(User), execution_options={"populate_existing": True})
+    >>> result = session.scalars(
+    ...     stmt.returning(User), execution_options={"populate_existing": True}
+    ... )
     {opensql}INSERT INTO user_account (name, fullname)
     VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
     ON CONFLICT (name) DO UPDATE SET fullname = excluded.fullname
@@ -543,21 +565,23 @@ ORM Bulk UPDATE by Primary Key
 
 ..  Setup code, not for display
 
-    >>> session.rollback();
+    >>> session.rollback()
     ROLLBACK
     >>> session.execute(
     ...     insert(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ],
     ... )
     BEGIN ...
-    >>> session.commit(); session.connection()
+    >>> session.commit()
     COMMIT...
+    >>> session.connection()
+    BEGIN ...
 
 The :class:`_dml.Update` construct may be used with
 :meth:`_orm.Session.execute` in a similar way as the :class:`_dml.Insert`
@@ -582,10 +606,10 @@ appropriate WHERE criteria to match each row by primary key, and using
     >>> session.execute(
     ...     update(User),
     ...     [
-    ...          {"id": 1, "fullname": "Spongebob Squarepants"},
-    ...          {"id": 3, "fullname": "Patrick Star"},
-    ...          {"id": 5, "fullname": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"id": 1, "fullname": "Spongebob Squarepants"},
+    ...         {"id": 3, "fullname": "Patrick Star"},
+    ...         {"id": 5, "fullname": "Eugene H. Krabs"},
+    ...     ],
     ... )
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
     [...] [('Spongebob Squarepants', 1), ('Patrick Star', 3), ('Eugene H. Krabs', 5)]
@@ -619,11 +643,15 @@ Bulk UPDATE by Primary Key for Joined Table Inheritance
     >>> session.execute(
     ...     insert(Manager).returning(Manager),
     ...     [
-    ...          {"name": "sandy", "manager_name": "Sandy Cheeks"},
-    ...          {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
-    ...     ]
-    ... ); session.commit(); session.connection()
+    ...         {"name": "sandy", "manager_name": "Sandy Cheeks"},
+    ...         {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
+    ...     ],
+    ... )
     INSERT...
+    >>> session.commit()
+    COMMIT...
+    >>> session.connection()
+    BEGIN (implicit)...
 
 ORM bulk update has similar behavior to ORM bulk insert when using mappings
 with joined table inheritance; as described at
@@ -637,9 +665,17 @@ Example::
     >>> session.execute(
     ...     update(Manager),
     ...     [
-    ...          {"id": 1, "name": "scheeks", "manager_name": "Sandy Cheeks, President"},
-    ...          {"id": 2, "name": "eugene", "manager_name": "Eugene H. Krabs, VP Marketing"},
-    ...     ]
+    ...         {
+    ...             "id": 1,
+    ...             "name": "scheeks",
+    ...             "manager_name": "Sandy Cheeks, President",
+    ...         },
+    ...         {
+    ...             "id": 2,
+    ...             "name": "eugene",
+    ...             "manager_name": "Eugene H. Krabs, VP Marketing",
+    ...         },
+    ...     ],
     ... )
     {opensql}UPDATE employee SET name=? WHERE employee.id = ?
     [...] [('scheeks', 1), ('eugene', 2)]
@@ -662,22 +698,23 @@ session-synchronization are not included.
 The example below::
 
     session.bulk_update_mappings(
-      User,
-      [
-          {"id": 1, "name": "scheeks", "manager_name": "Sandy Cheeks, President"},
-          {"id": 2, "name": "eugene", "manager_name": "Eugene H. Krabs, VP Marketing"},
-      ]
+        User,
+        [
+            {"id": 1, "name": "scheeks", "manager_name": "Sandy Cheeks, President"},
+            {"id": 2, "name": "eugene", "manager_name": "Eugene H. Krabs, VP Marketing"},
+        ],
     )
 
 Is expressed using the new API as::
 
     from sqlalchemy import update
+
     session.execute(
         update(User),
         [
             {"id": 1, "name": "scheeks", "manager_name": "Sandy Cheeks, President"},
             {"id": 2, "name": "eugene", "manager_name": "Eugene H. Krabs, VP Marketing"},
-        ]
+        ],
     )
 
 .. seealso::
@@ -693,8 +730,10 @@ ORM UPDATE and DELETE with Custom WHERE Criteria
 
 ..  Setup code, not for display
 
-    >>> session.rollback(); session.connection()
+    >>> session.rollback()
     ROLLBACK...
+    >>> session.connection()
+    BEGIN (implicit)...
 
 The :class:`_dml.Update` and :class:`_dml.Delete` constructs, when constructed
 with custom WHERE criteria (that is, using the :meth:`_dml.Update.where` and
@@ -714,7 +753,11 @@ field of multiple rows
 ::
 
     >>> from sqlalchemy import update
-    >>> stmt = update(User).where(User.name.in_(["squidward", "sandy"])).values(fullname="Name starts with S")
+    >>> stmt = (
+    ...     update(User)
+    ...     .where(User.name.in_(["squidward", "sandy"]))
+    ...     .values(fullname="Name starts with S")
+    ... )
     >>> session.execute(stmt)
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name IN (?, ?)
     [...] ('Name starts with S', 'squidward', 'sandy')
@@ -732,8 +775,10 @@ For a DELETE, an example of deleting rows based on criteria::
 
 ..  Setup code, not for display
 
-    >>> session.rollback(); session.connection()
+    >>> session.rollback()
     ROLLBACK...
+    >>> session.connection()
+    BEGIN (implicit)...
 
 .. _orm_queryguide_update_delete_sync:
 
@@ -757,9 +802,7 @@ which is passed as an string ORM execution option, typically by using the
 
     >>> from sqlalchemy import update
     >>> stmt = (
-    ...     update(User).
-    ...     where(User.name == "squidward").
-    ...     values(fullname="Squidward Tentacles")
+    ...     update(User).where(User.name == "squidward").values(fullname="Squidward Tentacles")
     ... )
     >>> session.execute(stmt, execution_options={"synchronize_session": False})
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
@@ -771,10 +814,10 @@ The execution option may also be bundled with the statement itself using the
 
     >>> from sqlalchemy import update
     >>> stmt = (
-    ...     update(User).
-    ...     where(User.name == "squidward").
-    ...     values(fullname="Squidward Tentacles").
-    ...     execution_options(synchronize_session=False)
+    ...     update(User)
+    ...     .where(User.name == "squidward")
+    ...     .values(fullname="Squidward Tentacles")
+    ...     .execution_options(synchronize_session=False)
     ... )
     >>> session.execute(stmt)
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
@@ -850,10 +893,10 @@ and/or columns may be indicated for RETURNING::
 
     >>> from sqlalchemy import update
     >>> stmt = (
-    ...      update(User).
-    ...      where(User.name == "squidward").
-    ...      values(fullname="Squidward Tentacles").
-    ...      returning(User)
+    ...     update(User)
+    ...     .where(User.name == "squidward")
+    ...     .values(fullname="Squidward Tentacles")
+    ...     .returning(User)
     ... )
     >>> result = session.scalars(stmt)
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
@@ -879,8 +922,10 @@ UPDATE/DELETE with Custom WHERE Criteria for Joined Table Inheritance
 
 ..  Setup code, not for display
 
-    >>> session.rollback(); session.connection()
+    >>> session.rollback()
     ROLLBACK...
+    >>> session.connection()
+    BEGIN (implicit)...
 
 The UPDATE/DELETE with WHERE criteria feature, unlike the
 :ref:`orm_queryguide_bulk_update`, only emits a single UPDATE or DELETE
@@ -901,9 +946,9 @@ that are local to the subclass table, as in the example below::
 
 
     >>> stmt = (
-    ...     update(Manager).
-    ...     where(Manager.id == 1).
-    ...     values(manager_name="Sandy Cheeks, President")
+    ...     update(Manager)
+    ...     .where(Manager.id == 1)
+    ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
     UPDATE manager SET manager_name=? WHERE manager.id = ?
@@ -914,13 +959,12 @@ With the above form, a rudimentary way to refer to the base table in order
 to locate rows which will work on any SQL backend is so use a subquery::
 
     >>> stmt = (
-    ...     update(Manager).
-    ...     where(
-    ...         Manager.id ==
-    ...         select(Employee.id).
-    ...         where(Employee.name == "sandy").scalar_subquery()
-    ...     ).
-    ...     values(manager_name="Sandy Cheeks, President")
+    ...     update(Manager)
+    ...     .where(
+    ...         Manager.id
+    ...         == select(Employee.id).where(Employee.name == "sandy").scalar_subquery()
+    ...     )
+    ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
     {opensql}UPDATE manager SET manager_name=? WHERE manager.id = (SELECT employee.id
@@ -934,12 +978,9 @@ as additional plain WHERE criteria, however the criteria between the two
 tables must be stated explicitly in some way::
 
     >>> stmt = (
-    ...     update(Manager).
-    ...     where(
-    ...         Manager.id == Employee.id,
-    ...         Employee.name == "sandy"
-    ...     ).
-    ...     values(manager_name="Sandy Cheeks, President")
+    ...     update(Manager)
+    ...     .where(Manager.id == Employee.id, Employee.name == "sandy")
+    ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
     {opensql}UPDATE manager SET manager_name=? FROM employee
@@ -987,5 +1028,6 @@ the legacy methods don't provide for explicit RETURNING support.
 
 ..  Setup code, not for display
 
-    >>> session.close(); conn.close()
-    ROLLBACK
+    >>> session.close()
+    ROLLBACK...
+    >>> conn.close()

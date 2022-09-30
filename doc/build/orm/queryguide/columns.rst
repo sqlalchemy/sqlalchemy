@@ -122,9 +122,9 @@ If we wanted to apply :func:`_orm.load_only` options to both ``User`` and
 ``Book``, we would make use of two separate options::
 
     >>> stmt = (
-    ...     select(User, Book).
-    ...     join_from(User, Book).
-    ...     options(load_only(User.name), load_only(Book.title))
+    ...     select(User, Book)
+    ...     .join_from(User, Book)
+    ...     .options(load_only(User.name), load_only(Book.title))
     ... )
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, book.id AS id_1, book.title
@@ -148,7 +148,7 @@ in addition to primary key column::
     >>> from sqlalchemy.orm import selectinload
     >>> stmt = select(User).options(selectinload(User.books).load_only(Book.title))
     >>> for user in session.scalars(stmt):
-    ...   print(f"{user.fullname}   {[b.title for b in user.books]}")
+    ...     print(f"{user.fullname}   {[b.title for b in user.books]}")
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
@@ -175,7 +175,7 @@ the SELECT statement emitted for each ``User.books`` collection::
     >>> from sqlalchemy.orm import defaultload
     >>> stmt = select(User).options(defaultload(User.books).load_only(Book.title))
     >>> for user in session.scalars(stmt):
-    ...   print(f"{user.fullname}   {[b.title for b in user.books]}")
+    ...     print(f"{user.fullname}   {[b.title for b in user.books]}")
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
@@ -260,9 +260,7 @@ example below, the deferred column ``.cover_photo`` will disallow attribute
 access::
 
   >>> book = session.scalar(
-  ...     select(Book).
-  ...     options(defer(Book.cover_photo, raiseload=True)).
-  ...     where(Book.id == 4)
+  ...     select(Book).options(defer(Book.cover_photo, raiseload=True)).where(Book.id == 4)
   ... )
   {opensql}SELECT book.id, book.owner_id, book.title, book.summary
   FROM book
@@ -280,9 +278,7 @@ to all deferred attributes::
 
   >>> session.expunge_all()
   >>> book = session.scalar(
-  ...     select(Book).
-  ...     options(load_only(Book.title, raiseload=True)).
-  ...     where(Book.id == 5)
+  ...     select(Book).options(load_only(Book.title, raiseload=True)).where(Book.id == 5)
   ... )
   {opensql}SELECT book.id, book.title
   FROM book
@@ -319,7 +315,6 @@ Configuring Column Deferral on Mappings
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
 
 The functionality of :func:`_orm.defer` is available as a default behavior for
 mapped columns, as may be appropriate for columns that should not be loaded
@@ -336,15 +331,14 @@ unconditionally on every query. To configure, use the
     ...     title: Mapped[str]
     ...     summary: Mapped[str] = mapped_column(Text, deferred=True)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
 Using the above mapping, queries against ``Book`` will automatically not
 include the ``summary`` and ``cover_photo`` columns::
 
-    >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 2)
-    ... )
+    >>> book = session.scalar(select(Book).where(Book.id == 2))
     {opensql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
@@ -398,16 +392,18 @@ to the :paramref:`_orm.registry.map_imperatively.properties` dictionary:
     mapper_registry = registry()
 
     book_table = Table(
-        'book',
+        "book",
         mapper_registry.metadata,
-        Column('id', Integer, primary_key=True),
-        Column('title', String(50)),
-        Column('summary', Text),
-        Column('cover_image', Blob)
+        Column("id", Integer, primary_key=True),
+        Column("title", String(50)),
+        Column("summary", Text),
+        Column("cover_image", Blob),
     )
+
 
     class Book:
         pass
+
 
     mapper_registry.map_imperatively(
         Book,
@@ -415,7 +411,7 @@ to the :paramref:`_orm.registry.map_imperatively.properties` dictionary:
         properties={
             "summary": deferred(book_table.c.summary),
             "cover_image": deferred(book_table.c.cover_image),
-        }
+        },
     )
 
 :func:`_orm.deferred` may also be used in place of :func:`_orm.column_property`
@@ -425,8 +421,9 @@ when mapped SQL expressions should be loaded on a deferred basis:
 
     from sqlalchemy.orm import deferred
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         firstname: Mapped[str] = mapped_column()
@@ -452,9 +449,7 @@ of the mapping.   For example we may apply :func:`_orm.undefer` to the
 as deferred::
 
     >>> from sqlalchemy.orm import undefer
-    >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 2).options(undefer(Book.summary))
-    ... )
+    >>> book = session.scalar(select(Book).where(Book.id == 2).options(undefer(Book.summary)))
     {opensql}SELECT book.summary, book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
@@ -475,7 +470,6 @@ Loading deferred columns in groups
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
 
 Normally when a column is mapped with ``mapped_column(deferred=True)``, when
 the deferred attribute is accessed on an object, SQL will be emitted to load
@@ -492,17 +486,20 @@ undeferred::
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     owner_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
     ...     title: Mapped[str]
-    ...     summary: Mapped[str] = mapped_column(Text, deferred=True, deferred_group="book_attrs")
-    ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary, deferred=True, deferred_group="book_attrs")
+    ...     summary: Mapped[str] = mapped_column(
+    ...         Text, deferred=True, deferred_group="book_attrs"
+    ...     )
+    ...     cover_photo: Mapped[bytes] = mapped_column(
+    ...         LargeBinary, deferred=True, deferred_group="book_attrs"
+    ...     )
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
 Using the above mapping, accessing either ``summary`` or ``cover_photo``
 will load both columns at once using just one SELECT statement::
 
-    >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 2)
-    ... )
+    >>> book = session.scalar(select(Book).where(Book.id == 2))
     {opensql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
@@ -524,7 +521,7 @@ option, passing the string name of the group to be eagerly loaded::
 
     >>> from sqlalchemy.orm import undefer_group
     >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 2).options(undefer_group("book_attrs"))
+    ...     select(Book).where(Book.id == 2).options(undefer_group("book_attrs"))
     ... )
     {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
     FROM book
@@ -544,9 +541,7 @@ attributes.   If a mapping has a series of deferred columns, all such
 columns can be undeferred at once, without using a group name, by indicating
 a wildcard::
 
-    >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 3).options(undefer("*"))
-    ... )
+    >>> book = session.scalar(select(Book).where(Book.id == 3).options(undefer("*")))
     {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
@@ -561,7 +556,6 @@ Configuring mapper-level "raiseload" behavior
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
 
 The "raiseload" behavior first introduced at :ref:`orm_queryguide_deferred_raiseload` may
 also be applied as a default mapper-level behavior, using the
@@ -576,16 +570,17 @@ will raise on access in all cases unless explicitly "undeferred" using
     ...     owner_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
     ...     title: Mapped[str]
     ...     summary: Mapped[str] = mapped_column(Text, deferred=True, deferred_raiseload=True)
-    ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary, deferred=True, deferred_raiseload=True)
+    ...     cover_photo: Mapped[bytes] = mapped_column(
+    ...         LargeBinary, deferred=True, deferred_raiseload=True
+    ...     )
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
 Using the above mapping, the ``.summary`` and ``.cover_photo`` columns are
 by default not loadable::
 
-    >>> book = session.scalar(
-    ...    select(Book).where(Book.id == 2)
-    ... )
+    >>> book = session.scalar(select(Book).where(Book.id == 2))
     {opensql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
@@ -602,10 +597,10 @@ Only by overridding their behavior at query time, typically using
 :ref:`orm_queryguide_populate_existing` to refresh the already-loaded object's loader options::
 
     >>> book = session.scalar(
-    ...    select(Book).
-    ...    where(Book.id == 2).
-    ...    options(undefer('*')).
-    ...    execution_options(populate_existing=True)
+    ...     select(Book)
+    ...     .where(Book.id == 2)
+    ...     .options(undefer("*"))
+    ...     .execution_options(populate_existing=True)
     ... )
     {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
     FROM book
@@ -625,16 +620,15 @@ Loading Arbitrary SQL Expressions onto Objects
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
     >>> class User(Base):
     ...     __tablename__ = "user_account"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str]
     ...     fullname: Mapped[Optional[str]]
     ...     books: Mapped[List["Book"]] = relationship(back_populates="owner")
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
-    ...
     >>> class Book(Base):
     ...     __tablename__ = "book"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
@@ -643,6 +637,7 @@ Loading Arbitrary SQL Expressions onto Objects
     ...     summary: Mapped[str] = mapped_column(Text)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary)
     ...     owner: Mapped["User"] = relationship(back_populates="books")
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -657,13 +652,9 @@ owner id.  This will yield :class:`.Row` objects that each contain two
 entries, one for ``User`` and one for ``func.count(Book.id)``::
 
     >>> from sqlalchemy import func
-    >>> stmt = (
-    ...     select(User, func.count(Book.id)).
-    ...     join_from(User, Book).
-    ...     group_by(Book.owner_id)
-    ... )
+    >>> stmt = select(User, func.count(Book.id)).join_from(User, Book).group_by(Book.owner_id)
     >>> for user, book_count in session.execute(stmt):
-    ...      print(f"Username: {user.name}  Number of books: {book_count}")
+    ...     print(f"Username: {user.name}  Number of books: {book_count}")
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
     count(book.id) AS count_1
     FROM user_account JOIN book ON user_account.id = book.owner_id
@@ -687,7 +678,6 @@ level :func:`_orm.query_expression` directive may produce this result.
 
     >>> class Base(DeclarativeBase):
     ...     pass
-    ...
     >>> class Book(Base):
     ...     __tablename__ = "book"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
@@ -695,6 +685,7 @@ level :func:`_orm.query_expression` directive may produce this result.
     ...     title: Mapped[str]
     ...     summary: Mapped[str] = mapped_column(Text)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary)
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -714,9 +705,9 @@ normally produce ``None``::
     ...     name: Mapped[str]
     ...     fullname: Mapped[Optional[str]]
     ...     book_count: Mapped[int] = query_expression()
+    ... 
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
-    ...
 
 With the ``User.book_count`` attribute configured in our mapping, we may populate
 it with data from a SQL expression using the
@@ -726,13 +717,13 @@ to each ``User`` object as it's loaded::
 
     >>> from sqlalchemy.orm import with_expression
     >>> stmt = (
-    ...     select(User).
-    ...     join_from(User, Book).
-    ...     group_by(Book.owner_id).
-    ...     options(with_expression(User.book_count, func.count(Book.id)))
+    ...     select(User)
+    ...     .join_from(User, Book)
+    ...     .group_by(Book.owner_id)
+    ...     .options(with_expression(User.book_count, func.count(Book.id)))
     ... )
     >>> for user in session.scalars(stmt):
-    ...      print(f"Username: {user.name}  Number of books: {user.book_count}")
+    ...     print(f"Username: {user.name}  Number of books: {user.book_count}")
     {opensql}SELECT count(book.id) AS count_1, user_account.id, user_account.name,
     user_account.fullname
     FROM user_account JOIN book ON user_account.id = book.owner_id
@@ -765,9 +756,7 @@ The :func:`.query_expression` mapping has these caveats:
 
     # load the same A with an option; expression will **not** be applied
     # to the already-loaded object
-    obj = session.scalars(
-      select(A).options(with_expression(A.expr, some_expr))
-    ).first()
+    obj = session.scalars(select(A).options(with_expression(A.expr, some_expr))).first()
 
   To ensure the attribute is re-loaded on an existing object, use the
   :ref:`orm_queryguide_populate_existing` execution option to ensure
@@ -776,9 +765,9 @@ The :func:`.query_expression` mapping has these caveats:
   .. sourcecode:: python
 
     obj = session.scalars(
-      select(A).
-      options(with_expression(A.expr, some_expr)).
-      execution_options(populate_existing=True)
+        select(A)
+        .options(with_expression(A.expr, some_expr))
+        .execution_options(populate_existing=True)
     ).first()
 
 * The :func:`_orm.with_expression` SQL expression **is lost when when the object is
@@ -794,9 +783,12 @@ The :func:`.query_expression` mapping has these caveats:
   .. sourcecode:: python
 
     # can't refer to A.expr elsewhere in the query
-    stmt = select(A).options(
-        with_expression(A.expr, A.x + A.y)
-    ).filter(A.expr > 5).order_by(A.expr)
+    stmt = (
+        select(A)
+        .options(with_expression(A.expr, A.x + A.y))
+        .filter(A.expr > 5)
+        .order_by(A.expr)
+    )
 
   The ``A.expr`` expression will resolve to NULL in the above WHERE clause
   and ORDER BY clause. To use the expression throughout the query, assign to a
@@ -807,9 +799,12 @@ The :func:`.query_expression` mapping has these caveats:
     # assign desired expression up front, then refer to that in
     # the query
     a_expr = A.x + A.y
-    stmt = select(A).options(
-        with_expression(A.expr, a_expr)
-    ).filter(a_expr > 5).order_by(a_expr)
+    stmt = (
+        select(A)
+        .options(with_expression(A.expr, a_expr))
+        .filter(a_expr > 5)
+        .order_by(a_expr)
+    )
 
 .. seealso::
 

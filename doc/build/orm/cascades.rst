@@ -109,10 +109,10 @@ and added to another::
 
     >>> user1 = sess1.scalars(select(User).filter_by(id=1)).first()
     >>> address1 = user1.addresses[0]
-    >>> sess1.close()   # user1, address1 no longer associated with sess1
+    >>> sess1.close()  # user1, address1 no longer associated with sess1
     >>> user1.addresses.remove(address1)  # address1 no longer associated with user1
     >>> sess2 = Session()
-    >>> sess2.add(user1)   # ... but it still gets added to the new session,
+    >>> sess2.add(user1)  # ... but it still gets added to the new session,
     >>> address1 in sess2  # because it's still "pending" for flush
     True
 
@@ -734,6 +734,7 @@ illustrated in the example below::
         # ...
 
         addresses = relationship("Address", cascade="all, delete-orphan")
+
 
     # ...
 

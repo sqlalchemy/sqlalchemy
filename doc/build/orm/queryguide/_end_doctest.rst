@@ -4,4 +4,3 @@
 
     >>> session.close()
     >>> conn.close()
-    ...

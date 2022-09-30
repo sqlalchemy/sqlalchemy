@@ -64,15 +64,21 @@ Object Relational Mapping
 
   ::
 
-      session.query(User.name, func.count(Address.id).label("numaddresses")).join(Address).group_by(User.name)
+      session.query(User.name, func.count(Address.id).label("numaddresses")).join(
+          Address
+      ).group_by(User.name)
 
   The tuples returned by any multi-column/entity query are
   *named*' tuples:
 
   ::
 
-      for row in session.query(User.name, func.count(Address.id).label('numaddresses')).join(Address).group_by(User.name):
-         print("name", row.name, "number", row.numaddresses)
+      for row in (
+          session.query(User.name, func.count(Address.id).label("numaddresses"))
+          .join(Address)
+          .group_by(User.name)
+      ):
+          print("name", row.name, "number", row.numaddresses)
 
   ``Query`` has a ``statement`` accessor, as well as a
   ``subquery()`` method which allow ``Query`` to be used to
@@ -223,17 +229,24 @@ Object Relational Mapping
 
   ::
 
-          mapper(User, users, properties={
-              'addresses':relation(Address, order_by=addresses.c.id)
-          }, order_by=users.c.id)
+          mapper(
+              User,
+              users,
+              properties={"addresses": relation(Address, order_by=addresses.c.id)},
+              order_by=users.c.id,
+          )
 
   To set ordering on a backref, use the ``backref()``
   function:
 
   ::
 
-          'keywords':relation(Keyword, secondary=item_keywords,
-                order_by=keywords.c.name, backref=backref('items', order_by=items.c.id))
+          "keywords": relation(
+              Keyword,
+              secondary=item_keywords,
+              order_by=keywords.c.name,
+              backref=backref("items", order_by=items.c.id),
+          )
 
   Using declarative ?  To help with the new ``order_by``
   requirement, ``order_by`` and friends can now be set using
@@ -244,7 +257,7 @@ Object Relational Mapping
 
           class MyClass(MyDeclarativeBase):
               ...
-              'addresses':relation("Address", order_by="Address.id")
+              "addresses": relation("Address", order_by="Address.id")
 
   It's generally a good idea to set ``order_by`` on
   ``relation()s`` which load list-based collections of
@@ -402,14 +415,17 @@ Schema/Types
           convert_result_value methods
 
           """
+
           def bind_processor(self, dialect):
               def convert(value):
                   return self.convert_bind_param(value, dialect)
+
               return convert
 
           def result_processor(self, dialect):
               def convert(value):
                   return self.convert_result_value(value, dialect)
+
               return convert
 
           def convert_result_value(self, value, dialect):

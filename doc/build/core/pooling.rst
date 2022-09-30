@@ -35,8 +35,9 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
 
-  engine = create_engine('postgresql+psycopg2://me@localhost/mydb',
-                         pool_size=20, max_overflow=0)
+    engine = create_engine(
+        "postgresql+psycopg2://me@localhost/mydb", pool_size=20, max_overflow=0
+    )
 
 All SQLAlchemy pool implementations have in common
 that none of them "pre create" connections - all implementations wait
@@ -62,9 +63,10 @@ connection pooling is to be disabled, which can be achieved by using
 the :class:`.NullPool` implementation::
 
     from sqlalchemy.pool import NullPool
+
     engine = create_engine(
-              'postgresql+psycopg2://scott:tiger@localhost/test',
-              poolclass=NullPool)
+        "postgresql+psycopg2://scott:tiger@localhost/test", poolclass=NullPool
+    )
 
 Using a Custom Connection Function
 ----------------------------------
@@ -84,9 +86,11 @@ by any additional options::
     import sqlalchemy.pool as pool
     import psycopg2
 
+
     def getconn():
-        c = psycopg2.connect(user='ed', host='127.0.0.1', dbname='test')
+        c = psycopg2.connect(user="ed", host="127.0.0.1", dbname="test")
         return c
+
 
     mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
 
@@ -249,6 +253,7 @@ behaviors are needed::
 
     some_engine = create_engine(...)
 
+
     @event.listens_for(some_engine, "engine_connect")
     def ping_connection(connection, branch):
         if branch:
@@ -306,6 +311,7 @@ that they are replaced with new ones upon next checkout.  This flow is
 illustrated by the code example below::
 
     from sqlalchemy import create_engine, exc
+
     e = create_engine(...)
     c = e.connect()
 
@@ -345,6 +351,7 @@ such as MySQL that automatically close connections that have been stale after a 
 period of time::
 
     from sqlalchemy import create_engine
+
     e = create_engine("mysql+mysqldb://scott:tiger@localhost/test", pool_recycle=3600)
 
 Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
@@ -461,8 +468,7 @@ close these connections out.   The difference between FIFO and LIFO is
 basically whether or not its desirable for the pool to keep a full set of
 connections ready to go even during idle periods::
 
-    engine = create_engine(
-        "postgreql://", pool_use_lifo=True, pool_pre_ping=True)
+    engine = create_engine("postgreql://", pool_use_lifo=True, pool_pre_ping=True)
 
 Above, we also make use of the :paramref:`_sa.create_engine.pool_pre_ping` flag
 so that connections which are closed from the server side are gracefully
@@ -504,8 +510,8 @@ are three general approaches to this:
    more than once::
 
     from sqlalchemy.pool import NullPool
-    engine = create_engine("mysql+mysqldb://user:pass@host/dbname", poolclass=NullPool)
 
+    engine = create_engine("mysql+mysqldb://user:pass@host/dbname", poolclass=NullPool)
 
 2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`,
    passing the :paramref:`.Engine.dispose.close` parameter with a value of
@@ -561,19 +567,20 @@ are three general approaches to this:
 
     engine = create_engine("...")
 
+
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
-        connection_record.info['pid'] = os.getpid()
+        connection_record.info["pid"] = os.getpid()
+
 
     @event.listens_for(engine, "checkout")
     def checkout(dbapi_connection, connection_record, connection_proxy):
         pid = os.getpid()
-        if connection_record.info['pid'] != pid:
+        if connection_record.info["pid"] != pid:
             connection_record.dbapi_connection = connection_proxy.dbapi_connection = None
             raise exc.DisconnectionError(
-                    "Connection record belongs to pid %s, "
-                    "attempting to check out in pid %s" %
-                    (connection_record.info['pid'], pid)
+                "Connection record belongs to pid %s, "
+                "attempting to check out in pid %s" % (connection_record.info["pid"], pid)
             )
 
    Above, we use an approach similar to that described in

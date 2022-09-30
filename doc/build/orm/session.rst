@@ -24,4 +24,3 @@ persistence operations is the
     session_events
     session_api
 
-

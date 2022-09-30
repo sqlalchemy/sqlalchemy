@@ -62,6 +62,7 @@ below::
     class Base(MappedAsDataclass, DeclarativeBase):
         """subclasses will be converted to dataclasses"""
 
+
     class User(Base):
         __tablename__ = "user_account"
 
@@ -78,6 +79,7 @@ Or may be applied directly to classes that extend from the Declarative base::
 
     class Base(DeclarativeBase):
         pass
+
 
     class User(MappedAsDataclass, Base):
         """User class will be converted to a dataclass"""
@@ -96,6 +98,7 @@ decorator is supported::
 
 
     reg = registry()
+
 
     @reg.mapped_as_dataclass
     class User:
@@ -123,6 +126,7 @@ class configuration arguments are passed as class-level parameters::
 
     class Base(DeclarativeBase):
         pass
+
 
     class User(MappedAsDataclass, Base, repr=False, unsafe_hash=True):
         """User class will be converted to a dataclass"""
@@ -203,6 +207,7 @@ database-generated, is not part of the constructor at all::
 
     reg = registry()
 
+
     @reg.mapped_as_dataclass
     class User:
         __tablename__ = "user_account"
@@ -211,8 +216,9 @@ database-generated, is not part of the constructor at all::
         name: Mapped[str]
         fullname: Mapped[str] = mapped_column(default=None)
 
+
     # 'fullname' is optional keyword argument
-    u1 = User('name')
+    u1 = User("name")
 
 Column Defaults
 ~~~~~~~~~~~~~~~
@@ -238,14 +244,14 @@ but where the parameter is optional in the constructor::
 
     reg = registry()
 
+
     @reg.mapped_as_dataclass
     class User:
         __tablename__ = "user_account"
 
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         created_at: Mapped[datetime] = mapped_column(
-            insert_default=func.utc_timestamp(),
-            default=None
+            insert_default=func.utc_timestamp(), default=None
         )
 
 With the above mapping, an ``INSERT`` for a new ``User`` object where no
@@ -254,7 +260,7 @@ parameter for ``created_at`` were passed proceeds as:
 .. sourcecode:: pycon+sql
 
     >>> with Session(e) as session:
-    ...    session.add(User())
+    ...     session.add(User())
     {sql}...    session.commit()
     BEGIN (implicit)
     INSERT INTO user_account (created_at) VALUES (utc_timestamp())
@@ -289,10 +295,12 @@ invalid, as they do not see the ``init=False`` parameter present::
 
     reg = registry()
 
+
     @reg.mapped_as_dataclass
     class User:
         __tablename__ = "user_account"
         id: Mapped[intpk]
+
 
     # typing error: Argument missing for parameter "id"
     u1 = User()
@@ -310,6 +318,7 @@ the other arguments can remain within the ``Annotated`` construct::
     intpk = Annotated[int, mapped_column(primary_key=True)]
 
     reg = registry()
+
 
     @reg.mapped_as_dataclass
     class User:
@@ -343,11 +352,14 @@ scalar object references may make use of
 
     reg = registry()
 
+
     @reg.mapped_as_dataclass
     class Parent:
         __tablename__ = "parent"
         id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[List["Child"]] = relationship(default_factory=list, back_populates='parent')
+        children: Mapped[List["Child"]] = relationship(
+            default_factory=list, back_populates="parent"
+        )
 
 
     @reg.mapped_as_dataclass
@@ -560,9 +572,7 @@ association::
         user_id: int = field(
             init=False, metadata={"sa": mapped_column(ForeignKey("user.id"))}
         )
-        email_address: str = field(
-            default=None, metadata={"sa": mapped_column(String(50))}
-        )
+        email_address: str = field(default=None, metadata={"sa": mapped_column(String(50))})
 
 .. _orm_declarative_dataclasses_mixin:
 
@@ -615,9 +625,7 @@ came from a mixin that is itself a dataclass, the form would be::
         user_id: int = field(
             init=False, metadata={"sa": lambda: mapped_column(ForeignKey("user.id"))}
         )
-        email_address: str = field(
-            default=None, metadata={"sa": mapped_column(String(50))}
-        )
+        email_address: str = field(default=None, metadata={"sa": mapped_column(String(50))})
 
 
     @mapper_registry.mapped
@@ -668,6 +676,7 @@ variables::
 
     mapper_registry = registry()
 
+
     @dataclass
     class User:
         id: int = field(init=False)
@@ -676,37 +685,42 @@ variables::
         nickname: str = None
         addresses: List[Address] = field(default_factory=list)
 
+
     @dataclass
     class Address:
         id: int = field(init=False)
         user_id: int = field(init=False)
         email_address: str = None
 
+
     metadata_obj = MetaData()
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('fullname', String(50)),
-        Column('nickname', String(12)),
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+        Column("fullname", String(50)),
+        Column("nickname", String(12)),
     )
 
     address = Table(
-        'address',
+        "address",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey('user.id')),
-        Column('email_address', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String(50)),
     )
 
-    mapper_registry.map_imperatively(User, user, properties={
-        'addresses': relationship(Address, backref='user', order_by=address.c.id),
-    })
+    mapper_registry.map_imperatively(
+        User,
+        user,
+        properties={
+            "addresses": relationship(Address, backref="user", order_by=address.c.id),
+        },
+    )
 
     mapper_registry.map_imperatively(Address, address)
-
 
 .. _orm_declarative_attrs_imperative_table:
 
@@ -788,6 +802,7 @@ object is declared inline with the declarative class.   The
             }
         }
 
+
     @mapper_registry.mapped
     @define(slots=False)
     class Address:
@@ -801,7 +816,6 @@ object is declared inline with the declarative class.   The
         id: int
         user_id: int
         email_address: Optional[str]
-
 
 .. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
    a mapped class, cannot be used with SQLAlchemy mappings without fully
@@ -835,6 +849,7 @@ as well::
 
     mapper_registry = registry()
 
+
     @define(slots=False)
     class User:
         id: int
@@ -843,34 +858,40 @@ as well::
         nickname: str
         addresses: List[Address]
 
+
     @define(slots=False)
     class Address:
         id: int
         user_id: int
         email_address: Optional[str]
 
+
     metadata_obj = MetaData()
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('fullname', String(50)),
-        Column('nickname', String(12)),
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+        Column("fullname", String(50)),
+        Column("nickname", String(12)),
     )
 
     address = Table(
-        'address',
+        "address",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey('user.id')),
-        Column('email_address', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String(50)),
     )
 
-    mapper_registry.map_imperatively(User, user, properties={
-        'addresses': relationship(Address, backref='user', order_by=address.c.id),
-    })
+    mapper_registry.map_imperatively(
+        User,
+        user,
+        properties={
+            "addresses": relationship(Address, backref="user", order_by=address.c.id),
+        },
+    )
 
     mapper_registry.map_imperatively(Address, address)
 

@@ -50,8 +50,10 @@ column, and optionally a polymorphic identifier for the base class itself::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Employee(Base):
         __tablename__ = "employee"
@@ -178,6 +180,7 @@ and ``Employee``::
     from __future__ import annotations
 
     from sqlalchemy.orm import relationship
+
 
     class Company(Base):
         __tablename__ = "company"
@@ -331,6 +334,7 @@ declaration on a subclass that has no table of its own.   A tricky case
 comes up when two subclasses want to specify *the same* column, as below::
 
     from datetime import datetime
+
 
     class Employee(Base):
         __tablename__ = "employee"
@@ -674,8 +678,10 @@ almost the same way as we do other forms of inheritance mappings::
     from sqlalchemy.ext.declarative import ConcreteBase
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
@@ -783,8 +789,10 @@ base class with the ``__abstract__`` indicator::
 
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class Employee(Base):
         __abstract__ = True
@@ -824,6 +832,7 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
     from sqlalchemy.ext.declarative import AbstractConcreteBase
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -857,6 +866,7 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
             "concrete": True,
         }
 
+
     Base.registry.configure()
 
 Above, the :meth:`_orm.registry.configure` method is invoked, which will
@@ -873,7 +883,7 @@ Using the above mapping, queries can be produced in terms of the ``Employee``
 class and any attributes that are locally declared upon it, such as the
 ``Employee.name``::
 
-    >>> stmt = select(Employee).where(Employee.name == 'n1')
+    >>> stmt = select(Employee).where(Employee.name == "n1")
     >>> print(stmt)
     SELECT pjoin.id, pjoin.name, pjoin.type, pjoin.manager_data, pjoin.engineer_info
     FROM (
@@ -1076,7 +1086,6 @@ mapping is illustrated below::
             "polymorphic_identity": "manager",
             "concrete": True,
         }
-
 
 Above, we use :func:`.polymorphic_union` in the same manner as before, except
 that we omit the ``employee`` table.

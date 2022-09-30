@@ -113,11 +113,13 @@ statement for ``Parent`` objects is emitted::
     class Base(DeclarativeBase):
         pass
 
+
     class Parent(Base):
         __tablename__ = "parent"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(lazy="selectin")
+
 
     class Child(Base):
         __tablename__ = "child"
@@ -166,8 +168,7 @@ to specify how loading should occur further levels deep::
     from sqlalchemy.orm import joinedload
 
     stmt = select(Parent).options(
-        joinedload(Parent.children).
-        subqueryload(Child.subelements)
+        joinedload(Parent.children).subqueryload(Child.subelements)
     )
 
 Chained loader options can be applied against a "lazy" loaded collection.
@@ -177,10 +178,7 @@ access, the specified option will then take effect::
     from sqlalchemy import select
     from sqlalchemy.orm import lazyload
 
-    stmt = select(Parent).options(
-        lazyload(Parent.children).
-        subqueryload(Child.subelements)
-    )
+    stmt = select(Parent).options(lazyload(Parent.children).subqueryload(Child.subelements))
 
 Above, the query will return ``Parent`` objects without the ``children``
 collections loaded.  When the ``children`` collection on a particular
@@ -214,9 +212,9 @@ the :ref:`orm_queryguide_populate_existing` execution option::
     from sqlalchemy.orm import lazyload
 
     stmt = (
-        select(A).
-        options(lazyload(A.bs.and_(B.id > 5))).
-        execution_options(populate_existing=True)
+        select(A)
+        .options(lazyload(A.bs.and_(B.id > 5)))
+        .execution_options(populate_existing=True)
     )
 
 In order to add filtering criteria to all occurrences of an entity throughout
@@ -236,10 +234,7 @@ of a particular attribute, the :func:`.defaultload` method/function may be used:
     from sqlalchemy import select
     from sqlalchemy.orm import defaultload
 
-    stmt = select(A).options(
-        defaultload(A.atob).
-        joinedload(B.btoc)
-    )
+    stmt = select(A).options(defaultload(A.atob).joinedload(B.btoc))
 
 A similar approach can be used to specify multiple sub-options at once, using
 the :meth:`_orm.Load.options` method::
@@ -249,12 +244,8 @@ the :meth:`_orm.Load.options` method::
     from sqlalchemy.orm import joinedload
 
     stmt = select(A).options(
-        defaultload(A.atob).options(
-          joinedload(B.btoc),
-          joinedload(B.btod)
-        )
+        defaultload(A.atob).options(joinedload(B.btoc), joinedload(B.btod))
     )
-
 
 .. seealso::
 
@@ -267,10 +258,7 @@ the :meth:`_orm.Load.options` method::
    upon collections loaded by that specific object for as long as it exists in
    memory.  For example, given the previous example::
 
-      stmt = select(Parent).options(
-          lazyload(Parent.children).
-          subqueryload(Child.subelements)
-      )
+      stmt = select(Parent).options(lazyload(Parent.children).subqueryload(Child.subelements))
 
    if the ``children`` collection on a particular ``Parent`` object loaded by
    the above query is expired (such as when a :class:`.Session` object's
@@ -377,9 +365,7 @@ to set up only one attribute as eager loading, and all the rest as raise::
     from sqlalchemy.orm import joinedload
     from sqlalchemy.orm import raiseload
 
-    stmt = select(Order).options(
-        joinedload(Order.items), raiseload('*')
-    )
+    stmt = select(Order).options(joinedload(Order.items), raiseload("*"))
 
 The above wildcard will apply to **all** relationships not just on ``Order``
 besides ``items``, but all those on the ``Item`` objects as well.  To set up
@@ -390,16 +376,11 @@ path with :class:`_orm.Load`::
     from sqlalchemy.orm import joinedload
     from sqlalchemy.orm import Load
 
-    stmt = select(Order).options(
-        joinedload(Order.items), Load(Order).raiseload('*')
-    )
+    stmt = select(Order).options(joinedload(Order.items), Load(Order).raiseload("*"))
 
 Conversely, to set up the raise for just the ``Item`` objects::
 
-    stmt = select(Order).options(
-        joinedload(Order.items).raiseload('*')
-    )
-
+    stmt = select(Order).options(joinedload(Order.items).raiseload("*"))
 
 The :func:`.raiseload` option applies only to relationship attributes.  For
 column-oriented attributes, the :func:`.defer` option supports the
@@ -444,11 +425,7 @@ using the :func:`_orm.joinedload` loader option:
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
-    >>> stmt = (
-    ...     select(User).
-    ...     options(joinedload(User.addresses)).\
-    ...     filter_by(name='spongebob')
-    ... )
+    >>> stmt = select(User).options(joinedload(User.addresses)).filter_by(name="spongebob")
     >>> spongebob = session.scalars(stmt).unique().all()
     {opensql}SELECT
         addresses_1.id AS addresses_1_id,
@@ -488,7 +465,7 @@ at the mapping level via the :paramref:`_orm.relationship.innerjoin` flag::
     class Address(Base):
         # ...
 
-        user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+        user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
         user: Mapped[User] = relationship(lazy="joined", innerjoin=True)
 
 At the query option level, via the :paramref:`_orm.joinedload.innerjoin` flag::
@@ -496,9 +473,7 @@ At the query option level, via the :paramref:`_orm.joinedload.innerjoin` flag::
     from sqlalchemy import select
     from sqlalchemy.orm import joinedload
 
-    stmt = select(Address).options(
-        joinedload(Address.user, innerjoin=True)
-    )
+    stmt = select(Address).options(joinedload(Address.user, innerjoin=True))
 
 The JOIN will right-nest itself when applied in a chain that includes
 an OUTER JOIN:
@@ -508,8 +483,7 @@ an OUTER JOIN:
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
     >>> stmt = select(User).options(
-    ...     joinedload(User.addresses).
-    ...     joinedload(Address.widgets, innerjoin=True)
+    ...     joinedload(User.addresses).joinedload(Address.widgets, innerjoin=True)
     ... )
     >>> results = session.scalars(stmt).unique().all()
     {opensql}SELECT
@@ -578,10 +552,10 @@ named in the query:
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
     >>> stmt = (
-    ...     select(User).
-    ...     options(joinedload(User.addresses)).
-    ...     filter(User.name == 'spongebob').
-    ...     order_by(Address.email_address)
+    ...     select(User)
+    ...     .options(joinedload(User.addresses))
+    ...     .filter(User.name == "spongebob")
+    ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
     {opensql}SELECT
@@ -607,10 +581,10 @@ address is to use :meth:`_sql.Select.join`:
 
     >>> from sqlalchemy import select
     >>> stmt = (
-    ...     select(User).
-    ...     join(User.addresses).
-    ...     filter(User.name == 'spongebob').
-    ...     order_by(Address.email_address)
+    ...     select(User)
+    ...     .join(User.addresses)
+    ...     .filter(User.name == "spongebob")
+    ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
     {opensql}
@@ -635,11 +609,11 @@ are ordering on, the other is used anonymously to load the contents of the
 
 
     >>> stmt = (
-    ...     select(User).
-    ...     join(User.addresses).
-    ...     options(joinedload(User.addresses)).
-    ...     filter(User.name == 'spongebob').
-    ...     order_by(Address.email_address)
+    ...     select(User)
+    ...     .join(User.addresses)
+    ...     .options(joinedload(User.addresses))
+    ...     .filter(User.name == "spongebob")
+    ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
     {opensql}SELECT
@@ -670,11 +644,11 @@ to see why :func:`joinedload` does what it does, consider if we were
 .. sourcecode:: python+sql
 
     >>> stmt = (
-    ...   select(User).
-    ...   join(User.addresses).
-    ...   options(joinedload(User.addresses)).
-    ...   filter(User.name=='spongebob').
-    ...   filter(Address.email_address=='someaddress@foo.com')
+    ...     select(User)
+    ...     .join(User.addresses)
+    ...     .options(joinedload(User.addresses))
+    ...     .filter(User.name == "spongebob")
+    ...     .filter(Address.email_address == "someaddress@foo.com")
     ... )
     >>> result = session.scalars(stmt).unique().all()
     {opensql}SELECT
@@ -706,11 +680,11 @@ into :func:`.subqueryload`:
 .. sourcecode:: python+sql
 
     >>> stmt = (
-    ...     select(User).
-    ...     join(User.addresses).
-    ...     options(subqueryload(User.addresses)).
-    ...     filter(User.name=='spongebob').
-    ...     filter(Address.email_address=='someaddress@foo.com')
+    ...     select(User)
+    ...     .join(User.addresses)
+    ...     .options(subqueryload(User.addresses))
+    ...     .filter(User.name == "spongebob")
+    ...     .filter(Address.email_address == "someaddress@foo.com")
     ... )
     >>> result = session.scalars(stmt).all()
     {opensql}SELECT
@@ -766,9 +740,9 @@ order to load related associations:
     >>> from sqlalchemy import select
     >>> from sqlalchemy import selectinload
     >>> stmt = (
-    ...     select(User).
-    ...     options(selectinload(User.addresses)).
-    ...     filter(or_(User.name == 'spongebob', User.name == 'ed'))
+    ...     select(User)
+    ...     .options(selectinload(User.addresses))
+    ...     .filter(or_(User.name == "spongebob", User.name == "ed"))
     ... )
     >>> result = session.scalars(stmt).all()
     {opensql}SELECT
@@ -913,11 +887,7 @@ the collection members to load them at once:
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import subqueryload
-    >>> stmt = (
-    ...     select(User)
-    ...     options(subqueryload(User.addresses))
-    ...     filter_by(name="spongebob")
-    ... )
+    >>> stmt = select(User).options(subqueryload(User.addresses)).filter_by(name="spongebob")
     >>> results = session.scalars(stmt).all()
     {opensql}SELECT
         users.id AS users_id,
@@ -980,19 +950,18 @@ the same ordering as used by the parent query.  Without it, there is a chance
 that the inner query could return the wrong rows::
 
     # incorrect, no ORDER BY
-    stmt = select(User).options(
-        subqueryload(User.addresses).limit(1)
-    )
+    stmt = select(User).options(subqueryload(User.addresses).limit(1))
 
     # incorrect if User.name is not unique
-    stmt = select(User).options(
-        subqueryload(User.addresses)
-    ).order_by(User.name).limit(1)
+    stmt = select(User).options(subqueryload(User.addresses)).order_by(User.name).limit(1)
 
     # correct
-    stmt = select(User).options(
-        subqueryload(User.addresses)
-    ).order_by(User.name, User.id).limit(1)
+    stmt = (
+        select(User)
+        .options(subqueryload(User.addresses))
+        .order_by(User.name, User.id)
+        .limit(1)
+    )
 
 .. seealso::
 
@@ -1051,7 +1020,7 @@ the string ``'*'`` as the argument to any of these options::
     from sqlalchemy import select
     from sqlalchemy.orm import lazyload
 
-    stmt = select(MyClass).options(lazyload('*'))
+    stmt = select(MyClass).options(lazyload("*"))
 
 Above, the ``lazyload('*')`` option will supersede the ``lazy`` setting
 of all :func:`_orm.relationship` constructs in use for that query,
@@ -1071,10 +1040,7 @@ for the ``widget`` relationship::
     from sqlalchemy.orm import lazyload
     from sqlalchemy.orm import joinedload
 
-    stmt = select(MyClass).options(
-        lazyload('*'),
-        joinedload(MyClass.widget)
-    )
+    stmt = select(MyClass).options(lazyload("*"), joinedload(MyClass.widget))
 
 If multiple ``'*'`` options are passed, the last one overrides
 those previously passed.
@@ -1093,9 +1059,7 @@ chained option::
     from sqlalchemy import select
     from sqlalchemy.orm import Load
 
-    stmt = select(User, Address).options(
-        Load(Address).lazyload('*')
-    )
+    stmt = select(User, Address).options(Load(Address).lazyload("*"))
 
 Above, all relationships on ``Address`` will be set to a lazy load.
 
@@ -1123,23 +1087,20 @@ Below, we specify a join between ``User`` and ``Address``
 and additionally establish this as the basis for eager loading of ``User.addresses``::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = mapped_column(Integer, primary_key=True)
         addresses = relationship("Address")
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         # ...
 
+
     from sqlalchemy.orm import contains_eager
 
-    stmt = (
-        select(User).
-        join(User.addresses).
-        options(contains_eager(User.addresses))
-    )
-
+    stmt = select(User).join(User.addresses).options(contains_eager(User.addresses))
 
 If the "eager" portion of the statement is "aliased", the path
 should be specified using :meth:`.PropComparator.of_type`, which allows
@@ -1175,10 +1136,7 @@ The path given as the argument to :func:`.contains_eager` needs
 to be a full path from the starting entity. For example if we were loading
 ``Users->orders->Order->items->Item``, the option would be used as::
 
-    stmt = select(User).options(
-        contains_eager(User.orders).
-        contains_eager(Order.items)
-    )
+    stmt = select(User).options(contains_eager(User.orders).contains_eager(Order.items))
 
 Using contains_eager() to load a custom-filtered collection result
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1196,11 +1154,11 @@ routing it using :func:`_orm.contains_eager`, also using
 are overwritten::
 
     stmt = (
-        select(User).
-        join(User.addresses).
-        filter(Address.email_address.like('%@aol.com')).
-        options(contains_eager(User.addresses)).
-        execution_options(populate_existing=True)
+        select(User)
+        .join(User.addresses)
+        .filter(Address.email_address.like("%@aol.com"))
+        .options(contains_eager(User.addresses))
+        .execution_options(populate_existing=True)
     )
 
 The above query will load only ``User`` objects which contain at

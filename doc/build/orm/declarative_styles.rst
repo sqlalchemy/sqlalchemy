@@ -59,8 +59,10 @@ of the base::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class User(Base):
         __tablename__ = "user"
@@ -72,6 +74,7 @@ of the base::
         create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
         addresses: Mapped[List["Address"]] = relationship(back_populates="user")
+
 
     class Address(Base):
         __tablename__ = "address"

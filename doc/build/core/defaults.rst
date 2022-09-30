@@ -59,9 +59,7 @@ Scalar Defaults
 
 The simplest kind of default is a scalar value used as the default value of a column::
 
-    Table("mytable", metadata_obj,
-        Column("somecolumn", Integer, default=12)
-    )
+    Table("mytable", metadata_obj, Column("somecolumn", Integer, default=12))
 
 Above, the value "12" will be bound as the column value during an INSERT if no
 other value is supplied.
@@ -70,10 +68,7 @@ A scalar value may also be associated with an UPDATE statement, though this is
 not very common (as UPDATE statements are usually looking for dynamic
 defaults)::
 
-    Table("mytable", metadata_obj,
-        Column("somecolumn", Integer, onupdate=25)
-    )
-
+    Table("mytable", metadata_obj, Column("somecolumn", Integer, onupdate=25))
 
 Python-Executed Functions
 -------------------------
@@ -86,13 +81,18 @@ incrementing counter to a primary key column::
 
     # a function which counts upwards
     i = 0
+
+
     def mydefault():
         global i
         i += 1
         return i
 
-    t = Table("mytable", metadata_obj,
-        Column('id', Integer, primary_key=True, default=mydefault),
+
+    t = Table(
+        "mytable",
+        metadata_obj,
+        Column("id", Integer, primary_key=True, default=mydefault),
     )
 
 It should be noted that for real "incrementing sequence" behavior, the
@@ -109,11 +109,12 @@ the :paramref:`_schema.Column.onupdate` attribute::
 
     import datetime
 
-    t = Table("mytable", metadata_obj,
-        Column('id', Integer, primary_key=True),
-
+    t = Table(
+        "mytable",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
         # define 'last_updated' to be populated with datetime.now()
-        Column('last_updated', DateTime, onupdate=datetime.datetime.now),
+        Column("last_updated", DateTime, onupdate=datetime.datetime.now),
     )
 
 When an update statement executes and no value is passed for ``last_updated``,
@@ -139,11 +140,14 @@ updated on the row. To access the context, provide a function that accepts a
 single ``context`` argument::
 
     def mydefault(context):
-        return context.get_current_parameters()['counter'] + 12
+        return context.get_current_parameters()["counter"] + 12
 
-    t = Table('mytable', metadata_obj,
-        Column('counter', Integer),
-        Column('counter_plus_twelve', Integer, default=mydefault, onupdate=mydefault)
+
+    t = Table(
+        "mytable",
+        metadata_obj,
+        Column("counter", Integer),
+        Column("counter_plus_twelve", Integer, default=mydefault, onupdate=mydefault),
     )
 
 The above default generation function is applied so that it will execute for
@@ -184,18 +188,21 @@ The :paramref:`_schema.Column.default` and :paramref:`_schema.Column.onupdate` k
 also be passed SQL expressions, which are in most cases rendered inline within the
 INSERT or UPDATE statement::
 
-    t = Table("mytable", metadata_obj,
-        Column('id', Integer, primary_key=True),
-
+    t = Table(
+        "mytable",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
         # define 'create_date' to default to now()
-        Column('create_date', DateTime, default=func.now()),
-
+        Column("create_date", DateTime, default=func.now()),
         # define 'key' to pull its default from the 'keyvalues' table
-        Column('key', String(20), default=select(keyvalues.c.key).where(keyvalues.c.type='type1')),
-
+        Column(
+            "key",
+            String(20),
+            default=select(keyvalues.c.key).where(keyvalues.c.type="type1"),
+        ),
         # define 'last_modified' to use the current_timestamp SQL function on update
-        Column('last_modified', DateTime, onupdate=func.utc_timestamp())
-        )
+        Column("last_modified", DateTime, onupdate=func.utc_timestamp()),
+    )
 
 Above, the ``create_date`` column will be populated with the result of the
 ``now()`` SQL function (which, depending on backend, compiles into ``NOW()``
@@ -257,10 +264,12 @@ placed in the CREATE TABLE statement during a :meth:`_schema.Table.create` opera
 
 .. sourcecode:: python+sql
 
-    t = Table('test', metadata_obj,
-        Column('abc', String(20), server_default='abc'),
-        Column('created_at', DateTime, server_default=func.sysdate()),
-        Column('index_value', Integer, server_default=text("0"))
+    t = Table(
+        "test",
+        metadata_obj,
+        Column("abc", String(20), server_default="abc"),
+        Column("created_at", DateTime, server_default=func.sysdate()),
+        Column("index_value", Integer, server_default=text("0")),
     )
 
 A create call for the above table will produce::
@@ -296,10 +305,12 @@ may be called out using :class:`.FetchedValue` as a marker::
 
     from sqlalchemy.schema import FetchedValue
 
-    t = Table('test', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('abc', TIMESTAMP, server_default=FetchedValue()),
-        Column('def', String(20), server_onupdate=FetchedValue())
+    t = Table(
+        "test",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("abc", TIMESTAMP, server_default=FetchedValue()),
+        Column("def", String(20), server_onupdate=FetchedValue()),
     )
 
 The :class:`.FetchedValue` indicator does not affect the rendered DDL for the
@@ -344,13 +355,17 @@ The :class:`~sqlalchemy.schema.Sequence` may be placed on any column as a
 configured to fire off during UPDATE operations if desired. It is most
 commonly used in conjunction with a single integer primary key column::
 
-    table = Table("cartitems", metadata_obj,
+    table = Table(
+        "cartitems",
+        metadata_obj,
         Column(
             "cart_id",
             Integer,
-            Sequence('cart_id_seq', metadata=metadata_obj), primary_key=True),
+            Sequence("cart_id_seq", metadata=metadata_obj),
+            primary_key=True,
+        ),
         Column("description", String(40)),
-        Column("createdate", DateTime())
+        Column("createdate", DateTime()),
     )
 
 Where above, the table "cartitems" is associated with a sequence named
@@ -397,7 +412,7 @@ object, it can be invoked with its "next value" instruction by
 passing it directly to a SQL execution method::
 
     with my_engine.connect() as conn:
-        seq = Sequence('some_sequence')
+        seq = Sequence("some_sequence")
         nextid = conn.execute(seq)
 
 In order to embed the "next value" function of a :class:`.Sequence`
@@ -405,7 +420,7 @@ inside of a SQL statement like a SELECT or INSERT, use the :meth:`.Sequence.next
 method, which will render at statement compilation time a SQL function that is
 appropriate for the target backend::
 
-    >>> my_seq = Sequence('some_sequence')
+    >>> my_seq = Sequence("some_sequence")
     >>> stmt = select(my_seq.next_value())
     >>> print(stmt.compile(dialect=postgresql.dialect()))
     SELECT nextval('some_sequence') AS next_value_1
@@ -418,24 +433,29 @@ Associating a Sequence with the MetaData
 For many years, the SQLAlchemy documentation referred to the
 example of associating a :class:`.Sequence` with a table as follows::
 
-    table = Table("cartitems", metadata_obj,
-        Column("cart_id", Integer, Sequence('cart_id_seq'),
-               primary_key=True),
+    table = Table(
+        "cartitems",
+        metadata_obj,
+        Column("cart_id", Integer, Sequence("cart_id_seq"), primary_key=True),
         Column("description", String(40)),
-        Column("createdate", DateTime())
+        Column("createdate", DateTime()),
     )
 
 While the above is a prominent idiomatic pattern, it is recommended that
 the :class:`.Sequence` in most cases be explicitly associated with the
 :class:`_schema.MetaData`, using the :paramref:`.Sequence.metadata` parameter::
 
-    table = Table("cartitems", metadata_obj,
+    table = Table(
+        "cartitems",
+        metadata_obj,
         Column(
             "cart_id",
             Integer,
-            Sequence('cart_id_seq', metadata=metadata_obj), primary_key=True),
+            Sequence("cart_id_seq", metadata=metadata_obj),
+            primary_key=True,
+        ),
         Column("description", String(40)),
-        Column("createdate", DateTime())
+        Column("createdate", DateTime()),
     )
 
 The :class:`.Sequence` object is a first class
@@ -480,8 +500,8 @@ The preceding sections illustrate how to associate a :class:`.Sequence` with a
 :class:`_schema.Column` as the **Python side default generator**::
 
     Column(
-        "cart_id", Integer, Sequence('cart_id_seq', metadata=metadata_obj),
-        primary_key=True)
+        "cart_id", Integer, Sequence("cart_id_seq", metadata=metadata_obj), primary_key=True
+    )
 
 In the above case, the :class:`.Sequence` will automatically be subject
 to CREATE SEQUENCE / DROP SEQUENCE DDL when the related :class:`_schema.Table`
@@ -497,24 +517,30 @@ we illustrate the same :class:`.Sequence` being associated with the
 :class:`_schema.Column` both as the Python-side default generator as well as
 the server-side default generator::
 
-    cart_id_seq = Sequence('cart_id_seq', metadata=metadata_obj)
-    table = Table("cartitems", metadata_obj,
+    cart_id_seq = Sequence("cart_id_seq", metadata=metadata_obj)
+    table = Table(
+        "cartitems",
+        metadata_obj,
         Column(
-            "cart_id", Integer, cart_id_seq,
-            server_default=cart_id_seq.next_value(), primary_key=True),
+            "cart_id",
+            Integer,
+            cart_id_seq,
+            server_default=cart_id_seq.next_value(),
+            primary_key=True,
+        ),
         Column("description", String(40)),
-        Column("createdate", DateTime())
+        Column("createdate", DateTime()),
     )
 
 or with the ORM::
 
     class CartItem(Base):
-        __tablename__ = 'cartitems'
+        __tablename__ = "cartitems"
 
-        cart_id_seq = Sequence('cart_id_seq', metadata=Base.metadata)
+        cart_id_seq = Sequence("cart_id_seq", metadata=Base.metadata)
         cart_id = Column(
-            Integer, cart_id_seq,
-            server_default=cart_id_seq.next_value(), primary_key=True)
+            Integer, cart_id_seq, server_default=cart_id_seq.next_value(), primary_key=True
+        )
         description = Column(String(40))
         createdate = Column(DateTime)
 
@@ -665,8 +691,8 @@ Example::
     data = Table(
         "data",
         metadata_obj,
-        Column('id', Integer, Identity(start=42, cycle=True), primary_key=True),
-        Column('data', String)
+        Column("id", Integer, Identity(start=42, cycle=True), primary_key=True),
+        Column("data", String),
     )
 
 The DDL for the ``data`` table when run on a PostgreSQL 12 backend will look

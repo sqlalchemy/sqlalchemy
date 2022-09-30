@@ -287,9 +287,7 @@ from this row and we will get our updated value back:
 
 .. sourcecode:: pycon+sql
 
-    >>> sandy_fullname = session.execute(
-    ...     select(User.fullname).where(User.id == 2)
-    ... ).scalar_one()
+    >>> sandy_fullname = session.execute(select(User.fullname).where(User.id == 2)).scalar_one()
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
     [...] ('Sandy Squirrel', 2)
     SELECT user_account.fullname

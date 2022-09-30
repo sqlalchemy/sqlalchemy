@@ -107,7 +107,7 @@ where we acquired the :class:`_future.Connection` object:
     ...     conn.execute(text("CREATE TABLE some_table (x int, y int)"))
     ...     conn.execute(
     ...         text("INSERT INTO some_table (x, y) VALUES (:x, :y)"),
-    ...         [{"x": 1, "y": 1}, {"x": 2, "y": 4}]
+    ...         [{"x": 1, "y": 1}, {"x": 2, "y": 4}],
     ...     )
     ...     conn.commit()
     {opensql}BEGIN (implicit)
@@ -145,7 +145,7 @@ may be referred towards as **begin once**:
     >>> with engine.begin() as conn:
     ...     conn.execute(
     ...         text("INSERT INTO some_table (x, y) VALUES (:x, :y)"),
-    ...         [{"x": 6, "y": 8}, {"x": 9, "y": 10}]
+    ...         [{"x": 6, "y": 8}, {"x": 9, "y": 10}],
     ...     )
     {opensql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
@@ -316,12 +316,9 @@ construct accepts these using a colon format "``:y``".   The actual value for
 .. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
-    ...     result = conn.execute(
-    ...         text("SELECT x, y FROM some_table WHERE y > :y"),
-    ...         {"y": 2}
-    ...     )
+    ...     result = conn.execute(text("SELECT x, y FROM some_table WHERE y > :y"), {"y": 2})
     ...     for row in result:
-    ...        print(f"x: {row.x}  y: {row.y}")
+    ...         print(f"x: {row.x}  y: {row.y}")
     {opensql}BEGIN (implicit)
     SELECT x, y FROM some_table WHERE y > ?
     [...] (2,)
@@ -370,7 +367,7 @@ be invoked against each parameter set individually:
     >>> with engine.connect() as conn:
     ...     conn.execute(
     ...         text("INSERT INTO some_table (x, y) VALUES (:x, :y)"),
-    ...         [{"x": 11, "y": 12}, {"x": 13, "y": 14}]
+    ...         [{"x": 11, "y": 12}, {"x": 13, "y": 14}],
     ...     )
     ...     conn.commit()
     {opensql}BEGIN (implicit)
@@ -436,7 +433,7 @@ a context manager:
     >>> with Session(engine) as session:
     ...     result = session.execute(stmt, {"y": 6})
     ...     for row in result:
-    ...        print(f"x: {row.x}  y: {row.y}")
+    ...         print(f"x: {row.x}  y: {row.y}")
     {opensql}BEGIN (implicit)
     SELECT x, y FROM some_table WHERE y > ? ORDER BY x, y
     [...] (6,){stop}
@@ -462,7 +459,7 @@ our data:
     >>> with Session(engine) as session:
     ...     result = session.execute(
     ...         text("UPDATE some_table SET y=:y WHERE x=:x"),
-    ...         [{"x": 9, "y":11}, {"x": 13, "y": 15}]
+    ...         [{"x": 9, "y": 11}, {"x": 13, "y": 15}],
     ...     )
     ...     session.commit()
     {opensql}BEGIN (implicit)

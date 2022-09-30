@@ -25,8 +25,10 @@ An example of some commonly mixed-in idioms is below::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class CommonMixin:
         """define a series of common elements that may be applied to mapped
@@ -41,6 +43,7 @@ An example of some commonly mixed-in idioms is below::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
+
     class HasLogRecord:
         """mark classes that have a many-to-one relationship to the
         ``LogRecord`` class."""
@@ -51,8 +54,10 @@ An example of some commonly mixed-in idioms is below::
         def log_record(self) -> Mapped["LogRecord"]:
             return relationship("LogRecord")
 
+
     class LogRecord(CommonMixin, Base):
         log_info: Mapped[str]
+
 
     class MyModel(CommonMixin, HasLogRecord, Base):
         name: Mapped[str]
@@ -155,6 +160,7 @@ below illustrates some of the the previous section's example in terms of the
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         """define a series of common elements that may be applied to mapped
         classes using this class as a base class."""
@@ -168,6 +174,7 @@ below illustrates some of the the previous section's example in terms of the
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
+
     class HasLogRecord:
         """mark classes that have a many-to-one relationship to the
         ``LogRecord`` class."""
@@ -178,8 +185,10 @@ below illustrates some of the the previous section's example in terms of the
         def log_record(self) -> Mapped["LogRecord"]:
             return relationship("LogRecord")
 
+
     class LogRecord(Base):
         log_info: Mapped[str]
+
 
     class MyModel(HasLogRecord, Base):
         name: Mapped[str]
@@ -203,6 +212,7 @@ example below::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
 
+
     class Base:
         """define a series of common elements that may be applied to mapped
         classes using this class as a base class."""
@@ -216,7 +226,9 @@ example below::
 
         id = mapped_column(Integer, primary_key=True)
 
+
     Base = declarative_base(cls=Base)
+
 
     class HasLogRecord:
         """mark classes that have a many-to-one relationship to the
@@ -228,8 +240,10 @@ example below::
         def log_record(self):
             return relationship("LogRecord")
 
+
     class LogRecord(Base):
         log_info = mapped_column(String)
+
 
     class MyModel(HasLogRecord, Base):
         name = mapped_column(String)
@@ -320,8 +334,10 @@ reference a common target class via many-to-one::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class RefTargetMixin:
         target_id: Mapped[int] = mapped_column(ForeignKey("target.id"))
@@ -329,6 +345,7 @@ reference a common target class via many-to-one::
         @declared_attr
         def target(cls) -> Mapped["Target"]:
             return relationship("Target")
+
 
     class Foo(RefTargetMixin, Base):
         __tablename__ = "foo"
@@ -369,6 +386,7 @@ explicit primaryjoin which refers to pending mapped columns on both
         __tablename__ = "target"
         id: Mapped[int] = mapped_column(primary_key=True)
 
+
     class RefTargetMixin:
         target_id: Mapped[int] = mapped_column(ForeignKey("target.id"))
 
@@ -398,8 +416,10 @@ columns together::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
+
 
     class SomethingMixin:
         x: Mapped[int]
@@ -408,6 +428,7 @@ columns together::
         @declared_attr
         def x_plus_y(cls) -> Mapped[int]:
             return column_property(cls.x + cls.y)
+
 
     class Something(SomethingMixin, Base):
         __tablename__ = "something"
@@ -495,6 +516,7 @@ of ``Person``, but not for the ``Manager`` subclass of ``Person``::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -512,7 +534,7 @@ of ``Person``, but not for the ``Manager`` subclass of ``Person``::
 
 
     class Engineer(Person):
-        id: Mapped[int] = mapped_column(ForeignKey('person.id'), primary_key=True)
+        id: Mapped[int] = mapped_column(ForeignKey("person.id"), primary_key=True)
 
         primary_language: Mapped[str]
 
@@ -572,6 +594,7 @@ for inheriting subclasses by default::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -597,7 +620,7 @@ for inheriting subclasses by default::
 
             return cls.__name__.lower()
 
-        id: Mapped[int] = mapped_column(ForeignKey('person.id'), primary_key=True)
+        id: Mapped[int] = mapped_column(ForeignKey("person.id"), primary_key=True)
 
         primary_language: Mapped[str]
 
@@ -607,7 +630,6 @@ for inheriting subclasses by default::
     class Manager(Person):
 
         __mapper_args__ = {"polymorphic_identity": "manager"}
-
 
 .. _mixin_inheritance_columns:
 
@@ -627,11 +649,13 @@ a primary key::
     class HasId:
         id: Mapped[int] = mapped_column(primary_key=True)
 
+
     class Person(HasId, Base):
         __tablename__ = "person"
 
         discriminator: Mapped[str]
         __mapper_args__ = {"polymorphic_on": "discriminator"}
+
 
     # this mapping will fail, as there's no primary key
     class Engineer(Person):
@@ -731,9 +755,7 @@ establish it as part of ``__table_args__``::
 
         @declared_attr
         def __table_args__(cls):
-            return (
-                Index(f"test_idx_{cls.__tablename__}", "a", "b"),
-            )
+            return (Index(f"test_idx_{cls.__tablename__}", "a", "b"),)
 
 
     class MyModel(MyMixin, Base):

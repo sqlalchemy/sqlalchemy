@@ -25,24 +25,24 @@ and other directives:
 .. sourcecode:: python
 
 
-  from sqlalchemy.orm import Mapped
-  from sqlalchemy.orm import relationship
-
-  class User(Base):
-      __tablename__ = 'user_account'
-
-      # ... mapped_column() mappings
-
-      addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import relationship
 
 
-  class Address(Base):
-      __tablename__ = 'address'
+    class User(Base):
+        __tablename__ = "user_account"
 
-      # ... mapped_column() mappings
+        # ... mapped_column() mappings
 
-      user: Mapped["User"] = relationship(back_populates="addresses")
+        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
 
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        # ... mapped_column() mappings
+
+        user: Mapped["User"] = relationship(back_populates="addresses")
 
 Above, the ``User`` class now has an attribute ``User.addresses`` and the
 ``Address`` class has an attribute ``Address.user``.   The
@@ -73,7 +73,7 @@ We can start by illustrating what :func:`_orm.relationship` does to instances
 of objects.   If we make a new ``User`` object, we can note that there is a
 Python list when we access the ``.addresses`` element::
 
-    >>> u1 = User(name='pkrabs', fullname='Pearl Krabs')
+    >>> u1 = User(name="pkrabs", fullname="Pearl Krabs")
     >>> u1.addresses
     []
 
@@ -304,11 +304,7 @@ corresponding to the :func:`_orm.relationship` may be passed as the **single
 argument** to :meth:`_sql.Select.join`, where it serves to indicate both the
 right side of the join as well as the ON clause at once::
 
-    >>> print(
-    ...     select(Address.email_address).
-    ...     select_from(User).
-    ...     join(User.addresses)
-    ... )
+    >>> print(select(Address.email_address).select_from(User).join(User.addresses))
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -320,10 +316,7 @@ ON clause, it works because of the :class:`_schema.ForeignKeyConstraint`
 between the two mapped :class:`_schema.Table` objects, not because of the
 :func:`_orm.relationship` objects on the ``User`` and ``Address`` classes::
 
-    >>> print(
-    ...    select(Address.email_address).
-    ...    join_from(User, Address)
-    ... )
+    >>> print(select(Address.email_address).join_from(User, Address))
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -403,10 +396,13 @@ the :paramref:`_orm.relationship.lazy` option, e.g.:
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import relationship
 
-    class User(Base):
-        __tablename__ = 'user_account'
 
-        addresses: Mapped[list["Address"]] = relationship(back_populates="user", lazy="selectin")
+    class User(Base):
+        __tablename__ = "user_account"
+
+        addresses: Mapped[list["Address"]] = relationship(
+            back_populates="user", lazy="selectin"
+        )
 
 Each loader strategy object adds some kind of information to the statement that
 will be used later by the :class:`_orm.Session` when it is deciding how various
@@ -446,11 +442,11 @@ related ``Address`` objects:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.orm import selectinload
-    >>> stmt = (
-    ...   select(User).options(selectinload(User.addresses)).order_by(User.id)
-    ... )
+    >>> stmt = select(User).options(selectinload(User.addresses)).order_by(User.id)
     >>> for row in session.execute(stmt):
-    ...     print(f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})")
+    ...     print(
+    ...         f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})"
+    ...     )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
@@ -490,7 +486,9 @@ as below where we know that all ``Address`` objects have an associated
 
     >>> from sqlalchemy.orm import joinedload
     >>> stmt = (
-    ...   select(Address).options(joinedload(Address.user, innerjoin=True)).order_by(Address.id)
+    ...     select(Address)
+    ...     .options(joinedload(Address.user, innerjoin=True))
+    ...     .order_by(Address.id)
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
@@ -557,10 +555,11 @@ example:
 
     >>> from sqlalchemy.orm import contains_eager
     >>> stmt = (
-    ...   select(Address).
-    ...   join(Address.user).
-    ...   where(User.name == 'pkrabs').
-    ...   options(contains_eager(Address.user)).order_by(Address.id)
+    ...     select(Address)
+    ...     .join(Address.user)
+    ...     .where(User.name == "pkrabs")
+    ...     .options(contains_eager(Address.user))
+    ...     .order_by(Address.id)
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
@@ -578,10 +577,11 @@ rows.   If we had applied :func:`_orm.joinedload` separately, we would get a
 SQL query that unnecessarily joins twice::
 
     >>> stmt = (
-    ...   select(Address).
-    ...   join(Address.user).
-    ...   where(User.name == 'pkrabs').
-    ...   options(joinedload(Address.user)).order_by(Address.id)
+    ...     select(Address)
+    ...     .join(Address.user)
+    ...     .where(User.name == "pkrabs")
+    ...     .options(joinedload(Address.user))
+    ...     .order_by(Address.id)
     ... )
     >>> print(stmt)  # SELECT has a JOIN and LEFT OUTER JOIN unnecessarily
     {opensql}SELECT address.id, address.email_address, address.user_id,
@@ -620,21 +620,23 @@ relationship will never try to emit SQL:
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import relationship
 
+
     class User(Base):
-        __tablename__ = 'user_account'
+        __tablename__ = "user_account"
 
         # ... mapped_column() mappings
 
-        addresses: Mapped[list["Address"]] = relationship(back_populates="user", lazy="raise_on_sql")
+        addresses: Mapped[list["Address"]] = relationship(
+            back_populates="user", lazy="raise_on_sql"
+        )
 
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         # ... mapped_column() mappings
 
         user: Mapped["User"] = relationship(back_populates="addresses", lazy="raise_on_sql")
-
 
 Using such a mapping, the application is blocked from lazy loading,
 indicating that a particular query would need to specify a loader strategy:

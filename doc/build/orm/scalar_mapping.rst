@@ -11,4 +11,3 @@ This page has been merged into the
 
     mapping_columns
 
-

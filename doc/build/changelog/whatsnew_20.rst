@@ -181,7 +181,7 @@ helper):
     stmt = select(str_col, int_col)
 
     # (variable) stmt: ReturningInsert[Tuple[str, int]]
-    ins_stmt = insert(table('t')).returning(str_col, int_col)
+    ins_stmt = insert(table("t")).returning(str_col, int_col)
 
 * The ``Tuple[]`` type from any row returning construct, when invoked with an
   ``.execute()`` method, carries through to :class:`_engine.Result`
@@ -204,15 +204,15 @@ helper):
         row = result.first()
 
         if row is not None:
-          # for typed tuple unpacking or indexed access,
-          # use row.tuple() or row.t  (this is the small typing-oriented accessor)
-          strval, intval = row.t
+            # for typed tuple unpacking or indexed access,
+            # use row.tuple() or row.t  (this is the small typing-oriented accessor)
+            strval, intval = row.t
 
-          # (variable) strval: str
-          strval
+            # (variable) strval: str
+            strval
 
-          # (variable) intval: int
-          intval
+            # (variable) intval: int
+            intval
 
 * Scalar values for single-column statements do the right thing with
   methods like :meth:`_engine.Connection.scalar`, :meth:`_engine.Result.scalars`,
@@ -429,6 +429,7 @@ with using the :class:`_orm.DeclarativeBase` class, which produces the same
 
     from sqlalchemy.orm import DeclarativeBase
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -439,54 +440,60 @@ The :func:`_orm.mapped_column` is an ORM-typing aware construct that can
 be swapped directly for the use of :class:`_schema.Column`.  Given a
 1.x style mapping as::
 
-  from sqlalchemy import Column
-  from sqlalchemy.orm import relationship
-  from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy import Column
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import DeclarativeBase
 
-  class Base(DeclarativeBase):
-      pass
 
-  class User(Base):
-      __tablename__ = 'user_account'
+    class Base(DeclarativeBase):
+        pass
 
-      id = Column(Integer, primary_key=True)
-      name = Column(String(30), nullable=False)
-      fullname = Column(String)
-      addresses = relationship("Address", back_populates="user")
 
-  class Address(Base):
-      __tablename__ = "address"
+    class User(Base):
+        __tablename__ = "user_account"
 
-      id = Column(Integer, primary_key=True)
-      email_address = Column(String, nullable=False)
-      user_id = Column(ForeignKey("user_account.id"), nullable=False)
-      user = relationship("User", back_populates="addresses")
+        id = Column(Integer, primary_key=True)
+        name = Column(String(30), nullable=False)
+        fullname = Column(String)
+        addresses = relationship("Address", back_populates="user")
+
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id = Column(Integer, primary_key=True)
+        email_address = Column(String, nullable=False)
+        user_id = Column(ForeignKey("user_account.id"), nullable=False)
+        user = relationship("User", back_populates="addresses")
 
 We replace :class:`_schema.Column` with :func:`_orm.mapped_column`; no
 arguments need to change::
 
-  from sqlalchemy.orm import DeclarativeBase
-  from sqlalchemy.orm import mapped_column
-  from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
 
-  class Base(DeclarativeBase):
-      pass
 
-  class User(Base):
-      __tablename__ = 'user_account'
+    class Base(DeclarativeBase):
+        pass
 
-      id = mapped_column(Integer, primary_key=True)
-      name = mapped_column(String(30), nullable=False)
-      fullname = mapped_column(String)
-      addresses = relationship("Address", back_populates="user")
 
-  class Address(Base):
-      __tablename__ = "address"
+    class User(Base):
+        __tablename__ = "user_account"
 
-      id = mapped_column(Integer, primary_key=True)
-      email_address = mapped_column(String, nullable=False)
-      user_id = mapped_column(ForeignKey("user_account.id"), nullable=False)
-      user = relationship("User", back_populates="addresses")
+        id = mapped_column(Integer, primary_key=True)
+        name = mapped_column(String(30), nullable=False)
+        fullname = mapped_column(String)
+        addresses = relationship("Address", back_populates="user")
+
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id = mapped_column(Integer, primary_key=True)
+        email_address = mapped_column(String, nullable=False)
+        user_id = mapped_column(ForeignKey("user_account.id"), nullable=False)
+        user = relationship("User", back_populates="addresses")
 
 The individual columns above are **not yet typed with Python types**,
 and are instead typed as ``Mapped[Any]``; this is because we can declare any
@@ -510,31 +517,34 @@ The mapping within this interim step
 will be more verbose, however with proficiency, this step can
 be combined with subsequent steps to update mappings more directly::
 
-  from typing import List
-  from typing import Optional
-  from sqlalchemy.orm import DeclarativeBase
-  from sqlalchemy.orm import Mapped
-  from sqlalchemy.orm import mapped_column
-  from sqlalchemy.orm import relationship
+    from typing import List
+    from typing import Optional
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
 
-  class Base(DeclarativeBase):
-      pass
 
-  class User(Base):
-      __tablename__ = 'user_account'
+    class Base(DeclarativeBase):
+        pass
 
-      id: Mapped[int] = mapped_column(Integer, primary_key=True)
-      name: Mapped[str] = mapped_column(String(30), nullable=False)
-      fullname: Mapped[Optional[str]] = mapped_column(String)
-      addresses: Mapped[List["Address"]] = relationship("Address", back_populates="user")
 
-  class Address(Base):
-      __tablename__ = "address"
+    class User(Base):
+        __tablename__ = "user_account"
 
-      id: Mapped[int] = mapped_column(Integer, primary_key=True)
-      email_address: Mapped[str] = mapped_column(String, nullable=False)
-      user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"), nullable=False)
-      user: Mapped["User"] = relationship("User", back_populates="addresses")
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        name: Mapped[str] = mapped_column(String(30), nullable=False)
+        fullname: Mapped[Optional[str]] = mapped_column(String)
+        addresses: Mapped[List["Address"]] = relationship("Address", back_populates="user")
+
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        email_address: Mapped[str] = mapped_column(String, nullable=False)
+        user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"), nullable=False)
+        user: Mapped["User"] = relationship("User", back_populates="addresses")
 
 At this point, our ORM mapping is fully typed and will produce exact-typed
 :func:`_sql.select`, :class:`_orm.Query` and :class:`_engine.Result`
@@ -553,32 +563,34 @@ class from the left hand annotation, supporting forward references as well
 (as :func:`_orm.relationship` has supported string-based forward references
 for ten years already ;) )::
 
-  from typing import List
-  from typing import Optional
-  from sqlalchemy.orm import DeclarativeBase
-  from sqlalchemy.orm import Mapped
-  from sqlalchemy.orm import mapped_column
-  from sqlalchemy.orm import relationship
+    from typing import List
+    from typing import Optional
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
 
-  class Base(DeclarativeBase):
-      pass
 
-  class User(Base):
-      __tablename__ = 'user_account'
+    class Base(DeclarativeBase):
+        pass
 
-      id: Mapped[int] = mapped_column(primary_key=True)
-      name: Mapped[str] = mapped_column(String(30))
-      fullname: Mapped[Optional[str]]
-      addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
-  class Address(Base):
-      __tablename__ = "address"
+    class User(Base):
+        __tablename__ = "user_account"
 
-      id: Mapped[int] = mapped_column(primary_key=True)
-      email_address: Mapped[str]
-      user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
-      user: Mapped["User"] = relationship(back_populates="addresses")
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str] = mapped_column(String(30))
+        fullname: Mapped[Optional[str]]
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        email_address: Mapped[str]
+        user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+        user: Mapped["User"] = relationship(back_populates="addresses")
 
 Step five - make use of pep-593 ``Annotated`` to package common directives into types
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -620,45 +632,50 @@ constructs, but currently is limited to :func:`_orm.mapped_column`.  The
 example below adds additional ``Annotated`` types in addition to our
 ``str50`` example to illustrate this feature::
 
-  from typing_extensions import Annotated
-  from typing import List
-  from typing import Optional
-  from sqlalchemy import ForeignKey
-  from sqlalchemy import String
-  from sqlalchemy.orm import DeclarativeBase
-  from sqlalchemy.orm import Mapped
-  from sqlalchemy.orm import mapped_column
-  from sqlalchemy.orm import relationship
+    from typing_extensions import Annotated
+    from typing import List
+    from typing import Optional
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import String
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
 
-  # declarative base from previous example
-  str50 = Annotated[str, 50]
-
-  class Base(DeclarativeBase):
-      registry = registry(type_annotation_map={
-          str50: String(50),
-      })
-
-  # set up mapped_column() overrides, using whole column styles that are
-  # expected to be used in multiple places
-  intpk = Annotated[int, mapped_column(primary_key=True)]
-  user_fk = Annotated[int, mapped_column(ForeignKey('user_account.id'))]
+    # declarative base from previous example
+    str50 = Annotated[str, 50]
 
 
-  class User(Base):
-      __tablename__ = 'user_account'
+    class Base(DeclarativeBase):
+        registry = registry(
+            type_annotation_map={
+                str50: String(50),
+            }
+        )
 
-      id: Mapped[intpk]
-      name: Mapped[str50]
-      fullname: Mapped[Optional[str]]
-      addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
-  class Address(Base):
-      __tablename__ = "address"
+    # set up mapped_column() overrides, using whole column styles that are
+    # expected to be used in multiple places
+    intpk = Annotated[int, mapped_column(primary_key=True)]
+    user_fk = Annotated[int, mapped_column(ForeignKey("user_account.id"))]
 
-      id: Mapped[intpk]
-      email_address: Mapped[str50]
-      user_id: Mapped[user_fk]
-      user: Mapped["User"] = relationship(back_populates="addresses")
+
+    class User(Base):
+        __tablename__ = "user_account"
+
+        id: Mapped[intpk]
+        name: Mapped[str50]
+        fullname: Mapped[Optional[str]]
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
+
+
+    class Address(Base):
+        __tablename__ = "address"
+
+        id: Mapped[intpk]
+        email_address: Mapped[str50]
+        user_id: Mapped[user_fk]
+        user: Mapped["User"] = relationship(back_populates="addresses")
 
 Above, columns that are mapped with ``Mapped[str50]``, ``Mapped[intpk]``,
 or ``Mapped[user_fk]`` draw from both the
@@ -770,6 +787,7 @@ example mapping from "Step 5" of :ref:`whatsnew_20_orm_declarative_typing`::
     class Base(MappedAsDataclass, DeclarativeBase):
         """subclasses will be converted to dataclasses"""
 
+
     intpk = Annotated[int, mapped_column(primary_key=True)]
     str30 = Annotated[str, mapped_column(String(30))]
     user_fk = Annotated[int, mapped_column(ForeignKey("user_account.id"))]
@@ -792,9 +810,7 @@ example mapping from "Step 5" of :ref:`whatsnew_20_orm_declarative_typing`::
         id: Mapped[intpk] = mapped_column(init=False)
         email_address: Mapped[str]
         user_id: Mapped[user_fk] = mapped_column(init=False)
-        user: Mapped["User"] = relationship(
-            back_populates="addresses", default=None
-        )
+        user: Mapped["User"] = relationship(back_populates="addresses", default=None)
 
 The above mapping has used the ``@dataclasses.dataclass`` decorator directly
 on each mapped class at the same time that the declarative mapping was
@@ -1000,12 +1016,12 @@ inheritance::
     >>> users = session.scalars(
     ...     insert(User).returning(User),
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...     ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ],
     ... )
     >>> print(users.all())
     [User(name='spongebob', fullname='Spongebob Squarepants'),
@@ -1035,9 +1051,9 @@ a SQL UPDATE statement that is invoked using DBAPI :term:`executemany`::
     >>> session.execute(
     ...     update(User),
     ...     [
-    ...          {"id": 1, "fullname": "Spongebob Squarepants"},
-    ...          {"id": 3, "fullname": "Patrick Star"},
-    ...     ]
+    ...         {"id": 1, "fullname": "Spongebob Squarepants"},
+    ...         {"id": 3, "fullname": "Patrick Star"},
+    ...     ],
     ... )
 
 .. seealso::
@@ -1056,16 +1072,15 @@ with column expressions or full ORM entities::
     >>> from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
     >>> stmt = sqlite_upsert(User).values(
     ...     [
-    ...          {"name": "spongebob", "fullname": "Spongebob Squarepants"},
-    ...          {"name": "sandy", "fullname": "Sandy Cheeks"},
-    ...          {"name": "patrick", "fullname": "Patrick Star"},
-    ...          {"name": "squidward", "fullname": "Squidward Tentacles"},
-    ...          {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
-    ...  ]
+    ...         {"name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"name": "sandy", "fullname": "Sandy Cheeks"},
+    ...         {"name": "patrick", "fullname": "Patrick Star"},
+    ...         {"name": "squidward", "fullname": "Squidward Tentacles"},
+    ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
+    ...     ]
     ... )
     >>> stmt = stmt.on_conflict_do_update(
-    ...        index_elements=[User.name],
-    ...        set_=dict(fullname=stmt.excluded.fullname)
+    ...     index_elements=[User.name], set_=dict(fullname=stmt.excluded.fullname)
     ... )
     >>> result = session.scalars(stmt.returning(User))
     >>> print(result.all())
@@ -1092,10 +1107,10 @@ may also proceed whether or not explicit use of RETURNING is present::
 
     >>> from sqlalchemy import update
     >>> stmt = (
-    ...      update(User).
-    ...      where(User.name == "squidward").
-    ...      values(name="spongebob").
-    ...      returning(User)
+    ...     update(User)
+    ...     .where(User.name == "squidward")
+    ...     .values(name="spongebob")
+    ...     .returning(User)
     ... )
     >>> result = session.scalars(stmt, execution_options={"synchronize_session": "fetch"})
     >>> print(result.all())
@@ -1432,7 +1447,7 @@ and pylance.  Given a program as below::
     from sqlalchemy.dialects.mysql import VARCHAR
 
 
-    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql", "mariadb")
+    type_ = String(255).with_variant(VARCHAR(255, charset="utf8mb4"), "mysql", "mariadb")
 
     if typing.TYPE_CHECKING:
         reveal_type(type_)
@@ -1604,10 +1619,7 @@ standard "precision" value divided by 0.3103::
 
     from sqlalchemy.dialects import oracle
 
-    Table(
-        "some_table", metadata,
-        Column("value", oracle.FLOAT(126))
-    )
+    Table("some_table", metadata, Column("value", oracle.FLOAT(126)))
 
 A binary precision value of 126 is synonymous with using the
 :class:`_sqltypes.DOUBLE_PRECISION` datatype, and a value of 63 is equivalent
@@ -1627,10 +1639,10 @@ the :meth:`_types.TypeEngine.with_variant` method as follows::
     from sqlalchemy.dialects import oracle
 
     Table(
-        "some_table", metadata,
-        Column("value", Float(5).with_variant(oracle.FLOAT(16), "oracle"))
+        "some_table",
+        metadata,
+        Column("value", Float(5).with_variant(oracle.FLOAT(16), "oracle")),
     )
-
 
 .. _change_7086:
 

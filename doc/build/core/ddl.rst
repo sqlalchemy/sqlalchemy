@@ -32,9 +32,11 @@ other DDL elements except it accepts a string which is the text to be emitted:
     event.listen(
         metadata,
         "after_create",
-        DDL("ALTER TABLE users ADD CONSTRAINT "
+        DDL(
+            "ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length "
-            " CHECK (length(user_name) >= 8)")
+            " CHECK (length(user_name) >= 8)"
+        ),
     )
 
 A more comprehensive method of creating libraries of DDL constructs is to use
@@ -54,9 +56,10 @@ method.  For example, if we wanted to create a trigger but only on
 the PostgreSQL backend, we could invoke this as::
 
     mytable = Table(
-        'mytable', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', String(50))
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", String(50)),
     )
 
     func = DDL(
@@ -73,30 +76,18 @@ the PostgreSQL backend, we could invoke this as::
         "FOR EACH ROW EXECUTE PROCEDURE my_func();"
     )
 
-    event.listen(
-        mytable,
-        'after_create',
-        func.execute_if(dialect='postgresql')
-    )
+    event.listen(mytable, "after_create", func.execute_if(dialect="postgresql"))
 
-    event.listen(
-        mytable,
-        'after_create',
-        trigger.execute_if(dialect='postgresql')
-    )
+    event.listen(mytable, "after_create", trigger.execute_if(dialect="postgresql"))
 
 The :paramref:`.ExecutableDDLElement.execute_if.dialect` keyword also accepts a tuple
 of string dialect names::
 
     event.listen(
-        mytable,
-        "after_create",
-        trigger.execute_if(dialect=('postgresql', 'mysql'))
+        mytable, "after_create", trigger.execute_if(dialect=("postgresql", "mysql"))
     )
     event.listen(
-        mytable,
-        "before_drop",
-        trigger.execute_if(dialect=('postgresql', 'mysql'))
+        mytable, "before_drop", trigger.execute_if(dialect=("postgresql", "mysql"))
     )
 
 The :meth:`.ExecutableDDLElement.execute_if` method can also work against a callable
@@ -251,7 +242,9 @@ statement emitted for the index:
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy import create_engine
-    >>> postgresql_engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
+    >>> postgresql_engine = create_engine(
+    ...     "postgresql+psycopg2://scott:tiger@localhost/test", echo=True
+    ... )
     >>> meta.create_all(postgresql_engine)
     {opensql}BEGIN (implicit)
     select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where pg_catalog.pg_table_is_visible(c.oid) and relname=%(name)s
@@ -286,10 +279,8 @@ to inspect the database versioning information would best use the given
 .. sourcecode:: python+sql
 
     def only_pg_14(ddl_element, target, bind, dialect, **kw):
-        return (
-            dialect.name == "postgresql" and
-            dialect.server_version_info >= (14,)
-        )
+        return dialect.name == "postgresql" and dialect.server_version_info >= (14,)
+
 
     my_table = Table(
         "my_table",

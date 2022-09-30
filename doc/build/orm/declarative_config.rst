@@ -73,9 +73,7 @@ objects but also relationships and SQL expressions::
         id: Mapped[int] = mapped_column(primary_key=True)
         user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         email_address: Mapped[str]
-        address_statistics: Mapped[Optional[str]] = mapped_column(
-            Text, deferred=True
-        )
+        address_statistics: Mapped[Optional[str]] = mapped_column(Text, deferred=True)
 
         user: Mapped["User"] = relationship(back_populates="addresses")
 
@@ -106,6 +104,7 @@ hybrid table style::
     from sqlalchemy.orm import deferred
     from sqlalchemy.orm import relationship
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -120,9 +119,7 @@ hybrid table style::
             Column("lastname", String(50)),
         )
 
-        fullname = column_property(
-            __table__.c.firstname + " " + __table__.c.lastname
-        )
+        fullname = column_property(__table__.c.firstname + " " + __table__.c.lastname)
 
         addresses = relationship("Address", back_populates="user")
 
@@ -185,14 +182,12 @@ particular columns as part of what the ORM should consider to be a primary
 key for the class, independently of schema-level primary key constraints::
 
     class GroupUsers(Base):
-        __tablename__ = 'group_users'
+        __tablename__ = "group_users"
 
         user_id = mapped_column(String(40))
         group_id = mapped_column(String(40))
 
-        __mapper_args__ = {
-            "primary_key": [user_id, group_id]
-        }
+        __mapper_args__ = {"primary_key": [user_id, group_id]}
 
 .. seealso::
 
@@ -249,7 +244,6 @@ configuring a single-table inheritance mapping::
             polymorphic_identity="employee",
         )
 
-
 .. seealso::
 
     :ref:`single_inheritance` - background on the ORM single table inheritance
@@ -285,21 +279,23 @@ collection::
         def __mapper_args__(cls):
             return {
                 "exclude_properties": [
-                    column.key for column in cls.__table__.c if
-                    column.info.get("exclude", False)
+                    column.key
+                    for column in cls.__table__.c
+                    if column.info.get("exclude", False)
                 ]
             }
+
 
     class Base(DeclarativeBase):
         pass
 
+
     class SomeClass(ExcludeColsWFlag, Base):
-        __tablename__ = 'some_table'
+        __tablename__ = "some_table"
 
         id = mapped_column(Integer, primary_key=True)
         data = mapped_column(String)
         not_needed = mapped_column(String, info={"exclude": True})
-
 
 Above, the ``ExcludeColsWFlag`` mixin provides a per-class ``__mapper_args__``
 hook that will scan for :class:`.Column` objects that include the key/value
@@ -327,7 +323,7 @@ assumed to be completed and the 'configure' step has finished::
     class MyClass(Base):
         @classmethod
         def __declare_last__(cls):
-            ""
+            """ """
             # do something with mappings
 
 ``__declare_first__()``
@@ -339,7 +335,7 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
     class MyClass(Base):
         @classmethod
         def __declare_first__(cls):
-            ""
+            """ """
             # do something before mappings are configured
 
 .. versionadded:: 0.9.3
@@ -402,7 +398,6 @@ be illustrated using :meth:`_orm.registry.mapped` as follows::
 
         id = mapped_column(Integer, primary_key=True)
 
-
 .. seealso::
 
     :ref:`declarative_abstract`
@@ -421,7 +416,7 @@ subclasses to extend just from the special class::
         __abstract__ = True
 
         def some_helpful_method(self):
-            """"""
+            """ """
 
         @declared_attr
         def __mapper_args__(cls):

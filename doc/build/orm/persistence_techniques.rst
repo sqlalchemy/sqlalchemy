@@ -21,6 +21,7 @@ an attribute::
 
         value = mapped_column(Integer)
 
+
     someobject = session.get(SomeClass, 5)
 
     # set 'value' attribute to a SQL expression adding one
@@ -88,10 +89,10 @@ This is most easily accomplished using the
     session = Session()
 
     # execute a string statement
-    result = session.execute("select * from table where id=:id", {'id':7})
+    result = session.execute("select * from table where id=:id", {"id": 7})
 
     # execute a SQL expression construct
-    result = session.execute(select(mytable).where(mytable.c.id==7))
+    result = session.execute(select(mytable).where(mytable.c.id == 7))
 
 The current :class:`~sqlalchemy.engine.Connection` held by the
 :class:`~sqlalchemy.orm.session.Session` is accessible using the
@@ -117,13 +118,12 @@ proper context for the desired engine::
     # need to specify mapper or class when executing
     result = session.execute(
         text("select * from table where id=:id"),
-        {'id':7},
-        bind_arguments={'mapper': MyMappedClass}
+        {"id": 7},
+        bind_arguments={"mapper": MyMappedClass},
     )
 
     result = session.execute(
-        select(mytable).where(mytable.c.id==7),
-        bind_arguments={'mapper': MyMappedClass}
+        select(mytable).where(mytable.c.id == 7), bind_arguments={"mapper": MyMappedClass}
     )
 
     connection = session.connection(MyMappedClass)
@@ -143,14 +143,15 @@ The ORM considers any attribute that was never set on an object as a
 "default" case; the attribute will be omitted from the INSERT statement::
 
     class MyObject(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
         id = mapped_column(Integer, primary_key=True)
         data = mapped_column(String(50), nullable=True)
+
 
     obj = MyObject(id=1)
     session.add(obj)
     session.commit()  # INSERT with the 'data' column omitted; the database
-                      # itself will persist this as the NULL value
+    # itself will persist this as the NULL value
 
 Omitting a column from the INSERT means that the column will
 have the NULL value set, *unless* the column has a default set up,
@@ -160,29 +161,31 @@ behavior of SQLAlchemy's insert behavior with both client-side and server-side
 defaults::
 
     class MyObject(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
         id = mapped_column(Integer, primary_key=True)
         data = mapped_column(String(50), nullable=True, server_default="default")
+
 
     obj = MyObject(id=1)
     session.add(obj)
     session.commit()  # INSERT with the 'data' column omitted; the database
-                      # itself will persist this as the value 'default'
+    # itself will persist this as the value 'default'
 
 However, in the ORM, even if one assigns the Python value ``None`` explicitly
 to the object, this is treated the **same** as though the value were never
 assigned::
 
     class MyObject(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
         id = mapped_column(Integer, primary_key=True)
         data = mapped_column(String(50), nullable=True, server_default="default")
+
 
     obj = MyObject(id=1, data=None)
     session.add(obj)
     session.commit()  # INSERT with the 'data' column explicitly set to None;
-                      # the ORM still omits it from the statement and the
-                      # database will still persist this as the value 'default'
+    # the ORM still omits it from the statement and the
+    # database will still persist this as the value 'default'
 
 The above operation will persist into the ``data`` column the
 server default value of ``"default"`` and not SQL NULL, even though ``None``
@@ -199,9 +202,9 @@ on a per-instance level, we assign the attribute using the
     obj = MyObject(id=1, data=null())
     session.add(obj)
     session.commit()  # INSERT with the 'data' column explicitly set as null();
-                      # the ORM uses this directly, bypassing all client-
-                      # and server-side defaults, and the database will
-                      # persist this as the NULL value
+    # the ORM uses this directly, bypassing all client-
+    # and server-side defaults, and the database will
+    # persist this as the NULL value
 
 The :obj:`_expression.null` SQL construct always translates into the SQL
 NULL value being directly present in the target INSERT statement.
@@ -214,18 +217,21 @@ a type where the ORM should treat the value ``None`` the same as any other
 value and pass it through, rather than omitting it as a "missing" value::
 
     class MyObject(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
         id = mapped_column(Integer, primary_key=True)
         data = mapped_column(
-          String(50).evaluates_none(),  # indicate that None should always be passed
-          nullable=True, server_default="default")
+            String(50).evaluates_none(),  # indicate that None should always be passed
+            nullable=True,
+            server_default="default",
+        )
+
 
     obj = MyObject(id=1, data=None)
     session.add(obj)
     session.commit()  # INSERT with the 'data' column explicitly set to None;
-                      # the ORM uses this directly, bypassing all client-
-                      # and server-side defaults, and the database will
-                      # persist this as the NULL value
+    # the ORM uses this directly, bypassing all client-
+    # and server-side defaults, and the database will
+    # persist this as the NULL value
 
 .. topic:: Evaluating None
 
@@ -284,7 +290,7 @@ columns should be fetched immediately upon INSERT and sometimes UPDATE::
 
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = mapped_column(Integer, primary_key=True)
         timestamp = mapped_column(DateTime(), server_default=func.now())
@@ -313,7 +319,7 @@ This case is the same as case 1 above, except we don't specify
 :paramref:`.orm.mapper.eager_defaults`::
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = mapped_column(Integer, primary_key=True)
         timestamp = mapped_column(DateTime(), server_default=func.now())
@@ -364,7 +370,7 @@ For an explicit sequence as we use with Oracle, this just means we are using
 the :class:`.Sequence` construct::
 
     class MyOracleModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = mapped_column(Integer, Sequence("my_sequence"), primary_key=True)
         data = mapped_column(String(50))
@@ -383,9 +389,11 @@ by a trigger, we use :class:`.FetchedValue`.  Below is a model that uses a
 SQL Server TIMESTAMP column as the primary key, which generates values automatically::
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
-        timestamp = mapped_column(TIMESTAMP(), server_default=FetchedValue(), primary_key=True)
+        timestamp = mapped_column(
+            TIMESTAMP(), server_default=FetchedValue(), primary_key=True
+        )
 
 An INSERT for the above table on SQL Server looks like:
 
@@ -417,7 +425,7 @@ Using the example of a :class:`.DateTime` column for MySQL, we add an explicit
 pre-execute-supported default using the "NOW()" SQL function::
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         timestamp = mapped_column(DateTime(), default=func.now(), primary_key=True)
 
@@ -443,13 +451,13 @@ into the column::
 
     from sqlalchemy import cast, Binary
 
+
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         timestamp = mapped_column(
-            TIMESTAMP(),
-            default=cast(func.now(), Binary),
-            primary_key=True)
+            TIMESTAMP(), default=cast(func.now(), Binary), primary_key=True
+        )
 
 Above, in addition to selecting the "NOW()" function, we additionally make
 use of the :class:`.Binary` datatype in conjunction with :func:`.cast` so that
@@ -476,12 +484,13 @@ We therefore must also specify that we'd like to coerce the return value to
 by passing this as the ``type_`` parameter::
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         timestamp = mapped_column(
             DateTime,
-            default=func.datetime('now', 'localtime', type_=DateTime),
-            primary_key=True)
+            default=func.datetime("now", "localtime", type_=DateTime),
+            primary_key=True,
+        )
 
 The above mapping upon INSERT will look like:
 
@@ -531,12 +540,19 @@ values using RETURNING when available, :paramref:`_schema.Column.server_default`
 to ensure that the fetch occurs::
 
     class MyModel(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = mapped_column(Integer, primary_key=True)
 
-        created = mapped_column(DateTime(), default=func.now(), server_default=FetchedValue())
-        updated = mapped_column(DateTime(), onupdate=func.now(), server_default=FetchedValue(), server_onupdate=FetchedValue())
+        created = mapped_column(
+            DateTime(), default=func.now(), server_default=FetchedValue()
+        )
+        updated = mapped_column(
+            DateTime(),
+            onupdate=func.now(),
+            server_default=FetchedValue(),
+            server_onupdate=FetchedValue(),
+        )
 
         __mapper_args__ = {"eager_defaults": True}
 
@@ -587,13 +603,13 @@ The dictionary is consulted whenever the :class:`.Session` needs to
 emit SQL on behalf of a particular kind of mapped class in order to locate
 the appropriate source of database connectivity::
 
-    engine1 = create_engine('postgresql+psycopg2://db1')
-    engine2 = create_engine('postgresql+psycopg2://db2')
+    engine1 = create_engine("postgresql+psycopg2://db1")
+    engine2 = create_engine("postgresql+psycopg2://db2")
 
     Session = sessionmaker()
 
     # bind User operations to engine 1, Account operations to engine 2
-    Session.configure(binds={User:engine1, Account:engine2})
+    Session.configure(binds={User: engine1, Account: engine2})
 
     session = Session()
 
@@ -693,26 +709,25 @@ a custom :class:`.Session` which delivers the following rules:
 ::
 
     engines = {
-        'leader':create_engine("sqlite:///leader.db"),
-        'other':create_engine("sqlite:///other.db"),
-        'follower1':create_engine("sqlite:///follower1.db"),
-        'follower2':create_engine("sqlite:///follower2.db"),
+        "leader": create_engine("sqlite:///leader.db"),
+        "other": create_engine("sqlite:///other.db"),
+        "follower1": create_engine("sqlite:///follower1.db"),
+        "follower2": create_engine("sqlite:///follower2.db"),
     }
 
     from sqlalchemy.sql import Update, Delete
     from sqlalchemy.orm import Session, sessionmaker
     import random
 
+
     class RoutingSession(Session):
         def get_bind(self, mapper=None, clause=None):
             if mapper and issubclass(mapper.class_, MyOtherClass):
-                return engines['other']
+                return engines["other"]
             elif self._flushing or isinstance(clause, (Update, Delete)):
-                return engines['leader']
+                return engines["leader"]
             else:
-                return engines[
-                    random.choice(['follower1','follower2'])
-                ]
+                return engines[random.choice(["follower1", "follower2"])]
 
 The above :class:`.Session` class is plugged in using the ``class_``
 argument to :class:`.sessionmaker`::
