@@ -2208,7 +2208,7 @@ to create a new dialect "foodialect://", the steps are as follows:
    via ``foodialect.dialect``.
 3. The entry point can be established in setup.py as follows::
 
-      entry_points = """
+    entry_points = """
         [sqlalchemy.dialects]
         foodialect = foodialect.dialect:FooDialect
         """
@@ -2218,7 +2218,7 @@ an existing SQLAlchemy-supported database, the name can be given
 including a database-qualification.  For example, if ``FooDialect``
 were in fact a MySQL dialect, the entry point could be established like this::
 
-      entry_points = """
+    entry_points = """
         [sqlalchemy.dialects]
         mysql.foodialect = foodialect.dialect:FooDialect
         """
