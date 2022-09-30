@@ -2196,9 +2196,6 @@ Multiple result set support is available from a raw DBAPI cursor using the
 Registering New Dialects
 ========================
 
-.. highlight:: ini
-.. format:off
-
 The :func:`_sa.create_engine` function call locates the given dialect
 using setuptools entrypoints.   These entry points can be established
 for third party dialects within the setup.py script.  For example,
@@ -2211,25 +2208,23 @@ to create a new dialect "foodialect://", the steps are as follows:
    via ``foodialect.dialect``.
 3. The entry point can be established in setup.py as follows::
 
-      entry_points="""
-      [sqlalchemy.dialects]
-      foodialect = foodialect.dialect:FooDialect
-      """
+      entry_points = """
+        [sqlalchemy.dialects]
+        foodialect = foodialect.dialect:FooDialect
+        """
 
 If the dialect is providing support for a particular DBAPI on top of
 an existing SQLAlchemy-supported database, the name can be given
 including a database-qualification.  For example, if ``FooDialect``
 were in fact a MySQL dialect, the entry point could be established like this::
 
-      entry_points="""
-      [sqlalchemy.dialects]
-      mysql.foodialect = foodialect.dialect:FooDialect
-      """
+      entry_points = """
+        [sqlalchemy.dialects]
+        mysql.foodialect = foodialect.dialect:FooDialect
+        """
 
 The above entrypoint would then be accessed as ``create_engine("mysql+foodialect://")``.
 
-.. format:on
-.. highlight:: python
 
 Registering Dialects In-Process
 -------------------------------
