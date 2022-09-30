@@ -4,6 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    = -T -j auto
 SPHINXBUILD   = sphinx-build
+AUTOBUILD     = sphinx-autobuild  --port 8080  --watch ../../lib
 PAPER         =
 BUILDDIR      = output
 
@@ -14,11 +15,12 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest dist-html site-mako gettext
+.PHONY: help clean html autobuild dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest dist-html site-mako gettext
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
+	@echo "  autobuild  autobuild and run a webserver"
 	@echo "  gettext    to make PO message catalogs"
 	@echo "  dist-html  same as html, but places files in /doc"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
@@ -44,6 +46,9 @@ html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+autobuild:
+	$(AUTOBUILD) $(ALLSPHINXOPTS) $(BUILDDIR)/html
 
 gettext:
 	$(SPHINXBUILD) -b gettext $(I18NSPHINXOPTS) $(BUILDDIR)/locale
