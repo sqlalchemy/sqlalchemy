@@ -314,6 +314,7 @@ via standard methods such as :meth:`_engine.Result.all`,
 
     :ref:`migration_20_toplevel`
 
+.. _session_adding:
 
 
 Adding New or Existing Items
@@ -343,6 +344,7 @@ The :meth:`~.Session.add` operation **cascades** along
 the ``save-update`` cascade. For more details see the section
 :ref:`unitofwork_cascades`.
 
+.. _session_deleting:
 
 Deleting
 --------

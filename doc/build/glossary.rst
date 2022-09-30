@@ -659,17 +659,28 @@ Glossary
             `Domain Model (via Wikipedia) <https://en.wikipedia.org/wiki/Domain_model>`_
 
     unit of work
-        This pattern is where the system transparently keeps
-        track of changes to objects and periodically flushes all those
-        pending changes out to the database. SQLAlchemy's Session
-        implements this pattern fully in a manner similar to that of
-        Hibernate.
+        A software architecture where a persistence system such as an object
+        relational mapper maintains a list of changes made to a series of
+        objects, and periodically flushes all those pending changes out to the
+        database.
+
+        SQLAlchemy's :class:`_orm.Session` implements the unit of work pattern,
+        where objects that are added to the :class:`_orm.Session` using methods
+        like :meth:`_orm.Session.add` will then participate in unit-of-work
+        style persistence.
+
+        For a walk-through of what unit of work persistence looks like in
+        SQLAlchemy, start with the section :ref:`tutorial_orm_data_manipulation`
+        in the :ref:`unified_tutorial`.    Then for more detail, see
+        :ref:`session_basics` in the general reference documentation.
 
         .. seealso::
 
             `Unit of Work (via Martin Fowler) <https://martinfowler.com/eaaCatalog/unitOfWork.html>`_
 
-            :doc:`orm/session`
+            :ref:`tutorial_orm_data_manipulation`
+
+            :ref:`session_basics`
 
     expire
     expired
