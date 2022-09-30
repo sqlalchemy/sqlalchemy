@@ -1413,7 +1413,8 @@ class RawReflectionTest(fixtures.TestBase):
 
     @testing.combinations(
         (
-            "CREATE ALGORITHM=UNDEFINED DEFINER=`scott`@`%` SQL SECURITY DEFINER VIEW `v1` AS SELECT",  # noqa: E501
+            "CREATE ALGORITHM=UNDEFINED DEFINER=`scott`@`%` "
+            "SQL SECURITY DEFINER VIEW `v1` AS SELECT",
             True,
         ),
         ("CREATE VIEW `v1` AS SELECT", True),
