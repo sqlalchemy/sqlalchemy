@@ -321,24 +321,23 @@ the SQLAlchemy project itself, the approach taken is as follows:
         from sqlalchemy import exc
 
         # for warnings not included in regex-based filter below, just log
-        warnings.filterwarnings(
-          "always", category=exc.RemovedIn20Warning
-        )
+        warnings.filterwarnings("always", category=exc.RemovedIn20Warning)
 
         # for warnings related to execute() / scalar(), raise
         for msg in [
             r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
-            r"The current statement is being autocommitted using implicit "
-            "autocommit,",
+            r"The current statement is being autocommitted using implicit autocommit,",
             r"The connection.execute\(\) method in SQLAlchemy 2.0 will accept "
             "parameters as a single dictionary or a single sequence of "
             "dictionaries only.",
             r"The Connection.connect\(\) function/method is considered legacy",
             r".*DefaultGenerator.execute\(\)",
         ]:
-          warnings.filterwarnings(
-              "error", message=msg, category=exc.RemovedIn20Warning,
-          )
+            warnings.filterwarnings(
+                "error",
+                message=msg,
+                category=exc.RemovedIn20Warning,
+            )
 
 3. As each sub-category of warnings are resolved in the application, new
    warnings that are caught by the "always" filter can be added to the list
@@ -1245,9 +1244,7 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.execute(
-              select(User)
-          ).scalars().all()
+          session.execute(select(User)).scalars().all()
           # or
           session.scalars(select(User)).all()
 
@@ -1258,15 +1255,11 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).\
-          filter_by(name='some user').one()
+          session.query(User).filter_by(name="some user").one()
 
       - ::
 
-          session.execute(
-              select(User).
-              filter_by(name="some user")
-          ).scalar_one()
+          session.execute(select(User).filter_by(name="some user")).scalar_one()
 
       - :ref:`migration_20_unify_select`
 
@@ -1274,17 +1267,11 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).\
-          filter_by(name='some user').first()
-
+          session.query(User).filter_by(name="some user").first()
 
       - ::
 
-          session.scalars(
-            select(User).
-            filter_by(name="some user").
-            limit(1)
-          ).first()
+          session.scalars(select(User).filter_by(name="some user").limit(1)).first()
 
       - :ref:`migration_20_unify_select`
 
@@ -1292,34 +1279,22 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-            session.query(User).options(
-                joinedload(User.addresses)
-            ).all()
+            session.query(User).options(joinedload(User.addresses)).all()
 
       - ::
 
-            session.scalars(
-                select(User).
-                options(
-                  joinedload(User.addresses)
-                )
-            ).unique().all()
+            session.scalars(select(User).options(joinedload(User.addresses))).unique().all()
 
       - :ref:`joinedload_not_uniqued`
 
     * - ::
 
-          session.query(User).\
-              join(Address).\
-              filter(Address.email == 'e@sa.us').\
-              all()
+          session.query(User).join(Address).filter(Address.email == "e@sa.us").all()
 
       - ::
 
           session.execute(
-              select(User).
-              join(Address).
-              where(Address.email == 'e@sa.us')
+              select(User).join(Address).where(Address.email == "e@sa.us")
           ).scalars().all()
 
       - :ref:`migration_20_unify_select`
@@ -1328,37 +1303,27 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).from_statement(
-              text("select * from users")
-          ).all()
+          session.query(User).from_statement(text("select * from users")).all()
 
       - ::
 
-          session.scalars(
-              select(User).
-              from_statement(
-                  text("select * from users")
-              )
-          ).all()
+          session.scalars(select(User).from_statement(text("select * from users"))).all()
 
       - :ref:`orm_queryguide_selecting_text`
 
     * - ::
 
-          session.query(User).\
-              join(User.addresses).\
-              options(
-                contains_eager(User.addresses)
-              ).\
-              populate_existing().all()
+          session.query(User).join(User.addresses).options(
+              contains_eager(User.addresses)
+          ).populate_existing().all()
 
       - ::
 
           session.execute(
-              select(User).
-              join(User.addresses).
-              options(contains_eager(User.addresses)).
-              execution_options(populate_existing=True)
+              select(User)
+              .join(User.addresses)
+              .options(contains_eager(User.addresses))
+              .execution_options(populate_existing=True)
           ).scalars().all()
 
       -
@@ -1370,21 +1335,17 @@ following the table, and may include additional notes not summarized here.
     *
       - ::
 
-          session.query(User).\
-              filter(User.name == 'foo').\
-              update(
-                  {"fullname": "Foo Bar"},
-                  synchronize_session="evaluate"
-              )
-
+          session.query(User).filter(User.name == "foo").update(
+              {"fullname": "Foo Bar"}, synchronize_session="evaluate"
+          )
 
       - ::
 
           session.execute(
-              update(User).
-              where(User.name == 'foo').
-              values(fullname="Foo Bar").
-              execution_options(synchronize_session="evaluate")
+              update(User)
+              .where(User.name == "foo")
+              .values(fullname="Foo Bar")
+              .execution_options(synchronize_session="evaluate")
           )
 
       - :ref:`orm_expression_update_delete`
@@ -1422,25 +1383,25 @@ Legacy code examples are illustrated below::
     session = Session(engine)
 
     # becomes legacy use case
-    user = session.query(User).filter_by(name='some user').one()
+    user = session.query(User).filter_by(name="some user").one()
 
     # becomes legacy use case
-    user = session.query(User).filter_by(name='some user').first()
+    user = session.query(User).filter_by(name="some user").first()
 
     # becomes legacy use case
     user = session.query(User).get(5)
 
     # becomes legacy use case
-    for user in session.query(User).join(User.addresses).filter(Address.email == 'some@email.com'):
-        # ...
+    for user in (
+        session.query(User).join(User.addresses).filter(Address.email == "some@email.com")
+    ):
+        ...
 
     # becomes legacy use case
     users = session.query(User).options(joinedload(User.addresses)).order_by(User.id).all()
 
     # becomes legacy use case
-    users = session.query(User).from_statement(
-        text("select * from users")
-    ).all()
+    users = session.query(User).from_statement(text("select * from users")).all()
 
     # etc
 
@@ -1484,15 +1445,13 @@ Below are some examples of how to migrate to :func:`_sql.select`::
 
     session = Session(engine)
 
-    user = session.execute(
-        select(User).filter_by(name="some user")
-    ).scalar_one()
+    user = session.execute(select(User).filter_by(name="some user")).scalar_one()
 
     # for first(), no LIMIT is applied automatically; add limit(1) if LIMIT
     # is desired on the query
-    user = session.execute(
-        select(User).filter_by(name="some user").limit(1)
-    ).scalars().first()
+    user = (
+        session.execute(select(User).filter_by(name="some user").limit(1)).scalars().first()
+    )
 
     # get() moves to the Session directly
     user = session.get(User, 5)
@@ -1500,18 +1459,22 @@ Below are some examples of how to migrate to :func:`_sql.select`::
     for user in session.execute(
         select(User).join(User.addresses).filter(Address.email == "some@email.case")
     ).scalars():
-        # ...
+        ...
 
     # when using joinedload() against collections, use unique() on the result
-    users = session.execute(
-        select(User).options(joinedload(User.addresses)).order_by(User.id)
-    ).unique().all()
+    users = (
+        session.execute(select(User).options(joinedload(User.addresses)).order_by(User.id))
+        .unique()
+        .all()
+    )
 
     # select() has ORM-ish methods like from_statement() that only work
     # if the statement is against ORM entities
-    users = session.execute(
-        select(User).from_statement(text("select * from users"))
-    ).scalars().all()
+    users = (
+        session.execute(select(User).from_statement(text("select * from users")))
+        .scalars()
+        .all()
+    )
 
 **Discussion**
 

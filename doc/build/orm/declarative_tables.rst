@@ -252,11 +252,13 @@ The two qualities that :func:`_orm.mapped_column` derives from the
       from sqlalchemy.orm import Mapped
       from sqlalchemy.orm import mapped_column
 
+
       class Base(DeclarativeBase):
           pass
 
+
       class SomeClass(Base):
-          __tablename__ = 'some_table'
+          __tablename__ = "some_table"
 
           # primary_key=True, therefore will be NOT NULL
           id: Mapped[int] = mapped_column(primary_key=True)

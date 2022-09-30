@@ -86,10 +86,15 @@ Object Relational Mapping
 
   ::
 
-      subq = session.query(Keyword.id.label('keyword_id')).filter(Keyword.name.in_(['beans', 'carrots'])).subquery()
-      recipes = session.query(Recipe).filter(exists().
-         where(Recipe.id==recipe_keywords.c.recipe_id).
-         where(recipe_keywords.c.keyword_id==subq.c.keyword_id)
+      subq = (
+          session.query(Keyword.id.label("keyword_id"))
+          .filter(Keyword.name.in_(["beans", "carrots"]))
+          .subquery()
+      )
+      recipes = session.query(Recipe).filter(
+          exists()
+          .where(Recipe.id == recipe_keywords.c.recipe_id)
+          .where(recipe_keywords.c.keyword_id == subq.c.keyword_id)
       )
 
 * **Explicit ORM aliases are recommended for aliased joins**
@@ -439,7 +444,7 @@ Schema/Types
   ::
 
       class MyType(AdaptOldConvertMethods, TypeEngine):
-         # ...
+        ..
 
 * The ``quote`` flag on ``Column`` and ``Table`` as well as
   the ``quote_schema`` flag on ``Table`` now control quoting
@@ -477,10 +482,10 @@ Schema/Types
        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec
 
        # old way
-       '2008-06-27 12:00:00.125'
+       "2008-06-27 12:00:00.125"
 
        # new way
-       '2008-06-27 12:00:00.000125'
+       "2008-06-27 12:00:00.000125"
 
   So if an existing SQLite file-based database intends to be
   used across 0.4 and 0.5, you either have to upgrade the
@@ -497,6 +502,7 @@ Schema/Types
   ::
 
        from sqlalchemy.databases.sqlite import DateTimeMixin
+
        DateTimeMixin.__legacy_microseconds__ = True
 
 Connection Pool no longer threadlocal by default
@@ -538,7 +544,7 @@ data-driven, it takes ``[args]``.
 
   ::
 
-         query.join('orders', 'items')
+         query.join("orders", "items")
          query.join(User.orders, Order.items)
 
 * the ``in_()`` method on columns and similar only accepts a
@@ -584,7 +590,8 @@ Removed
 
        class MyQuery(Query):
            def get(self, ident):
-               # ...
+               ...
+
 
        session = sessionmaker(query_cls=MyQuery)()
 
@@ -621,6 +628,7 @@ Removed
   ::
 
       from sqlalchemy.orm import aliased
+
       address_alias = aliased(Address)
       print(session.query(User, address_alias).join((address_alias, User.addresses)).all())
 

@@ -71,16 +71,17 @@ entities.  The new system includes these features:
 
 
         class Parent(Base):
-            __tablename__ = 'parent'
+            __tablename__ = "parent"
             id = Column(Integer, primary_key=True)
-            child_id_one = Column(Integer, ForeignKey('child.id'))
-            child_id_two = Column(Integer, ForeignKey('child.id'))
+            child_id_one = Column(Integer, ForeignKey("child.id"))
+            child_id_two = Column(Integer, ForeignKey("child.id"))
 
             child_one = relationship("Child", foreign_keys=child_id_one)
             child_two = relationship("Child", foreign_keys=child_id_two)
 
+
         class Child(Base):
-            __tablename__ = 'child'
+            __tablename__ = "child"
             id = Column(Integer, primary_key=True)
 
 * relationships against self-referential, composite foreign

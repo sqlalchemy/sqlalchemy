@@ -35,10 +35,10 @@ the :ref:`queryguide_toplevel`.
     ...     type: Mapped[str]
     ...     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     ...     company: Mapped[Company] = relationship(back_populates="employees")
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"{self.__class__.__name__}({self.name!r})"
-    ... 
+    ...
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "employee",
     ...         "polymorphic_on": "type",
@@ -57,7 +57,7 @@ the :ref:`queryguide_toplevel`.
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     manager_id: Mapped[int] = mapped_column(ForeignKey("manager.id"))
     ...     document_name: Mapped[str]
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"Paperwork({self.document_name!r})"
     >>>

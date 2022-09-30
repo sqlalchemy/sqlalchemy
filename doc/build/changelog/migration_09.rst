@@ -721,12 +721,9 @@ Only those elements in the path that actually need :meth:`.PropComparator.of_typ
 need to be set as a class-bound attribute, string-based names can be resumed
 afterwards::
 
-    session.query(Company).\
-        options(
-            subqueryload(Company.employees.of_type(Engineer)).
-            subqueryload("machines")
-            )
-        )
+    session.query(Company).options(
+        subqueryload(Company.employees.of_type(Engineer)).subqueryload("machines")
+    )
 
 **Old Way**
 
@@ -822,17 +819,16 @@ The :func:`_expression.text` construct gains new methods:
   to be set flexibly::
 
       # setup values
-      stmt = text("SELECT id, name FROM user "
-            "WHERE name=:name AND timestamp=:timestamp").\
-            bindparams(name="ed", timestamp=datetime(2012, 11, 10, 15, 12, 35))
+      stmt = text(
+          "SELECT id, name FROM user WHERE name=:name AND timestamp=:timestamp"
+      ).bindparams(name="ed", timestamp=datetime(2012, 11, 10, 15, 12, 35))
 
       # setup types and/or values
-      stmt = text("SELECT id, name FROM user "
-            "WHERE name=:name AND timestamp=:timestamp").\
-            bindparams(
-                bindparam("name", value="ed"),
-                bindparam("timestamp", type_=DateTime()
-            ).bindparam(timestamp=datetime(2012, 11, 10, 15, 12, 35))
+      stmt = (
+          text("SELECT id, name FROM user WHERE name=:name AND timestamp=:timestamp")
+          .bindparams(bindparam("name", value="ed"), bindparam("timestamp", type_=DateTime()))
+          .bindparam(timestamp=datetime(2012, 11, 10, 15, 12, 35))
+      )
 
 * :meth:`_expression.TextClause.columns` supersedes the ``typemap`` option
   of :func:`_expression.text`, returning a new construct :class:`.TextAsFrom`::
@@ -842,7 +838,8 @@ The :func:`_expression.text` construct gains new methods:
       stmt = stmt.alias()
 
       stmt = select([addresses]).select_from(
-                    addresses.join(stmt), addresses.c.user_id == stmt.c.id)
+          addresses.join(stmt), addresses.c.user_id == stmt.c.id
+      )
 
 
       # or into a cte():
@@ -850,7 +847,8 @@ The :func:`_expression.text` construct gains new methods:
       stmt = stmt.cte("x")
 
       stmt = select([addresses]).select_from(
-                    addresses.join(stmt), addresses.c.user_id == stmt.c.id)
+          addresses.join(stmt), addresses.c.user_id == stmt.c.id
+      )
 
 :ticket:`2877`
 

@@ -332,25 +332,25 @@ types::
 
     >>> class User(Base):
     ...     __tablename__ = "user_account"
-    ... 
+    ...
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str] = mapped_column(String(30))
     ...     fullname: Mapped[Optional[str]]
-    ... 
+    ...
     ...     addresses: Mapped[List["Address"]] = relationship(back_populates="user")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
     ...     __tablename__ = "address"
-    ... 
+    ...
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     email_address: Mapped[str]
     ...     user_id = mapped_column(ForeignKey("user_account.id"))
-    ... 
+    ...
     ...     user: Mapped[User] = relationship(back_populates="addresses")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
@@ -423,15 +423,15 @@ about these classes include:
     optional. Our mapping above can be written without annotations as::
 
         class User(Base):
-          __tablename__ = 'user_account'
+            __tablename__ = "user_account"
 
-          id = mapped_column(Integer, primary_key=True)
-          name = mapped_column(String(30), nullable=False)
-          fullname = mapped_column(String)
+            id = mapped_column(Integer, primary_key=True)
+            name = mapped_column(String(30), nullable=False)
+            fullname = mapped_column(String)
 
-          addresses = relationship("Address", back_populates="user")
+            addresses = relationship("Address", back_populates="user")
 
-          # ... definition continues
+            # ... definition continues
 
     The above class has an advantage over one that uses :class:`.Column`
     directly, in that the ``User`` class as well as instances of ``User``

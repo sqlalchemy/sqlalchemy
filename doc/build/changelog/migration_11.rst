@@ -845,11 +845,13 @@ are part of the "correlate" for the subquery.  Assuming the
 ``Person/Manager/Engineer->Company`` setup from the mapping documentation,
 using with_polymorphic::
 
-    sess.query(Person.name)
-                .filter(
-                    sess.query(Company.name).
-                    filter(Company.company_id == Person.company_id).
-                    correlate(Person).as_scalar() == "Elbonia, Inc.")
+    sess.query(Person.name).filter(
+        sess.query(Company.name)
+        .filter(Company.company_id == Person.company_id)
+        .correlate(Person)
+        .as_scalar()
+        == "Elbonia, Inc."
+    )
 
 The above query now produces::
 
@@ -885,11 +887,13 @@ from it first::
     # aliasing.
 
     paliased = aliased(Person)
-    sess.query(paliased.name)
-                .filter(
-                    sess.query(Company.name).
-                    filter(Company.company_id == paliased.company_id).
-                    correlate(paliased).as_scalar() == "Elbonia, Inc.")
+    sess.query(paliased.name).filter(
+        sess.query(Company.name)
+        .filter(Company.company_id == paliased.company_id)
+        .correlate(paliased)
+        .as_scalar()
+        == "Elbonia, Inc."
+    )
 
 The :func:`.aliased` construct guarantees that the "polymorphic selectable"
 is wrapped in a subquery.  By referring to it explicitly in the correlated
@@ -1129,6 +1133,7 @@ for specific exceptions::
 
 
         engine = create_engine("postgresql+psycopg2://")
+
 
         @event.listens_for(engine, "handle_error")
         def cancel_disconnect(ctx):
@@ -2421,12 +2426,10 @@ supported by PostgreSQL 9.5 in this area::
 
     from sqlalchemy.dialects.postgresql import insert
 
-    insert_stmt = insert(my_table). \\
-        values(id='some_id', data='some data to insert')
+    insert_stmt = insert(my_table).values(id="some_id", data="some data to insert")
 
     do_update_stmt = insert_stmt.on_conflict_do_update(
-        index_elements=[my_table.c.id],
-        set_=dict(data='some data to update')
+        index_elements=[my_table.c.id], set_=dict(data="some data to update")
     )
 
     conn.execute(do_update_stmt)

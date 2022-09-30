@@ -88,10 +88,10 @@ E.g. to refresh an instance while also refreshing a related set of objects:
 .. sourcecode:: python
 
     stmt = (
-        select(User).
-        where(User.name.in_(names)).
-        execution_options(populate_existing=True).
-        options(selectinload(User.addresses)
+        select(User)
+        .where(User.name.in_(names))
+        .execution_options(populate_existing=True)
+        .options(selectinload(User.addresses))
     )
     # will refresh all matching User objects as well as the related
     # Address objects

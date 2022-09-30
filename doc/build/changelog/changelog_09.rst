@@ -1708,15 +1708,15 @@
         ad-hoc keyword arguments within the :attr:`.Index.kwargs` collection,
         after construction::
 
-            idx = Index('a', 'b')
-            idx.kwargs['mysql_someargument'] = True
+            idx = Index("a", "b")
+            idx.kwargs["mysql_someargument"] = True
 
         To suit the use case of allowing custom arguments at construction time,
         the :meth:`.DialectKWArgs.argument_for` method now allows this registration::
 
-            Index.argument_for('mysql', 'someargument', False)
+            Index.argument_for("mysql", "someargument", False)
 
-            idx = Index('a', 'b', mysql_someargument=True)
+            idx = Index("a", "b", mysql_someargument=True)
 
         .. seealso::
 

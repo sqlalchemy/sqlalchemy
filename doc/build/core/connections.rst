@@ -140,15 +140,15 @@ each time the transaction is ended, and a new statement is
 emitted, a new transaction begins implicitly::
 
     with engine.connect() as connection:
-        connection.execute(<some statement>)
+        connection.execute("<some statement>")
         connection.commit()  # commits "some statement"
 
         # new transaction starts
-        connection.execute(<some other statement>)
+        connection.execute("<some other statement>")
         connection.rollback()  # rolls back "some other statement"
 
         # new transaction starts
-        connection.execute(<a third statement>)
+        connection.execute("<a third statement>")
         connection.commit()  # commits "a third statement"
 
 .. versionadded:: 2.0 "commit as you go" style is a new feature of
@@ -823,7 +823,7 @@ as the schema name is passed to these methods explicitly.
   to the :class:`_orm.Session`.  The :class:`_orm.Session` uses a new
   :class:`_engine.Connection` for each transaction::
 
-      schema_engine = engine.execution_options(schema_translate_map = { ... } )
+      schema_engine = engine.execution_options(schema_translate_map={...})
 
       session = Session(schema_engine)
 
@@ -1470,14 +1470,19 @@ Basic guidelines include:
 
         # **Don't** do this:
 
+
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
             stmt += (
-                lambda s: s.where(table.c.x > parameter) if thing
+                lambda s: s.where(table.c.x > parameter)
+                if thing
                 else s.where(table.c.y == parameter)
+            )
             return stmt
 
+
         # **Do** do this:
+
 
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
@@ -1501,10 +1506,10 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
-    ... 
+    ...
     ...     def get_y():
     ...         return y
-    ... 
+    ...
     ...     stmt = lambda_stmt(lambda: select(func.max(get_x(), get_y())))
     ...     return stmt
     >>> with engine.connect() as conn:
@@ -1524,10 +1529,10 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
-    ... 
+    ...
     ...     def get_y():
     ...         return y
-    ... 
+    ...
     ...     x_param, y_param = get_x(), get_y()
     ...     stmt = lambda_stmt(lambda: select(func.max(x_param, y_param)))
     ...     return stmt
@@ -2206,22 +2211,24 @@ to create a new dialect "foodialect://", the steps are as follows:
    which is typically a subclass of :class:`sqlalchemy.engine.default.DefaultDialect`.
    In this example let's say it's called ``FooDialect`` and its module is accessed
    via ``foodialect.dialect``.
-3. The entry point can be established in setup.py as follows::
+3. The entry point can be established in ``setup.cfg`` as follows:
 
-    entry_points = """
-          [sqlalchemy.dialects]
-          foodialect = foodialect.dialect:FooDialect
-          """
+   .. sourcecode:: ini
+
+          [options.entry_points]
+          sqlalchemy.dialects =
+              foodialect = foodialect.dialect:FooDialect
 
 If the dialect is providing support for a particular DBAPI on top of
 an existing SQLAlchemy-supported database, the name can be given
 including a database-qualification.  For example, if ``FooDialect``
-were in fact a MySQL dialect, the entry point could be established like this::
+were in fact a MySQL dialect, the entry point could be established like this:
 
-    entry_points = """
-            [sqlalchemy.dialects]
-            mysql.foodialect = foodialect.dialect:FooDialect
-            """
+.. sourcecode:: ini
+
+      [options.entry_points]
+      sqlalchemy.dialects
+          mysql.foodialect = foodialect.dialect:FooDialect
 
 The above entrypoint would then be accessed as ``create_engine("mysql+foodialect://")``.
 

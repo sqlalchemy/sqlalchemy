@@ -524,18 +524,20 @@ are three general approaches to this:
 
         engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
 
+
         def run_in_process(some_data_record):
             with engine.connect() as conn:
                 conn.execute(text("..."))
 
+
         def initializer():
             """ensure the parent proc's database connections are not touched
-               in the new connection pool"""
+            in the new connection pool"""
             engine.dispose(close=False)
+
 
         with Pool(10, initializer=initializer) as p:
             p.map(run_in_process, data)
-
 
    .. versionadded:: 1.4.33  Added the :paramref:`.Engine.dispose.close`
       parameter to allow the replacement of a connection pool in a child
@@ -549,9 +551,11 @@ are three general approaches to this:
 
         engine = create_engine("mysql://user:pass@host/dbname")
 
+
         def run_in_process():
             with engine.connect() as conn:
                 conn.execute(text("..."))
+
 
         # before process starts, ensure engine.dispose() is called
         engine.dispose()

@@ -241,7 +241,6 @@ Or for a ``set``, illustrated in the same
            # use a List, Python 3.8 and earlier
            children: Mapped[List["Child"]] = relationship()
 
-
 When using mappings without the :class:`_orm.Mapped` annotation, such as when
 using :ref:`imperative mappings <orm_imperative_mapping>` or untyped
 Python code, as well as in a few special cases, the collection class for a
@@ -666,14 +665,16 @@ methods can be changed as well:
 
     from sqlalchemy.orm.collections import collection
 
+
     class MyList(list):
         @collection.remover
         def zark(self, item):
             # do something special...
+            ...
 
         @collection.iterator
         def hey_use_this_instead_for_iteration(self):
-            # ...
+            ...
 
 There is no requirement to be list-, or set-like at all. Collection classes
 can be any shape, so long as they have the append, remove and iterate

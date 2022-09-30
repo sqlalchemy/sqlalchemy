@@ -349,9 +349,7 @@ Other guidelines include:
 
       user = await session.get(User, 42)
       addresses = (await session.scalars(user.addresses.statement)).all()
-      stmt = user.addresses.statement.where(
-          Address.email_address.startswith("patrick")
-      )
+      stmt = user.addresses.statement.where(Address.email_address.startswith("patrick"))
       addresses_filter = (await session.scalars(stmt)).all()
 
   .. seealso::
@@ -678,10 +676,12 @@ value will be invoked after being returned::
 
 
     @event.listens_for(engine.sync_engine, "connect")
-    def register_custom_types(dbapi_connection, ...):
+    def register_custom_types(dbapi_connection, *args):
         dbapi_connection.run_async(
             lambda connection: connection.set_type_codec(
-                "MyCustomType", encoder, decoder, ...
+                "MyCustomType",
+                encoder,
+                decoder,  # ...
             )
         )
 

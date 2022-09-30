@@ -4,11 +4,11 @@ from collections.abc import Iterator
 from pathlib import Path
 import re
 
-from black import DEFAULT_LINE_LENGTH
 from black import format_str
-from black import Mode
-from black import parse_pyproject_toml
-from black import TargetVersion
+from black.const import DEFAULT_LINE_LENGTH
+from black.files import parse_pyproject_toml
+from black.mode import Mode
+from black.mode import TargetVersion
 
 
 home = Path(__file__).parent.parent
@@ -17,14 +17,28 @@ _Block = list[tuple[str, int, str | None, str]]
 
 
 def _format_block(
-    input_block: _Block, exit_on_error: bool, is_doctest: bool
+    input_block: _Block,
+    exit_on_error: bool,
+    errors: list[tuple[int, str, Exception]],
+    is_doctest: bool,
 ) -> list[str]:
-    code = "\n".join(c for *_, c in input_block)
+    if not is_doctest:
+        # The first line may have additional padding. Remove then restore later
+        add_padding = start_space.match(input_block[0][3]).groups()[0]
+        skip = len(add_padding)
+        code = "\n".join(
+            c[skip:] if c.startswith(add_padding) else c
+            for *_, c in input_block
+        )
+    else:
+        add_padding = None
+        code = "\n".join(c for *_, c in input_block)
     try:
         formatted = format_str(code, mode=BLACK_MODE)
     except Exception as e:
+        start_line = input_block[0][1]
+        errors.append((start_line, code, e))
         if is_doctest:
-            start_line = input_block[0][1]
             print(
                 "Could not format code block starting at "
                 f"line {start_line}:\n{code}\nError: {e}"
@@ -35,7 +49,6 @@ def _format_block(
             else:
                 print("Ignoring error")
         elif VERBOSE:
-            start_line = input_block[0][1]
             print(
                 "Could not format code block starting at "
                 f"line {start_line}:\n---\n{code}\n---Error: {e}"
@@ -47,16 +60,14 @@ def _format_block(
         if is_doctest:
             formatted_lines = [
                 f"{padding}>>> {formatted_code_lines[0]}",
-                *(f"{padding}... {fcl}" for fcl in formatted_code_lines[1:]),
+                *(
+                    f"{padding}...{' ' if fcl else ''}{fcl}"
+                    for fcl in formatted_code_lines[1:]
+                ),
             ]
         else:
-            # The first line may have additional padding.
-            # If it does restore it
-            additionalPadding = re.match(
-                r"^(\s*)[^ ]?", input_block[0][3]
-            ).groups()[0]
             formatted_lines = [
-                f"{padding}{additionalPadding}{fcl}" if fcl else fcl
+                f"{padding}{add_padding}{fcl}" if fcl else fcl
                 for fcl in formatted_code_lines
             ]
             if not input_block[-1][0] and formatted_lines[-1]:
@@ -65,30 +76,57 @@ def _format_block(
         return formatted_lines
 
 
+format_directive = re.compile(r"^\.\.\s*format\s*:\s*(on|off)\s*$")
+
 doctest_code_start = re.compile(r"^(\s+)>>>\s?(.+)")
 doctest_code_continue = re.compile(r"^\s+\.\.\.\s?(\s*.*)")
-plain_indent = re.compile(r"^(\s{4})(\s*[^: ].*)")
-format_directive = re.compile(r"^\.\.\s*format\s*:\s*(on|off)\s*$")
-dont_format_under_directive = re.compile(r"^\.\. (?:toctree)::\s*$")
+
+start_code_section = re.compile(
+    r"^(((?!\.\.).+::)|(\.\.\s*sourcecode::(.*py.*)?)|(::))$"
+)
+start_space = re.compile(r"^(\s*)[^ ]?")
 
 
 def format_file(
     file: Path, exit_on_error: bool, check: bool, no_plain: bool
-) -> bool | None:
+) -> tuple[bool, int]:
     buffer = []
     if not check:
         print(f"Running file {file} ..", end="")
     original = file.read_text("utf-8")
     doctest_block: _Block | None = None
     plain_block: _Block | None = None
-    last_line = None
+
+    plain_code_section = False
+    plain_padding = None
+    plain_padding_len = None
+
+    errors = []
+
     disable_format = False
-    non_code_directive = False
     for line_no, line in enumerate(original.splitlines(), 1):
-        if match := format_directive.match(line):
+        # start_code_section requires no spaces at the start
+        if start_code_section.match(line.strip()):
+            if plain_block:
+                buffer.extend(
+                    _format_block(
+                        plain_block, exit_on_error, errors, is_doctest=False
+                    )
+                )
+                plain_block = None
+            plain_code_section = True
+            plain_padding = start_space.match(line).groups()[0]
+            plain_padding_len = len(plain_padding)
+            buffer.append(line)
+            continue
+        elif (
+            plain_code_section
+            and line.strip()
+            and not line.startswith(" " * (plain_padding_len + 1))
+        ):
+            plain_code_section = False
+        elif match := format_directive.match(line):
             disable_format = match.groups()[0] == "off"
-        elif match := dont_format_under_directive.match(line):
-            non_code_directive = True
 
         if doctest_block:
             assert not plain_block
@@ -98,65 +136,56 @@ def format_file(
             else:
                 buffer.extend(
                     _format_block(
-                        doctest_block, exit_on_error, is_doctest=True
+                        doctest_block, exit_on_error, errors, is_doctest=True
                     )
                 )
                 doctest_block = None
-
-        if plain_block:
-            assert not doctest_block
-            if not line:
-                plain_block.append((line, line_no, None, line))
-                continue
-            elif match := plain_indent.match(line):
-                plain_block.append((line, line_no, None, match.groups()[1]))
+        elif plain_block:
+            if plain_code_section and not doctest_code_start.match(line):
+                plain_block.append(
+                    (line, line_no, None, line[plain_padding_len:])
+                )
                 continue
             else:
-                if non_code_directive:
-                    buffer.extend(line for line, _, _, _ in plain_block)
-                else:
-                    buffer.extend(
-                        _format_block(
-                            plain_block, exit_on_error, is_doctest=False
-                        )
+                buffer.extend(
+                    _format_block(
+                        plain_block, exit_on_error, errors, is_doctest=False
                     )
+                )
                 plain_block = None
-                non_code_directive = False
 
-        if match := doctest_code_start.match(line):
+        if line and (match := doctest_code_start.match(line)):
+            plain_code_section = False
             if plain_block:
                 buffer.extend(
-                    _format_block(plain_block, exit_on_error, is_doctest=False)
+                    _format_block(
+                        plain_block, exit_on_error, errors, is_doctest=False
+                    )
                 )
                 plain_block = None
             padding, code = match.groups()
             doctest_block = [(line, line_no, padding, code)]
         elif (
-            not no_plain
-            and not disable_format
-            and not last_line
-            and (match := plain_indent.match(line))
+            line and not no_plain and not disable_format and plain_code_section
         ):
-            # print('start plain', line)
             assert not doctest_block
             # start of a plain block
-            padding, code = match.groups()
-            plain_block = [(line, line_no, padding, code)]
+            plain_block = [
+                (line, line_no, plain_padding, line[plain_padding_len:])
+            ]
         else:
             buffer.append(line)
-        last_line = line
 
     if doctest_block:
         buffer.extend(
-            _format_block(doctest_block, exit_on_error, is_doctest=True)
+            _format_block(
+                doctest_block, exit_on_error, errors, is_doctest=True
+            )
         )
     if plain_block:
-        if non_code_directive:
-            buffer.extend(line for line, _, _, _ in plain_block)
-        else:
-            buffer.extend(
-                _format_block(plain_block, exit_on_error, is_doctest=False)
-            )
+        buffer.extend(
+            _format_block(plain_block, exit_on_error, errors, is_doctest=False)
+        )
     if buffer:
         # if there is nothing in the buffer something strange happened so
         # don't do anything
@@ -164,7 +193,10 @@ def format_file(
         updated = "\n".join(buffer)
         equal = original == updated
         if not check:
-            print("..done. ", "No changes" if equal else "Changes detected")
+            print(
+                f"..done. {len(errors)} error(s).",
+                "No changes" if equal else "Changes detected",
+            )
             if not equal:
                 # write only if there are changes to write
                 file.write_text(updated, "utf-8", newline="\n")
@@ -176,9 +208,7 @@ def format_file(
     if check:
         if not equal:
             print(f"File {file} would be formatted")
-        return equal
-    else:
-        return None
+    return equal, len(errors)
 
 
 def iter_files(directory) -> Iterator[Path]:
@@ -201,11 +231,26 @@ def main(
         ]
 
     if check:
-        if all(result):
+        formatting_error_counts = [e for _, e in result if e]
+        to_reformat = len([b for b, _ in result if not b])
+
+        if not to_reformat and not formatting_error_counts:
             print("All files are correctly formatted")
             exit(0)
         else:
-            print("Some file would be reformated")
+            print(
+                f"{to_reformat} file(s) would be reformatted;",
+                (
+                    f"{sum(formatting_error_counts)} formatting errors "
+                    f"reported in {len(formatting_error_counts)} files"
+                )
+                if formatting_error_counts
+                else "no formatting errors reported",
+            )
+
+            # interim, until we fix all formatting errors
+            if not to_reformat:
+                exit(0)
             exit(1)
 
 

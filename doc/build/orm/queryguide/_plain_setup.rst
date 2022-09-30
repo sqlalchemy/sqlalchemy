@@ -32,7 +32,7 @@ This page illustrates the mappings and fixture data used by the
     ...     fullname: Mapped[Optional[str]]
     ...     addresses: Mapped[List["Address"]] = relationship(back_populates="user")
     ...     orders: Mapped[List["Order"]] = relationship()
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
     >>> class Address(Base):
@@ -41,7 +41,7 @@ This page illustrates the mappings and fixture data used by the
     ...     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
     ...     email_address: Mapped[str]
     ...     user: Mapped[User] = relationship(back_populates="addresses")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
     >>> order_items_table = Table(

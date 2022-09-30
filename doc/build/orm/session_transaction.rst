@@ -60,13 +60,13 @@ or rolled back::
     session.commit()  # commits
 
     # will automatically begin again
-    result = session.execute(< some select statement >)
+    result = session.execute("< some select statement >")
     session.add_all([more_objects, ...])
     session.commit()  # commits
 
     session.add(still_another_object)
     session.flush()  # flush still_another_object
-    session.rollback()   # rolls back still_another_object
+    session.rollback()  # rolls back still_another_object
 
 The :class:`_orm.Session` itself features a :meth:`_orm.Session.close`
 method.  If the :class:`_orm.Session` is begun within a transaction that
@@ -120,9 +120,7 @@ Similarly, the :class:`_orm.sessionmaker` can be used in the same way::
 method to allow both operations to take place at once::
 
     with Session.begin() as session:
-        session.add(some_object):
-
-
+        session.add(some_object)
 
 .. _session_begin_nested:
 
@@ -530,11 +528,10 @@ used in a read-only fashion**, that is::
 
 
     with autocommit_session() as session:
-        some_objects = session.execute(<statement>)
-        some_other_objects = session.execute(<statement>)
+        some_objects = session.execute("<statement>")
+        some_other_objects = session.execute("<statement>")
 
     # closes connection
-
 
 Setting Isolation for Individual Sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

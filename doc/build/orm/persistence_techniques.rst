@@ -45,16 +45,17 @@ retrieved by the ORM as part of the object's primary key::
 
 
     class Foo(Base):
-        __tablename__ = 'foo'
+        __tablename__ = "foo"
         pk = mapped_column(Integer, primary_key=True)
         bar = mapped_column(Integer)
+
 
     e = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     Base.metadata.create_all(e)
 
     session = Session(e)
 
-    foo = Foo(pk=sql.select(sql.func.coalesce(sql.func.max(Foo.pk) + 1, 1))
+    foo = Foo(pk=sql.select(sql.func.coalesce(sql.func.max(Foo.pk) + 1, 1)))
     session.add(foo)
     session.commit()
 
@@ -632,31 +633,36 @@ connections::
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Session
 
+
     class BaseA(DeclarativeBase):
         pass
+
 
     class BaseB(DeclarativeBase):
         pass
 
+
     class User(BaseA):
-        # ...
+        ...
+
 
     class Address(BaseA):
-        # ...
+        ...
 
 
     class GameInfo(BaseB):
-        # ...
+        ...
+
 
     class GameStats(BaseB):
-        # ...
+        ...
 
 
     Session = sessionmaker()
 
     # all User/Address operations will be on engine 1, all
     # Game operations will be on engine 2
-    Session.configure(binds={BaseA:engine1, BaseB:engine2})
+    Session.configure(binds={BaseA: engine1, BaseB: engine2})
 
 Above, classes which descend from ``BaseA`` and ``BaseB`` will have their
 SQL operations routed to one of two engines based on which superclass

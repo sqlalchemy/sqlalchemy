@@ -394,6 +394,7 @@ hybrid in-place, interfering with the definition on the superclass.
             def _set_name(self, value):
                 self.first_name = value
 
+
         class FirstNameOnly(Base):
             @hybrid_property
             def name(self):
@@ -829,8 +830,7 @@ new feature allows the related features of "select in" loading and
 "polymorphic in" loading to make use of the baked query extension
 to reduce call overhead::
 
-    stmt = select([table]).where(
-        table.c.col.in_(bindparam('foo', expanding=True))
+    stmt = select([table]).where(table.c.col.in_(bindparam("foo", expanding=True)))
     conn.execute(stmt, {"foo": [1, 2, 3]})
 
 The feature should be regarded as **experimental** within the 1.2 series.

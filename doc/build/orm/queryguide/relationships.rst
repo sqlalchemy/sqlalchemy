@@ -272,9 +272,12 @@ the :meth:`_orm.Load.options` method::
    :ref:`orm_queryguide_populate_existing` execution option::
 
       # change the options on Parent objects that were already loaded
-      stmt = select(Parent).execution_options(populate_existing=True).options(
-          lazyload(Parent.children).
-          lazyload(Child.subelements)).all()
+      stmt = (
+          select(Parent)
+          .execution_options(populate_existing=True)
+          .options(lazyload(Parent.children).lazyload(Child.subelements))
+          .all()
+      )
 
    If the objects loaded above are fully cleared from the :class:`.Session`,
    such as due to garbage collection or that :meth:`.Session.expunge_all`
@@ -1116,7 +1119,7 @@ the specific :func:`_orm.aliased` construct to be passed:
     stmt = (
        select(User).
        outerjoin(User.addresses.of_type(adalias)).
-       options(contains_eager(User.addresses.of_type(adalias))
+       options(contains_eager(User.addresses.of_type(adalias)))
     )
 
     # get results normally

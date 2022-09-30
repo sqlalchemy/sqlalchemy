@@ -118,13 +118,13 @@ does not properly handle the exception.    For example::
 The usage of the :class:`.Session` should fit within a structure similar to this::
 
     try:
-        <use session>
+        # <use session>
         session.commit()
     except:
-       session.rollback()
-       raise
+        session.rollback()
+        raise
     finally:
-       session.close()  # optional, depends on use case
+        session.close()  # optional, depends on use case
 
 Many things can cause a failure within the try/except besides flushes.
 Applications should ensure some system of "framing" is applied to ORM-oriented

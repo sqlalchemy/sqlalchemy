@@ -33,7 +33,7 @@ This page illustrates the mappings and fixture data used by the
     ...     name: Mapped[str]
     ...     fullname: Mapped[Optional[str]]
     ...     books: Mapped[List["Book"]] = relationship(back_populates="owner")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
     >>> class Book(Base):
@@ -44,7 +44,7 @@ This page illustrates the mappings and fixture data used by the
     ...     summary: Mapped[str] = mapped_column(Text)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary)
     ...     owner: Mapped["User"] = relationship(back_populates="books")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
     >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)

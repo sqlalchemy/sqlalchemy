@@ -532,9 +532,9 @@ be that of a column-mapped attribute::
     will be refreshed with data from the database::
 
         stmt = (
-            select(User).
-            execution_options(populate_existing=True).
-            where((User.name.in_(['a', 'b', 'c']))
+            select(User)
+            .execution_options(populate_existing=True)
+            .where((User.name.in_(["a", "b", "c"])))
         )
         for user in session.execute(stmt).scalars():
             print(user)  # will be refreshed for those columns that came back from the query

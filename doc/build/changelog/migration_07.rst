@@ -926,12 +926,13 @@ Using declarative, the scenario is this:
 ::
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
 
+
     class Child(Parent):
-       __tablename__ = 'child'
-        id = Column(Integer, ForeignKey('parent.id'), primary_key=True)
+        __tablename__ = "child"
+        id = Column(Integer, ForeignKey("parent.id"), primary_key=True)
 
 Above, the attribute ``Child.id`` refers to both the
 ``child.id`` column as well as ``parent.id`` - this due to
@@ -958,15 +959,17 @@ local column:
 ::
 
     class Child(Parent):
-       __tablename__ = 'child'
-        id = Column(Integer, ForeignKey('parent.id'), primary_key=True)
-        some_related = relationship("SomeRelated",
-                        primaryjoin="Child.id==SomeRelated.child_id")
+        __tablename__ = "child"
+        id = Column(Integer, ForeignKey("parent.id"), primary_key=True)
+        some_related = relationship(
+            "SomeRelated", primaryjoin="Child.id==SomeRelated.child_id"
+        )
+
 
     class SomeRelated(Base):
-       __tablename__ = 'some_related'
+        __tablename__ = "some_related"
         id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
+        child_id = Column(Integer, ForeignKey("child.id"))
 
 Prior to 0.7 the ``Child.id`` expression would reference
 ``Parent.id``, and it would be necessary to map ``child.id``

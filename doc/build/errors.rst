@@ -1187,7 +1187,7 @@ The above mapping will generate warnings::
 The relationships ``Child.parent`` and ``Parent.children`` appear to be in conflict.
 The solution is to apply :paramref:`_orm.relationship.back_populates`::
 
-  class Parent(Base):
+    class Parent(Base):
         __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship("Child", back_populates="parent")
@@ -1525,8 +1525,9 @@ and associating the :class:`_engine.Engine` with the
     metadata_obj = MetaData(bind=engine)
     Base = declarative_base(metadata=metadata_obj)
 
+
     class MyClass(Base):
-        # ...
+        ...
 
 
     session = Session()
@@ -1543,8 +1544,9 @@ engine::
     Session = sessionmaker(engine)
     Base = declarative_base()
 
+
     class MyClass(Base):
-        # ...
+        ...
 
 
     session = Session()
@@ -1587,7 +1589,7 @@ The correct way to invoke statements is via
 the :meth:`_engine.Connection.execute` method of a :class:`_engine.Connection`::
 
     with engine.connect() as conn:
-    result = conn.execute(stmt)
+        result = conn.execute(stmt)
 
 When using the ORM, a similar facility is available via the :class:`.Session`::
 

@@ -429,16 +429,24 @@ flush before each query.
 
 ::
 
-    mapper(Foo, foo_table, properties={
-        'bars':dynamic_loader(Bar, backref='foo', <other relation() opts>)
-    })
+    mapper(
+        Foo,
+        foo_table,
+        properties={
+            "bars": dynamic_loader(
+                Bar,
+                backref="foo",
+                # <other relation() opts>
+            )
+        },
+    )
 
     session = create_session(autoflush=True)
     foo = session.query(Foo).first()
 
-    foo.bars.append(Bar(name='lala'))
+    foo.bars.append(Bar(name="lala"))
 
-    for bar in foo.bars.filter(Bar.name=='lala'):
+    for bar in foo.bars.filter(Bar.name == "lala"):
         print(bar)
 
     session.commit()
@@ -452,13 +460,17 @@ columns as undeferred:
 
 ::
 
-    mapper(Class, table, properties={
-        'foo' : deferred(table.c.foo, group='group1'),
-        'bar' : deferred(table.c.bar, group='group1'),
-        'bat' : deferred(table.c.bat, group='group1'),
+    mapper(
+        Class,
+        table,
+        properties={
+            "foo": deferred(table.c.foo, group="group1"),
+            "bar": deferred(table.c.bar, group="group1"),
+            "bat": deferred(table.c.bat, group="group1"),
+        },
     )
 
-    session.query(Class).options(undefer_group('group1')).filter(...).all()
+    session.query(Class).options(undefer_group("group1")).filter(...).all()
 
 and ``eagerload_all()`` sets a chain of attributes to be
 eager in one pass:
@@ -785,15 +797,15 @@ deprecated. This means that
 
 ::
 
-    my_table.select(my_table.c.id.in_(1,2,3)
-    my_table.select(my_table.c.id.in_(*listOfIds)
+    my_table.select(my_table.c.id.in_(1, 2, 3))
+    my_table.select(my_table.c.id.in_(*listOfIds))
 
 should be changed to
 
 ::
 
-    my_table.select(my_table.c.id.in_([1,2,3])
-    my_table.select(my_table.c.id.in_(listOfIds)
+    my_table.select(my_table.c.id.in_([1, 2, 3]))
+    my_table.select(my_table.c.id.in_(listOfIds))
 
 Schema and Reflection
 =====================

@@ -55,18 +55,19 @@ Class Mapping API
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
-                        return Column(
-                            ForeignKey('myclass.id'), primary_key=True
-                        )
+                        return Column(ForeignKey("myclass.id"), primary_key=True)
                     else:
                         return Column(Integer, primary_key=True)
 
+
             class MyClass(HasIdMixin, Base):
-                __tablename__ = 'myclass'
+                __tablename__ = "myclass"
                 # ...
 
+
             class MySubClass(MyClass):
-                ""
+                """"""
+
                 # ...
 
         The behavior of the above configuration is that ``MySubClass``

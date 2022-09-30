@@ -101,10 +101,10 @@ was needed in order to allow this combination to work, described below.
 E.g.::
 
     Table(
-        'mydata', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', ArrayOfEnum(ENUM('a', 'b, 'c', name='myenum')))
-
+        "mydata",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", ArrayOfEnum(ENUM("a", "b", "c", name="myenum"))),
     )
 
 This type is not included as a built-in type as it would be incompatible

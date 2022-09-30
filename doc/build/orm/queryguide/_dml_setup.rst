@@ -33,7 +33,7 @@ This page illustrates the mappings and fixture data used by the
     ...     fullname: Mapped[Optional[str]]
     ...     species: Mapped[Optional[str]]
     ...     addresses: Mapped[List["Address"]] = relationship(back_populates="user")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(name={self.name!r}, fullname={self.fullname!r})"
     >>> class Address(Base):
@@ -42,7 +42,7 @@ This page illustrates the mappings and fixture data used by the
     ...     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
     ...     email_address: Mapped[str]
     ...     user: Mapped[User] = relationship(back_populates="addresses")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Address(email_address={self.email_address!r})"
     >>> class LogRecord(Base):
@@ -51,7 +51,7 @@ This page illustrates the mappings and fixture data used by the
     ...     message: Mapped[str]
     ...     code: Mapped[str]
     ...     timestamp: Mapped[datetime.datetime]
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"LogRecord({self.message!r}, {self.code!r}, {self.timestamp!r})"
 
@@ -60,10 +60,10 @@ This page illustrates the mappings and fixture data used by the
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str]
     ...     type: Mapped[str]
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"{self.__class__.__name__}({self.name!r})"
-    ... 
+    ...
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "employee",
     ...         "polymorphic_on": "type",
@@ -72,10 +72,10 @@ This page illustrates the mappings and fixture data used by the
     ...     __tablename__ = "manager"
     ...     id: Mapped[int] = mapped_column(ForeignKey("employee.id"), primary_key=True)
     ...     manager_name: Mapped[str]
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"{self.__class__.__name__}({self.name!r}, manager_name={self.manager_name!r})"
-    ... 
+    ...
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "manager",
     ...     }
@@ -83,10 +83,10 @@ This page illustrates the mappings and fixture data used by the
     ...     __tablename__ = "engineer"
     ...     id: Mapped[int] = mapped_column(ForeignKey("employee.id"), primary_key=True)
     ...     engineer_info: Mapped[str]
-    ... 
+    ...
     ...     def __repr__(self):
     ...         return f"{self.__class__.__name__}({self.name!r}, engineer_info={self.engineer_info!r})"
-    ... 
+    ...
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "engineer",
     ...     }

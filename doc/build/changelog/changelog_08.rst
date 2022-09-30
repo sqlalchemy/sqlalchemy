@@ -970,7 +970,7 @@
 
             del_ = delete(SomeMappedClass).where(SomeMappedClass.id == 5)
 
-            upd = update(SomeMappedClass).where(SomeMappedClass.id == 5).values(name='ed')
+            upd = update(SomeMappedClass).where(SomeMappedClass.id == 5).values(name="ed")
 
     .. change::
         :tags: bug, orm
@@ -2079,8 +2079,7 @@
       to the original, older use case for :meth:`_query.Query.select_from`, which is that
       of restating the mapped entity in terms of a different selectable::
 
-        session.query(User.name).\
-          select_from(user_table.select().where(user_table.c.id > 5))
+        session.query(User.name).select_from(user_table.select().where(user_table.c.id > 5))
 
       Which produces::
 
@@ -2281,11 +2280,11 @@
       original.   Allows symmetry when using :class:`_engine.Engine` and
       :class:`_engine.Connection` objects as context managers::
 
-        with conn.connect() as c: # leaves the Connection open
-          c.execute("...")
+        with conn.connect() as c:  # leaves the Connection open
+            c.execute("...")
 
         with engine.connect() as c:  # closes the Connection
-          c.execute("...")
+            c.execute("...")
 
     .. change::
         :tags: engine

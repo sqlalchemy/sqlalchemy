@@ -413,11 +413,11 @@ Common strategies to mitigate this include:
 
 * Use :class:`.Bundle` objects to organize column-based results::
 
-      u_b = Bundle('user', User.id, User.name)
-      a_b = Bundle('address', Address.id, Address.email)
+      u_b = Bundle("user", User.id, User.name)
+      a_b = Bundle("address", Address.id, Address.email)
 
       for user, address in session.execute(select(u_b, a_b).join(User.addresses)):
-          # ...
+          ...
 
 * Use result caching - see :ref:`examples_caching` for an in-depth example
   of this.

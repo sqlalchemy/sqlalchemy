@@ -396,32 +396,29 @@ of inheritance-oriented scenarios, including:
 * Binding to a Mixin or Abstract Class::
 
         class MyClass(SomeMixin, Base):
-            __tablename__ = 'my_table'
+            __tablename__ = "my_table"
             # ...
 
-        session = Session(binds={SomeMixin: some_engine})
 
+        session = Session(binds={SomeMixin: some_engine})
 
 * Binding to inherited concrete subclasses individually based on table::
 
         class BaseClass(Base):
-            __tablename__ = 'base'
+            __tablename__ = "base"
 
             # ...
+
 
         class ConcreteSubClass(BaseClass):
-            __tablename__ = 'concrete'
+            __tablename__ = "concrete"
 
             # ...
 
-            __mapper_args__ = {'concrete': True}
+            __mapper_args__ = {"concrete": True}
 
 
-        session = Session(binds={
-            base_table: some_engine,
-            concrete_table: some_other_engine
-        })
-
+        session = Session(binds={base_table: some_engine, concrete_table: some_other_engine})
 
 :ticket:`3035`
 
@@ -457,10 +454,10 @@ These scenarios include:
   statement as well as for the SELECT used by the "fetch" strategy::
 
         session.query(User).filter(User.id == 15).update(
-                {"name": "foob"}, synchronize_session='fetch')
+            {"name": "foob"}, synchronize_session="fetch"
+        )
 
-        session.query(User).filter(User.id == 15).delete(
-                synchronize_session='fetch')
+        session.query(User).filter(User.id == 15).delete(synchronize_session="fetch")
 
 * Queries against individual columns::
 
@@ -470,9 +467,10 @@ These scenarios include:
   :obj:`.column_property`::
 
         class User(Base):
-            # ...
+            ...
 
-            score = column_property(func.coalesce(self.tables.users.c.name, None)))
+            score = column_property(func.coalesce(self.tables.users.c.name, None))
+
 
         session.query(func.max(User.score)).scalar()
 

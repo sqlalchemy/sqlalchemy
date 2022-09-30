@@ -504,6 +504,7 @@ mutually-dependent module imports, like this::
 
     @util.dependency_for("sqlalchemy.sql.dml")
     def insert(self, dml, *args, **kw):
+        ...
 
 Where the above function would be rewritten to no longer have the ``dml`` parameter
 on the outside.  This would confuse code-linting tools into seeing a missing parameter
@@ -1282,10 +1283,11 @@ including methods such as:
     with engine.connect() as conn:
         result = conn.execute(
             table.select().order_by(table.c.id),
-            execution_options={"stream_results": True}
+            execution_options={"stream_results": True},
         )
         for chunk in result.partitions(500):
             # process up to 500 records
+            ...
 
 :meth:`_engine.Result.columns` - allows slicing and reorganizing of rows:
 
@@ -1306,7 +1308,7 @@ first column by default but can also be selected:
 
     result = session.execute(select(User).order_by(User.id))
     for user_obj in result.scalars():
-        # ...
+        ...
 
 :meth:`_engine.Result.mappings` - instead of named-tuple rows, returns
 dictionaries:
@@ -2154,8 +2156,9 @@ in any way::
 
         addresses = relationship(Address, backref=backref("user", viewonly=True))
 
+
     class Address(Base):
-        # ...
+        ...
 
 
     u1 = session.query(User).filter_by(name="x").first()

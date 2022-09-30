@@ -62,7 +62,7 @@ This is available via the :attr:`_schema.MetaData.sorted_tables` function::
 
     metadata_obj = MetaData()
     # ... add Table objects to metadata
-    ti = metadata_obj.sorted_tables:
+    ti = metadata_obj.sorted_tables
     for t in ti:
         print(t)
 

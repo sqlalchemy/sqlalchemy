@@ -248,7 +248,7 @@ Below we illustrate a variety of ways to access rows.
       result = conn.execute(text("select x, y from some_table"))
 
       for x, y in result:
-          # ...
+          ...
 
 * **Integer Index** - Tuples are Python sequences, so regular integer access is available too:
 
@@ -256,8 +256,8 @@ Below we illustrate a variety of ways to access rows.
 
       result = conn.execute(text("select x, y from some_table"))
 
-        for row in result:
-            x = row[0]
+      for row in result:
+          x = row[0]
 
 * **Attribute Name** - As these are Python named tuples, the tuples have dynamic attribute names
   matching the names of each column.  These names are normally the names that the
@@ -286,8 +286,8 @@ Below we illustrate a variety of ways to access rows.
       result = conn.execute(text("select x, y from some_table"))
 
       for dict_row in result.mappings():
-          x = dict_row['x']
-          y = dict_row['y']
+          x = dict_row["x"]
+          y = dict_row["y"]
 
   ..
 

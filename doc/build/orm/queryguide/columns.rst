@@ -331,7 +331,7 @@ unconditionally on every query. To configure, use the
     ...     title: Mapped[str]
     ...     summary: Mapped[str] = mapped_column(Text, deferred=True)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -492,7 +492,7 @@ undeferred::
     ...     cover_photo: Mapped[bytes] = mapped_column(
     ...         LargeBinary, deferred=True, deferred_group="book_attrs"
     ...     )
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -573,7 +573,7 @@ will raise on access in all cases unless explicitly "undeferred" using
     ...     cover_photo: Mapped[bytes] = mapped_column(
     ...         LargeBinary, deferred=True, deferred_raiseload=True
     ...     )
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -626,7 +626,7 @@ Loading Arbitrary SQL Expressions onto Objects
     ...     name: Mapped[str]
     ...     fullname: Mapped[Optional[str]]
     ...     books: Mapped[List["Book"]] = relationship(back_populates="owner")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
     >>> class Book(Base):
@@ -637,7 +637,7 @@ Loading Arbitrary SQL Expressions onto Objects
     ...     summary: Mapped[str] = mapped_column(Text)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary)
     ...     owner: Mapped["User"] = relationship(back_populates="books")
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -685,7 +685,7 @@ level :func:`_orm.query_expression` directive may produce this result.
     ...     title: Mapped[str]
     ...     summary: Mapped[str] = mapped_column(Text)
     ...     cover_photo: Mapped[bytes] = mapped_column(LargeBinary)
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"Book(id={self.id!r}, title={self.title!r})"
 
@@ -705,7 +705,7 @@ normally produce ``None``::
     ...     name: Mapped[str]
     ...     fullname: Mapped[Optional[str]]
     ...     book_count: Mapped[int] = query_expression()
-    ... 
+    ...
     ...     def __repr__(self) -> str:
     ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 

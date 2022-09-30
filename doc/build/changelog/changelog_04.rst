@@ -528,21 +528,19 @@
       outer joins are created for all joined-table inheriting
       mappers requested. Note that the auto-create of joins
       is not compatible with concrete table inheritance.
-      
+    
       The existing select_table flag on mapper() is now
       deprecated and is synonymous with
       with_polymorphic('*', select_table).  Note that the
       underlying "guts" of select_table have been
       completely removed and replaced with the newer,
       more flexible approach.
-      
+    
       The new approach also automatically allows eager loads
       to work for subclasses, if they are present, for
       example::
 
-        sess.query(Company).options(
-         eagerload_all(
-        ))
+        sess.query(Company).options(eagerload_all())
 
       to load Company objects, their employees, and the
       'machines' collection of employees who happen to be

@@ -110,9 +110,10 @@ may be used::
 
         from sqlalchemy import event
 
-        @event.listens_for(PtoQ, 'before_update')
+
+        @event.listens_for(PtoQ, "before_update")
         def receive_before_update(mapper, connection, target):
-           if target.some_required_attr_on_q is None:
+            if target.some_required_attr_on_q is None:
                 connection.execute(q_table.insert(), {"id": target.id})
 
     where above, a row is INSERTed into the ``q_table`` table by creating an

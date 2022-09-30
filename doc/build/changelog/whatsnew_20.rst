@@ -239,11 +239,12 @@ helper):
 
 
       class User(Base):
-          __tablename__ = 'user_account'
+          __tablename__ = "user_account"
 
           id: Mapped[int] = mapped_column(primary_key=True)
           name: Mapped[str]
           addresses: Mapped[List["Address"]] = relationship()
+
 
       class Address(Base):
           __tablename__ = "address"
@@ -251,7 +252,6 @@ helper):
           id: Mapped[int] = mapped_column(primary_key=True)
           email_address: Mapped[str]
           user_id = mapped_column(ForeignKey("user_account.id"))
-
 
   With the above mapping, the attributes are typed and express themselves
   all the way from statement to result set::
@@ -617,10 +617,11 @@ of :class:`_types.String`, as below where use of an ``Annotated`` ``str`` called
   # declarative base with a type-level override, using a type that is
   # expected to be used in multiple places
   class Base(DeclarativeBase):
-      registry = registry(type_annotation_map={
-          str50: String(50),
-      })
-
+      registry = registry(
+          type_annotation_map={
+              str50: String(50),
+          }
+      )
 
 Second, Declarative will extract full
 :func:`_orm.mapped_column` definitions from the left hand type if
