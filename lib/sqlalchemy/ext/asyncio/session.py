@@ -893,18 +893,33 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.__iter__()
 
     def add(self, instance: object, _warn: bool = True) -> None:
-        r"""Place an object in the ``Session``.
+        r"""Place an object into this :class:`_orm.Session`.
 
         .. container:: class_bases
 
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_asyncio.AsyncSession` class.
 
-        Its state will be persisted to the database on the next flush
-        operation.
+        Objects that are in the :term:`transient` state when passed to the
+        :meth:`_orm.Session.add` method will move to the
+        :term:`pending` state, until the next flush, at which point they
+        will move to the :term:`persistent` state.
 
-        Repeated calls to ``add()`` will be ignored. The opposite of ``add()``
-        is ``expunge()``.
+        Objects that are in the :term:`detached` state when passed to the
+        :meth:`_orm.Session.add` method will move to the :term:`persistent`
+        state directly.
+
+        If the transaction used by the :class:`_orm.Session` is rolled back,
+        objects which were transient when they were passed to
+        :meth:`_orm.Session.add` will be moved back to the
+        :term:`transient` state, and will no longer be present within this
+        :class:`_orm.Session`.
+
+        .. seealso::
+
+            :meth:`_orm.Session.add_all`
+
+            :ref:`session_adding` - at :ref:`session_basics`
 
 
         """  # noqa: E501
@@ -912,12 +927,22 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.add(instance, _warn=_warn)
 
     def add_all(self, instances: Iterable[object]) -> None:
-        r"""Add the given collection of instances to this ``Session``.
+        r"""Add the given collection of instances to this :class:`_orm.Session`.
 
         .. container:: class_bases
 
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_asyncio.AsyncSession` class.
+
+        See the documentation for :meth:`_orm.Session.add` for a general
+        behavioral description.
+
+        .. seealso::
+
+            :meth:`_orm.Session.add`
+
+            :ref:`session_adding` - at :ref:`session_basics`
+
 
         """  # noqa: E501
 
