@@ -3107,7 +3107,7 @@ class MySQLDialect(default.DefaultDialect):
         sql = self._show_create_table(
             connection, None, charset, full_name=full_name
         )
-        if re.match(r"^CREATE (?:ALGORITHM)?.* VIEW", sql):
+        if parser._check_view(sql):
             # Adapt views to something table-like.
             columns = self._describe_table(
                 connection, None, charset, full_name=full_name

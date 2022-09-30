@@ -70,6 +70,9 @@ class MySQLTableDefinitionParser(object):
                     pass
         return state
 
+    def _check_view(self, sql):
+        return bool(self._re_is_view.match(sql))
+
     def _parse_constraints(self, line):
         """Parse a KEY or CONSTRAINT line.
 
@@ -348,6 +351,8 @@ class MySQLTableDefinitionParser(object):
             r"%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +\($" % quotes,
             self.preparer._unescape_identifier,
         )
+
+        self._re_is_view = _re_compile(r"^CREATE(?! TABLE)(\s.*)?\sVIEW")
 
         # `col`,`col2`(32),`col3`(15) DESC
         #
