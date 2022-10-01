@@ -226,14 +226,18 @@ Given the example program below::
 The above program uses several patterns that many users will already identify
 as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
 that's part of the "connectionless execution" API.  When we run the above
-program against 1.4, it returns a single line::
+program against 1.4, it returns a single line:
+
+.. sourcecode:: text
 
   $ python test3.py
   [(1,)]
 
 To enable "2.0 deprecations mode", we enable the ``SQLALCHEMY_WARN_20=1``
 variable, and additionally ensure that a `warnings filter`_ that will not
-suppress any warnings is selected::
+suppress any warnings is selected:
+
+.. sourcecode:: text
 
     SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
 
@@ -244,7 +248,9 @@ using Python option ``-W error::DeprecationWarning``.
 
 .. _warnings filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
 
-With warnings turned on, our program now has a lot to say::
+With warnings turned on, our program now has a lot to say:
+
+.. sourcecode:: text
 
   $ SQLALCHEMY_WARN_20=1 python2 -W always::DeprecationWarning test3.py
   test3.py:9: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
@@ -1857,7 +1863,9 @@ labeling::
     result = session.execute(stmt)
 
 The above query will disambiguate the ``.id`` column of ``User`` and
-``Address``, where ``Address.id`` is rendered and tracked as ``id_1``::
+``Address``, where ``Address.id`` is rendered and tracked as ``id_1``:
+
+.. sourcecode:: sql
 
   SELECT anon_1.id AS anon_1_id, anon_1.id_1 AS anon_1_id_1,
          anon_1.user_id AS anon_1_user_id,

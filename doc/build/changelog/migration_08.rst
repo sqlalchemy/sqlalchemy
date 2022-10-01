@@ -120,7 +120,7 @@ entities.  The new system includes these features:
   statement.  Note the join condition within a basic eager
   load:
 
-  ::
+  .. sourcecode:: sql
 
         SELECT
             folder.account_id AS folder_account_id,
@@ -566,7 +566,7 @@ given ``Engineer`` as a joined subclass of ``Person``:
 
 would produce:
 
-::
+.. sourcecode:: sql
 
     UPDATE engineer SET engineer_data='java' FROM person
     WHERE person.id=engineer.id AND person.name='dilbert'
@@ -597,7 +597,9 @@ as well as support for distributed locking.
 
 Note that the SQLAlchemy APIs used by the Dogpile example as well
 as the previous Beaker example have changed slightly, in particular
-this change is needed as illustrated in the Beaker example::
+this change is needed as illustrated in the Beaker example:
+
+.. sourcecode:: diff
 
     --- examples/beaker_caching/caching_query.py
     +++ examples/beaker_caching/caching_query.py
@@ -614,7 +616,7 @@ this change is needed as illustrated in the Beaker example::
 
 .. seealso::
 
-    :mod:`dogpile_caching`
+    :ref:`examples_caching`
 
 :ticket:`2589`
 
@@ -1199,21 +1201,28 @@ objects relative to what's being selected::
 
     print(s)
 
-Prior to this change, the above would return::
+Prior to this change, the above would return:
+
+.. sourcecode:: sql
 
     SELECT t1.x, t2.y FROM t2
 
 which is invalid SQL as "t1" is not referred to in any FROM clause.
 
-Now, in the absence of an enclosing SELECT, it returns::
+Now, in the absence of an enclosing SELECT, it returns:
+
+.. sourcecode:: sql
 
     SELECT t1.x, t2.y FROM t1, t2
 
-Within a SELECT, the correlation takes effect as expected::
+Within a SELECT, the correlation takes effect as expected:
+
+.. sourcecode:: python
 
     s2 = select([t1, t2]).where(t1.c.x == t2.c.y).where(t1.c.x == s)
-
     print(s2)
+
+.. sourcecode:: sql
 
     SELECT t1.x, t2.y FROM t1, t2
     WHERE t1.x = t2.y AND t1.x =
@@ -1376,13 +1385,11 @@ that the event gave no way to get at the current
 reflection, in the case that additional information from the
 database is needed.   As this is a new event not widely used
 yet, we'll be adding the ``inspector`` argument into it
-directly:
-
-::
+directly::
 
     @event.listens_for(Table, "column_reflect")
     def listen_for_col(inspector, table, column_info):
-        # ...
+        ...
 
 :ticket:`2418`
 

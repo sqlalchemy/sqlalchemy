@@ -299,7 +299,7 @@ contains a trigger which fires the first time the attribute is accessed.  This
 trigger typically issues a SQL call at the point of access
 in order to load the related object or objects:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> spongebob.addresses
     {opensql}SELECT
@@ -424,7 +424,7 @@ as a default loading option on the mapping, in particular when used for
 collections rather than many-to-one-references.   This is achieved
 using the :func:`_orm.joinedload` loader option:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
@@ -481,7 +481,7 @@ At the query option level, via the :paramref:`_orm.joinedload.innerjoin` flag::
 The JOIN will right-nest itself when applied in a chain that includes
 an OUTER JOIN:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
@@ -550,7 +550,7 @@ LEFT OUTER JOIN from ``users`` to ``addresses``, however the ``ORDER BY`` added
 against ``Address.email_address`` is not valid - the ``Address`` entity is not
 named in the query:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import joinedload
@@ -580,7 +580,7 @@ Above, ``ORDER BY addresses.email_address`` is not valid since ``addresses`` is 
 FROM list.   The correct way to load the ``User`` records and order by email
 address is to use :meth:`_sql.Select.join`:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> stmt = (
@@ -608,7 +608,7 @@ columns from ``addresses`` are not included in the result at all.   We can add
 are ordering on, the other is used anonymously to load the contents of the
 ``User.addresses`` collection:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
 
     >>> stmt = (
@@ -644,7 +644,7 @@ use just one JOIN for collection loading as well as ordering, we use the
 to see why :func:`joinedload` does what it does, consider if we were
 **filtering** on a particular ``Address``:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> stmt = (
     ...     select(User)
@@ -680,7 +680,7 @@ can change how the collection is loaded completely independently of SQL used to
 retrieve the actual ``User`` rows we want.  Below we change :func:`_orm.joinedload`
 into :func:`.subqueryload`:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> stmt = (
     ...     select(User)
@@ -738,7 +738,7 @@ values of the parent object, or in the case of a many-to-one
 relationship to the those of the child objects, inside of an IN clause, in
 order to load related associations:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy import selectinload
@@ -779,7 +779,7 @@ statement has no joins or subqueries at all.
 For simple [1]_ many-to-one loads, a JOIN is also not needed as the foreign key
 value from the parent object is used:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy import selectinload
@@ -886,7 +886,7 @@ inside of a subquery, so that we retrieve the same list of primary keys
 for the primary object being returned, then link that to the sum of all
 the collection members to load them at once:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy.orm import subqueryload

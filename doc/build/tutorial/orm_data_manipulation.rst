@@ -254,8 +254,8 @@ as well as the :meth:`_engine.Result.scalar_one` method):
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> sandy = session.execute(select(User).filter_by(name="sandy")).scalar_one()
-    BEGIN (implicit)
+    >>> sandy = session.execute(select(User).filter_by(name="sandy")).scalar_one()
+    {opensql}BEGIN (implicit)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
@@ -332,8 +332,8 @@ Let's load up ``patrick`` from the database:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> patrick = session.get(User, 3)
-    SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
+    >>> patrick = session.get(User, 3)
+    {opensql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
     user_account.fullname AS user_account_fullname
     FROM user_account
     WHERE user_account.id = ?
@@ -485,8 +485,8 @@ and of course the database data is present again as well:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> session.execute(select(User).where(User.name == 'patrick')).scalar_one() is patrick
-    SELECT user_account.id, user_account.name, user_account.fullname
+    >>> session.execute(select(User).where(User.name == "patrick")).scalar_one() is patrick
+    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
     [...] ('patrick',){stop}

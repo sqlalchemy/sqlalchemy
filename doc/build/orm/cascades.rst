@@ -254,7 +254,7 @@ related ``Address`` objects::
 If we mark ``user1`` for deletion, after the flush operation proceeds,
 ``address1`` and ``address2`` will also be deleted:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> sess.delete(user1)
     >>> sess.commit()
@@ -277,7 +277,7 @@ reference to ``NULL``.  Using a mapping as follows::
 Upon deletion of a parent ``User`` object, the rows in ``address`` are not
 deleted, but are instead de-associated:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> sess.delete(user1)
     >>> sess.commit()

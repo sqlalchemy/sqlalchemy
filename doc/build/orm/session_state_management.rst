@@ -370,7 +370,7 @@ to ``user_id``, causing a failure.
 Most :meth:`~.Session.merge` issues can be examined by first checking -
 is the object prematurely in the session ?
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> a1 = Address(id=existing_a1, user_id=user.id)
     >>> assert a1 not in session
@@ -449,7 +449,7 @@ We see that while the internal "state" still hangs around, the values which
 correspond to the ``id`` and ``name`` columns are gone.   If we were to access
 one of these columns and are watching SQL, we'd see this:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> print(user.name)
     {opensql}SELECT user.id AS user_id, user.name AS user_name

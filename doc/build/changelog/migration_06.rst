@@ -1037,7 +1037,7 @@ Many-to-one Enhancements
 
   would produce SQL like:
 
-  ::
+  .. sourcecode:: sql
 
       SELECT * FROM
         (SELECT * FROM addresses LIMIT 10) AS anon_1
@@ -1053,7 +1053,7 @@ Many-to-one Enhancements
   eager loaders represent many-to-ones, in which case the
   eager joins don't affect the rowcount:
 
-  ::
+  .. sourcecode:: sql
 
       SELECT * FROM addresses LEFT OUTER JOIN users AS users_1 ON users_1.id = addresses.user_id LIMIT 10
 

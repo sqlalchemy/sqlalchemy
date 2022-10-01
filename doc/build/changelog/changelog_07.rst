@@ -1213,12 +1213,14 @@
       to Engine, Connection::
 
           with engine.begin() as conn:
-              <work with conn in a transaction>
+              # <work with conn in a transaction>
+              ...
 
       and::
 
           with engine.connect() as conn:
-              <work with conn>
+              # <work with conn>
+              ...
 
       Both close out the connection when done,
       commit or rollback transaction with errors

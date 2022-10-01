@@ -63,11 +63,12 @@ of the columns to be generated, in this case the names; the
         def __repr__(self):
             return f"Vertex(start={self.start}, end={self.end})"
 
-The above mapping would correspond to a CREATE TABLE statement as::
+The above mapping would correspond to a CREATE TABLE statement as:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
     {sql}>>> print(CreateTable(Vertex.__table__))
-
     CREATE TABLE vertices (
       id INTEGER NOT NULL,
       x1 INTEGER NOT NULL,
@@ -93,7 +94,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   We can create a ``Vertex`` object, assign ``Point`` objects as members,
   and they will be persisted as expected:
 
-  .. sourcecode:: python+sql
+  .. sourcecode:: pycon+sql
 
     >>> v = Vertex(start=Point(3, 4), end=Point(5, 6))
     >>> session.add(v)
@@ -110,7 +111,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   as possible when using the ORM :class:`_orm.Session` (including the legacy
   :class:`_orm.Query` object) to select ``Point`` objects:
 
-  .. sourcecode:: python+sql
+  .. sourcecode:: pycon+sql
 
     >>> stmt = select(Vertex.start, Vertex.end)
     {sql}>>> session.execute(stmt).all()
@@ -124,7 +125,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   The ``Vertex.start`` and ``Vertex.end`` attributes may be used in
   WHERE criteria and similar, using ad-hoc ``Point`` objects for comparisons:
 
-  .. sourcecode:: python+sql
+  .. sourcecode:: pycon+sql
 
     >>> stmt = select(Vertex).where(Vertex.start == Point(3, 4)).where(Vertex.end < Point(7, 8))
     {sql}>>> session.scalars(stmt).all()
@@ -153,7 +154,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   By default, the ``Point`` object **must be replaced by a new object** for
   changes to be detected:
 
-  .. sourcecode:: python+sql
+  .. sourcecode:: pycon+sql
 
     {sql}>>> v1 = session.scalars(select(Vertex)).one()
     SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
@@ -161,8 +162,8 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
     [...] ()
     {stop}
 
-    v1.end = Point(x=10, y=14)
-    {sql}session.commit()
+    >>> v1.end = Point(x=10, y=14)
+    {sql}>>> session.commit()
     UPDATE vertices SET x2=?, y2=? WHERE vertices.id = ?
     [...] (10, 14, 1)
     COMMIT

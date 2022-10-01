@@ -235,7 +235,9 @@ type of the other::
             remote_side=ip_address,
         )
 
-The above relationship will produce a join like::
+The above relationship will produce a join like:
+
+.. sourcecode:: sql
 
     SELECT host_entry.id, host_entry.ip_address, host_entry.content
     FROM host_entry JOIN host_entry AS host_entry_1
@@ -308,7 +310,9 @@ Above, a query such as::
 
     select(IPA).join(IPA.network)
 
-Will render as::
+Will render as:
+
+.. sourcecode:: sql
 
     SELECT ip_address.id AS ip_address_id, ip_address.v4address AS ip_address_v4address
     FROM ip_address JOIN network ON ip_address.v4address << network.v4representation
@@ -511,7 +515,9 @@ we'll be dealing with collections so we keep things configured as "one to many":
         )
 
 Above, if given an ``Element`` object with a path attribute of ``"/foo/bar2"``,
-we seek for a load of ``Element.descendants`` to look like::
+we seek for a load of ``Element.descendants`` to look like:
+
+.. sourcecode:: sql
 
     SELECT element.path AS element_path
     FROM element

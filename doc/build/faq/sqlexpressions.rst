@@ -188,7 +188,9 @@ include:
 
           print(cursor.mogrify(str(compiled), compiled.params))
 
-  The above code will produce psycopg2's raw bytestring::
+  The above code will produce psycopg2's raw bytestring:
+
+  .. sourcecode:: sql
 
       b"SELECT a.id, a.data \nFROM a \nWHERE a.data = 'a511b0fc-76da-4c47-a4b4-716a8189b7ac'::uuid"
 
@@ -206,7 +208,9 @@ include:
     print(str(compiled) % compiled.params)
 
   This will produce a non-working string, that nonetheless is suitable for
-  debugging::
+  debugging:
+
+  .. sourcecode:: sql
 
     SELECT a.id, a.data
     FROM a
@@ -230,7 +234,9 @@ include:
 
     print(re.sub(r"\?", lambda m: next(params), str(compiled)))
 
-  The above snippet prints::
+  The above snippet prints:
+
+  .. sourcecode:: sql
 
     SELECT a.id, a.data
     FROM a
@@ -259,7 +265,9 @@ include:
     e = create_engine("postgresql+psycopg2://")
     print(stmt.compile(e, compile_kwargs={"use_my_literal_recipe": True}))
 
-  The above recipe will print::
+  The above recipe will print:
+
+  .. sourcecode:: sql
 
     SELECT a.id, a.data
     FROM a
@@ -287,7 +295,9 @@ include:
 
     print(stmt.compile(e, compile_kwargs={"literal_binds": True}))
 
-  Again printing the same form::
+  Again printing the same form:
+
+  .. sourcecode:: sql
 
     SELECT a.id, a.data
     FROM a
@@ -368,7 +378,9 @@ Many :term:`DBAPI` implementations make use of the ``pyformat`` or ``format``
 `paramstyle <https://www.python.org/dev/peps/pep-0249/#paramstyle>`_, which
 necessarily involve percent signs in their syntax.  Most DBAPIs that do this
 expect percent signs used for other reasons to be doubled up (i.e. escaped) in
-the string form of the statements used, e.g.::
+the string form of the statements used, e.g.:
+
+.. sourcecode:: sql
 
     SELECT a, b FROM some_table WHERE a = %s AND c = %s AND num %% modulus = 0
 
@@ -376,7 +388,9 @@ When SQL statements are passed to the underlying DBAPI by SQLAlchemy,
 substitution of bound parameters works in the same way as the Python string
 interpolation operator ``%``, and in many cases the DBAPI actually uses this
 operator directly.  Above, the substitution of bound parameters would then look
-like::
+like:
+
+.. sourcecode:: sql
 
     SELECT a, b FROM some_table WHERE a = 5 AND c = 10 AND num % modulus = 0
 

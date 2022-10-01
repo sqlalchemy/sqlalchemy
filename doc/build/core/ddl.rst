@@ -217,7 +217,7 @@ elements will be included in the CREATE TABLE sequence only against the
 PostgreSQL dialect.  If we run ``meta.create_all()`` against the SQLite
 dialect, for example, neither construct will be included:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import create_engine
     >>> sqlite_engine = create_engine("sqlite+pysqlite://", echo=True)
@@ -239,7 +239,7 @@ However, if we run the same commands against a PostgreSQL database, we will
 see inline DDL for the CHECK constraint as well as a separate CREATE
 statement emitted for the index:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import create_engine
     >>> postgresql_engine = create_engine(

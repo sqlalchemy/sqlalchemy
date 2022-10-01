@@ -833,7 +833,9 @@ as:
 
 That is, the JOIN would implicitly be against the first entity that matches.
 The new behavior is that an exception requests that this ambiguity be
-resolved::
+resolved:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.InvalidRequestError: Can't determine which FROM clause to
     join from, there are multiple FROMS which can join to this entity.
@@ -860,7 +862,9 @@ is not the first element in the list if the join is otherwise non-ambiguous::
 
     session.query(func.current_timestamp(), User).join(Address)
 
-Prior to this enhancement, the above query would raise::
+Prior to this enhancement, the above query would raise:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.InvalidRequestError: Don't know how to join from
     CURRENT_TIMESTAMP; please use select_from() to establish the
@@ -897,7 +901,9 @@ Given a query as::
     session.query(A).options(joinedload(A.b)).limit(5)
 
 The :class:`_query.Query` object renders a SELECT of the following form when joined
-eager loading is combined with LIMIT::
+eager loading is combined with LIMIT:
+
+.. sourcecode:: sql
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
         SELECT a.id AS a_id, a.data AS a_data FROM a LIMIT 5
@@ -905,7 +911,9 @@ eager loading is combined with LIMIT::
 
 This is so that the limit of rows takes place for the primary entity without
 affecting the joined eager load of related items.   When the above query is
-combined with "SELECT..FOR UPDATE", the behavior has been this::
+combined with "SELECT..FOR UPDATE", the behavior has been this:
+
+.. sourcecode:: sql
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
         SELECT a.id AS a_id, a.data AS a_data FROM a LIMIT 5
@@ -913,7 +921,9 @@ combined with "SELECT..FOR UPDATE", the behavior has been this::
 
 However, MySQL due to https://bugs.mysql.com/bug.php?id=90693 does not lock
 the rows inside the subquery, unlike that of PostgreSQL and other databases.
-So the above query now renders as::
+So the above query now renders as:
+
+.. sourcecode:: sql
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
         SELECT a.id AS a_id, a.data AS a_data FROM a LIMIT 5 FOR UPDATE
@@ -932,7 +942,9 @@ given::
 
     session.query(A).options(joinedload(A.b)).with_for_update(of=A).limit(5)
 
-The query would now render as::
+The query would now render as:
+
+.. sourcecode:: sql
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
         SELECT a.id AS a_id, a.data AS a_data FROM a LIMIT 5 FOR UPDATE OF a
@@ -1023,7 +1035,9 @@ constraints with a name that joins together the names of all columns::
         UniqueConstraint("a", "b", "c"),
     )
 
-The CREATE TABLE for the above table will render as::
+The CREATE TABLE for the above table will render as:
+
+.. sourcecode:: sql
 
     CREATE TABLE info (
         a INTEGER,
@@ -1051,7 +1065,9 @@ constraint name would normally be generated from the table definition below::
     )
 
 The truncation logic will ensure a too-long name isn't generated for the
-UNIQUE constraint::
+UNIQUE constraint:
+
+.. sourcecode:: sql
 
     CREATE TABLE long_names (
         information_channel_code INTEGER,
@@ -1087,7 +1103,9 @@ to other kinds of constraints as well::
 
     print(AddConstraint(uq).compile(dialect=postgresql.dialect()))
 
-will output::
+will output:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.IdentifierError: Identifier
     'this_is_too_long_of_a_name_for_any_database_backend_even_postgresql'
@@ -1105,7 +1123,9 @@ To apply SQLAlchemy-side truncation rules to the above identifier, use the
         name=conv("this_is_too_long_of_a_name_for_any_database_backend_even_postgresql"),
     )
 
-This will again output deterministically truncated SQL as in::
+This will again output deterministically truncated SQL as in:
+
+.. sourcecode:: sql
 
     ALTER TABLE t ADD CONSTRAINT this_is_too_long_of_a_name_for_any_database_backend_eve_ac05 UNIQUE (x)
 
@@ -1158,7 +1178,9 @@ side::
 Above, the :paramref:`_orm.relationship.primaryjoin` of the "descendants" relationship
 will produce a "left" and a "right" expression based on the first and second
 arguments passed to ``instr()``.   This allows features like the ORM
-lazyload to produce SQL like::
+lazyload to produce SQL like:
+
+.. sourcecode:: sql
 
     SELECT venue.id AS venue_id, venue.name AS venue_name
     FROM venue
@@ -1174,7 +1196,9 @@ and a joinedload, such as::
         .one()
     )
 
-to work as::
+to work as:
+
+.. sourcecode:: sql
 
     SELECT venue.id AS venue_id, venue.name AS venue_name,
       venue_1.id AS venue_1_id, venue_1.name AS venue_1_name
@@ -1268,7 +1292,9 @@ The above expression will render a function within SQL when used on SQLite only:
 
     print(select([column("x", CompressedLargeBinary)]).compile(dialect=sqlite.dialect()))
 
-will render::
+will render:
+
+.. sourcecode:: sql
 
     SELECT uncompress(x) AS x
 
@@ -1344,10 +1370,10 @@ The original usage model for SQLAlchemy looked like this::
 
     engine.begin()
 
-    table.insert().execute(<params>)
+    table.insert().execute(parameters)
     result = table.select().execute()
 
-    table.update().execute(<params>)
+    table.update().execute(parameters)
 
     engine.commit()
 
@@ -1361,10 +1387,10 @@ introduced, minus the context managers since they didn't yet exist in Python::
     try:
         trans = conn.begin()
 
-        conn.execute(table.insert(), <params>)
+        conn.execute(table.insert(), parameters)
         result = conn.execute(table.select())
 
-        conn.execute(table.update(), <params>)
+        conn.execute(table.update(), parameters)
 
         trans.commit()
     except:
@@ -1381,10 +1407,10 @@ Today, working with Core is much more succinct, and even more succinct than
 the original pattern, thanks to context managers::
 
     with engine.begin() as conn:
-        conn.execute(table.insert(), <params>)
+        conn.execute(table.insert(), parameters)
         result = conn.execute(table.select())
 
-        conn.execute(table.update(), <params>)
+        conn.execute(table.update(), parameters)
 
 At this point, any remaining code that is still relying upon the "threadlocal"
 style will be encouraged via this deprecation to modernize - the feature should
@@ -1562,7 +1588,9 @@ as several :class:`_schema.Column` -specific variants::
         UniqueConstraint("id", "data", sqlite_on_conflict="IGNORE"),
     )
 
-The above table would render in a CREATE TABLE statement as::
+The above table would render in a CREATE TABLE statement as:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         id INTEGER NOT NULL,
@@ -1737,11 +1765,17 @@ separated by newlines, and newlines that are present in the original SQL
 statement are maintained.   The goal is to improve readability while still
 keeping the original error message on one line for logging purposes.
 
-This means that an error message that previously looked like this::
+This means that an error message that previously looked like this:
 
-    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews\nwhere id = ?'] (Background on this error at: https://sqlalche.me/e/cd3x)
+.. sourcecode:: text
 
-Will now look like this::
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is
+    required for bind parameter 'id' [SQL: 'select * from reviews\nwhere id = ?']
+    (Background on this error at: https://sqlalche.me/e/cd3x)
+
+Will now look like this:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id'
     [SQL: select * from reviews

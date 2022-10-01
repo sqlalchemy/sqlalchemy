@@ -168,14 +168,15 @@ We've had join() and outerjoin() for a while now:
 
 ::
 
-    session.query(Order).join('items')...
+    session.query(Order).join("items")
 
 Now you can alias them:
 
 ::
 
-    session.query(Order).join('items', aliased=True).
-       filter(Item.name='item 1').join('items', aliased=True).filter(Item.name=='item 3')
+    session.query(Order).join("items", aliased=True).filter(Item.name="item 1").join(
+        "items", aliased=True
+    ).filter(Item.name == "item 3")
 
 The above will create two joins from orders->items using
 aliases.  the ``filter()`` call subsequent to each will
@@ -185,9 +186,13 @@ join with an ``id``:
 
 ::
 
-    session.query(Order).join('items', id='j1', aliased=True).
-    filter(Item.name == 'item 1').join('items', aliased=True, id='j2').
-    filter(Item.name == 'item 3').add_entity(Item, id='j1').add_entity(Item, id='j2')
+    session.query(Order).join("items", id="j1", aliased=True).filter(
+        Item.name == "item 1"
+    ).join("items", aliased=True, id="j2").filter(Item.name == "item 3").add_entity(
+        Item, id="j1"
+    ).add_entity(
+        Item, id="j2"
+    )
 
 Returns tuples in the form: ``(Order, Item, Item)``.
 
@@ -308,7 +313,7 @@ So what happens when we say:
 
 ?  A join along aliases, three levels deep off the parent:
 
-::
+.. sourcecode:: sql
 
     SELECT
     nodes_3.id AS nodes_3_id, nodes_3.parent_id AS nodes_3_parent_id, nodes_3.name AS nodes_3_name,
@@ -545,7 +550,7 @@ columns or subqueries:
 
 a typical query looks like:
 
-::
+.. sourcecode:: sql
 
     SELECT (SELECT count(1) FROM posts WHERE users.id = posts.user_id) AS count,
     users.firstname || users.lastname AS fullname,
@@ -818,7 +823,7 @@ In the 0.3.x series, ``BoundMetaData`` and
 and ``ThreadLocalMetaData``.  The older names have been
 removed in 0.4.  Updating is simple:
 
-::
+.. sourcecode:: text
 
     +-------------------------------------+-------------------------+
     |If You Had                           | Now Use                 |

@@ -185,11 +185,15 @@ for queries that return many rows::
         result = session.query(Customer).filter(Customer.id == id_).one()
 
 This example in the 1.3 release of SQLAlchemy on a Dell XPS13 running Linux
-completes as follows::
+completes as follows:
+
+.. sourcecode:: text
 
     test_orm_query : (10000 iterations); total time 3.440652 sec
 
-In 1.4, the code above without modification completes::
+In 1.4, the code above without modification completes:
+
+.. sourcecode:: text
 
     test_orm_query : (10000 iterations); total time 2.367934 sec
 
@@ -214,7 +218,9 @@ Using this API looks as follows::
         stmt += lambda s: s.where(Customer.id == id_)
         session.execute(stmt).scalar_one()
 
-The code above completes::
+The code above completes:
+
+.. sourcecode:: text
 
     test_orm_query_newstyle_w_lambdas : (10000 iterations); total time 1.247092 sec
 
@@ -605,7 +611,9 @@ That is, this will now raise::
     stmt1 = select(user.c.id, user.c.name)
     stmt2 = select(addresses, stmt1).select_from(addresses.join(stmt1))
 
-Raising::
+Raising:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.ArgumentError: Column expression or FROM clause expected,
     got <...Select object ...>. To create a FROM clause from a <class
@@ -637,7 +645,9 @@ The rationale for this change is based on the following:
   without first creating an alias or subquery would be that it creates an
   unnamed subquery.   While standard SQL does support this syntax, in practice
   it is rejected by most databases.  For example, both the MySQL and PostgreSQL
-  outright reject the usage of unnamed subqueries::
+  outright reject the usage of unnamed subqueries:
+
+  .. sourcecode:: sql
 
       # MySQL / MariaDB:
 
@@ -654,7 +664,9 @@ The rationale for this change is based on the following:
       HINT:  For example, FROM (SELECT ...) [AS] foo.
 
   A database like SQLite accepts them, however it is still often the case that
-  the names produced from such a subquery are too ambiguous to be useful::
+  the names produced from such a subquery are too ambiguous to be useful:
+
+  .. sourcecode:: sql
 
       sqlite> CREATE TABLE a(id integer);
       sqlite> CREATE TABLE b(id integer);
@@ -755,7 +767,9 @@ matching to the left entity::
         addresses_table, user_table.c.id == addresses_table.c.user_id
     )
 
-producing::
+producing:
+
+.. sourcecode:: sql
 
     SELECT user.id, user.name FROM user JOIN address ON user.id=address.user_id
 
@@ -779,7 +793,9 @@ allows easier specification of the left and right side of a join at once::
 
     stmt = select(Address.email_address, User.name).join_from(User, Address)
 
-producing::
+producing:
+
+.. sourcecode:: sql
 
     SELECT address.email_address, user.name FROM user JOIN address ON user.id == address.user_id
 
@@ -1074,7 +1090,9 @@ bound value to be rendered as it would be passed to the database::
     FROM a
     WHERE a.id IN (:id_1_1, :id_1_2, :id_1_3)
 
-Engine logging output shows the ultimate rendered statement as well::
+Engine logging output shows the ultimate rendered statement as well:
+
+.. sourcecode:: sql
 
     INFO sqlalchemy.engine.base.Engine SELECT a.id, a.data
     FROM a
@@ -1147,7 +1165,9 @@ not line up with these two tables will create an additional FROM entry::
 The above query selects from a JOIN of ``User`` and ``address_alias``, the
 latter of which is an alias of the ``Address`` entity.  However, the
 ``Address`` entity is used within the WHERE clause directly, so the above would
-result in the SQL::
+result in the SQL:
+
+.. sourcecode:: sql
 
     SELECT
         users.id AS users_id, users.name AS users_name,
@@ -1384,7 +1404,9 @@ Rationale: To behave more like a named tuple rather than a mapping
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The difference between a named tuple and a mapping as far as boolean operators
-can be summarized.   Given a "named tuple" in pseudo code as::
+can be summarized.   Given a "named tuple" in pseudo code as:
+
+.. sourcecode:: text
 
     row = (id: 5,  name: 'some name')
 
@@ -1570,7 +1592,9 @@ Improved column labeling for simple column expressions using CAST or similar
 
 A user pointed out that the PostgreSQL database has a convenient behavior when
 using functions like CAST against a named column, in that the result column name
-is named the same as the inner expression::
+is named the same as the inner expression:
+
+.. sourcecode:: text
 
     test=> SELECT CAST(data AS VARCHAR) FROM foo;
 
@@ -1582,7 +1606,9 @@ is named the same as the inner expression::
 This allows one to apply CAST to table columns while not losing the column
 name (above using the name ``"data"``) in the result row.    Compare to
 databases such as MySQL/MariaDB, as well as most others, where the column
-name is taken from the full SQL expression and is not very portable::
+name is taken from the full SQL expression and is not very portable:
+
+.. sourcecode:: text
 
     MariaDB [test]> SELECT CAST(data AS CHAR) FROM foo;
     +--------------------+
@@ -1657,7 +1683,9 @@ OFFSET values, typically used for pagination and "top N" style results.
 
 While SQLAlchemy has used bound parameters for LIMIT/OFFSET schemes for many
 years, a few outliers remained where such parameters were not allowed, including
-a SQL Server "TOP N" statement, such as::
+a SQL Server "TOP N" statement, such as:
+
+.. sourcecode:: sql
 
     SELECT TOP 5 mytable.id, mytable.data FROM mytable
 
@@ -1665,7 +1693,9 @@ as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
 use if the ``optimize_limits=True`` parameter is passed to
 :func:`_sa.create_engine` with an Oracle URL) does not allow them,
 but also that using bound parameters with ROWNUM comparisons has been reported
-as producing slower query plans::
+as producing slower query plans:
+
+.. sourcecode:: sql
 
     SELECT anon_1.id, anon_1.data FROM (
         SELECT /*+ FIRST_ROWS(5) */
@@ -1687,11 +1717,15 @@ be rendered literally into the SQL string before sending it to the DBAPI
 SQL Server and Oracle dialects, so that the drivers receive the literal
 rendered value but the rest of SQLAlchemy can still consider this as a
 bound parameter.   The above two statements when stringified using
-``str(statement.compile(dialect=<dialect>))`` now look like::
+``str(statement.compile(dialect=<dialect>))`` now look like:
+
+.. sourcecode:: sql
 
     SELECT TOP [POSTCOMPILE_param_1] mytable.id, mytable.data FROM mytable
 
-and::
+and:
+
+.. sourcecode:: sql
 
     SELECT anon_1.id, anon_1.data FROM (
         SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */
@@ -1707,7 +1741,9 @@ The ``[POSTCOMPILE_<param>]`` format is also what is seen when an
 "expanding IN" is used.
 
 When viewing the SQL logging output, the final form of the statement will
-be seen::
+be seen:
+
+.. sourcecode:: sql
 
     SELECT anon_1.id, anon_1.data FROM (
         SELECT /*+ FIRST_ROWS(5) */
@@ -1882,7 +1918,9 @@ approach to be performant.
 SQLAlchemy includes a :ref:`performance suite <examples_performance>` within
 its examples, where we can compare the times generated for the "batch_inserts"
 runner against 1.3 and 1.4, revealing a 3x-5x speedup for most flavors
-of batch insert::
+of batch insert:
+
+.. sourcecode:: text
 
     # 1.3
     $ python -m examples.performance bulk_inserts --dburl postgresql://scott:tiger@localhost/test
@@ -1905,13 +1943,17 @@ of batch insert::
 Note that the ``execute_values()`` extension modifies the INSERT statement in the psycopg2
 layer, **after** it's been logged by SQLAlchemy.  So with SQL logging, one will see the
 parameter sets batched together, but the joining of multiple "values" will not be visible
-on the application side::
+on the application side:
+
+.. sourcecode:: text
 
     2020-06-27 19:08:18,166 INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (%(data)s) RETURNING a.id
     2020-06-27 19:08:18,166 INFO sqlalchemy.engine.Engine [generated in 0.00698s] ({'data': 'data 1'}, {'data': 'data 2'}, {'data': 'data 3'}, {'data': 'data 4'}, {'data': 'data 5'}, {'data': 'data 6'}, {'data': 'data 7'}, {'data': 'data 8'}  ... displaying 10 of 4999 total bound parameter sets ...  {'data': 'data 4998'}, {'data': 'data 4999'})
     2020-06-27 19:08:18,254 INFO sqlalchemy.engine.Engine COMMIT
 
-The ultimate INSERT statement can be seen by enabling statement logging on the PostgreSQL side::
+The ultimate INSERT statement can be seen by enabling statement logging on the PostgreSQL side:
+
+.. sourcecode:: text
 
     2020-06-27 19:08:18.169 EDT [26960] LOG:  statement: INSERT INTO a (data)
     VALUES ('data 1'),('data 2'),('data 3'),('data 4'),('data 5'),('data 6'),('data
@@ -1943,7 +1985,9 @@ An ORM bulk update or delete that uses the "fetch" strategy::
 
 Will now use RETURNING if the backend database supports it; this currently
 includes PostgreSQL and SQL Server (the Oracle dialect does not support RETURNING
-of multiple rows)::
+of multiple rows):
+
+.. sourcecode:: text
 
     UPDATE users SET age_int=(users.age_int - %(age_int_1)s) WHERE users.age_int > %(age_int_2)s RETURNING users.id
     [generated in 0.00060s] {'age_int_1': 10, 'age_int_2': 29}
@@ -1952,7 +1996,9 @@ of multiple rows)::
     Row (4,)
 
 For backends that do not support RETURNING of multiple rows, the previous approach
-of emitting SELECT for the primary keys beforehand is still used::
+of emitting SELECT for the primary keys beforehand is still used:
+
+.. sourcecode:: text
 
     SELECT users.id FROM users WHERE users.age_int > %(age_int_1)s
     [generated in 0.00043s] {'age_int_1': 29}
@@ -2446,7 +2492,9 @@ to be inserted has the same primary key as an object that is already present::
     session.add(Product(id=1))
     s.commit()  # <-- will raise FlushError
 
-The change is that the :class:`.FlushError` is altered to be only a warning::
+The change is that the :class:`.FlushError` is altered to be only a warning:
+
+.. sourcecode:: text
 
     sqlalchemy/orm/persistence.py:408: SAWarning: New instance <Product at 0x7f1ff65e0ba8> with identity key (<class '__main__.Product'>, (1,), None) conflicts with persistent instance <Product at 0x7f1ff60a4550>
 
@@ -2454,14 +2502,15 @@ The change is that the :class:`.FlushError` is altered to be only a warning::
 Subsequent to that, the condition will attempt to insert the row into the
 database which will emit :class:`.IntegrityError`, which is the same error that
 would be raised if the primary key identity was not already present in the
-:class:`.Session`::
+:class:`.Session`:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: product.id
 
 The rationale is to allow code that is using :class:`.IntegrityError` to catch
 duplicates to function regardless of the existing state of the
 :class:`.Session`, as is often done using savepoints::
-
 
     # add another Product with same primary key
     try:
@@ -2519,7 +2568,9 @@ disallowed::
         # this is now an error
         addresses = relationship("Address", viewonly=True, cascade="all, delete-orphan")
 
-The above will raise::
+The above will raise:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.ArgumentError: Cascade settings
     "delete, delete-orphan, merge, save-update" apply to persistence
@@ -2562,7 +2613,9 @@ inheritance mapping::
 
 The subquery selects both the ``Engineer`` and the ``Manager`` rows, and
 even though the outer query is against ``Manager``, we get a non ``Manager``
-object back::
+object back:
+
+.. sourcecode:: text
 
     SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
     FROM (SELECT employee.type AS type, employee.id AS id
@@ -2570,7 +2623,9 @@ object back::
     2020-01-29 18:04:13,524 INFO sqlalchemy.engine.base.Engine ()
     [<__main__.Engineer object at 0x7f7f5b9a9810>, <__main__.Manager object at 0x7f7f5b9a9750>]
 
-The new behavior is that this condition raises an error::
+The new behavior is that this condition raises an error:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.InvalidRequestError: Row with identity key
     (<class '__main__.Employee'>, (1,), None) can't be loaded into an object;
@@ -2585,7 +2640,9 @@ to construct an entity is made.
 In the case of single inheritance mapping, the change in behavior is slightly
 more involved;   if ``Engineer`` and ``Manager`` above are mapped with
 single table inheritance, in 1.3 the following query would be emitted and
-only a ``Manager`` object is returned::
+only a ``Manager`` object is returned:
+
+.. sourcecode:: text
 
     SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
     FROM (SELECT employee.type AS type, employee.id AS id
@@ -2603,7 +2660,9 @@ to return additional rows where the columns that correspond to the inheriting
 entity are NULL, which is a valid use case.    The behavior is now equivalent
 to that of joined table inheritance, where it is assumed that the subquery
 returns the correct rows and an error is raised if an unexpected polymorphic
-identity is encountered::
+identity is encountered:
+
+.. sourcecode:: text
 
     SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
     FROM (SELECT employee.type AS type, employee.id AS id
@@ -2622,10 +2681,14 @@ is to adjust the given subquery to correctly filter the rows based on the
 discriminator column::
 
     print(
-        s.query(Manager).select_entity_from(
-            s.query(Employee).filter(Employee.discriminator == 'manager').
-            subquery()).all()
+        s.query(Manager)
+        .select_entity_from(
+            s.query(Employee).filter(Employee.discriminator == "manager").subquery()
+        )
+        .all()
     )
+
+.. sourcecode:: sql
 
     SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
     FROM (SELECT employee.type AS type, employee.id AS id
@@ -2708,7 +2771,9 @@ be cached before the VALUES are rendered.
 
 A quick test of the ``execute_values()`` approach using the
 ``bulk_inserts.py`` script in the :ref:`examples_performance` example
-suite reveals an approximate **fivefold performance increase**::
+suite reveals an approximate **fivefold performance increase**:
+
+.. sourcecode:: text
 
     $ python -m examples.performance bulk_inserts --test test_core_insert --num 100000 --dburl postgresql://scott:tiger@localhost/test
 

@@ -62,7 +62,9 @@ flag on those columns::
 
 All tables in a relational database should have primary keys.   Even a many-to-many
 association table - the primary key would be the composite of the two association
-columns::
+columns:
+
+.. sourcecode:: sql
 
     CREATE TABLE my_association (
       user_id INTEGER REFERENCES user(id),
@@ -263,7 +265,7 @@ SQLAlchemy implements :func:`_orm.subqueryload` by issuing a separate query,
 the results of which are matched up to the results from the first query.
 We see two queries emitted like this:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> session.scalars(select(User).options(subqueryload(User.addresses))).all()
     {opensql}-- the "main" query
@@ -282,7 +284,7 @@ The second query embeds the first query as a source of rows.
 When the inner query uses ``OFFSET`` and/or ``LIMIT`` without ordering,
 the two queries may not see the same results:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> user = session.scalars(
     ...     select(User).options(subqueryload(User.addresses)).limit(1)

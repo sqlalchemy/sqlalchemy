@@ -65,7 +65,7 @@ well as optional keyword arguments for additional configuration. In some cases
 a file path is accepted, and in others a "data source name" replaces the "host"
 and "database" portions. The typical form of a database URL is:
 
-.. sourcecode:: none
+.. sourcecode:: text
 
     dialect+driver://username:password@host:port/database
 
@@ -87,7 +87,7 @@ Below is an example of a URL that includes the password ``"kx@jj5/g"``, where th
 "at" sign and slash characters are represented as ``%40`` and ``%2F``,
 respectively:
 
-.. sourcecode:: none
+.. sourcecode:: text
 
     postgresql+pg8000://dbuser:kx%40jj5%2Fg@pghost10/appdb
 

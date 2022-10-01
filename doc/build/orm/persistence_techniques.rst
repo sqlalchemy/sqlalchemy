@@ -559,7 +559,9 @@ to ensure that the fetch occurs::
 
 With a mapping similar to the above, the SQL rendered by the ORM for
 INSERT and UPDATE will include ``created`` and ``updated`` in the RETURNING
-clause::
+clause:
+
+.. sourcecode:: sql
 
   INSERT INTO my_table (created) VALUES (now()) RETURNING my_table.id, my_table.created, my_table.updated
 

@@ -398,7 +398,9 @@ and use it in a :func:`_expression.select` construct::
 The resulting SQL embeds both functions as appropriate.   ``ST_AsText``
 is applied to the columns clause so that the return value is run through
 the function before passing into a result set, and ``ST_GeomFromText``
-is run on the bound parameter so that the passed-in value is converted::
+is run on the bound parameter so that the passed-in value is converted:
+
+.. sourcecode:: sql
 
     SELECT geometry.geom_id, ST_AsText(geometry.geom_data) AS geom_data_1
     FROM geometry
@@ -412,7 +414,9 @@ label is moved to the outside of the wrapped expression::
 
     print(select(geometry.c.geom_data.label("my_data")))
 
-Output::
+Output:
+
+.. sourcecode:: sql
 
     SELECT ST_AsText(geometry.geom_data) AS my_data
     FROM geometry
@@ -477,17 +481,19 @@ transparently::
         )
 
 The ``pgp_sym_encrypt`` and ``pgp_sym_decrypt`` functions are applied
-to the INSERT and SELECT statements::
+to the INSERT and SELECT statements:
+
+.. sourcecode:: sql
 
   INSERT INTO message (username, message)
     VALUES (%(username)s, pgp_sym_encrypt(%(message)s, %(pgp_sym_encrypt_1)s))
-    {'username': 'some user', 'message': 'this is my message',
-      'pgp_sym_encrypt_1': 'this is my passphrase'}
+    -- {'username': 'some user', 'message': 'this is my message',
+    --  'pgp_sym_encrypt_1': 'this is my passphrase'}
 
   SELECT pgp_sym_decrypt(message.message, %(pgp_sym_decrypt_1)s) AS message_1
     FROM message
     WHERE message.username = %(username_1)s
-    {'pgp_sym_decrypt_1': 'this is my passphrase', 'username_1': 'some user'}
+    -- {'pgp_sym_decrypt_1': 'this is my passphrase', 'username_1': 'some user'}
 
 
 

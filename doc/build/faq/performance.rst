@@ -183,7 +183,9 @@ Sometimes just plain SQL logging (enabled via python's logging module
 or via the ``echo=True`` argument on :func:`_sa.create_engine`) can give an
 idea how long things are taking.  For example, if you log something
 right after a SQL operation, you'd see something like this in your
-log::
+log:
+
+.. sourcecode:: text
 
     17:37:48,325 INFO  [sqlalchemy.engine.base.Engine.0x...048c] SELECT ...
     17:37:48,326 INFO  [sqlalchemy.engine.base.Engine.0x...048c] {<params>}

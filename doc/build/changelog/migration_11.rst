@@ -366,7 +366,9 @@ query is against a subquery expression such as an exists::
 
     session.query(q).all()
 
-Produces::
+Produces:
+
+.. sourcecode:: sql
 
     SELECT EXISTS (SELECT 1
     FROM widget
@@ -469,7 +471,9 @@ removed would be lost, and the flush would incorrectly raise an error::
     s.add(A(id=1))
     s.commit()
 
-The above program would raise::
+The above program would raise:
+
+.. sourcecode:: text
 
     FlushError: New instance <User at 0x7f0287eca4d0> with identity key
     (<class 'test.orm.test_transaction.User'>, ('u1',)) conflicts
@@ -558,10 +562,12 @@ for the table itself::
     session.delete(some_b)
     session.commit()
 
-Will emit SQL as::
+Will emit SQL as:
+
+.. sourcecode:: sql
 
     DELETE FROM a WHERE a.id = %(id)s
-    {'id': 1}
+    -- {'id': 1}
     COMMIT
 
 As always, the target database must have foreign key support with
@@ -853,7 +859,9 @@ using with_polymorphic::
         == "Elbonia, Inc."
     )
 
-The above query now produces::
+The above query now produces:
+
+.. sourcecode:: sql
 
     SELECT people.name AS people_name
     FROM people
@@ -865,7 +873,9 @@ The above query now produces::
 
 Before the fix, the call to ``correlate(Person)`` would inadvertently
 attempt to correlate to the join of ``Person``, ``Engineer`` and ``Manager``
-as a single unit, so ``Person`` wouldn't be correlated::
+as a single unit, so ``Person`` wouldn't be correlated:
+
+.. sourcecode:: sql
 
     -- old, incorrect query
     SELECT people.name AS people_name
@@ -976,7 +986,9 @@ deep use case that's hard to reproduce, but the general idea is as follows::
     q = q.join(c_alias_2, A.c)
     q = q.options(contains_eager(A.c, alias=c_alias_2))
 
-The above query emits SQL like this::
+The above query emits SQL like this:
+
+.. sourcecode:: sql
 
     SELECT
         d.id AS d_id,
@@ -1284,7 +1296,9 @@ construct similar to an alias::
     stmt = select([selectable.c.people_id])
 
 Assuming ``people`` with a column ``people_id``, the above
-statement would render as::
+statement would render as:
+
+.. sourcecode:: sql
 
     SELECT alias.people_id FROM
     people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
@@ -1351,7 +1365,9 @@ have autoincrement set up; given a table such as::
         Column("y", Integer, primary_key=True),
     )
 
-An INSERT emitted with no values for this table will produce this warning::
+An INSERT emitted with no values for this table will produce this warning:
+
+.. sourcecode:: text
 
     SAWarning: Column 'b.x' is marked as a member of the primary
     key for table 'b', but has no Python-side or server-side default
@@ -1509,7 +1525,9 @@ as well.   Given a statement like the following::
     ua = users.alias("ua")
     stmt = select([users.c.user_id, ua.c.user_id])
 
-The above statement will compile to::
+The above statement will compile to:
+
+.. sourcecode:: sql
 
     SELECT users.user_id, ua.user_id FROM users, users AS ua
 
@@ -1920,7 +1938,9 @@ A PostgreSQL element for an aggregate ORDER BY is also added via
     expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
     stmt = select([expr])
 
-Producing::
+Producing:
+
+.. sourcecode:: sql
 
     SELECT array_agg(table1.a ORDER BY table1.b DESC) AS array_agg_1 FROM table1
 
@@ -1945,7 +1965,9 @@ Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
         ]
     )
 
-The above statement would produce SQL similar to::
+The above statement would produce SQL similar to:
+
+.. sourcecode:: sql
 
   SELECT department.id, percentile_cont(0.5)
   WITHIN GROUP (ORDER BY department.salary DESC)
@@ -2110,7 +2132,9 @@ our ``StringAsInt`` type which maintains the value as an integer in
 Python. We are then using :func:`.cast` so that as a SQL expression,
 the VARCHAR "id"  column will be CAST to an integer for a regular non-
 converted join as with :meth:`_query.Query.join` or :func:`_orm.joinedload`.
-That is, a joinedload of ``.pets`` looks like::
+That is, a joinedload of ``.pets`` looks like:
+
+.. sourcecode:: sql
 
     SELECT person.id AS person_id, pets_1.id AS pets_1_id,
            pets_1.person_id AS pets_1_person_id
@@ -2125,12 +2149,14 @@ The lazyload case of ``.pets`` relies upon replacing
 the ``Person.id`` column at load time with a bound parameter, which receives
 a Python-loaded value.  This replacement is specifically where the intent
 of our :func:`.type_coerce` function would be lost.  Prior to the change,
-this lazy load comes out as::
+this lazy load comes out as:
+
+.. sourcecode:: sql
 
     SELECT pets.id AS pets_id, pets.person_id AS pets_person_id
     FROM pets
     WHERE pets.person_id = CAST(CAST(%(param_1)s AS VARCHAR) AS INTEGER)
-    {'param_1': 5}
+    -- {'param_1': 5}
 
 Where above, we see that our in-Python value of ``5`` is CAST first
 to a VARCHAR, then back to an INTEGER in SQL; a double CAST which works,
@@ -2138,12 +2164,14 @@ but is nevertheless not what we asked for.
 
 With the change, the :func:`.type_coerce` function maintains a wrapper
 even after the column is swapped out for a bound parameter, and the query now
-looks like::
+looks like:
+
+.. sourcecode:: sql
 
     SELECT pets.id AS pets_id, pets.person_id AS pets_person_id
     FROM pets
     WHERE pets.person_id = CAST(%(param_1)s AS INTEGER)
-    {'param_1': 5}
+    -- {'param_1': 5}
 
 Where our outer CAST that's in our primaryjoin still takes effect, but the
 needless CAST that's in part of the ``StringAsInt`` custom type is removed
@@ -2214,13 +2242,17 @@ that are missing from the SELECT list, without duplicates::
         .order_by(User.id, User.name, User.fullname)
     )
 
-Produces::
+Produces:
+
+.. sourcecode:: sql
 
     SELECT DISTINCT user.id AS a_id, user.name AS name,
      user.fullname AS a_fullname
     FROM a ORDER BY user.id, user.name, user.fullname
 
-Previously, it would produce::
+Previously, it would produce:
+
+.. sourcecode:: sql
 
     SELECT DISTINCT user.id AS a_id, user.name AS name, user.name AS a_name,
       user.fullname AS a_fullname
@@ -2268,9 +2300,12 @@ last defined validator::
 
     configure_mappers()
 
-Will raise::
+Will raise:
 
-    sqlalchemy.exc.InvalidRequestError: A validation function for mapped attribute 'data' on mapper Mapper|A|a already exists.
+.. sourcecode:: text
+
+    sqlalchemy.exc.InvalidRequestError: A validation function for mapped attribute 'data'
+    on mapper Mapper|A|a already exists.
 
 :ticket:`3776`
 
@@ -2359,7 +2394,9 @@ A UNION or similar of SELECTs with LIMIT/OFFSET/ORDER BY now parenthesizes the e
 An issue that, like others, was long driven by SQLite's lack of capabilities
 has now been enhanced to work on all supporting backends.   We refer to a query that
 is a UNION of SELECT statements that themselves contain row-limiting or ordering
-features which include LIMIT, OFFSET, and/or ORDER BY::
+features which include LIMIT, OFFSET, and/or ORDER BY:
+
+.. sourcecode:: sql
 
     (SELECT x FROM table1 ORDER BY y LIMIT 1) UNION
     (SELECT x FROM table2 ORDER BY y LIMIT 2)
@@ -2434,7 +2471,9 @@ supported by PostgreSQL 9.5 in this area::
 
     conn.execute(do_update_stmt)
 
-The above will render::
+The above will render:
+
+.. sourcecode:: sql
 
     INSERT INTO my_table (id, data)
     VALUES (:id, :data)
@@ -2571,7 +2610,9 @@ as expected::
     e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
     Base.metadata.create_all(e)
 
-emits::
+emits:
+
+.. sourcecode:: sql
 
     CREATE TYPE work_place_roles AS ENUM (
         'manager', 'place_admin', 'carwash_admin', 'parking_admin',
@@ -2715,7 +2756,9 @@ not the first column, e.g.::
         mysql_engine="InnoDB",
     )
 
-DDL such as the following would be generated::
+DDL such as the following would be generated:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         x INTEGER NOT NULL,
@@ -2729,7 +2772,9 @@ found its way into the dialect many years ago in response to the issue that
 the AUTO_INCREMENT would otherwise fail on InnoDB without this additional KEY.
 
 This workaround has been removed and replaced with the much better system
-of just stating the AUTO_INCREMENT column *first* within the primary key::
+of just stating the AUTO_INCREMENT column *first* within the primary key:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         x INTEGER NOT NULL,

@@ -628,7 +628,7 @@ and :meth:`_sql.Select.having` methods.   Below we illustrate selecting
 user name fields as well as count of addresses, for those users that have more
 than one address:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
     ...     result = conn.execute(
@@ -880,7 +880,7 @@ shows a series of ``User`` and ``Address`` objects, where the data for
 each ``Address`` object ultimately came from a subquery against the
 ``address`` table rather than that table directly:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> subq = select(Address).where(~Address.email_address.like("%@aol.com")).subquery()
     >>> address_subq = aliased(Address, subq)
@@ -909,7 +909,7 @@ each ``Address`` object ultimately came from a subquery against the
 Another example follows, which is exactly the same except it makes use of the
 :class:`_sql.CTE` construct instead:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
     >>> cte_obj = select(Address).where(~Address.email_address.like("%@aol.com")).cte()
     >>> address_cte = aliased(Address, cte_obj)

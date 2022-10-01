@@ -234,7 +234,9 @@ To illustrate the ramifications of this issue, consider tables from the
 schema is the default schema of our database connection, or if using a database
 such as PostgreSQL suppose the "project" schema is set up in the PostgreSQL
 ``search_path``.  This would mean that the database accepts the following
-two SQL statements as equivalent::
+two SQL statements as equivalent:
+
+.. sourcecode:: sql
 
     -- schema qualified
     SELECT message_id FROM project.messages
@@ -426,7 +428,9 @@ column reflection using the :meth:`_events.DDLEvents.column_reflect` event
 in conjunction with the :meth:`_types.TypeEngine.as_generic` method.
 
 Given a table in MySQL (chosen because MySQL has a lot of vendor-specific
-datatypes and options)::
+datatypes and options):
+
+.. sourcecode:: sql
 
     CREATE TABLE IF NOT EXISTS my_table (
         id INTEGER PRIMARY KEY AUTO_INCREMENT,

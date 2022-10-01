@@ -155,7 +155,9 @@ any time and be exactly consistent with what's been flushed to the database.
 While this is theoretically possible, the usefulness of the enhancement is
 greatly decreased by the fact that many database operations require a ROLLBACK
 in any case. Postgres in particular has operations which, once failed, the
-transaction is not allowed to continue::
+transaction is not allowed to continue:
+
+.. sourcecode:: text
 
     test=> create table foo(id integer primary key);
     NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "foo_pkey" for table "foo"

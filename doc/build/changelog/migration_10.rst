@@ -304,7 +304,9 @@ all three types for "size" (number of rows returned) and "num"
 outperforms both, or lags very slightly behind the faster object, based on
 which scenario.  In the "sweet spot", where we are both creating a good number
 of new types as well as fetching a good number of rows, the lightweight
-object totally smokes both namedtuple and KeyedTuple::
+object totally smokes both namedtuple and KeyedTuple:
+
+.. sourcecode:: text
 
     -----------------
     size=10 num=10000                 # few rows, lots of queries
@@ -346,7 +348,9 @@ loader strategy system.
 A bench that makes use of heapy measure the startup size of Nova
 illustrates a difference of about 3.7 fewer megs, or 46%,
 taken up by SQLAlchemy's objects, associated dictionaries, as
-well as weakrefs, within a basic import of "nova.db.sqlalchemy.models"::
+well as weakrefs, within a basic import of "nova.db.sqlalchemy.models":
+
+.. sourcecode:: text
 
     # reported by heapy, summation of SQLAlchemy objects +
     # associated dicts + weakref-related objects with core of Nova imported:
@@ -538,7 +542,9 @@ correctly::
 
     print(sess.query(A, a1).order_by(a1.b))
 
-This would order by the wrong column::
+This would order by the wrong column:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, (SELECT max(b.id) AS max_1 FROM b
     WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
@@ -546,7 +552,9 @@ This would order by the wrong column::
     FROM b WHERE b.a_id = a_1.id) AS anon_2
     FROM a, a AS a_1 ORDER BY anon_1
 
-New output::
+New output:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, (SELECT max(b.id) AS max_1
     FROM b WHERE b.a_id = a.id) AS anon_1, a_1.id AS a_1_id,
@@ -566,14 +574,18 @@ to order by label, for example if the mapping were "polymorphic"::
         __mapper_args__ = {"polymorphic_on": type, "with_polymorphic": "*"}
 
 The order_by would fail to use the label, as it would be anonymized due
-to the polymorphic loading::
+to the polymorphic loading:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
     FROM b WHERE b.a_id = a.id) AS anon_1
     FROM a ORDER BY (SELECT max(b.id) AS max_2
     FROM b WHERE b.a_id = a.id)
 
-Now that the order by label tracks the anonymized label, this now works::
+Now that the order by label tracks the anonymized label, this now works:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, a.type AS a_type, (SELECT max(b.id) AS max_1
     FROM b WHERE b.a_id = a.id) AS anon_1
@@ -716,7 +728,9 @@ expression of a :class:`.CheckConstraint`::
 
     CheckConstraint(foo.c.value > 5)
 
-Will render::
+Will render:
+
+.. sourcecode:: sql
 
     CREATE TABLE foo (
         value INTEGER,
@@ -844,7 +858,9 @@ expressions are rendered as constants into the SELECT statement::
     stmt = select([t.c.x])
     print(t.insert().from_select(["x"], stmt))
 
-Will render::
+Will render:
+
+.. sourcecode:: sql
 
     INSERT INTO t (x, y) SELECT t.x, somefunction() AS somefunction_1
     FROM t
@@ -877,7 +893,9 @@ embedded in SQL to render correctly, such as::
 
     print(CreateTable(tbl).compile(dialect=postgresql.dialect()))
 
-Now renders::
+Now renders:
+
+.. sourcecode:: sql
 
     CREATE TABLE derp (
         arr TEXT[] DEFAULT ARRAY['foo', 'bar', 'baz']
@@ -985,7 +1003,9 @@ emitted for ten of the parameter sets, out of a total of 1000::
             select([cast(("foo_%d" % random.randint(0, 1000000)).encode("ascii"), Unicode)])
         )
 
-The format of the warning here is::
+The format of the warning here is:
+
+.. sourcecode:: text
 
     /path/lib/sqlalchemy/sql/sqltypes.py:186: SAWarning: Unicode type received
       non-unicode bind param value 'foo_4852'. (this warning may be
@@ -1065,7 +1085,9 @@ queries that are essentially of this form::
     session.query(Address).filter(Address.user == User(id=None))
 
 This pattern is not currently supported in SQLAlchemy.  For all versions,
-it emits SQL resembling::
+it emits SQL resembling:
+
+.. sourcecode:: sql
 
     SELECT address.id AS address_id, address.user_id AS address_user_id,
     address.email_address AS address_email_address
@@ -1075,7 +1097,9 @@ it emits SQL resembling::
 Note above, there is a comparison ``WHERE ? = address.user_id`` where the
 bound value ``?`` is receiving ``None``, or ``NULL`` in SQL.  **This will
 always return False in SQL**.  The comparison here would in theory
-generate SQL as follows::
+generate SQL as follows:
+
+.. sourcecode:: sql
 
     SELECT address.id AS address_id, address.user_id AS address_user_id,
     address.email_address AS address_email_address
@@ -1085,7 +1109,9 @@ But right now, **it does not**.   Applications which are relying upon the
 fact that "NULL = NULL" produces False in all cases run the risk that
 someday, SQLAlchemy might fix this issue to generate "IS NULL", and the queries
 will then produce different results.  Therefore with this kind of operation,
-you will see a warning::
+you will see a warning:
+
+.. sourcecode:: text
 
     SAWarning: Got None for value of column user.id; this is unsupported
     for a relationship comparison and will not currently produce an
@@ -1135,7 +1161,9 @@ will use the value 10 in the bound parameters::
 
     s.query(B).filter(B.a == a1)
 
-Produces::
+Produces:
+
+.. sourcecode:: sql
 
     SELECT b.id AS b_id, b.a_id AS b_a_id
     FROM b
@@ -1147,19 +1175,23 @@ However, before this change, the negation of this criteria would **not** use
 
     s.query(B).filter(B.a != a1)
 
-Produces (in 0.9 and all versions prior to 1.0.1)::
+Produces (in 0.9 and all versions prior to 1.0.1):
+
+.. sourcecode:: sql
 
     SELECT b.id AS b_id, b.a_id AS b_a_id
     FROM b
     WHERE b.a_id != ? OR b.a_id IS NULL
     (7,)
 
-For a transient object, it would produce a broken query::
+For a transient object, it would produce a broken query:
+
+.. sourcecode:: sql
 
     SELECT b.id, b.a_id
     FROM b
     WHERE b.a_id != :a_id_1 OR b.a_id IS NULL
-    {u'a_id_1': symbol('NEVER_SET')}
+    -- {u'a_id_1': symbol('NEVER_SET')}
 
 This inconsistency has been repaired, and in all queries the current attribute
 value, in this example ``10``, will now be used.
@@ -1393,7 +1425,9 @@ A query that joins to ``A.bs`` twice::
 
     print(s.query(A).join(A.bs).join(A.bs))
 
-Will render::
+Will render:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id
     FROM a JOIN b ON a.id = b.a_id
@@ -1407,7 +1441,9 @@ to support a case like the following::
 
 That is, the ``A.bs`` is part of a "path".  As part of :ticket:`3367`,
 arriving at the same endpoint twice without it being part of a
-larger path will now emit a warning::
+larger path will now emit a warning:
+
+.. sourcecode:: text
 
     SAWarning: Pathed join target A.bs has already been joined to; skipping
 
@@ -1416,7 +1452,9 @@ relationship-bound path.  If we join to ``B`` twice::
 
     print(s.query(A).join(B, B.a_id == A.id).join(B, B.a_id == A.id))
 
-In 0.9, this would render as follows::
+In 0.9, this would render as follows:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id
     FROM a JOIN b ON b.a_id = a.id JOIN b AS b_1 ON b_1.a_id = a.id
@@ -1424,7 +1462,9 @@ In 0.9, this would render as follows::
 This is problematic since the aliasing is implicit and in the case of different
 ON clauses can lead to unpredictable results.
 
-In 1.0, no automatic aliasing is applied and we get::
+In 1.0, no automatic aliasing is applied and we get:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id
     FROM a JOIN b ON b.a_id = a.id JOIN b ON b.a_id = a.id
@@ -1481,7 +1521,9 @@ a mapping as follows::
     print(s.query(ASub1).join(B, ASub1.b).join(ASub2, ASub2.id == B.a_id))
 
 The two queries at the bottom are equivalent, and should both render
-the identical SQL::
+the identical SQL:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, a.type AS a_type
     FROM a JOIN b ON b.a_id = a.id JOIN a ON b.a_id = a.id AND a.type IN (:type_1)
@@ -1489,7 +1531,9 @@ the identical SQL::
 
 The above SQL is invalid, as it renders "a" within the FROM list twice.
 However, the implicit aliasing bug would occur with the second query only
-and render this instead::
+and render this instead:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, a.type AS a_type
     FROM a JOIN b ON b.a_id = a.id JOIN a AS a_1
@@ -1603,7 +1647,9 @@ when using ``innerjoin=True``::
         joinedload("orders", innerjoin=False).joinedload("items", innerjoin=True)
     )
 
-With the new default, this will render the FROM clause in the form::
+With the new default, this will render the FROM clause in the form:\
+
+.. sourcecode:: text
 
     FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
 
@@ -1619,7 +1665,9 @@ To get the older behavior, use ``innerjoin="unnested"``::
     )
 
 This will avoid right-nested joins and chain the joins together using all
-OUTER joins despite the innerjoin directive::
+OUTER joins despite the innerjoin directive:
+
+.. sourcecode:: text
 
     FROM users LEFT OUTER JOIN orders ON <onclause> LEFT OUTER JOIN items ON <onclause>
 
@@ -1660,7 +1708,9 @@ loaded as a single value", which is essentially a "one to one"
 relationship.  However, joined eager loading has always treated the
 above as a situation where the main query needs to be inside a
 subquery, as would normally be needed for a collection of B objects
-where the main query has a LIMIT applied::
+where the main query has a LIMIT applied:
+
+.. sourcecode:: sql
 
     SELECT anon_1.a_id AS anon_1_a_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
     FROM (SELECT a.id AS a_id
@@ -1670,7 +1720,9 @@ where the main query has a LIMIT applied::
 However, since the relationship of the inner query to the outer one is
 that at most only one row is shared in the case of ``uselist=False``
 (in the same way as a many-to-one), the "subquery" used with LIMIT +
-joined eager loading is now dropped in this case::
+joined eager loading is now dropped in this case:
+
+.. sourcecode:: sql
 
     SELECT a.id AS a_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
     FROM a LEFT OUTER JOIN b AS b_1 ON a.id = b_1.a_id
@@ -1737,7 +1789,9 @@ to the outside::
 
     sess.query(FooWidget).from_self().all()
 
-rendering::
+rendering:
+
+.. sourcecode:: sql
 
     SELECT
         anon_1.widgets_id AS anon_1_widgets_id,
@@ -1751,7 +1805,9 @@ columns, then we can't add the WHERE clause on the outside (it actually tries,
 and produces a bad query).  This decision
 apparently goes way back to 0.6.5 with the note "may need to make more
 adjustments to this".   Well, those adjustments have arrived!  So now the
-above query will render::
+above query will render:
+
+.. sourcecode:: sql
 
     SELECT
         anon_1.widgets_id AS anon_1_widgets_id,
@@ -1764,7 +1820,9 @@ So that queries that don't include "type" will still work!::
 
     sess.query(FooWidget.id).count()
 
-Renders::
+Renders:
+
+.. sourcecode:: sql
 
     SELECT count(*) AS count_1
     FROM (SELECT widgets.id AS widgets_id
@@ -1807,7 +1865,9 @@ will render a "single inheritance" clause for the type::
 
     s.query(Related).join(FooWidget, Related.widget).all()
 
-SQL output::
+SQL output:
+
+.. sourcecode:: sql
 
     SELECT related.id AS related_id
     FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
@@ -1884,7 +1944,9 @@ When composing a select as below::
     stmt = select(["a", "b"]).where("a = b").select_from("sometable")
 
 The statement is built up normally, with all the same coercions as before.
-However, one will see the following warnings emitted::
+However, one will see the following warnings emitted:
+
+.. sourcecode:: text
 
     SAWarning: Textual column expression 'a' should be explicitly declared
     with text('a'), or use column('a') for more specificity
@@ -1958,7 +2020,9 @@ In the above statement we expect to see "ORDER BY id_count", as opposed to a
 re-statement of the function.   The string argument given is actively
 matched to an entry in the columns clause during compilation, so the above
 statement would produce as we expect, without warnings (though note that
-the ``"name"`` expression has been resolved to ``users.name``!)::
+the ``"name"`` expression has been resolved to ``users.name``!):
+
+.. sourcecode:: sql
 
     SELECT users.name, count(users.id) AS id_count
     FROM users GROUP BY users.name ORDER BY id_count
@@ -1970,10 +2034,14 @@ the warning again, as below::
         "some_label"
     )
 
-The output does what we say, but again it warns us::
+The output does what we say, but again it warns us:
+
+.. sourcecode:: text
 
     SAWarning: Can't resolve label reference 'some_label'; converting to
     text() (this warning may be suppressed after 10 occurrences)
+
+.. sourcecode:: sql
 
     SELECT users.name, count(users.id) AS id_count
     FROM users ORDER BY some_label
@@ -2033,13 +2101,17 @@ that of an "executemany" style of invocation::
     )
 
 The above example will invoke ``next(counter)`` for each row individually
-as would be expected::
+as would be expected:
+
+.. sourcecode:: sql
 
     INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)
     (1, 'd1', 2, 'd2', 3, 'd3')
 
 Previously, a positional dialect would fail as a bind would not be generated
-for additional positions::
+for additional positions:
+
+.. sourcecode:: text
 
     Incorrect number of bindings supplied. The current statement uses 6,
     and there are 4 supplied.
@@ -2048,10 +2120,12 @@ for additional positions::
 
 And with a "named" dialect, the same value for "id" would be re-used in
 each row (hence this change is backwards-incompatible with a system that
-relied on this)::
+relied on this):
+
+.. sourcecode:: sql
 
     INSERT INTO my_table (id, data) VALUES (:id, :data_0), (:id, :data_1), (:id, :data_2)
-    {u'data_2': 'd3', u'data_1': 'd2', u'data_0': 'd1', 'id': 1}
+    -- {u'data_2': 'd3', u'data_1': 'd2', u'data_0': 'd1', 'id': 1}
 
 The system will also refuse to invoke a "server side" default as inline-rendered
 SQL, since it cannot be guaranteed that a server side default is compatible
@@ -2076,17 +2150,21 @@ an exception is raised::
         )
     )
 
-will raise::
+will raise:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.CompileError: INSERT value for column my_table.data is
     explicitly rendered as a boundparameter in the VALUES clause; a
     Python-side value or SQL expression is required
 
 Previously, the value "d1" would be copied into that of the third
-row (but again, only with named format!)::
+row (but again, only with named format!):
+
+.. sourcecode:: sql
 
     INSERT INTO my_table (data) VALUES (:data_0), (:data_1), (:data_0)
-    {u'data_1': 'd2', u'data_0': 'd1'}
+    -- {u'data_1': 'd2', u'data_0': 'd1'}
 
 :ticket:`3288`
 

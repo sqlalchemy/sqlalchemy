@@ -2070,7 +2070,9 @@
 
       Will maintain the columns clause of the SELECT as coming from the
       unaliased "user", as specified; the select_from only takes place in the
-      FROM clause::
+      FROM clause:
+
+      .. sourcecode:: sql
 
         SELECT users.name AS users_name FROM users AS users_1
         JOIN users ON users.name < users_1.name
@@ -2081,7 +2083,9 @@
 
         session.query(User.name).select_from(user_table.select().where(user_table.c.id > 5))
 
-      Which produces::
+      Which produces:
+
+      .. sourcecode:: sql
 
         SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id,
         users.name AS name FROM users WHERE users.id > :id_1) AS anon_1

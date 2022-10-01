@@ -87,7 +87,9 @@ Given a query as below::
     )
 
 The SQL produced would be the query against ``User`` followed by the
-subqueryload for ``User.addresses`` (note the parameters are also listed)::
+subqueryload for ``User.addresses`` (note the parameters are also listed):
+
+.. sourcecode:: sql
 
     SELECT users.id AS users_id, users.name AS users_name
     FROM users
@@ -114,7 +116,9 @@ actual primary key values loaded in the parent query::
         .options(selectinload(User.addresses))
     )
 
-Produces::
+Produces:
+
+.. sourcecode:: sql
 
     SELECT users.id AS users_id, users.name AS users_name
     FROM users
@@ -176,16 +180,16 @@ loading that allows the loading of the base entity to proceed with a simple
 SELECT statement, but then the attributes of the additional subclasses
 are loaded with additional SELECT statements:
 
-.. sourcecode:: python+sql
+.. sourcecode:: pycon+sql
 
-    from sqlalchemy.orm import selectin_polymorphic
+    >>> from sqlalchemy.orm import selectin_polymorphic
 
-    query = session.query(Employee).options(
-        selectin_polymorphic(Employee, [Manager, Engineer])
-    )
+    >>> query = session.query(Employee).options(
+    ...     selectin_polymorphic(Employee, [Manager, Engineer])
+    ... )
 
-    {opensql}query.all()
-    SELECT
+    >>> query.all()
+    {opensql}SELECT
         employee.id AS employee_id,
         employee.name AS employee_name,
         employee.type AS employee_type
@@ -740,7 +744,9 @@ this condition is also removed.  The old behavior is available using the
 
 In SQL, the IN and NOT IN operators do not support comparison to a
 collection of values that is explicitly empty; meaning, this syntax is
-illegal::
+illegal:
+
+.. sourcecode:: sql
 
     mycolumn IN ()
 
@@ -779,7 +785,9 @@ questioned.  The notion that the expression "NULL IN ()" should return NULL was
 only theoretical, and could not be tested since databases don't support that
 syntax.  However, as it turns out, you can in fact ask a relational database
 what value it would return for "NULL IN ()" by simulating the empty set as
-follows::
+follows:
+
+.. sourcecode:: sql
 
     SELECT NULL IN (SELECT 1 WHERE 1 != 1)
 
@@ -904,7 +912,9 @@ Given a statement as::
     conn.execute(stmt)
 
 The resulting SQL from the above statement on a PostgreSQL backend
-would render as::
+would render as:
+
+.. sourcecode:: sql
 
     DELETE FROM users USING addresses
     WHERE users.id = addresses.id
@@ -1125,7 +1135,9 @@ Supposing ``Manager`` is a subclass of ``Employee``.  A query like the following
 
     sess.query(Manager.id)
 
-Would generate SQL as::
+Would generate SQL as:
+
+.. sourcecode:: sql
 
     SELECT employee.id FROM employee WHERE employee.type IN ('manager')
 
@@ -1134,11 +1146,15 @@ and not in the columns list, the discriminator would not be added::
 
     sess.query(func.count(1)).select_from(Manager)
 
-would generate::
+would generate:
+
+.. sourcecode:: sql
 
     SELECT count(1) FROM employee
 
-With the fix, :meth:`_query.Query.select_from` now works correctly and we get::
+With the fix, :meth:`_query.Query.select_from` now works correctly and we get:
+
+.. sourcecode:: sql
 
     SELECT count(1) FROM employee WHERE employee.type IN ('manager')
 
@@ -1350,7 +1366,9 @@ overwrite it::
 
 Above, the previous behavior would be that an UPDATE would emit after the
 INSERT, thus triggering the "onupdate" and overwriting the value
-"5".   The SQL now looks like::
+"5".   The SQL now looks like:
+
+.. sourcecode:: sql
 
     INSERT INTO a (favorite_b_id, updated) VALUES (?, ?)
     (None, 5)
@@ -1532,7 +1550,9 @@ is fixed, where a case sensitive name would not be quoted::
         mytable.c.somecolumn.collate("fr_FR")
     )
 
-now renders::
+now renders:
+
+.. sourcecode:: sql
 
     SELECT mytable.x, mytable.y,
     FROM mytable ORDER BY mytable.somecolumn COLLATE "fr_FR"
@@ -1627,7 +1647,9 @@ This :class:`_expression.Insert` subclass adds a new method
 
     conn.execute(on_conflict_stmt)
 
-The above will render::
+The above will render:
+
+.. sourcecode:: sql
 
     INSERT INTO my_table (id, data)
     VALUES (:id, :data)

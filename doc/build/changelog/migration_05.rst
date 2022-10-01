@@ -444,7 +444,7 @@ Schema/Types
   ::
 
       class MyType(AdaptOldConvertMethods, TypeEngine):
-        ..
+          ...
 
 * The ``quote`` flag on ``Column`` and ``Table`` as well as
   the ``quote_schema`` flag on ``Table`` now control quoting
@@ -492,7 +492,7 @@ Schema/Types
   datetime columns to store the new format (NOTE: please
   test this, I'm pretty sure its correct):
 
-  ::
+  .. sourcecode:: sql
 
        UPDATE mytable SET somedatecol =
          substr(somedatecol, 0, 19) || '.' || substr((substr(somedatecol, 21, -1) / 1000000), 3, -1);

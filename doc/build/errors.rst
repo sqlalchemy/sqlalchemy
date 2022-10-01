@@ -1179,7 +1179,9 @@ For the typical example that's missing
         parent_id = Column(ForeignKey("parent.id"))
         parent = relationship("Parent")
 
-The above mapping will generate warnings::
+The above mapping will generate warnings:
+
+.. sourcecode:: text
 
   SAWarning: relationship 'Child.parent' will copy column parent.id to column child.parent_id,
   which conflicts with relationship(s): 'Parent.children' (copies parent.id to child.parent_id).

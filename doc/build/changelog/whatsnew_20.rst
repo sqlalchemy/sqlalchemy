@@ -935,7 +935,9 @@ within relationships, flushing joined-inheritance models, etc::
             session.flush()
         session.commit()
 
-This test can be run from any SQLAlchemy source tree as follows::
+This test can be run from any SQLAlchemy source tree as follows:
+
+.. sourcecode:: text
 
     python -m examples.performance.bulk_inserts --test test_flush_no_pk
 
@@ -1443,17 +1445,17 @@ and pylance.  Given a program as below::
 
     import typing
 
-
     from sqlalchemy import String
     from sqlalchemy.dialects.mysql import VARCHAR
-
 
     type_ = String(255).with_variant(VARCHAR(255, charset="utf8mb4"), "mysql", "mariadb")
 
     if typing.TYPE_CHECKING:
         reveal_type(type_)
 
-A type checker like pyright will now report the type as::
+A type checker like pyright will now report the type as:
+
+.. sourcecode:: text
 
     info: Type of "type_" is "String"
 
@@ -1481,7 +1483,9 @@ Given a "true division" operation against two integer values::
 The SQL division operator on PostgreSQL for example normally acts as "floor division"
 when used against integers, meaning the above result would return the integer
 "0".  For this and similar backends, SQLAlchemy now renders the SQL using
-a form which is equivalent towards::
+a form which is equivalent towards:
+
+.. sourcecode:: text
 
     %(param_1)s / CAST(%(param_2)s AS NUMERIC)
 
@@ -1495,7 +1499,9 @@ Given a "floor division" operation against two integer values::
 The SQL division operator on MySQL and Oracle for example normally acts
 as "true division" when used against integers, meaning the above result
 would return the floating point value "0.5".  For these and similar backends,
-SQLAlchemy now renders the SQL using a form which is equivalent towards::
+SQLAlchemy now renders the SQL using a form which is equivalent towards:
+
+.. sourcecode:: text
 
     FLOOR(%(param_1)s / %(param_2)s)
 
@@ -1545,7 +1551,9 @@ the state to one that is disallowed for the duration of the already-in-progress
 method that wants to get the current connection to run a database query.
 
 Using the test script illustrated at :ticket:`7433`, the previous
-error case looks like::
+error case looks like:
+
+.. sourcecode:: text
 
     Traceback (most recent call last):
     File "/home/classic/dev/sqlalchemy/test3.py", line 30, in worker
@@ -1560,7 +1568,9 @@ error case looks like::
 
 Where the ``_connection_for_bind()`` method isn't able to continue since
 concurrent access placed it into an invalid state.  Using the new approach, the
-originator of the state change throws the error instead::
+originator of the state change throws the error instead:
+
+.. sourcecode:: text
 
     File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1785, in close
        self._close_impl(invalidate=False)

@@ -33,6 +33,7 @@ def _format_block(
     else:
         add_padding = None
         code = "\n".join(c for *_, c in input_block)
+
     try:
         formatted = format_str(code, mode=BLACK_MODE)
     except Exception as e:
@@ -106,6 +107,7 @@ def format_file(
     disable_format = False
     for line_no, line in enumerate(original.splitlines(), 1):
         # start_code_section requires no spaces at the start
+
         if start_code_section.match(line.strip()):
             if plain_block:
                 buffer.extend(

@@ -578,7 +578,9 @@ generate very long names given the column names in use::
     )
 
 On the PostgreSQL dialect, names longer than 63 characters will be truncated
-as in the following example::
+as in the following example:
+
+.. sourcecode:: sql
 
     CREATE TABLE long_names (
         information_channel_code INTEGER,
@@ -680,7 +682,9 @@ A typical convention is ``"ck_%(table_name)s_%(constraint_name)s"``::
         CheckConstraint("value > 5", name="value_gt_5"),
     )
 
-The above table will produce the name ``ck_foo_value_gt_5``::
+The above table will produce the name ``ck_foo_value_gt_5``:
+
+.. sourcecode:: sql
 
     CREATE TABLE foo (
         value INTEGER,
@@ -708,7 +712,9 @@ or by using a :func:`_expression.column` inline::
         "foo", metadata_obj, Column("value", Integer), CheckConstraint(column("value") > 5)
     )
 
-Both will produce the name ``ck_foo_value``::
+Both will produce the name ``ck_foo_value``:
+
+.. sourcecode:: sql
 
     CREATE TABLE foo (
         value INTEGER,
@@ -746,7 +752,9 @@ and then applying a name to the type::
 
     Table("foo", metadata_obj, Column("flag", Boolean(name="flag_bool")))
 
-The above table will produce the constraint name ``ck_foo_flag_bool``::
+The above table will produce the constraint name ``ck_foo_flag_bool``:
+
+.. sourcecode:: sql
 
     CREATE TABLE foo (
         flag BOOL,
@@ -770,7 +778,9 @@ only one column::
 
     Table("foo", metadata_obj, Column("flag", Boolean()))
 
-The above schema will produce::
+The above schema will produce:
+
+.. sourcecode:: sql
 
     CREATE TABLE foo (
         flag BOOL,

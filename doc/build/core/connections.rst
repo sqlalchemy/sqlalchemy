@@ -784,7 +784,9 @@ render the schema as ``user_schema_one``::
 
     result = connection.execute(user_table.select())
 
-The above code will invoke SQL on the database of the form::
+The above code will invoke SQL on the database of the form:
+
+.. sourcecode:: sql
 
     SELECT user_schema_one.user.id, user_schema_one.user.name FROM
     user_schema_one.user
@@ -1015,7 +1017,9 @@ to such statements because they already exist in string form, and there
 is nothing known about what kinds of result rows will be returned since
 SQLAlchemy does not parse SQL strings ahead of time.
 
-The next statements we see are the CREATE TABLE statements::
+The next statements we see are the CREATE TABLE statements:
+
+.. sourcecode:: sql
 
   INFO sqlalchemy.engine.Engine
   CREATE TABLE a (
@@ -1054,6 +1058,8 @@ inserts" with the :meth:`.Insert.values` method.
 So far our cache is still empty.  The next statements will be cached however,
 a segment looks like::
 
+
+.. sourcecode:: sql
 
   INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (?)
   INFO sqlalchemy.engine.Engine [generated in 0.00011s] (None,)
@@ -1113,7 +1119,9 @@ the
 
 Our example program then performs some SELECTs where we can see the same
 pattern of "generated" then "cached", for the SELECT of the "a" table as well
-as for subsequent lazy loads of the "b" table::
+as for subsequent lazy loads of the "b" table:
+
+.. sourcecode:: text
 
   INFO sqlalchemy.engine.Engine SELECT a.id AS a_id, a.data AS a_data
   FROM a
@@ -1302,7 +1310,9 @@ as a complete SQL expression, as follows::
 
         return text
 
-The approach above will generate a compiled SELECT statement that looks like::
+The approach above will generate a compiled SELECT statement that looks like:
+
+.. sourcecode:: sql
 
     SELECT x FROM y
     LIMIT __[POSTCOMPILE_param_1]
@@ -1785,13 +1795,13 @@ and more support towards in recent release series.
 Concretely, for most backends the behavior will rewrite a statement of the
 form:
 
-.. sourcecode:: none
+.. sourcecode:: sql
 
     INSERT INTO a (data, x, y) VALUES (%(data)s, %(x)s, %(y)s) RETURNING a.id
 
 into a "batched" form as:
 
-.. sourcecode:: none
+.. sourcecode:: sql
 
     INSERT INTO a (data, x, y) VALUES
         (%(data_0)s, %(x_0)s, %(y_0)s),
@@ -1950,7 +1960,9 @@ compared to how the psycopg2-only feature worked in previous 1.x series of
 SQLAlchemy, where the production of multiple INSERT statements was hidden from
 logging and events.  Logging display will truncate the long lists of parameters for readability,
 and will also indicate the specific batch of each statement. The example below illustrates
-an excerpt of this logging::
+an excerpt of this logging:
+
+.. sourcecode:: text
 
   INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
   [generated in 0.00177s (insertmanyvalues)] ('d0', 0, 0, 'd1',  ...

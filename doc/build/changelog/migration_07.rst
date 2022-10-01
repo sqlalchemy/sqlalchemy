@@ -404,7 +404,7 @@ tutorial:
 
 SQL:
 
-::
+.. sourcecode:: sql
 
     SELECT empsalary.depname, empsalary.empno, empsalary.salary,
     avg(empsalary.salary) OVER (PARTITION BY empsalary.depname) AS avg
@@ -513,7 +513,7 @@ call.
 The SQL emitted by ``query.count()`` is now always of the
 form:
 
-::
+.. sourcecode:: sql
 
     SELECT count(1) AS count_1 FROM (
         SELECT user.id AS user_id, user.name AS user_name from user
@@ -984,7 +984,7 @@ behavior:
 
 In 0.6, this would render:
 
-::
+.. sourcecode:: sql
 
     SELECT parent.id AS parent_id
     FROM parent
@@ -992,7 +992,7 @@ In 0.6, this would render:
 
 in 0.7, you get:
 
-::
+.. sourcecode:: sql
 
     SELECT parent.id AS parent_id
     FROM parent, child
@@ -1012,7 +1012,7 @@ same manner as that of 0.5 and 0.6:
 
 Which on both 0.6 and 0.7 renders:
 
-::
+.. sourcecode:: sql
 
     SELECT parent.id AS parent_id, child.id AS child_id
     FROM parent LEFT OUTER JOIN child ON parent.id = child.id

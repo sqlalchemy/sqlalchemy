@@ -1071,7 +1071,9 @@ Glossary
         were created, as well as a way to get at server-generated
         default values in an atomic way.
 
-        An example of RETURNING, idiomatic to PostgreSQL, looks like::
+        An example of RETURNING, idiomatic to PostgreSQL, looks like:
+
+        .. sourcecode:: sql
 
             INSERT INTO user_account (name) VALUES ('new name') RETURNING id, timestamp
 
