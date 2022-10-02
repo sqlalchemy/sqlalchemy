@@ -64,27 +64,27 @@ a complete example, including two :class:`_schema.ForeignKey` constructs::
 
     Base = declarative_base()
 
+
     class Entry(Base):
-        __tablename__ = 'entry'
+        __tablename__ = "entry"
         entry_id = Column(Integer, primary_key=True)
-        widget_id = Column(Integer, ForeignKey('widget.widget_id'))
+        widget_id = Column(Integer, ForeignKey("widget.widget_id"))
         name = Column(String(50))
+
 
     class Widget(Base):
-        __tablename__ = 'widget'
+        __tablename__ = "widget"
 
         widget_id = Column(Integer, primary_key=True)
-        favorite_entry_id = Column(Integer,
-                                ForeignKey('entry.entry_id',
-                                name="fk_favorite_entry"))
+        favorite_entry_id = Column(
+            Integer, ForeignKey("entry.entry_id", name="fk_favorite_entry")
+        )
         name = Column(String(50))
 
-        entries = relationship(Entry, primaryjoin=
-                                        widget_id==Entry.widget_id)
-        favorite_entry = relationship(Entry,
-                                    primaryjoin=
-                                        favorite_entry_id==Entry.entry_id,
-                                    post_update=True)
+        entries = relationship(Entry, primaryjoin=widget_id == Entry.widget_id)
+        favorite_entry = relationship(
+            Entry, primaryjoin=favorite_entry_id == Entry.entry_id, post_update=True
+        )
 
 When a structure against the above configuration is flushed, the "widget" row will be
 INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will
@@ -94,8 +94,8 @@ row at a time for the time being):
 
 .. sourcecode:: pycon+sql
 
-    >>> w1 = Widget(name='somewidget')
-    >>> e1 = Entry(name='someentry')
+    >>> w1 = Widget(name="somewidget")
+    >>> e1 = Entry(name="someentry")
     >>> w1.favorite_entry = e1
     >>> w1.entries = [e1]
     >>> session.add_all([w1, e1])
@@ -115,26 +115,32 @@ it's guaranteed that ``favorite_entry_id`` refers to an ``Entry``
 that also refers to this ``Widget``.  We can use a composite foreign key,
 as illustrated below::
 
-    from sqlalchemy import Integer, ForeignKey, String, \
-            Column, UniqueConstraint, ForeignKeyConstraint
+    from sqlalchemy import (
+        Integer,
+        ForeignKey,
+        String,
+        Column,
+        UniqueConstraint,
+        ForeignKeyConstraint,
+    )
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship
 
     Base = declarative_base()
 
+
     class Entry(Base):
-        __tablename__ = 'entry'
+        __tablename__ = "entry"
         entry_id = Column(Integer, primary_key=True)
-        widget_id = Column(Integer, ForeignKey('widget.widget_id'))
+        widget_id = Column(Integer, ForeignKey("widget.widget_id"))
         name = Column(String(50))
-        __table_args__ = (
-            UniqueConstraint("entry_id", "widget_id"),
-        )
+        __table_args__ = (UniqueConstraint("entry_id", "widget_id"),)
+
 
     class Widget(Base):
-        __tablename__ = 'widget'
+        __tablename__ = "widget"
 
-        widget_id = Column(Integer, autoincrement='ignore_fk', primary_key=True)
+        widget_id = Column(Integer, autoincrement="ignore_fk", primary_key=True)
         favorite_entry_id = Column(Integer)
 
         name = Column(String(50))
@@ -143,18 +149,19 @@ as illustrated below::
             ForeignKeyConstraint(
                 ["widget_id", "favorite_entry_id"],
                 ["entry.widget_id", "entry.entry_id"],
-                name="fk_favorite_entry"
+                name="fk_favorite_entry",
             ),
         )
 
-        entries = relationship(Entry, primaryjoin=
-                                        widget_id==Entry.widget_id,
-                                        foreign_keys=Entry.widget_id)
-        favorite_entry = relationship(Entry,
-                                    primaryjoin=
-                                        favorite_entry_id==Entry.entry_id,
-                                    foreign_keys=favorite_entry_id,
-                                    post_update=True)
+        entries = relationship(
+            Entry, primaryjoin=widget_id == Entry.widget_id, foreign_keys=Entry.widget_id
+        )
+        favorite_entry = relationship(
+            Entry,
+            primaryjoin=favorite_entry_id == Entry.entry_id,
+            foreign_keys=favorite_entry_id,
+            post_update=True,
+        )
 
 The above mapping features a composite :class:`_schema.ForeignKeyConstraint`
 bridging the ``widget_id`` and ``favorite_entry_id`` columns.  To ensure
@@ -184,8 +191,8 @@ capabilities of the database.   An example mapping which
 illustrates this is::
 
     class User(Base):
-        __tablename__ = 'user'
-        __table_args__ = {'mysql_engine': 'InnoDB'}
+        __tablename__ = "user"
+        __table_args__ = {"mysql_engine": "InnoDB"}
 
         username = Column(String(50), primary_key=True)
         fullname = Column(String(100))
@@ -194,13 +201,11 @@ illustrates this is::
 
 
     class Address(Base):
-        __tablename__ = 'address'
-        __table_args__ = {'mysql_engine': 'InnoDB'}
+        __tablename__ = "address"
+        __table_args__ = {"mysql_engine": "InnoDB"}
 
         email = Column(String(50), primary_key=True)
-        username = Column(String(50),
-                    ForeignKey('user.username', onupdate="cascade")
-                )
+        username = Column(String(50), ForeignKey("user.username", onupdate="cascade"))
 
 Above, we illustrate ``onupdate="cascade"`` on the :class:`_schema.ForeignKey`
 object, and we also illustrate the ``mysql_engine='InnoDB'`` setting
@@ -245,7 +250,7 @@ will be fully loaded into memory if not already locally present.
 Our previous mapping using ``passive_updates=False`` looks like::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         username = Column(String(50), primary_key=True)
         fullname = Column(String(100))
@@ -254,11 +259,12 @@ Our previous mapping using ``passive_updates=False`` looks like::
         # does not implement ON UPDATE CASCADE
         addresses = relationship("Address", passive_updates=False)
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         email = Column(String(50), primary_key=True)
-        username = Column(String(50), ForeignKey('user.username'))
+        username = Column(String(50), ForeignKey("user.username"))
 
 Key limitations of ``passive_updates=False`` include:
 

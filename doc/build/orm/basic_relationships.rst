@@ -304,7 +304,6 @@ for each :func:`_orm.relationship` specify the common association table::
             "Parent", secondary=association_table, back_populates="children"
         )
 
-
 When using the :paramref:`_orm.relationship.backref` parameter instead of
 :paramref:`_orm.relationship.back_populates`, the backref will automatically
 use the same :paramref:`_orm.relationship.secondary` argument for the
@@ -321,9 +320,7 @@ reverse relationship::
     class Parent(Base):
         __tablename__ = "left"
         id = Column(Integer, primary_key=True)
-        children = relationship(
-            "Child", secondary=association_table, backref="parents"
-        )
+        children = relationship("Child", secondary=association_table, backref="parents")
 
 
     class Child(Base):

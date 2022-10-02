@@ -23,7 +23,6 @@ The most common approach is to generate a "base" class using the
     # declarative base class
     Base = declarative_base()
 
-
 The declarative base class may also be created from an existing
 :class:`_orm.registry`, by using the :meth:`_orm.registry.generate_base`
 method::
@@ -90,6 +89,7 @@ be produced in a fully explicit fashion using the
     from sqlalchemy.orm.decl_api import DeclarativeMeta
 
     mapper_registry = registry()
+
 
     class Base(metaclass=DeclarativeMeta):
         __abstract__ = True

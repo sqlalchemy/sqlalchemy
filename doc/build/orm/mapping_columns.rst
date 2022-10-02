@@ -46,9 +46,9 @@ The name assigned to the Python attribute which maps to
 it that way, as we illustrate here in a Declarative mapping::
 
     class User(Base):
-        __tablename__ = 'user'
-        id = Column('user_id', Integer, primary_key=True)
-        name = Column('user_name', String(50))
+        __tablename__ = "user"
+        id = Column("user_id", Integer, primary_key=True)
+        name = Column("user_name", String(50))
 
 Where above ``User.id`` resolves to a column named ``user_id``
 and ``User.name`` resolves to a column named ``user_name``.
@@ -65,11 +65,14 @@ The corresponding technique for an :term:`imperative` mapping is
 to place the desired key in the :paramref:`_orm.mapper.properties`
 dictionary with the desired key::
 
-    mapper_registry.map_imperatively(User, user_table, properties={
-       'id': user_table.c.user_id,
-       'name': user_table.c.user_name,
-    })
-
+    mapper_registry.map_imperatively(
+        User,
+        user_table,
+        properties={
+            "id": user_table.c.user_id,
+            "name": user_table.c.user_name,
+        },
+    )
 
 .. _mapper_automated_reflection_schemes:
 
@@ -91,14 +94,13 @@ instance::
     @event.listens_for(Base.metadata, "column_reflect")
     def column_reflect(inspector, table, column_info):
         # set column.key = "attr_<lower_case_name>"
-        column_info['key'] = "attr_%s" % column_info['name'].lower()
+        column_info["key"] = "attr_%s" % column_info["name"].lower()
 
 With the above event, the reflection of :class:`_schema.Column` objects will be intercepted
 with our event that adds a new ".key" element, such as in a mapping as below::
 
     class MyClass(Base):
-        __table__ = Table("some_table", Base.metadata,
-                    autoload_with=some_engine)
+        __table__ = Table("some_table", Base.metadata, autoload_with=some_engine)
 
 The approach also works with both the :class:`.DeferredReflection` base class
 as well as with the :ref:`automap_toplevel` extension.   For automap
@@ -131,8 +133,9 @@ result in the former value being loaded first::
 
     from sqlalchemy.orm import column_property
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = column_property(Column(String(50)), active_history=True)
@@ -156,7 +159,7 @@ that is the string concatenation of the ``firstname`` and ``lastname``
 columns::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         firstname = Column(String(50))
         lastname = Column(String(50))
@@ -211,7 +214,7 @@ map such a table as in the following example::
         metadata,
         Column("user_id", String(40), nullable=False),
         Column("group_id", String(40), nullable=False),
-        UniqueConstraint("user_id", "group_id")
+        UniqueConstraint("user_id", "group_id"),
     )
 
 
@@ -220,9 +223,7 @@ map such a table as in the following example::
 
     class GroupUsers(Base):
         __table__ = group_users
-        __mapper_args__ = {
-            "primary_key": [group_users.c.user_id, group_users.c.group_id]
-        }
+        __mapper_args__ = {"primary_key": [group_users.c.user_id, group_users.c.group_id]}
 
 Above, the ``group_users`` table is an association table of some kind
 with string columns ``user_id`` and ``group_id``, but no primary key is set up;
@@ -250,9 +251,7 @@ For example::
 
     class User(Base):
         __table__ = user_table
-        __mapper_args__ = {
-            'include_properties' :['user_id', 'user_name']
-        }
+        __mapper_args__ = {"include_properties": ["user_id", "user_name"]}
 
 ...will map the ``User`` class to the ``user_table`` table, only including
 the ``user_id`` and ``user_name`` columns - the rest are not referenced.
@@ -260,9 +259,7 @@ Similarly::
 
     class Address(Base):
         __table__ = address_table
-        __mapper_args__ = {
-            'exclude_properties' : ['street', 'city', 'state', 'zip']
-        }
+        __mapper_args__ = {"exclude_properties": ["street", "city", "state", "zip"]}
 
 ...will map the ``Address`` class to the ``address_table`` table, including
 all columns present except ``street``, ``city``, ``state``, and ``zip``.
@@ -282,8 +279,8 @@ should be included or excluded::
     class UserAddress(Base):
         __table__ = user_table.join(addresses_table)
         __mapper_args__ = {
-            'exclude_properties' :[address_table.c.id],
-            'primary_key' : [user_table.c.id]
+            "exclude_properties": [address_table.c.id],
+            "primary_key": [user_table.c.id],
         }
 
 .. note::

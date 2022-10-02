@@ -62,7 +62,7 @@ may look like::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine("postgresql://scott:tiger@localhost/")
 
     # create session and add objects
     with Session(engine) as session:
@@ -129,8 +129,8 @@ operations::
     # create session and add objects
     with Session(engine) as session:
         with session.begin():
-          session.add(some_object)
-          session.add(some_other_object)
+            session.add(some_object)
+            session.add(some_other_object)
         # inner context calls session.commit(), if there were no exceptions
     # outer context calls session.close()
 
@@ -157,7 +157,7 @@ scope, the :class:`_orm.sessionmaker` can provide a factory for
 
     # an Engine, which the Session will use for connection
     # resources, typically in module scope
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine("postgresql://scott:tiger@localhost/")
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
@@ -182,7 +182,7 @@ and also maintains a begin/commit/rollback block::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine("postgresql://scott:tiger@localhost/")
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
@@ -223,10 +223,10 @@ will issue mapper queries within the context of this Session.   By
 other ORM constructs such as an :func:`_orm.aliased` construct::
 
     # query from a class
-    results = session.query(User).filter_by(name='ed').all()
+    results = session.query(User).filter_by(name="ed").all()
 
     # query with multiple classes, returns tuples
-    results = session.query(User, Address).join('addresses').filter_by(name='ed').all()
+    results = session.query(User, Address).join("addresses").filter_by(name="ed").all()
 
     # query using orm-columns, also returns tuples
     results = session.query(User.name, User.fullname).all()
@@ -283,7 +283,7 @@ statements that use ORM entities::
     result = session.execute(statement).scalars().all()
 
     # query with multiple classes
-    statement = select(User, Address).join('addresses').filter_by(name='ed')
+    statement = select(User, Address).join("addresses").filter_by(name="ed")
 
     # list of tuples
     result = session.execute(statement).all()
@@ -328,12 +328,12 @@ already present and do not need to be added. Instances which are :term:`detached
 (i.e. have been removed from a session) may be re-associated with a session
 using this method::
 
-    user1 = User(name='user1')
-    user2 = User(name='user2')
+    user1 = User(name="user1")
+    user2 = User(name="user2")
     session.add(user1)
     session.add(user2)
 
-    session.commit()     # write changes to the database
+    session.commit()  # write changes to the database
 
 To add a list of items to the session at once, use
 :meth:`~.Session.add_all`::
@@ -614,8 +614,9 @@ time refresh locally present objects which match those rows.
 To emit an ORM-enabled UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` method
 may be used::
 
-    session.query(User).filter(User.name == "squidward").\
-        update({"name": "spongebob"}, synchronize_session="fetch")
+    session.query(User).filter(User.name == "squidward").update(
+        {"name": "spongebob"}, synchronize_session="fetch"
+    )
 
 Above, an UPDATE will be emitted against all rows that match the name
 "squidward" and be updated to the name "spongebob".  The
@@ -630,8 +631,12 @@ Core :class:`_sql.Update` construct::
 
     from sqlalchemy import update
 
-    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
-        execution_options(synchronize_session="fetch")
+    stmt = (
+        update(User)
+        .where(User.name == "squidward")
+        .values(name="spongebob")
+        .execution_options(synchronize_session="fetch")
+    )
 
     result = session.execute(stmt)
 
@@ -650,14 +655,17 @@ within the :class:`_orm.Session` will be marked as deleted and expunged.
 
 ORM-enabled delete, :term:`1.x style`::
 
-    session.query(User).filter(User.name == "squidward").\
-        delete(synchronize_session="fetch")
+    session.query(User).filter(User.name == "squidward").delete(synchronize_session="fetch")
 
 ORM-enabled delete, :term:`2.0 style`::
 
     from sqlalchemy import delete
 
-    stmt = delete(User).where(User.name == "squidward").execution_options(synchronize_session="fetch")
+    stmt = (
+        delete(User)
+        .where(User.name == "squidward")
+        .execution_options(synchronize_session="fetch")
+    )
 
     session.execute(stmt)
 
@@ -1035,6 +1043,7 @@ E.g. **don't do this**::
 
     ### this is the **wrong way to do it** ###
 
+
     class ThingOne(object):
         def go(self):
             session = Session()
@@ -1045,6 +1054,7 @@ E.g. **don't do this**::
                 session.rollback()
                 raise
 
+
     class ThingTwo(object):
         def go(self):
             session = Session()
@@ -1054,6 +1064,7 @@ E.g. **don't do this**::
             except:
                 session.rollback()
                 raise
+
 
     def run_my_program():
         ThingOne().go()
@@ -1067,20 +1078,22 @@ transaction automatically::
 
     ### this is a **better** (but not the only) way to do it ###
 
+
     class ThingOne(object):
         def go(self, session):
             session.query(FooBar).update({"x": 5})
 
+
     class ThingTwo(object):
         def go(self, session):
             session.query(Widget).update({"q": 18})
+
 
     def run_my_program():
         with Session() as session:
             with session.begin():
                 ThingOne().go(session)
                 ThingTwo().go(session)
-
 
 .. versionchanged:: 1.4 The :class:`_orm.Session` may be used as a context
    manager without the use of external helper functions.
@@ -1119,6 +1132,7 @@ available on :class:`~sqlalchemy.orm.session.Session`::
 The newer :ref:`core_inspection_toplevel` system can also be used::
 
     from sqlalchemy import inspect
+
     session = inspect(someobject).session
 
 .. _session_faq_threadsafe:

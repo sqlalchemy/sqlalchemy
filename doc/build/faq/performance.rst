@@ -215,16 +215,16 @@ using a recipe like the following::
     logger = logging.getLogger("myapp.sqltime")
     logger.setLevel(logging.DEBUG)
 
+
     @event.listens_for(Engine, "before_cursor_execute")
-    def before_cursor_execute(conn, cursor, statement,
-                            parameters, context, executemany):
-        conn.info.setdefault('query_start_time', []).append(time.time())
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        conn.info.setdefault("query_start_time", []).append(time.time())
         logger.debug("Start Query: %s", statement)
 
+
     @event.listens_for(Engine, "after_cursor_execute")
-    def after_cursor_execute(conn, cursor, statement,
-                            parameters, context, executemany):
-        total = time.time() - conn.info['query_start_time'].pop(-1)
+    def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        total = time.time() - conn.info["query_start_time"].pop(-1)
         logger.debug("Query Complete!")
         logger.debug("Total Time: %f", total)
 
@@ -255,6 +255,7 @@ Below is a simple recipe which works profiling into a context manager::
     import pstats
     import contextlib
 
+
     @contextlib.contextmanager
     def profiled():
         pr = cProfile.Profile()
@@ -262,7 +263,7 @@ Below is a simple recipe which works profiling into a context manager::
         yield
         pr.disable()
         s = io.StringIO()
-        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+        ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
         ps.print_stats()
         # uncomment this to see who's calling what
         # ps.print_callers()
@@ -271,7 +272,7 @@ Below is a simple recipe which works profiling into a context manager::
 To profile a section of code::
 
     with profiled():
-        Session.query(FooClass).filter(FooClass.somevalue==8).all()
+        Session.query(FooClass).filter(FooClass.somevalue == 8).all()
 
 The output of profiling can be used to give an idea where time is
 being spent.   A section of profiling output looks like this::
@@ -357,12 +358,13 @@ this::
     from sqlalchemy import TypeDecorator
     import time
 
+
     class Foo(TypeDecorator):
         impl = String
 
         def process_result_value(self, value, thing):
             # intentionally add slowness for illustration purposes
-            time.sleep(.001)
+            time.sleep(0.001)
             return value
 
 the profiling output of this intentionally slow operation can be seen like this::

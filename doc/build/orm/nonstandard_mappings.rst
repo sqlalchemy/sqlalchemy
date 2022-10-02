@@ -15,24 +15,27 @@ function creates a selectable unit comprised of
 multiple tables, complete with its own composite primary key, which can be
 mapped in the same way as a :class:`_schema.Table`::
 
-    from sqlalchemy import Table, Column, Integer, \
-            String, MetaData, join, ForeignKey
+    from sqlalchemy import Table, Column, Integer, String, MetaData, join, ForeignKey
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import column_property
 
     metadata_obj = MetaData()
 
     # define two Table objects
-    user_table = Table('user', metadata_obj,
-                Column('id', Integer, primary_key=True),
-                Column('name', String),
-            )
+    user_table = Table(
+        "user",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("name", String),
+    )
 
-    address_table = Table('address', metadata_obj,
-                Column('id', Integer, primary_key=True),
-                Column('user_id', Integer, ForeignKey('user.id')),
-                Column('email_address', String)
-                )
+    address_table = Table(
+        "address",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String),
+    )
 
     # define a join between them.  This
     # takes place across the user.id and address.user_id
@@ -104,9 +107,10 @@ may be used::
 
         from sqlalchemy import event
 
-        @event.listens_for(PtoQ, 'before_update')
+
+        @event.listens_for(PtoQ, "before_update")
         def receive_before_update(mapper, connection, target):
-           if target.some_required_attr_on_q is None:
+            if target.some_required_attr_on_q is None:
                 connection.execute(q_table.insert(), {"id": target.id})
 
     where above, a row is INSERTed into the ``q_table`` table by creating an
@@ -128,15 +132,22 @@ includes a join to a subquery::
 
     from sqlalchemy import select, func
 
-    subq = select(
-        func.count(orders.c.id).label('order_count'),
-        func.max(orders.c.price).label('highest_order'),
-        orders.c.customer_id
-    ).group_by(orders.c.customer_id).subquery()
+    subq = (
+        select(
+            func.count(orders.c.id).label("order_count"),
+            func.max(orders.c.price).label("highest_order"),
+            orders.c.customer_id,
+        )
+        .group_by(orders.c.customer_id)
+        .subquery()
+    )
 
-    customer_select = select(customers, subq).join_from(
-        customers, subq, customers.c.id == subq.c.customer_id
-    ).subquery()
+    customer_select = (
+        select(customers, subq)
+        .join_from(customers, subq, customers.c.id == subq.c.customer_id)
+        .subquery()
+    )
+
 
     class Customer(Base):
         __table__ = customer_select

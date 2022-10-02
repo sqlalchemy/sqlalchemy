@@ -74,7 +74,6 @@ Glossary
             # Session returns a Result that has ORM entities
             list_of_users = result.scalars().all()
 
-
     reflection
     reflected
         In SQLAlchemy, this term refers to the feature of querying a database's
@@ -191,7 +190,7 @@ Glossary
         dictionary is associated with a copy of the object, which contains key/value
         pairs significant to various internal systems, mostly within the ORM::
 
-            some_column = Column('some_column', Integer)
+            some_column = Column("some_column", Integer)
             some_column_annotated = some_column._annotate({"entity": User})
 
         The annotation system differs from the public dictionary :attr:`_schema.Column.info`
@@ -265,7 +264,7 @@ Glossary
         on mapped classes.   When a class is mapped as such::
 
             class MyClass(Base):
-                __tablename__ = 'foo'
+                __tablename__ = "foo"
 
                 id = Column(Integer, primary_key=True)
                 data = Column(String)
@@ -1062,16 +1061,17 @@ Glossary
         single department.  A SQLAlchemy mapping might look like::
 
             class Department(Base):
-                __tablename__ = 'department'
+                __tablename__ = "department"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
                 employees = relationship("Employee")
 
+
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
-                dep_id = Column(Integer, ForeignKey('department.id'))
+                dep_id = Column(Integer, ForeignKey("department.id"))
 
         .. seealso::
 
@@ -1113,15 +1113,16 @@ Glossary
         single department.  A SQLAlchemy mapping might look like::
 
             class Department(Base):
-                __tablename__ = 'department'
+                __tablename__ = "department"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
+
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
-                dep_id = Column(Integer, ForeignKey('department.id'))
+                dep_id = Column(Integer, ForeignKey("department.id"))
                 department = relationship("Department")
 
         .. seealso::
@@ -1146,16 +1147,17 @@ Glossary
         used in :term:`one to many` as follows::
 
             class Department(Base):
-                __tablename__ = 'department'
+                __tablename__ = "department"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
                 employees = relationship("Employee", backref="department")
 
+
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
-                dep_id = Column(Integer, ForeignKey('department.id'))
+                dep_id = Column(Integer, ForeignKey("department.id"))
 
         A backref can be applied to any relationship, including one to many,
         many to one, and :term:`many to many`.
@@ -1207,24 +1209,25 @@ Glossary
         specified using plain table metadata::
 
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
                 projects = relationship(
                     "Project",
-                    secondary=Table('employee_project', Base.metadata,
-                                Column("employee_id", Integer, ForeignKey('employee.id'),
-                                            primary_key=True),
-                                Column("project_id", Integer, ForeignKey('project.id'),
-                                            primary_key=True)
-                            ),
-                    backref="employees"
-                    )
+                    secondary=Table(
+                        "employee_project",
+                        Base.metadata,
+                        Column("employee_id", Integer, ForeignKey("employee.id"), primary_key=True),
+                        Column("project_id", Integer, ForeignKey("project.id"), primary_key=True),
+                    ),
+                    backref="employees",
+                )
+
 
             class Project(Base):
-                __tablename__ = 'project'
+                __tablename__ = "project"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
@@ -1320,29 +1323,28 @@ Glossary
         A SQLAlchemy declarative mapping for the above might look like::
 
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
 
             class Project(Base):
-                __tablename__ = 'project'
+                __tablename__ = "project"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String(30))
 
 
             class EmployeeProject(Base):
-                __tablename__ = 'employee_project'
+                __tablename__ = "employee_project"
 
-                employee_id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-                project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
+                employee_id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+                project_id = Column(Integer, ForeignKey("project.id"), primary_key=True)
                 role_name = Column(String(30))
 
                 project = relationship("Project", backref="project_employees")
                 employee = relationship("Employee", backref="employee_projects")
-
 
         Employees can be added to a project given a role name::
 
@@ -1351,10 +1353,12 @@ Glossary
             emp1 = Employee(name="emp1")
             emp2 = Employee(name="emp2")
 
-            proj.project_employees.extend([
-                EmployeeProject(employee=emp1, role_name="tech lead"),
-                EmployeeProject(employee=emp2, role_name="account executive")
-            ])
+            proj.project_employees.extend(
+                [
+                    EmployeeProject(employee=emp1, role_name="tech lead"),
+                    EmployeeProject(employee=emp2, role_name="account executive"),
+                ]
+            )
 
         .. seealso::
 

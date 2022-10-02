@@ -253,6 +253,7 @@ this in conjunction with a hypothetical event marker provided by the web framewo
 
     Session = scoped_session(sessionmaker(bind=some_engine), scopefunc=get_current_request)
 
+
     @on_request_end
     def remove_session(req):
         Session.remove()

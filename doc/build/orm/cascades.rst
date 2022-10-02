@@ -109,10 +109,10 @@ and added to another::
 
     >>> user1 = sess1.query(User).filter_by(id=1).first()
     >>> address1 = user1.addresses[0]
-    >>> sess1.close()   # user1, address1 no longer associated with sess1
+    >>> sess1.close()  # user1, address1 no longer associated with sess1
     >>> user1.addresses.remove(address1)  # address1 no longer associated with user1
     >>> sess2 = Session()
-    >>> sess2.add(user1)   # ... but it still gets added to the new session,
+    >>> sess2.add(user1)  # ... but it still gets added to the new session,
     >>> address1 in sess2  # because it's still "pending" for flush
     True
 
@@ -588,9 +588,9 @@ default takes place on attribute change events emitted from backrefs.  This is
 probably a confusing statement more easily described through demonstration; it
 means that, given a mapping such as this::
 
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(Item, backref='order')
-    })
+    mapper_registry.map_imperatively(
+        Order, order_table, properties={"items": relationship(Item, backref="order")}
+    )
 
 If an ``Order`` is already in the session, and is assigned to the ``order``
 attribute of an ``Item``, the backref appends the ``Item`` to the ``items``
@@ -611,9 +611,11 @@ place::
 
 This behavior can be disabled using the :paramref:`_orm.relationship.cascade_backrefs` flag::
 
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(Item, backref='order', cascade_backrefs=False)
-    })
+    mapper_registry.map_imperatively(
+        Order,
+        order_table,
+        properties={"items": relationship(Item, backref="order", cascade_backrefs=False)},
+    )
 
 So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
 collection of ``o1``, but will not add ``i1`` to the session.   You can, of
@@ -628,11 +630,17 @@ parameter may be set to ``False`` on the backref side by using the
 :func:`_orm.backref` function instead of a string. For example, the above relationship
 could be declared::
 
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(
-            Item, backref=backref('order', cascade_backrefs=False), cascade_backrefs=False
-        )
-    })
+    mapper_registry.map_imperatively(
+        Order,
+        order_table,
+        properties={
+            "items": relationship(
+                Item,
+                backref=backref("order", cascade_backrefs=False),
+                cascade_backrefs=False,
+            )
+        },
+    )
 
 This sets the ``cascade_backrefs=False`` behavior on both relationships.
 
@@ -699,6 +707,7 @@ illustrated in the example below::
         # ...
 
         addresses = relationship("Address", cascade="all, delete-orphan")
+
 
     # ...
 

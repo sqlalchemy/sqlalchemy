@@ -540,9 +540,7 @@
       to work for subclasses, if they are present, for
       example::
 
-        sess.query(Company).options(
-         eagerload_all(
-        ))
+        sess.query(Company).options(eagerload_all())
 
       to load Company objects, their employees, and the
       'machines' collection of employees who happen to be

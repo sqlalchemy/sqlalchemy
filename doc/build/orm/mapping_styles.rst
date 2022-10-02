@@ -72,7 +72,7 @@ used in a declarative table mapping::
 
     # an example mapping using the base
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -149,33 +149,40 @@ the :meth:`_orm.registry.map_imperatively` method::
     mapper_registry = registry()
 
     user_table = Table(
-        'user',
+        "user",
         mapper_registry.metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('fullname', String(50)),
-        Column('nickname', String(12))
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+        Column("fullname", String(50)),
+        Column("nickname", String(12)),
     )
+
 
     class User:
         pass
 
-    mapper_registry.map_imperatively(User, user_table)
 
+    mapper_registry.map_imperatively(User, user_table)
 
 Information about mapped attributes, such as relationships to other classes, are provided
 via the ``properties`` dictionary.  The example below illustrates a second :class:`_schema.Table`
 object, mapped to a class called ``Address``, then linked to ``User`` via :func:`_orm.relationship`::
 
-    address = Table('address', metadata_obj,
-                Column('id', Integer, primary_key=True),
-                Column('user_id', Integer, ForeignKey('user.id')),
-                Column('email_address', String(50))
-                )
+    address = Table(
+        "address",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String(50)),
+    )
 
-    mapper_registry.map_imperatively(User, user, properties={
-        'addresses' : relationship(Address, backref='user', order_by=address.c.id)
-    })
+    mapper_registry.map_imperatively(
+        User,
+        user,
+        properties={
+            "addresses": relationship(Address, backref="user", order_by=address.c.id)
+        },
+    )
 
     mapper_registry.map_imperatively(Address, address)
 
@@ -314,8 +321,9 @@ all the attributes that are named.   E.g.::
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(...)
         name = Column(...)
@@ -324,7 +332,7 @@ all the attributes that are named.   E.g.::
 An object of type ``User`` above will have a constructor which allows
 ``User`` objects to be created as::
 
-    u1 = User(name='some name', fullname='some fullname')
+    u1 = User(name="some name", fullname="some fullname")
 
 The above constructor may be customized by passing a Python callable to
 the :paramref:`_orm.registry.constructor` parameter which provides the
@@ -337,14 +345,16 @@ The constructor also applies to imperative mappings::
     mapper_registry = registry()
 
     user_table = Table(
-        'user',
+        "user",
         mapper_registry.metadata,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50))
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
     )
+
 
     class User:
         pass
+
 
     mapper_registry.map_imperatively(User, user_table)
 
@@ -505,7 +515,7 @@ as well as specific history on modifications to attributes since the last flush:
 
   >>> insp.attrs.nickname.value
   'nickname'
-  >>> u1.nickname = 'new nickname'
+  >>> u1.nickname = "new nickname"
   >>> insp.attrs.nickname.history
   History(added=['new nickname'], unchanged=(), deleted=['nickname'])
 

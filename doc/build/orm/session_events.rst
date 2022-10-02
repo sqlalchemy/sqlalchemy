@@ -47,6 +47,7 @@ options::
 
     Session = sessionmaker(engine, future=True)
 
+
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
         if orm_execute_state.is_select:
@@ -58,7 +59,7 @@ options::
             # ORDER BY if so
             col_descriptions = orm_execute_state.statement.column_descriptions
 
-            if col_descriptions[0]['entity'] is MyEntity:
+            if col_descriptions[0]["entity"] is MyEntity:
                 orm_execute_state.statement = statement.order_by(MyEntity.name)
 
 The above example illustrates some simple modifications to SELECT statements.
@@ -85,13 +86,14 @@ may be used on its own, or is ideally suited to be used within the
 
     Session = sessionmaker(engine, future=True)
 
+
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
 
         if (
-            orm_execute_state.is_select and
-            not orm_execute_state.is_column_load and
-            not orm_execute_state.is_relationship_load
+            orm_execute_state.is_select
+            and not orm_execute_state.is_column_load
+            and not orm_execute_state.is_relationship_load
         ):
             orm_execute_state.statement = orm_execute_state.statement.options(
                 with_loader_criteria(MyEntity.public == True)
@@ -114,6 +116,7 @@ Given a series of classes based on a mixin called ``HasTimestamp``::
 
     import datetime
 
+
     class HasTimestamp(object):
         timestamp = Column(DateTime, default=datetime.datetime.now)
 
@@ -122,10 +125,10 @@ Given a series of classes based on a mixin called ``HasTimestamp``::
         __tablename__ = "some_entity"
         id = Column(Integer, primary_key=True)
 
+
     class SomeOtherEntity(HasTimestamp, Base):
         __tablename__ = "some_entity"
         id = Column(Integer, primary_key=True)
-
 
 The above classes ``SomeEntity`` and ``SomeOtherEntity`` will each have a column
 ``timestamp`` that defaults to the current date and time.   An event may be used
@@ -135,9 +138,9 @@ to intercept all objects that extend from ``HasTimestamp`` and filter their
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
         if (
-                orm_execute_state.is_select
-                and not orm_execute_state.is_column_load
-                and not orm_execute_state.is_relationship_load
+            orm_execute_state.is_select
+            and not orm_execute_state.is_column_load
+            and not orm_execute_state.is_relationship_load
         ):
             one_month_ago = datetime.datetime.today() - datetime.timedelta(months=1)
 
@@ -145,7 +148,7 @@ to intercept all objects that extend from ``HasTimestamp`` and filter their
                 with_loader_criteria(
                     HasTimestamp,
                     lambda cls: cls.timestamp >= one_month_ago,
-                    include_aliases=True
+                    include_aliases=True,
                 )
             )
 
@@ -202,6 +205,7 @@ E.g., using :meth:`_orm.SessionEvents.do_orm_execute` to implement a cache::
 
     cache = {}
 
+
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
         if "my_cache_key" in orm_execute_state.execution_options:
@@ -222,7 +226,9 @@ E.g., using :meth:`_orm.SessionEvents.do_orm_execute` to implement a cache::
 
 With the above hook in place, an example of using the cache would look like::
 
-    stmt = select(User).where(User.name == 'sandy').execution_options(my_cache_key="key_sandy")
+    stmt = (
+        select(User).where(User.name == "sandy").execution_options(my_cache_key="key_sandy")
+    )
 
     result = session.execute(stmt)
 
@@ -413,7 +419,8 @@ with a specific :class:`.Session` object::
 
     session = Session()
 
-    @event.listens_for(session, 'transient_to_pending')
+
+    @event.listens_for(session, "transient_to_pending")
     def object_is_pending(session, obj):
         print("new pending: %s" % obj)
 
@@ -425,7 +432,8 @@ Or with the :class:`.Session` class itself, as well as with a specific
 
     maker = sessionmaker()
 
-    @event.listens_for(maker, 'transient_to_pending')
+
+    @event.listens_for(maker, "transient_to_pending")
     def object_is_pending(session, obj):
         print("new pending: %s" % obj)
 
@@ -457,10 +465,10 @@ intercept all new objects for a particular declarative base::
 
     Base = declarative_base()
 
+
     @event.listens_for(Base, "init", propagate=True)
     def intercept_init(instance, args, kwargs):
         print("new transient: %s" % instance)
-
 
 Transient to Pending
 ^^^^^^^^^^^^^^^^^^^^
@@ -475,7 +483,6 @@ the :meth:`.SessionEvents.transient_to_pending` event::
     @event.listens_for(sessionmaker, "transient_to_pending")
     def intercept_transient_to_pending(session, object_):
         print("transient to pending: %s" % object_)
-
 
 Pending to Persistent
 ^^^^^^^^^^^^^^^^^^^^^
@@ -516,7 +523,6 @@ state via this particular avenue::
     @event.listens_for(sessionmaker, "loaded_as_persistent")
     def intercept_loaded_as_persistent(session, object_):
         print("object loaded into persistent state: %s" % object_)
-
 
 Persistent to Transient
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -561,7 +567,6 @@ Track the persistent to deleted transition with
     def intercept_persistent_to_deleted(session, object_):
         print("object was DELETEd, is now in deleted state: %s" % object_)
 
-
 Deleted to Detached
 ^^^^^^^^^^^^^^^^^^^
 
@@ -574,7 +579,6 @@ the deleted to detached transition using :meth:`.SessionEvents.deleted_to_detach
     @event.listens_for(sessionmaker, "deleted_to_detached")
     def intercept_deleted_to_detached(session, object_):
         print("deleted to detached: %s" % object_)
-
 
 .. note::
 
@@ -617,7 +621,6 @@ objects moving back to persistent from detached using the
     @event.listens_for(sessionmaker, "detached_to_persistent")
     def intercept_detached_to_persistent(session, object_):
         print("object became persistent again: %s" % object_)
-
 
 Deleted to Persistent
 ^^^^^^^^^^^^^^^^^^^^^

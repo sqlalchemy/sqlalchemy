@@ -80,9 +80,11 @@ that is cacheable as well as more efficient.
 
 Given a query as below::
 
-    q = session.query(User).\
-        filter(User.name.like('%ed%')).\
-        options(subqueryload(User.addresses))
+    q = (
+        session.query(User)
+        .filter(User.name.like("%ed%"))
+        .options(subqueryload(User.addresses))
+    )
 
 The SQL produced would be the query against ``User`` followed by the
 subqueryload for ``User.addresses`` (note the parameters are also listed)::
@@ -106,9 +108,11 @@ subqueryload for ``User.addresses`` (note the parameters are also listed)::
 With "selectin" loading, we instead get a SELECT that refers to the
 actual primary key values loaded in the parent query::
 
-    q = session.query(User).\
-        filter(User.name.like('%ed%')).\
-        options(selectinload(User.addresses))
+    q = (
+        session.query(User)
+        .filter(User.name.like("%ed%"))
+        .options(selectinload(User.addresses))
+    )
 
 Produces::
 
@@ -225,8 +229,9 @@ if not specified, the attribute defaults to ``None``::
     from sqlalchemy.orm import query_expression
     from sqlalchemy.orm import with_expression
 
+
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         x = Column(Integer)
         y = Column(Integer)
@@ -234,9 +239,9 @@ if not specified, the attribute defaults to ``None``::
         # will be None normally...
         expr = query_expression()
 
+
     # but let's give it x + y
-    a1 = session.query(A).options(
-        with_expression(A.expr, A.x + A.y)).first()
+    a1 = session.query(A).options(with_expression(A.expr, A.x + A.y)).first()
     print(a1.expr)
 
 .. seealso::
@@ -259,10 +264,9 @@ Below, we emit a DELETE against ``SomeEntity``, adding
 a FROM clause (or equivalent, depending on backend)
 against ``SomeOtherEntity``::
 
-    query(SomeEntity).\
-        filter(SomeEntity.id==SomeOtherEntity.id).\
-        filter(SomeOtherEntity.foo=='bar').\
-        delete()
+    query(SomeEntity).filter(SomeEntity.id == SomeOtherEntity.id).filter(
+        SomeOtherEntity.foo == "bar"
+    ).delete()
 
 .. seealso::
 
@@ -291,27 +295,25 @@ into multiple columns/expressions::
 
         @hybrid.hybrid_property
         def name(self):
-            return self.first_name + ' ' + self.last_name
+            return self.first_name + " " + self.last_name
 
         @name.expression
         def name(cls):
-            return func.concat(cls.first_name, ' ', cls.last_name)
+            return func.concat(cls.first_name, " ", cls.last_name)
 
         @name.update_expression
         def name(cls, value):
-            f, l = value.split(' ', 1)
+            f, l = value.split(" ", 1)
             return [(cls.first_name, f), (cls.last_name, l)]
 
 Above, an UPDATE can be rendered using::
 
-    session.query(Person).filter(Person.id == 5).update(
-        {Person.name: "Dr. No"})
+    session.query(Person).filter(Person.id == 5).update({Person.name: "Dr. No"})
 
 Similar functionality is available for composites, where composite values
 will be broken out into their individual columns for bulk UPDATE::
 
     session.query(Vertex).update({Edge.start: Point(3, 4)})
-
 
 .. seealso::
 
@@ -342,6 +344,7 @@ Python::
         def name(self, value):
             self.first_name = value
 
+
     class FirstNameLastName(FirstNameOnly):
         # ...
 
@@ -349,15 +352,15 @@ Python::
 
         @FirstNameOnly.name.getter
         def name(self):
-            return self.first_name + ' ' + self.last_name
+            return self.first_name + " " + self.last_name
 
         @name.setter
         def name(self, value):
-            self.first_name, self.last_name = value.split(' ', maxsplit=1)
+            self.first_name, self.last_name = value.split(" ", maxsplit=1)
 
         @name.expression
         def name(cls):
-            return func.concat(cls.first_name, ' ', cls.last_name)
+            return func.concat(cls.first_name, " ", cls.last_name)
 
 Above, the ``FirstNameOnly.name`` hybrid is referenced by the
 ``FirstNameLastName`` subclass in order to repurpose it specifically to the
@@ -390,6 +393,7 @@ hybrid in-place, interfering with the definition on the superclass.
             @name.setter
             def _set_name(self, value):
                 self.first_name = value
+
 
         class FirstNameOnly(Base):
             @hybrid_property
@@ -426,9 +430,11 @@ if this "append" event is the second part of a bulk replace::
 
     from sqlalchemy.orm.attributes import OP_BULK_REPLACE
 
+
     @event.listens_for(SomeObject.collection, "bulk_replace")
     def process_collection(target, values, initiator):
         values[:] = [_make_value(value) for value in values]
+
 
     @event.listens_for(SomeObject.collection, "append", retval=True)
     def process_collection(target, value, initiator):
@@ -437,7 +443,6 @@ if this "append" event is the second part of a bulk replace::
             return _make_value(value)
         else:
             return value
-
 
 :ticket:`3896`
 
@@ -457,10 +462,12 @@ extension::
 
     Base = declarative_base()
 
+
     class MyDataClass(Base):
-        __tablename__ = 'my_data'
+        __tablename__ = "my_data"
         id = Column(Integer, primary_key=True)
         data = Column(MutableDict.as_mutable(JSONEncodedDict))
+
 
     @event.listens_for(MyDataClass.data, "modified")
     def modified_json(instance):
@@ -511,7 +518,6 @@ becomes part of the next flush process::
     model = session.query(MyModel).first()
     model.json_set &= {1, 3}
 
-
 :ticket:`3853`
 
 .. _change_3769:
@@ -527,7 +533,7 @@ is an association proxy that links to ``AtoB.bvalue``, which is
 itself an association proxy onto ``B``::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
 
         b_values = association_proxy("atob", "b_value")
@@ -535,26 +541,26 @@ itself an association proxy onto ``B``::
 
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey('a.id'))
+        a_id = Column(ForeignKey("a.id"))
         value = Column(String)
 
         c = relationship("C")
 
 
     class C(Base):
-        __tablename__ = 'c'
+        __tablename__ = "c"
         id = Column(Integer, primary_key=True)
-        b_id = Column(ForeignKey('b.id'))
+        b_id = Column(ForeignKey("b.id"))
         value = Column(String)
 
 
     class AtoB(Base):
-        __tablename__ = 'atob'
+        __tablename__ = "atob"
 
-        a_id = Column(ForeignKey('a.id'), primary_key=True)
-        b_id = Column(ForeignKey('b.id'), primary_key=True)
+        a_id = Column(ForeignKey("a.id"), primary_key=True)
+        b_id = Column(ForeignKey("b.id"), primary_key=True)
 
         a = relationship("A", backref="atob")
         b = relationship("B", backref="atob")
@@ -567,7 +573,7 @@ query across the two proxies ``A.b_values``, ``AtoB.b_value``:
 
 .. sourcecode:: pycon+sql
 
-    >>> s.query(A).filter(A.b_values.contains('hi')).all()
+    >>> s.query(A).filter(A.b_values.contains("hi")).all()
     {opensql}SELECT a.id AS a_id
     FROM a
     WHERE EXISTS (SELECT 1
@@ -581,7 +587,7 @@ to query across the two proxies ``A.c_values``, ``AtoB.c_value``:
 
 .. sourcecode:: pycon+sql
 
-    >>> s.query(A).filter(A.c_values.any(value='x')).all()
+    >>> s.query(A).filter(A.c_values.any(value="x")).all()
     {opensql}SELECT a.id AS a_id
     FROM a
     WHERE EXISTS (SELECT 1
@@ -612,8 +618,8 @@ primary key value.   The example now illustrates that a new ``identity_token``
 field tracks this difference so that the two objects can co-exist in the
 same identity map::
 
-    tokyo = WeatherLocation('Asia', 'Tokyo')
-    newyork = WeatherLocation('North America', 'New York')
+    tokyo = WeatherLocation("Asia", "Tokyo")
+    newyork = WeatherLocation("North America", "New York")
 
     tokyo.reports.append(Report(80.0))
     newyork.reports.append(Report(75))
@@ -632,14 +638,13 @@ same identity map::
     newyork_report = newyork.reports[0]
     tokyo_report = tokyo.reports[0]
 
-    assert inspect(newyork_report).identity_key == (Report, (1, ), "north_america")
-    assert inspect(tokyo_report).identity_key == (Report, (1, ), "asia")
+    assert inspect(newyork_report).identity_key == (Report, (1,), "north_america")
+    assert inspect(tokyo_report).identity_key == (Report, (1,), "asia")
 
     # the token representing the originating shard is also available directly
 
     assert inspect(newyork_report).identity_token == "north_america"
     assert inspect(tokyo_report).identity_token == "asia"
-
 
 :ticket:`4137`
 
@@ -673,6 +678,7 @@ illustrates a recipe that will allow for the "liberal" behavior of the pre-1.1
     from sqlalchemy import Boolean
     from sqlalchemy import TypeDecorator
 
+
     class LiberalBoolean(TypeDecorator):
         impl = Boolean
 
@@ -680,7 +686,6 @@ illustrates a recipe that will allow for the "liberal" behavior of the pre-1.1
             if value is not None:
                 value = bool(int(value))
             return value
-
 
 :ticket:`4102`
 
@@ -844,7 +849,7 @@ other comparison operators has been flattened into one level.  This will
 have the effect of more parenthesization being generated when comparison
 operators are combined together, such as::
 
-    (column('q') == null()) != (column('y') == null())
+    (column("q") == null()) != (column("y") == null())
 
 Will now generate ``(q IS NULL) != (y IS NULL)`` rather than
 ``q IS NULL != y IS NULL``.
@@ -862,9 +867,10 @@ and columns.   These are specified via the :paramref:`_schema.Table.comment` and
 :paramref:`_schema.Column.comment` arguments::
 
     Table(
-        'my_table', metadata,
-        Column('q', Integer, comment="the Q value"),
-        comment="my Q table"
+        "my_table",
+        metadata,
+        Column("q", Integer, comment="the Q value"),
+        comment="my Q table",
     )
 
 Above, DDL will be rendered appropriately upon table create to associate
@@ -891,9 +897,11 @@ the 0.7 and 0.8 series.
 
 Given a statement as::
 
-    stmt = users.delete().\
-            where(users.c.id == addresses.c.id).\
-            where(addresses.c.email_address.startswith('ed%'))
+    stmt = (
+        users.delete()
+        .where(users.c.id == addresses.c.id)
+        .where(addresses.c.email_address.startswith("ed%"))
+    )
     conn.execute(stmt)
 
 The resulting SQL from the above statement on a PostgreSQL backend
@@ -930,7 +938,7 @@ can now be used to change the autoescape character, if desired.
 
 An expression such as::
 
-    >>> column('x').startswith('total%score', autoescape=True)
+    >>> column("x").startswith("total%score", autoescape=True)
 
 Renders as::
 
@@ -940,7 +948,7 @@ Where the value of the parameter "x_1" is ``'total/%score'``.
 
 Similarly, an expression that has backslashes::
 
-    >>> column('x').startswith('total/score', autoescape=True)
+    >>> column("x").startswith("total/score", autoescape=True)
 
 Will render the same way, with the value of the parameter "x_1" as
 ``'total//score'``.
@@ -968,8 +976,8 @@ if the application is working with plain floats.
 
 
     float_value = connection.scalar(
-        select([literal(4.56)])   # the "BindParameter" will now be
-                                  # Float, not Numeric(asdecimal=True)
+        select([literal(4.56)])  # the "BindParameter" will now be
+        # Float, not Numeric(asdecimal=True)
     )
 
 * Math operations between :class:`.Numeric`, :class:`.Float`, and
@@ -978,11 +986,11 @@ if the application is working with plain floats.
   as well as if the type should be :class:`.Float`::
 
     # asdecimal flag is maintained
-    expr = column('a', Integer) * column('b', Numeric(asdecimal=False))
+    expr = column("a", Integer) * column("b", Numeric(asdecimal=False))
     assert expr.type.asdecimal == False
 
     # Float subclass of Numeric is maintained
-    expr = column('a', Integer) * column('b', Float())
+    expr = column("a", Integer) * column("b", Float())
     assert isinstance(expr.type, Float)
 
 * The :class:`.Float` datatype will apply the ``float()`` processor to
@@ -1009,9 +1017,7 @@ is added to the compiler to allow for the space.  All three functions
 are named in the documentation now::
 
     >>> from sqlalchemy import select, table, column, func, tuple_
-    >>> t = table('t',
-    ...           column('value'), column('x'),
-    ...           column('y'), column('z'), column('q'))
+    >>> t = table("t", column("value"), column("x"), column("y"), column("z"), column("q"))
     >>> stmt = select([func.sum(t.c.value)]).group_by(
     ...     func.grouping_sets(
     ...         tuple_(t.c.x, t.c.y),
@@ -1046,16 +1052,17 @@ localized to the current VALUES clause being processed::
 
 
     def mydefault(context):
-        return context.get_current_parameters()['counter'] + 12
+        return context.get_current_parameters()["counter"] + 12
 
-    mytable = Table('mytable', metadata_obj,
-        Column('counter', Integer),
-        Column('counter_plus_twelve',
-               Integer, default=mydefault, onupdate=mydefault)
+
+    mytable = Table(
+        "mytable",
+        metadata_obj,
+        Column("counter", Integer),
+        Column("counter_plus_twelve", Integer, default=mydefault, onupdate=mydefault),
     )
 
-    stmt = mytable.insert().values(
-        [{"counter": 5}, {"counter": 18}, {"counter": 20}])
+    stmt = mytable.insert().values([{"counter": 5}, {"counter": 18}, {"counter": 20}])
 
     conn.execute(stmt)
 
@@ -1077,7 +1084,8 @@ of the :meth:`.SessionEvents.after_commit` event which also emits before the
 
     sess = Session()
 
-    user = sess.query(User).filter_by(name='x').first()
+    user = sess.query(User).filter_by(name="x").first()
+
 
     @event.listens_for(sess, "after_rollback")
     def after_rollback(session):
@@ -1086,11 +1094,13 @@ of the :meth:`.SessionEvents.after_commit` event which also emits before the
         # to emit a lazy load.
         print("user name: %s" % user.name)
 
+
     @event.listens_for(sess, "after_commit")
     def after_commit(session):
         # 'user.name' is present, assuming it was already
         # loaded.  this is the existing behavior.
         print("user name: %s" % user.name)
+
 
     if should_rollback:
         sess.rollback()
@@ -1148,7 +1158,7 @@ In the case of assigning a collection to an attribute that would replace
 the previous collection, a side effect of this was that the collection
 being replaced would also be mutated, which is misleading and unnecessary::
 
-    >>> a1, a2, a3 = Address('a1'), Address('a2'), Address('a3')
+    >>> a1, a2, a3 = Address("a1"), Address("a2"), Address("a3")
     >>> user.addresses = [a1, a2]
 
     >>> previous_collection = user.addresses
@@ -1177,18 +1187,19 @@ existing collection.
 Given a mapping as::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         bs = relationship("B")
 
-        @validates('bs')
+        @validates("bs")
         def convert_dict_to_b(self, key, value):
-            return B(data=value['data'])
+            return B(data=value["data"])
+
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey('a.id'))
+        a_id = Column(ForeignKey("a.id"))
         data = Column(String)
 
 Above, we could use the validator as follows, to convert from an incoming
@@ -1217,7 +1228,7 @@ are new.   Supposing a simple validator such as::
     class A(Base):
         # ...
 
-        @validates('bs')
+        @validates("bs")
         def validate_b(self, key, value):
             assert value.data is not None
             return value
@@ -1255,16 +1266,16 @@ Use flag_dirty() to mark an object as "dirty" without any attribute changing
 An exception is now raised if the :func:`.attributes.flag_modified` function
 is used to mark an attribute as modified that isn't actually loaded::
 
-    a1 = A(data='adf')
+    a1 = A(data="adf")
     s.add(a1)
 
     s.flush()
 
     # expire, similarly as though we said s.commit()
-    s.expire(a1, 'data')
+    s.expire(a1, "data")
 
     # will raise InvalidRequestError
-    attributes.flag_modified(a1, 'data')
+    attributes.flag_modified(a1, "data")
 
 This because the flush process will most likely fail in any case if the
 attribute remains un-present by the time flush occurs.    To mark an object
@@ -1287,6 +1298,7 @@ such as :meth:`.SessionEvents.before_flush`, use the new
 A very old and undocumented keyword argument ``scope`` has been removed::
 
     from sqlalchemy.orm import scoped_session
+
     Session = scoped_session(sessionmaker())
 
     session = Session(scope=None)
@@ -1312,18 +1324,21 @@ it is re-stated during the UPDATE so that the "onupdate" rule does not
 overwrite it::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
-        favorite_b_id = Column(ForeignKey('b.id', name="favorite_b_fk"))
+        favorite_b_id = Column(ForeignKey("b.id", name="favorite_b_fk"))
         bs = relationship("B", primaryjoin="A.id == B.a_id")
         favorite_b = relationship(
-            "B", primaryjoin="A.favorite_b_id == B.id", post_update=True)
+            "B", primaryjoin="A.favorite_b_id == B.id", post_update=True
+        )
         updated = Column(Integer, onupdate=my_onupdate_function)
 
+
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey('a.id', name="a_fk"))
+        a_id = Column(ForeignKey("a.id", name="a_fk"))
+
 
     a1 = A()
     b1 = B()
@@ -1371,21 +1386,18 @@ now participates in the versioning feature, documented at
 Given a mapping::
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = Column(Integer, primary_key=True)
         version_id = Column(Integer, default=0)
-        parent_id = Column(ForeignKey('node.id'))
-        favorite_node_id = Column(ForeignKey('node.id'))
+        parent_id = Column(ForeignKey("node.id"))
+        favorite_node_id = Column(ForeignKey("node.id"))
 
         nodes = relationship("Node", primaryjoin=remote(parent_id) == id)
         favorite_node = relationship(
-            "Node", primaryjoin=favorite_node_id == remote(id),
-            post_update=True
+            "Node", primaryjoin=favorite_node_id == remote(id), post_update=True
         )
 
-        __mapper_args__ = {
-            'version_id_col': version_id
-        }
+        __mapper_args__ = {"version_id_col": version_id}
 
 An UPDATE of a node that associates another node as "favorite" will
 now increment the version counter as well as match the current version::
@@ -1435,20 +1447,20 @@ Whereas in 1.1, an expression such as the following would produce
 a result with no return type (assume ``-%>`` is some special operator
 supported by the database)::
 
-    >>> column('x', types.DateTime).op('-%>')(None).type
+    >>> column("x", types.DateTime).op("-%>")(None).type
     NullType()
 
 Other types would use the default behavior of using the left-hand type
 as the return type::
 
-    >>> column('x', types.String(50)).op('-%>')(None).type
+    >>> column("x", types.String(50)).op("-%>")(None).type
     String(length=50)
 
 These behaviors were mostly by accident, so the behavior has been made
 consistent with the second form, that is the default return type is the
 same as the left-hand expression::
 
-    >>> column('x', types.DateTime).op('-%>')(None).type
+    >>> column("x", types.DateTime).op("-%>")(None).type
     DateTime()
 
 As most user-defined operators tend to be "comparison" operators, often
@@ -1457,18 +1469,18 @@ one of the many special operators defined by PostgreSQL, the
 its documented behavior of allowing the return type to be :class:`.Boolean`
 in all cases, including for :class:`_types.ARRAY` and :class:`_types.JSON`::
 
-    >>> column('x', types.String(50)).op('-%>', is_comparison=True)(None).type
+    >>> column("x", types.String(50)).op("-%>", is_comparison=True)(None).type
     Boolean()
-    >>> column('x', types.ARRAY(types.Integer)).op('-%>', is_comparison=True)(None).type
+    >>> column("x", types.ARRAY(types.Integer)).op("-%>", is_comparison=True)(None).type
     Boolean()
-    >>> column('x', types.JSON()).op('-%>', is_comparison=True)(None).type
+    >>> column("x", types.JSON()).op("-%>", is_comparison=True)(None).type
     Boolean()
 
 To assist with boolean comparison operators, a new shorthand method
 :meth:`.Operators.bool_op` has been added.    This method should be preferred
 for on-the-fly boolean operators::
 
-    >>> print(column('x', types.Integer).bool_op('-%>')(5))
+    >>> print(column("x", types.Integer).bool_op("-%>")(5))
     x -%> :x_1
 
 
@@ -1485,7 +1497,7 @@ Previously, it was not possible to produce a :obj:`_expression.literal_column`
 construct that stated a single percent sign::
 
     >>> from sqlalchemy import literal_column
-    >>> print(literal_column('some%symbol'))
+    >>> print(literal_column("some%symbol"))
     some%%symbol
 
 The percent sign is now unaffected for dialects that are not set to
@@ -1494,10 +1506,10 @@ dialects which do state one of these paramstyles will continue to escape
 as is appropriate::
 
     >>> from sqlalchemy import literal_column
-    >>> print(literal_column('some%symbol'))
+    >>> print(literal_column("some%symbol"))
     some%symbol
     >>> from sqlalchemy.dialects import mysql
-    >>> print(literal_column('some%symbol').compile(dialect=mysql.dialect()))
+    >>> print(literal_column("some%symbol").compile(dialect=mysql.dialect()))
     some%%symbol
 
 As part of this change, the doubling that has been present when using
@@ -1517,8 +1529,9 @@ A bug in the :func:`_expression.collate` and :meth:`.ColumnOperators.collate`
 functions, used to supply ad-hoc column collations at the statement level,
 is fixed, where a case sensitive name would not be quoted::
 
-    stmt = select([mytable.c.x, mytable.c.y]).\
-        order_by(mytable.c.somecolumn.collate("fr_FR"))
+    stmt = select([mytable.c.x, mytable.c.y]).order_by(
+        mytable.c.somecolumn.collate("fr_FR")
+    )
 
 now renders::
 
@@ -1553,8 +1566,8 @@ sets.   The feature is off by default and can be enabled using the
 ``use_batch_mode`` argument on :func:`_sa.create_engine`::
 
     engine = create_engine(
-        "postgresql+psycopg2://scott:tiger@host/dbname",
-        use_batch_mode=True)
+        "postgresql+psycopg2://scott:tiger@host/dbname", use_batch_mode=True
+    )
 
 The feature is considered to be experimental for the moment but may become
 on by default in a future release.
@@ -1577,10 +1590,7 @@ now allows these values to be specified::
 
     from sqlalchemy.dialects.postgresql import INTERVAL
 
-    Table(
-        'my_table', metadata,
-        Column("some_interval", INTERVAL(fields="DAY TO SECOND"))
-    )
+    Table("my_table", metadata, Column("some_interval", INTERVAL(fields="DAY TO SECOND")))
 
 Additionally, all INTERVAL datatypes can now be reflected independently
 of the "fields" specifier present; the "fields" parameter in the datatype
@@ -1610,12 +1620,10 @@ This :class:`_expression.Insert` subclass adds a new method
 
     from sqlalchemy.dialects.mysql import insert
 
-    insert_stmt = insert(my_table). \
-        values(id='some_id', data='some data to insert')
+    insert_stmt = insert(my_table).values(id="some_id", data="some data to insert")
 
     on_conflict_stmt = insert_stmt.on_duplicate_key_update(
-        data=insert_stmt.inserted.data,
-        status='U'
+        data=insert_stmt.inserted.data, status="U"
     )
 
     conn.execute(on_conflict_stmt)
@@ -1748,9 +1756,15 @@ name, rather than the raw UPPERCASE format that Oracle uses::
 
 Previously, the foreign keys result would look like::
 
-    [{'referred_table': u'users', 'referred_columns': [u'id'],
-      'referred_schema': None, 'name': 'USER_ID_FK',
-      'constrained_columns': [u'user_id']}]
+    [
+        {
+            "referred_table": "users",
+            "referred_columns": ["id"],
+            "referred_schema": None,
+            "name": "USER_ID_FK",
+            "constrained_columns": ["user_id"],
+        }
+    ]
 
 Where the above could create problems particularly with Alembic autogenerate.
 
@@ -1774,20 +1788,17 @@ now be passed using brackets to manually specify where this split
 occurs, allowing database and/or owner names that themselves contain one
 or more dots::
 
-    Table(
-        "some_table", metadata,
-        Column("q", String(50)),
-        schema="[MyDataBase.dbo]"
-    )
+    Table("some_table", metadata, Column("q", String(50)), schema="[MyDataBase.dbo]")
 
 The above table will consider the "owner" to be ``MyDataBase.dbo``, which
 will also be quoted upon render, and the "database" as None.  To individually
 refer to database name and owner, use two pairs of brackets::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="[MyDataBase.SomeDB].[MyDB.owner]"
+        schema="[MyDataBase.SomeDB].[MyDB.owner]",
     )
 
 Additionally, the :class:`.quoted_name` construct is now honored when

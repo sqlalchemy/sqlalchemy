@@ -641,6 +641,7 @@ almost the same way as we do other forms of inheritance mappings::
 
     Base = declarative_base()
 
+
     class Employee(ConcreteBase, Base):
         __tablename__ = "employee"
         id = Column(Integer, primary_key=True)
@@ -749,6 +750,7 @@ base class with the ``__abstract__`` indicator::
 
     Base = declarative_base()
 
+
     class Employee(Base):
         __abstract__ = True
 
@@ -816,6 +818,7 @@ class called :class:`.AbstractConcreteBase` which achieves this automatically::
             "polymorphic_identity": "engineer",
             "concrete": True,
         }
+
 
     Base.registry.configure()
 
@@ -996,7 +999,6 @@ mapping is illustrated below::
             "polymorphic_identity": "manager",
             "concrete": True,
         }
-
 
 Above, we use :func:`.polymorphic_union` in the same manner as before, except
 that we omit the ``employee`` table.

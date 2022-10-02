@@ -36,7 +36,7 @@ each method builds more state onto the object.  Like the other SQL constructs,
 it can be stringified in place::
 
     >>> from sqlalchemy import select
-    >>> stmt = select(user_table).where(user_table.c.name == 'spongebob')
+    >>> stmt = select(user_table).where(user_table.c.name == "spongebob")
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -71,7 +71,7 @@ elements within each row:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = select(User).where(User.name == 'spongebob')
+    >>> stmt = select(User).where(User.name == "spongebob")
     >>> with Session(engine) as session:
     ...     for row in session.execute(stmt):
     ...         print(row)
@@ -196,9 +196,7 @@ attribute of the ``User`` entity as the first element of the row, and combine
 it with full ``Address`` entities in the second element::
 
     >>> session.execute(
-    ...     select(User.name, Address).
-    ...     where(User.id==Address.user_id).
-    ...     order_by(Address.id)
+    ...     select(User.name, Address).where(User.id == Address.user_id).order_by(Address.id)
     ... ).all()
     {opensql}SELECT user_account.name, address.id, address.email_address, address.user_id
     FROM user_account, address
@@ -226,11 +224,9 @@ when referring to arbitrary SQL expressions in a result row by name:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import func, cast
-    >>> stmt = (
-    ...     select(
-    ...         ("Username: " + user_table.c.name).label("username"),
-    ...     ).order_by(user_table.c.name)
-    ... )
+    >>> stmt = select(
+    ...     ("Username: " + user_table.c.name).label("username"),
+    ... ).order_by(user_table.c.name)
     >>> with engine.connect() as conn:
     ...     for row in conn.execute(stmt):
     ...         print(f"{row.username}")
@@ -269,11 +265,7 @@ a hardcoded string literal ``'some label'`` and embed it within the
 SELECT statement::
 
   >>> from sqlalchemy import text
-  >>> stmt = (
-  ...     select(
-  ...         text("'some phrase'"), user_table.c.name
-  ...     ).order_by(user_table.c.name)
-  ... )
+  >>> stmt = select(text("'some phrase'"), user_table.c.name).order_by(user_table.c.name)
   >>> with engine.connect() as conn:
   ...     print(conn.execute(stmt).all())
   {opensql}BEGIN (implicit)
@@ -295,10 +287,8 @@ towards in subqueries and other expressions::
 
 
   >>> from sqlalchemy import literal_column
-  >>> stmt = (
-  ...     select(
-  ...         literal_column("'some phrase'").label("p"), user_table.c.name
-  ...     ).order_by(user_table.c.name)
+  >>> stmt = select(literal_column("'some phrase'").label("p"), user_table.c.name).order_by(
+  ...     user_table.c.name
   ... )
   >>> with engine.connect() as conn:
   ...     for row in conn.execute(stmt):
@@ -330,7 +320,7 @@ conjunction with
 Python operators such as ``==``, ``!=``, ``<``, ``>=`` etc. generate new
 SQL Expression objects, rather than plain boolean ``True``/``False`` values::
 
-    >>> print(user_table.c.name == 'squidward')
+    >>> print(user_table.c.name == "squidward")
     user_account.name = :name_1
 
     >>> print(address_table.c.user_id > 10)
@@ -340,7 +330,7 @@ SQL Expression objects, rather than plain boolean ``True``/``False`` values::
 We can use expressions like these to generate the WHERE clause by passing
 the resulting objects to the :meth:`_sql.Select.where` method::
 
-    >>> print(select(user_table).where(user_table.c.name == 'squidward'))
+    >>> print(select(user_table).where(user_table.c.name == "squidward"))
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = :name_1
@@ -350,9 +340,9 @@ To produce multiple expressions joined by AND, the :meth:`_sql.Select.where`
 method may be invoked any number of times::
 
     >>> print(
-    ...     select(address_table.c.email_address).
-    ...     where(user_table.c.name == 'squidward').
-    ...     where(address_table.c.user_id == user_table.c.id)
+    ...     select(address_table.c.email_address)
+    ...     .where(user_table.c.name == "squidward")
+    ...     .where(address_table.c.user_id == user_table.c.id)
     ... )
     {opensql}SELECT address.email_address
     FROM address, user_account
@@ -362,10 +352,8 @@ A single call to :meth:`_sql.Select.where` also accepts multiple expressions
 with the same effect::
 
     >>> print(
-    ...     select(address_table.c.email_address).
-    ...     where(
-    ...          user_table.c.name == 'squidward',
-    ...          address_table.c.user_id == user_table.c.id
+    ...     select(address_table.c.email_address).where(
+    ...         user_table.c.name == "squidward", address_table.c.user_id == user_table.c.id
     ...     )
     ... )
     {opensql}SELECT address.email_address
@@ -378,11 +366,10 @@ of ORM entities::
 
     >>> from sqlalchemy import and_, or_
     >>> print(
-    ...     select(Address.email_address).
-    ...     where(
+    ...     select(Address.email_address).where(
     ...         and_(
-    ...             or_(User.name == 'squidward', User.name == 'sandy'),
-    ...             Address.user_id == User.id
+    ...             or_(User.name == "squidward", User.name == "sandy"),
+    ...             Address.user_id == User.id,
     ...         )
     ...     )
     ... )
@@ -396,9 +383,7 @@ popular method known as :meth:`_sql.Select.filter_by` which accepts keyword
 arguments that match to column keys or ORM attribute names.  It will filter
 against the leftmost FROM clause or the last entity joined::
 
-    >>> print(
-    ...     select(User).filter_by(name='spongebob', fullname='Spongebob Squarepants')
-    ... )
+    >>> print(select(User).filter_by(name="spongebob", fullname="Spongebob Squarepants"))
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = :name_1 AND user_account.fullname = :fullname_1
@@ -440,8 +425,9 @@ method, which allows us to indicate the left and right side of the JOIN
 explicitly::
 
     >>> print(
-    ...     select(user_table.c.name, address_table.c.email_address).
-    ...     join_from(user_table, address_table)
+    ...     select(user_table.c.name, address_table.c.email_address).join_from(
+    ...         user_table, address_table
+    ...     )
     ... )
     {opensql}SELECT user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -450,10 +436,7 @@ explicitly::
 The other is the the :meth:`_sql.Select.join` method, which indicates only the
 right side of the JOIN, the left hand-side is inferred::
 
-    >>> print(
-    ...     select(user_table.c.name, address_table.c.email_address).
-    ...     join(address_table)
-    ... )
+    >>> print(select(user_table.c.name, address_table.c.email_address).join(address_table))
     {opensql}SELECT user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -470,10 +453,7 @@ where we establish ``user_table`` as the first element in the FROM
 clause and :meth:`_sql.Select.join` to establish ``address_table`` as
 the second::
 
-    >>> print(
-    ...     select(address_table.c.email_address).
-    ...     select_from(user_table).join(address_table)
-    ... )
+    >>> print(select(address_table.c.email_address).select_from(user_table).join(address_table))
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -484,9 +464,7 @@ FROM clause.  For example, to SELECT from the common SQL expression
 produce the SQL ``count()`` function::
 
     >>> from sqlalchemy import func
-    >>> print (
-    ...     select(func.count('*')).select_from(user_table)
-    ... )
+    >>> print(select(func.count("*")).select_from(user_table))
     {opensql}SELECT count(:count_2) AS count_1
     FROM user_account
 
@@ -515,9 +493,9 @@ accept an additional argument for the ON clause, which is stated using the
 same SQL Expression mechanics as we saw about in :ref:`tutorial_select_where_clause`::
 
     >>> print(
-    ...     select(address_table.c.email_address).
-    ...     select_from(user_table).
-    ...     join(address_table, user_table.c.id == address_table.c.user_id)
+    ...     select(address_table.c.email_address)
+    ...     .select_from(user_table)
+    ...     .join(address_table, user_table.c.id == address_table.c.user_id)
     ... )
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -539,15 +517,11 @@ accept keyword arguments :paramref:`_sql.Select.join.isouter` and
 :paramref:`_sql.Select.join.full` which will render LEFT OUTER JOIN
 and FULL OUTER JOIN, respectively::
 
-    >>> print(
-    ...     select(user_table).join(address_table, isouter=True)
-    ... )
+    >>> print(select(user_table).join(address_table, isouter=True))
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account LEFT OUTER JOIN address ON user_account.id = address.user_id{stop}
 
-    >>> print(
-    ...     select(user_table).join(address_table, full=True)
-    ... )
+    >>> print(select(user_table).join(address_table, full=True))
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account FULL OUTER JOIN address ON user_account.id = address.user_id{stop}
 
@@ -644,10 +618,10 @@ than one address:
 
     >>> with engine.connect() as conn:
     ...     result = conn.execute(
-    ...         select(User.name, func.count(Address.id).label("count")).
-    ...         join(Address).
-    ...         group_by(User.name).
-    ...         having(func.count(Address.id) > 1)
+    ...         select(User.name, func.count(Address.id).label("count"))
+    ...         .join(Address)
+    ...         .group_by(User.name)
+    ...         .having(func.count(Address.id) > 1)
     ...     )
     ...     print(result.all())
     {opensql}BEGIN (implicit)
@@ -677,10 +651,11 @@ error if no match is found.   The unary modifiers
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import func, desc
-    >>> stmt = select(
-    ...         Address.user_id,
-    ...         func.count(Address.id).label('num_addresses')).\
-    ...         group_by("user_id").order_by("user_id", desc("num_addresses"))
+    >>> stmt = (
+    ...     select(Address.user_id, func.count(Address.id).label("num_addresses"))
+    ...     .group_by("user_id")
+    ...     .order_by("user_id", desc("num_addresses"))
+    ... )
     >>> print(stmt)
     {opensql}SELECT address.user_id, count(address.id) AS num_addresses
     FROM address GROUP BY address.user_id ORDER BY address.user_id, num_addresses DESC
@@ -707,8 +682,9 @@ below for example returns all unique pairs of user names::
     >>> user_alias_1 = user_table.alias()
     >>> user_alias_2 = user_table.alias()
     >>> print(
-    ...     select(user_alias_1.c.name, user_alias_2.c.name).
-    ...     join_from(user_alias_1, user_alias_2, user_alias_1.c.id > user_alias_2.c.id)
+    ...     select(user_alias_1.c.name, user_alias_2.c.name).join_from(
+    ...         user_alias_1, user_alias_2, user_alias_1.c.id > user_alias_2.c.id
+    ...     )
     ... )
     {opensql}SELECT user_account_1.name, user_account_2.name AS name_1
     FROM user_account AS user_account_1
@@ -730,11 +706,11 @@ while maintaining ORM functionality.  The SELECT below selects from the
     >>> address_alias_1 = aliased(Address)
     >>> address_alias_2 = aliased(Address)
     >>> print(
-    ...     select(User).
-    ...     join_from(User, address_alias_1).
-    ...     where(address_alias_1.email_address == 'patrick@aol.com').
-    ...     join_from(User, address_alias_2).
-    ...     where(address_alias_2.email_address == 'patrick@gmail.com')
+    ...     select(User)
+    ...     .join_from(User, address_alias_1)
+    ...     .where(address_alias_1.email_address == "patrick@aol.com")
+    ...     .join_from(User, address_alias_2)
+    ...     .where(address_alias_2.email_address == "patrick@gmail.com")
     ... )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -775,10 +751,11 @@ We can construct a :class:`_sql.Subquery` that will select an aggregate count
 of rows from the ``address`` table (aggregate functions and GROUP BY were
 introduced previously at :ref:`tutorial_group_by_w_aggregates`):
 
-    >>> subq = select(
-    ...     func.count(address_table.c.id).label("count"),
-    ...     address_table.c.user_id
-    ... ).group_by(address_table.c.user_id).subquery()
+    >>> subq = (
+    ...     select(func.count(address_table.c.id).label("count"), address_table.c.user_id)
+    ...     .group_by(address_table.c.user_id)
+    ...     .subquery()
+    ... )
 
 Stringifying the subquery by itself without it being embedded inside of another
 :class:`_sql.Select` or other statement produces the plain SELECT statement
@@ -804,11 +781,9 @@ With a selection of rows contained within the ``subq`` object, we can apply
 the object to a larger :class:`_sql.Select` that will join the data to
 the ``user_account`` table::
 
-    >>> stmt = select(
-    ...    user_table.c.name,
-    ...    user_table.c.fullname,
-    ...    subq.c.count
-    ... ).join_from(user_table, subq)
+    >>> stmt = select(user_table.c.name, user_table.c.fullname, subq.c.count).join_from(
+    ...     user_table, subq
+    ... )
 
     >>> print(stmt)
     {opensql}SELECT user_account.name, user_account.fullname, anon_1.count
@@ -834,16 +809,15 @@ the invocation of the :meth:`_sql.Select.subquery` method to use
 element in the same way, but the SQL rendered is the very different common
 table expression syntax::
 
-    >>> subq = select(
-    ...     func.count(address_table.c.id).label("count"),
-    ...     address_table.c.user_id
-    ... ).group_by(address_table.c.user_id).cte()
+    >>> subq = (
+    ...     select(func.count(address_table.c.id).label("count"), address_table.c.user_id)
+    ...     .group_by(address_table.c.user_id)
+    ...     .cte()
+    ... )
 
-    >>> stmt = select(
-    ...    user_table.c.name,
-    ...    user_table.c.fullname,
-    ...    subq.c.count
-    ... ).join_from(user_table, subq)
+    >>> stmt = select(user_table.c.name, user_table.c.fullname, subq.c.count).join_from(
+    ...     user_table, subq
+    ... )
 
     >>> print(stmt)
     {opensql}WITH anon_1 AS
@@ -894,9 +868,13 @@ each ``Address`` object ultimately came from a subquery against the
 
 .. sourcecode:: python+sql
 
-    >>> subq = select(Address).where(~Address.email_address.like('%@aol.com')).subquery()
+    >>> subq = select(Address).where(~Address.email_address.like("%@aol.com")).subquery()
     >>> address_subq = aliased(Address, subq)
-    >>> stmt = select(User, address_subq).join_from(User, address_subq).order_by(User.id, address_subq.id)
+    >>> stmt = (
+    ...     select(User, address_subq)
+    ...     .join_from(User, address_subq)
+    ...     .order_by(User.id, address_subq.id)
+    ... )
     >>> with Session(engine) as session:
     ...     for user, address in session.execute(stmt):
     ...         print(f"{user} {address}")
@@ -919,9 +897,13 @@ Another example follows, which is exactly the same except it makes use of the
 
 .. sourcecode:: python+sql
 
-    >>> cte_obj = select(Address).where(~Address.email_address.like('%@aol.com')).cte()
+    >>> cte_obj = select(Address).where(~Address.email_address.like("%@aol.com")).cte()
     >>> address_cte = aliased(Address, cte_obj)
-    >>> stmt = select(User, address_cte).join_from(User, address_cte).order_by(User.id, address_cte.id)
+    >>> stmt = (
+    ...     select(User, address_cte)
+    ...     .join_from(User, address_cte)
+    ...     .order_by(User.id, address_cte.id)
+    ... )
     >>> with Session(engine) as session:
     ...     for user, address in session.execute(stmt):
     ...         print(f"{user} {address}")
@@ -968,9 +950,11 @@ subquery is indicated explicitly by making use of the :meth:`_sql.Select.scalar_
 method as below.  It's default string form when stringified by itself
 renders as an ordinary SELECT statement that is selecting from two tables::
 
-    >>> subq = select(func.count(address_table.c.id)).\
-    ...             where(user_table.c.id == address_table.c.user_id).\
-    ...             scalar_subquery()
+    >>> subq = (
+    ...     select(func.count(address_table.c.id))
+    ...     .where(user_table.c.id == address_table.c.user_id)
+    ...     .scalar_subquery()
+    ... )
     >>> print(subq)
     {opensql}(SELECT count(address.id) AS count_1
     FROM address, user_account
@@ -1003,13 +987,13 @@ Simple correlated subqueries will usually do the right thing that's desired.
 However, in the case where the correlation is ambiguous, SQLAlchemy will let
 us know that more clarity is needed::
 
-    >>> stmt = select(
-    ...     user_table.c.name,
-    ...     address_table.c.email_address,
-    ...     subq.label("address_count")
-    ... ).\
-    ... join_from(user_table, address_table).\
-    ... order_by(user_table.c.id, address_table.c.id)
+    >>> stmt = (
+    ...     select(
+    ...         user_table.c.name, address_table.c.email_address, subq.label("address_count")
+    ...     )
+    ...     .join_from(user_table, address_table)
+    ...     .order_by(user_table.c.id, address_table.c.id)
+    ... )
     >>> print(stmt)
     Traceback (most recent call last):
     ...
@@ -1021,9 +1005,12 @@ To specify that the ``user_table`` is the one we seek to correlate we specify
 this using the :meth:`_sql.ScalarSelect.correlate` or
 :meth:`_sql.ScalarSelect.correlate_except` methods::
 
-    >>> subq = select(func.count(address_table.c.id)).\
-    ...             where(user_table.c.id == address_table.c.user_id).\
-    ...             scalar_subquery().correlate(user_table)
+    >>> subq = (
+    ...     select(func.count(address_table.c.id))
+    ...     .where(user_table.c.id == address_table.c.user_id)
+    ...     .scalar_subquery()
+    ...     .correlate(user_table)
+    ... )
 
 The statement then can return the data for this column like any other:
 
@@ -1034,10 +1021,10 @@ The statement then can return the data for this column like any other:
     ...         select(
     ...             user_table.c.name,
     ...             address_table.c.email_address,
-    ...             subq.label("address_count")
-    ...         ).
-    ...         join_from(user_table, address_table).
-    ...         order_by(user_table.c.id, address_table.c.id)
+    ...             subq.label("address_count"),
+    ...         )
+    ...         .join_from(user_table, address_table)
+    ...         .order_by(user_table.c.id, address_table.c.id)
     ...     )
     ...     print(result.all())
     {opensql}BEGIN (implicit)
@@ -1078,21 +1065,19 @@ use of LATERAL, selecting the "user account / count of email address" data as
 was discussed in the previous section::
 
     >>> subq = (
-    ...   select(
-    ...       func.count(address_table.c.id).label("address_count"),
-    ...       address_table.c.email_address,
-    ...       address_table.c.user_id,
-    ...    ).
-    ...    where(user_table.c.id == address_table.c.user_id).
-    ...    lateral()
+    ...     select(
+    ...         func.count(address_table.c.id).label("address_count"),
+    ...         address_table.c.email_address,
+    ...         address_table.c.user_id,
+    ...     )
+    ...     .where(user_table.c.id == address_table.c.user_id)
+    ...     .lateral()
     ... )
-    >>> stmt = select(
-    ...     user_table.c.name,
-    ...     subq.c.address_count,
-    ...     subq.c.email_address
-    ... ).\
-    ... join_from(user_table, subq).\
-    ... order_by(user_table.c.id, subq.c.email_address)
+    >>> stmt = (
+    ...     select(user_table.c.name, subq.c.address_count, subq.c.email_address)
+    ...     .join_from(user_table, subq)
+    ...     .order_by(user_table.c.id, subq.c.email_address)
+    ... )
     >>> print(stmt)
     {opensql}SELECT user_account.name, anon_1.address_count, anon_1.email_address
     FROM user_account
@@ -1143,8 +1128,8 @@ that it has fewer methods.   The :class:`_sql.CompoundSelect` produced by
 :meth:`_engine.Connection.execute`::
 
     >>> from sqlalchemy import union_all
-    >>> stmt1 = select(user_table).where(user_table.c.name == 'sandy')
-    >>> stmt2 = select(user_table).where(user_table.c.name == 'spongebob')
+    >>> stmt1 = select(user_table).where(user_table.c.name == "sandy")
+    >>> stmt2 = select(user_table).where(user_table.c.name == "spongebob")
     >>> u = union_all(stmt1, stmt2)
     >>> with engine.connect() as conn:
     ...     result = conn.execute(u)
@@ -1167,9 +1152,9 @@ collection that may be referred towards in an enclosing :func:`_sql.select`::
 
     >>> u_subq = u.subquery()
     >>> stmt = (
-    ...     select(u_subq.c.name, address_table.c.email_address).
-    ...     join_from(address_table, u_subq).
-    ...     order_by(u_subq.c.name, address_table.c.email_address)
+    ...     select(u_subq.c.name, address_table.c.email_address)
+    ...     .join_from(address_table, u_subq)
+    ...     .order_by(u_subq.c.name, address_table.c.email_address)
     ... )
     >>> with engine.connect() as conn:
     ...     result = conn.execute(stmt)
@@ -1204,8 +1189,8 @@ object that represents the SELECT / UNION / etc statement we want to
 execute; this statement should be composed against the target
 ORM entities or their underlying mapped :class:`_schema.Table` objects::
 
-    >>> stmt1 = select(User).where(User.name == 'sandy')
-    >>> stmt2 = select(User).where(User.name == 'spongebob')
+    >>> stmt1 = select(User).where(User.name == "sandy")
+    >>> stmt2 = select(User).where(User.name == "spongebob")
     >>> u = union_all(stmt1, stmt2)
 
 For a simple SELECT with UNION that is not already nested inside of a
@@ -1279,15 +1264,13 @@ can return ``user_account`` rows that have more than one related row in
 .. sourcecode:: pycon+sql
 
     >>> subq = (
-    ...     select(func.count(address_table.c.id)).
-    ...     where(user_table.c.id == address_table.c.user_id).
-    ...     group_by(address_table.c.user_id).
-    ...     having(func.count(address_table.c.id) > 1)
+    ...     select(func.count(address_table.c.id))
+    ...     .where(user_table.c.id == address_table.c.user_id)
+    ...     .group_by(address_table.c.user_id)
+    ...     .having(func.count(address_table.c.id) > 1)
     ... ).exists()
     >>> with engine.connect() as conn:
-    ...     result = conn.execute(
-    ...         select(user_table.c.name).where(subq)
-    ...     )
+    ...     result = conn.execute(select(user_table.c.name).where(subq))
     ...     print(result.all())
     {opensql}BEGIN (implicit)
     SELECT user_account.name
@@ -1309,13 +1292,10 @@ clause:
 .. sourcecode:: pycon+sql
 
     >>> subq = (
-    ...     select(address_table.c.id).
-    ...     where(user_table.c.id == address_table.c.user_id)
+    ...     select(address_table.c.id).where(user_table.c.id == address_table.c.user_id)
     ... ).exists()
     >>> with engine.connect() as conn:
-    ...     result = conn.execute(
-    ...         select(user_table.c.name).where(~subq)
-    ...     )
+    ...     result = conn.execute(select(user_table.c.name).where(~subq))
     ...     print(result.all())
     {opensql}BEGIN (implicit)
     SELECT user_account.name
@@ -1571,11 +1551,15 @@ number the email addresses of individual users:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = select(
-    ...     func.row_number().over(partition_by=user_table.c.name),
-    ...     user_table.c.name,
-    ...     address_table.c.email_address
-    ... ).select_from(user_table).join(address_table)
+    >>> stmt = (
+    ...     select(
+    ...         func.row_number().over(partition_by=user_table.c.name),
+    ...         user_table.c.name,
+    ...         address_table.c.email_address,
+    ...     )
+    ...     .select_from(user_table)
+    ...     .join(address_table)
+    ... )
     >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
@@ -1593,10 +1577,15 @@ We also may make use of the ``ORDER BY`` clause using :paramref:`_functions.Func
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = select(
-    ...     func.count().over(order_by=user_table.c.name),
-    ...     user_table.c.name,
-    ...     address_table.c.email_address).select_from(user_table).join(address_table)
+    >>> stmt = (
+    ...     select(
+    ...         func.count().over(order_by=user_table.c.name),
+    ...         user_table.c.name,
+    ...         address_table.c.email_address,
+    ...     )
+    ...     .select_from(user_table)
+    ...     .join(address_table)
+    ... )
     >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
@@ -1635,7 +1624,7 @@ method::
 
     >>> print(
     ...     func.unnest(
-    ...         func.percentile_disc([0.25,0.5,0.75,1]).within_group(user_table.c.name)
+    ...         func.percentile_disc([0.25, 0.5, 0.75, 1]).within_group(user_table.c.name)
     ...     )
     ... )
     unnest(percentile_disc(:percentile_disc_1) WITHIN GROUP (ORDER BY user_account.name))
@@ -1644,10 +1633,16 @@ method::
 particular subset of rows compared to the total range of rows returned, available
 using the :meth:`_functions.FunctionElement.filter` method::
 
-    >>> stmt = select(
-    ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'sandy'),
-    ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'spongebob')
-    ... ).select_from(user_table).join(address_table)
+    >>> stmt = (
+    ...     select(
+    ...         func.count(address_table.c.email_address).filter(user_table.c.name == "sandy"),
+    ...         func.count(address_table.c.email_address).filter(
+    ...             user_table.c.name == "spongebob"
+    ...         ),
+    ...     )
+    ...     .select_from(user_table)
+    ...     .join(address_table)
+    ... )
     >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
@@ -1811,11 +1806,7 @@ string into one of MySQL's JSON functions:
     >>> from sqlalchemy import JSON
     >>> from sqlalchemy import type_coerce
     >>> from sqlalchemy.dialects import mysql
-    >>> s = select(
-    ... type_coerce(
-    ...        {'some_key': {'foo': 'bar'}}, JSON
-    ...    )['some_key']
-    ... )
+    >>> s = select(type_coerce({"some_key": {"foo": "bar"}}, JSON)["some_key"])
     >>> print(s.compile(dialect=mysql.dialect()))
     SELECT JSON_EXTRACT(%s, %s) AS anon_1
 

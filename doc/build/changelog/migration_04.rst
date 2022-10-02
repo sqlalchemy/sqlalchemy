@@ -27,7 +27,7 @@ Secondly, anywhere you used to say ``engine=``,
 
 ::
 
-    myengine = create_engine('sqlite://')
+    myengine = create_engine("sqlite://")
 
     meta = MetaData(myengine)
 
@@ -56,6 +56,7 @@ In 0.3, this code worked:
 
     from sqlalchemy import *
 
+
     class UTCDateTime(types.TypeDecorator):
         pass
 
@@ -65,6 +66,7 @@ In 0.4, one must do:
 
     from sqlalchemy import *
     from sqlalchemy import types
+
 
     class UTCDateTime(types.TypeDecorator):
         pass
@@ -119,7 +121,7 @@ when working with mapped classes:
 
 ::
 
-    session.query(User).filter(and_(User.name == 'fred', User.id > 17))
+    session.query(User).filter(and_(User.name == "fred", User.id > 17))
 
 While simple column-based comparisons are no big deal, the
 class attributes have some new "higher level" constructs
@@ -139,18 +141,18 @@ available, including what was previously only available in
 
     # return all users who contain a particular address with
     # the email_address like '%foo%'
-    filter(User.addresses.any(Address.email_address.like('%foo%')))
+    filter(User.addresses.any(Address.email_address.like("%foo%")))
 
     # same, email address equals 'foo@bar.com'.  can fall back to keyword
     # args for simple comparisons
-    filter(User.addresses.any(email_address = 'foo@bar.com'))
+    filter(User.addresses.any(email_address="foo@bar.com"))
 
     # return all Addresses whose user attribute has the username 'ed'
-    filter(Address.user.has(name='ed'))
+    filter(Address.user.has(name="ed"))
 
     # return all Addresses whose user attribute has the username 'ed'
     # and an id > 5 (mixing clauses with kwargs)
-    filter(Address.user.has(User.id > 5, name='ed'))
+    filter(Address.user.has(User.id > 5, name="ed"))
 
 The ``Column`` collection remains available on mapped
 classes in the ``.c`` attribute.  Note that property-based
@@ -199,12 +201,20 @@ any ``Alias`` objects:
 ::
 
     # standard self-referential TreeNode mapper with backref
-    mapper(TreeNode, tree_nodes, properties={
-        'children':relation(TreeNode, backref=backref('parent', remote_side=tree_nodes.id))
-    })
+    mapper(
+        TreeNode,
+        tree_nodes,
+        properties={
+            "children": relation(
+                TreeNode, backref=backref("parent", remote_side=tree_nodes.id)
+            )
+        },
+    )
 
     # query for node with child containing "bar" two levels deep
-    session.query(TreeNode).join(["children", "children"], aliased=True).filter_by(name='bar')
+    session.query(TreeNode).join(["children", "children"], aliased=True).filter_by(
+        name="bar"
+    )
 
 To add criterion for each table along the way in an aliased
 join, you can use ``from_joinpoint`` to keep joining against
@@ -215,15 +225,15 @@ the same line of aliases:
     # search for the treenode along the path "n1/n12/n122"
 
     # first find a Node with name="n122"
-    q = sess.query(Node).filter_by(name='n122')
+    q = sess.query(Node).filter_by(name="n122")
 
     # then join to parent with "n12"
-    q = q.join('parent', aliased=True).filter_by(name='n12')
+    q = q.join("parent", aliased=True).filter_by(name="n12")
 
     # join again to the next parent with 'n1'.  use 'from_joinpoint'
     # so we join from the previous point, instead of joining off the
     # root table
-    q = q.join('parent', aliased=True, from_joinpoint=True).filter_by(name='n1')
+    q = q.join("parent", aliased=True, from_joinpoint=True).filter_by(name="n1")
 
     node = q.first()
 
@@ -271,17 +281,24 @@ deep you want to go.  Lets show the self-referential
 
 ::
 
-    nodes = Table('nodes', metadata,
-         Column('id', Integer, primary_key=True),
-         Column('parent_id', Integer, ForeignKey('nodes.id')),
-         Column('name', String(30)))
+    nodes = Table(
+        "nodes",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("parent_id", Integer, ForeignKey("nodes.id")),
+        Column("name", String(30)),
+    )
+
 
     class TreeNode(object):
         pass
 
-    mapper(TreeNode, nodes, properties={
-        'children':relation(TreeNode, lazy=False, join_depth=3)
-    })
+
+    mapper(
+        TreeNode,
+        nodes,
+        properties={"children": relation(TreeNode, lazy=False, join_depth=3)},
+    )
 
 So what happens when we say:
 
@@ -324,10 +341,13 @@ new type, ``Point``.  Stores an x/y coordinate:
         def __init__(self, x, y):
             self.x = x
             self.y = y
+
         def __composite_values__(self):
             return self.x, self.y
+
         def __eq__(self, other):
             return other.x == self.x and other.y == self.y
+
         def __ne__(self, other):
             return not self.__eq__(other)
 
@@ -341,13 +361,15 @@ Let's create a table of vertices storing two points per row:
 
 ::
 
-    vertices = Table('vertices', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('x1', Integer),
-        Column('y1', Integer),
-        Column('x2', Integer),
-        Column('y2', Integer),
-        )
+    vertices = Table(
+        "vertices",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("x1", Integer),
+        Column("y1", Integer),
+        Column("x2", Integer),
+        Column("y2", Integer),
+    )
 
 Then, map it !  We'll create a ``Vertex`` object which
 stores two ``Point`` objects:
@@ -359,10 +381,15 @@ stores two ``Point`` objects:
             self.start = start
             self.end = end
 
-    mapper(Vertex, vertices, properties={
-        'start':composite(Point, vertices.c.x1, vertices.c.y1),
-        'end':composite(Point, vertices.c.x2, vertices.c.y2)
-    })
+
+    mapper(
+        Vertex,
+        vertices,
+        properties={
+            "start": composite(Point, vertices.c.x1, vertices.c.y1),
+            "end": composite(Point, vertices.c.x2, vertices.c.y2),
+        },
+    )
 
 Once you've set up your composite type, it's usable just
 like any other type:
@@ -370,7 +397,7 @@ like any other type:
 ::
 
 
-    v = Vertex(Point(3, 4), Point(26,15))
+    v = Vertex(Point(3, 4), Point(26, 15))
     session.save(v)
     session.flush()
 
@@ -388,7 +415,7 @@ work as primary keys too, and are usable in ``query.get()``:
 
     # a Document class which uses a composite Version
     # object as primary key
-    document = query.get(Version(1, 'a'))
+    document = query.get(Version(1, "a"))
 
 ``dynamic_loader()`` relations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -438,16 +465,12 @@ eager in one pass:
 
 ::
 
-    mapper(Foo, foo_table, properties={
-       'bar':relation(Bar)
-    })
-    mapper(Bar, bar_table, properties={
-       'bat':relation(Bat)
-    })
+    mapper(Foo, foo_table, properties={"bar": relation(Bar)})
+    mapper(Bar, bar_table, properties={"bat": relation(Bat)})
     mapper(Bat, bat_table)
 
     # eager load bar and bat
-    session.query(Foo).options(eagerload_all('bar.bat')).filter(...).all()
+    session.query(Foo).options(eagerload_all("bar.bat")).filter(...).all()
 
 New Collection API
 ^^^^^^^^^^^^^^^^^^
@@ -471,7 +494,7 @@ many needs:
     # use a dictionary relation keyed by a column
     relation(Item, collection_class=column_mapped_collection(items.c.keyword))
     # or named attribute
-    relation(Item, collection_class=attribute_mapped_collection('keyword'))
+    relation(Item, collection_class=attribute_mapped_collection("keyword"))
     # or any function you like
     relation(Item, collection_class=mapped_collection(lambda entity: entity.a + entity.b))
 
@@ -493,12 +516,20 @@ columns or subqueries:
 
 ::
 
-    mapper(User, users, properties={
-           'fullname': column_property((users.c.firstname + users.c.lastname).label('fullname')),
-           'numposts': column_property(
-                select([func.count(1)], users.c.id==posts.c.user_id).correlate(users).label('posts')
-           )
-        })
+    mapper(
+        User,
+        users,
+        properties={
+            "fullname": column_property(
+                (users.c.firstname + users.c.lastname).label("fullname")
+            ),
+            "numposts": column_property(
+                select([func.count(1)], users.c.id == posts.c.user_id)
+                .correlate(users)
+                .label("posts")
+            ),
+        },
+    )
 
 a typical query looks like:
 
@@ -534,14 +565,13 @@ your ``engine`` (or anywhere):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    engine = create_engine('myengine://')
+    engine = create_engine("myengine://")
     Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
 
     # use the new Session() freely
     sess = Session()
     sess.save(someobject)
     sess.flush()
-
 
 If you need to post-configure your Session, say with an
 engine, add it later with ``configure()``:
@@ -562,7 +592,7 @@ with both ``sessionmaker`` as well as ``create_session()``:
     Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
     Session.configure(bind=engine)
 
-    u = User(name='wendy')
+    u = User(name="wendy")
 
     sess = Session()
     sess.save(u)
@@ -572,7 +602,6 @@ with both ``sessionmaker`` as well as ``create_session()``:
     # Session in the thread when scope="thread".
     sess2 = Session()
     assert sess is sess2
-
 
 When using a thread-local ``Session``, the returned class
 has all of ``Session's`` interface implemented as
@@ -586,10 +615,9 @@ old ``objectstore`` days....
     # "assignmapper"-like functionality available via ScopedSession.mapper
     Session.mapper(User, users_table)
 
-    u = User(name='wendy')
+    u = User(name="wendy")
 
     Session.commit()
-
 
 Sessions are again Weak Referencing By Default
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -624,13 +652,13 @@ Also, ``autoflush=True`` means the ``Session`` will
 
     Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
 
-    u = User(name='wendy')
+    u = User(name="wendy")
 
     sess = Session()
     sess.save(u)
 
     # wendy is flushed, comes right back from a query
-    wendy = sess.query(User).filter_by(name='wendy').one()
+    wendy = sess.query(User).filter_by(name="wendy").one()
 
 Transactional methods moved onto sessions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -649,7 +677,7 @@ background).
 
     # use the session
 
-    sess.commit() # commit transaction
+    sess.commit()  # commit transaction
 
 Sharing a ``Session`` with an enclosing engine-level (i.e.
 non-ORM) transaction is easy:
@@ -745,7 +773,7 @@ Just like it says:
 
 ::
 
-       b = bindparam('foo', type_=String)
+       b = bindparam("foo", type_=String)
 
 in\_ Function Changed to Accept Sequence or Selectable
 ------------------------------------------------------
@@ -847,8 +875,18 @@ Out Parameters for Oracle
 
 ::
 
-    result = engine.execute(text("begin foo(:x, :y, :z); end;", bindparams=[bindparam('x', Numeric), outparam('y', Numeric), outparam('z', Numeric)]), x=5)
-    assert result.out_parameters == {'y':10, 'z':75}
+    result = engine.execute(
+        text(
+            "begin foo(:x, :y, :z); end;",
+            bindparams=[
+                bindparam("x", Numeric),
+                outparam("y", Numeric),
+                outparam("z", Numeric),
+            ],
+        ),
+        x=5,
+    )
+    assert result.out_parameters == {"y": 10, "z": 75}
 
 Connection-bound ``MetaData``, ``Sessions``
 -------------------------------------------

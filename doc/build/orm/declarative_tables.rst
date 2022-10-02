@@ -343,11 +343,10 @@ use a declarative hybrid mapping, passing the
     from sqlalchemy import Table
     from sqlalchemy.orm import declarative_base
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
 
     Base = declarative_base()
+
 
     class MyClass(Base):
         __table__ = Table(
@@ -365,16 +364,15 @@ objects at once, then refer to them from the :class:`.MetaData`::
     from sqlalchemy import Table
     from sqlalchemy.orm import declarative_base
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
 
     Base = declarative_base()
 
     Base.metadata.reflect(engine)
 
+
     class MyClass(Base):
-        __table__ = Base.metadata.tables['mytable']
+        __table__ = Base.metadata.tables["mytable"]
 
 .. seealso::
 
@@ -430,9 +428,7 @@ the ``Reflected.prepare`` method is called.   The above mapping is not
 complete until we do so, given an :class:`_engine.Engine`::
 
 
-    engine = create_engine(
-        "postgresql+psycopg2://user:pass@hostname/my_existing_database"
-    )
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/my_existing_database")
     Reflected.prepare(engine)
 
 The purpose of the ``Reflected`` class is to define the scope at which

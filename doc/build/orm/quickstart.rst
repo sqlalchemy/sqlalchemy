@@ -278,10 +278,10 @@ construct creates joins using the :meth:`_sql.Select.join` method:
 .. sourcecode:: pycon+sql
 
     >>> stmt = (
-    ...  select(Address)
-    ...  .join(Address.user)
-    ...  .where(User.name == "sandy")
-    ...  .where(Address.email_address == "sandy@sqlalchemy.org")
+    ...     select(Address)
+    ...     .join(Address.user)
+    ...     .where(User.name == "sandy")
+    ...     .where(Address.email_address == "sandy@sqlalchemy.org")
     ... )
     >>> sandy_address = session.scalars(stmt).one()
     {opensql}SELECT address.id, address.email_address, address.user_id
@@ -320,9 +320,7 @@ address associated with "sandy", and also add a new email address to
     [...] ('patrick',)
     {stop}
 
-    >>> patrick.addresses.append(
-    ...     Address(email_address="patrickstar@sqlalchemy.org")
-    ... )
+    >>> patrick.addresses.append(Address(email_address="patrickstar@sqlalchemy.org"))
     {opensql}SELECT address.id AS address_id, address.email_address AS address_email_address, address.user_id AS address_user_id
     FROM address
     WHERE ? = address.user_id

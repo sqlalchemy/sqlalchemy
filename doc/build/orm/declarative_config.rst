@@ -117,9 +117,7 @@ hybrid table style::
             Column("lastname", String(50)),
         )
 
-        fullname = column_property(
-            __table__.c.firstname + " " + __table__.c.lastname
-        )
+        fullname = column_property(__table__.c.firstname + " " + __table__.c.lastname)
 
         addresses = relationship("Address", back_populates="user")
 
@@ -182,14 +180,12 @@ particular columns as part of what the ORM should consider to be a primary
 key for the class, independently of schema-level primary key constraints::
 
     class GroupUsers(Base):
-        __tablename__ = 'group_users'
+        __tablename__ = "group_users"
 
         user_id = Column(String(40))
         group_id = Column(String(40))
 
-        __mapper_args__ = {
-            "primary_key": [user_id, group_id]
-        }
+        __mapper_args__ = {"primary_key": [user_id, group_id]}
 
 .. seealso::
 
@@ -246,7 +242,6 @@ configuring a single-table inheritance mapping::
             polymorphic_identity="employee",
         )
 
-
 .. seealso::
 
     :ref:`single_inheritance` - background on the ORM single table inheritance
@@ -282,20 +277,22 @@ collection::
         def __mapper_args__(cls):
             return {
                 "exclude_properties": [
-                    column.key for column in cls.__table__.c if
-                    column.info.get("exclude", False)
+                    column.key
+                    for column in cls.__table__.c
+                    if column.info.get("exclude", False)
                 ]
             }
 
+
     Base = declarative_base()
 
+
     class SomeClass(ExcludeColsWFlag, Base):
-        __tablename__ = 'some_table'
+        __tablename__ = "some_table"
 
         id = Column(Integer, primary_key=True)
         data = Column(String)
         not_needed = Column(String, info={"exclude": True})
-
 
 Above, the ``ExcludeColsWFlag`` mixin provides a per-class ``__mapper_args__``
 hook that will scan for :class:`.Column` objects that include the key/value
@@ -323,7 +320,7 @@ assumed to be completed and the 'configure' step has finished::
     class MyClass(Base):
         @classmethod
         def __declare_last__(cls):
-            ""
+            """"""
             # do something with mappings
 
 ``__declare_first__()``
@@ -335,7 +332,7 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
     class MyClass(Base):
         @classmethod
         def __declare_first__(cls):
-            ""
+            """"""
             # do something before mappings are configured
 
 .. versionadded:: 0.9.3

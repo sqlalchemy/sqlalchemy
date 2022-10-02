@@ -71,16 +71,17 @@ entities.  The new system includes these features:
 
 
         class Parent(Base):
-            __tablename__ = 'parent'
+            __tablename__ = "parent"
             id = Column(Integer, primary_key=True)
-            child_id_one = Column(Integer, ForeignKey('child.id'))
-            child_id_two = Column(Integer, ForeignKey('child.id'))
+            child_id_one = Column(Integer, ForeignKey("child.id"))
+            child_id_two = Column(Integer, ForeignKey("child.id"))
 
             child_one = relationship("Child", foreign_keys=child_id_one)
             child_two = relationship("Child", foreign_keys=child_id_two)
 
+
         class Child(Base):
-            __tablename__ = 'child'
+            __tablename__ = "child"
             id = Column(Integer, primary_key=True)
 
 * relationships against self-referential, composite foreign
@@ -90,11 +91,11 @@ entities.  The new system includes these features:
   ::
 
         class Folder(Base):
-            __tablename__ = 'folder'
+            __tablename__ = "folder"
             __table_args__ = (
-              ForeignKeyConstraint(
-                  ['account_id', 'parent_id'],
-                  ['folder.account_id', 'folder.folder_id']),
+                ForeignKeyConstraint(
+                    ["account_id", "parent_id"], ["folder.account_id", "folder.folder_id"]
+                ),
             )
 
             account_id = Column(Integer, primary_key=True)
@@ -102,10 +103,9 @@ entities.  The new system includes these features:
             parent_id = Column(Integer)
             name = Column(String)
 
-            parent_folder = relationship("Folder",
-                                backref="child_folders",
-                                remote_side=[account_id, folder_id]
-                          )
+            parent_folder = relationship(
+                "Folder", backref="child_folders", remote_side=[account_id, folder_id]
+            )
 
   Above, the ``Folder`` refers to its parent ``Folder``
   joining from ``account_id`` to itself, and ``parent_id``
@@ -144,18 +144,19 @@ entities.  The new system includes these features:
   expected in most cases::
 
     class HostEntry(Base):
-        __tablename__ = 'host_entry'
+        __tablename__ = "host_entry"
 
         id = Column(Integer, primary_key=True)
         ip_address = Column(INET)
         content = Column(String(50))
 
         # relationship() using explicit foreign_keys, remote_side
-        parent_host = relationship("HostEntry",
-                            primaryjoin=ip_address == cast(content, INET),
-                            foreign_keys=content,
-                            remote_side=ip_address
-                        )
+        parent_host = relationship(
+            "HostEntry",
+            primaryjoin=ip_address == cast(content, INET),
+            foreign_keys=content,
+            remote_side=ip_address,
+        )
 
   The new :func:`_orm.relationship` mechanics make use of a
   SQLAlchemy concept known as :term:`annotations`.  These annotations
@@ -167,8 +168,9 @@ entities.  The new system includes these features:
 
     from sqlalchemy.orm import foreign, remote
 
+
     class HostEntry(Base):
-        __tablename__ = 'host_entry'
+        __tablename__ = "host_entry"
 
         id = Column(Integer, primary_key=True)
         ip_address = Column(INET)
@@ -176,11 +178,10 @@ entities.  The new system includes these features:
 
         # relationship() using explicit foreign() and remote() annotations
         # in lieu of separate arguments
-        parent_host = relationship("HostEntry",
-                            primaryjoin=remote(ip_address) == \
-                                    cast(foreign(content), INET),
-                        )
-
+        parent_host = relationship(
+            "HostEntry",
+            primaryjoin=remote(ip_address) == cast(foreign(content), INET),
+        )
 
 .. seealso::
 
@@ -226,12 +227,11 @@ certain contexts, such as :class:`.AliasedInsp` and
 A walkthrough of some key capabilities follows::
 
     >>> class User(Base):
-    ...     __tablename__ = 'user'
+    ...     __tablename__ = "user"
     ...     id = Column(Integer, primary_key=True)
     ...     name = Column(String)
     ...     name_syn = synonym(name)
     ...     addresses = relationship("Address")
-    ...
 
     >>> # universal entry point is inspect()
     >>> b = inspect(User)
@@ -285,7 +285,7 @@ A walkthrough of some key capabilities follows::
     "user".id = address.user_id
 
     >>> # inspect works on instances
-    >>> u1 = User(id=3, name='x')
+    >>> u1 = User(id=3, name="x")
     >>> b = inspect(u1)
 
     >>> # it returns the InstanceState
@@ -354,10 +354,11 @@ usable anywhere:
 ::
 
     from sqlalchemy.orm import with_polymorphic
+
     palias = with_polymorphic(Person, [Engineer, Manager])
-    session.query(Company).\
-                join(palias, Company.employees).\
-                filter(or_(Engineer.language=='java', Manager.hair=='pointy'))
+    session.query(Company).join(palias, Company.employees).filter(
+        or_(Engineer.language == "java", Manager.hair == "pointy")
+    )
 
 .. seealso::
 
@@ -377,9 +378,11 @@ by combining it with the new :func:`.with_polymorphic` function::
 
     # use eager loading in conjunction with with_polymorphic targets
     Job_P = with_polymorphic(Job, [SubJob, ExtraJob], aliased=True)
-    q = s.query(DataContainer).\
-                join(DataContainer.jobs.of_type(Job_P)).\
-                    options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+    q = (
+        s.query(DataContainer)
+        .join(DataContainer.jobs.of_type(Job_P))
+        .options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+    )
 
 The method now works equally well in most places a regular relationship
 attribute is accepted, including with loader functions like
@@ -389,26 +392,28 @@ and :meth:`.PropComparator.has`::
 
     # use eager loading in conjunction with with_polymorphic targets
     Job_P = with_polymorphic(Job, [SubJob, ExtraJob], aliased=True)
-    q = s.query(DataContainer).\
-                join(DataContainer.jobs.of_type(Job_P)).\
-                    options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+    q = (
+        s.query(DataContainer)
+        .join(DataContainer.jobs.of_type(Job_P))
+        .options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+    )
 
     # pass subclasses to eager loads (implicitly applies with_polymorphic)
-    q = s.query(ParentThing).\
-                    options(
-                        joinedload_all(
-                            ParentThing.container,
-                            DataContainer.jobs.of_type(SubJob)
-                    ))
+    q = s.query(ParentThing).options(
+        joinedload_all(ParentThing.container, DataContainer.jobs.of_type(SubJob))
+    )
 
     # control self-referential aliasing with any()/has()
     Job_A = aliased(Job)
-    q = s.query(Job).join(DataContainer.jobs).\
-                    filter(
-                        DataContainer.jobs.of_type(Job_A).\
-                            any(and_(Job_A.id < Job.id, Job_A.type=='fred')
-                        )
-                    )
+    q = (
+        s.query(Job)
+        .join(DataContainer.jobs)
+        .filter(
+            DataContainer.jobs.of_type(Job_A).any(
+                and_(Job_A.id < Job.id, Job_A.type == "fred")
+            )
+        )
+    )
 
 .. seealso::
 
@@ -429,13 +434,15 @@ with a declarative base class::
 
     Base = declarative_base()
 
+
     @event.listens_for("load", Base, propagate=True)
     def on_load(target, context):
         print("New instance loaded:", target)
 
+
     # on_load() will be applied to SomeClass
     class SomeClass(Base):
-        __tablename__ = 'sometable'
+        __tablename__ = "sometable"
 
         # ...
 
@@ -453,8 +460,9 @@ can be referred to via dotted name in expressions::
     class Snack(Base):
         # ...
 
-        peanuts = relationship("nuts.Peanut",
-                primaryjoin="nuts.Peanut.snack_id == Snack.id")
+        peanuts = relationship(
+            "nuts.Peanut", primaryjoin="nuts.Peanut.snack_id == Snack.id"
+        )
 
 The resolution allows that any full or partial
 disambiguating package name can be used.   If the
@@ -484,17 +492,22 @@ in one step:
     class ReflectedOne(DeferredReflection, Base):
         __abstract__ = True
 
+
     class ReflectedTwo(DeferredReflection, Base):
         __abstract__ = True
 
+
     class MyClass(ReflectedOne):
-        __tablename__ = 'mytable'
+        __tablename__ = "mytable"
+
 
     class MyOtherClass(ReflectedOne):
-        __tablename__ = 'myothertable'
+        __tablename__ = "myothertable"
+
 
     class YetAnotherClass(ReflectedTwo):
-        __tablename__ = 'yetanothertable'
+        __tablename__ = "yetanothertable"
+
 
     ReflectedOne.prepare(engine_one)
     ReflectedTwo.prepare(engine_two)
@@ -535,10 +548,9 @@ Below, we emit an UPDATE against ``SomeEntity``, adding
 a FROM clause (or equivalent, depending on backend)
 against ``SomeOtherEntity``::
 
-    query(SomeEntity).\
-        filter(SomeEntity.id==SomeOtherEntity.id).\
-        filter(SomeOtherEntity.foo=='bar').\
-        update({"data":"x"})
+    query(SomeEntity).filter(SomeEntity.id == SomeOtherEntity.id).filter(
+        SomeOtherEntity.foo == "bar"
+    ).update({"data": "x"})
 
 In particular, updates to joined-inheritance
 entities are supported, provided the target of the UPDATE is local to the
@@ -548,10 +560,9 @@ given ``Engineer`` as a joined subclass of ``Person``:
 
 ::
 
-    query(Engineer).\
-            filter(Person.id==Engineer.id).\
-            filter(Person.name=='dilbert').\
-            update({"engineer_data":"java"})
+    query(Engineer).filter(Person.id == Engineer.id).filter(
+        Person.name == "dilbert"
+    ).update({"engineer_data": "java"})
 
 would produce:
 
@@ -649,6 +660,7 @@ For example, to add logarithm support to :class:`.Numeric` types:
     from sqlalchemy.types import Numeric
     from sqlalchemy.sql import func
 
+
     class CustomNumeric(Numeric):
         class comparator_factory(Numeric.Comparator):
             def log(self, other):
@@ -659,15 +671,16 @@ The new type is usable like any other type:
 ::
 
 
-    data = Table('data', metadata,
-              Column('id', Integer, primary_key=True),
-              Column('x', CustomNumeric(10, 5)),
-              Column('y', CustomNumeric(10, 5))
-         )
+    data = Table(
+        "data",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("x", CustomNumeric(10, 5)),
+        Column("y", CustomNumeric(10, 5)),
+    )
 
     stmt = select([data.c.x.log(data.c.y)]).where(data.c.x.log(2) < value)
     print(conn.execute(stmt).fetchall())
-
 
 New features which have come from this immediately include
 support for PostgreSQL's HSTORE type, as well as new
@@ -696,11 +709,13 @@ support this syntax, including PostgreSQL, SQLite, and MySQL.  It is
 not the same thing as the usual ``executemany()`` style of INSERT which
 remains unchanged::
 
-    users.insert().values([
-                        {"name": "some name"},
-                        {"name": "some other name"},
-                        {"name": "yet another name"},
-                    ])
+    users.insert().values(
+        [
+            {"name": "some name"},
+            {"name": "some other name"},
+            {"name": "yet another name"},
+        ]
+    )
 
 .. seealso::
 
@@ -721,6 +736,7 @@ functionality, except on the database side::
     from sqlalchemy.types import String
     from sqlalchemy import func, Table, Column, MetaData
 
+
     class LowerString(String):
         def bind_expression(self, bindvalue):
             return func.lower(bindvalue)
@@ -728,18 +744,15 @@ functionality, except on the database side::
         def column_expression(self, col):
             return func.lower(col)
 
+
     metadata = MetaData()
-    test_table = Table(
-            'test_table',
-            metadata,
-            Column('data', LowerString)
-    )
+    test_table = Table("test_table", metadata, Column("data", LowerString))
 
 Above, the ``LowerString`` type defines a SQL expression that will be emitted
 whenever the ``test_table.c.data`` column is rendered in the columns
 clause of a SELECT statement::
 
-    >>> print(select([test_table]).where(test_table.c.data == 'HI'))
+    >>> print(select([test_table]).where(test_table.c.data == "HI"))
     SELECT lower(test_table.data) AS data
     FROM test_table
     WHERE test_table.data = lower(:data_1)
@@ -789,16 +802,17 @@ against a particular target selectable::
 
         signatures = relationship("Signature", lazy=False)
 
+
     class Signature(Base):
         __tablename__ = "signature"
 
         id = Column(Integer, primary_key=True)
 
         sig_count = column_property(
-                        select([func.count('*')]).\
-                            where(SnortEvent.signature == id).
-                            correlate_except(SnortEvent)
-                    )
+            select([func.count("*")])
+            .where(SnortEvent.signature == id)
+            .correlate_except(SnortEvent)
+        )
 
 .. seealso::
 
@@ -818,19 +832,16 @@ and containment methods such as
 
     from sqlalchemy.dialects.postgresql import HSTORE
 
-    data = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('hstore_data', HSTORE)
-        )
+    data = Table(
+        "data_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("hstore_data", HSTORE),
+    )
 
-    engine.execute(
-        select([data.c.hstore_data['some_key']])
-    ).scalar()
+    engine.execute(select([data.c.hstore_data["some_key"]])).scalar()
 
-    engine.execute(
-        select([data.c.hstore_data.matrix()])
-    ).scalar()
-
+    engine.execute(select([data.c.hstore_data.matrix()])).scalar()
 
 .. seealso::
 
@@ -861,30 +872,20 @@ results:
 The type also introduces new operators, using the new type-specific
 operator framework.  New operations include indexed access::
 
-    result = conn.execute(
-        select([mytable.c.arraycol[2]])
-    )
+    result = conn.execute(select([mytable.c.arraycol[2]]))
 
 slice access in SELECT::
 
-    result = conn.execute(
-        select([mytable.c.arraycol[2:4]])
-    )
+    result = conn.execute(select([mytable.c.arraycol[2:4]]))
 
 slice updates in UPDATE::
 
-    conn.execute(
-        mytable.update().values({mytable.c.arraycol[2:3]: [7, 8]})
-    )
+    conn.execute(mytable.update().values({mytable.c.arraycol[2:3]: [7, 8]}))
 
 freestanding array literals::
 
     >>> from sqlalchemy.dialects import postgresql
-    >>> conn.scalar(
-    ...    select([
-    ...        postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
-    ...    ])
-    ...  )
+    >>> conn.scalar(select([postgresql.array([1, 2]) + postgresql.array([3, 4, 5])]))
     [1, 2, 3, 4, 5]
 
 array concatenation, where below, the right side ``[4, 5, 6]`` is coerced into an array literal::
@@ -912,20 +913,24 @@ everything else.
 
 ::
 
-    Column('sometimestamp', sqlite.DATETIME(truncate_microseconds=True))
-    Column('sometimestamp', sqlite.DATETIME(
-                        storage_format=(
-                                    "%(year)04d%(month)02d%(day)02d"
-                                    "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
-                        ),
-                        regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})"
-                        )
-                )
-    Column('somedate', sqlite.DATE(
-                        storage_format="%(month)02d/%(day)02d/%(year)04d",
-                        regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
-                    )
-                )
+    Column("sometimestamp", sqlite.DATETIME(truncate_microseconds=True))
+    Column(
+        "sometimestamp",
+        sqlite.DATETIME(
+            storage_format=(
+                "%(year)04d%(month)02d%(day)02d"
+                "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
+            ),
+            regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})",
+        ),
+    )
+    Column(
+        "somedate",
+        sqlite.DATE(
+            storage_format="%(month)02d/%(day)02d/%(year)04d",
+            regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
+        ),
+    )
 
 Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
 
@@ -946,7 +951,7 @@ The "collate" keyword, long accepted by the MySQL dialect, is now established
 on all :class:`.String` types and will render on any backend, including
 when features such as :meth:`_schema.MetaData.create_all` and :func:`.cast` is used::
 
-    >>> stmt = select([cast(sometable.c.somechar, String(20, collation='utf8'))])
+    >>> stmt = select([cast(sometable.c.somechar, String(20, collation="utf8"))])
     >>> print(stmt)
     SELECT CAST(sometable.somechar AS VARCHAR(20) COLLATE "utf8") AS anon_1
     FROM sometable
@@ -1047,33 +1052,35 @@ The new behavior allows the following test case to work::
 
     Base = declarative_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
 
+
     class UserKeyword(Base):
-        __tablename__ = 'user_keyword'
-        user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
-        keyword_id = Column(Integer, ForeignKey('keyword.id'), primary_key=True)
+        __tablename__ = "user_keyword"
+        user_id = Column(Integer, ForeignKey("user.id"), primary_key=True)
+        keyword_id = Column(Integer, ForeignKey("keyword.id"), primary_key=True)
 
-        user = relationship(User,
-                    backref=backref("user_keywords",
-                                    cascade="all, delete-orphan")
-                )
+        user = relationship(
+            User, backref=backref("user_keywords", cascade="all, delete-orphan")
+        )
 
-        keyword = relationship("Keyword",
-                    backref=backref("user_keywords",
-                                    cascade="all, delete-orphan")
-                )
+        keyword = relationship(
+            "Keyword", backref=backref("user_keywords", cascade="all, delete-orphan")
+        )
 
         # uncomment this to enable the old behavior
         # __mapper_args__ = {"legacy_is_orphan": True}
 
+
     class Keyword(Base):
-        __tablename__ = 'keyword'
+        __tablename__ = "keyword"
         id = Column(Integer, primary_key=True)
-        keyword = Column('keyword', String(64))
+        keyword = Column("keyword", String(64))
+
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
@@ -1103,7 +1110,6 @@ The new behavior allows the following test case to work::
 
     session.commit()
 
-
 :ticket:`2655`
 
 The after_attach event fires after the item is associated with the Session instead of before; before_attach added
@@ -1129,9 +1135,9 @@ use cases should use the new "before_attach" event:
 
     @event.listens_for(Session, "before_attach")
     def before_attach(session, instance):
-        instance.some_necessary_attribute = session.query(Widget).\
-                                                filter_by(instance.widget_name).\
-                                                first()
+        instance.some_necessary_attribute = (
+            session.query(Widget).filter_by(instance.widget_name).first()
+        )
 
 :ticket:`2464`
 
@@ -1146,11 +1152,13 @@ parent:
 
 ::
 
-    subq = session.query(Entity.value).\
-                    filter(Entity.id==Parent.entity_id).\
-                    correlate(Parent).\
-                    as_scalar()
-    session.query(Parent).filter(subq=="some value")
+    subq = (
+        session.query(Entity.value)
+        .filter(Entity.id == Parent.entity_id)
+        .correlate(Parent)
+        .as_scalar()
+    )
+    session.query(Parent).filter(subq == "some value")
 
 This was the opposite behavior of a plain ``select()``
 construct which would assume auto-correlation by default.
@@ -1158,10 +1166,8 @@ The above statement in 0.8 will correlate automatically:
 
 ::
 
-    subq = session.query(Entity.value).\
-                    filter(Entity.id==Parent.entity_id).\
-                    as_scalar()
-    session.query(Parent).filter(subq=="some value")
+    subq = session.query(Entity.value).filter(Entity.id == Parent.entity_id).as_scalar()
+    session.query(Parent).filter(subq == "some value")
 
 like in ``select()``, correlation can be disabled by calling
 ``query.correlate(None)`` or manually set by passing an
@@ -1187,8 +1193,8 @@ objects relative to what's being selected::
 
     from sqlalchemy.sql import table, column, select
 
-    t1 = table('t1', column('x'))
-    t2 = table('t2', column('y'))
+    t1 = table("t1", column("x"))
+    t2 = table("t2", column("y"))
     s = select([t1, t2]).correlate(t1)
 
     print(s)
@@ -1263,8 +1269,8 @@ doing something like this:
 
 ::
 
-    scalar_subq = select([someothertable.c.id]).where(someothertable.c.data=='foo')
-    select([sometable]).where(sometable.c.id==scalar_subq)
+    scalar_subq = select([someothertable.c.id]).where(someothertable.c.data == "foo")
+    select([sometable]).where(sometable.c.id == scalar_subq)
 
 SQL Server doesn't allow an equality comparison to a scalar
 SELECT, that is, "x = (SELECT something)". The MSSQL dialect
@@ -1313,32 +1319,28 @@ key would be ignored, inconsistently versus when
 ::
 
     # before 0.8
-    table1 = Table('t1', metadata,
-        Column('col1', Integer, key='column_one')
-    )
+    table1 = Table("t1", metadata, Column("col1", Integer, key="column_one"))
     s = select([table1])
-    s.c.column_one # would be accessible like this
-    s.c.col1 # would raise AttributeError
+    s.c.column_one  # would be accessible like this
+    s.c.col1  # would raise AttributeError
 
     s = select([table1]).apply_labels()
-    s.c.table1_column_one # would raise AttributeError
-    s.c.table1_col1 # would be accessible like this
+    s.c.table1_column_one  # would raise AttributeError
+    s.c.table1_col1  # would be accessible like this
 
 In 0.8, :attr:`_schema.Column.key` is honored in both cases:
 
 ::
 
     # with 0.8
-    table1 = Table('t1', metadata,
-        Column('col1', Integer, key='column_one')
-    )
+    table1 = Table("t1", metadata, Column("col1", Integer, key="column_one"))
     s = select([table1])
-    s.c.column_one # works
-    s.c.col1 # AttributeError
+    s.c.column_one  # works
+    s.c.col1  # AttributeError
 
     s = select([table1]).apply_labels()
-    s.c.table1_column_one # works
-    s.c.table1_col1 # AttributeError
+    s.c.table1_column_one  # works
+    s.c.table1_col1  # AttributeError
 
 All other behavior regarding "name" and "key" are the same,
 including that the rendered SQL will still use the form
@@ -1408,8 +1410,8 @@ warning:
 
 ::
 
-    t1 = table('t1', column('x'))
-    t1.insert().values(x=5, z=5) # raises "Unconsumed column names: z"
+    t1 = table("t1", column("x"))
+    t1.insert().values(x=5, z=5)  # raises "Unconsumed column names: z"
 
 :ticket:`2415`
 
@@ -1439,7 +1441,7 @@ always compared case-insensitively:
 ::
 
     >>> row = result.fetchone()
-    >>> row['foo'] == row['FOO'] == row['Foo']
+    >>> row["foo"] == row["FOO"] == row["Foo"]
     True
 
 This was for the benefit of a few dialects which in the

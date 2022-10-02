@@ -33,11 +33,13 @@ column. The single column foreign key is more common, and at the column level
 is specified by constructing a :class:`~sqlalchemy.schema.ForeignKey` object
 as an argument to a :class:`~sqlalchemy.schema.Column` object::
 
-    user_preference = Table('user_preference', metadata_obj,
-        Column('pref_id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
-        Column('pref_name', String(40), nullable=False),
-        Column('pref_value', String(100))
+    user_preference = Table(
+        "user_preference",
+        metadata_obj,
+        Column("pref_id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.user_id"), nullable=False),
+        Column("pref_name", String(40), nullable=False),
+        Column("pref_value", String(100)),
     )
 
 Above, we define a new table ``user_preference`` for which each row must
@@ -64,21 +66,27 @@ known as a *composite* foreign key, and almost always references a table that
 has a composite primary key. Below we define a table ``invoice`` which has a
 composite primary key::
 
-    invoice = Table('invoice', metadata_obj,
-        Column('invoice_id', Integer, primary_key=True),
-        Column('ref_num', Integer, primary_key=True),
-        Column('description', String(60), nullable=False)
+    invoice = Table(
+        "invoice",
+        metadata_obj,
+        Column("invoice_id", Integer, primary_key=True),
+        Column("ref_num", Integer, primary_key=True),
+        Column("description", String(60), nullable=False),
     )
 
 And then a table ``invoice_item`` with a composite foreign key referencing
 ``invoice``::
 
-    invoice_item = Table('invoice_item', metadata_obj,
-        Column('item_id', Integer, primary_key=True),
-        Column('item_name', String(60), nullable=False),
-        Column('invoice_id', Integer, nullable=False),
-        Column('ref_num', Integer, nullable=False),
-        ForeignKeyConstraint(['invoice_id', 'ref_num'], ['invoice.invoice_id', 'invoice.ref_num'])
+    invoice_item = Table(
+        "invoice_item",
+        metadata_obj,
+        Column("item_id", Integer, primary_key=True),
+        Column("item_name", String(60), nullable=False),
+        Column("invoice_id", Integer, nullable=False),
+        Column("ref_num", Integer, nullable=False),
+        ForeignKeyConstraint(
+            ["invoice_id", "ref_num"], ["invoice.invoice_id", "invoice.ref_num"]
+        ),
     )
 
 It's important to note that the
@@ -126,22 +134,20 @@ statements, on all backends other than SQLite which does not support
 most forms of ALTER.  Given a schema like::
 
     node = Table(
-        'node', metadata_obj,
-        Column('node_id', Integer, primary_key=True),
-        Column(
-            'primary_element', Integer,
-            ForeignKey('element.element_id')
-        )
+        "node",
+        metadata_obj,
+        Column("node_id", Integer, primary_key=True),
+        Column("primary_element", Integer, ForeignKey("element.element_id")),
     )
 
     element = Table(
-        'element', metadata_obj,
-        Column('element_id', Integer, primary_key=True),
-        Column('parent_node_id', Integer),
+        "element",
+        metadata_obj,
+        Column("element_id", Integer, primary_key=True),
+        Column("parent_node_id", Integer),
         ForeignKeyConstraint(
-            ['parent_node_id'], ['node.node_id'],
-            name='fk_element_parent_node_id'
-        )
+            ["parent_node_id"], ["node.node_id"], name="fk_element_parent_node_id"
+        ),
     )
 
 When we call upon :meth:`_schema.MetaData.create_all` on a backend such as the
@@ -151,7 +157,7 @@ constraints are created separately:
 .. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
-    ...    metadata_obj.create_all(conn, checkfirst=False)
+    ...     metadata_obj.create_all(conn, checkfirst=False)
     {opensql}CREATE TABLE element (
         element_id SERIAL NOT NULL,
         parent_node_id INTEGER,
@@ -179,7 +185,7 @@ those constraints that are named:
 .. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
-    ...    metadata_obj.drop_all(conn, checkfirst=False)
+    ...     metadata_obj.drop_all(conn, checkfirst=False)
     {opensql}ALTER TABLE element DROP CONSTRAINT fk_element_parent_node_id
     DROP TABLE node
     DROP TABLE element
@@ -205,13 +211,16 @@ to manually resolve dependency cycles.  We can add this flag only to
 the ``'element'`` table as follows::
 
     element = Table(
-        'element', metadata_obj,
-        Column('element_id', Integer, primary_key=True),
-        Column('parent_node_id', Integer),
+        "element",
+        metadata_obj,
+        Column("element_id", Integer, primary_key=True),
+        Column("parent_node_id", Integer),
         ForeignKeyConstraint(
-            ['parent_node_id'], ['node.node_id'],
-            use_alter=True, name='fk_element_parent_node_id'
-        )
+            ["parent_node_id"],
+            ["node.node_id"],
+            use_alter=True,
+            name="fk_element_parent_node_id",
+        ),
     )
 
 in our CREATE DDL we will see the ALTER statement only for this constraint,
@@ -220,7 +229,7 @@ and not the other one:
 .. sourcecode:: pycon+sql
 
     >>> with engine.connect() as conn:
-    ...    metadata_obj.create_all(conn, checkfirst=False)
+    ...     metadata_obj.create_all(conn, checkfirst=False)
     {opensql}CREATE TABLE element (
         element_id SERIAL NOT NULL,
         parent_node_id INTEGER,
@@ -282,22 +291,29 @@ generation of this clause via the ``onupdate`` and ``ondelete`` keyword
 arguments. The value is any string which will be output after the appropriate
 "ON UPDATE" or "ON DELETE" phrase::
 
-    child = Table('child', metadata_obj,
-        Column('id', Integer,
-                ForeignKey('parent.id', onupdate="CASCADE", ondelete="CASCADE"),
-                primary_key=True
-        )
+    child = Table(
+        "child",
+        metadata_obj,
+        Column(
+            "id",
+            Integer,
+            ForeignKey("parent.id", onupdate="CASCADE", ondelete="CASCADE"),
+            primary_key=True,
+        ),
     )
 
-    composite = Table('composite', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('rev_id', Integer),
-        Column('note_id', Integer),
+    composite = Table(
+        "composite",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("rev_id", Integer),
+        Column("note_id", Integer),
         ForeignKeyConstraint(
-                    ['rev_id', 'note_id'],
-                    ['revisions.id', 'revisions.note_id'],
-                    onupdate="CASCADE", ondelete="SET NULL"
-        )
+            ["rev_id", "note_id"],
+            ["revisions.id", "revisions.note_id"],
+            onupdate="CASCADE",
+            ondelete="SET NULL",
+        ),
     )
 
 Note that these clauses require ``InnoDB`` tables when used with MySQL.
@@ -327,17 +343,16 @@ unique constraints and/or those with multiple columns are created via the
     from sqlalchemy import UniqueConstraint
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
-
+    mytable = Table(
+        "mytable",
+        metadata_obj,
         # per-column anonymous unique constraint
-        Column('col1', Integer, unique=True),
-
-        Column('col2', Integer),
-        Column('col3', Integer),
-
+        Column("col1", Integer, unique=True),
+        Column("col2", Integer),
+        Column("col3", Integer),
         # explicit/composite unique constraint.  'name' is optional.
-        UniqueConstraint('col2', 'col3', name='uix_1')
-        )
+        UniqueConstraint("col2", "col3", name="uix_1"),
+    )
 
 CHECK Constraint
 ----------------
@@ -357,17 +372,16 @@ MySQL.
     from sqlalchemy import CheckConstraint
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
-
+    mytable = Table(
+        "mytable",
+        metadata_obj,
         # per-column CHECK constraint
-        Column('col1', Integer, CheckConstraint('col1>5')),
-
-        Column('col2', Integer),
-        Column('col3', Integer),
-
+        Column("col1", Integer, CheckConstraint("col1>5")),
+        Column("col2", Integer),
+        Column("col3", Integer),
         # table level CHECK constraint.  'name' is optional.
-        CheckConstraint('col2 > col3 + 5', name='check1')
-        )
+        CheckConstraint("col2 > col3 + 5", name="check1"),
+    )
 
     {sql}mytable.create(engine)
     CREATE TABLE mytable (
@@ -388,12 +402,14 @@ option of being configured directly::
 
     from sqlalchemy import PrimaryKeyConstraint
 
-    my_table = Table('mytable', metadata_obj,
-                Column('id', Integer),
-                Column('version_id', Integer),
-                Column('data', String(50)),
-                PrimaryKeyConstraint('id', 'version_id', name='mytable_pk')
-            )
+    my_table = Table(
+        "mytable",
+        metadata_obj,
+        Column("id", Integer),
+        Column("version_id", Integer),
+        Column("data", String(50)),
+        PrimaryKeyConstraint("id", "version_id", name="mytable_pk"),
+    )
 
 .. seealso::
 
@@ -468,11 +484,11 @@ one exception case where an existing name can be further embellished).
 An example naming convention that suits basic cases is as follows::
 
     convention = {
-      "ix": 'ix_%(column_0_label)s',
-      "uq": "uq_%(table_name)s_%(column_0_name)s",
-      "ck": "ck_%(table_name)s_%(constraint_name)s",
-      "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-      "pk": "pk_%(table_name)s"
+        "ix": "ix_%(column_0_label)s",
+        "uq": "uq_%(table_name)s_%(column_0_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s",
     }
 
     metadata_obj = MetaData(naming_convention=convention)
@@ -482,10 +498,12 @@ the target :class:`_schema.MetaData` collection.
 For example, we can observe the name produced when we create an unnamed
 :class:`.UniqueConstraint`::
 
-    >>> user_table = Table('user', metadata_obj,
-    ...                 Column('id', Integer, primary_key=True),
-    ...                 Column('name', String(30), nullable=False),
-    ...                 UniqueConstraint('name')
+    >>> user_table = Table(
+    ...     "user",
+    ...     metadata_obj,
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30), nullable=False),
+    ...     UniqueConstraint("name"),
     ... )
     >>> list(user_table.constraints)[1].name
     'uq_user_name'
@@ -493,10 +511,12 @@ For example, we can observe the name produced when we create an unnamed
 This same feature takes effect even if we just use the :paramref:`_schema.Column.unique`
 flag::
 
-    >>> user_table = Table('user', metadata_obj,
-    ...                  Column('id', Integer, primary_key=True),
-    ...                  Column('name', String(30), nullable=False, unique=True)
-    ...     )
+    >>> user_table = Table(
+    ...     "user",
+    ...     metadata_obj,
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30), nullable=False, unique=True),
+    ... )
     >>> list(user_table.constraints)[1].name
     'uq_user_name'
 
@@ -543,16 +563,17 @@ deterministically truncated using a 4-character suffix based on the md5
 hash of the long name.  For example, the naming convention below will
 generate very long names given the column names in use::
 
-    metadata_obj = MetaData(naming_convention={
-        "uq": "uq_%(table_name)s_%(column_0_N_name)s"
-    })
+    metadata_obj = MetaData(
+        naming_convention={"uq": "uq_%(table_name)s_%(column_0_N_name)s"}
+    )
 
     long_names = Table(
-        'long_names', metadata_obj,
-        Column('information_channel_code', Integer, key='a'),
-        Column('billing_convention_name', Integer, key='b'),
-        Column('product_identifier', Integer, key='c'),
-        UniqueConstraint('a', 'b', 'c')
+        "long_names",
+        metadata_obj,
+        Column("information_channel_code", Integer, key="a"),
+        Column("billing_convention_name", Integer, key="b"),
+        Column("product_identifier", Integer, key="c"),
+        UniqueConstraint("a", "b", "c"),
     )
 
 On the PostgreSQL dialect, names longer than 63 characters will be truncated
@@ -580,20 +601,22 @@ that as follows::
 
     import uuid
 
+
     def fk_guid(constraint, table):
-        str_tokens = [
-            table.name,
-        ] + [
-            element.parent.name for element in constraint.elements
-        ] + [
-            element.target_fullname for element in constraint.elements
-        ]
-        guid = uuid.uuid5(uuid.NAMESPACE_OID, "_".join(str_tokens).encode('ascii'))
+        str_tokens = (
+            [
+                table.name,
+            ]
+            + [element.parent.name for element in constraint.elements]
+            + [element.target_fullname for element in constraint.elements]
+        )
+        guid = uuid.uuid5(uuid.NAMESPACE_OID, "_".join(str_tokens).encode("ascii"))
         return str(guid)
+
 
     convention = {
         "fk_guid": fk_guid,
-        "ix": 'ix_%(column_0_label)s',
+        "ix": "ix_%(column_0_label)s",
         "fk": "fk_%(fk_guid)s",
     }
 
@@ -602,18 +625,21 @@ name as follows::
 
     >>> metadata_obj = MetaData(naming_convention=convention)
 
-    >>> user_table = Table('user', metadata_obj,
-    ...         Column('id', Integer, primary_key=True),
-    ...         Column('version', Integer, primary_key=True),
-    ...         Column('data', String(30))
-    ...     )
-    >>> address_table = Table('address', metadata_obj,
-    ...        Column('id', Integer, primary_key=True),
-    ...        Column('user_id', Integer),
-    ...        Column('user_version_id', Integer)
-    ...    )
-    >>> fk = ForeignKeyConstraint(['user_id', 'user_version_id'],
-    ...                ['user.id', 'user.version'])
+    >>> user_table = Table(
+    ...     "user",
+    ...     metadata_obj,
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("version", Integer, primary_key=True),
+    ...     Column("data", String(30)),
+    ... )
+    >>> address_table = Table(
+    ...     "address",
+    ...     metadata_obj,
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", Integer),
+    ...     Column("user_version_id", Integer),
+    ... )
+    >>> fk = ForeignKeyConstraint(["user_id", "user_version_id"], ["user.id", "user.version"])
     >>> address_table.append_constraint(fk)
     >>> fk.name
     fk_0cd51ab5-8d70-56e8-a83c-86661737766d
@@ -646,9 +672,11 @@ A typical convention is ``"ck_%(table_name)s_%(constraint_name)s"``::
         naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
     )
 
-    Table('foo', metadata_obj,
-        Column('value', Integer),
-        CheckConstraint('value > 5', name='value_gt_5')
+    Table(
+        "foo",
+        metadata_obj,
+        Column("value", Integer),
+        CheckConstraint("value > 5", name="value_gt_5"),
     )
 
 The above table will produce the name ``ck_foo_value_gt_5``::
@@ -663,13 +691,9 @@ token; we can make use of this by ensuring we use a :class:`_schema.Column` or
 :func:`_expression.column` element within the constraint's expression,
 either by declaring the constraint separate from the table::
 
-    metadata_obj = MetaData(
-        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
-    )
+    metadata_obj = MetaData(naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"})
 
-    foo = Table('foo', metadata_obj,
-        Column('value', Integer)
-    )
+    foo = Table("foo", metadata_obj, Column("value", Integer))
 
     CheckConstraint(foo.c.value > 5)
 
@@ -677,13 +701,10 @@ or by using a :func:`_expression.column` inline::
 
     from sqlalchemy import column
 
-    metadata_obj = MetaData(
-        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
-    )
+    metadata_obj = MetaData(naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"})
 
-    foo = Table('foo', metadata_obj,
-        Column('value', Integer),
-        CheckConstraint(column('value') > 5)
+    foo = Table(
+        "foo", metadata_obj, Column("value", Integer), CheckConstraint(column("value") > 5)
     )
 
 Both will produce the name ``ck_foo_value``::
@@ -712,9 +733,7 @@ and :class:`.Enum` which generate a CHECK constraint accompanying the type.
 The name for the constraint here is most directly set up by sending
 the "name" parameter, e.g. :paramref:`.Boolean.name`::
 
-    Table('foo', metadata_obj,
-        Column('flag', Boolean(name='ck_foo_flag'))
-    )
+    Table("foo", metadata_obj, Column("flag", Boolean(name="ck_foo_flag")))
 
 The naming convention feature may be combined with these types as well,
 normally by using a convention which includes ``%(constraint_name)s``
@@ -724,9 +743,7 @@ and then applying a name to the type::
         naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
     )
 
-    Table('foo', metadata_obj,
-        Column('flag', Boolean(name='flag_bool'))
-    )
+    Table("foo", metadata_obj, Column("flag", Boolean(name="flag_bool")))
 
 The above table will produce the constraint name ``ck_foo_flag_bool``::
 
@@ -748,13 +765,9 @@ The CHECK constraint may also make use of the ``column_0_name`` token,
 which works nicely with :class:`.SchemaType` since these constraints have
 only one column::
 
-    metadata_obj = MetaData(
-        naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
-    )
+    metadata_obj = MetaData(naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"})
 
-    Table('foo', metadata_obj,
-        Column('flag', Boolean())
-    )
+    Table("foo", metadata_obj, Column("flag", Boolean()))
 
 The above schema will produce::
 
@@ -822,25 +835,24 @@ INDEX" is issued right after the create statements for the table:
 .. sourcecode:: python+sql
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
+    mytable = Table(
+        "mytable",
+        metadata_obj,
         # an indexed column, with index "ix_mytable_col1"
-        Column('col1', Integer, index=True),
-
+        Column("col1", Integer, index=True),
         # a uniquely indexed column with index "ix_mytable_col2"
-        Column('col2', Integer, index=True, unique=True),
-
-        Column('col3', Integer),
-        Column('col4', Integer),
-
-        Column('col5', Integer),
-        Column('col6', Integer),
-        )
+        Column("col2", Integer, index=True, unique=True),
+        Column("col3", Integer),
+        Column("col4", Integer),
+        Column("col5", Integer),
+        Column("col6", Integer),
+    )
 
     # place an index on col3, col4
-    Index('idx_col34', mytable.c.col3, mytable.c.col4)
+    Index("idx_col34", mytable.c.col3, mytable.c.col4)
 
     # place a unique index on col5, col6
-    Index('myindex', mytable.c.col5, mytable.c.col6, unique=True)
+    Index("myindex", mytable.c.col5, mytable.c.col6, unique=True)
 
     {sql}mytable.create(engine)
     CREATE TABLE mytable (
@@ -863,26 +875,24 @@ objects directly.  :class:`.Index` also supports
 identify columns::
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
-        Column('col1', Integer),
-
-        Column('col2', Integer),
-
-        Column('col3', Integer),
-        Column('col4', Integer),
-
+    mytable = Table(
+        "mytable",
+        metadata_obj,
+        Column("col1", Integer),
+        Column("col2", Integer),
+        Column("col3", Integer),
+        Column("col4", Integer),
         # place an index on col1, col2
-        Index('idx_col12', 'col1', 'col2'),
-
+        Index("idx_col12", "col1", "col2"),
         # place a unique index on col3, col4
-        Index('idx_col34', 'col3', 'col4', unique=True)
+        Index("idx_col34", "col3", "col4", unique=True),
     )
 
 The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` method:
 
 .. sourcecode:: python+sql
 
-    i = Index('someindex', mytable.c.col5)
+    i = Index("someindex", mytable.c.col5)
     {sql}i.create(engine)
     CREATE INDEX someindex ON mytable (col5){stop}
 
@@ -897,14 +907,14 @@ value, the :meth:`_expression.ColumnElement.desc` modifier may be used::
 
     from sqlalchemy import Index
 
-    Index('someindex', mytable.c.somecol.desc())
+    Index("someindex", mytable.c.somecol.desc())
 
 Or with a backend that supports functional indexes such as PostgreSQL,
 a "case insensitive" index can be created using the ``lower()`` function::
 
     from sqlalchemy import func, Index
 
-    Index('someindex', func.lower(mytable.c.somecol))
+    Index("someindex", func.lower(mytable.c.somecol))
 
 Index API
 ---------

@@ -244,7 +244,7 @@ with an explicit onclause is now:
 
 ::
 
-    query.join(SomeClass, SomeClass.id==ParentClass.some_id)
+    query.join(SomeClass, SomeClass.id == ParentClass.some_id)
 
 In 0.6, this usage was considered to be an error, because
 ``join()`` accepts multiple arguments corresponding to
@@ -336,10 +336,12 @@ to the creation of the index outside of the Table.  That is:
 
 ::
 
-    Table('mytable', metadata,
-            Column('id',Integer, primary_key=True),
-            Column('name', String(50), nullable=False),
-            Index('idx_name', 'name')
+    Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50), nullable=False),
+        Index("idx_name", "name"),
     )
 
 The primary rationale here is for the benefit of declarative
@@ -348,14 +350,16 @@ The primary rationale here is for the benefit of declarative
 ::
 
     class HasNameMixin(object):
-        name = Column('name', String(50), nullable=False)
+        name = Column("name", String(50), nullable=False)
+
         @declared_attr
         def __table_args__(cls):
-            return (Index('name'), {})
+            return (Index("name"), {})
+
 
     class User(HasNameMixin, Base):
-        __tablename__ = 'user'
-        id = Column('id', Integer, primary_key=True)
+        __tablename__ = "user"
+        id = Column("id", Integer, primary_key=True)
 
 `Indexes <https://www.sqlalchemy.org/docs/07/core/schema.html
 #indexes>`_
@@ -385,17 +389,16 @@ tutorial:
 
     from sqlalchemy.sql import table, column, select, func
 
-    empsalary = table('empsalary',
-                    column('depname'),
-                    column('empno'),
-                    column('salary'))
+    empsalary = table("empsalary", column("depname"), column("empno"), column("salary"))
 
-    s = select([
+    s = select(
+        [
             empsalary,
-            func.avg(empsalary.c.salary).
-                  over(partition_by=empsalary.c.depname).
-                  label('avg')
-        ])
+            func.avg(empsalary.c.salary)
+            .over(partition_by=empsalary.c.depname)
+            .label("avg"),
+        ]
+    )
 
     print(s)
 
@@ -495,7 +498,7 @@ equivalent to:
 
 ::
 
-    query.from_self(func.count(literal_column('1'))).scalar()
+    query.from_self(func.count(literal_column("1"))).scalar()
 
 Previously, internal logic attempted to rewrite the columns
 clause of the query itself, and upon detection of a
@@ -534,6 +537,7 @@ be used:
 ::
 
     from sqlalchemy import func
+
     session.query(func.count(MyClass.id)).scalar()
 
 or for ``count(*)``:
@@ -541,7 +545,8 @@ or for ``count(*)``:
 ::
 
     from sqlalchemy import func, literal_column
-    session.query(func.count(literal_column('*'))).select_from(MyClass).scalar()
+
+    session.query(func.count(literal_column("*"))).select_from(MyClass).scalar()
 
 LIMIT/OFFSET clauses now use bind parameters
 --------------------------------------------
@@ -690,8 +695,11 @@ function, can be mapped.
     from sqlalchemy import select, func
     from sqlalchemy.orm import mapper
 
+
     class Subset(object):
         pass
+
+
     selectable = select(["x", "y", "z"]).select_from(func.some_db_function()).alias()
     mapper(Subset, selectable, primary_key=[selectable.c.x])
 
@@ -773,10 +781,11 @@ mutations, the type object must be constructed with
 
 ::
 
-    Table('mytable', metadata,
+    Table(
+        "mytable",
+        metadata,
         # ....
-
-        Column('pickled_data', PickleType(mutable=True))
+        Column("pickled_data", PickleType(mutable=True)),
     )
 
 The ``mutable=True`` flag is being phased out, in favor of
@@ -1036,7 +1045,7 @@ key column ``id``, the following now produces an error:
 ::
 
 
-    foobar = foo.join(bar, foo.c.id==bar.c.foo_id)
+    foobar = foo.join(bar, foo.c.id == bar.c.foo_id)
     mapper(FooBar, foobar)
 
 This because the ``mapper()`` refuses to guess what column
@@ -1047,10 +1056,8 @@ explicit:
 ::
 
 
-    foobar = foo.join(bar, foo.c.id==bar.c.foo_id)
-    mapper(FooBar, foobar, properties={
-        'id':[foo.c.id, bar.c.id]
-    })
+    foobar = foo.join(bar, foo.c.id == bar.c.foo_id)
+    mapper(FooBar, foobar, properties={"id": [foo.c.id, bar.c.id]})
 
 :ticket:`1896`
 
@@ -1231,14 +1238,14 @@ backend:
 
 ::
 
-    select([mytable], distinct='ALL', prefixes=['HIGH_PRIORITY'])
+    select([mytable], distinct="ALL", prefixes=["HIGH_PRIORITY"])
 
 The ``prefixes`` keyword or ``prefix_with()`` method should
 be used for non-standard or unusual prefixes:
 
 ::
 
-    select([mytable]).prefix_with('HIGH_PRIORITY', 'ALL')
+    select([mytable]).prefix_with("HIGH_PRIORITY", "ALL")
 
 ``useexisting`` superseded by ``extend_existing`` and ``keep_existing``
 -----------------------------------------------------------------------

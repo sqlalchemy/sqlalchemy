@@ -35,8 +35,7 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
 
-  engine = create_engine('postgresql://me@localhost/mydb',
-                         pool_size=20, max_overflow=0)
+  engine = create_engine("postgresql://me@localhost/mydb", pool_size=20, max_overflow=0)
 
 In the case of SQLite, the :class:`.SingletonThreadPool` or
 :class:`.NullPool` are selected by the dialect to provide
@@ -68,14 +67,16 @@ of building the pool for you.   Common options include specifying
 :class:`.QueuePool` with SQLite::
 
     from sqlalchemy.pool import QueuePool
-    engine = create_engine('sqlite:///file.db', poolclass=QueuePool)
+
+    engine = create_engine("sqlite:///file.db", poolclass=QueuePool)
 
 Disabling pooling using :class:`.NullPool`::
 
     from sqlalchemy.pool import NullPool
+
     engine = create_engine(
-              'postgresql+psycopg2://scott:tiger@localhost/test',
-              poolclass=NullPool)
+        "postgresql+psycopg2://scott:tiger@localhost/test", poolclass=NullPool
+    )
 
 Using a Custom Connection Function
 ----------------------------------
@@ -95,9 +96,11 @@ by any additional options::
     import sqlalchemy.pool as pool
     import psycopg2
 
+
     def getconn():
-        c = psycopg2.connect(user='ed', host='127.0.0.1', dbname='test')
+        c = psycopg2.connect(user="ed", host="127.0.0.1", dbname="test")
         return c
+
 
     mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
 
@@ -263,6 +266,7 @@ behaviors are needed::
 
     some_engine = create_engine(...)
 
+
     @event.listens_for(some_engine, "engine_connect")
     def ping_connection(connection, branch):
         if branch:
@@ -327,6 +331,7 @@ that they are replaced with new ones upon next checkout.  This flow is
 illustrated by the code example below::
 
     from sqlalchemy import create_engine, exc
+
     e = create_engine(...)
     c = e.connect()
 
@@ -365,6 +370,7 @@ such as MySQL that automatically close connections that have been stale after a 
 period of time::
 
     from sqlalchemy import create_engine
+
     e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
 
 Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
@@ -433,8 +439,7 @@ close these connections out.   The difference between FIFO and LIFO is
 basically whether or not its desirable for the pool to keep a full set of
 connections ready to go even during idle periods::
 
-    engine = create_engine(
-        "postgreql://", pool_use_lifo=True, pool_pre_ping=True)
+    engine = create_engine("postgreql://", pool_use_lifo=True, pool_pre_ping=True)
 
 Above, we also make use of the :paramref:`_sa.create_engine.pool_pre_ping` flag
 so that connections which are closed from the server side are gracefully
@@ -476,8 +481,8 @@ are three general approaches to this:
    more than once::
 
     from sqlalchemy.pool import NullPool
-    engine = create_engine("mysql://user:pass@host/dbname", poolclass=NullPool)
 
+    engine = create_engine("mysql://user:pass@host/dbname", poolclass=NullPool)
 
 2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`,
    passing the :paramref:`.Engine.dispose.close` parameter with a value of
@@ -490,18 +495,20 @@ are three general approaches to this:
 
         engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
 
+
         def run_in_process(some_data_record):
             with engine.connect() as conn:
                 conn.execute(text("..."))
 
+
         def initializer():
             """ensure the parent proc's database connections are not touched
-               in the new connection pool"""
+            in the new connection pool"""
             engine.dispose(close=False)
+
 
         with Pool(10, initializer=initializer) as p:
             p.map(run_in_process, data)
-
 
    .. versionadded:: 1.4.33  Added the :paramref:`.Engine.dispose.close`
       parameter to allow the replacement of a connection pool in a child
@@ -527,9 +534,11 @@ are three general approaches to this:
 
         engine = create_engine("mysql://user:pass@host/dbname")
 
+
         def run_in_process():
             with engine.connect() as conn:
                 conn.execute(text("..."))
+
 
         # before process starts, ensure engine.dispose() is called
         engine.dispose()
@@ -545,19 +554,20 @@ are three general approaches to this:
 
     engine = create_engine("...")
 
+
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
-        connection_record.info['pid'] = os.getpid()
+        connection_record.info["pid"] = os.getpid()
+
 
     @event.listens_for(engine, "checkout")
     def checkout(dbapi_connection, connection_record, connection_proxy):
         pid = os.getpid()
-        if connection_record.info['pid'] != pid:
+        if connection_record.info["pid"] != pid:
             connection_record.dbapi_connection = connection_proxy.dbapi_connection = None
             raise exc.DisconnectionError(
-                    "Connection record belongs to pid %s, "
-                    "attempting to check out in pid %s" %
-                    (connection_record.info['pid'], pid)
+                "Connection record belongs to pid %s, "
+                "attempting to check out in pid %s" % (connection_record.info["pid"], pid)
             )
 
    Above, we use an approach similar to that described in

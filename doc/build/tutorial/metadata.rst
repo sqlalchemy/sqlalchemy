@@ -76,9 +76,9 @@ that will be how we will refer to the table in application code::
     >>> user_table = Table(
     ...     "user_account",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String(30)),
-    ...     Column('fullname', String)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30)),
+    ...     Column("fullname", String),
     ... )
 
 We can observe that the above :class:`_schema.Table` construct looks a lot like
@@ -151,9 +151,9 @@ table::
     >>> address_table = Table(
     ...     "address",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('user_id', ForeignKey('user_account.id'), nullable=False),
-    ...     Column('email_address', String, nullable=False)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", ForeignKey("user_account.id"), nullable=False),
+    ...     Column("email_address", String, nullable=False),
     ... )
 
 The table above also features a third kind of constraint, which in SQL is the
@@ -297,6 +297,7 @@ known as the **declarative base**.   We get a new declarative base from the
     :func:`_orm.declarative_base` function::
 
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
 
     ..
@@ -313,7 +314,7 @@ for the ``user`` and ``address`` table in terms of new classes ``User`` and
 
     >>> from sqlalchemy.orm import relationship
     >>> class User(Base):
-    ...     __tablename__ = 'user_account'
+    ...     __tablename__ = "user_account"
     ...
     ...     id = Column(Integer, primary_key=True)
     ...     name = Column(String(30))
@@ -322,14 +323,14 @@ for the ``user`` and ``address`` table in terms of new classes ``User`` and
     ...     addresses = relationship("Address", back_populates="user")
     ...
     ...     def __repr__(self):
-    ...        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+    ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
-    ...     __tablename__ = 'address'
+    ...     __tablename__ = "address"
     ...
     ...     id = Column(Integer, primary_key=True)
     ...     email_address = Column(String, nullable=False)
-    ...     user_id = Column(Integer, ForeignKey('user_account.id'))
+    ...     user_id = Column(Integer, ForeignKey("user_account.id"))
     ...
     ...     user = relationship("User", back_populates="addresses")
     ...
@@ -428,7 +429,6 @@ using :meth:`_schema.MetaData.create_all`::
     # declarative base
     Base.metadata.create_all(engine)
 
-
 Combining Core Table Declarations with ORM Declarative
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -446,6 +446,7 @@ than having the declarative process generate it::
     mapper_registry = registry()
     Base = mapper_registry.generate_base()
 
+
     class User(Base):
         __table__ = user_table
 
@@ -453,6 +454,7 @@ than having the declarative process generate it::
 
         def __repr__(self):
             return f"User({self.name!r}, {self.fullname!r})"
+
 
     class Address(Base):
         __table__ = address_table
