@@ -81,37 +81,35 @@ class DocTest(fixtures.TestBase):
                 config.skip_test("Can't find documentation file %r" % path)
 
             buf = []
-            line_counter = 0
-            last_line_counter = 0
+
             with open(path, encoding="utf-8") as file_:
 
                 def load_include(m):
                     fname = m.group(1)
                     sub_path = os.path.join(os.path.dirname(path), fname)
                     with open(sub_path, encoding="utf-8") as file_:
-                        for line in file_:
-                            buf.append(line)
+                        for i, line in enumerate(file_, 1):
+                            buf.append((i, line))
                     return fname
 
                 def run_buf(fname, is_include):
                     if not buf:
                         return
-                    nonlocal last_line_counter
+
                     test = parser.get_doctest(
-                        "".join(buf),
+                        "".join(line for _, line in buf),
                         globs,
                         fname,
                         fname,
-                        last_line_counter if not is_include else 0,
+                        buf[0][0],
                     )
                     buf[:] = []
                     runner.run(test, clear_globs=False)
                     globs.update(test.globs)
 
-                    if not is_include:
-                        last_line_counter = line_counter
+                doctest_enabled = True
 
-                for line in file_:
+                for line_counter, line in enumerate(file_, 1):
                     line = re.sub(r"{(?:stop|sql|opensql)}", "", line)
 
                     include = re.match(r"\.\. doctest-include (.+\.rst)", line)
@@ -119,9 +117,17 @@ class DocTest(fixtures.TestBase):
                         run_buf(fname, False)
                         include_fname = load_include(include)
                         run_buf(include_fname, True)
+
+                    doctest_disable = re.match(
+                        r"\.\. doctest-(enable|disable)", line
+                    )
+                    if doctest_disable:
+                        doctest_enabled = doctest_disable.group(1) == "enable"
+
+                    if doctest_enabled:
+                        buf.append((line_counter, line))
                     else:
-                        buf.append(line)
-                    line_counter += 1
+                        buf.append((line_counter, "\n"))
 
                 run_buf(fname, False)
 

@@ -615,45 +615,58 @@ One way to use :func:`_orm.raiseload` is to configure it on
 to the value ``"raise_on_sql"``, so that for a particular mapping, a certain
 relationship will never try to emit SQL:
 
-.. sourcecode:: python
+.. setup code
 
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import relationship
+    >>> class Base(DeclarativeBase):
+    ...     pass
 
+::
 
-    class User(Base):
-        __tablename__ = "user_account"
-
-        # ... mapped_column() mappings
-
-        addresses: Mapped[list["Address"]] = relationship(
-            back_populates="user", lazy="raise_on_sql"
-        )
+    >>> from sqlalchemy.orm import Mapped
+    >>> from sqlalchemy.orm import relationship
 
 
-    class Address(Base):
-        __tablename__ = "address"
+    >>> class User(Base):
+    ...     __tablename__ = "user_account"
+    ...     id: Mapped[int] = mapped_column(primary_key=True)
+    ...     addresses: Mapped[list["Address"]] = relationship(
+    ...         back_populates="user", lazy="raise_on_sql"
+    ...     )
 
-        # ... mapped_column() mappings
 
-        user: Mapped["User"] = relationship(back_populates="addresses", lazy="raise_on_sql")
+    >>> class Address(Base):
+    ...     __tablename__ = "address"
+    ...     id: Mapped[int] = mapped_column(primary_key=True)
+    ...     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+    ...     user: Mapped["User"] = relationship(back_populates="addresses", lazy="raise_on_sql")
 
 Using such a mapping, the application is blocked from lazy loading,
-indicating that a particular query would need to specify a loader strategy:
+indicating that a particular query would need to specify a loader strategy::
 
-.. sourcecode:: python
-
-    u1 = s.execute(select(User)).scalars().first()
-    u1.addresses
+    >>> u1 = session.execute(select(User)).scalars().first()
+    {opensql}SELECT user_account.id FROM user_account
+    [...] ()
+    {stop}>>> u1.addresses
+    Traceback (most recent call last):
+    ...
     sqlalchemy.exc.InvalidRequestError: 'User.addresses' is not available due to lazy='raise_on_sql'
 
 
 The exception would indicate that this collection should be loaded up front
-instead:
+instead::
 
-.. sourcecode:: python
-
-    u1 = s.execute(select(User).options(selectinload(User.addresses))).scalars().first()
+    >>> u1 = (
+    ...     session.execute(select(User).options(selectinload(User.addresses)))
+    ...     .scalars()
+    ...     .first()
+    ... )
+    {opensql}SELECT user_account.id
+    FROM user_account
+    [...] ()
+    SELECT address.user_id AS address_user_id, address.id AS address_id
+    FROM address
+    WHERE address.user_id IN (?, ?, ?, ?, ?, ?)
+    [...] (1, 2, 3, 4, 5, 6)
 
 The ``lazy="raise_on_sql"`` option tries to be smart about many-to-one
 relationships as well; above, if the ``Address.user`` attribute of an
