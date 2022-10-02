@@ -182,6 +182,7 @@ that is, from the ``EmailAddress`` class directly:
 
     from sqlalchemy.orm import Session
     from sqlalchemy import select
+
     session = Session()
 
     {sql}address = session.scalars(
@@ -193,7 +194,7 @@ that is, from the ``EmailAddress`` class directly:
     ('address@example.com',)
     {stop}
 
-    address.email = 'otheraddress@example.com'
+    address.email = "otheraddress@example.com"
     {sql}session.commit()
     UPDATE address SET email=? WHERE address.id = ?
     ('otheraddress@example.com', 1)

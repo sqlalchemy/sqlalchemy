@@ -861,7 +861,7 @@ the ``Engineer`` entity is performed::
     WHERE employee.type IN (?) ORDER BY employee.id
     [...] ('engineer',)
     {stop}>>> for obj in objects:
-    ...    print(f"{obj}")
+    ...     print(f"{obj}")
     Engineer('SpongeBob')
     Engineer('Squidward')
 
@@ -917,7 +917,7 @@ efficient for single-inheritance mappers::
     FROM employee ORDER BY employee.id
     [...] ()
     {stop}>>> for obj in objects:
-    ...    print(f"{obj}")
+    ...     print(f"{obj}")
     Manager('Mr. Krabs')
     Engineer('SpongeBob')
     Engineer('Squidward')

@@ -13,7 +13,15 @@ from black.mode import TargetVersion
 
 home = Path(__file__).parent.parent
 
-_Block = list[tuple[str, int, str | None, str]]
+_Block = list[
+    tuple[
+        str,
+        int,
+        str | None,
+        str | None,
+        str,
+    ]
+]
 
 
 def _format_block(
@@ -24,7 +32,7 @@ def _format_block(
 ) -> list[str]:
     if not is_doctest:
         # The first line may have additional padding. Remove then restore later
-        add_padding = start_space.match(input_block[0][3]).groups()[0]
+        add_padding = start_space.match(input_block[0][4]).groups()[0]
         skip = len(add_padding)
         code = "\n".join(
             c[skip:] if c.startswith(add_padding) else c
@@ -58,9 +66,11 @@ def _format_block(
     else:
         formatted_code_lines = formatted.splitlines()
         padding = input_block[0][2]
+        sql_prefix = input_block[0][3] or ""
+
         if is_doctest:
             formatted_lines = [
-                f"{padding}>>> {formatted_code_lines[0]}",
+                f"{padding}{sql_prefix}>>> {formatted_code_lines[0]}",
                 *(
                     f"{padding}...{' ' if fcl else ''}{fcl}"
                     for fcl in formatted_code_lines[1:]
@@ -68,8 +78,11 @@ def _format_block(
             ]
         else:
             formatted_lines = [
-                f"{padding}{add_padding}{fcl}" if fcl else fcl
-                for fcl in formatted_code_lines
+                f"{padding}{add_padding}{sql_prefix}{formatted_code_lines[0]}",
+                *(
+                    f"{padding}{add_padding}{fcl}" if fcl else fcl
+                    for fcl in formatted_code_lines[1:]
+                ),
             ]
             if not input_block[-1][0] and formatted_lines[-1]:
                 # last line was empty and black removed it. restore it
@@ -79,8 +92,10 @@ def _format_block(
 
 format_directive = re.compile(r"^\.\.\s*format\s*:\s*(on|off)\s*$")
 
-doctest_code_start = re.compile(r"^(\s+)>>>\s?(.+)")
+doctest_code_start = re.compile(r"^(\s+)({(?:opensql|sql|stop)})?>>>\s?(.+)")
 doctest_code_continue = re.compile(r"^\s+\.\.\.\s?(\s*.*)")
+sql_code_start = re.compile(r"^(\s+){(?:open)?sql}")
+sql_code_stop = re.compile(r"^(\s+){stop}")
 
 start_code_section = re.compile(
     r"^(((?!\.\.).+::)|(\.\.\s*sourcecode::(.*py.*)?)|(::))$"
@@ -101,6 +116,7 @@ def format_file(
     plain_code_section = False
     plain_padding = None
     plain_padding_len = None
+    sql_section = False
 
     errors = []
 
@@ -117,6 +133,7 @@ def format_file(
                 )
                 plain_block = None
             plain_code_section = True
+            assert not sql_section
             plain_padding = start_space.match(line).groups()[0]
             plain_padding_len = len(plain_padding)
             buffer.append(line)
@@ -126,14 +143,16 @@ def format_file(
             and line.strip()
             and not line.startswith(" " * (plain_padding_len + 1))
         ):
-            plain_code_section = False
+            plain_code_section = sql_section = False
         elif match := format_directive.match(line):
             disable_format = match.groups()[0] == "off"
 
         if doctest_block:
             assert not plain_block
             if match := doctest_code_continue.match(line):
-                doctest_block.append((line, line_no, None, match.groups()[0]))
+                doctest_block.append(
+                    (line, line_no, None, None, match.groups()[0])
+                )
                 continue
             else:
                 buffer.extend(
@@ -143,9 +162,13 @@ def format_file(
                 )
                 doctest_block = None
         elif plain_block:
-            if plain_code_section and not doctest_code_start.match(line):
+            if (
+                plain_code_section
+                and not doctest_code_start.match(line)
+                and not sql_code_start.match(line)
+            ):
                 plain_block.append(
-                    (line, line_no, None, line[plain_padding_len:])
+                    (line, line_no, None, None, line[plain_padding_len:])
                 )
                 continue
             else:
@@ -157,7 +180,7 @@ def format_file(
                 plain_block = None
 
         if line and (match := doctest_code_start.match(line)):
-            plain_code_section = False
+            plain_code_section = sql_section = False
             if plain_block:
                 buffer.extend(
                     _format_block(
@@ -165,15 +188,53 @@ def format_file(
                     )
                 )
                 plain_block = None
-            padding, code = match.groups()
-            doctest_block = [(line, line_no, padding, code)]
+            padding, code = match.group(1, 3)
+            doctest_block = [(line, line_no, padding, match.group(2), code)]
         elif (
-            line and not no_plain and not disable_format and plain_code_section
+            line
+            and plain_code_section
+            and (match := sql_code_start.match(line))
+        ):
+            if plain_block:
+                buffer.extend(
+                    _format_block(
+                        plain_block, exit_on_error, errors, is_doctest=False
+                    )
+                )
+                plain_block = None
+
+            sql_section = True
+            buffer.append(line)
+        elif line and sql_section and (match := sql_code_stop.match(line)):
+            sql_section = False
+            orig_line = line
+            line = line.replace("{stop}", "")
+            assert not doctest_block
+            # start of a plain block
+            if line.strip():
+                plain_block = [
+                    (
+                        line,
+                        line_no,
+                        plain_padding,
+                        "{stop}",
+                        line[plain_padding_len:],
+                    )
+                ]
+            else:
+                buffer.append(orig_line)
+
+        elif (
+            line
+            and not no_plain
+            and not disable_format
+            and plain_code_section
+            and not sql_section
         ):
             assert not doctest_block
             # start of a plain block
             plain_block = [
-                (line, line_no, plain_padding, line[plain_padding_len:])
+                (line, line_no, plain_padding, None, line[plain_padding_len:])
             ]
         else:
             buffer.append(line)
@@ -320,6 +381,7 @@ Another alterative is to use less than 4 spaces to indent the code block.
         target_versions=set(
             TargetVersion[val.upper()]
             for val in config.get("target_version", [])
+            if val != "py27"
         ),
         line_length=config.get("line_length", DEFAULT_LINE_LENGTH)
         if args.project_line_length

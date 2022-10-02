@@ -179,13 +179,12 @@ configured via :paramref:`~.relationships.join_depth`:
 .. sourcecode:: python+sql
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = mapped_column(Integer, primary_key=True)
-        parent_id = mapped_column(Integer, ForeignKey('node.id'))
+        parent_id = mapped_column(Integer, ForeignKey("node.id"))
         data = mapped_column(String(50))
-        children = relationship("Node",
-                        lazy="joined",
-                        join_depth=2)
+        children = relationship("Node", lazy="joined", join_depth=2)
+
 
     session.scalars(select(Node)).all()
     {opensql}SELECT node_1.id AS node_1_id,

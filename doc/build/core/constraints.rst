@@ -372,17 +372,16 @@ MySQL.
     from sqlalchemy import CheckConstraint
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
-
+    mytable = Table(
+        "mytable",
+        metadata_obj,
         # per-column CHECK constraint
-        Column('col1', Integer, CheckConstraint('col1>5')),
-
-        Column('col2', Integer),
-        Column('col3', Integer),
-
+        Column("col1", Integer, CheckConstraint("col1>5")),
+        Column("col2", Integer),
+        Column("col3", Integer),
         # table level CHECK constraint.  'name' is optional.
-        CheckConstraint('col2 > col3 + 5', name='check1')
-        )
+        CheckConstraint("col2 > col3 + 5", name="check1"),
+    )
 
     {sql}mytable.create(engine)
     CREATE TABLE mytable (
@@ -852,25 +851,24 @@ INDEX" is issued right after the create statements for the table:
 .. sourcecode:: python+sql
 
     metadata_obj = MetaData()
-    mytable = Table('mytable', metadata_obj,
+    mytable = Table(
+        "mytable",
+        metadata_obj,
         # an indexed column, with index "ix_mytable_col1"
-        Column('col1', Integer, index=True),
-
+        Column("col1", Integer, index=True),
         # a uniquely indexed column with index "ix_mytable_col2"
-        Column('col2', Integer, index=True, unique=True),
-
-        Column('col3', Integer),
-        Column('col4', Integer),
-
-        Column('col5', Integer),
-        Column('col6', Integer),
-        )
+        Column("col2", Integer, index=True, unique=True),
+        Column("col3", Integer),
+        Column("col4", Integer),
+        Column("col5", Integer),
+        Column("col6", Integer),
+    )
 
     # place an index on col3, col4
-    Index('idx_col34', mytable.c.col3, mytable.c.col4)
+    Index("idx_col34", mytable.c.col3, mytable.c.col4)
 
     # place a unique index on col5, col6
-    Index('myindex', mytable.c.col5, mytable.c.col6, unique=True)
+    Index("myindex", mytable.c.col5, mytable.c.col6, unique=True)
 
     {sql}mytable.create(engine)
     CREATE TABLE mytable (
@@ -910,7 +908,7 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 
 .. sourcecode:: python+sql
 
-    i = Index('someindex', mytable.c.col5)
+    i = Index("someindex", mytable.c.col5)
     {sql}i.create(engine)
     CREATE INDEX someindex ON mytable (col5){stop}
 

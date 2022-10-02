@@ -1117,9 +1117,9 @@ the specific :func:`_orm.aliased` construct to be passed:
     # construct a statement which expects the "addresses" results
 
     stmt = (
-       select(User).
-       outerjoin(User.addresses.of_type(adalias)).
-       options(contains_eager(User.addresses.of_type(adalias)))
+        select(User)
+        .outerjoin(User.addresses.of_type(adalias))
+        .options(contains_eager(User.addresses.of_type(adalias)))
     )
 
     # get results normally

@@ -174,22 +174,26 @@ will issue the CREATE statements:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
 
     metadata_obj = MetaData()
 
-    user = Table('user', metadata_obj,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(16), nullable=False),
-        Column('email_address', String(60), key='email'),
-        Column('nickname', String(50), nullable=False)
+    user = Table(
+        "user",
+        metadata_obj,
+        Column("user_id", Integer, primary_key=True),
+        Column("user_name", String(16), nullable=False),
+        Column("email_address", String(60), key="email"),
+        Column("nickname", String(50), nullable=False),
     )
 
-    user_prefs = Table('user_prefs', metadata_obj,
-        Column('pref_id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
-        Column('pref_name', String(40), nullable=False),
-        Column('pref_value', String(100))
+    user_prefs = Table(
+        "user_prefs",
+        metadata_obj,
+        Column("pref_id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.user_id"), nullable=False),
+        Column("pref_name", String(40), nullable=False),
+        Column("pref_value", String(100)),
     )
 
     {sql}metadata_obj.create_all(engine)
@@ -225,14 +229,16 @@ default issue the CREATE or DROP regardless of the table being present:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
 
     metadata_obj = MetaData()
 
-    employees = Table('employees', metadata_obj,
-        Column('employee_id', Integer, primary_key=True),
-        Column('employee_name', String(60), nullable=False, key='name'),
-        Column('employee_dept', Integer, ForeignKey("departments.department_id"))
+    employees = Table(
+        "employees",
+        metadata_obj,
+        Column("employee_id", Integer, primary_key=True),
+        Column("employee_name", String(60), nullable=False, key="name"),
+        Column("employee_dept", Integer, ForeignKey("departments.department_id")),
     )
     {sql}employees.create(engine)
     CREATE TABLE employees(

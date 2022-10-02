@@ -99,12 +99,14 @@ first looking within the PostgreSQL catalogs to see if it exists:
 
     def should_create(ddl, target, connection, **kw):
         row = connection.execute(
-            "select conname from pg_constraint where conname='%s'" %
-            ddl.element.name).scalar()
+            "select conname from pg_constraint where conname='%s'" % ddl.element.name
+        ).scalar()
         return not bool(row)
+
 
     def should_drop(ddl, target, connection, **kw):
         return not should_create(ddl, target, connection, **kw)
+
 
     event.listen(
         users,
@@ -112,14 +114,14 @@ first looking within the PostgreSQL catalogs to see if it exists:
         DDL(
             "ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length CHECK (length(user_name) >= 8)"
-        ).execute_if(callable_=should_create)
+        ).execute_if(callable_=should_create),
     )
     event.listen(
         users,
         "before_drop",
-        DDL(
-            "ALTER TABLE users DROP CONSTRAINT cst_user_name_length"
-        ).execute_if(callable_=should_drop)
+        DDL("ALTER TABLE users DROP CONSTRAINT cst_user_name_length").execute_if(
+            callable_=should_drop
+        ),
     )
 
     {sql}users.create(engine)
