@@ -359,12 +359,12 @@ transaction-level API in version 2.0.  In 1.4, this new API is available
 by passing the flag ``future=True`` to the :func:`_sa.create_engine`
 function.
 
-When the :paramref:`_sa.create_engine.future` flag is used, the :class:`_future.Engine`
-and :class:`_future.Connection` objects support the 2.0 API fully and not at all
-any legacy features, including the new argument format for :meth:`_future.Connection.execute`,
+When the :paramref:`_sa.create_engine.future` flag is used, the :class:`_engine.Engine`
+and :class:`_engine.Connection` objects support the 2.0 API fully and not at all
+any legacy features, including the new argument format for :meth:`_engine.Connection.execute`,
 the removal of "implicit autocommit", string statements require the
-:func:`_sql.text` construct unless the :meth:`_future.Connection.exec_driver_sql`
-method is used, and connectionless execution from the :class:`_future.Engine`
+:func:`_sql.text` construct unless the :meth:`_engine.Connection.exec_driver_sql`
+method is used, and connectionless execution from the :class:`_engine.Engine`
 is removed.
 
 If all :class:`_exc.RemovedIn20Warning` warnings have been resolved regarding
@@ -372,11 +372,11 @@ use of the :class:`_engine.Engine` and :class:`_engine.Connection`, then the
 :paramref:`_sa.create_engine.future` flag may be enabled and there should be
 no errors raised.
 
-The new engine is described at :class:`_future.Engine` which delivers a new
-:class:`_future.Connection` object.    In addition to the above changes, the,
-:class:`_future.Connection` object features
-:meth:`_future.Connection.commit` and
-:meth:`_future.Connection.rollback` methods, to support the new
+The new engine is described at :class:`_engine.Engine` which delivers a new
+:class:`_engine.Connection` object.    In addition to the above changes, the,
+:class:`_engine.Connection` object features
+:meth:`_engine.Connection.commit` and
+:meth:`_engine.Connection.rollback` methods, to support the new
 "commit-as-you-go" mode of operation::
 
 
@@ -506,9 +506,9 @@ or the :meth:`_engine.Engine.begin` context manager::
 
 When using :term:`2.0 style` with the :paramref:`_sa.create_engine.future`
 flag, "commit as you go" style may also be used, as the
-:class:`_future.Connection` features **autobegin** behavior, which takes place
+:class:`_engine.Connection` features **autobegin** behavior, which takes place
 when a statement is first invoked in the absence of an explicit call to
-:meth:`_future.Connection.begin`::
+:meth:`_engine.Connection.begin`::
 
     with engine.connect() as conn:
         conn.execute(some_table.insert().values(foo="bar"))
@@ -554,10 +554,10 @@ of Core use cases, it's the pattern that is already recommended::
 
 For "commit as you go, or rollback instead" usage, which resembles how the
 :class:`_orm.Session` is normally used today, the "future" version of
-:class:`_future.Connection`, which is the one that is returned from an
-:class:`_future.Engine` that was created using the
+:class:`_engine.Connection`, which is the one that is returned from an
+:class:`_engine.Engine` that was created using the
 :paramref:`_sa.create_engine.future` flag, includes new
-:meth:`_future.Connection.commit` and :meth:`_future.Connection.rollback`
+:meth:`_engine.Connection.commit` and :meth:`_engine.Connection.rollback`
 methods, which act upon a transaction that is now begun automatically when
 a statement is first invoked::
 
@@ -578,8 +578,8 @@ Above, the ``engine.connect()`` method will return a :class:`_engine.Connection`
 features **autobegin**, meaning the ``begin()`` event is emitted when the
 execute method is first used (note however that there is no actual "BEGIN" in
 the Python DBAPI).  "autobegin" is a new pattern in SQLAlchemy 1.4 that
-is featured both by :class:`_future.Connection` as well as the ORM
-:class:`_orm.Session` object; autobegin allows that the :meth:`_future.Connection.begin`
+is featured both by :class:`_engine.Connection` as well as the ORM
+:class:`_orm.Session` object; autobegin allows that the :meth:`_engine.Connection.begin`
 method may be called explicitly when the object is first acquired, for schemes
 that wish to demarcate the beginning of the transaction, but if the method
 is not called, then it occurs implicitly when work is first done on the object.
@@ -599,7 +599,7 @@ implementations, and is supported by SQLAlchemy via the
 discussed at :ref:`dbapi_autocommit`.  True autocommit is treated as an "isolation level"
 so that the structure of application code does not change when autocommit is
 used; the :meth:`_engine.Connection.begin` context manager as well as
-methods like :meth:`_future.Connection.commit` may still be used, they are
+methods like :meth:`_engine.Connection.commit` may still be used, they are
 simply no-ops at the database driver level when DBAPI-level autocommit
 is turned on.
 
@@ -803,7 +803,7 @@ execute() method more strict, execution options are more prominent
 The argument patterns that may be used with the :meth:`_engine.Connection`
 execute method in SQLAlchemy 2.0 are highly simplified, removing many previously
 available argument patterns.  The new API in the 1.4 series is described at
-:meth:`_future.Connection`. The examples below illustrate the patterns that
+:meth:`_engine.Connection`. The examples below illustrate the patterns that
 require modification::
 
 
@@ -826,7 +826,7 @@ require modification::
 
 **Migration to 2.0**
 
-The new :meth:`_future.Connection.execute` method now accepts a subset of the
+The new :meth:`_engine.Connection.execute` method now accepts a subset of the
 argument styles that are accepted by the 1.x :meth:`_engine.Connection.execute`
 method, so the following code is cross-compatible between 1.x and 2.0::
 
@@ -850,7 +850,7 @@ method, so the following code is cross-compatible between 1.x and 2.0::
 The use of ``*args`` and ``**kwargs`` has been removed both to remove the
 complexity of guessing what kind of arguments were passed to the method, as
 well as to make room for other options, namely the
-:paramref:`_future.Connection.execute.execution_options` dictionary that is now
+:paramref:`_engine.Connection.execute.execution_options` dictionary that is now
 available to provide options on a per statement basis. The method is also
 modified so that its use pattern matches that of the
 :meth:`_orm.Session.execute` method, which is a much more prominent API in 2.0

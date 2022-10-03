@@ -189,7 +189,7 @@ TABLE statements, or :term:`DDL`, to our SQLite database so that we can insert
 and query data from them.   We have already all the tools needed to do so, by
 invoking the
 :meth:`_schema.MetaData.create_all` method on our :class:`_schema.MetaData`,
-sending it the :class:`_future.Engine` that refers to the target database:
+sending it the :class:`_engine.Engine` that refers to the target database:
 
 .. sourcecode:: pycon+sql
 
@@ -550,7 +550,7 @@ how this is performed, however the most basic is to construct a
 :class:`_schema.Table` object, given the name of the table and a
 :class:`_schema.MetaData` collection to which it will belong, then
 instead of indicating individual :class:`_schema.Column` and
-:class:`_schema.Constraint` objects, pass it the target :class:`_future.Engine`
+:class:`_schema.Constraint` objects, pass it the target :class:`_engine.Engine`
 using the :paramref:`_schema.Table.autoload_with` parameter:
 
 .. sourcecode:: pycon+sql

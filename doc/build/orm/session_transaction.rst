@@ -229,8 +229,8 @@ assume 2.0-style semantics.
 
 When using future mode, there should be equivalent semantics between
 the two packages, at the level of the :class:`_orm.sessionmaker` vs.
-the :class:`_future.Engine`, as well as the :class:`_orm.Session` vs.
-the :class:`_future.Connection`.  The following sections detail
+the :class:`_engine.Engine`, as well as the :class:`_orm.Session` vs.
+the :class:`_engine.Connection`.  The following sections detail
 these scenarios based on the following scheme::
 
 
@@ -247,8 +247,8 @@ these scenarios based on the following scheme::
 Commit as you go
 ~~~~~~~~~~~~~~~~
 
-Both :class:`_orm.Session` and :class:`_future.Connection` feature
-:meth:`_future.Connection.commit` and :meth:`_future.Connection.rollback`
+Both :class:`_orm.Session` and :class:`_engine.Connection` feature
+:meth:`_engine.Connection.commit` and :meth:`_engine.Connection.rollback`
 methods.   Using SQLAlchemy 2.0-style operation, these methods affect the
 **outermost** transaction in all cases.
 
@@ -285,10 +285,10 @@ Session::
 Begin Once
 ~~~~~~~~~~
 
-Both :class:`_orm.sessionmaker` and :class:`_future.Engine` feature a
-:meth:`_future.Engine.begin` method that will both procure a new object
+Both :class:`_orm.sessionmaker` and :class:`_engine.Engine` feature a
+:meth:`_engine.Engine.begin` method that will both procure a new object
 with which to execute SQL statements (the :class:`_orm.Session` and
-:class:`_future.Connection`, respectively) and then return a context manager
+:class:`_engine.Connection`, respectively) and then return a context manager
 that will maintain a begin/commit/rollback context for that object.
 
 Engine::
@@ -326,7 +326,7 @@ Nested Transaction
 When using a SAVEPOINT via the :meth:`_orm.Session.begin_nested` or
 :meth:`_engine.Connection.begin_nested` methods, the transaction object
 returned must be used to commit or rollback the SAVEPOINT.  Calling
-the :meth:`_orm.Session.commit` or :meth:`_future.Connection.commit` methods
+the :meth:`_orm.Session.commit` or :meth:`_engine.Connection.commit` methods
 will always commit the **outermost** transaction; this is a SQLAlchemy 2.0
 specific behavior that is reversed from the 1.x series.
 

@@ -1731,8 +1731,8 @@ This document details individual issue-level changes made throughout
         :tags: bug, engine
         :tickets: 7291
 
-        Fixed issue in future :class:`_future.Connection` object where the
-        :meth:`_future.Connection.execute` method would not accept a non-dict
+        Fixed issue in future :class:`_engine.Connection` object where the
+        :meth:`_engine.Connection.execute` method would not accept a non-dict
         mapping object, such as SQLAlchemy's own :class:`.RowMapping` or other
         ``abc.collections.Mapping`` object as a parameter dictionary.
 
@@ -1902,8 +1902,8 @@ This document details individual issue-level changes made throughout
         :tickets: 7272
         :versions: 2.0.0b1
 
-        Fixed issue in future :class:`_future.Engine` where calling upon
-        :meth:`_future.Engine.begin` and entering the context manager would not
+        Fixed issue in future :class:`_engine.Engine` where calling upon
+        :meth:`_engine.Engine.begin` and entering the context manager would not
         close the connection if the actual BEGIN operation failed for some reason,
         such as an event handler raising an exception; this use case failed to be
         tested for the future version of the engine. Note that the "future" context
@@ -3772,11 +3772,11 @@ This document details individual issue-level changes made throughout
         autobegin a transaction but not commit it, which is a behavioral change.
 
         When using a :term:`2.0 style` connection object, the behavior is unchanged
-        from previous 1.4 versions; calling :meth:`_future.Connection.begin_nested`
+        from previous 1.4 versions; calling :meth:`_engine.Connection.begin_nested`
         will "autobegin" the outer transaction if not already present, and then as
         instructed emit a SAVEPOINT, returning the :class:`.NestedTransaction`
         object. The outer transaction is committed by calling upon
-        :meth:`_future.Connection.commit`, as is "commit-as-you-go" style usage.
+        :meth:`_engine.Connection.commit`, as is "commit-as-you-go" style usage.
 
         In non-"future" mode, while the old behavior is restored, it also
         emits a 2.0 deprecation warning as this is a legacy behavior.

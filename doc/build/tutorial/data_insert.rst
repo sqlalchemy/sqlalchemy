@@ -112,7 +112,7 @@ in fact has some variants that allow for special forms such as multiple rows in
 one statement and insertion of SQL expressions.   However the usual way that
 :class:`_sql.Insert` is used is such that the VALUES clause is generated
 automatically from the parameters passed to the
-:meth:`_future.Connection.execute` method; below we INSERT two more rows to
+:meth:`_engine.Connection.execute` method; below we INSERT two more rows to
 illustrate this:
 
 .. sourcecode:: pycon+sql
@@ -134,9 +134,9 @@ illustrate this:
 The execution above features "executemany" form first illustrated at
 :ref:`tutorial_multiple_parameters`, however unlike when using the
 :func:`_sql.text` construct, we didn't have to spell out any SQL.
-By passing a dictionary or list of dictionaries to the :meth:`_future.Connection.execute`
+By passing a dictionary or list of dictionaries to the :meth:`_engine.Connection.execute`
 method in conjunction with the :class:`_sql.Insert` construct, the
-:class:`_future.Connection` ensures that the column names which are passed
+:class:`_engine.Connection` ensures that the column names which are passed
 will be expressed in the VALUES clause of the :class:`_sql.Insert`
 construct automatically.
 

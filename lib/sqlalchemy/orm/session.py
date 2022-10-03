@@ -280,7 +280,7 @@ class ORMExecuteState(util.MemoizedSlots):
 
     For an ORM selection as would
     be retrieved from :class:`_orm.Query`, this is an instance of
-    :class:`_future.select` that was generated from the ORM query.
+    :class:`_sql.select` that was generated from the ORM query.
     """
 
     parameters: Optional[_CoreAnyExecuteParams]

@@ -456,7 +456,7 @@ def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
     .. versionadded:: 1.4 - The :func:`_sql.select` function now accepts
        column arguments positionally.   The top-level :func:`_sql.select`
        function will automatically use the 1.x or 2.x style API based on
-       the incoming arguments; using :func:`_future.select` from the
+       the incoming arguments; using :func:`_sql.select` from the
        ``sqlalchemy.future`` module will enforce that only the 2.x style
        constructor is used.
 

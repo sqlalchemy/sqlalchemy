@@ -2603,13 +2603,13 @@ class RootTransaction(Transaction):
     accessible via the :attr:`_engine.Connection.get_transaction` method of
     :class:`_engine.Connection`.
 
-    In :term:`2.0 style` use, the :class:`_future.Connection` also employs
+    In :term:`2.0 style` use, the :class:`_engine.Connection` also employs
     "autobegin" behavior that will create a new
     :class:`_engine.RootTransaction` whenever a connection in a
     non-transactional state is used to emit commands on the DBAPI connection.
     The scope of the :class:`_engine.RootTransaction` in 2.0 style
-    use can be controlled using the :meth:`_future.Connection.commit` and
-    :meth:`_future.Connection.rollback` methods.
+    use can be controlled using the :meth:`_engine.Connection.commit` and
+    :meth:`_engine.Connection.rollback` methods.
 
 
     """
@@ -2865,7 +2865,7 @@ class Engine(
 
     This is the **SQLAlchemy 1.x version** of :class:`_engine.Engine`.  For
     the :term:`2.0 style` version, which includes  some API differences,
-    see :class:`_future.Engine`.
+    see :class:`_engine.Engine`.
 
     An :class:`_engine.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.

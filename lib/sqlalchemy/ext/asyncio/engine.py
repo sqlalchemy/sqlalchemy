@@ -352,7 +352,7 @@ class AsyncConnection(
         This returns this :class:`_asyncio.AsyncConnection` object with
         the new options added.
 
-        See :meth:`_future.Connection.execution_options` for full details
+        See :meth:`_engine.Connection.execution_options` for full details
         on this method.
 
         """
@@ -369,9 +369,9 @@ class AsyncConnection(
         If no transaction was started, the method has no effect, assuming
         the connection is in a non-invalidated state.
 
-        A transaction is begun on a :class:`_future.Connection` automatically
+        A transaction is begun on a :class:`_engine.Connection` automatically
         whenever a statement is first executed, or when the
-        :meth:`_future.Connection.begin` method is called.
+        :meth:`_engine.Connection.begin` method is called.
 
         """
         await greenlet_spawn(self._proxied.commit)
@@ -384,9 +384,9 @@ class AsyncConnection(
         transaction was started and the connection is in an invalidated state,
         the transaction is cleared using this method.
 
-        A transaction is begun on a :class:`_future.Connection` automatically
+        A transaction is begun on a :class:`_engine.Connection` automatically
         whenever a statement is first executed, or when the
-        :meth:`_future.Connection.begin` method is called.
+        :meth:`_engine.Connection.begin` method is called.
 
 
         """
@@ -519,7 +519,7 @@ class AsyncConnection(
         :param execution_options: optional dictionary of execution options,
          which will be associated with the statement execution.  This
          dictionary can provide a subset of the options that are accepted
-         by :meth:`_future.Connection.execution_options`.
+         by :meth:`_engine.Connection.execution_options`.
 
         :return: a :class:`_engine.Result` object.
 
@@ -564,7 +564,7 @@ class AsyncConnection(
 
         This method is shorthand for invoking the
         :meth:`_engine.Result.scalar` method after invoking the
-        :meth:`_future.Connection.execute` method.  Parameters are equivalent.
+        :meth:`_engine.Connection.execute` method.  Parameters are equivalent.
 
         :return: a scalar Python value representing the first column of the
          first row returned.
@@ -606,7 +606,7 @@ class AsyncConnection(
 
         This method is shorthand for invoking the
         :meth:`_engine.Result.scalars` method after invoking the
-        :meth:`_future.Connection.execute` method.  Parameters are equivalent.
+        :meth:`_engine.Connection.execute` method.  Parameters are equivalent.
 
         :return: a :class:`_engine.ScalarResult` object.
 
@@ -650,7 +650,7 @@ class AsyncConnection(
 
         This method is shorthand for invoking the
         :meth:`_engine.AsyncResult.scalars` method after invoking the
-        :meth:`_future.Connection.stream` method.  Parameters are equivalent.
+        :meth:`_engine.Connection.stream` method.  Parameters are equivalent.
 
         :return: an :class:`_asyncio.AsyncScalarResult` object.
 
@@ -931,7 +931,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         :class:`_asyncio.AsyncConnection` objects with the given execution
         options.
 
-        Proxied from :meth:`_future.Engine.execution_options`.  See that
+        Proxied from :meth:`_engine.Engine.execution_options`.  See that
         method for details.
 
         """

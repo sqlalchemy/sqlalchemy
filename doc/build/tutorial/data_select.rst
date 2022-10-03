@@ -14,7 +14,7 @@ Selecting Rows with Core or ORM
 
 For both Core and ORM, the :func:`_sql.select` function generates a
 :class:`_sql.Select` construct which is used for all SELECT queries.
-Passed to methods like :meth:`_future.Connection.execute` in Core and
+Passed to methods like :meth:`_engine.Connection.execute` in Core and
 :meth:`_orm.Session.execute` in ORM, a SELECT statement is emitted in the
 current transaction and the result rows available via the returned
 :class:`_engine.Result` object.

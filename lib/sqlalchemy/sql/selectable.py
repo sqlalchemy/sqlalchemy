@@ -5068,7 +5068,7 @@ class Select(
     def filter(
         self: SelfSelect, *criteria: _ColumnExpressionArgument[bool]
     ) -> SelfSelect:
-        """A synonym for the :meth:`_future.Select.where` method."""
+        """A synonym for the :meth:`_sql.Select.where` method."""
 
         return self.where(*criteria)
 
