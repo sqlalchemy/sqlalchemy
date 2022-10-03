@@ -66,7 +66,9 @@ like sqlalchemy-stubs_ and sqlalchemy2-stubs_ should be fully uninstalled.
 
 The Mypy_ package itself is a dependency.
 
-Mypy may be installed using the "mypy" extras hook using pip::
+Mypy may be installed using the "mypy" extras hook using pip:
+
+.. sourcecode:: text
 
     pip install sqlalchemy[mypy]
 
@@ -314,7 +316,9 @@ needs an explicit type to be sent::
         id = Column(Integer, primary_key=True)
         user_id = Column(ForeignKey("user.id"))
 
-The plugin will deliver the message as follows::
+The plugin will deliver the message as follows:
+
+.. sourcecode:: text
 
     $ mypy test3.py --strict
     test3.py:20: error: [SQLAlchemy Mypy plugin] Can't infer type from
@@ -388,7 +392,9 @@ is a string or callable, and not a class::
 
         user = relationship(User)
 
-The above mapping will produce the following error::
+The above mapping will produce the following error:
+
+.. sourcecode:: text
 
     test3.py:22: error: [SQLAlchemy Mypy plugin] Can't infer scalar or
     collection for ORM mapped expression assigned to attribute 'user'

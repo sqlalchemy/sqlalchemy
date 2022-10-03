@@ -84,8 +84,9 @@
 
       Added "add()" and "add_all()" to scoped_session
       methods.  Workaround for 0.4.7::
-      
+
         from sqlalchemy.orm.scoping import ScopedSession, instrument
+
         setattr(ScopedSession, "add", instrument("add"))
         setattr(ScopedSession, "add_all", instrument("add_all"))
 
@@ -2197,8 +2198,10 @@
         :tickets: 
 
       Custom collections can now specify a @converter method to translate
-      objects used in "bulk" assignment into a stream of values, as in::
+      objects used in "bulk" assignment into a stream of values, as in:
       
+      .. sourcecode:: text
+
          obj.col =
          # or
          obj.dictcol = {'foo': newval1, 'bar': newval2}

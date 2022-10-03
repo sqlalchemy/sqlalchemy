@@ -362,7 +362,9 @@ comes up when two subclasses want to specify *the same* column, as below::
         start_date: Mapped[datetime]
 
 Above, the ``start_date`` column declared on both ``Engineer`` and ``Manager``
-will result in an error::
+will result in an error:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.ArgumentError: Column 'start_date' on class
     <class '__main__.Manager'> conflicts with existing

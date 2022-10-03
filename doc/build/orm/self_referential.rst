@@ -32,14 +32,18 @@ class called ``Node``, representing a tree structure::
         data = mapped_column(String(50))
         children = relationship("Node")
 
-With this structure, a graph such as the following::
+With this structure, a graph such as the following:
+
+.. sourcecode:: text
 
     root --+---> child1
            +---> child2 --+--> subchild1
            |              +--> subchild2
            +---> child3
 
-Would be represented with data such as::
+Would be represented with data such as:
+
+.. sourcecode:: text
 
     id       parent_id     data
     ---      -------       ----

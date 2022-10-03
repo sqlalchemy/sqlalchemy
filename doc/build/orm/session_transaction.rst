@@ -100,7 +100,7 @@ first::
 
         session.commit()  # commits
 
-        result = session.execute(<some SELECT statement>)
+        result = session.execute("<some SELECT statement>")
 
     # remaining transactional state from the .execute() call is
     # discarded
@@ -231,8 +231,9 @@ When using future mode, there should be equivalent semantics between
 the two packages, at the level of the :class:`_orm.sessionmaker` vs.
 the :class:`_engine.Engine`, as well as the :class:`_orm.Session` vs.
 the :class:`_engine.Connection`.  The following sections detail
-these scenarios based on the following scheme::
+these scenarios based on the following scheme:
 
+.. sourcecode:: text
 
     ORM (using future Session)                    Core (using future engine)
     -----------------------------------------     -----------------------------------
@@ -552,6 +553,7 @@ We can for example create our :class:`_orm.Session` from a default
     # make a specific Session that will use the "autocommit" engine
     with Session(bind=autocommit_engine) as session:
         # work with session
+        ...
 
 For the case where the :class:`.Session` or :class:`.sessionmaker` is
 configured with multiple "binds", we can either re-specify the ``binds``

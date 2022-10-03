@@ -76,7 +76,9 @@ dialects, :class:`.TypeEngine` objects, and SQL constructs that are not
 participating in caching.
 
 For user defined datatypes such as those which extend :class:`_types.TypeDecorator`
-and :class:`_types.UserDefinedType`, the warnings will look like::
+and :class:`_types.UserDefinedType`, the warnings will look like:
+
+.. sourcecode:: text
 
     sqlalchemy.ext.SAWarning: MyType will not produce a cache key because the
     ``cache_ok`` attribute is not set to True. This can have significant
@@ -87,7 +89,9 @@ and :class:`_types.UserDefinedType`, the warnings will look like::
 
 For custom and third party SQL elements, such as those constructed using
 the techniques described at :ref:`sqlalchemy.ext.compiler_toplevel`, these
-warnings will look like::
+warnings will look like:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.SAWarning: Class MyClass will not make use of SQL
     compilation caching as it does not set the 'inherit_cache' attribute to
@@ -98,7 +102,9 @@ warnings will look like::
     False which will disable this warning.
 
 For custom and third party dialects which make use of the :class:`.Dialect`
-class hierarchy, the warnings will look like::
+class hierarchy, the warnings will look like:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.SAWarning: Dialect database:driver will not make use of SQL
     compilation caching as it does not set the 'supports_statement_cache'
@@ -277,7 +283,9 @@ To profile a section of code::
         session.scalars(select(FooClass).where(FooClass.somevalue == 8)).all()
 
 The output of profiling can be used to give an idea where time is
-being spent.   A section of profiling output looks like this::
+being spent.   A section of profiling output looks like this:
+
+.. sourcecode:: text
 
     13726 function calls (13042 primitive calls) in 0.014 seconds
 
@@ -308,7 +316,9 @@ Execution Slowness
 
 The specifics of these calls can tell us where the time is being spent.
 If for example, you see time being spent within ``cursor.execute()``,
-e.g. against the DBAPI::
+e.g. against the DBAPI:
+
+.. sourcecode:: text
 
     2    0.102    0.102    0.204    0.102 {method 'execute' of 'sqlite3.Cursor' objects}
 
@@ -328,7 +338,9 @@ of rows itself is slow.   The ORM itself typically uses ``fetchall()`` to fetch
 rows (or ``fetchmany()`` if the :meth:`_query.Query.yield_per` option is used).
 
 An inordinately large number of rows would be indicated
-by a very slow call to ``fetchall()`` at the DBAPI level::
+by a very slow call to ``fetchall()`` at the DBAPI level:
+
+.. sourcecode:: text
 
     2    0.300    0.600    0.300    0.600 {method 'fetchall' of 'sqlite3.Cursor' objects}
 
@@ -342,7 +354,9 @@ pulling in additional FROM clauses that are unexpected.
 On the other hand, a fast call to ``fetchall()`` at the DBAPI level, but then
 slowness when SQLAlchemy's :class:`_engine.CursorResult` is asked to do a ``fetchall()``,
 may indicate slowness in processing of datatypes, such as unicode conversions
-and similar::
+and similar:
+
+.. sourcecode:: text
 
     # the DBAPI cursor is fast...
     2    0.020    0.040    0.020    0.040 {method 'fetchall' of 'sqlite3.Cursor' objects}
@@ -369,7 +383,9 @@ this::
             time.sleep(0.001)
             return value
 
-the profiling output of this intentionally slow operation can be seen like this::
+the profiling output of this intentionally slow operation can be seen like this:
+
+.. sourcecode:: text
 
       200    0.001    0.000    0.237    0.001 lib/sqlalchemy/sql/type_api.py:911(process)
       200    0.001    0.000    0.236    0.001 test.py:28(process_result_value)
@@ -393,7 +409,9 @@ Result Fetching Slowness - ORM
 
 To detect slowness in ORM fetching of rows (which is the most common area
 of performance concern), calls like ``populate_state()`` and ``_instance()`` will
-illustrate individual ORM object populations::
+illustrate individual ORM object populations:
+
+.. sourcecode:: text
 
     # the ORM calls _instance for each ORM-loaded row it sees, and
     # populate_state for each ORM-loaded row that results in the population

@@ -477,7 +477,9 @@ In the example below, statements remain
 
 When we run a block like the above with logging turned on, the logging
 will attempt to indicate that while a DBAPI level ``.commit()`` is called,
-it probably will have no effect due to autocommit mode::
+it probably will have no effect due to autocommit mode:
+
+.. sourcecode:: text
 
     INFO sqlalchemy.engine.Engine BEGIN (implicit)
     ...
@@ -1003,7 +1005,9 @@ types of message we may see are summarized as follows:
 Each badge is described in more detail below.
 
 The first statements we see for the above program will be the SQLite dialect
-checking for the existence of the "a" and "b" tables::
+checking for the existence of the "a" and "b" tables:
+
+.. sourcecode:: text
 
   INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("a")
   INFO sqlalchemy.engine.Engine [raw sql] ()

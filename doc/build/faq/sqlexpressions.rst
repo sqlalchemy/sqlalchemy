@@ -473,7 +473,9 @@ minimally. Otherwise, an expression like::
 
     column("a") & column("b") & column("c") & column("d")
 
-would produce::
+would produce:
+
+.. sourcecode:: sql
 
     (((a AND b) AND c) AND d)
 

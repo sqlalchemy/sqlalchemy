@@ -323,7 +323,9 @@ using the following proof of concept script.  Once run, it will emit a
         do_a_thing(e)
 
 Restart the database while the script runs to demonstrate the transparent
-reconnect operation::
+reconnect operation:
+
+.. sourcecode:: text
 
     $ python reconnect_test.py
     ping: 1
@@ -502,7 +504,9 @@ As an alternative to reverting settings, you can call the
 :meth:`_engine.Connection.detach` method on either :class:`_engine.Connection`
 or the proxied connection, which will de-associate the connection from the pool
 such that it will be closed and discarded when :meth:`_engine.Connection.close`
-is called::
+is called:
+
+.. sourcecode:: text
 
     conn = engine.connect()
     conn.detach()  # detaches the DBAPI connection from the connection pool

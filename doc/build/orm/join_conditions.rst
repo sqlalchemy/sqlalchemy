@@ -48,7 +48,9 @@ class::
         state = mapped_column(String)
         zip = mapped_column(String)
 
-The above mapping, when we attempt to use it, will produce the error::
+The above mapping, when we attempt to use it, will produce the error:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.AmbiguousForeignKeysError: Could not determine join
     condition between parent/child tables on relationship
@@ -407,7 +409,9 @@ for both; then to make ``Article`` refer to ``Writer`` as well,
         magazine_id = mapped_column(ForeignKey("magazine.id"), primary_key=True)
         magazine = relationship("Magazine")
 
-When the above mapping is configured, we will see this warning emitted::
+When the above mapping is configured, we will see this warning emitted:
+
+.. sourcecode:: text
 
     SAWarning: relationship 'Article.writer' will copy column
     writer.magazine_id to column article.magazine_id,

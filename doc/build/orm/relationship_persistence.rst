@@ -16,14 +16,18 @@ two use cases are:
 * Two tables each contain a foreign key referencing the other
   table, with a row in each table referencing the other.
 
-For example::
+For example:
+
+.. sourcecode:: text
 
               user
     ---------------------------------
     user_id    name   related_user_id
        1       'ed'          1
 
-Or::
+Or:
+
+.. sourcecode:: text
 
                  widget                                                  entry
     -------------------------------------------             ---------------------------------
@@ -102,8 +106,8 @@ row at a time for the time being):
     >>> w1.favorite_entry = e1
     >>> w1.entries = [e1]
     >>> session.add_all([w1, e1])
-    {sql}>>> session.commit()
-    BEGIN (implicit)
+    >>> session.commit()
+    {opensql}BEGIN (implicit)
     INSERT INTO widget (favorite_entry_id, name) VALUES (?, ?)
     (None, 'somewidget')
     INSERT INTO entry (widget_id, name) VALUES (?, ?)

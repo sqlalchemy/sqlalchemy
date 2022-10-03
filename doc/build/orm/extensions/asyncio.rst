@@ -30,7 +30,9 @@ Asyncio Platform Installation Notes (Including Apple M1)
 
 The asyncio extension requires Python 3 only. It also depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
-dependency is installed by default on common machine platforms including::
+dependency is installed by default on common machine platforms including:
+
+.. sourcecode:: text
 
     x86_64 aarch64 ppc64le amd64 win32
 
@@ -44,7 +46,9 @@ To install SQLAlchemy while ensuring the ``greenlet`` dependency is present
 regardless of what platform is in use, the
 ``[asyncio]`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
 may be installed
-as follows, which will include also instruct ``pip`` to install ``greenlet``::
+as follows, which will include also instruct ``pip`` to install ``greenlet``:
+
+.. sourcecode:: text
 
   pip install sqlalchemy[asyncio]
 
@@ -589,7 +593,9 @@ constructs are illustrated below::
 
     asyncio.run(go())
 
-The above example prints something along the lines of::
+The above example prints something along the lines of:
+
+.. sourcecode:: text
 
     New DBAPI connection: <AdaptedConnection <asyncpg.connection.Connection ...>>
     execute from event
@@ -609,7 +615,9 @@ The above example prints something along the lines of::
     place on the **exterior** of SQLAlchemy's usual flow from end-user API to
     DBAPI function.
 
-    The flow of messaging may be visualized as follows::
+    The flow of messaging may be visualized as follows:
+
+    .. sourcecode:: text
 
          SQLAlchemy    SQLAlchemy        SQLAlchemy          SQLAlchemy   plain
           asyncio      asyncio           ORM/Core            asyncio      asyncio

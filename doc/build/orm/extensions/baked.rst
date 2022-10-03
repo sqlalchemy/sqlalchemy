@@ -134,7 +134,9 @@ compared to the equivalent "baked" query::
         q(s).params(id=id_).one()
 
 The difference in Python function call count for an iteration of 10000
-calls to each block are::
+calls to each block are:
+
+.. sourcecode:: text
 
     test_baked_query : test a baked query of the full entity.
                        (10000 iterations); total fn calls 1951294
@@ -142,7 +144,9 @@ calls to each block are::
     test_orm_query :   test a straight ORM query of the full entity.
                        (10000 iterations); total fn calls 7900535
 
-In terms of number of seconds on a powerful laptop, this comes out as::
+In terms of number of seconds on a powerful laptop, this comes out as:
+
+.. sourcecode:: text
 
     test_baked_query : test a baked query of the full entity.
                        (10000 iterations); total time 2.174126 sec

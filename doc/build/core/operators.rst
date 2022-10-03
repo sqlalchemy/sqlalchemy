@@ -389,7 +389,6 @@ backends or sometimes a function like ``concat()``:
 
 * :meth:`_sql.ColumnOperators.startswith`::
 
-    The string containment operators
     >>> print(column("x").startswith("word"))
     x LIKE :x_1 || '%'
 

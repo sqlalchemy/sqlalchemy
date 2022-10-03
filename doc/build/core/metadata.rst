@@ -196,8 +196,8 @@ will issue the CREATE statements:
         Column("pref_value", String(100)),
     )
 
-    {sql}metadata_obj.create_all(engine)
-    PRAGMA table_info(user){}
+    metadata_obj.create_all(engine)
+    {opensql}PRAGMA table_info(user){}
     CREATE TABLE user(
             user_id INTEGER NOT NULL PRIMARY KEY,
             user_name VARCHAR(16) NOT NULL,
@@ -240,11 +240,11 @@ default issue the CREATE or DROP regardless of the table being present:
         Column("employee_name", String(60), nullable=False, key="name"),
         Column("employee_dept", Integer, ForeignKey("departments.department_id")),
     )
-    {sql}employees.create(engine)
-    CREATE TABLE employees(
-    employee_id SERIAL NOT NULL PRIMARY KEY,
-    employee_name VARCHAR(60) NOT NULL,
-    employee_dept INTEGER REFERENCES departments(department_id)
+    employees.create(engine)
+    {opensql}CREATE TABLE employees(
+        employee_id SERIAL NOT NULL PRIMARY KEY,
+        employee_name VARCHAR(60) NOT NULL,
+        employee_dept INTEGER REFERENCES departments(department_id)
     )
     {}
 
@@ -252,8 +252,8 @@ default issue the CREATE or DROP regardless of the table being present:
 
 .. sourcecode:: python+sql
 
-    {sql}employees.drop(engine)
-    DROP TABLE employees
+    employees.drop(engine)
+    {opensql}DROP TABLE employees
     {}
 
 To enable the "check first for the table existing" logic, add the

@@ -178,7 +178,9 @@ running within that thread, and vice versa, provided that the :class:`.Session` 
 created only after the web request begins and torn down just before the web request ends.
 So it is a common practice to use :class:`.scoped_session` as a quick way
 to integrate the :class:`.Session` with a web application.  The sequence
-diagram below illustrates this flow::
+diagram below illustrates this flow:
+
+.. sourcecode:: text
 
     Web Server          Web Framework        SQLAlchemy ORM Code
     --------------      --------------       ------------------------------

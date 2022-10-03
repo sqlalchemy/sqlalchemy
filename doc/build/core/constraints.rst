@@ -193,7 +193,9 @@ those constraints that are named:
 
 
 In the case where the cycle cannot be resolved, such as if we hadn't applied
-a name to either constraint here, we will receive the following error::
+a name to either constraint here, we will receive the following error:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.CircularDependencyError: Can't sort tables for DROP;
     an unresolvable foreign key dependency exists between tables:
@@ -250,7 +252,9 @@ and not the other one:
 :paramref:`_schema.ForeignKeyConstraint.use_alter` and
 :paramref:`_schema.ForeignKey.use_alter`, when used in conjunction with a drop
 operation, will require that the constraint is named, else an error
-like the following is generated::
+like the following is generated:
+
+.. sourcecode:: text
 
     sqlalchemy.exc.CompileError: Can't emit DROP CONSTRAINT for constraint
     ForeignKeyConstraint(...); it has no name
@@ -383,8 +387,8 @@ MySQL.
         CheckConstraint("col2 > col3 + 5", name="check1"),
     )
 
-    {sql}mytable.create(engine)
-    CREATE TABLE mytable (
+    mytable.create(engine)
+    {opensql}CREATE TABLE mytable (
         col1 INTEGER  CHECK (col1>5),
         col2 INTEGER,
         col3 INTEGER,
@@ -870,8 +874,8 @@ INDEX" is issued right after the create statements for the table:
     # place a unique index on col5, col6
     Index("myindex", mytable.c.col5, mytable.c.col6, unique=True)
 
-    {sql}mytable.create(engine)
-    CREATE TABLE mytable (
+    mytable.create(engine)
+    {opensql}CREATE TABLE mytable (
         col1 INTEGER,
         col2 INTEGER,
         col3 INTEGER,
@@ -909,8 +913,8 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 .. sourcecode:: python+sql
 
     i = Index("someindex", mytable.c.col5)
-    {sql}i.create(engine)
-    CREATE INDEX someindex ON mytable (col5){stop}
+    i.create(engine)
+    {opensql}CREATE INDEX someindex ON mytable (col5){stop}
 
 .. _schema_indexes_functional:
 

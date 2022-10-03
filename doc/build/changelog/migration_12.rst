@@ -949,7 +949,9 @@ An expression such as::
 
     >>> column("x").startswith("total%score", autoescape=True)
 
-Renders as::
+Renders as:
+
+.. sourcecode:: sql
 
     x LIKE :x_1 || '%' ESCAPE '/'
 

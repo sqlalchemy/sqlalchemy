@@ -231,7 +231,7 @@ to/from JSON.   Can be modified to use Python's builtin json encoder::
     class JSONEncodedDict(TypeDecorator):
         """Represents an immutable structure as a json-encoded string.
 
-        Usage::
+        Usage:
 
             JSONEncodedDict(255)
 

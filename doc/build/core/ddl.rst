@@ -124,18 +124,19 @@ first looking within the PostgreSQL catalogs to see if it exists:
         ),
     )
 
-    {sql}users.create(engine)
-    CREATE TABLE users (
+    users.create(engine)
+    {opensql}CREATE TABLE users (
         user_id SERIAL NOT NULL,
         user_name VARCHAR(40) NOT NULL,
         PRIMARY KEY (user_id)
     )
 
-    select conname from pg_constraint where conname='cst_user_name_length'
-    ALTER TABLE users ADD CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8){stop}
+    SELECT conname FROM pg_constraint WHERE conname='cst_user_name_length'
+    ALTER TABLE users ADD CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8)
+    {stop}
 
-    {sql}users.drop(engine)
-    select conname from pg_constraint where conname='cst_user_name_length'
+    users.drop(engine)
+    {opensql}SELECT conname FROM pg_constraint WHERE conname='cst_user_name_length'
     ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
@@ -150,9 +151,10 @@ one can use the :class:`.CreateTable` construct:
 .. sourcecode:: python+sql
 
     from sqlalchemy.schema import CreateTable
+
     with engine.connect() as conn:
-    {sql}    conn.execute(CreateTable(mytable))
-    CREATE TABLE mytable (
+        conn.execute(CreateTable(mytable))
+    {opensql}CREATE TABLE mytable (
         col1 INTEGER,
         col2 INTEGER,
         col3 INTEGER,

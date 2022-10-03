@@ -185,18 +185,18 @@ that is, from the ``EmailAddress`` class directly:
 
     session = Session()
 
-    {sql}address = session.scalars(
-        select(EmailAddress).where(EmailAddress.email == 'address@example.com'
+    address = session.scalars(
+        select(EmailAddress).where(EmailAddress.email == "address@example.com")
     ).one()
-    SELECT address.email AS address_email, address.id AS address_id
+    {opensql}SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE address.email = ?
     ('address@example.com',)
     {stop}
 
     address.email = "otheraddress@example.com"
-    {sql}session.commit()
-    UPDATE address SET email=? WHERE address.id = ?
+    session.commit()
+    {opensql}UPDATE address SET email=? WHERE address.id = ?
     ('otheraddress@example.com', 1)
     COMMIT
     {stop}
@@ -243,8 +243,10 @@ attribute, a SQL function is rendered which produces the same effect:
 
 .. sourcecode:: python+sql
 
-    {sql}address = session.scalars(select(EmailAddress).where(EmailAddress.email == 'address')).one()
-    SELECT address.email AS address_email, address.id AS address_id
+    address = session.scalars(
+        select(EmailAddress).where(EmailAddress.email == "address")
+    ).one()
+    {opensql}SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
     (0, 12, 'address')

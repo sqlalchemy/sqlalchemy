@@ -346,7 +346,9 @@ one::
 
     list(Iterates())
 
-output::
+output:
+
+.. sourcecode:: text
 
     ITER!
     LEN!
@@ -533,7 +535,9 @@ The function can be demonstrated as follows::
     for obj in walk(a1):
         print(obj)
 
-Output::
+Output:
+
+.. sourcecode:: text
 
     <__main__.A object at 0x10303b190>
     <__main__.B object at 0x103025210>

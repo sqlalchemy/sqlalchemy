@@ -15,7 +15,9 @@ The ``greenlet`` dependency does not install by default for CPU architectures
 for which ``greenlet`` does not supply a `pre-built binary wheel <https://pypi.org/project/greenlet/#files>`_.
 Notably, **this includes Apple M1**.    To install including ``greenlet``,
 add the ``asyncio`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
-to the ``pip install`` command::
+to the ``pip install`` command:
+
+.. sourcecode:: text
 
     pip install sqlalchemy[asyncio]
 

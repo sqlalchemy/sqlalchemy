@@ -360,7 +360,7 @@ fetching 50,000 rows looks like with SQLite, using mostly
 direct SQLite access, a ``ResultProxy``, and a simple mapped
 ORM object:
 
-::
+.. sourcecode:: text
 
     sqlite select/native: 0.260s
 

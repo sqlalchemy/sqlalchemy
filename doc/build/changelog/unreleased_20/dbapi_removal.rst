@@ -16,7 +16,7 @@
     :tags: postgresql, removed
     :tickets: 7258
 
-    Removed support for multiple deprecated drivers::
+    Removed support for multiple deprecated drivers:
 
         - pypostgresql for PostgreSQL. This is available as an
           external driver at https://github.com/PyGreSQL
