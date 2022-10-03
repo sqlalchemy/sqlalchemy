@@ -145,13 +145,20 @@ class Operators(object):
           between this element and the expression passed to the
           generated function.
 
-        :param precedence: precedence to apply to the operator, when
-         parenthesizing expressions.  A lower number will cause the expression
-         to be parenthesized when applied against another operator with
-         higher precedence.  The default value of ``0`` is lower than all
-         operators except for the comma (``,``) and ``AS`` operators.
-         A value of 100 will be higher or equal to all operators, and -100
-         will be lower than or equal to all operators.
+        :param precedence: precedence which the database is expected to apply
+         to the operator in SQL expressions. This integer value acts as a hint
+         for the SQL compiler to know when explicit parenthesis should be
+         rendered around a particular operation. A lower number will cause the
+         expression to be parenthesized when applied against another operator
+         with higher precedence. The default value of ``0`` is lower than all
+         operators except for the comma (``,``) and ``AS`` operators. A value
+         of 100 will be higher or equal to all operators, and -100 will be
+         lower than or equal to all operators.
+
+         .. seealso::
+
+            :ref:`faq_sql_expression_op_parenthesis` - detailed description
+            of how the SQLAlchemy SQL compiler renders parenthesis
 
         :param is_comparison: legacy; if True, the operator will be considered
          as a "comparison" operator, that is which evaluates to a boolean
