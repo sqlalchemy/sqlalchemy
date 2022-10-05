@@ -56,8 +56,9 @@ A basic UPDATE looks like::
 
     >>> from sqlalchemy import update
     >>> stmt = (
-    ...     update(user_table).where(user_table.c.name == 'patrick').
-    ...     values(fullname='Patrick the Star')
+    ...     update(user_table)
+    ...     .where(user_table.c.name == "patrick")
+    ...     .values(fullname="Patrick the Star")
     ... )
     >>> print(stmt)
     {opensql}UPDATE user_account SET fullname=:fullname WHERE user_account.name = :name_1
@@ -70,10 +71,7 @@ keyword arguments.
 UPDATE supports all the major SQL forms of UPDATE, including updates against expressions,
 where we can make use of :class:`_schema.Column` expressions::
 
-    >>> stmt = (
-    ...     update(user_table).
-    ...     values(fullname="Username: " + user_table.c.name)
-    ... )
+    >>> stmt = update(user_table).values(fullname="Username: " + user_table.c.name)
     >>> print(stmt)
     {opensql}UPDATE user_account SET fullname=(:name_1 || user_account.name)
 
@@ -86,19 +84,19 @@ that literal values would normally go:
 
     >>> from sqlalchemy import bindparam
     >>> stmt = (
-    ...   update(user_table).
-    ...   where(user_table.c.name == bindparam('oldname')).
-    ...   values(name=bindparam('newname'))
+    ...     update(user_table)
+    ...     .where(user_table.c.name == bindparam("oldname"))
+    ...     .values(name=bindparam("newname"))
     ... )
     >>> with engine.begin() as conn:
-    ...   conn.execute(
-    ...       stmt,
-    ...       [
-    ...          {'oldname':'jack', 'newname':'ed'},
-    ...          {'oldname':'wendy', 'newname':'mary'},
-    ...          {'oldname':'jim', 'newname':'jake'},
-    ...       ]
-    ...   )
+    ...     conn.execute(
+    ...         stmt,
+    ...         [
+    ...             {"oldname": "jack", "newname": "ed"},
+    ...             {"oldname": "wendy", "newname": "mary"},
+    ...             {"oldname": "jim", "newname": "jake"},
+    ...         ],
+    ...     )
     {opensql}BEGIN (implicit)
     UPDATE user_account SET name=? WHERE user_account.name = ?
     [...] (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
@@ -118,11 +116,11 @@ An UPDATE statement can make use of rows in other tables by using a
 anywhere a column expression might be placed::
 
   >>> scalar_subq = (
-  ...   select(address_table.c.email_address).
-  ...   where(address_table.c.user_id == user_table.c.id).
-  ...   order_by(address_table.c.id).
-  ...   limit(1).
-  ...   scalar_subquery()
+  ...     select(address_table.c.email_address)
+  ...     .where(address_table.c.user_id == user_table.c.id)
+  ...     .order_by(address_table.c.id)
+  ...     .limit(1)
+  ...     .scalar_subquery()
   ... )
   >>> update_stmt = update(user_table).values(fullname=scalar_subq)
   >>> print(update_stmt)
@@ -143,11 +141,11 @@ syntax will be generated implicitly when additional tables are located in the
 WHERE clause of the statement::
 
   >>> update_stmt = (
-  ...    update(user_table).
-  ...    where(user_table.c.id == address_table.c.user_id).
-  ...    where(address_table.c.email_address == 'patrick@aol.com').
-  ...    values(fullname='Pat')
-  ...  )
+  ...     update(user_table)
+  ...     .where(user_table.c.id == address_table.c.user_id)
+  ...     .where(address_table.c.email_address == "patrick@aol.com")
+  ...     .values(fullname="Pat")
+  ... )
   >>> print(update_stmt)
   {opensql}UPDATE user_account SET fullname=:fullname FROM address
   WHERE user_account.id = address.user_id AND address.email_address = :email_address_1
@@ -158,16 +156,13 @@ requires we refer to :class:`_schema.Table` objects in the VALUES clause in
 order to refer to additional tables::
 
   >>> update_stmt = (
-  ...    update(user_table).
-  ...    where(user_table.c.id == address_table.c.user_id).
-  ...    where(address_table.c.email_address == 'patrick@aol.com').
-  ...    values(
-  ...        {
-  ...            user_table.c.fullname: "Pat",
-  ...            address_table.c.email_address: "pat@aol.com"
-  ...        }
-  ...    )
-  ...  )
+  ...     update(user_table)
+  ...     .where(user_table.c.id == address_table.c.user_id)
+  ...     .where(address_table.c.email_address == "patrick@aol.com")
+  ...     .values(
+  ...         {user_table.c.fullname: "Pat", address_table.c.email_address: "pat@aol.com"}
+  ...     )
+  ... )
   >>> from sqlalchemy.dialects import mysql
   >>> print(update_stmt.compile(dialect=mysql.dialect()))
   {opensql}UPDATE user_account, address
@@ -185,12 +180,8 @@ of an UPDATE actually impacts the evaluation of each expression.   For this use
 case, the :meth:`_sql.Update.ordered_values` method accepts a sequence of
 tuples so that this order may be controlled [2]_::
 
-  >>> update_stmt = (
-  ...     update(some_table).
-  ...     ordered_values(
-  ...         (some_table.c.y, 20),
-  ...         (some_table.c.x, some_table.c.y + 10)
-  ...     )
+  >>> update_stmt = update(some_table).ordered_values(
+  ...     (some_table.c.y, 20), (some_table.c.x, some_table.c.y + 10)
   ... )
   >>> print(update_stmt)
   {opensql}UPDATE some_table SET y=:y, x=(some_table.y + :y_1)
@@ -220,7 +211,7 @@ allowing for a RETURNING variant on some database backends.
 ::
 
     >>> from sqlalchemy import delete
-    >>> stmt = delete(user_table).where(user_table.c.name == 'patrick')
+    >>> stmt = delete(user_table).where(user_table.c.name == "patrick")
     >>> print(stmt)
     {opensql}DELETE FROM user_account WHERE user_account.name = :name_1
 
@@ -235,10 +226,10 @@ subqueries in the WHERE clause as well as backend-specific multiple table
 syntaxes, such as ``DELETE FROM..USING`` on MySQL::
 
   >>> delete_stmt = (
-  ...    delete(user_table).
-  ...    where(user_table.c.id == address_table.c.user_id).
-  ...    where(address_table.c.email_address == 'patrick@aol.com')
-  ...  )
+  ...     delete(user_table)
+  ...     .where(user_table.c.id == address_table.c.user_id)
+  ...     .where(address_table.c.email_address == "patrick@aol.com")
+  ... )
   >>> from sqlalchemy.dialects import mysql
   >>> print(delete_stmt.compile(dialect=mysql.dialect()))
   {opensql}DELETE FROM user_account USING user_account, address
@@ -259,9 +250,9 @@ is available from the :attr:`_engine.CursorResult.rowcount` attribute:
 
     >>> with engine.begin() as conn:
     ...     result = conn.execute(
-    ...         update(user_table).
-    ...         values(fullname="Patrick McStar").
-    ...         where(user_table.c.name == 'patrick')
+    ...         update(user_table)
+    ...         .values(fullname="Patrick McStar")
+    ...         .where(user_table.c.name == "patrick")
     ...     )
     ...     print(result.rowcount)
     {opensql}BEGIN (implicit)
@@ -316,9 +307,10 @@ be iterated::
 
 
     >>> update_stmt = (
-    ...     update(user_table).where(user_table.c.name == 'patrick').
-    ...     values(fullname='Patrick the Star').
-    ...     returning(user_table.c.id, user_table.c.name)
+    ...     update(user_table)
+    ...     .where(user_table.c.name == "patrick")
+    ...     .values(fullname="Patrick the Star")
+    ...     .returning(user_table.c.id, user_table.c.name)
     ... )
     >>> print(update_stmt)
     {opensql}UPDATE user_account SET fullname=:fullname
@@ -326,8 +318,9 @@ be iterated::
     RETURNING user_account.id, user_account.name{stop}
 
     >>> delete_stmt = (
-    ...     delete(user_table).where(user_table.c.name == 'patrick').
-    ...     returning(user_table.c.id, user_table.c.name)
+    ...     delete(user_table)
+    ...     .where(user_table.c.name == "patrick")
+    ...     .returning(user_table.c.id, user_table.c.name)
     ... )
     >>> print(delete_stmt)
     {opensql}DELETE FROM user_account

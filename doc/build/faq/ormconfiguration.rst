@@ -48,7 +48,7 @@ applied directly to the mapper::
     class SomeClass(Base):
         __table__ = some_table_with_no_pk
         __mapper_args__ = {
-            'primary_key':[some_table_with_no_pk.c.uid, some_table_with_no_pk.c.bar]
+            "primary_key": [some_table_with_no_pk.c.uid, some_table_with_no_pk.c.bar]
         }
 
 Better yet is when using fully declared table metadata, use the ``primary_key=True``
@@ -142,16 +142,18 @@ Given the example as follows::
 
     Base = declarative_base()
 
+
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
 
         id = Column(Integer, primary_key=True)
+
 
     class B(A):
-        __tablename__ = 'b'
+        __tablename__ = "b"
 
         id = Column(Integer, primary_key=True)
-        a_id = Column(Integer, ForeignKey('a.id'))
+        a_id = Column(Integer, ForeignKey("a.id"))
 
 As of SQLAlchemy version 0.9.5, the above condition is detected, and will
 warn that the ``id`` column of ``A`` and ``B`` is being combined under
@@ -161,33 +163,33 @@ that a ``B`` object's primary key will always mirror that of its ``A``.
 A mapping which resolves this is as follows::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
 
         id = Column(Integer, primary_key=True)
 
-    class B(A):
-        __tablename__ = 'b'
 
-        b_id = Column('id', Integer, primary_key=True)
-        a_id = Column(Integer, ForeignKey('a.id'))
+    class B(A):
+        __tablename__ = "b"
+
+        b_id = Column("id", Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey("a.id"))
 
 Suppose we did want ``A.id`` and ``B.id`` to be mirrors of each other, despite
 the fact that ``B.a_id`` is where ``A.id`` is related.  We could combine
 them together using :func:`.column_property`::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
 
         id = Column(Integer, primary_key=True)
 
+
     class B(A):
-        __tablename__ = 'b'
+        __tablename__ = "b"
 
         # probably not what you want, but this is a demonstration
         id = column_property(Column(Integer, primary_key=True), A.id)
-        a_id = Column(Integer, ForeignKey('a.id'))
-
-
+        a_id = Column(Integer, ForeignKey("a.id"))
 
 I'm using Declarative and setting primaryjoin/secondaryjoin using an ``and_()`` or ``or_()``, and I am getting an error message about foreign keys.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -197,21 +199,27 @@ Are you doing this?::
     class MyClass(Base):
         # ....
 
-        foo = relationship("Dest", primaryjoin=and_("MyClass.id==Dest.foo_id", "MyClass.foo==Dest.bar"))
+        foo = relationship(
+            "Dest", primaryjoin=and_("MyClass.id==Dest.foo_id", "MyClass.foo==Dest.bar")
+        )
 
 That's an ``and_()`` of two string expressions, which SQLAlchemy cannot apply any mapping towards.  Declarative allows :func:`_orm.relationship` arguments to be specified as strings, which are converted into expression objects using ``eval()``.   But this doesn't occur inside of an ``and_()`` expression - it's a special operation declarative applies only to the *entirety* of what's passed to primaryjoin or other arguments as a string::
 
     class MyClass(Base):
         # ....
 
-        foo = relationship("Dest", primaryjoin="and_(MyClass.id==Dest.foo_id, MyClass.foo==Dest.bar)")
+        foo = relationship(
+            "Dest", primaryjoin="and_(MyClass.id==Dest.foo_id, MyClass.foo==Dest.bar)"
+        )
 
 Or if the objects you need are already available, skip the strings::
 
     class MyClass(Base):
         # ....
 
-        foo = relationship(Dest, primaryjoin=and_(MyClass.id==Dest.foo_id, MyClass.foo==Dest.bar))
+        foo = relationship(
+            Dest, primaryjoin=and_(MyClass.id == Dest.foo_id, MyClass.foo == Dest.bar)
+        )
 
 The same idea applies to all the other arguments, such as ``foreign_keys``::
 

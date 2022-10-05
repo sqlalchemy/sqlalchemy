@@ -19,7 +19,7 @@ function (note the Python ``print`` function also calls ``str()`` automatically
 if we don't use it explicitly)::
 
     >>> from sqlalchemy import table, column, select
-    >>> t = table('my_table', column('x'))
+    >>> t = table("my_table", column("x"))
     >>> statement = select(t)
     >>> print(str(statement))
     SELECT my_table.x
@@ -31,7 +31,7 @@ The ``str()`` builtin, or an equivalent, can be invoked on ORM
 as::
 
     >>> from sqlalchemy import column
-    >>> print(column('x') == 'some value')
+    >>> print(column("x") == "some value")
     x = :x_1
 
 Stringifying for Specific Databases
@@ -59,6 +59,7 @@ instantiate a :class:`.Dialect` object directly, as below where we
 use a PostgreSQL dialect::
 
     from sqlalchemy.dialects import postgresql
+
     print(statement.compile(dialect=postgresql.dialect()))
 
 Note that any dialect can be assembled using :func:`_sa.create_engine` itself
@@ -98,7 +99,7 @@ flag, passed to ``compile_kwargs``::
 
     from sqlalchemy.sql import table, column, select
 
-    t = table('t', column('x'))
+    t = table("t", column("x"))
 
     s = select(t).where(t.c.x == 5)
 
@@ -159,11 +160,13 @@ datatype::
 
     Base = declarative_base()
 
+
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
 
         id = Column(Integer, primary_key=True)
         data = Column(UUID)
+
 
     stmt = select(A).where(A.data == uuid.uuid4())
 
@@ -216,6 +219,7 @@ include:
   their positional order for the statement as compiled::
 
     import re
+
     e = create_engine("sqlite+pysqlite://")
 
     # will use qmark style, i.e. ? for param
@@ -224,7 +228,7 @@ include:
     # params in positional order
     params = (repr(compiled.params[name]) for name in compiled.positiontup)
 
-    print(re.sub(r'\?', lambda m: next(params), str(compiled)))
+    print(re.sub(r"\?", lambda m: next(params), str(compiled)))
 
   The above snippet prints::
 
@@ -240,6 +244,7 @@ include:
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.sql.expression import BindParameter
 
+
     @compiles(BindParameter)
     def _render_literal_bindparam(element, compiler, use_my_literal_recipe=False, **kw):
         if not use_my_literal_recipe:
@@ -249,6 +254,7 @@ include:
         # if use_my_literal_recipe was passed to compiler_kwargs,
         # render the value directly
         return repr(element.value)
+
 
     e = create_engine("postgresql+psycopg2://")
     print(stmt.compile(e, compile_kwargs={"use_my_literal_recipe": True}))
@@ -265,6 +271,7 @@ include:
 
     from sqlalchemy import TypeDecorator
 
+
     class UUIDStringify(TypeDecorator):
         impl = UUID
 
@@ -275,6 +282,7 @@ include:
   or locally within the statement using :func:`_sql.type_coerce`, such as ::
 
     from sqlalchemy import type_coerce
+
     stmt = select(A).where(type_coerce(A.data, UUIDStringify) == uuid.uuid4())
 
     print(stmt.compile(e, compile_kwargs={"literal_binds": True}))
@@ -331,7 +339,7 @@ in the same way, such as SQLite's positional form::
   >>> e = create_engine("sqlite+pysqlite://")
   >>> compiled = stmt.compile(e, compile_kwargs={"render_postcompile": True})
   >>> params = (repr(compiled.params[name]) for name in compiled.positiontup)
-  >>> print(re.sub(r'\?', lambda m: next(params), str(compiled)))
+  >>> print(re.sub(r"\?", lambda m: next(params), str(compiled)))
   SELECT a.id, a.data
   FROM a
   WHERE a.data IN (UUID('aa1944d6-9a5a-45d5-b8da-0ba1ef0a4f38'), UUID('a81920e6-15e2-4392-8a3c-d775ffa9ccd2'), UUID('b5574cdb-ff9b-49a3-be52-dbc89f087bfa'))
@@ -414,13 +422,13 @@ I'm using op() to generate a custom operator and my parenthesis are not coming o
 The :meth:`.Operators.op` method allows one to create a custom database operator
 otherwise not known by SQLAlchemy::
 
-    >>> print(column('q').op('->')(column('p')))
+    >>> print(column("q").op("->")(column("p")))
     q -> p
 
 However, when using it on the right side of a compound expression, it doesn't
 generate parenthesis as we expect::
 
-    >>> print((column('q1') + column('q2')).op('->')(column('p')))
+    >>> print((column("q1") + column("q2")).op("->")(column("p")))
     q1 + q2 -> p
 
 Where above, we probably want ``(q1 + q2) -> p``.
@@ -430,14 +438,14 @@ the :paramref:`.Operators.op.precedence` parameter, to a high
 number, where 100 is the maximum value, and the highest number used by any
 SQLAlchemy operator is currently 15::
 
-    >>> print((column('q1') + column('q2')).op('->', precedence=100)(column('p')))
+    >>> print((column("q1") + column("q2")).op("->", precedence=100)(column("p")))
     (q1 + q2) -> p
 
 We can also usually force parenthesization around a binary expression (e.g.
 an expression that has left/right operands and an operator) using the
 :meth:`_expression.ColumnElement.self_group` method::
 
-    >>> print((column('q1') + column('q2')).self_group().op('->')(column('p')))
+    >>> print((column("q1") + column("q2")).self_group().op("->")(column("p")))
     (q1 + q2) -> p
 
 Why are the parentheses rules like this?
@@ -449,7 +457,7 @@ generate parenthesis based on groupings, it uses operator precedence and if the
 operator is known to be associative, so that parenthesis are generated
 minimally. Otherwise, an expression like::
 
-    column('a') & column('b') & column('c') & column('d')
+    column("a") & column("b") & column("c") & column("d")
 
 would produce::
 
@@ -459,7 +467,7 @@ which is fine but would probably annoy people (and be reported as a bug). In
 other cases, it leads to things that are more likely to confuse databases or at
 the very least readability, such as::
 
-  column('q', ARRAY(Integer, dimensions=2))[5][6]
+  column("q", ARRAY(Integer, dimensions=2))[5][6]
 
 would produce::
 
@@ -476,16 +484,16 @@ What if we defaulted the value of :paramref:`.Operators.op.precedence` to 100,
 e.g. the highest?  Then this expression makes more parenthesis, but is
 otherwise OK, that is, these two are equivalent::
 
-    >>> print((column('q') - column('y')).op('+', precedence=100)(column('z')))
+    >>> print((column("q") - column("y")).op("+", precedence=100)(column("z")))
     (q - y) + z
-    >>> print((column('q') - column('y')).op('+')(column('z')))
+    >>> print((column("q") - column("y")).op("+")(column("z")))
     q - y + z
 
 but these two are not::
 
-    >>> print(column('q') - column('y').op('+', precedence=100)(column('z')))
+    >>> print(column("q") - column("y").op("+", precedence=100)(column("z")))
     q - y + z
-    >>> print(column('q') - column('y').op('+')(column('z')))
+    >>> print(column("q") - column("y").op("+")(column("z")))
     q - (y + z)
 
 For now, it's not clear that as long as we are doing parenthesization based on

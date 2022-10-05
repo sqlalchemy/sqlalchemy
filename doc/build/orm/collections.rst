@@ -467,16 +467,21 @@ interface are detected and instrumented via duck-typing:
     class ListLike(object):
         def __init__(self):
             self.data = []
+
         def append(self, item):
             self.data.append(item)
+
         def remove(self, item):
             self.data.remove(item)
+
         def extend(self, items):
             self.data.extend(items)
+
         def __iter__(self):
             return iter(self.data)
+
         def foo(self):
-            return 'foo'
+            return "foo"
 
 ``append``, ``remove``, and ``extend`` are known list-like methods, and will
 be instrumented automatically. ``__iter__`` is not a mutator method and won't
@@ -491,10 +496,13 @@ explicit about the interface you are implementing by providing an
 
         def __init__(self):
             self.data = set()
+
         def append(self, item):
             self.data.add(item)
+
         def remove(self, item):
             self.data.remove(item)
+
         def __iter__(self):
             return iter(self.data)
 
@@ -521,6 +529,7 @@ get the job done.
 .. sourcecode:: python
 
     from sqlalchemy.orm.collections import collection
+
 
     class SetLike(object):
         __emulates__ = set
@@ -579,6 +588,7 @@ collection support to other classes. It uses a keying function to delegate to
 
     from sqlalchemy.util import OrderedDict
     from sqlalchemy.orm.collections import MappedCollection
+
 
     class NodeMap(OrderedDict, MappedCollection):
         """Holds 'Node' objects, keyed by the 'name' attribute with insert order maintained."""
@@ -642,6 +652,7 @@ to restrict the decorations to just your usage in relationships. For example:
 
     class MyAwesomeList(some.great.library.AwesomeList):
         pass
+
 
     # ... relationship(..., collection_class=MyAwesomeList)
 

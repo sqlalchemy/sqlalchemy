@@ -26,8 +26,9 @@ attribute is first referenced on the individual object instance::
     from sqlalchemy.orm import deferred
     from sqlalchemy import Integer, String, Text, Binary, Column
 
+
     class Book(Base):
-        __tablename__ = 'book'
+        __tablename__ = "book"
 
         book_id = Column(Integer, primary_key=True)
         title = Column(String(200), nullable=False)
@@ -38,9 +39,9 @@ attribute is first referenced on the individual object instance::
 Classical mappings as always place the usage of :func:`_orm.deferred` in the
 ``properties`` dictionary against the table-bound :class:`_schema.Column`::
 
-    mapper_registry.map_imperatively(Book, book_table, properties={
-        'photo':deferred(book_table.c.photo)
-    })
+    mapper_registry.map_imperatively(
+        Book, book_table, properties={"photo": deferred(book_table.c.photo)}
+    )
 
 Deferred columns can be associated with a "group" name, so that they load
 together when any of them are first accessed.  The example below defines a
@@ -49,15 +50,15 @@ photos will be loaded in one SELECT statement. The ``.excerpt`` will be loaded
 separately when it is accessed::
 
     class Book(Base):
-        __tablename__ = 'book'
+        __tablename__ = "book"
 
         book_id = Column(Integer, primary_key=True)
         title = Column(String(200), nullable=False)
         summary = Column(String(2000))
         excerpt = deferred(Column(Text))
-        photo1 = deferred(Column(Binary), group='photos')
-        photo2 = deferred(Column(Binary), group='photos')
-        photo3 = deferred(Column(Binary), group='photos')
+        photo1 = deferred(Column(Binary), group="photos")
+        photo2 = deferred(Column(Binary), group="photos")
+        photo3 = deferred(Column(Binary), group="photos")
 
 .. _deferred_options:
 
@@ -73,7 +74,7 @@ basic query options are :func:`_orm.defer` and
     from sqlalchemy.orm import undefer
 
     query = session.query(Book)
-    query = query.options(defer('summary'), undefer('excerpt'))
+    query = query.options(defer("summary"), undefer("excerpt"))
     query.all()
 
 Above, the "summary" column will not load until accessed, and the "excerpt"
@@ -85,7 +86,7 @@ using :func:`_orm.undefer_group`, sending in the group name::
     from sqlalchemy.orm import undefer_group
 
     query = session.query(Book)
-    query.options(undefer_group('photos')).all()
+    query.options(undefer_group("photos")).all()
 
 .. _deferred_loading_w_multiple:
 
@@ -117,8 +118,8 @@ those explicitly specified::
 
     query = session.query(Author)
     query = query.options(
-                joinedload(Author.books).load_only(Book.summary, Book.excerpt),
-            )
+        joinedload(Author.books).load_only(Book.summary, Book.excerpt),
+    )
 
 Option structures as above can also be organized in more complex ways, such
 as hierarchically using the :meth:`_orm.Load.options`
@@ -132,14 +133,13 @@ may be used::
 
     query = session.query(Author)
     query = query.options(
-                joinedload(Author.book).options(
-                    load_only(Book.summary, Book.excerpt),
-                    joinedload(Book.citations).options(
-                        joinedload(Citation.author),
-                        defer(Citation.fulltext)
-                    )
-                )
-            )
+        joinedload(Author.book).options(
+            load_only(Book.summary, Book.excerpt),
+            joinedload(Book.citations).options(
+                joinedload(Citation.author), defer(Citation.fulltext)
+            ),
+        )
+    )
 
 .. versionadded:: 1.3.6  Added :meth:`_orm.Load.options` to allow easier
    construction of hierarchies of loader options.
@@ -154,7 +154,7 @@ to create the same structure as we did above using :meth:`_orm.Load.options` as:
     query = query.options(
         joinedload(Author.book).load_only(Book.summary, Book.excerpt),
         defaultload(Author.book).joinedload(Book.citations).joinedload(Citation.author),
-        defaultload(Author.book).defaultload(Book.citations).defer(Citation.fulltext)
+        defaultload(Author.book).defaultload(Book.citations).defer(Citation.fulltext),
     )
 
 .. seealso::
@@ -173,8 +173,7 @@ the "summary" and "excerpt" columns, we could say::
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import undefer
 
-    session.query(Book).options(
-        defer('*'), undefer("summary"), undefer("excerpt"))
+    session.query(Book).options(defer("*"), undefer("summary"), undefer("excerpt"))
 
 Above, the :func:`.defer` option is applied using a wildcard to all column
 attributes on the ``Book`` class.   Then, the :func:`.undefer` option is used
@@ -208,9 +207,7 @@ both at once.  Using :class:`_orm.Load` looks like::
     from sqlalchemy.orm import Load
 
     query = session.query(Book, Author).join(Book.author)
-    query = query.options(
-                Load(Book).load_only(Book.summary, Book.excerpt)
-            )
+    query = query.options(Load(Book).load_only(Book.summary, Book.excerpt))
 
 Above, :class:`_orm.Load` is used in conjunction with the exclusionary option
 :func:`.load_only` so that the deferral of all other columns only takes
@@ -246,16 +243,15 @@ Deferred "raiseload" can be configured at the mapper level via
 
 
     class Book(Base):
-        __tablename__ = 'book'
+        __tablename__ = "book"
 
         book_id = Column(Integer, primary_key=True)
         title = Column(String(200), nullable=False)
         summary = deferred(Column(String(2000)), raiseload=True)
         excerpt = deferred(Column(Text), raiseload=True)
 
+
     book_w_excerpt = session.query(Book).options(undefer(Book.excerpt)).first()
-
-
 
 Column Deferral API
 -------------------
@@ -286,8 +282,8 @@ The bundle allows columns to be grouped together::
 
     from sqlalchemy.orm import Bundle
 
-    bn = Bundle('mybundle', MyClass.data1, MyClass.data2)
-    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
+    bn = Bundle("mybundle", MyClass.data1, MyClass.data2)
+    for row in session.query(bn).filter(bn.c.data1 == "d1"):
         print(row.mybundle.data1, row.mybundle.data2)
 
 The bundle can be subclassed to provide custom behaviors when results
@@ -300,13 +296,14 @@ return structure with a straight Python dictionary::
 
     from sqlalchemy.orm import Bundle
 
+
     class DictBundle(Bundle):
         def create_row_processor(self, query, procs, labels):
             """Override create_row_processor to return values as dictionaries"""
+
             def proc(row):
-                return dict(
-                            zip(labels, (proc(row) for proc in procs))
-                        )
+                return dict(zip(labels, (proc(row) for proc in procs)))
+
             return proc
 
 .. note::
@@ -322,9 +319,9 @@ return structure with a straight Python dictionary::
 
 A result from the above bundle will return dictionary values::
 
-    bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
-    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
-        print(row.mybundle['data1'], row.mybundle['data2'])
+    bn = DictBundle("mybundle", MyClass.data1, MyClass.data2)
+    for row in session.query(bn).filter(bn.c.data1 == "d1"):
+        print(row.mybundle["data1"], row.mybundle["data2"])
 
 The :class:`.Bundle` construct is also integrated into the behavior
 of :func:`.composite`, where it is used to return composite attributes as objects

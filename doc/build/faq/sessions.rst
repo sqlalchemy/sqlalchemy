@@ -91,11 +91,13 @@ does not properly handle the exception.    For example::
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.ext.declarative import declarative_base
 
-    Base = declarative_base(create_engine('sqlite://'))
+    Base = declarative_base(create_engine("sqlite://"))
+
 
     class Foo(Base):
-        __tablename__ = 'foo'
+        __tablename__ = "foo"
         id = Column(Integer, primary_key=True)
+
 
     Base.metadata.create_all()
 
@@ -112,7 +114,6 @@ does not properly handle the exception.    For example::
 
     # continue using session without rolling back
     session.commit()
-
 
 The usage of the :class:`.Session` should fit within a structure similar to this::
 
@@ -186,7 +187,7 @@ point of view there is still a transaction that is now in an inactive state.
 
 Given a block such as::
 
-  sess = Session()   # begins a logical transaction
+  sess = Session()  # begins a logical transaction
   try:
       sess.flush()
 
@@ -237,7 +238,7 @@ will **deduplicate the objects based on primary key**.   That is, if we
 for example use the ``User`` mapping described at :ref:`ormtutorial_toplevel`,
 and we had a SQL query like the following::
 
-    q = session.query(User).outerjoin(User.addresses).filter(User.name == 'jack')
+    q = session.query(User).outerjoin(User.addresses).filter(User.name == "jack")
 
 Above, the sample data used in the tutorial has two rows in the ``addresses``
 table for the ``users`` row with the name ``'jack'``, primary key value 5.
@@ -257,7 +258,9 @@ This is because when the :class:`_query.Query` object returns full entities, the
 are **deduplicated**.    This does not occur if we instead request individual
 columns back::
 
-  >>> session.query(User.id, User.name).outerjoin(User.addresses).filter(User.name == 'jack').all()
+  >>> session.query(User.id, User.name).outerjoin(User.addresses).filter(
+  ...     User.name == "jack"
+  ... ).all()
   [(5, 'jack'), (5, 'jack')]
 
 There are two main reasons the :class:`_query.Query` will deduplicate:
@@ -337,6 +340,7 @@ one::
         def __iter__(self):
             print("ITER!")
             return iter([1, 2, 3, 4, 5])
+
 
     list(Iterates())
 
@@ -422,7 +426,7 @@ be performed for any :term:`persistent` object using :meth:`.Session.expire`::
 
     o = Session.query(SomeClass).first()
     o.foo_id = 7
-    Session.expire(o, ['foo'])  # object must be persistent for this
+    Session.expire(o, ["foo"])  # object must be persistent for this
 
     foo_7 = Session.query(Foo).get(7)
 
@@ -444,10 +448,9 @@ have meaning until the row is inserted; otherwise there is no row yet::
     Session.flush()  # emits INSERT
 
     # expire this because we already set .foo to None
-    Session.expire(o, ['foo'])
+    Session.expire(o, ["foo"])
 
     assert new_obj.foo is foo_7  # now it loads
-
 
 .. topic:: Attribute loading for non-persistent objects
 
@@ -504,21 +507,21 @@ The function can be demonstrated as follows::
 
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         bs = relationship("B", backref="a")
 
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey('a.id'))
-        c_id = Column(ForeignKey('c.id'))
+        a_id = Column(ForeignKey("a.id"))
+        c_id = Column(ForeignKey("c.id"))
         c = relationship("C", backref="bs")
 
 
     class C(Base):
-        __tablename__ = 'c'
+        __tablename__ = "c"
         id = Column(Integer, primary_key=True)
 
 

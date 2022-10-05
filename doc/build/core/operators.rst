@@ -11,17 +11,17 @@ Operator Reference
     >>> user_table = Table(
     ...     "user_account",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String(30)),
-    ...     Column('fullname', String)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30)),
+    ...     Column("fullname", String),
     ... )
     >>> from sqlalchemy import ForeignKey
     >>> address_table = Table(
     ...     "address",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('user_id', None, ForeignKey('user_account.id')),
-    ...     Column('email_address', String, nullable=False)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", None, ForeignKey("user_account.id")),
+    ...     Column("email_address", String, nullable=False),
     ... )
     >>> metadata_obj.create_all(engine)
     BEGIN (implicit)
@@ -30,7 +30,7 @@ Operator Reference
     >>> Base = declarative_base()
     >>> from sqlalchemy.orm import relationship
     >>> class User(Base):
-    ...     __tablename__ = 'user_account'
+    ...     __tablename__ = "user_account"
     ...
     ...     id = Column(Integer, primary_key=True)
     ...     name = Column(String(30))
@@ -39,14 +39,14 @@ Operator Reference
     ...     addresses = relationship("Address", back_populates="user")
     ...
     ...     def __repr__(self):
-    ...        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+    ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
-    ...     __tablename__ = 'address'
+    ...     __tablename__ = "address"
     ...
     ...     id = Column(Integer, primary_key=True)
     ...     email_address = Column(String, nullable=False)
-    ...     user_id = Column(Integer, ForeignKey('user_account.id'))
+    ...     user_id = Column(Integer, ForeignKey("user_account.id"))
     ...
     ...     user = relationship("User", back_populates="addresses")
     ...
@@ -55,22 +55,34 @@ Operator Reference
     >>> conn = engine.connect()
     >>> from sqlalchemy.orm import Session
     >>> session = Session(conn)
-    >>> session.add_all([
-    ... User(name="spongebob", fullname="Spongebob Squarepants", addresses=[
-    ...    Address(email_address="spongebob@sqlalchemy.org")
-    ... ]),
-    ... User(name="sandy", fullname="Sandy Cheeks", addresses=[
-    ...    Address(email_address="sandy@sqlalchemy.org"),
-    ...     Address(email_address="squirrel@squirrelpower.org")
-    ...     ]),
-    ...     User(name="patrick", fullname="Patrick Star", addresses=[
-    ...         Address(email_address="pat999@aol.com")
-    ...     ]),
-    ...     User(name="squidward", fullname="Squidward Tentacles", addresses=[
-    ...         Address(email_address="stentcl@sqlalchemy.org")
-    ...     ]),
-    ...     User(name="ehkrabs", fullname="Eugene H. Krabs"),
-    ... ])
+    >>> session.add_all(
+    ...     [
+    ...         User(
+    ...             name="spongebob",
+    ...             fullname="Spongebob Squarepants",
+    ...             addresses=[Address(email_address="spongebob@sqlalchemy.org")],
+    ...         ),
+    ...         User(
+    ...             name="sandy",
+    ...             fullname="Sandy Cheeks",
+    ...             addresses=[
+    ...                 Address(email_address="sandy@sqlalchemy.org"),
+    ...                 Address(email_address="squirrel@squirrelpower.org"),
+    ...             ],
+    ...         ),
+    ...         User(
+    ...             name="patrick",
+    ...             fullname="Patrick Star",
+    ...             addresses=[Address(email_address="pat999@aol.com")],
+    ...         ),
+    ...         User(
+    ...             name="squidward",
+    ...             fullname="Squidward Tentacles",
+    ...             addresses=[Address(email_address="stentcl@sqlalchemy.org")],
+    ...         ),
+    ...         User(name="ehkrabs", fullname="Eugene H. Krabs"),
+    ...     ]
+    ... )
     >>> session.commit()
     BEGIN ...
     >>> conn.begin()
@@ -108,49 +120,49 @@ strings, dates, and many others:
 
 * :meth:`_sql.ColumnOperators.__eq__` (Python "``==``" operator)::
 
-    >>> print(column('x') == 5)
+    >>> print(column("x") == 5)
     x = :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.__ne__` (Python "``!=``" operator)::
 
-    >>> print(column('x') != 5)
+    >>> print(column("x") != 5)
     x != :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.__gt__` (Python "``>``" operator)::
 
-    >>> print(column('x') > 5)
+    >>> print(column("x") > 5)
     x > :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.__lt__` (Python "``<``" operator)::
 
-    >>> print(column('x') < 5)
+    >>> print(column("x") < 5)
     x < :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.__ge__` (Python "``>=``" operator)::
 
-    >>> print(column('x') >= 5)
+    >>> print(column("x") >= 5)
     x >= :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.__le__` (Python "``<=``" operator)::
 
-    >>> print(column('x') <= 5)
+    >>> print(column("x") <= 5)
     x <= :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.between`::
 
-    >>> print(column('x').between(5, 10))
+    >>> print(column("x").between(5, 10))
     x BETWEEN :x_1 AND :x_2
 
   ..
@@ -171,7 +183,7 @@ IN is available most typically by passing a list of
 values to the :meth:`_sql.ColumnOperators.in_` method::
 
 
-    >>> print(column('x').in_([1, 2, 3]))
+    >>> print(column("x").in_([1, 2, 3]))
     x IN (__[POSTCOMPILE_x_1])
 
 The special bound form ``__[POSTCOMPILE`` is rendered into individual parameters
@@ -211,12 +223,12 @@ NOT IN
 
 "NOT IN" is available via the :meth:`_sql.ColumnOperators.not_in` operator::
 
-    >>> print(column('x').not_in([1, 2, 3]))
+    >>> print(column("x").not_in([1, 2, 3]))
     (x NOT IN (__[POSTCOMPILE_x_1]))
 
 This is typically more easily available by negating with the ``~`` operator::
 
-    >>> print(~column('x').in_([1, 2, 3]))
+    >>> print(~column("x").in_([1, 2, 3]))
     (x NOT IN (__[POSTCOMPILE_x_1]))
 
 Tuple IN Expressions
@@ -229,7 +241,7 @@ building block for tuple comparisons.  The :meth:`_sql.Tuple.in_` operator
 then receives a list of tuples::
 
     >>> from sqlalchemy import tuple_
-    >>> tup = tuple_(column('x', Integer), column('y', Integer))
+    >>> tup = tuple_(column("x", Integer), column("y", Integer))
     >>> expr = tup.in_([(1, 2), (3, 4)])
     >>> print(expr)
     (x, y) IN (__[POSTCOMPILE_param_1])
@@ -256,14 +268,14 @@ operators work with subqueries.   The form provides that a :class:`_sql.Select`
 construct is passed in directly, without any explicit conversion to a named
 subquery::
 
-    >>> print(column('x').in_(select(user_table.c.id)))
+    >>> print(column("x").in_(select(user_table.c.id)))
     x IN (SELECT user_account.id
     FROM user_account)
 
 Tuples work as expected::
 
     >>> print(
-    ...     tuple_(column('x'), column('y')).in_(
+    ...     tuple_(column("x"), column("y")).in_(
     ...         select(user_table.c.id, address_table.c.id).join(address_table)
     ...     )
     ... )
@@ -283,14 +295,14 @@ databases support:
   as "<expr> IS NULL".   The ``NULL`` constant is most easily acquired
   using regular Python ``None``::
 
-    >>> print(column('x').is_(None))
+    >>> print(column("x").is_(None))
     x IS NULL
 
   SQL NULL is also explicitly available, if needed, using the
   :func:`_sql.null` construct::
 
     >>> from sqlalchemy import null
-    >>> print(column('x').is_(null()))
+    >>> print(column("x").is_(null()))
     x IS NULL
 
   The :meth:`_sql.ColumnOperators.is_` operator is automatically invoked when
@@ -300,7 +312,7 @@ databases support:
   explicitly, paricularly when used with a dynamic value::
 
     >>> a = None
-    >>> print(column('x') == a)
+    >>> print(column("x") == a)
     x IS NULL
 
   Note that the Python ``is`` operator is **not overloaded**.  Even though
@@ -311,26 +323,26 @@ databases support:
 
   Similar to :meth:`_sql.ColumnOperators.is_`, produces "IS NOT"::
 
-    >>> print(column('x').is_not(None))
+    >>> print(column("x").is_not(None))
     x IS NOT NULL
 
   Is similarly equivalent to ``!= None``::
 
-    >>> print(column('x') != None)
+    >>> print(column("x") != None)
     x IS NOT NULL
 
 * :meth:`_sql.ColumnOperators.is_distinct_from`:
 
   Produces SQL IS DISTINCT FROM::
 
-    >>> print(column('x').is_distinct_from('some value'))
+    >>> print(column("x").is_distinct_from("some value"))
     x IS DISTINCT FROM :x_1
 
 * :meth:`_sql.ColumnOperators.isnot_distinct_from`:
 
   Produces SQL IS NOT DISTINCT FROM::
 
-    >>> print(column('x').isnot_distinct_from('some value'))
+    >>> print(column("x").isnot_distinct_from("some value"))
     x IS NOT DISTINCT FROM :x_1
 
 String Comparisons
@@ -338,7 +350,7 @@ String Comparisons
 
 * :meth:`_sql.ColumnOperators.like`::
 
-    >>> print(column('x').like('word'))
+    >>> print(column("x").like("word"))
     x LIKE :x_1
 
   ..
@@ -348,14 +360,14 @@ String Comparisons
   Case insensitive LIKE makes use of the SQL ``lower()`` function on a
   generic backend.  On the PostgreSQL backend it will use ``ILIKE``::
 
-    >>> print(column('x').ilike('word'))
+    >>> print(column("x").ilike("word"))
     lower(x) LIKE lower(:x_1)
 
   ..
 
 * :meth:`_sql.ColumnOperators.notlike`::
 
-    >>> print(column('x').notlike('word'))
+    >>> print(column("x").notlike("word"))
     x NOT LIKE :x_1
 
   ..
@@ -363,7 +375,7 @@ String Comparisons
 
 * :meth:`_sql.ColumnOperators.notilike`::
 
-    >>> print(column('x').notilike('word'))
+    >>> print(column("x").notilike("word"))
     lower(x) NOT LIKE lower(:x_1)
 
   ..
@@ -378,21 +390,21 @@ backends or sometimes a function like ``concat()``:
 * :meth:`_sql.ColumnOperators.startswith`::
 
     The string containment operators
-    >>> print(column('x').startswith('word'))
+    >>> print(column("x").startswith("word"))
     x LIKE :x_1 || '%'
 
   ..
 
 * :meth:`_sql.ColumnOperators.endswith`::
 
-    >>> print(column('x').endswith('word'))
+    >>> print(column("x").endswith("word"))
     x LIKE '%' || :x_1
 
   ..
 
 * :meth:`_sql.ColumnOperators.contains`::
 
-    >>> print(column('x').contains('word'))
+    >>> print(column("x").contains("word"))
     x LIKE '%' || :x_1 || '%'
 
   ..
@@ -408,7 +420,7 @@ behaviors and results on different databases:
   This is a dialect-specific operator that makes use of the MATCH
   feature of the underlying database, if available::
 
-    >>> print(column('x').match('word'))
+    >>> print(column("x").match("word"))
     x MATCH :x_1
 
   ..
@@ -419,13 +431,13 @@ behaviors and results on different databases:
   for example the PostgreSQL dialect::
 
     >>> from sqlalchemy.dialects import postgresql
-    >>> print(column('x').regexp_match('word').compile(dialect=postgresql.dialect()))
+    >>> print(column("x").regexp_match("word").compile(dialect=postgresql.dialect()))
     x ~ %(x_1)s
 
   Or MySQL::
 
     >>> from sqlalchemy.dialects import mysql
-    >>> print(column('x').regexp_match('word').compile(dialect=mysql.dialect()))
+    >>> print(column("x").regexp_match("word").compile(dialect=mysql.dialect()))
     x REGEXP %s
 
   ..
@@ -440,20 +452,20 @@ String Alteration
 
   String concatenation::
 
-    >>> print(column('x').concat("some string"))
+    >>> print(column("x").concat("some string"))
     x || :x_1
 
   This operator is available via :meth:`_sql.ColumnOperators.__add__`, that
   is, the Python ``+`` operator, when working with a column expression that
   derives from :class:`_types.String`::
 
-    >>> print(column('x', String) + "some string")
+    >>> print(column("x", String) + "some string")
     x || :x_1
 
   The operator will produce the appropriate database-specific construct,
   such as on MySQL it's historically been the ``concat()`` SQL function::
 
-    >>> print((column('x', String) + "some string").compile(dialect=mysql.dialect()))
+    >>> print((column("x", String) + "some string").compile(dialect=mysql.dialect()))
     concat(x, %s)
 
   ..
@@ -463,7 +475,7 @@ String Alteration
   Complementary to :meth:`_sql.ColumnOperators.regexp` this produces REGEXP
   REPLACE equivalent for the backends which support it::
 
-    >>> print(column('x').regexp_replace('foo', 'bar').compile(dialect=postgresql.dialect()))
+    >>> print(column("x").regexp_replace("foo", "bar").compile(dialect=postgresql.dialect()))
     REGEXP_REPLACE(x, %(x_1)s, %(x_2)s)
 
   ..
@@ -473,7 +485,11 @@ String Alteration
   Produces the COLLATE SQL operator which provides for specific collations
   at expression time::
 
-    >>> print((column('x').collate('latin1_german2_ci') == 'Müller').compile(dialect=mysql.dialect()))
+    >>> print(
+    ...     (column("x").collate("latin1_german2_ci") == "Müller").compile(
+    ...         dialect=mysql.dialect()
+    ...     )
+    ... )
     (x COLLATE latin1_german2_ci) = %s
 
 
@@ -481,7 +497,11 @@ String Alteration
 
 
     >>> from sqlalchemy import literal
-    >>> print((literal('Müller').collate('latin1_german2_ci') == column('x')).compile(dialect=mysql.dialect()))
+    >>> print(
+    ...     (literal("Müller").collate("latin1_german2_ci") == column("x")).compile(
+    ...         dialect=mysql.dialect()
+    ...     )
+    ... )
     (%s COLLATE latin1_german2_ci) = x
 
   ..
@@ -491,10 +511,10 @@ Arithmetic Operators
 
 * :meth:`_sql.ColumnOperators.__add__`, :meth:`_sql.ColumnOperators.__radd__` (Python "``+``" operator)::
 
-    >>> print(column('x') + 5)
+    >>> print(column("x") + 5)
     x + :x_1
 
-    >>> print(5 + column('x'))
+    >>> print(5 + column("x"))
     :x_1 + x
 
   ..
@@ -507,10 +527,10 @@ Arithmetic Operators
 
 * :meth:`_sql.ColumnOperators.__sub__`, :meth:`_sql.ColumnOperators.__rsub__` (Python "``-``" operator)::
 
-    >>> print(column('x') - 5)
+    >>> print(column("x") - 5)
     x - :x_1
 
-    >>> print(5 - column('x'))
+    >>> print(5 - column("x"))
     :x_1 - x
 
   ..
@@ -518,19 +538,19 @@ Arithmetic Operators
 
 * :meth:`_sql.ColumnOperators.__mul__`, :meth:`_sql.ColumnOperators.__rmul__` (Python "``*``" operator)::
 
-    >>> print(column('x') * 5)
+    >>> print(column("x") * 5)
     x * :x_1
 
-    >>> print(5 * column('x'))
+    >>> print(5 * column("x"))
     :x_1 * x
 
   ..
 
 * :meth:`_sql.ColumnOperators.__div__`, :meth:`_sql.ColumnOperators.__rdiv__` (Python "``/``" operator)::
 
-    >>> print(column('x') / 5)
+    >>> print(column("x") / 5)
     x / :x_1
-    >>> print(5 / column('x'))
+    >>> print(5 / column("x"))
     :x_1 / x
 
   ..
@@ -538,9 +558,9 @@ Arithmetic Operators
 
 * :meth:`_sql.ColumnOperators.__mod__`, :meth:`_sql.ColumnOperators.__rmod__` (Python "``%``" operator)::
 
-    >>> print(column('x') % 5)
+    >>> print(column("x") % 5)
     x % :x_1
-    >>> print(5 % column('x'))
+    >>> print(5 % column("x"))
     :x_1 % x
 
   ..
@@ -553,10 +573,10 @@ The most common conjunction, "AND", is automatically applied if we make repeated
 :meth:`_sql.Update.where` and :meth:`_sql.Delete.where`::
 
     >>> print(
-    ...        select(address_table.c.email_address).
-    ...        where(user_table.c.name == 'squidward').
-    ...        where(address_table.c.user_id == user_table.c.id)
-    ...    )
+    ...     select(address_table.c.email_address)
+    ...     .where(user_table.c.name == "squidward")
+    ...     .where(address_table.c.user_id == user_table.c.id)
+    ... )
     SELECT address.email_address
     FROM address, user_account
     WHERE user_account.name = :name_1 AND address.user_id = user_account.id
@@ -564,12 +584,10 @@ The most common conjunction, "AND", is automatically applied if we make repeated
 :meth:`_sql.Select.where`, :meth:`_sql.Update.where` and :meth:`_sql.Delete.where` also accept multiple expressions with the same effect::
 
     >>> print(
-    ...        select(address_table.c.email_address).
-    ...        where(
-    ...            user_table.c.name == 'squidward',
-    ...            address_table.c.user_id == user_table.c.id
-    ...        )
-    ...    )
+    ...     select(address_table.c.email_address).where(
+    ...         user_table.c.name == "squidward", address_table.c.user_id == user_table.c.id
+    ...     )
+    ... )
     SELECT address.email_address
     FROM address, user_account
     WHERE user_account.name = :name_1 AND address.user_id = user_account.id
@@ -579,11 +597,10 @@ The "AND" conjunction, as well as its partner "OR", are both available directly 
 
     >>> from sqlalchemy import and_, or_
     >>> print(
-    ...     select(address_table.c.email_address).
-    ...     where(
+    ...     select(address_table.c.email_address).where(
     ...         and_(
-    ...             or_(user_table.c.name == 'squidward', user_table.c.name == 'sandy'),
-    ...             address_table.c.user_id == user_table.c.id
+    ...             or_(user_table.c.name == "squidward", user_table.c.name == "sandy"),
+    ...             address_table.c.user_id == user_table.c.id,
     ...         )
     ...     )
     ... )
@@ -596,13 +613,13 @@ A negation is available using the :func:`_sql.not_` function.  This will
 typically invert the operator in a boolean expression::
 
     >>> from sqlalchemy import not_
-    >>> print(not_(column('x') == 5))
+    >>> print(not_(column("x") == 5))
     x != :x_1
 
 It also may apply a keyword such as ``NOT`` when appropriate::
 
     >>> from sqlalchemy import Boolean
-    >>> print(not_(column('x', Boolean)))
+    >>> print(not_(column("x", Boolean)))
     NOT x
 
 
@@ -622,7 +639,7 @@ The above conjunction functions :func:`_sql.and_`, :func:`_sql.or_`,
   The Python binary ``&`` operator is overloaded to behave the same
   as :func:`_sql.and_` (note parenthesis around the two operands)::
 
-     >>> print((column('x') == 5) & (column('y') == 10))
+     >>> print((column("x") == 5) & (column("y") == 10))
      x = :x_1 AND y = :y_1
 
   ..
@@ -633,7 +650,7 @@ The above conjunction functions :func:`_sql.and_`, :func:`_sql.or_`,
   The Python binary ``|`` operator is overloaded to behave the same
   as :func:`_sql.or_` (note parenthesis around the two operands)::
 
-    >>> print((column('x') == 5) | (column('y') == 10))
+    >>> print((column("x") == 5) | (column("y") == 10))
     x = :x_1 OR y = :y_1
 
   ..
@@ -645,11 +662,11 @@ The above conjunction functions :func:`_sql.and_`, :func:`_sql.or_`,
   as :func:`_sql.not_`, either inverting the existing operator, or
   applying the ``NOT`` keyword to the expression as a whole::
 
-    >>> print(~(column('x') == 5))
+    >>> print(~(column("x") == 5))
     x != :x_1
 
     >>> from sqlalchemy import Boolean
-    >>> print(~column('x', Boolean))
+    >>> print(~column("x", Boolean))
     NOT x
 
   ..

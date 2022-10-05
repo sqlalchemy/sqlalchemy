@@ -13,7 +13,7 @@ existing within the database. This process is called *reflection*. In the
 most simple case you need only specify the table name, a :class:`~sqlalchemy.schema.MetaData`
 object, and the ``autoload_with`` argument::
 
-    >>> messages = Table('messages', metadata_obj, autoload_with=engine)
+    >>> messages = Table("messages", metadata_obj, autoload_with=engine)
     >>> [c.name for c in messages.columns]
     ['message_id', 'message_name', 'date']
 
@@ -30,7 +30,7 @@ Below, assume the table ``shopping_cart_items`` references a table named
 ``shopping_carts``. Reflecting the ``shopping_cart_items`` table has the
 effect such that the ``shopping_carts`` table will also be loaded::
 
-    >>> shopping_cart_items = Table('shopping_cart_items', metadata_obj, autoload_with=engine)
+    >>> shopping_cart_items = Table("shopping_cart_items", metadata_obj, autoload_with=engine)
     >>> 'shopping_carts' in metadata_obj.tables:
     True
 
@@ -43,7 +43,7 @@ you the already-existing :class:`~sqlalchemy.schema.Table` object if one
 already exists with the given name. Such as below, we can access the already
 generated ``shopping_carts`` table just by naming it::
 
-    shopping_carts = Table('shopping_carts', metadata_obj)
+    shopping_carts = Table("shopping_carts", metadata_obj)
 
 Of course, it's a good idea to use ``autoload_with=engine`` with the above table
 regardless. This is so that the table's attributes will be loaded if they have
@@ -61,11 +61,16 @@ Individual columns can be overridden with explicit values when reflecting
 tables; this is handy for specifying custom datatypes, constraints such as
 primary keys that may not be configured within the database, etc.::
 
-    >>> mytable = Table('mytable', metadata_obj,
-    ... Column('id', Integer, primary_key=True),   # override reflected 'id' to have primary key
-    ... Column('mydata', Unicode(50)),    # override reflected 'mydata' to be Unicode
-    ... # additional Column objects which require no change are reflected normally
-    ... autoload_with=some_engine)
+    >>> mytable = Table(
+    ...     "mytable",
+    ...     metadata_obj,
+    ...     Column(
+    ...         "id", Integer, primary_key=True
+    ...     ),  # override reflected 'id' to have primary key
+    ...     Column("mydata", Unicode(50)),  # override reflected 'mydata' to be Unicode
+    ...     # additional Column objects which require no change are reflected normally
+    ...     autoload_with=some_engine,
+    ... )
 
 .. seealso::
 
@@ -92,10 +97,12 @@ extrapolate these constraints.
 Use the "override" technique for this, specifying explicitly those columns
 which are part of the primary key or have foreign key constraints::
 
-    my_view = Table("some_view", metadata,
-                    Column("view_id", Integer, primary_key=True),
-                    Column("related_thing", Integer, ForeignKey("othertable.thing_id")),
-                    autoload_with=engine
+    my_view = Table(
+        "some_view",
+        metadata,
+        Column("view_id", Integer, primary_key=True),
+        Column("related_thing", Integer, ForeignKey("othertable.thing_id")),
+        autoload_with=engine,
     )
 
 Reflecting All Tables at Once
@@ -109,8 +116,8 @@ object's dictionary of tables::
 
     metadata_obj = MetaData()
     metadata_obj.reflect(bind=someengine)
-    users_table = metadata_obj.tables['users']
-    addresses_table = metadata_obj.tables['addresses']
+    users_table = metadata_obj.tables["users"]
+    addresses_table = metadata_obj.tables["addresses"]
 
 ``metadata.reflect()`` also provides a handy way to clear or delete all the rows in a database::
 
@@ -149,7 +156,7 @@ The end result is that :class:`_schema.Table` objects from the "project"
 schema will be reflected, and they will be populated as schema-qualified
 with that name::
 
-    >>> metadata_obj.tables['project.messages']
+    >>> metadata_obj.tables["project.messages"]
     Table('messages', MetaData(), Column('message_id', INTEGER(), table=<messages>), schema='project')
 
 Similarly, an individual :class:`_schema.Table` object that includes the
@@ -157,7 +164,7 @@ Similarly, an individual :class:`_schema.Table` object that includes the
 database schema, overriding any default schema that may have been configured on the
 owning :class:`_schema.MetaData` collection::
 
-    >>> messages = Table('messages', metadata_obj, schema="project", autoload_with=someengine)
+    >>> messages = Table("messages", metadata_obj, schema="project", autoload_with=someengine)
     >>> messages
     Table('messages', MetaData(), Column('message_id', INTEGER(), table=<messages>), schema='project')
 
@@ -246,7 +253,9 @@ semantically equivalent::
     >>> # reflect in non-schema qualified fashion
     >>> messages_table_1 = Table("messages", metadata_obj, autoload_with=someengine)
     >>> # reflect in schema qualified fashion
-    >>> messages_table_2 = Table("messages", metadata_obj, schema="project", autoload_with=someengine)
+    >>> messages_table_2 = Table(
+    ...     "messages", metadata_obj, schema="project", autoload_with=someengine
+    ... )
     >>> # two different objects
     >>> messages_table_1 is messages_table_2
     False
@@ -280,7 +289,9 @@ fashion then loads a related table that will also be performed in a schema
 qualified fashion::
 
     >>> # reflect "messages" in a schema qualified fashion
-    >>> messages_table_1 = Table("messages", metadata_obj, schema="project", autoload_with=someengine)
+    >>> messages_table_1 = Table(
+    ...     "messages", metadata_obj, schema="project", autoload_with=someengine
+    ... )
 
 The above ``messages_table_1`` will refer to ``projects`` also in a schema
 qualified fashion.  This "projects" table will be reflected automatically by
@@ -343,7 +354,8 @@ database is also available. This is known as the "Inspector"::
 
     from sqlalchemy import create_engine
     from sqlalchemy import inspect
-    engine = create_engine('...')
+
+    engine = create_engine("...")
     insp = inspect(engine)
     print(insp.get_table_names())
 

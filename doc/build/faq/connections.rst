@@ -27,8 +27,9 @@ How do I pass custom connect arguments to my database API?
 The :func:`_sa.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
 
-    e = create_engine("mysql://scott:tiger@localhost/test",
-                        connect_args={"encoding": "utf8"})
+    e = create_engine(
+        "mysql://scott:tiger@localhost/test", connect_args={"encoding": "utf8"}
+    )
 
 Or for basic string and integer arguments, they can usually be specified
 in the query string of the URL::
@@ -256,9 +257,7 @@ statement executions::
                   fn(cursor_obj, statement, context=context, *arg)
               except engine.dialect.dbapi.Error as raw_dbapi_err:
                   connection = context.root_connection
-                  if engine.dialect.is_disconnect(
-                      raw_dbapi_err, connection, cursor_obj
-                  ):
+                  if engine.dialect.is_disconnect(raw_dbapi_err, connection, cursor_obj):
                       if retry > num_retries:
                           raise
                       engine.logger.error(
@@ -316,9 +315,7 @@ using the following proof of concept script.  Once run, it will emit a
                     time.sleep(5)
 
         e = reconnecting_engine(
-            create_engine(
-                "mysql://scott:tiger@localhost/test", echo_pool=True
-            ),
+            create_engine("mysql://scott:tiger@localhost/test", echo_pool=True),
             num_retries=5,
             retry_interval=2,
         )
@@ -374,7 +371,10 @@ configured using ``reset_on_return``::
     from sqlalchemy import create_engine
     from sqlalchemy.pool import QueuePool
 
-    engine = create_engine('mysql://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
+    engine = create_engine(
+        "mysql://scott:tiger@localhost/myisam_database",
+        pool=QueuePool(reset_on_return=False),
+    )
 
 I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -383,8 +383,9 @@ I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 to ``True``, ``False``, and ``None``.   Setting to ``commit`` will cause
 a COMMIT as any connection is returned to the pool::
 
-    engine = create_engine('mssql://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
-
+    engine = create_engine(
+        "mssql://scott:tiger@mydsn", pool=QueuePool(reset_on_return="commit")
+    )
 
 I am using multiple connections with a SQLite database (typically to test transaction operation), and my test program is not working!
 ----------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -23,37 +23,37 @@ upon the content at :ref:`tutorial_selecting_data`.
     >>> user_table = Table(
     ...     "user_account",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String(30)),
-    ...     Column('fullname', String)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String(30)),
+    ...     Column("fullname", String),
     ... )
     >>> from sqlalchemy import ForeignKey
     >>> address_table = Table(
     ...     "address",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('user_id', None, ForeignKey('user_account.id')),
-    ...     Column('email_address', String, nullable=False)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", None, ForeignKey("user_account.id")),
+    ...     Column("email_address", String, nullable=False),
     ... )
     >>> orders_table = Table(
     ...     "user_order",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('user_id', None, ForeignKey('user_account.id')),
-    ...     Column('email_address', String, nullable=False)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("user_id", None, ForeignKey("user_account.id")),
+    ...     Column("email_address", String, nullable=False),
     ... )
     >>> order_items_table = Table(
     ...     "order_items",
     ...     metadata_obj,
     ...     Column("order_id", ForeignKey("user_order.id"), primary_key=True),
-    ...     Column("item_id", ForeignKey("item.id"), primary_key=True)
+    ...     Column("item_id", ForeignKey("item.id"), primary_key=True),
     ... )
     >>> items_table = Table(
     ...     "item",
     ...     metadata_obj,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String),
-    ...     Column('description', String)
+    ...     Column("id", Integer, primary_key=True),
+    ...     Column("name", String),
+    ...     Column("description", String),
     ... )
     >>> metadata_obj.create_all(engine)
     BEGIN (implicit)
@@ -68,7 +68,7 @@ upon the content at :ref:`tutorial_selecting_data`.
     ...     orders = relationship("Order")
     ...
     ...     def __repr__(self):
-    ...        return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+    ...         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
     >>> class Address(Base):
     ...     __table__ = address_table
@@ -88,22 +88,34 @@ upon the content at :ref:`tutorial_selecting_data`.
     >>> conn = engine.connect()
     >>> from sqlalchemy.orm import Session
     >>> session = Session(conn)
-    >>> session.add_all([
-    ... User(name="spongebob", fullname="Spongebob Squarepants", addresses=[
-    ...    Address(email_address="spongebob@sqlalchemy.org")
-    ... ]),
-    ... User(name="sandy", fullname="Sandy Cheeks", addresses=[
-    ...    Address(email_address="sandy@sqlalchemy.org"),
-    ...     Address(email_address="squirrel@squirrelpower.org")
-    ...     ]),
-    ...     User(name="patrick", fullname="Patrick Star", addresses=[
-    ...         Address(email_address="pat999@aol.com")
-    ...     ]),
-    ...     User(name="squidward", fullname="Squidward Tentacles", addresses=[
-    ...         Address(email_address="stentcl@sqlalchemy.org")
-    ...     ]),
-    ...     User(name="ehkrabs", fullname="Eugene H. Krabs"),
-    ... ])
+    >>> session.add_all(
+    ...     [
+    ...         User(
+    ...             name="spongebob",
+    ...             fullname="Spongebob Squarepants",
+    ...             addresses=[Address(email_address="spongebob@sqlalchemy.org")],
+    ...         ),
+    ...         User(
+    ...             name="sandy",
+    ...             fullname="Sandy Cheeks",
+    ...             addresses=[
+    ...                 Address(email_address="sandy@sqlalchemy.org"),
+    ...                 Address(email_address="squirrel@squirrelpower.org"),
+    ...             ],
+    ...         ),
+    ...         User(
+    ...             name="patrick",
+    ...             fullname="Patrick Star",
+    ...             addresses=[Address(email_address="pat999@aol.com")],
+    ...         ),
+    ...         User(
+    ...             name="squidward",
+    ...             fullname="Squidward Tentacles",
+    ...             addresses=[Address(email_address="stentcl@sqlalchemy.org")],
+    ...         ),
+    ...         User(name="ehkrabs", fullname="Eugene H. Krabs"),
+    ...     ]
+    ... )
     >>> session.commit()
     BEGIN ...
     >>> conn.begin()
@@ -117,7 +129,7 @@ SELECT statements are produced by the :func:`_sql.select` function which
 returns a :class:`_sql.Select` object::
 
     >>> from sqlalchemy import select
-    >>> stmt = select(User).where(User.name == 'spongebob')
+    >>> stmt = select(User).where(User.name == "spongebob")
 
 To invoke a :class:`_sql.Select` with the ORM, it is passed to
 :meth:`_orm.Session.execute`::
@@ -184,7 +196,7 @@ same time::
     >>> stmt = select(User, Address).join(User.addresses).order_by(User.id, Address.id)
 
     {sql}>>> for row in session.execute(stmt):
-    ...    print(f"{row.User.name} {row.Address.email_address}")
+    ...     print(f"{row.User.name} {row.Address.email_address}")
     SELECT user_account.id, user_account.name, user_account.fullname,
     address.id AS id_1, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -207,9 +219,9 @@ when passed to :func:`_sql.select`.   They may be used in the same way
 as table columns are used::
 
     {sql}>>> result = session.execute(
-    ...     select(User.name, Address.email_address).
-    ...     join(User.addresses).
-    ...     order_by(User.id, Address.id)
+    ...     select(User.name, Address.email_address)
+    ...     .join(User.addresses)
+    ...     .order_by(User.id, Address.id)
     ... )
     SELECT user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -238,8 +250,7 @@ allows sets of column expressions to be grouped in result rows::
 
     >>> from sqlalchemy.orm import Bundle
     >>> stmt = select(
-    ...     Bundle("user", User.name, User.fullname),
-    ...     Bundle("email", Address.email_address)
+    ...     Bundle("user", User.name, User.fullname), Bundle("email", Address.email_address)
     ... ).join_from(User, Address)
     {sql}>>> for row in session.execute(stmt):
     ...     print(f"{row.user.name} {row.user.fullname} {row.email.email_address}")
@@ -429,8 +440,7 @@ is used::
 
     >>> from sqlalchemy import union_all
     >>> u = union_all(
-    ...     select(User).where(User.id < 2),
-    ...     select(User).where(User.id == 3)
+    ...     select(User).where(User.id < 2), select(User).where(User.id == 3)
     ... ).order_by(User.id)
     >>> stmt = select(User).from_statement(u)
     >>> for user_obj in session.execute(stmt).scalars():
@@ -455,8 +465,7 @@ entity in a :func:`_sql.select` construct, including that we can add filtering
 and order by criteria based on its exported columns::
 
     >>> subq = union_all(
-    ...     select(User).where(User.id < 2),
-    ...     select(User).where(User.id == 3)
+    ...     select(User).where(User.id < 2), select(User).where(User.id == 3)
     ... ).subquery()
     >>> user_alias = aliased(User, subq)
     >>> stmt = select(user_alias).order_by(user_alias.id)
@@ -531,11 +540,7 @@ a JOIN first from ``User`` to ``Order``, and a second from ``Order`` to
 relationship, it results in two separate JOIN elements, for a total of three
 JOIN elements in the resulting SQL::
 
-    >>> stmt = (
-    ...     select(User).
-    ...     join(User.orders).
-    ...     join(Order.items)
-    ... )
+    >>> stmt = select(User).join(User.orders).join(Order.items)
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -559,12 +564,7 @@ as potential points to continue joining FROM.    We can continue to add
 other elements to join FROM the ``User`` entity above, for example adding
 on the ``User.addresses`` relationship to our chain of joins::
 
-    >>> stmt = (
-    ...     select(User).
-    ...     join(User.orders).
-    ...     join(Order.items).
-    ...     join(User.addresses)
-    ... )
+    >>> stmt = select(User).join(User.orders).join(Order.items).join(User.addresses)
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -610,7 +610,7 @@ The third calling form allows both the target entity as well
 as the ON clause to be passed explicitly.    A example that includes
 a SQL expression as the ON clause is as follows::
 
-    >>> stmt = select(User).join(Address, User.id==Address.user_id)
+    >>> stmt = select(User).join(Address, User.id == Address.user_id)
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -633,11 +633,11 @@ below::
     >>> a1 = aliased(Address)
     >>> a2 = aliased(Address)
     >>> stmt = (
-    ...     select(User).
-    ...     join(a1, User.addresses).
-    ...     join(a2, User.addresses).
-    ...     where(a1.email_address == 'ed@foo.com').
-    ...     where(a2.email_address == 'ed@bar.com')
+    ...     select(User)
+    ...     .join(a1, User.addresses)
+    ...     .join(a2, User.addresses)
+    ...     .where(a1.email_address == "ed@foo.com")
+    ...     .where(a2.email_address == "ed@bar.com")
     ... )
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
@@ -653,11 +653,11 @@ substituted with an aliased entity by using the
 this method would be::
 
     >>> stmt = (
-    ...     select(User).
-    ...     join(User.addresses.of_type(a1)).
-    ...     join(User.addresses.of_type(a2)).
-    ...     where(a1.email_address == 'ed@foo.com').
-    ...     where(a2.email_address == 'ed@bar.com')
+    ...     select(User)
+    ...     .join(User.addresses.of_type(a1))
+    ...     .join(User.addresses.of_type(a2))
+    ...     .where(a1.email_address == "ed@foo.com")
+    ...     .where(a2.email_address == "ed@bar.com")
     ... )
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
@@ -681,10 +681,7 @@ with the default criteria using AND.  Below, the ON criteria between
 by ``AND``, the first one being the natural join along the foreign key,
 and the second being a custom limiting criteria::
 
-    >>> stmt = (
-    ...     select(User).
-    ...     join(User.addresses.and_(Address.email_address != 'foo@bar.com'))
-    ... )
+    >>> stmt = select(User).join(User.addresses.and_(Address.email_address != "foo@bar.com"))
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -711,11 +708,7 @@ is represented as a row limited subquery, we first construct a :class:`_sql.Subq
 object using :meth:`_sql.Select.subquery`, which may then be used as the
 target of the :meth:`_sql.Select.join` method::
 
-    >>> subq = (
-    ...     select(Address).
-    ...     where(Address.email_address == 'pat999@aol.com').
-    ...     subquery()
-    ... )
+    >>> subq = select(Address).where(Address.email_address == "pat999@aol.com").subquery()
     >>> stmt = select(User).join(subq, User.id == subq.c.user_id)
     >>> print(stmt)
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
@@ -754,14 +747,14 @@ will remain unique within the statement, while the entities that are linked
 to it using :class:`_orm.aliased` refer to distinct sets of columns::
 
     >>> user_address_subq = (
-    ...        select(User.id, User.name, Address.id, Address.email_address).
-    ...        join_from(User, Address).
-    ...        where(Address.email_address.in_(['pat999@aol.com', 'squirrel@squirrelpower.org'])).
-    ...        subquery()
+    ...     select(User.id, User.name, Address.id, Address.email_address)
+    ...     .join_from(User, Address)
+    ...     .where(Address.email_address.in_(["pat999@aol.com", "squirrel@squirrelpower.org"]))
+    ...     .subquery()
     ... )
     >>> user_alias = aliased(User, user_address_subq, name="user")
     >>> address_alias = aliased(Address, user_address_subq, name="address")
-    >>> stmt = select(user_alias, address_alias).where(user_alias.name == 'sandy')
+    >>> stmt = select(user_alias, address_alias).where(user_alias.name == "sandy")
     >>> for row in session.execute(stmt):
     ...     print(f"{row.user} {row.address}")
     {opensql}SELECT anon_1.id, anon_1.name, anon_1.id_1, anon_1.email_address
@@ -782,7 +775,7 @@ In cases where the left side of the current state of
 :class:`_sql.Select` is not in line with what we want to join from,
 the :meth:`_sql.Select.join_from` method may be used::
 
-    >>> stmt = select(Address).join_from(User, User.addresses).where(User.name == 'sandy')
+    >>> stmt = select(Address).join_from(User, User.addresses).where(User.name == "sandy")
     >>> print(stmt)
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -792,7 +785,7 @@ The :meth:`_sql.Select.join_from` method accepts two or three arguments, either
 in the form ``<join from>, <onclause>``, or ``<join from>, <join to>,
 [<onclause>]``::
 
-    >>> stmt = select(Address).join_from(User, Address).where(User.name == 'sandy')
+    >>> stmt = select(Address).join_from(User, Address).where(User.name == "sandy")
     >>> print(stmt)
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -803,7 +796,7 @@ can be used subsequent, the :meth:`_sql.Select.select_from` method may also
 be used::
 
 
-    >>> stmt = select(Address).select_from(User).join(Address).where(User.name == 'sandy')
+    >>> stmt = select(Address).select_from(User).join(Address).where(User.name == "sandy")
     >>> print(stmt)
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
@@ -820,7 +813,7 @@ be used::
     such a :class:`_sql.Join` object.   Therefore we can see the contents
     of :meth:`_sql.Select.select_from` being overridden in a case like this::
 
-        >>> stmt = select(Address).select_from(User).join(Address.user).where(User.name == 'sandy')
+        >>> stmt = select(Address).select_from(User).join(Address.user).where(User.name == "sandy")
         >>> print(stmt)
         SELECT address.id, address.user_id, address.email_address
         FROM address JOIN user_account ON user_account.id = address.user_id
@@ -837,8 +830,10 @@ be used::
         >>>
         >>> j = address_table.join(user_table, user_table.c.id == address_table.c.user_id)
         >>> stmt = (
-        ...     select(address_table).select_from(user_table).select_from(j).
-        ...     where(user_table.c.name == 'sandy')
+        ...     select(address_table)
+        ...     .select_from(user_table)
+        ...     .select_from(j)
+        ...     .where(user_table.c.name == "sandy")
         ... )
         >>> print(stmt)
         SELECT address.id, address.user_id, address.email_address
@@ -1163,7 +1158,7 @@ same way as the legacy :attr:`.Query.column_descriptions` attribute. The format
 returned is a list of dictionaries::
 
     >>> from pprint import pprint
-    >>> user_alias = aliased(User, name='user2')
+    >>> user_alias = aliased(User, name="user2")
     >>> stmt = select(User, User.id, user_alias)
     >>> pprint(stmt.column_descriptions)
     [{'aliased': False,

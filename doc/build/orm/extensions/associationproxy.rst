@@ -29,6 +29,7 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
 
     Base = declarative_base()
 
+
     class User(Base):
         __tablename__ = "user"
         id = Column(Integer, primary_key=True)
@@ -232,7 +233,6 @@ objects that are obtained from the underlying ``UserKeywordAssociation`` element
     >>> user = User("log")
     >>> for kw in (Keyword("new_from_blammo"), Keyword("its_big")):
     ...     user.keywords.append(kw)
-    ...
     >>> print(user.keywords)
     [Keyword('new_from_blammo'), Keyword('its_big')]
 
@@ -441,21 +441,18 @@ transparently using the association proxy. In the example below, we illustrate
 usage of the assignment operator, also appropriately handled by the
 association proxy, to apply a dictionary value to the collection at once::
 
-    >>> user = User('log')
-    >>> user.keywords = {
-    ...     'sk1':'kw1',
-    ...     'sk2':'kw2'
-    ... }
+    >>> user = User("log")
+    >>> user.keywords = {"sk1": "kw1", "sk2": "kw2"}
     >>> print(user.keywords)
     {'sk1': 'kw1', 'sk2': 'kw2'}
 
-    >>> user.keywords['sk3'] = 'kw3'
-    >>> del user.keywords['sk2']
+    >>> user.keywords["sk3"] = "kw3"
+    >>> del user.keywords["sk2"]
     >>> print(user.keywords)
     {'sk1': 'kw1', 'sk3': 'kw3'}
 
     >>> # illustrate un-proxied usage
-    ... print(user.user_keyword_associations['sk3'].kw)
+    ... print(user.user_keyword_associations["sk3"].kw)
     <__main__.Keyword object at 0x12ceb90>
 
 One caveat with our example above is that because ``Keyword`` objects are created
@@ -513,9 +510,7 @@ to a related object, as in the example mapping below::
         )
 
         # column-targeted association proxy
-        special_keys = association_proxy(
-            "user_keyword_associations", "special_key"
-        )
+        special_keys = association_proxy("user_keyword_associations", "special_key")
 
 
     class UserKeywordAssociation(Base):
@@ -530,7 +525,6 @@ to a related object, as in the example mapping below::
         __tablename__ = "keyword"
         id = Column(Integer, primary_key=True)
         keyword = Column("keyword", String(64))
-
 
 The SQL generated takes the form of a correlated subquery against
 the EXISTS SQL operator so that it can be used in a WHERE clause without

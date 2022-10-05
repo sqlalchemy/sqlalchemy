@@ -21,7 +21,7 @@ Basic Usage
 Recall from :doc:`/core/engines` that an :class:`_engine.Engine` is created via
 the :func:`_sa.create_engine` call::
 
-    engine = create_engine('mysql://scott:tiger@localhost/test')
+    engine = create_engine("mysql://scott:tiger@localhost/test")
 
 The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
@@ -48,7 +48,7 @@ a textual statement to the database looks like::
     with engine.connect() as connection:
         result = connection.execute(text("select username from users"))
         for row in result:
-            print("username:", row['username'])
+            print("username:", row["username"])
 
 Above, the :meth:`_engine.Engine.connect` method returns a :class:`_engine.Connection`
 object, and by using it in a Python context manager (e.g. the ``with:``
@@ -146,12 +146,14 @@ issue a transaction on a :class:`_engine.Connection`, but only the outermost
         with connection.begin():  # open a transaction
             method_b(connection)
 
+
     # method_b also starts a transaction
     def method_b(connection):
-        with connection.begin(): # open a transaction - this runs in the
-                                 # context of method_a's transaction
+        with connection.begin():  # open a transaction - this runs in the
+            # context of method_a's transaction
             connection.execute(text("insert into mytable values ('bat', 'lala')"))
             connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
+
 
     # open a Connection and call method_a
     with engine.connect() as conn:
@@ -187,11 +189,13 @@ adapt the example from the previous section to this practice looks like::
     def method_a(connection):
         method_b(connection)
 
+
     # method_b uses the connection and assumes the transaction
     # is external
     def method_b(connection):
         connection.execute(text("insert into mytable values ('bat', 'lala')"))
         connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
+
 
     # open a Connection inside of a transaction and call method_a
     with engine.begin() as conn:
@@ -227,6 +231,7 @@ a decorator may be used::
 
     import contextlib
 
+
     @contextlib.contextmanager
     def transaction(connection):
         if not connection.in_transaction():
@@ -242,12 +247,14 @@ The above contextmanager would be used as::
         with transaction(connection):  # open a transaction
             method_b(connection)
 
+
     # method_b either starts a transaction, or uses the one already
     # present
     def method_b(connection):
         with transaction(connection):  # open a transaction
             connection.execute(text("insert into mytable values ('bat', 'lala')"))
             connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
+
 
     # open a Connection and call method_a
     with engine.connect() as conn:
@@ -259,6 +266,7 @@ that accesses an enclosing state in order to test if connectivity is already
 present::
 
     import contextlib
+
 
     def connectivity(engine):
         connection = None
@@ -285,12 +293,14 @@ Using the above would look like::
         with connectivity():
             method_b(connectivity)
 
+
     # method_b also wants to use a connection from the context, so it
     # also calls "with:", but also it actually uses the connection.
     def method_b(connectivity):
         with connectivity() as connection:
             connection.execute(text("insert into mytable values ('bat', 'lala')"))
             connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
+
 
     # create a new connection/transaction context object and call
     # method_a
@@ -438,9 +448,7 @@ parameter to :func:`_sa.create_engine`::
 
     eng = create_engine(
         "postgresql://scott:tiger@localhost/test",
-        execution_options={
-            "isolation_level": "REPEATABLE READ"
-        }
+        execution_options={"isolation_level": "REPEATABLE READ"},
     )
 
 With the above setting, the DBAPI connection will be set to use a
@@ -460,7 +468,6 @@ separated off from the main engine::
     eng = create_engine("postgresql://scott:tiger@localhost/test")
 
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
-
 
 Above, the :meth:`_engine.Engine.execution_options` method creates a shallow
 copy of the original :class:`_engine.Engine`.  Both ``eng`` and
@@ -726,11 +733,7 @@ combination has includes:
 These three behaviors are illustrated in the example below::
 
     with engine.connect() as conn:
-        result = (
-          conn.
-          execution_options(yield_per=100).
-          execute(text("select * from table"))
-        )
+        result = conn.execution_options(yield_per=100).execute(text("select * from table"))
 
         for partition in result.partitions():
             # partition is an iterable that will be at most 100 items
@@ -818,7 +821,7 @@ which is not a :class:`_engine.Connection`.  This was illustrated using the
 
     result = engine.execute(text("select username from users"))
     for row in result:
-        print("username:", row['username'])
+        print("username:", row["username"])
 
 In addition to "connectionless" execution, it is also possible
 to use the :meth:`~.Executable.execute` method of
@@ -832,9 +835,11 @@ Given a table as below::
     from sqlalchemy import MetaData, Table, Column, Integer
 
     metadata_obj = MetaData()
-    users_table = Table('users', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50))
+    users_table = Table(
+        "users",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
     )
 
 Explicit execution delivers the SQL text or constructed SQL expression to the
@@ -948,9 +953,10 @@ to render under different schema names without any changes.
 Given a table::
 
     user_table = Table(
-        'user', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50))
+        "user",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
     )
 
 The "schema" of this :class:`_schema.Table` as defined by the
@@ -960,7 +966,8 @@ that all :class:`_schema.Table` objects with a schema of ``None`` would instead
 render the schema as ``user_schema_one``::
 
     connection = engine.connect().execution_options(
-        schema_translate_map={None: "user_schema_one"})
+        schema_translate_map={None: "user_schema_one"}
+    )
 
     result = connection.execute(user_table.select())
 
@@ -974,10 +981,11 @@ map can specify any number of target->destination schemas::
 
     connection = engine.connect().execution_options(
         schema_translate_map={
-            None: "user_schema_one",     # no schema name -> "user_schema_one"
-            "special": "special_schema", # schema="special" becomes "special_schema"
-            "public": None               # Table objects with schema="public" will render with no schema
-        })
+            None: "user_schema_one",  # no schema name -> "user_schema_one"
+            "special": "special_schema",  # schema="special" becomes "special_schema"
+            "public": None,  # Table objects with schema="public" will render with no schema
+        }
+    )
 
 The :paramref:`.Connection.execution_options.schema_translate_map` parameter
 affects all DDL and SQL constructs generated from the SQL expression language,
@@ -1002,7 +1010,7 @@ as the schema name is passed to these methods explicitly.
   to the :class:`_orm.Session`.  The :class:`_orm.Session` uses a new
   :class:`_engine.Connection` for each transaction::
 
-      schema_engine = engine.execution_options(schema_translate_map = { ... } )
+      schema_engine = engine.execution_options(schema_translate_map={...})
 
       session = Session(schema_engine)
 
@@ -1148,9 +1156,7 @@ As an example, we will examine the logging produced by the following program::
 
   s = Session(e)
 
-  s.add_all(
-      [A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])]
-  )
+  s.add_all([A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])])
   s.commit()
 
   for a_rec in s.query(A):
@@ -1401,6 +1407,7 @@ a SQL string directly, dialect authors can apply the attribute as follows::
 
     from sqlalchemy.engine.default import DefaultDialect
 
+
     class MyDialect(DefaultDialect):
         supports_statement_cache = True
 
@@ -1426,9 +1433,9 @@ like this::
     def limit_clause(self, select, **kw):
         text = ""
         if select._limit is not None:
-            text += " \n LIMIT %d" % (select._limit, )
+            text += " \n LIMIT %d" % (select._limit,)
         if select._offset is not None:
-            text += " \n OFFSET %d" % (select._offset, )
+            text += " \n OFFSET %d" % (select._offset,)
         return text
 
 The above routine renders the :attr:`.Select._limit` and
@@ -1546,12 +1553,14 @@ approach::
 
     from sqlalchemy import lambda_stmt
 
+
     def run_my_statement(connection, parameter):
         stmt = lambda_stmt(lambda: select(table))
         stmt += lambda s: s.where(table.c.col == parameter)
         stmt += lambda s: s.order_by(table.c.id)
 
         return connection.execute(stmt)
+
 
     with engine.connect() as conn:
         result = run_my_statement(some_connection, "some parameter")
@@ -1588,8 +1597,9 @@ Basic guidelines include:
     def upd(id_, newname):
         stmt = lambda_stmt(lambda: users.update())
         stmt += lambda s: s.values(name=newname)
-        stmt += lambda s: s.where(users.c.id==id_)
+        stmt += lambda s: s.where(users.c.id == id_)
         return stmt
+
 
     with engine.begin() as conn:
         conn.execute(upd(7, "foo"))
@@ -1621,12 +1631,10 @@ Basic guidelines include:
         >>> def my_stmt(x, y):
         ...     stmt = lambda_stmt(lambda: select(func.max(x, y)))
         ...     return stmt
-        ...
         >>> engine = create_engine("sqlite://", echo=True)
         >>> with engine.connect() as conn:
         ...     print(conn.scalar(my_stmt(5, 10)))
         ...     print(conn.scalar(my_stmt(12, 8)))
-        ...
         {opensql}SELECT max(?, ?) AS max_1
         [generated in 0.00057s] (5, 10){stop}
         10
@@ -1677,15 +1685,14 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
+    ...
     ...     def get_y():
     ...         return y
     ...
     ...     stmt = lambda_stmt(lambda: select(func.max(get_x(), get_y())))
     ...     return stmt
-    ...
     >>> with engine.connect() as conn:
     ...     print(conn.scalar(my_stmt(5, 10)))
-    ...
     Traceback (most recent call last):
       # ...
     sqlalchemy.exc.InvalidRequestError: Can't invoke Python callable get_x()
@@ -1701,6 +1708,7 @@ Basic guidelines include:
     >>> def my_stmt(x, y):
     ...     def get_x():
     ...         return x
+    ...
     ...     def get_y():
     ...         return y
     ...
@@ -1722,14 +1730,11 @@ Basic guidelines include:
     ...     def __init__(self, x, y):
     ...         self.x = x
     ...         self.y = y
-    ...
     >>> def my_stmt(foo):
     ...     stmt = lambda_stmt(lambda: select(func.max(foo.x, foo.y)))
     ...     return stmt
-    ...
     >>> with engine.connect() as conn:
-    ...    print(conn.scalar(my_stmt(Foo(5, 10))))
-    ...
+    ...     print(conn.scalar(my_stmt(Foo(5, 10))))
     Traceback (most recent call last):
       # ...
     sqlalchemy.exc.InvalidRequestError: Closure variable named 'foo' inside of
@@ -1766,8 +1771,7 @@ Basic guidelines include:
 
     >>> def my_stmt(foo):
     ...     stmt = lambda_stmt(
-    ...         lambda: select(func.max(foo.x, foo.y)),
-    ...         track_closure_variables=False
+    ...         lambda: select(func.max(foo.x, foo.y)), track_closure_variables=False
     ...     )
     ...     return stmt
 
@@ -1783,13 +1787,9 @@ Basic guidelines include:
 
     >>> def my_stmt(self, foo):
     ...     stmt = lambda_stmt(
-    ...         lambda: select(*self.column_expressions),
-    ...         track_closure_variables=False
+    ...         lambda: select(*self.column_expressions), track_closure_variables=False
     ...     )
-    ...     stmt = stmt.add_criteria(
-    ...         lambda: self.where_criteria,
-    ...         track_on=[self]
-    ...     )
+    ...     stmt = stmt.add_criteria(lambda: self.where_criteria, track_on=[self])
     ...     return stmt
 
   Using ``track_on`` means the given objects will be stored long term in the
@@ -1812,7 +1812,7 @@ SQL expression construct by producing a structure that represents all the
 state within the construct::
 
     >>> from sqlalchemy import select, column
-    >>> stmt = select(column('q'))
+    >>> stmt = select(column("q"))
     >>> cache_key = stmt._generate_cache_key()
     >>> print(cache_key)  # somewhat paraphrased
     CacheKey(key=(
@@ -2028,7 +2028,6 @@ method may be used::
     with engine.connect() as conn:
         conn.exec_driver_sql("SET param='bar'")
 
-
 .. versionadded:: 1.4  Added the :meth:`_engine.Connection.exec_driver_sql` method.
 
 .. _dbapi_connections_cursor:
@@ -2105,7 +2104,7 @@ may potentially be used with your DBAPI. An example of this pattern is::
     connection = engine.raw_connection()
     try:
         cursor_obj = connection.cursor()
-        cursor_obj.callproc("my_procedure", ['x', 'y', 'z'])
+        cursor_obj.callproc("my_procedure", ["x", "y", "z"])
         results = list(cursor_obj.fetchall())
         cursor_obj.close()
         connection.commit()
@@ -2151,8 +2150,6 @@ Multiple result set support is available from a raw DBAPI cursor using the
     finally:
         connection.close()
 
-
-
 Registering New Dialects
 ========================
 
@@ -2168,7 +2165,7 @@ to create a new dialect "foodialect://", the steps are as follows:
    via ``foodialect.dialect``.
 3. The entry point can be established in setup.py as follows::
 
-      entry_points="""
+      entry_points = """
       [sqlalchemy.dialects]
       foodialect = foodialect.dialect:FooDialect
       """
@@ -2178,7 +2175,7 @@ an existing SQLAlchemy-supported database, the name can be given
 including a database-qualification.  For example, if ``FooDialect``
 were in fact a MySQL dialect, the entry point could be established like this::
 
-      entry_points="""
+      entry_points = """
       [sqlalchemy.dialects]
       mysql.foodialect = foodialect.dialect:FooDialect
       """
@@ -2192,6 +2189,7 @@ SQLAlchemy also allows a dialect to be registered within the current process, by
 the need for separate installation.   Use the ``register()`` function as follows::
 
     from sqlalchemy.dialects import registry
+
     registry.register("mysql.foodialect", "myapp.dialect", "MyMySQLDialect")
 
 The above will respond to ``create_engine("mysql+foodialect://")`` and load the

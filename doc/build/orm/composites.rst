@@ -24,11 +24,7 @@ A simple example represents pairs of columns as a ``Point`` object.
             return f"Point(x={self.x!r}, y={self.y!r})"
 
         def __eq__(self, other):
-            return (
-                isinstance(other, Point)
-                and other.x == self.x
-                and other.y == self.y
-            )
+            return isinstance(other, Point) and other.x == self.x and other.y == self.y
 
         def __ne__(self, other):
             return not self.__eq__(other)
@@ -180,11 +176,7 @@ itself be a composite object, which is then mapped to a class ``HasVertex``::
             return f"Point(x={self.x!r}, y={self.y!r})"
 
         def __eq__(self, other):
-            return (
-                isinstance(other, Point)
-                and other.x == self.x
-                and other.y == self.y
-            )
+            return isinstance(other, Point) and other.x == self.x and other.y == self.y
 
         def __ne__(self, other):
             return not self.__eq__(other)
@@ -201,10 +193,7 @@ itself be a composite object, which is then mapped to a class ``HasVertex``::
             return Vertex(Point(x1, y1), Point(x2, y2))
 
         def __composite_values__(self):
-            return (
-                self.start.__composite_values__()
-                + self.end.__composite_values__()
-            )
+            return self.start.__composite_values__() + self.end.__composite_values__()
 
 
     class HasVertex(Base):
@@ -224,7 +213,10 @@ We can then use the above mapping as::
     s.add(hv)
     s.commit()
 
-    hv = s.query(HasVertex).filter(
-        HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4))).first()
+    hv = (
+        s.query(HasVertex)
+        .filter(HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4)))
+        .first()
+    )
     print(hv.vertex.start)
     print(hv.vertex.end)

@@ -19,15 +19,16 @@ issued when the ORM is populating the object::
 
     from sqlalchemy.orm import validates
 
+
     class EmailAddress(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         email = Column(String)
 
-        @validates('email')
+        @validates("email")
         def validate_email(self, key, address):
-            if '@' not in address:
+            if "@" not in address:
                 raise ValueError("failed simple email validation")
             return address
 
@@ -42,17 +43,17 @@ collection::
 
     from sqlalchemy.orm import validates
 
+
     class User(Base):
         # ...
 
         addresses = relationship("Address")
 
-        @validates('addresses')
+        @validates("addresses")
         def validate_address(self, key, address):
-            if '@' not in address.email:
+            if "@" not in address.email:
                 raise ValueError("failed simplified email validation")
             return address
-
 
 The validation function by default does not get emitted for collection
 remove events, as the typical expectation is that a value being discarded
@@ -63,18 +64,18 @@ argument which if ``True`` indicates that the operation is a removal::
 
     from sqlalchemy.orm import validates
 
+
     class User(Base):
         # ...
 
         addresses = relationship("Address")
 
-        @validates('addresses', include_removes=True)
+        @validates("addresses", include_removes=True)
         def validate_address(self, key, address, is_remove):
             if is_remove:
-                raise ValueError(
-                        "not allowed to remove items from the collection")
+                raise ValueError("not allowed to remove items from the collection")
             else:
-                if '@' not in address.email:
+                if "@" not in address.email:
                     raise ValueError("failed simplified email validation")
                 return address
 
@@ -85,14 +86,15 @@ event occurs as a result of a backref::
 
     from sqlalchemy.orm import validates
 
+
     class User(Base):
         # ...
 
-        addresses = relationship("Address", backref='user')
+        addresses = relationship("Address", backref="user")
 
-        @validates('addresses', include_backrefs=False)
+        @validates("addresses", include_backrefs=False)
         def validate_address(self, key, address):
-            if '@' not in address:
+            if "@" not in address:
                 raise ValueError("failed simplified email validation")
             return address
 
@@ -131,7 +133,7 @@ plain descriptor, and to have it read/write from a mapped attribute with a
 different name. Below we illustrate this using Python 2.6-style properties::
 
     class EmailAddress(Base):
-        __tablename__ = 'email_address'
+        __tablename__ = "email_address"
 
         id = Column(Integer, primary_key=True)
 
@@ -158,8 +160,9 @@ usable with :class:`_query.Query`. To provide these, we instead use the
 
     from sqlalchemy.ext.hybrid import hybrid_property
 
+
     class EmailAddress(Base):
-        __tablename__ = 'email_address'
+        __tablename__ = "email_address"
 
         id = Column(Integer, primary_key=True)
 
@@ -180,6 +183,7 @@ that is, from the ``EmailAddress`` class directly:
 .. sourcecode:: python+sql
 
     from sqlalchemy.orm import Session
+
     session = Session()
 
     {sql}address = session.query(EmailAddress).\
@@ -189,14 +193,12 @@ that is, from the ``EmailAddress`` class directly:
     FROM address
     WHERE address.email = ?
     ('address@example.com',)
-    {stop}
 
-    address.email = 'otheraddress@example.com'
+    address.email = "otheraddress@example.com"
     {sql}session.commit()
     UPDATE address SET email=? WHERE address.id = ?
     ('otheraddress@example.com', 1)
     COMMIT
-    {stop}
 
 The :class:`~.hybrid_property` also allows us to change the behavior of the
 attribute, including defining separate behaviors when the attribute is
@@ -206,7 +208,7 @@ host name automatically, we might define two sets of string manipulation
 logic::
 
     class EmailAddress(Base):
-        __tablename__ = 'email_address'
+        __tablename__ = "email_address"
 
         id = Column(Integer, primary_key=True)
 
@@ -245,7 +247,6 @@ attribute, a SQL function is rendered which produces the same effect:
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
     (0, 12, 'address')
-    {stop}
 
 Read more about Hybrids at :ref:`hybrids_toplevel`.
 
@@ -261,9 +262,10 @@ In the most basic sense, the synonym is an easy way to make a certain
 attribute available by an additional name::
 
     from sqlalchemy.orm import synonym
-    
+
+
     class MyClass(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = Column(Integer, primary_key=True)
         job_status = Column(String(50))
@@ -274,19 +276,19 @@ The above class ``MyClass`` has two attributes, ``.job_status`` and
 ``.status`` that will behave as one attribute, both at the expression
 level::
 
-    >>> print(MyClass.job_status == 'some_status')
+    >>> print(MyClass.job_status == "some_status")
     my_table.job_status = :job_status_1
 
-    >>> print(MyClass.status == 'some_status')
+    >>> print(MyClass.status == "some_status")
     my_table.job_status = :job_status_1
 
 and at the instance level::
 
-    >>> m1 = MyClass(status='x')
+    >>> m1 = MyClass(status="x")
     >>> m1.status, m1.job_status
     ('x', 'x')
 
-    >>> m1.job_status = 'y'
+    >>> m1.job_status = "y"
     >>> m1.status, m1.job_status
     ('y', 'y')
 
@@ -299,7 +301,7 @@ a user-defined :term:`descriptor`.  We can supply our
 ``status`` synonym with a ``@property``::
 
     class MyClass(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = Column(Integer, primary_key=True)
         status = Column(String(50))
@@ -315,8 +317,9 @@ using the :func:`.synonym_for` decorator::
 
     from sqlalchemy.ext.declarative import synonym_for
 
+
     class MyClass(Base):
-        __tablename__ = 'my_table'
+        __tablename__ = "my_table"
 
         id = Column(Integer, primary_key=True)
         status = Column(String(50))

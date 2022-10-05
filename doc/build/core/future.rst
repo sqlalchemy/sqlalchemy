@@ -15,6 +15,7 @@ by passing the :paramref:`_sa.create_engine.future` flag to
 :func:`_sa.create_engine`::
 
     from sqlalchemy import create_engine
+
     engine = create_engine("postgresql://user:pass@host/dbname", future=True)
 
 Similarly, with the ORM, to enable "future" behavior in the ORM :class:`.Session`,

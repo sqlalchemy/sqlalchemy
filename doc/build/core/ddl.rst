@@ -32,9 +32,11 @@ other DDL elements except it accepts a string which is the text to be emitted:
     event.listen(
         metadata,
         "after_create",
-        DDL("ALTER TABLE users ADD CONSTRAINT "
+        DDL(
+            "ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length "
-            " CHECK (length(user_name) >= 8)")
+            " CHECK (length(user_name) >= 8)"
+        ),
     )
 
 A more comprehensive method of creating libraries of DDL constructs is to use
@@ -54,9 +56,10 @@ method.  For example, if we wanted to create a trigger but only on
 the PostgreSQL backend, we could invoke this as::
 
     mytable = Table(
-        'mytable', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', String(50))
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", String(50)),
     )
 
     func = DDL(
@@ -73,30 +76,18 @@ the PostgreSQL backend, we could invoke this as::
         "FOR EACH ROW EXECUTE PROCEDURE my_func();"
     )
 
-    event.listen(
-        mytable,
-        'after_create',
-        func.execute_if(dialect='postgresql')
-    )
+    event.listen(mytable, "after_create", func.execute_if(dialect="postgresql"))
 
-    event.listen(
-        mytable,
-        'after_create',
-        trigger.execute_if(dialect='postgresql')
-    )
+    event.listen(mytable, "after_create", trigger.execute_if(dialect="postgresql"))
 
 The :paramref:`.DDLElement.execute_if.dialect` keyword also accepts a tuple
 of string dialect names::
 
     event.listen(
-        mytable,
-        "after_create",
-        trigger.execute_if(dialect=('postgresql', 'mysql'))
+        mytable, "after_create", trigger.execute_if(dialect=("postgresql", "mysql"))
     )
     event.listen(
-        mytable,
-        "before_drop",
-        trigger.execute_if(dialect=('postgresql', 'mysql'))
+        mytable, "before_drop", trigger.execute_if(dialect=("postgresql", "mysql"))
     )
 
 The :meth:`.DDLElement.execute_if` method can also work against a callable
@@ -108,12 +99,14 @@ first looking within the PostgreSQL catalogs to see if it exists:
 
     def should_create(ddl, target, connection, **kw):
         row = connection.execute(
-            "select conname from pg_constraint where conname='%s'" %
-            ddl.element.name).scalar()
+            "select conname from pg_constraint where conname='%s'" % ddl.element.name
+        ).scalar()
         return not bool(row)
+
 
     def should_drop(ddl, target, connection, **kw):
         return not should_create(ddl, target, connection, **kw)
+
 
     event.listen(
         users,
@@ -121,14 +114,14 @@ first looking within the PostgreSQL catalogs to see if it exists:
         DDL(
             "ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length CHECK (length(user_name) >= 8)"
-        ).execute_if(callable_=should_create)
+        ).execute_if(callable_=should_create),
     )
     event.listen(
         users,
         "before_drop",
-        DDL(
-            "ALTER TABLE users DROP CONSTRAINT cst_user_name_length"
-        ).execute_if(callable_=should_drop)
+        DDL("ALTER TABLE users DROP CONSTRAINT cst_user_name_length").execute_if(
+            callable_=should_drop
+        ),
     )
 
     {sql}users.create(engine)
@@ -198,22 +191,20 @@ constraints, using these as we did in our previous example of
 
     def should_create(ddl, target, connection, **kw):
         row = connection.execute(
-            "select conname from pg_constraint where conname='%s'" %
-            ddl.element.name).scalar()
+            "select conname from pg_constraint where conname='%s'" % ddl.element.name
+        ).scalar()
         return not bool(row)
+
 
     def should_drop(ddl, target, connection, **kw):
         return not should_create(ddl, target, connection, **kw)
 
+
     event.listen(
-        users,
-        "after_create",
-        AddConstraint(constraint).execute_if(callable_=should_create)
+        users, "after_create", AddConstraint(constraint).execute_if(callable_=should_create)
     )
     event.listen(
-        users,
-        "before_drop",
-        DropConstraint(constraint).execute_if(callable_=should_drop)
+        users, "before_drop", DropConstraint(constraint).execute_if(callable_=should_drop)
     )
 
     {sql}users.create(engine)

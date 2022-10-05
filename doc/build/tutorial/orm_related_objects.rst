@@ -25,8 +25,10 @@ and other directives:
 .. sourcecode:: python
 
   from sqlalchemy.orm import relationship
+
+
   class User(Base):
-      __tablename__ = 'user_account'
+      __tablename__ = "user_account"
 
       # ... Column mappings
 
@@ -34,12 +36,11 @@ and other directives:
 
 
   class Address(Base):
-      __tablename__ = 'address'
+      __tablename__ = "address"
 
       # ... Column mappings
 
       user = relationship("User", back_populates="addresses")
-
 
 Above, the ``User`` class now has an attribute ``User.addresses`` and the
 ``Address`` class has an attribute ``Address.user``.   The
@@ -69,7 +70,7 @@ We can start by illustrating what :func:`_orm.relationship` does to instances
 of objects.   If we make a new ``User`` object, we can note that there is a
 Python list when we access the ``.addresses`` element::
 
-    >>> u1 = User(name='pkrabs', fullname='Pearl Krabs')
+    >>> u1 = User(name="pkrabs", fullname="Pearl Krabs")
     >>> u1.addresses
     []
 
@@ -301,11 +302,7 @@ corresponding to the :func:`_orm.relationship` may be passed as the **single
 argument** to :meth:`_sql.Select.join`, where it serves to indicate both the
 right side of the join as well as the ON clause at once::
 
-    >>> print(
-    ...     select(Address.email_address).
-    ...     select_from(User).
-    ...     join(User.addresses)
-    ... )
+    >>> print(select(Address.email_address).select_from(User).join(User.addresses))
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -317,10 +314,7 @@ ON clause, it works because of the :class:`_schema.ForeignKeyConstraint`
 between the two mapped :class:`_schema.Table` objects, not because of the
 :func:`_orm.relationship` objects on the ``User`` and ``Address`` classes::
 
-    >>> print(
-    ...    select(Address.email_address).
-    ...    join_from(User, Address)
-    ... )
+    >>> print(select(Address.email_address).join_from(User, Address))
     {opensql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
@@ -338,12 +332,12 @@ demonstrate we will construct the same join illustrated at :ref:`tutorial_orm_en
 using the :func:`_orm.relationship` attributes to join instead::
 
     >>> print(
-    ...        select(User).
-    ...        join(User.addresses.of_type(address_alias_1)).
-    ...        where(address_alias_1.email_address == 'patrick@aol.com').
-    ...        join(User.addresses.of_type(address_alias_2)).
-    ...        where(address_alias_2.email_address == 'patrick@gmail.com')
-    ...    )
+    ...     select(User)
+    ...     .join(User.addresses.of_type(address_alias_1))
+    ...     .where(address_alias_1.email_address == "patrick@aol.com")
+    ...     .join(User.addresses.of_type(address_alias_2))
+    ...     .where(address_alias_2.email_address == "patrick@gmail.com")
+    ... )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN address AS address_1 ON user_account.id = address_1.user_id
@@ -356,10 +350,7 @@ aliased entity, the attribute is available from the :func:`_orm.aliased`
 construct directly::
 
     >>> user_alias_1 = aliased(User)
-    >>> print(
-    ...     select(user_alias_1.name).
-    ...     join(user_alias_1.addresses)
-    ... )
+    >>> print(select(user_alias_1.name).join(user_alias_1.addresses))
     {opensql}SELECT user_account_1.name
     FROM user_account AS user_account_1
     JOIN address ON user_account_1.id = address.user_id
@@ -381,9 +372,8 @@ email addresses:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = (
-    ...   select(User.fullname).
-    ...   join(User.addresses.and_(Address.email_address == 'pearl.krabs@gmail.com'))
+    >>> stmt = select(User.fullname).join(
+    ...     User.addresses.and_(Address.email_address == "pearl.krabs@gmail.com")
     ... )
     >>> session.execute(stmt).all()
     {opensql}SELECT user_account.fullname
@@ -411,9 +401,8 @@ an optional WHERE criteria to limit the rows matched by the subquery:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = (
-    ...   select(User.fullname).
-    ...   where(User.addresses.any(Address.email_address == 'pearl.krabs@gmail.com'))
+    >>> stmt = select(User.fullname).where(
+    ...     User.addresses.any(Address.email_address == "pearl.krabs@gmail.com")
     ... )
     >>> session.execute(stmt).all()
     {opensql}SELECT user_account.fullname
@@ -431,10 +420,7 @@ for ``User`` entities that have no related ``Address`` rows:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = (
-    ...   select(User.fullname).
-    ...   where(~User.addresses.any())
-    ... )
+    >>> stmt = select(User.fullname).where(~User.addresses.any())
     >>> session.execute(stmt).all()
     {opensql}SELECT user_account.fullname
     FROM user_account
@@ -451,10 +437,7 @@ which belonged to "pearl":
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = (
-    ...   select(Address.email_address).
-    ...   where(Address.user.has(User.name=="pkrabs"))
-    ... )
+    >>> stmt = select(Address.email_address).where(Address.user.has(User.name == "pkrabs"))
     >>> session.execute(stmt).all()
     {opensql}SELECT address.email_address
     FROM address
@@ -568,8 +551,10 @@ the :paramref:`_orm.relationship.lazy` option, e.g.:
 .. sourcecode:: python
 
     from sqlalchemy.orm import relationship
+
+
     class User(Base):
-        __tablename__ = 'user_account'
+        __tablename__ = "user_account"
 
         addresses = relationship("Address", back_populates="user", lazy="selectin")
 
@@ -611,11 +596,11 @@ related ``Address`` objects:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.orm import selectinload
-    >>> stmt = (
-    ...   select(User).options(selectinload(User.addresses)).order_by(User.id)
-    ... )
+    >>> stmt = select(User).options(selectinload(User.addresses)).order_by(User.id)
     >>> for row in session.execute(stmt):
-    ...     print(f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})")
+    ...     print(
+    ...         f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})"
+    ...     )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
@@ -655,7 +640,9 @@ as below where we know that all ``Address`` objects have an associated
 
     >>> from sqlalchemy.orm import joinedload
     >>> stmt = (
-    ...   select(Address).options(joinedload(Address.user, innerjoin=True)).order_by(Address.id)
+    ...     select(Address)
+    ...     .options(joinedload(Address.user, innerjoin=True))
+    ...     .order_by(Address.id)
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
@@ -731,10 +718,11 @@ example:
 
     >>> from sqlalchemy.orm import contains_eager
     >>> stmt = (
-    ...   select(Address).
-    ...   join(Address.user).
-    ...   where(User.name == 'pkrabs').
-    ...   options(contains_eager(Address.user)).order_by(Address.id)
+    ...     select(Address)
+    ...     .join(Address.user)
+    ...     .where(User.name == "pkrabs")
+    ...     .options(contains_eager(Address.user))
+    ...     .order_by(Address.id)
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
@@ -752,10 +740,11 @@ rows.   If we had applied :func:`_orm.joinedload` separately, we would get a
 SQL query that unnecessarily joins twice::
 
     >>> stmt = (
-    ...   select(Address).
-    ...   join(Address.user).
-    ...   where(User.name == 'pkrabs').
-    ...   options(joinedload(Address.user)).order_by(Address.id)
+    ...     select(Address)
+    ...     .join(Address.user)
+    ...     .where(User.name == "pkrabs")
+    ...     .options(joinedload(Address.user))
+    ...     .order_by(Address.id)
     ... )
     >>> print(stmt)  # SELECT has a JOIN and LEFT OUTER JOIN unnecessarily
     {opensql}SELECT address.id, address.email_address, address.user_id,
@@ -791,19 +780,19 @@ the email addresses with the ``sqlalchemy.org`` domain, we can apply
 
     >>> from sqlalchemy.orm import selectinload
     >>> stmt = (
-    ...   select(User).
-    ...   options(
-    ...       selectinload(
-    ...           User.addresses.and_(
-    ...             ~Address.email_address.endswith("sqlalchemy.org")
-    ...           )
-    ...       )
-    ...   ).
-    ...   order_by(User.id).
-    ...   execution_options(populate_existing=True)
+    ...     select(User)
+    ...     .options(
+    ...         selectinload(
+    ...             User.addresses.and_(~Address.email_address.endswith("sqlalchemy.org"))
+    ...         )
+    ...     )
+    ...     .order_by(User.id)
+    ...     .execution_options(populate_existing=True)
     ... )
     >>> for row in session.execute(stmt):
-    ...     print(f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})")
+    ...     print(
+    ...         f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})"
+    ...     )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
@@ -857,7 +846,7 @@ relationship will never try to emit SQL:
 .. sourcecode:: python
 
     class User(Base):
-        __tablename__ = 'user_account'
+        __tablename__ = "user_account"
 
         # ... Column mappings
 
@@ -865,12 +854,11 @@ relationship will never try to emit SQL:
 
 
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         # ... Column mappings
 
         user = relationship("User", back_populates="addresses", lazy="raise_on_sql")
-
 
 Using such a mapping, the application is blocked from lazy loading,
 indicating that a particular query would need to specify a loader strategy:

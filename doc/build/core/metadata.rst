@@ -37,12 +37,12 @@ The remaining positional arguments are mostly
     from sqlalchemy import Table, Column, Integer, String
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(16), nullable=False),
-        Column('email_address', String(60)),
-        Column('nickname', String(50), nullable=False)
+        Column("user_id", Integer, primary_key=True),
+        Column("user_name", String(16), nullable=False),
+        Column("email_address", String(60)),
+        Column("nickname", String(50), nullable=False),
     )
 
 Above, a table called ``user`` is described, which contains four columns. The
@@ -69,7 +69,7 @@ dependency (that is, each table is preceded by all tables which it
 references)::
 
     >>> for t in metadata_obj.sorted_tables:
-    ...    print(t.name)
+    ...     print(t.name)
     user
     user_preference
     invoice
@@ -82,10 +82,12 @@ module-level variables in an application. Once a
 accessors which allow inspection of its properties. Given the following
 :class:`~sqlalchemy.schema.Table` definition::
 
-    employees = Table('employees', metadata_obj,
-        Column('employee_id', Integer, primary_key=True),
-        Column('employee_name', String(60), nullable=False),
-        Column('employee_dept', Integer, ForeignKey("departments.department_id"))
+    employees = Table(
+        "employees",
+        metadata_obj,
+        Column("employee_id", Integer, primary_key=True),
+        Column("employee_name", String(60), nullable=False),
+        Column("employee_dept", Integer, ForeignKey("departments.department_id")),
     )
 
 Note the :class:`~sqlalchemy.schema.ForeignKey` object used in this table -
@@ -100,7 +102,7 @@ table include::
     employees.c.employee_id
 
     # via string
-    employees.c['employee_id']
+    employees.c["employee_id"]
 
     # iterate through all columns
     for c in employees.c:
@@ -171,22 +173,26 @@ will issue the CREATE statements:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
 
     metadata_obj = MetaData()
 
-    user = Table('user', metadata_obj,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(16), nullable=False),
-        Column('email_address', String(60), key='email'),
-        Column('nickname', String(50), nullable=False)
+    user = Table(
+        "user",
+        metadata_obj,
+        Column("user_id", Integer, primary_key=True),
+        Column("user_name", String(16), nullable=False),
+        Column("email_address", String(60), key="email"),
+        Column("nickname", String(50), nullable=False),
     )
 
-    user_prefs = Table('user_prefs', metadata_obj,
-        Column('pref_id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
-        Column('pref_name', String(40), nullable=False),
-        Column('pref_value', String(100))
+    user_prefs = Table(
+        "user_prefs",
+        metadata_obj,
+        Column("pref_id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.user_id"), nullable=False),
+        Column("pref_name", String(40), nullable=False),
+        Column("pref_value", String(100)),
     )
 
     {sql}metadata_obj.create_all(engine)
@@ -222,14 +228,16 @@ default issue the CREATE or DROP regardless of the table being present:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
 
     metadata_obj = MetaData()
 
-    employees = Table('employees', metadata_obj,
-        Column('employee_id', Integer, primary_key=True),
-        Column('employee_name', String(60), nullable=False, key='name'),
-        Column('employee_dept', Integer, ForeignKey("departments.department_id"))
+    employees = Table(
+        "employees",
+        metadata_obj,
+        Column("employee_id", Integer, primary_key=True),
+        Column("employee_name", String(60), nullable=False, key="name"),
+        Column("employee_dept", Integer, ForeignKey("departments.department_id")),
     )
     {sql}employees.create(engine)
     CREATE TABLE employees(
@@ -340,11 +348,11 @@ using a Core :class:`_schema.Table` object as follows::
     metadata_obj = MetaData()
 
     financial_info = Table(
-        'financial_info',
+        "financial_info",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('value', String(100), nullable=False),
-        schema='remote_banks'
+        Column("id", Integer, primary_key=True),
+        Column("value", String(100), nullable=False),
+        schema="remote_banks",
     )
 
 SQL that is rendered using this :class:`_schema.Table`, such as the SELECT
@@ -361,7 +369,7 @@ using the combination of the schema and table name.  We can view this
 in the :attr:`_schema.MetaData.tables` collection by searching for the
 key ``'remote_banks.financial_info'``::
 
-    >>> metadata_obj.tables['remote_banks.financial_info']
+    >>> metadata_obj.tables["remote_banks.financial_info"]
     Table('financial_info', MetaData(),
     Column('id', Integer(), table=<financial_info>, primary_key=True, nullable=False),
     Column('value', String(length=100), table=<financial_info>, nullable=False),
@@ -374,9 +382,9 @@ objects, even if the referring table is also in that same schema::
     customer = Table(
         "customer",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('financial_info_id', ForeignKey("remote_banks.financial_info.id")),
-        schema='remote_banks'
+        Column("id", Integer, primary_key=True),
+        Column("financial_info_id", ForeignKey("remote_banks.financial_info.id")),
+        schema="remote_banks",
     )
 
 The :paramref:`_schema.Table.schema` argument may also be used with certain
@@ -386,7 +394,7 @@ important on a database such as Microsoft SQL Server where there are often
 dotted "database/owner" tokens.  The tokens may be placed directly in the name
 at once, such as::
 
-    schema="dbo.scott"
+    schema = "dbo.scott"
 
 .. seealso::
 
@@ -409,10 +417,10 @@ construct::
     metadata_obj = MetaData(schema="remote_banks")
 
     financial_info = Table(
-        'financial_info',
+        "financial_info",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('value', String(100), nullable=False),
+        Column("id", Integer, primary_key=True),
+        Column("value", String(100), nullable=False),
     )
 
 Above, for any :class:`_schema.Table` object (or :class:`_schema.Sequence` object
@@ -422,7 +430,7 @@ act as though the parameter were set to the value ``"remote_banks"``.  This
 includes that the :class:`_schema.Table` is cataloged in the :class:`_schema.MetaData`
 using the schema-qualified name, that is::
 
-    metadata_obj.tables['remote_banks.financial_info']
+    metadata_obj.tables["remote_banks.financial_info"]
 
 When using the :class:`_schema.ForeignKey` or :class:`_schema.ForeignKeyConstraint`
 objects to refer to this table, either the schema-qualified name or the
@@ -432,20 +440,20 @@ table::
     # either will work:
 
     refers_to_financial_info = Table(
-        'refers_to_financial_info',
+        "refers_to_financial_info",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('fiid', ForeignKey('financial_info.id')),
+        Column("id", Integer, primary_key=True),
+        Column("fiid", ForeignKey("financial_info.id")),
     )
 
 
     # or
 
     refers_to_financial_info = Table(
-        'refers_to_financial_info',
+        "refers_to_financial_info",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('fiid', ForeignKey('remote_banks.financial_info.id')),
+        Column("id", Integer, primary_key=True),
+        Column("fiid", ForeignKey("remote_banks.financial_info.id")),
     )
 
 When using a :class:`_schema.MetaData` object that sets
@@ -458,11 +466,11 @@ to specify that it should not be schema qualified may use the special symbol
     metadata_obj = MetaData(schema="remote_banks")
 
     financial_info = Table(
-        'financial_info',
+        "financial_info",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('value', String(100), nullable=False),
-        schema=BLANK_SCHEMA  # will not use "remote_banks"
+        Column("id", Integer, primary_key=True),
+        Column("value", String(100), nullable=False),
+        schema=BLANK_SCHEMA,  # will not use "remote_banks"
     )
 
 .. seealso::
@@ -511,6 +519,7 @@ Oracle CURRENT_SCHEMA variable to an alternate name::
 
     engine = create_engine("oracle+cx_oracle://scott:tiger@tsn_name")
 
+
     @event.listens_for(engine, "connect", insert=True)
     def set_current_schema(dbapi_connection, connection_record):
         cursor_obj = dbapi_connection.cursor()
@@ -552,11 +561,13 @@ example, MySQL has different table backend types, including "MyISAM" and
 "InnoDB". This can be expressed with :class:`~sqlalchemy.schema.Table` using
 ``mysql_engine``::
 
-    addresses = Table('engine_email_addresses', metadata_obj,
-        Column('address_id', Integer, primary_key=True),
-        Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
-        Column('email_address', String(20)),
-        mysql_engine='InnoDB'
+    addresses = Table(
+        "engine_email_addresses",
+        metadata_obj,
+        Column("address_id", Integer, primary_key=True),
+        Column("remote_user_id", Integer, ForeignKey(users.c.user_id)),
+        Column("email_address", String(20)),
+        mysql_engine="InnoDB",
     )
 
 Other backends may support table-level options as well - these would be

@@ -21,8 +21,9 @@ will provide for us the ``fullname``, which is the string concatenation of the t
 
     from sqlalchemy.ext.hybrid import hybrid_property
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         firstname = Column(String(50))
         lastname = Column(String(50))
@@ -51,8 +52,9 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
     from sqlalchemy.ext.hybrid import hybrid_property
     from sqlalchemy.sql import case
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         firstname = Column(String(50))
         lastname = Column(String(50))
@@ -66,9 +68,12 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
 
         @fullname.expression
         def fullname(cls):
-            return case([
-                (cls.firstname != None, cls.firstname + " " + cls.lastname),
-            ], else_ = cls.lastname)
+            return case(
+                [
+                    (cls.firstname != None, cls.firstname + " " + cls.lastname),
+                ],
+                else_=cls.lastname,
+            )
 
 .. _mapper_column_property_sql_expressions:
 
@@ -95,8 +100,9 @@ follows::
 
     from sqlalchemy.orm import column_property
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         firstname = Column(String(50))
         lastname = Column(String(50))
@@ -115,28 +121,30 @@ of ``Address`` objects available for a particular ``User``::
 
     Base = declarative_base()
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
         id = Column(Integer, primary_key=True)
-        user_id = Column(Integer, ForeignKey('user.id'))
+        user_id = Column(Integer, ForeignKey("user.id"))
+
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         address_count = column_property(
-            select(func.count(Address.id)).
-            where(Address.user_id==id).
-            correlate_except(Address).
-            scalar_subquery()
+            select(func.count(Address.id))
+            .where(Address.user_id == id)
+            .correlate_except(Address)
+            .scalar_subquery()
         )
 
 In the above example, we define a :func:`_expression.ScalarSelect` construct like the following::
 
     stmt = (
-        select(func.count(Address.id)).
-        where(Address.user_id==id).
-        correlate_except(Address).
-        scalar_subquery()
+        select(func.count(Address.id))
+        .where(Address.user_id == id)
+        .correlate_except(Address)
+        .scalar_subquery()
     )
 
 Above, we first use :func:`_sql.select` to create a :class:`_sql.Select`
@@ -166,9 +174,7 @@ to add an additional property after the fact::
 
     # only works if a declarative base class is in use
     User.address_count = column_property(
-        select(func.count(Address.id)).
-        where(Address.user_id==User.id).
-        scalar_subquery()
+        select(func.count(Address.id)).where(Address.user_id == User.id).scalar_subquery()
     )
 
 When using mapping styles that don't use :func:`_orm.declarative_base`,
@@ -180,9 +186,10 @@ which can be obtained using :func:`_sa.inspect`::
 
     reg = registry()
 
+
     @reg.mapped
     class User:
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         # ... additional mapping directives
 
@@ -191,11 +198,12 @@ which can be obtained using :func:`_sa.inspect`::
 
     # works for any kind of mapping
     from sqlalchemy import inspect
+
     inspect(User).add_property(
         column_property(
-           select(func.count(Address.id)).
-           where(Address.user_id==User.id).
-           scalar_subquery()
+            select(func.count(Address.id))
+            .where(Address.user_id == User.id)
+            .scalar_subquery()
         )
     )
 
@@ -205,17 +213,19 @@ association table to both tables in a relationship::
 
     from sqlalchemy import and_
 
+
     class Author(Base):
         # ...
 
         book_count = column_property(
-            select(func.count(books.c.id)
-            ).where(
+            select(func.count(books.c.id))
+            .where(
                 and_(
-                    book_authors.c.author_id==authors.c.id,
-                    book_authors.c.book_id==books.c.id
+                    book_authors.c.author_id == authors.c.id,
+                    book_authors.c.book_id == books.c.id,
                 )
-            ).scalar_subquery()
+            )
+            .scalar_subquery()
         )
 
 .. _mapper_column_property_sql_expressions_composed:
@@ -238,21 +248,20 @@ attribute, which is itself a :class:`.ColumnProperty`::
 
 
     class File(Base):
-        __tablename__ = 'file'
+        __tablename__ = "file"
 
         id = Column(Integer, primary_key=True)
         name = Column(String(64))
         extension = Column(String(8))
-        filename = column_property(name + '.' + extension)
-        path = column_property('C:/' + filename.expression)
+        filename = column_property(name + "." + extension)
+        path = column_property("C:/" + filename.expression)
 
 When the ``File`` class is used in expressions normally, the attributes
 assigned to ``filename`` and ``path`` are usable directly.  The use of the
 :attr:`.ColumnProperty.expression` attribute is only necessary when using
 the :class:`.ColumnProperty` directly within the mapping definition::
 
-    q = session.query(File.path).filter(File.filename == 'foo.txt')
-
+    q = session.query(File.path).filter(File.filename == "foo.txt")
 
 Using a plain descriptor
 ------------------------
@@ -269,19 +278,18 @@ which is then used to emit a query::
     from sqlalchemy.orm import object_session
     from sqlalchemy import select, func
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
         firstname = Column(String(50))
         lastname = Column(String(50))
 
         @property
         def address_count(self):
-            return object_session(self).\
-                scalar(
-                    select(func.count(Address.id)).\
-                        where(Address.user_id==self.id)
-                )
+            return object_session(self).scalar(
+                select(func.count(Address.id)).where(Address.user_id == self.id)
+            )
 
 The plain descriptor approach is useful as a last resort, but is less performant
 in the usual case than both the hybrid and column property approaches, in that
@@ -310,8 +318,9 @@ may be applied::
 
     from sqlalchemy.orm import query_expression
 
+
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         x = Column(Integer)
         y = Column(Integer)
@@ -322,8 +331,8 @@ We can then query for objects of type ``A``, applying an arbitrary
 SQL expression to be populated into ``A.expr``::
 
     from sqlalchemy.orm import with_expression
-    q = session.query(A).options(
-        with_expression(A.expr, A.x + A.y))
+
+    q = session.query(A).options(with_expression(A.expr, A.x + A.y))
 
 The :func:`.query_expression` mapping has these caveats:
 
@@ -341,8 +350,12 @@ The :func:`.query_expression` mapping has these caveats:
 
   To ensure the attribute is re-loaded, use :meth:`_orm.Query.populate_existing`::
 
-    obj = session.query(A).populate_existing().options(
-        with_expression(A.expr, some_expr)).first()
+    obj = (
+        session.query(A)
+        .populate_existing()
+        .options(with_expression(A.expr, some_expr))
+        .first()
+    )
 
 * The query_expression value **does not refresh when the object is
   expired**.  Once the object is expired, either via :meth:`.Session.expire`
@@ -357,18 +370,24 @@ The :func:`.query_expression` mapping has these caveats:
   ad-hoc expression; that is, this won't work::
 
     # wont work
-    q = session.query(A).options(
-        with_expression(A.expr, A.x + A.y)
-    ).filter(A.expr > 5).order_by(A.expr)
+    q = (
+        session.query(A)
+        .options(with_expression(A.expr, A.x + A.y))
+        .filter(A.expr > 5)
+        .order_by(A.expr)
+    )
 
   The ``A.expr`` expression will resolve to NULL in the above WHERE clause
   and ORDER BY clause. To use the expression throughout the query, assign to a
   variable and use that::
 
     a_expr = A.x + A.y
-    q = session.query(A).options(
-        with_expression(A.expr, a_expr)
-    ).filter(a_expr > 5).order_by(a_expr)
+    q = (
+        session.query(A)
+        .options(with_expression(A.expr, a_expr))
+        .filter(a_expr > 5)
+        .order_by(a_expr)
+    )
 
 .. versionadded:: 1.2
 

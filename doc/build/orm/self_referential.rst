@@ -26,9 +26,9 @@ In this example, we'll work with a single mapped
 class called ``Node``, representing a tree structure::
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent_id = Column(Integer, ForeignKey("node.id"))
         data = Column(String(50))
         children = relationship("Node")
 
@@ -60,9 +60,9 @@ is a :class:`_schema.Column` or collection of :class:`_schema.Column` objects
 that indicate those which should be considered to be "remote"::
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent_id = Column(Integer, ForeignKey("node.id"))
         data = Column(String(50))
         parent = relationship("Node", remote_side=[id])
 
@@ -75,13 +75,11 @@ As always, both directions can be combined into a bidirectional
 relationship using the :func:`.backref` function::
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent_id = Column(Integer, ForeignKey("node.id"))
         data = Column(String(50))
-        children = relationship("Node",
-                    backref=backref('parent', remote_side=[id])
-                )
+        children = relationship("Node", backref=backref("parent", remote_side=[id]))
 
 There are several examples included with SQLAlchemy illustrating
 self-referential strategies; these include :ref:`examples_adjacencylist` and
@@ -99,11 +97,11 @@ the same account as that of the parent; while ``folder_id`` refers
 to a specific folder within that account::
 
     class Folder(Base):
-        __tablename__ = 'folder'
+        __tablename__ = "folder"
         __table_args__ = (
-          ForeignKeyConstraint(
-              ['account_id', 'parent_id'],
-              ['folder.account_id', 'folder.folder_id']),
+            ForeignKeyConstraint(
+                ["account_id", "parent_id"], ["folder.account_id", "folder.folder_id"]
+            ),
         )
 
         account_id = Column(Integer, primary_key=True)
@@ -111,10 +109,9 @@ to a specific folder within that account::
         parent_id = Column(Integer)
         name = Column(String)
 
-        parent_folder = relationship("Folder",
-                            backref="child_folders",
-                            remote_side=[account_id, folder_id]
-                      )
+        parent_folder = relationship(
+            "Folder", backref="child_folders", remote_side=[account_id, folder_id]
+        )
 
 Above, we pass ``account_id`` into the :paramref:`_orm.relationship.remote_side` list.
 :func:`_orm.relationship` recognizes that the ``account_id`` column here
@@ -130,7 +127,7 @@ Self-Referential Query Strategies
 Querying of self-referential structures works like any other query::
 
     # get all nodes named 'child2'
-    session.query(Node).filter(Node.data=='child2')
+    session.query(Node).filter(Node.data == "child2")
 
 However extra care is needed when attempting to join along
 the foreign key from one level of the tree to the next.  In SQL,
@@ -147,10 +144,9 @@ looks like:
     from sqlalchemy.orm import aliased
 
     nodealias = aliased(Node)
-    session.query(Node).filter(Node.data=='subchild1').\
-                    join(Node.parent.of_type(nodealias)).\
-                    filter(nodealias.data=="child2").\
-                    all()
+    session.query(Node).filter(Node.data == "subchild1").join(
+        Node.parent.of_type(nodealias)
+    ).filter(nodealias.data == "child2").all()
     {opensql}SELECT node.id AS node_id,
             node.parent_id AS node_parent_id,
             node.data AS node_data
@@ -182,13 +178,12 @@ configured via :paramref:`~.relationships.join_depth`:
 .. sourcecode:: python+sql
 
     class Node(Base):
-        __tablename__ = 'node'
+        __tablename__ = "node"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent_id = Column(Integer, ForeignKey("node.id"))
         data = Column(String(50))
-        children = relationship("Node",
-                        lazy="joined",
-                        join_depth=2)
+        children = relationship("Node", lazy="joined", join_depth=2)
+
 
     session.query(Node).all()
     {opensql}SELECT node_1.id AS node_1_id,

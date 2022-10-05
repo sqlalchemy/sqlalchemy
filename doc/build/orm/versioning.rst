@@ -55,15 +55,13 @@ to the mapped table, then establish it as the ``version_id_col`` within the
 mapper options::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         version_id = Column(Integer, nullable=False)
         name = Column(String(50), nullable=False)
 
-        __mapper_args__ = {
-            "version_id_col": version_id
-        }
+        __mapper_args__ = {"version_id_col": version_id}
 
 .. note::  It is **strongly recommended** that the ``version_id`` column
    be made NOT NULL.  The versioning feature **does not support** a NULL
@@ -105,16 +103,17 @@ support a native GUID type, but we illustrate here using a simple string)::
 
     import uuid
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         version_uuid = Column(String(32), nullable=False)
         name = Column(String(50), nullable=False)
 
         __mapper_args__ = {
-            'version_id_col':version_uuid,
-            'version_id_generator':lambda version: uuid.uuid4().hex
+            "version_id_col": version_uuid,
+            "version_id_generator": lambda version: uuid.uuid4().hex,
         }
 
 The persistence engine will call upon ``uuid.uuid4()`` each time a
@@ -148,17 +147,15 @@ class as follows::
 
     from sqlalchemy import FetchedValue
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String(50), nullable=False)
         xmin = Column("xmin", String, system=True, server_default=FetchedValue())
 
-        __mapper_args__ = {
-            'version_id_col': xmin,
-            'version_id_generator': False
-        }
+        __mapper_args__ = {"version_id_col": xmin, "version_id_generator": False}
 
 With the above mapping, the ORM will rely upon the ``xmin`` column for
 automatically providing the new value of the version id counter.
@@ -222,25 +219,24 @@ at our choosing::
 
     import uuid
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         version_uuid = Column(String(32), nullable=False)
         name = Column(String(50), nullable=False)
 
-        __mapper_args__ = {
-            'version_id_col':version_uuid,
-            'version_id_generator': False
-        }
+        __mapper_args__ = {"version_id_col": version_uuid, "version_id_generator": False}
 
-    u1 = User(name='u1', version_uuid=uuid.uuid4())
+
+    u1 = User(name="u1", version_uuid=uuid.uuid4())
 
     session.add(u1)
 
     session.commit()
 
-    u1.name = 'u2'
+    u1.name = "u2"
     u1.version_uuid = uuid.uuid4()
 
     session.commit()
@@ -252,7 +248,7 @@ for schemes where only certain classes of UPDATE are sensitive to concurrency
 issues::
 
     # will leave version_uuid unchanged
-    u1.name = 'u3'
+    u1.name = "u3"
     session.commit()
 
 .. versionadded:: 0.9.0

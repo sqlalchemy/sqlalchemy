@@ -213,6 +213,7 @@ Our example becomes::
 
     my_simple_cache = {}
 
+
     def lookup(session, id_argument):
         if "my_key" not in my_simple_cache:
             query = session.query(Model).filter(Model.id == bindparam("id"))
@@ -294,6 +295,7 @@ into a direct use of "bakery" as follows::
         parameterized_query = bakery.bake(create_model_query)
 
         if include_frobnizzle:
+
             def include_frobnizzle_in_query(query):
                 return query.filter(Model.frobnizzle == True)
 
@@ -362,9 +364,7 @@ statement compilation time::
     bakery = baked.bakery()
 
     baked_query = bakery(lambda session: session.query(User))
-    baked_query += lambda q: q.filter(
-        User.name.in_(bindparam("username", expanding=True))
-    )
+    baked_query += lambda q: q.filter(User.name.in_(bindparam("username", expanding=True)))
 
     result = baked_query.with_session(session).params(username=["ed", "fred"]).all()
 

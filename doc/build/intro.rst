@@ -203,7 +203,7 @@ Python prompt like this:
 .. sourcecode:: python+sql
 
      >>> import sqlalchemy
-     >>> sqlalchemy.__version__ # doctest: +SKIP
+     >>> sqlalchemy.__version__  # doctest: +SKIP
      1.4.0
 
 Next Steps

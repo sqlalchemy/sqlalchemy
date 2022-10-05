@@ -154,10 +154,11 @@ patterns common to many classes can be defined as callables::
     class ReferenceAddressMixin:
         @declared_attr
         def address_id(cls):
-            return Column(Integer, ForeignKey('address.id'))
+            return Column(Integer, ForeignKey("address.id"))
+
 
     class User(ReferenceAddressMixin, Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
 
 Where above, the ``address_id`` class-level callable is executed at the
@@ -176,11 +177,12 @@ will resolve them at class construction time::
         def type_(cls):
             return Column(String(50))
 
-        __mapper_args__= {'polymorphic_on':type_}
+        __mapper_args__ = {"polymorphic_on": type_}
+
 
     class MyModel(MyMixin, Base):
-        __tablename__='test'
-        id =  Column(Integer, primary_key=True)
+        __tablename__ = "test"
+        id = Column(Integer, primary_key=True)
 
 .. _orm_declarative_mixins_relationships:
 
@@ -199,7 +201,7 @@ reference a common target class via many-to-one::
     class RefTargetMixin:
         @declared_attr
         def target_id(cls):
-            return Column('target_id', ForeignKey('target.id'))
+            return Column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
@@ -219,7 +221,6 @@ reference a common target class via many-to-one::
     class Target(Base):
         __tablename__ = "target"
         id = Column(Integer, primary_key=True)
-
 
 Using Advanced Relationship Arguments (e.g. ``primaryjoin``, etc.)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -266,13 +267,11 @@ The condition above is resolved using a lambda::
     class RefTargetMixin:
         @declared_attr
         def target_id(cls):
-            return Column('target_id', ForeignKey('target.id'))
+            return Column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
-            return relationship(Target,
-                primaryjoin=lambda: Target.id==cls.target_id
-            )
+            return relationship(Target, primaryjoin=lambda: Target.id == cls.target_id)
 
 or alternatively, the string form (which ultimately generates a lambda)::
 
@@ -284,9 +283,7 @@ or alternatively, the string form (which ultimately generates a lambda)::
 
         @declared_attr
         def target(cls):
-            return relationship(
-                Target, primaryjoin=f"Target.id=={cls.__name__}.target_id"
-            )
+            return relationship(Target, primaryjoin=f"Target.id=={cls.__name__}.target_id")
 
 .. seealso::
 
@@ -526,9 +523,7 @@ establish it as part of ``__table_args__``::
 
         @declared_attr
         def __table_args__(cls):
-            return (
-                Index(f"test_idx_{cls.__tablename__}", "a", "b"),
-            )
+            return (Index(f"test_idx_{cls.__tablename__}", "a", "b"),)
 
 
     class MyModel(MyMixin, Base):

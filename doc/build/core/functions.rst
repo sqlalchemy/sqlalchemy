@@ -44,7 +44,7 @@ common SQL functions that set up the expected return type for each function
 automatically.  The are invoked in the same way as any other member of the
 :data:`_sql.func` namespace::
 
-    select(func.count('*')).select_from(some_table)
+    select(func.count("*")).select_from(some_table)
 
 Note that any name not known to :data:`_sql.func` generates the function name
 as is - there is no restriction on what SQL functions can be called, known or

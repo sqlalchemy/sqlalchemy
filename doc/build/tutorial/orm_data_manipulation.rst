@@ -290,9 +290,7 @@ from this row and we will get our updated value back:
 
 .. sourcecode:: pycon+sql
 
-    >>> sandy_fullname = session.execute(
-    ...     select(User.fullname).where(User.id == 2)
-    ... ).scalar_one()
+    >>> sandy_fullname = session.execute(select(User.fullname).where(User.id == 2)).scalar_one()
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
     [...] ('Sandy Squirrel', 2)
     SELECT user_account.fullname
@@ -336,9 +334,9 @@ a value in the ``User.name`` column:
 .. sourcecode:: pycon+sql
 
     >>> session.execute(
-    ...     update(User).
-    ...     where(User.name == "sandy").
-    ...     values(fullname="Sandy Squirrel Extraordinaire")
+    ...     update(User)
+    ...     .where(User.name == "sandy")
+    ...     .values(fullname="Sandy Squirrel Extraordinaire")
     ... )
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
     [...] ('Sandy Squirrel Extraordinaire', 'sandy'){stop}
@@ -525,7 +523,7 @@ and of course the database data is present again as well:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> session.execute(select(User).where(User.name == 'patrick')).scalar_one() is patrick
+    {sql}>>> session.execute(select(User).where(User.name == "patrick")).scalar_one() is patrick
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?

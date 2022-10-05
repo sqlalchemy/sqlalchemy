@@ -88,9 +88,12 @@ metadata creation sequence as a string, using this recipe::
 
     from sqlalchemy import create_mock_engine
 
+
     def dump(sql, *multiparams, **params):
         print(sql.compile(dialect=engine.dialect))
-    engine = create_mock_engine('postgresql://', dump)
+
+
+    engine = create_mock_engine("postgresql://", dump)
     metadata_obj.create_all(engine, checkfirst=False)
 
 The `Alembic <https://alembic.sqlalchemy.org>`_ tool also supports

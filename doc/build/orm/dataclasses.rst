@@ -173,9 +173,7 @@ association::
         __tablename__ = "user"
 
         __sa_dataclass_metadata_key__ = "sa"
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
+        id: int = field(init=False, metadata={"sa": Column(Integer, primary_key=True)})
         name: str = field(default=None, metadata={"sa": Column(String(50))})
         fullname: str = field(default=None, metadata={"sa": Column(String(50))})
         nickname: str = field(default=None, metadata={"sa": Column(String(12))})
@@ -189,15 +187,9 @@ association::
     class Address:
         __tablename__ = "address"
         __sa_dataclass_metadata_key__ = "sa"
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
-        user_id: int = field(
-            init=False, metadata={"sa": Column(ForeignKey("user.id"))}
-        )
-        email_address: str = field(
-            default=None, metadata={"sa": Column(String(50))}
-        )
+        id: int = field(init=False, metadata={"sa": Column(Integer, primary_key=True)})
+        user_id: int = field(init=False, metadata={"sa": Column(ForeignKey("user.id"))})
+        email_address: str = field(default=None, metadata={"sa": Column(String(50))})
 
 .. _orm_imperative_dataclasses:
 
@@ -231,6 +223,7 @@ variables::
 
     mapper_registry = registry()
 
+
     @dataclass
     class User:
         id: int = field(init=False)
@@ -239,34 +232,40 @@ variables::
         nickname: str = None
         addresses: List[Address] = field(default_factory=list)
 
+
     @dataclass
     class Address:
         id: int = field(init=False)
         user_id: int = field(init=False)
         email_address: str = None
 
+
     metadata_obj = MetaData()
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('fullname', String(50)),
-        Column('nickname', String(12)),
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+        Column("fullname", String(50)),
+        Column("nickname", String(12)),
     )
 
     address = Table(
-        'address',
+        "address",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey('user.id')),
-        Column('email_address', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String(50)),
     )
 
-    mapper_registry.map_imperatively(User, user, properties={
-        'addresses': relationship(Address, backref='user', order_by=address.c.id),
-    })
+    mapper_registry.map_imperatively(
+        User,
+        user,
+        properties={
+            "addresses": relationship(Address, backref="user", order_by=address.c.id),
+        },
+    )
 
     mapper_registry.map_imperatively(Address, address)
 
@@ -302,9 +301,7 @@ came from a mixin that is itself a dataclass, the form would be::
 
         __sa_dataclass_metadata_key__ = "sa"
 
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
+        id: int = field(init=False, metadata={"sa": Column(Integer, primary_key=True)})
 
         addresses: List[Address] = field(
             default_factory=list, metadata={"sa": lambda: relationship("Address")}
@@ -315,15 +312,11 @@ came from a mixin that is itself a dataclass, the form would be::
     class AddressMixin:
         __tablename__ = "address"
         __sa_dataclass_metadata_key__ = "sa"
-        id: int = field(
-            init=False, metadata={"sa": Column(Integer, primary_key=True)}
-        )
+        id: int = field(init=False, metadata={"sa": Column(Integer, primary_key=True)})
         user_id: int = field(
             init=False, metadata={"sa": lambda: Column(ForeignKey("user.id"))}
         )
-        email_address: str = field(
-            default=None, metadata={"sa": Column(String(50))}
-        )
+        email_address: str = field(default=None, metadata={"sa": Column(String(50))})
 
 
     @mapper_registry.mapped
@@ -422,6 +415,7 @@ object is declared inline with the declarative class.   The
             }
         }
 
+
     @mapper_registry.mapped
     @define(slots=False)
     class Address:
@@ -435,7 +429,6 @@ object is declared inline with the declarative class.   The
         id: int
         user_id: int
         email_address: Optional[str]
-
 
 .. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
    a mapped class, cannot be used with SQLAlchemy mappings without fully
@@ -469,6 +462,7 @@ as well::
 
     mapper_registry = registry()
 
+
     @define(slots=False)
     class User:
         id: int
@@ -477,34 +471,40 @@ as well::
         nickname: str
         addresses: List[Address]
 
+
     @define(slots=False)
     class Address:
         id: int
         user_id: int
         email_address: Optional[str]
 
+
     metadata_obj = MetaData()
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50)),
-        Column('fullname', String(50)),
-        Column('nickname', String(12)),
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+        Column("fullname", String(50)),
+        Column("nickname", String(12)),
     )
 
     address = Table(
-        'address',
+        "address",
         metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey('user.id')),
-        Column('email_address', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("user_id", Integer, ForeignKey("user.id")),
+        Column("email_address", String(50)),
     )
 
-    mapper_registry.map_imperatively(User, user, properties={
-        'addresses': relationship(Address, backref='user', order_by=address.c.id),
-    })
+    mapper_registry.map_imperatively(
+        User,
+        user,
+        properties={
+            "addresses": relationship(Address, backref="user", order_by=address.c.id),
+        },
+    )
 
     mapper_registry.map_imperatively(Address, address)
 

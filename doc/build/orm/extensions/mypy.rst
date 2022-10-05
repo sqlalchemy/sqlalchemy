@@ -116,9 +116,7 @@ mapping, using the typical example of the ``User`` class::
 
     # a select() construct makes use of SQL expressions derived from the
     # User class itself
-    select_stmt = (
-        select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
-    )
+    select_stmt = select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
 
 Above, the steps that the Mypy extension can take include:
 
@@ -161,9 +159,7 @@ following::
         )
         name: Mapped[Optional[str]] = Mapped._special_method(Column(String))
 
-        def __init__(
-            self, id: Optional[int] = ..., name: Optional[str] = ...
-        ) -> None:
+        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None:
             ...
 
 
@@ -171,10 +167,7 @@ following::
 
     print(f"Username: {some_user.name}")
 
-    select_stmt = (
-        select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
-    )
-
+    select_stmt = select(User).where(User.id.in_([3, 4, 5])).where(User.name.contains("s"))
 
 The key steps which have been taken above include:
 
@@ -452,9 +445,7 @@ applied explicitly::
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
-        addresses: Mapped[List["Address"]] = relationship(
-            "Address", back_populates="user"
-        )
+        addresses: Mapped[List["Address"]] = relationship("Address", back_populates="user")
 
 
     class Address(Base):

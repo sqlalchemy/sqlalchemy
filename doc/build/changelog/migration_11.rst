@@ -207,29 +207,35 @@ expression, and ``func.date()`` applied to a datetime expression; both
 examples will return duplicate rows due to the joined eager load unless
 explicit typing is applied::
 
-    result = session.query(
-        func.substr(A.some_thing, 0, 4), A
-    ).options(joinedload(A.bs)).all()
+    result = (
+        session.query(func.substr(A.some_thing, 0, 4), A).options(joinedload(A.bs)).all()
+    )
 
-    users = session.query(
-        func.date(
-            User.date_created, 'start of month'
-        ).label('month'),
-        User,
-    ).options(joinedload(User.orders)).all()
+    users = (
+        session.query(
+            func.date(User.date_created, "start of month").label("month"),
+            User,
+        )
+        .options(joinedload(User.orders))
+        .all()
+    )
 
 The above examples, in order to retain deduping, should be specified as::
 
-    result = session.query(
-        func.substr(A.some_thing, 0, 4, type_=String), A
-    ).options(joinedload(A.bs)).all()
+    result = (
+        session.query(func.substr(A.some_thing, 0, 4, type_=String), A)
+        .options(joinedload(A.bs))
+        .all()
+    )
 
-    users = session.query(
-        func.date(
-            User.date_created, 'start of month', type_=DateTime
-        ).label('month'),
-        User,
-    ).options(joinedload(User.orders)).all()
+    users = (
+        session.query(
+            func.date(User.date_created, "start of month", type_=DateTime).label("month"),
+            User,
+        )
+        .options(joinedload(User.orders))
+        .all()
+    )
 
 Additionally, the treatment of a so-called "unhashable" type is slightly
 different than its been in previous releases; internally we are using
@@ -259,7 +265,6 @@ string value::
 
     >>> some_user = User()
     >>> q = s.query(User).filter(User.name == some_user)
-    ...
     sqlalchemy.exc.ArgumentError: Object <__main__.User object at 0x103167e90> is not legal as a SQL literal value
 
 The exception is now immediate when the comparison is made between
@@ -292,18 +297,18 @@ refer to specific elements of an "indexable" data type, such as an array
 or JSON field::
 
     class Person(Base):
-        __tablename__ = 'person'
+        __tablename__ = "person"
 
         id = Column(Integer, primary_key=True)
         data = Column(JSON)
 
-        name = index_property('data', 'name')
+        name = index_property("data", "name")
 
 Above, the ``name`` attribute will read/write the field ``"name"``
 from the JSON column ``data``, after initializing it to an
 empty dictionary::
 
-    >>> person = Person(name='foobar')
+    >>> person = Person(name="foobar")
     >>> person.name
     foobar
 
@@ -346,17 +351,18 @@ no longer inappropriately add the "single inheritance" criteria when the
 query is against a subquery expression such as an exists::
 
     class Widget(Base):
-        __tablename__ = 'widget'
+        __tablename__ = "widget"
         id = Column(Integer, primary_key=True)
         type = Column(String)
         data = Column(String)
-        __mapper_args__ = {'polymorphic_on': type}
+        __mapper_args__ = {"polymorphic_on": type}
 
 
     class FooWidget(Widget):
-        __mapper_args__ = {'polymorphic_identity': 'foo'}
+        __mapper_args__ = {"polymorphic_identity": "foo"}
 
-    q = session.query(FooWidget).filter(FooWidget.data == 'bar').exists()
+
+    q = session.query(FooWidget).filter(FooWidget.data == "bar").exists()
 
     session.query(q).all()
 
@@ -433,9 +439,11 @@ removed would be lost, and the flush would incorrectly raise an error::
 
     Base = declarative_base()
 
+
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
+
 
     e = create_engine("sqlite://", echo=True)
     Base.metadata.create_all(e)
@@ -522,25 +530,23 @@ the :paramref:`.orm.mapper.passive_deletes` option::
 
     class A(Base):
         __tablename__ = "a"
-        id = Column('id', Integer, primary_key=True)
+        id = Column("id", Integer, primary_key=True)
         type = Column(String)
 
         __mapper_args__ = {
-            'polymorphic_on': type,
-            'polymorphic_identity': 'a',
-            'passive_deletes': True
+            "polymorphic_on": type,
+            "polymorphic_identity": "a",
+            "passive_deletes": True,
         }
 
 
     class B(A):
-        __tablename__ = 'b'
-        b_table_id = Column('b_table_id', Integer, primary_key=True)
-        bid = Column('bid', Integer, ForeignKey('a.id', ondelete="CASCADE"))
-        data = Column('data', String)
+        __tablename__ = "b"
+        b_table_id = Column("b_table_id", Integer, primary_key=True)
+        bid = Column("bid", Integer, ForeignKey("a.id", ondelete="CASCADE"))
+        data = Column("data", String)
 
-        __mapper_args__ = {
-            'polymorphic_identity': 'b'
-        }
+        __mapper_args__ = {"polymorphic_identity": "b"}
 
 With the above mapping, the :paramref:`.orm.mapper.passive_deletes` option
 is configured on the base mapper; it takes effect for all non-base mappers
@@ -571,22 +577,24 @@ Same-named backrefs will not raise an error when applied to concrete inheritance
 The following mapping has always been possible without issue::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         b = relationship("B", foreign_keys="B.a_id", backref="a")
 
+
     class A1(A):
-        __tablename__ = 'a1'
+        __tablename__ = "a1"
         id = Column(Integer, primary_key=True)
         b = relationship("B", foreign_keys="B.a1_id", backref="a1")
-        __mapper_args__ = {'concrete': True}
+        __mapper_args__ = {"concrete": True}
+
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
 
-        a_id = Column(ForeignKey('a.id'))
-        a1_id = Column(ForeignKey('a1.id'))
+        a_id = Column(ForeignKey("a.id"))
+        a1_id = Column(ForeignKey("a1.id"))
 
 Above, even though class ``A`` and class ``A1`` have a relationship
 named ``b``, no conflict warning or error occurs because class ``A1`` is
@@ -596,22 +604,22 @@ However, if the relationships were configured the other way, an error
 would occur::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
 
 
     class A1(A):
-        __tablename__ = 'a1'
+        __tablename__ = "a1"
         id = Column(Integer, primary_key=True)
-        __mapper_args__ = {'concrete': True}
+        __mapper_args__ = {"concrete": True}
 
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
 
-        a_id = Column(ForeignKey('a.id'))
-        a1_id = Column(ForeignKey('a1.id'))
+        a_id = Column(ForeignKey("a.id"))
+        a1_id = Column(ForeignKey("a1.id"))
 
         a = relationship("A", backref="b")
         a1 = relationship("A1", backref="b")
@@ -634,22 +642,21 @@ on inherited mapper '<name>'; this can cause dependency issues during flush".
 An example is as follows::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
         bs = relationship("B")
 
 
     class ASub(A):
-        __tablename__ = 'a_sub'
-        id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+        __tablename__ = "a_sub"
+        id = Column(Integer, ForeignKey("a.id"), primary_key=True)
         bs = relationship("B")
 
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey('a.id'))
-
+        a_id = Column(ForeignKey("a.id"))
 
 This warning dates back to the 0.4 series in 2007 and is based on a version of
 the unit of work code that has since been entirely rewritten. Currently, there
@@ -672,7 +679,7 @@ A hybrid method or property will now reflect the ``__doc__`` value
 present in the original docstring::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
 
         name = Column(String)
@@ -710,9 +717,9 @@ also propagated from the hybrid descriptor itself, rather than from the underlyi
 expression.  That is, accessing ``A.some_name.info`` now returns the same
 dictionary that you'd get from ``inspect(A).all_orm_descriptors['some_name'].info``::
 
-    >>> A.some_name.info['foo'] = 'bar'
+    >>> A.some_name.info["foo"] = "bar"
     >>> from sqlalchemy import inspect
-    >>> inspect(A).all_orm_descriptors['some_name'].info
+    >>> inspect(A).all_orm_descriptors["some_name"].info
     {'foo': 'bar'}
 
 Note that this ``.info`` dictionary is **separate** from that of a mapped attribute
@@ -739,11 +746,11 @@ consistent.
 
 Given::
 
-    u1 = User(id=7, name='x')
+    u1 = User(id=7, name="x")
     u1.orders = [
-        Order(description='o1', address=Address(id=1, email_address='a')),
-        Order(description='o2', address=Address(id=1, email_address='b')),
-        Order(description='o3', address=Address(id=1, email_address='c'))
+        Order(description="o1", address=Address(id=1, email_address="a")),
+        Order(description="o2", address=Address(id=1, email_address="b")),
+        Order(description="o3", address=Address(id=1, email_address="c")),
     ]
 
     sess = Session()
@@ -925,32 +932,32 @@ row on a different "path" that doesn't include the attribute.  This is a
 deep use case that's hard to reproduce, but the general idea is as follows::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
-        b_id = Column(ForeignKey('b.id'))
-        c_id = Column(ForeignKey('c.id'))
+        b_id = Column(ForeignKey("b.id"))
+        c_id = Column(ForeignKey("c.id"))
 
         b = relationship("B")
         c = relationship("C")
 
 
     class B(Base):
-        __tablename__ = 'b'
+        __tablename__ = "b"
         id = Column(Integer, primary_key=True)
-        c_id = Column(ForeignKey('c.id'))
+        c_id = Column(ForeignKey("c.id"))
 
         c = relationship("C")
 
 
     class C(Base):
-        __tablename__ = 'c'
+        __tablename__ = "c"
         id = Column(Integer, primary_key=True)
-        d_id = Column(ForeignKey('d.id'))
+        d_id = Column(ForeignKey("d.id"))
         d = relationship("D")
 
 
     class D(Base):
-        __tablename__ = 'd'
+        __tablename__ = "d"
         id = Column(Integer, primary_key=True)
 
 
@@ -959,7 +966,9 @@ deep use case that's hard to reproduce, but the general idea is as follows::
 
     q = s.query(A)
     q = q.join(A.b).join(c_alias_1, B.c).join(c_alias_1.d)
-    q = q.options(contains_eager(A.b).contains_eager(B.c, alias=c_alias_1).contains_eager(C.d))
+    q = q.options(
+        contains_eager(A.b).contains_eager(B.c, alias=c_alias_1).contains_eager(C.d)
+    )
     q = q.join(c_alias_2, A.c)
     q = q.options(contains_eager(A.c, alias=c_alias_2))
 
@@ -1121,6 +1130,7 @@ for specific exceptions::
 
         engine = create_engine("postgresql+psycopg2://")
 
+
         @event.listens_for(engine, "handle_error")
         def cancel_disconnect(ctx):
             if isinstance(ctx.original_exception, KeyboardInterrupt):
@@ -1149,25 +1159,22 @@ statement::
 
     >>> from sqlalchemy import table, column, select, literal, exists
     >>> orders = table(
-    ...     'orders',
-    ...     column('region'),
-    ...     column('amount'),
-    ...     column('product'),
-    ...     column('quantity')
+    ...     "orders", column("region"), column("amount"), column("product"), column("quantity")
     ... )
     >>>
     >>> upsert = (
     ...     orders.update()
-    ...     .where(orders.c.region == 'Region1')
-    ...     .values(amount=1.0, product='Product1', quantity=1)
-    ...     .returning(*(orders.c._all_columns)).cte('upsert'))
+    ...     .where(orders.c.region == "Region1")
+    ...     .values(amount=1.0, product="Product1", quantity=1)
+    ...     .returning(*(orders.c._all_columns))
+    ...     .cte("upsert")
+    ... )
     >>>
     >>> insert = orders.insert().from_select(
     ...     orders.c.keys(),
-    ...     select([
-    ...         literal('Region1'), literal(1.0),
-    ...         literal('Product1'), literal(1)
-    ...     ]).where(~exists(upsert.select()))
+    ...     select([literal("Region1"), literal(1.0), literal("Product1"), literal(1)]).where(
+    ...         ~exists(upsert.select())
+    ...     ),
     ... )
     >>>
     >>> print(insert)  # note formatting added for clarity
@@ -1198,13 +1205,13 @@ RANGE and ROWS expressions for window functions::
 
     >>> from sqlalchemy import func
 
-    >>> print(func.row_number().over(order_by='x', range_=(-5, 10)))
+    >>> print(func.row_number().over(order_by="x", range_=(-5, 10)))
     row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND :param_2 FOLLOWING)
 
-    >>> print(func.row_number().over(order_by='x', rows=(None, 0)))
+    >>> print(func.row_number().over(order_by="x", rows=(None, 0)))
     row_number() OVER (ORDER BY x ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 
-    >>> print(func.row_number().over(order_by='x', range_=(-2, None)))
+    >>> print(func.row_number().over(order_by="x", range_=(-2, None)))
     row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND UNBOUNDED FOLLOWING)
 
 :paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` are specified as
@@ -1230,10 +1237,13 @@ correlation of tables that are derived from the same FROM clause as the
 selectable, e.g. lateral correlation::
 
     >>> from sqlalchemy import table, column, select, true
-    >>> people = table('people', column('people_id'), column('age'), column('name'))
-    >>> books = table('books', column('book_id'), column('owner_id'))
-    >>> subq = select([books.c.book_id]).\
-    ...      where(books.c.owner_id == people.c.people_id).lateral("book_subq")
+    >>> people = table("people", column("people_id"), column("age"), column("name"))
+    >>> books = table("books", column("book_id"), column("owner_id"))
+    >>> subq = (
+    ...     select([books.c.book_id])
+    ...     .where(books.c.owner_id == people.c.people_id)
+    ...     .lateral("book_subq")
+    ... )
     >>> print(select([people]).select_from(people.join(subq, true())))
     SELECT people.people_id, people.age, people.name
     FROM people JOIN LATERAL (SELECT books.book_id AS book_id
@@ -1262,10 +1272,7 @@ construct similar to an alias::
 
     from sqlalchemy import func
 
-    selectable = people.tablesample(
-                func.bernoulli(1),
-                name='alias',
-                seed=func.random())
+    selectable = people.tablesample(func.bernoulli(1), name="alias", seed=func.random())
     stmt = select([selectable.c.people_id])
 
 Assuming ``people`` with a column ``people_id``, the above
@@ -1295,9 +1302,10 @@ What's changed is that this feature no longer turns on automatically for a
 *composite* primary key; previously, a table definition such as::
 
     Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True)
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True),
     )
 
 Would have "autoincrement" semantics applied to the ``'x'`` column, only
@@ -1306,9 +1314,10 @@ disable this, one would have to turn off ``autoincrement`` on all columns::
 
     # old way
     Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True, autoincrement=False),
-        Column('y', Integer, primary_key=True, autoincrement=False)
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True, autoincrement=False),
+        Column("y", Integer, primary_key=True, autoincrement=False),
     )
 
 With the new behavior, the composite primary key will not have autoincrement
@@ -1316,9 +1325,10 @@ semantics unless a column is marked explicitly with ``autoincrement=True``::
 
     # column 'y' will be SERIAL/AUTO_INCREMENT/ auto-generating
     Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True, autoincrement=True)
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True, autoincrement=True),
     )
 
 In order to anticipate some potential backwards-incompatible scenarios,
@@ -1327,9 +1337,10 @@ for missing primary key values on composite primary key columns that don't
 have autoincrement set up; given a table such as::
 
     Table(
-        'b', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True)
+        "b",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True),
     )
 
 An INSERT emitted with no values for this table will produce this warning::
@@ -1349,9 +1360,10 @@ default or something less common such as a trigger, the presence of a
 value generator can be indicated using :class:`.FetchedValue`::
 
     Table(
-        'b', metadata,
-        Column('x', Integer, primary_key=True, server_default=FetchedValue()),
-        Column('y', Integer, primary_key=True, server_default=FetchedValue())
+        "b",
+        metadata,
+        Column("x", Integer, primary_key=True, server_default=FetchedValue()),
+        Column("y", Integer, primary_key=True, server_default=FetchedValue()),
     )
 
 For the very unlikely case where a composite primary key is actually intended
@@ -1359,9 +1371,10 @@ to store NULL in one or more of its columns (only supported on SQLite and MySQL)
 specify the column with ``nullable=True``::
 
     Table(
-        'b', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True, nullable=True)
+        "b",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True, nullable=True),
     )
 
 In a related change, the ``autoincrement`` flag may be set to True
@@ -1384,19 +1397,19 @@ New operators :meth:`.ColumnOperators.is_distinct_from` and
 :meth:`.ColumnOperators.isnot_distinct_from` allow the IS DISTINCT
 FROM and IS NOT DISTINCT FROM sql operation::
 
-    >>> print(column('x').is_distinct_from(None))
+    >>> print(column("x").is_distinct_from(None))
     x IS DISTINCT FROM NULL
 
 Handling is provided for NULL, True and False::
 
-    >>> print(column('x').isnot_distinct_from(False))
+    >>> print(column("x").isnot_distinct_from(False))
     x IS NOT DISTINCT FROM false
 
 For SQLite, which doesn't have this operator, "IS" / "IS NOT" is rendered,
 which on SQLite works for NULL unlike other backends::
 
     >>> from sqlalchemy.dialects import sqlite
-    >>> print(column('x').is_distinct_from(None).compile(dialect=sqlite.dialect()))
+    >>> print(column("x").is_distinct_from(None).compile(dialect=sqlite.dialect()))
     x IS NOT NULL
 
 .. _change_1957:
@@ -1445,19 +1458,15 @@ and the column arguments passed to :meth:`_expression.TextClause.columns`::
 
 
     from sqlalchemy import text
-    stmt = text("SELECT users.id, addresses.id, users.id, "
-         "users.name, addresses.email_address AS email "
-         "FROM users JOIN addresses ON users.id=addresses.user_id "
-         "WHERE users.id = 1").columns(
-            User.id,
-            Address.id,
-            Address.user_id,
-            User.name,
-            Address.email_address
-         )
 
-    query = session.query(User).from_statement(stmt).\
-        options(contains_eager(User.addresses))
+    stmt = text(
+        "SELECT users.id, addresses.id, users.id, "
+        "users.name, addresses.email_address AS email "
+        "FROM users JOIN addresses ON users.id=addresses.user_id "
+        "WHERE users.id = 1"
+    ).columns(User.id, Address.id, Address.user_id, User.name, Address.email_address)
+
+    query = session.query(User).from_statement(stmt).options(contains_eager(User.addresses))
     result = query.all()
 
 Above, the textual SQL contains the column "id" three times, which would
@@ -1489,7 +1498,7 @@ Another aspect of this change is that the rules for matching columns have also b
 to rely upon "positional" matching more fully for compiled SQL constructs
 as well.   Given a statement like the following::
 
-    ua = users.alias('ua')
+    ua = users.alias("ua")
     stmt = select([users.c.user_id, ua.c.user_id])
 
 The above statement will compile to::
@@ -1512,7 +1521,7 @@ fetch columns::
     ua_id = row[ua.c.user_id]
 
     # this still raises, however
-    user_id = row['user_id']
+    user_id = row["user_id"]
 
 Much less likely to get an "ambiguous column" error message
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1550,10 +1559,7 @@ string/integer/etc values::
         three = 3
 
 
-    t = Table(
-        'data', MetaData(),
-        Column('value', Enum(MyEnum))
-    )
+    t = Table("data", MetaData(), Column("value", Enum(MyEnum)))
 
     e = create_engine("sqlite://")
     t.create(e)
@@ -1600,8 +1606,9 @@ flag is used (1.1.0b2)::
 
     >>> from sqlalchemy import Table, MetaData, Column, Enum, create_engine
     >>> t = Table(
-    ...     'data', MetaData(),
-    ...     Column('value', Enum("one", "two", "three", validate_strings=True))
+    ...     "data",
+    ...     MetaData(),
+    ...     Column("value", Enum("one", "two", "three", validate_strings=True)),
     ... )
     >>> e = create_engine("sqlite://")
     >>> t.create(e)
@@ -1674,8 +1681,8 @@ within logging, exception reporting, as well as ``repr()`` of the row itself::
 
     >>> from sqlalchemy import create_engine
     >>> import random
-    >>> e = create_engine("sqlite://", echo='debug')
-    >>> some_value = ''.join(chr(random.randint(52, 85)) for i in range(5000))
+    >>> e = create_engine("sqlite://", echo="debug")
+    >>> some_value = "".join(chr(random.randint(52, 85)) for i in range(5000))
     >>> row = e.execute("select ?", [some_value]).first()
     ... (lines are wrapped for clarity) ...
     2016-02-17 13:23:03,027 INFO sqlalchemy.engine.base.Engine select ?
@@ -1752,6 +1759,7 @@ replacing the ``None`` value::
 
         json_value = Column(JSON(none_as_null=False), default="some default")
 
+
     # would insert "some default" instead of "'null'",
     # now will insert "'null'"
     obj = MyObject(json_value=None)
@@ -1768,6 +1776,7 @@ inconsistently vs. all other datatypes::
 
         some_other_value = Column(String(50))
         json_value = Column(JSON(none_as_null=False))
+
 
     # would result in NULL for some_other_value,
     # but json "'null'" for json_value.  Now results in NULL for both
@@ -1786,9 +1795,7 @@ would be ignored in all cases::
 
     # would insert SQL NULL and/or trigger defaults,
     # now inserts "'null'"
-    session.bulk_insert_mappings(
-        MyObject,
-        [{"json_value": None}])
+    session.bulk_insert_mappings(MyObject, [{"json_value": None}])
 
 The :class:`_types.JSON` type now implements the
 :attr:`.TypeEngine.should_evaluate_none` flag,
@@ -1847,9 +1854,7 @@ is now in Core.   The :class:`_types.ARRAY` type still **only works on
 PostgreSQL**, however it can be used directly, supporting special array
 use cases such as indexed access, as well as support for the ANY and ALL::
 
-    mytable = Table("mytable", metadata,
-            Column("data", ARRAY(Integer, dimensions=2))
-        )
+    mytable = Table("mytable", metadata, Column("data", ARRAY(Integer, dimensions=2)))
 
     expr = mytable.c.data[5][6]
 
@@ -1884,7 +1889,6 @@ such as::
     subq = select([mytable.c.value])
     select([mytable]).where(12 > any_(subq))
 
-
 :ticket:`3516`
 
 .. _change_3132:
@@ -1897,12 +1901,14 @@ function for the ``array_agg()`` SQL function that returns an array,
 which is now available using :class:`_functions.array_agg`::
 
     from sqlalchemy import func
+
     stmt = select([func.array_agg(table.c.value)])
 
 A PostgreSQL element for an aggregate ORDER BY is also added via
 :class:`_postgresql.aggregate_order_by`::
 
     from sqlalchemy.dialects.postgresql import aggregate_order_by
+
     expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
     stmt = select([expr])
 
@@ -1914,8 +1920,8 @@ The PG dialect itself also provides an :func:`_postgresql.array_agg` wrapper to
 ensure the :class:`_postgresql.ARRAY` type::
 
     from sqlalchemy.dialects.postgresql import array_agg
-    stmt = select([array_agg(table.c.value).contains('foo')])
 
+    stmt = select([array_agg(table.c.value).contains("foo")])
 
 Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
 ``rank()``, ``dense_rank()`` and others that require an ordering via
@@ -1923,12 +1929,13 @@ Additionally, functions like ``percentile_cont()``, ``percentile_disc()``,
 :meth:`.FunctionElement.within_group` modifier::
 
     from sqlalchemy import func
-    stmt = select([
-        department.c.id,
-        func.percentile_cont(0.5).within_group(
-            department.c.salary.desc()
-        )
-    ])
+
+    stmt = select(
+        [
+            department.c.id,
+            func.percentile_cont(0.5).within_group(department.c.salary.desc()),
+        ]
+    )
 
 The above statement would produce SQL similar to::
 
@@ -1956,7 +1963,7 @@ an :class:`_postgresql.ENUM` had to look like this::
 
     # old way
     class MyEnum(TypeDecorator, SchemaType):
-        impl = postgresql.ENUM('one', 'two', 'three', name='myenum')
+        impl = postgresql.ENUM("one", "two", "three", name="myenum")
 
         def _set_table(self, table):
             self.impl._set_table(table)
@@ -1966,8 +1973,7 @@ can be done like any other type::
 
     # new way
     class MyEnum(TypeDecorator):
-        impl = postgresql.ENUM('one', 'two', 'three', name='myenum')
-
+        impl = postgresql.ENUM("one", "two", "three", name="myenum")
 
 :ticket:`2919`
 
@@ -1987,17 +1993,18 @@ translation works for DDL and SQL generation, as well as with the ORM.
 For example, if the ``User`` class were assigned the schema "per_user"::
 
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id = Column(Integer, primary_key=True)
 
-        __table_args__ = {'schema': 'per_user'}
+        __table_args__ = {"schema": "per_user"}
 
 On each request, the :class:`.Session` can be set up to refer to a
 different schema each time::
 
     session = Session()
-    session.connection(execution_options={
-        "schema_translate_map": {"per_user": "account_one"}})
+    session.connection(
+        execution_options={"schema_translate_map": {"per_user": "account_one"}}
+    )
 
     # will query from the ``account_one.user`` table
     session.query(User).get(5)
@@ -2072,21 +2079,21 @@ Then, a mapping where we are equating a string "id" column on one
 table to an integer "id" column on the other::
 
     class Person(Base):
-        __tablename__ = 'person'
+        __tablename__ = "person"
         id = Column(StringAsInt, primary_key=True)
 
         pets = relationship(
-            'Pets',
+            "Pets",
             primaryjoin=(
-                'foreign(Pets.person_id)'
-                '==cast(type_coerce(Person.id, Integer), Integer)'
-            )
+                "foreign(Pets.person_id)" "==cast(type_coerce(Person.id, Integer), Integer)"
+            ),
         )
 
+
     class Pets(Base):
-        __tablename__ = 'pets'
-        id = Column('id', Integer, primary_key=True)
-        person_id = Column('person_id', Integer)
+        __tablename__ = "pets"
+        id = Column("id", Integer, primary_key=True)
+        person_id = Column("person_id", Integer)
 
 Above, in the :paramref:`_orm.relationship.primaryjoin` expression, we are
 using :func:`.type_coerce` to handle bound parameters passed via
@@ -2166,8 +2173,7 @@ Column::
     class MyObject(Base):
         # ...
 
-        json_value = Column(
-            JSON(none_as_null=False), nullable=False, default=JSON.NULL)
+        json_value = Column(JSON(none_as_null=False), nullable=False, default=JSON.NULL)
 
 Or, ensure the value is present on the object::
 
@@ -2182,7 +2188,6 @@ passed to :paramref:`_schema.Column.default` or :paramref:`_schema.Column.server
     # default=None is the same as omitting it entirely, does not apply JSON NULL
     json_value = Column(JSON(none_as_null=False), nullable=False, default=None)
 
-
 .. seealso::
 
     :ref:`change_3514`
@@ -2195,9 +2200,11 @@ Columns no longer added redundantly with DISTINCT + ORDER BY
 A query such as the following will now augment only those columns
 that are missing from the SELECT list, without duplicates::
 
-    q = session.query(User.id, User.name.label('name')).\
-        distinct().\
-        order_by(User.id, User.name, User.fullname)
+    q = (
+        session.query(User.id, User.name.label("name"))
+        .distinct()
+        .order_by(User.id, User.name, User.fullname)
+    )
 
 Produces::
 
@@ -2237,7 +2244,7 @@ now raises an error, whereas previously it would silently pick only the
 last defined validator::
 
     class A(Base):
-        __tablename__ = 'a'
+        __tablename__ = "a"
         id = Column(Integer, primary_key=True)
 
         data = Column(String)
@@ -2249,6 +2256,7 @@ last defined validator::
         @validates("data")
         def _validate_data_two(self):
             assert "y" in data
+
 
     configure_mappers()
 
@@ -2321,7 +2329,7 @@ passed through the literal quoting system::
 
     >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
     >>> from sqlalchemy.types import String
-    >>> t = Table('t', MetaData(), Column('x', String(), server_default="hi ' there"))
+    >>> t = Table("t", MetaData(), Column("x", String(), server_default="hi ' there"))
     >>> print(CreateTable(t))
 
     CREATE TABLE t (
@@ -2473,7 +2481,7 @@ This includes:
   one less dimension.  Given a column with type ``ARRAY(Integer, dimensions=3)``,
   we can now perform this expression::
 
-      int_expr = col[5][6][7]   # returns an Integer expression object
+      int_expr = col[5][6][7]  # returns an Integer expression object
 
   Previously, the indexed access to ``col[5]`` would return an expression of
   type :class:`.Integer` where we could no longer perform indexed access
@@ -2490,7 +2498,7 @@ This includes:
   the :class:`_postgresql.ARRAY` type, this means that it is now straightforward
   to produce JSON expressions with multiple levels of indexed access::
 
-    json_expr = json_col['key1']['attr1'][5]
+    json_expr = json_col["key1"]["attr1"][5]
 
 * The "textual" type that is returned by indexed access of :class:`.HSTORE`
   as well as the "textual" type that is returned by indexed access of
@@ -2520,12 +2528,11 @@ support CAST operations to each other without the "astext" aspect.
 
 This means that in most cases, an application that was doing this::
 
-    expr = json_col['somekey'].cast(Integer)
+    expr = json_col["somekey"].cast(Integer)
 
 Will now need to change to this::
 
-    expr = json_col['somekey'].astext.cast(Integer)
-
+    expr = json_col["somekey"].astext.cast(Integer)
 
 .. _change_2729:
 
@@ -2536,12 +2543,21 @@ A table definition like the following will now emit CREATE TYPE
 as expected::
 
     enum = Enum(
-        'manager', 'place_admin', 'carwash_admin',
-        'parking_admin', 'service_admin', 'tire_admin',
-        'mechanic', 'carwasher', 'tire_mechanic', name="work_place_roles")
+        "manager",
+        "place_admin",
+        "carwash_admin",
+        "parking_admin",
+        "service_admin",
+        "tire_admin",
+        "mechanic",
+        "carwasher",
+        "tire_mechanic",
+        name="work_place_roles",
+    )
+
 
     class WorkPlacement(Base):
-        __tablename__ = 'work_placement'
+        __tablename__ = "work_placement"
         id = Column(Integer, primary_key=True)
         roles = Column(ARRAY(enum))
 
@@ -2580,10 +2596,11 @@ The new argument :paramref:`.PGInspector.get_view_names.include`
 allows specification of which sub-types of views should be returned::
 
     from sqlalchemy import inspect
+
     insp = inspect(engine)
 
-    plain_views = insp.get_view_names(include='plain')
-    all_views = insp.get_view_names(include=('plain', 'materialized'))
+    plain_views = insp.get_view_names(include="plain")
+    all_views = insp.get_view_names(include=("plain", "materialized"))
 
 :ticket:`3588`
 
@@ -2668,9 +2685,7 @@ The MySQL dialect now accepts the value "AUTOCOMMIT" for the
 parameters::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
+    connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
 The isolation level makes use of the various "autocommit" attributes
 provided by most MySQL DBAPIs.
@@ -2687,10 +2702,11 @@ on an InnoDB table featured AUTO_INCREMENT on one of its columns which was
 not the first column, e.g.::
 
     t = Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True, autoincrement=False),
-        Column('y', Integer, primary_key=True, autoincrement=True),
-        mysql_engine='InnoDB'
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True, autoincrement=False),
+        Column("y", Integer, primary_key=True, autoincrement=True),
+        mysql_engine="InnoDB",
     )
 
 DDL such as the following would be generated::
@@ -2720,12 +2736,13 @@ use the :class:`.PrimaryKeyConstraint` construct explicitly (1.1.0b2)
 (along with a KEY for the autoincrement column as required by MySQL), e.g.::
 
     t = Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True, autoincrement=True),
-        PrimaryKeyConstraint('x', 'y'),
-        UniqueConstraint('y'),
-        mysql_engine='InnoDB'
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True, autoincrement=True),
+        PrimaryKeyConstraint("x", "y"),
+        UniqueConstraint("y"),
+        mysql_engine="InnoDB",
     )
 
 Along with the change :ref:`change_3216`, composite primary keys with
@@ -2735,13 +2752,12 @@ now defaults to the value ``"auto"`` and the ``autoincrement=False``
 directives are no longer needed::
 
     t = Table(
-        'some_table', metadata,
-        Column('x', Integer, primary_key=True),
-        Column('y', Integer, primary_key=True, autoincrement=True),
-        mysql_engine='InnoDB'
+        "some_table",
+        metadata,
+        Column("x", Integer, primary_key=True),
+        Column("y", Integer, primary_key=True, autoincrement=True),
+        mysql_engine="InnoDB",
     )
-
-
 
 Dialect Improvements and Changes - SQLite
 =========================================
@@ -2849,8 +2865,7 @@ parameters.  The four standard levels are supported as well as
 ``SNAPSHOT``::
 
     engine = create_engine(
-        "mssql+pyodbc://scott:tiger@ms_2008",
-        isolation_level="REPEATABLE READ"
+        "mssql+pyodbc://scott:tiger@ms_2008", isolation_level="REPEATABLE READ"
     )
 
 .. seealso::
@@ -2869,12 +2884,11 @@ which includes a length, an "un-lengthed" type under SQL Server would
 copy the "length" parameter as the value ``"max"``::
 
     >>> from sqlalchemy import create_engine, inspect
-    >>> engine = create_engine('mssql+pyodbc://scott:tiger@ms_2008', echo=True)
+    >>> engine = create_engine("mssql+pyodbc://scott:tiger@ms_2008", echo=True)
     >>> engine.execute("create table s (x varchar(max), y varbinary(max))")
     >>> insp = inspect(engine)
     >>> for col in insp.get_columns("s"):
-    ...     print(col['type'].__class__, col['type'].length)
-    ...
+    ...     print(col["type"].__class__, col["type"].length)
     <class 'sqlalchemy.sql.sqltypes.VARCHAR'> max
     <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> max
 
@@ -2884,8 +2898,7 @@ interprets as "max".   The fix then is so that these lengths come
 out as None, so that the type objects work in non-SQL Server contexts::
 
     >>> for col in insp.get_columns("s"):
-    ...     print(col['type'].__class__, col['type'].length)
-    ...
+    ...     print(col["type"].__class__, col["type"].length)
     <class 'sqlalchemy.sql.sqltypes.VARCHAR'> None
     <class 'sqlalchemy.dialects.mssql.base.VARBINARY'> None
 
@@ -2918,10 +2931,11 @@ This aliasing attempts to turn schema-qualified tables into aliases;
 given a table such as::
 
     account_table = Table(
-        'account', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('info', String(100)),
-        schema="customer_schema"
+        "account",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("info", String(100)),
+        schema="customer_schema",
     )
 
 The legacy mode of behavior will attempt to turn a schema-qualified table

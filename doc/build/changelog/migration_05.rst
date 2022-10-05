@@ -64,15 +64,21 @@ Object Relational Mapping
 
   ::
 
-      session.query(User.name, func.count(Address.id).label("numaddresses")).join(Address).group_by(User.name)
+      session.query(User.name, func.count(Address.id).label("numaddresses")).join(
+          Address
+      ).group_by(User.name)
 
   The tuples returned by any multi-column/entity query are
   *named*' tuples:
 
   ::
 
-      for row in session.query(User.name, func.count(Address.id).label('numaddresses')).join(Address).group_by(User.name):
-         print("name", row.name, "number", row.numaddresses)
+      for row in (
+          session.query(User.name, func.count(Address.id).label("numaddresses"))
+          .join(Address)
+          .group_by(User.name)
+      ):
+          print("name", row.name, "number", row.numaddresses)
 
   ``Query`` has a ``statement`` accessor, as well as a
   ``subquery()`` method which allow ``Query`` to be used to
@@ -80,10 +86,15 @@ Object Relational Mapping
 
   ::
 
-      subq = session.query(Keyword.id.label('keyword_id')).filter(Keyword.name.in_(['beans', 'carrots'])).subquery()
-      recipes = session.query(Recipe).filter(exists().
-         where(Recipe.id==recipe_keywords.c.recipe_id).
-         where(recipe_keywords.c.keyword_id==subq.c.keyword_id)
+      subq = (
+          session.query(Keyword.id.label("keyword_id"))
+          .filter(Keyword.name.in_(["beans", "carrots"]))
+          .subquery()
+      )
+      recipes = session.query(Recipe).filter(
+          exists()
+          .where(Recipe.id == recipe_keywords.c.recipe_id)
+          .where(recipe_keywords.c.keyword_id == subq.c.keyword_id)
       )
 
 * **Explicit ORM aliases are recommended for aliased joins**
@@ -223,17 +234,24 @@ Object Relational Mapping
 
   ::
 
-          mapper(User, users, properties={
-              'addresses':relation(Address, order_by=addresses.c.id)
-          }, order_by=users.c.id)
+          mapper(
+              User,
+              users,
+              properties={"addresses": relation(Address, order_by=addresses.c.id)},
+              order_by=users.c.id,
+          )
 
   To set ordering on a backref, use the ``backref()``
   function:
 
   ::
 
-          'keywords':relation(Keyword, secondary=item_keywords,
-                order_by=keywords.c.name, backref=backref('items', order_by=items.c.id))
+          "keywords": relation(
+              Keyword,
+              secondary=item_keywords,
+              order_by=keywords.c.name,
+              backref=backref("items", order_by=items.c.id),
+          )
 
   Using declarative ?  To help with the new ``order_by``
   requirement, ``order_by`` and friends can now be set using
@@ -244,7 +262,7 @@ Object Relational Mapping
 
           class MyClass(MyDeclarativeBase):
               ...
-              'addresses':relation("Address", order_by="Address.id")
+              "addresses": relation("Address", order_by="Address.id")
 
   It's generally a good idea to set ``order_by`` on
   ``relation()s`` which load list-based collections of
@@ -402,14 +420,17 @@ Schema/Types
           convert_result_value methods
 
           """
+
           def bind_processor(self, dialect):
               def convert(value):
                   return self.convert_bind_param(value, dialect)
+
               return convert
 
           def result_processor(self, dialect):
               def convert(value):
                   return self.convert_result_value(value, dialect)
+
               return convert
 
           def convert_result_value(self, value, dialect):
@@ -461,10 +482,10 @@ Schema/Types
        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec
 
        # old way
-       '2008-06-27 12:00:00.125'
+       "2008-06-27 12:00:00.125"
 
        # new way
-       '2008-06-27 12:00:00.000125'
+       "2008-06-27 12:00:00.000125"
 
   So if an existing SQLite file-based database intends to be
   used across 0.4 and 0.5, you either have to upgrade the
@@ -481,6 +502,7 @@ Schema/Types
   ::
 
        from sqlalchemy.databases.sqlite import DateTimeMixin
+
        DateTimeMixin.__legacy_microseconds__ = True
 
 Connection Pool no longer threadlocal by default
@@ -522,7 +544,7 @@ data-driven, it takes ``[args]``.
 
   ::
 
-         query.join('orders', 'items')
+         query.join("orders", "items")
          query.join(User.orders, Order.items)
 
 * the ``in_()`` method on columns and similar only accepts a
@@ -605,6 +627,7 @@ Removed
   ::
 
       from sqlalchemy.orm import aliased
+
       address_alias = aliased(Address)
       print(session.query(User, address_alias).join((address_alias, User.addresses)).all())
 

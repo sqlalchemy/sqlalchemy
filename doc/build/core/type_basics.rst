@@ -43,10 +43,10 @@ values to and from the database, as in the example below::
     metadata_obj = MetaData()
 
     user = Table(
-        'user',
+        "user",
         metadata_obj,
-        Column('user_name', String, primary_key=True),
-        Column('email_address', String(60)),
+        Column("user_name", String, primary_key=True),
+        Column("email_address", String(60)),
     )
 
 When using a particular :class:`_types.TypeEngine` class in a
