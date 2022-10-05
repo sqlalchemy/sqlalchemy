@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 8588
+
+    Adjusted the regular expression used to match "CREATE VIEW" when
+    testing for views to work more flexibly, no longer requiring the
+    special keyword "ALGORITHM" in the middle, which was intended to be
+    optional but was not working correctly.  The change allows view reflection
+    to work more completely on MySQL-compatible variants such as StarRocks.
+    Pull request courtesy John Bodley.
