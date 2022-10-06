@@ -2107,6 +2107,11 @@ class Session(_SessionClassMethods, EventTarget):
 
         .. versionadded:: 1.4.24
 
+        .. seealso::
+
+            :ref:`orm_queryguide_select_orm_entities` - contrasts the behavior
+            of :meth:`_orm.Session.execute` to :meth:`_orm.Session.scalars`
+
         """
 
         return self._execute_internal(

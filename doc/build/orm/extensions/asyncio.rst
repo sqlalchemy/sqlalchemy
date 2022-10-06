@@ -244,15 +244,6 @@ then used in a Python asynchronous context manager (i.e. ``async with:``
 statement) so that it is automatically closed at the end of the block; this is
 equivalent to calling the :meth:`_asyncio.AsyncSession.close` method.
 
-.. note:: :class:`_asyncio.AsyncSession` uses SQLAlchemy's future mode, which
-   has several potentially breaking changes.  One such change is the new
-   default behavior of ``cascade_backrefs`` is ``False``, which may affect
-   how related objects are saved to the database.
-
-   .. seealso::
-
-     :ref:`change_5150`
-
 
 .. _asyncio_orm_avoid_lazyloads:
 
@@ -333,9 +324,7 @@ Other guidelines include:
   setting, which means that the :meth:`.AsyncSession.refresh` method will
   expire the attributes on related objects, but not necessarily refresh those
   related objects assuming eager loading is not configured within the
-  :func:`_orm.relationship`, leaving them in an expired state.   A future
-  release may introduce the ability to indicate eager loader options when
-  invoking :meth:`.Session.refresh` and/or :meth:`.AsyncSession.refresh`.
+  :func:`_orm.relationship`, leaving them in an expired state.
 
 * Appropriate loader options should be employed for :func:`_orm.deferred`
   columns, if used at all, in addition to that of :func:`_orm.relationship`

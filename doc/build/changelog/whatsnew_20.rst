@@ -1628,7 +1628,7 @@ a form which is equivalent towards:
 
     %(param_1)s / CAST(%(param_2)s AS NUMERIC)
 
-With param_1=5, param_2=10, so that the return expression will be of type
+With ``param_1=5``, ``param_2=10``, so that the return expression will be of type
 NUMERIC, typically as the Python value ``decimal.Decimal("0.5")``.
 
 Given a "floor division" operation against two integer values::

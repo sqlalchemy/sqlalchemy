@@ -13,10 +13,11 @@ ORM API Features for Querying
 ORM Loader Options
 -------------------
 
-Loader options are objects that are passed to the :meth:`_sql.Select.options`
-method, which affect the loading of both column and relationship-oriented
-attributes.  The majority of loader options descend from the :class:`_orm.Load`
-hierarchy.  For a complete overview of using loader options, see the linked
+Loader options are objects which, when passed to the
+:meth:`_sql.Select.options` method of a :class:`.Select` object or similar SQL
+construct, affect the loading of both column and relationship-oriented
+attributes. The majority of loader options descend from the :class:`_orm.Load`
+hierarchy. For a complete overview of using loader options, see the linked
 sections below.
 
 .. seealso::

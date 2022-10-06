@@ -98,8 +98,13 @@ from any :class:`_orm.Session`, the operation fails, raising an exception.
 
 As an alternative to lazy loading on access, deferred columns may also be
 configured to raise an informative exception when accessed, regardless of their
-attachment state. See the section :ref:`orm_queryguide_deferred_raiseload` for
-background.
+attachment state.  When using the :func:`_orm.load_only` construct, this
+may be indicated using the :paramref:`_orm.load_only.raiseload` parameter.
+See the section :ref:`orm_queryguide_deferred_raiseload` for
+background and examples.
+
+.. tip::  as noted elsewhere, lazy loading is not available when using
+   :ref:`asyncio_toplevel`.
 
 Using ``load_only()`` with multiple entities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,18 +245,18 @@ Using raiseload to prevent deferred column loads
 
   >>> session.expunge_all()
 
-When using :func:`_orm.load_only` or :func:`_orm.deferred`, attributes marked
-as deferred on an object have the default behavior that when first accessed, a
-SELECT statement will be emitted within the current transaction in order to
-load their value. It is often necessary to prevent this load from occurring,
-and instead raise an exception when the attribute is accessed, indicating that
-the need to query the database for this column was not expected. A typical
-scenario is an operation where objects are loaded with all the columns that are
-known to be required for the operation to proceed, which are then passed onto a
-view layer. Any further SQL operations that emit within the view layer should
-be caught, so that the up-front loading operation can be adjusted to
-accommodate for that additional data up front, rather than incurring additional
-lazy loading.
+When using the :func:`_orm.load_only` or :func:`_orm.defer` loader options,
+attributes marked as deferred on an object have the default behavior that when
+first accessed, a SELECT statement will be emitted within the current
+transaction in order to load their value. It is often necessary to prevent this
+load from occurring, and instead raise an exception when the attribute is
+accessed, indicating that the need to query the database for this column was
+not expected. A typical scenario is an operation where objects are loaded with
+all the columns that are known to be required for the operation to proceed,
+which are then passed onto a view layer. Any further SQL operations that emit
+within the view layer should be caught, so that the up-front loading operation
+can be adjusted to accommodate for that additional data up front, rather than
+incurring additional lazy loading.
 
 For this use case the :func:`_orm.defer` and :func:`_orm.load_only` options
 include a boolean parameter :paramref:`_orm.defer.raiseload`, which when set to
@@ -515,7 +520,7 @@ Undeferring by group with ``undefer_group()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If deferred columns are configured with :paramref:`_orm.mapped_column.deferred_group`
-(introduced previously at :ref:`orm_queryguide_deferred_group`), the
+as introduced in the preceding section, the
 entire group may be indicated to load eagerly using the :func:`_orm.undefer_group`
 option, passing the string name of the group to be eagerly loaded::
 

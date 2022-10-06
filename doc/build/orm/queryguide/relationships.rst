@@ -18,6 +18,9 @@ Relationship Loading Techniques
     objects.   Readers should be familiar with
     :ref:`relationship_config_toplevel` and basic use.
 
+    Most examples here assume the "User/Address" mapping setup similar
+    to the one illustrated at :doc:`setup for selects <_plain_setup>`.
+
 A big part of SQLAlchemy is providing a wide range of control over how related
 objects get loaded when querying.   By "related objects" we refer to collections
 or scalar associations configured on a mapper using :func:`_orm.relationship`.
@@ -52,7 +55,10 @@ The primary forms of relationship loading are:
 * **lazy loading** - available via ``lazy='select'`` or the :func:`.lazyload`
   option, this is the form of loading that emits a SELECT statement at
   attribute access time to lazily load a related reference on a single
-  object at a time.  Lazy loading is detailed at :ref:`lazy_loading`.
+  object at a time.  Lazy loading is the **default loading style** for all
+  :func:`_orm.relationship` constructs that don't otherwise indicate the
+  :paramref:`_orm.relationship.lazy` option.  Lazy loading is detailed at
+  :ref:`lazy_loading`.
 
 * **select IN loading** - available via ``lazy='selectin'`` or the :func:`.selectinload`
   option, this form of loading emits a second (or more) SELECT statement which
@@ -159,11 +165,9 @@ is to set them up on a per-query basis against specific attributes using the
 :meth:`_sql.Select.options` method.  Very detailed
 control over relationship loading is available using loader options;
 the most common are
-:func:`_orm.joinedload`,
-:func:`_orm.subqueryload`, :func:`_orm.selectinload`
-and :func:`_orm.lazyload`.   The option accepts either
-the string name of an attribute against a parent, or for greater specificity
-can accommodate a class-bound attribute directly::
+:func:`_orm.joinedload`, :func:`_orm.selectinload`
+and :func:`_orm.lazyload`.   The option accepts a class-bound attribute
+referring to the specific class/attribute that should be targeted::
 
     from sqlalchemy import select
     from sqlalchemy.orm import lazyload
@@ -280,10 +284,10 @@ the :meth:`_orm.Load.options` method::
    transaction is committed or rolled back, or :meth:`.Session.expire_all` is
    used), when the ``Parent.children`` collection is next accessed in order to
    re-load it, the ``Child.subelements`` collection will again be loaded using
-   subquery eager loading.This stays the case even if the above ``Parent``
+   subquery eager loading. This stays the case even if the above ``Parent``
    object is accessed from a subsequent query that specifies a different set of
-   options.To change the options on an existing object without expunging it and
-   re-loading, they must be set explicitly in conjunction using the
+   options. To change the options on an existing object without expunging it
+   and re-loading, they must be set explicitly in conjunction using the
    :ref:`orm_queryguide_populate_existing` execution option::
 
       # change the options on Parent objects that were already loaded
@@ -693,14 +697,14 @@ returned.
 By changing the usage of :func:`_orm.joinedload` to another style of loading, we
 can change how the collection is loaded completely independently of SQL used to
 retrieve the actual ``User`` rows we want.  Below we change :func:`_orm.joinedload`
-into :func:`.subqueryload`:
+into :func:`.selectinload`:
 
 .. sourcecode:: pycon+sql
 
     >>> stmt = (
     ...     select(User)
     ...     .join(User.addresses)
-    ...     .options(subqueryload(User.addresses))
+    ...     .options(selectinload(User.addresses))
     ...     .filter(User.name == "spongebob")
     ...     .filter(Address.email_address == "someaddress@foo.com")
     ... )
@@ -716,9 +720,9 @@ into :func:`.subqueryload`:
         users.name = ?
         AND addresses.email_address = ?
     ['spongebob', 'someaddress@foo.com']
-
-    # ... subqueryload() emits a SELECT in order
+    # ... selectinload() emits a SELECT in order
     # to load all address records ...
+
 
 When using joined eager loading, if the query contains a modifier that impacts
 the rows returned externally to the joins, such as when using DISTINCT, LIMIT,
@@ -738,9 +742,7 @@ no matter what the format of the query is.
 Select IN loading
 -----------------
 
-Select IN loading is similar in operation to subquery eager loading, however
-the SELECT statement which is emitted has a much simpler structure than that of
-subquery eager loading.  In most cases, selectin loading is the most simple and
+In most cases, selectin loading is the most simple and
 efficient way to eagerly load collections of objects.  The only scenario in
 which selectin eager loading is not feasible is when the model is using
 composite primary keys, and the backend database does not support tuples with
@@ -783,15 +785,12 @@ Above, the second SELECT refers to ``addresses.user_id IN (5, 7)``, where the
 "5" and "7" are the primary key values for the previous two ``User``
 objects loaded; after a batch of objects are completely loaded, their primary
 key values are injected into the ``IN`` clause for the second SELECT.
-Because the relationship between ``User`` and ``Address`` has a simple [1]_
+Because the relationship between ``User`` and ``Address`` has a simple
 primary join condition and provides that the
 primary key values for ``User`` can be derived from ``Address.user_id``, the
 statement has no joins or subqueries at all.
 
-.. versionchanged:: 1.3 selectin loading can omit the JOIN for a simple
-   one-to-many collection.
-
-For simple [1]_ many-to-one loads, a JOIN is also not needed as the foreign key
+For simple many-to-one loads, a JOIN is also not needed as the foreign key
 value from the parent object is used:
 
 .. sourcecode:: pycon+sql
@@ -814,10 +813,9 @@ value from the parent object is used:
     WHERE users.id IN (?, ?)
     (1, 2)
 
-.. versionchanged:: 1.3.6 selectin loading can also omit the JOIN for a simple
-   many-to-one relationship.
+.. tip::
 
-.. [1] by "simple" we mean that the :paramref:`_orm.relationship.primaryjoin`
+   by "simple" we mean that the :paramref:`_orm.relationship.primaryjoin`
    condition expresses an equality comparison between the primary key of the
    "one" side and a straight foreign key of the "many" side, without any
    additional criteria.
@@ -826,25 +824,6 @@ Select IN loading also supports many-to-many relationships, where it currently
 will JOIN across all three tables to match rows from one side to the other.
 
 Things to know about this kind of loading include:
-
-* The SELECT statement emitted by the "selectin" loader strategy, unlike
-  that of "subquery", does not
-  require a subquery nor does it inherit any of the performance limitations
-  of the original query; the lookup is a simple primary key lookup and should
-  have high performance.
-
-* The special ordering requirements of subqueryload described at
-  :ref:`subqueryload_ordering` also don't apply to selectin loading; selectin
-  is always linking directly to a parent primary key and can't really
-  return the wrong result.
-
-* "selectin" loading, unlike joined or subquery eager loading, always emits its
-  SELECT in terms of the immediate parent objects just loaded, and not the
-  original type of object at the top of the chain.  So if eager loading many
-  levels deep, "selectin" loading still will not require any JOINs for simple
-  one-to-many or many-to-one relationships.   In comparison, joined and
-  subquery eager loading always refer to multiple JOINs up to the original
-  parent.
 
 * The strategy emits a SELECT for up to 500 parent primary key values at a
   time, as the primary keys are rendered into a large IN expression in the
@@ -863,12 +842,6 @@ Things to know about this kind of loading include:
   particular database does start supporting this syntax, it will work without
   any changes to SQLAlchemy (as was the case with SQLite).
 
-In general, "selectin" loading is probably superior to "subquery" eager loading
-in most ways, save for the syntax requirement with composite primary keys
-and possibly that it may emit many SELECT statements for larger result sets.
-As always, developers should spend time looking at the
-statements and results generated by their applications in development to
-check that things are working efficiently.
 
 .. _subquery_eager_loading:
 
@@ -888,11 +861,13 @@ Subquery Eager Loading
    keys, on the Microsoft SQL Server backend that continues to not have
    support for the "tuple IN" syntax.
 
-Subqueryload eager loading is configured in the same manner as that of
-joined eager loading;  for the :paramref:`_orm.relationship.lazy` parameter,
-we would specify ``"subquery"`` rather than ``"joined"``, and for
-the option we use the :func:`.subqueryload` option rather than the
-:func:`_orm.joinedload` option.
+Subquery loading is similar in operation to selectin eager loading, however
+the SELECT statement which is emitted is derived from the original statement,
+and has a more complex query structure as that of selectin eager loading.
+
+Subquery eager loading is provided using the ``"subquery"`` argument to
+:paramref:`_orm.relationship.lazy` or by using the :func:`.subqueryload` loader
+option.
 
 The operation of subquery eager loading is to emit a second SELECT statement
 for each relationship to be loaded, across all result objects at once.
@@ -928,44 +903,23 @@ the collection members to load them at once:
     ORDER BY anon_1.users_id, addresses.id
     ('spongebob',)
 
-The subqueryload strategy has many advantages over joined eager loading
-in the area of loading collections.   First, it allows the original query
-to proceed without changing it at all, not introducing in particular a
-LEFT OUTER JOIN that may make it less efficient.  Secondly, it allows
-for many collections to be eagerly loaded without producing a single query
-that has many JOINs in it, which can be even less efficient; each relationship
-is loaded in a fully separate query.  Finally, because the additional query
-only needs to load the collection items and not the lead object, it can
-use an inner JOIN in all cases for greater query efficiency.
 
-Disadvantages of subqueryload include that the complexity of the original
-query is transferred to the relationship queries, which when combined with the
-use of a subquery, can on some backends in some cases (notably MySQL) produce
-significantly slow queries.   Additionally, the subqueryload strategy can only
-load the full contents of all collections at once, is therefore incompatible
-with "batched" loading supplied by :ref:`Yield Per <orm_queryguide_yield_per>`, both for collection
-and scalar relationships.
+Things to know about this kind of loading include:
 
-The newer style of loading provided by :func:`.selectinload` solves these
-limitations of :func:`.subqueryload`.
+* The SELECT statement emitted by the "subquery" loader strategy, unlike
+  that of "selectin", requires a subquery, and will inherit whatever performance
+  limitations are present in the original query.  The subquery itself may
+  also incur performance penalties based on the specifics of the database in
+  use.
 
-.. seealso::
-
-    :ref:`selectin_eager_loading`
-
-
-.. _subqueryload_ordering:
-
-The Importance of Ordering
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A query which makes use of :func:`.subqueryload` in conjunction with a
-limiting modifier such as :meth:`_sql.Select.limit`,
-or :meth:`_sql.Select.offset` should **always** include :meth:`_sql.Select.order_by`
-against unique column(s) such as the primary key, so that the additional queries
-emitted by :func:`.subqueryload` include
-the same ordering as used by the parent query.  Without it, there is a chance
-that the inner query could return the wrong rows::
+* "subquery" loading imposes some special ordering requirements in order to work
+  correctly.  A query which makes use of :func:`.subqueryload` in conjunction with a
+  limiting modifier such as :meth:`_sql.Select.limit`,
+  or :meth:`_sql.Select.offset` should **always** include :meth:`_sql.Select.order_by`
+  against unique column(s) such as the primary key, so that the additional queries
+  emitted by :func:`.subqueryload` include
+  the same ordering as used by the parent query.  Without it, there is a chance
+  that the inner query could return the wrong rows::
 
     # incorrect, no ORDER BY
     stmt = select(User).options(subqueryload(User.addresses).limit(1))
@@ -981,9 +935,27 @@ that the inner query could return the wrong rows::
         .limit(1)
     )
 
+  .. seealso::
+
+       :ref:`faq_subqueryload_limit_sort` - detailed example
+
+
+* "subquery" loading also incurs additional performance / complexity issues
+  when used on a many-levels-deep eager load, as subqueries will be nested
+  repeatedly.
+
+* "subquery" loading is not compatible with the
+  "batched" loading supplied by :ref:`Yield Per <orm_queryguide_yield_per>`, both for collection
+  and scalar relationships.
+
+For the above reasons, the "selectin" strategy should be preferred over
+"subquery".
+
 .. seealso::
 
-    :ref:`faq_subqueryload_limit_sort` - detailed example
+    :ref:`selectin_eager_loading`
+
+
 
 
 .. _what_kind_of_loading:
@@ -1042,16 +1014,18 @@ the string ``'*'`` as the argument to any of these options::
 
 Above, the ``lazyload('*')`` option will supersede the ``lazy`` setting
 of all :func:`_orm.relationship` constructs in use for that query,
-except for those which use the ``'dynamic'`` style of loading.
+with the exception of those that use ``lazy='write_only'``
+or ``lazy='dynamic'``.
+
 If some relationships specify
-``lazy='joined'`` or ``lazy='subquery'``, for example,
+``lazy='joined'`` or ``lazy='selectin'``, for example,
 using ``lazyload('*')`` will unilaterally
 cause all those relationships to use ``'select'`` loading, e.g. emit a
 SELECT statement when each attribute is accessed.
 
 The option does not supersede loader options stated in the
-query, such as :func:`.eagerload`,
-:func:`.subqueryload`, etc.  The query below will still use joined loading
+query, such as :func:`.joinedload`,
+:func:`.selectinload`, etc.  The query below will still use joined loading
 for the ``widget`` relationship::
 
     from sqlalchemy import select
@@ -1060,8 +1034,10 @@ for the ``widget`` relationship::
 
     stmt = select(MyClass).options(lazyload("*"), joinedload(MyClass.widget))
 
-If multiple ``'*'`` options are passed, the last one overrides
-those previously passed.
+While the instruction for :func:`.joinedload` above will take place regardless
+of whether it appears before or after the :func:`.lazyload` option,
+if multiple options that each included ``"*"`` were passed, the last one
+will take effect.
 
 .. _orm_queryguide_relationship_per_entity_wildcard:
 
@@ -1070,7 +1046,8 @@ Per-Entity Wildcard Loading Strategies
 
 A variant of the wildcard loader strategy is the ability to set the strategy
 on a per-entity basis.  For example, if querying for ``User`` and ``Address``,
-we can instruct all relationships on ``Address`` only to use lazy loading
+we can instruct all relationships on ``Address`` to use lazy loading,
+while leaving the loader strategies for ``User`` unaffected,
 by first applying the :class:`_orm.Load` object, then specifying the ``*`` as a
 chained option::
 
@@ -1103,18 +1080,6 @@ option. This option is used in the same manner as the
 typically using methods like :meth:`_sql.Select.join`.
 Below, we specify a join between ``User`` and ``Address``
 and additionally establish this as the basis for eager loading of ``User.addresses``::
-
-    class User(Base):
-        __tablename__ = "user"
-        id = mapped_column(Integer, primary_key=True)
-        addresses = relationship("Address")
-
-
-    class Address(Base):
-        __tablename__ = "address"
-
-        # ...
-
 
     from sqlalchemy.orm import contains_eager
 
