@@ -26,3 +26,11 @@ repos:
           # in case it requires a version pin
           - pydocstyle
           - pygments
+
+-   repo: local
+    hooks:
+    -   id: black-docs
+        name: Format docs code block with black
+        entry: python tools/format_docs_code.py --report-doctest -f
+        language: system
+        types: [rst]
