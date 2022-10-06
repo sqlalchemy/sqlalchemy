@@ -186,7 +186,7 @@ def test_core_reuse_stmt(n):
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
 
-            row = conn.execute(stmt, id=id_).first()
+            row = conn.execute(stmt, {"id": id_}).first()
             tuple(row)
 
 
@@ -200,7 +200,7 @@ def test_core_reuse_stmt_compiled_cache(n):
         compiled_cache=compiled_cache
     ) as conn:
         for id_ in random.sample(ids, n):
-            row = conn.execute(stmt, id=id_).first()
+            row = conn.execute(stmt, {"id": id_}).first()
             tuple(row)
 
 
