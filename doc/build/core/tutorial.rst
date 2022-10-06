@@ -822,7 +822,7 @@ objects is at :class:`.ColumnOperators`.
 
 * :meth:`IS NULL <.ColumnOperators.is_>`::
 
-    statement.where(users.c. == None)
+    statement.where(users.c.name == None)
 
     # alternatively, if pep8/linters are a concern
     statement.where(users.c.name.is_(None))
