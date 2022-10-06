@@ -14,6 +14,7 @@ from black.mode import TargetVersion
 
 
 home = Path(__file__).parent.parent
+ignore_paths = (re.compile(r"changelog/unreleased_\d{2}"),)
 
 
 class BlockLine(NamedTuple):
@@ -51,19 +52,20 @@ def _format_block(
     except Exception as e:
         start_line = input_block[0].line_no
         first_error = not errors
-        errors.append((start_line, code, e))
-        type_ = "doctest" if is_doctest else "plain"
-        if first_error:
-            print()  # add newline
-        print(
-            f"--- {file}:{start_line} Could not format {type_} code "
-            f"block:\n{code}\n---Error: {e}"
-        )
-        if exit_on_error:
-            print("Exiting since --exit-on-error was passed")
-            raise
-        else:
-            print("Ignoring error")
+        if not REPORT_ONLY_DOCTEST or is_doctest:
+            type_ = "doctest" if is_doctest else "plain"
+            errors.append((start_line, code, e))
+            if first_error:
+                print()  # add newline
+            print(
+                f"--- {file}:{start_line} Could not format {type_} code "
+                f"block:\n{code}\n---Error: {e}"
+            )
+            if exit_on_error:
+                print("Exiting since --exit-on-error was passed")
+                raise
+            else:
+                print("Ignoring error")
         return [l.line for l in input_block]
     else:
         formatted_code_lines = formatted.splitlines()
@@ -273,8 +275,12 @@ def format_file(
     return equal, len(errors)
 
 
-def iter_files(directory) -> Iterator[Path]:
-    yield from (home / directory).glob("./**/*.rst")
+def iter_files(directory: str) -> Iterator[Path]:
+    yield from (
+        file
+        for file in (home / directory).glob("./**/*.rst")
+        if not any(pattern.search(file.as_posix()) for pattern in ignore_paths)
+    )
 
 
 def main(file: str | None, directory: str, exit_on_error: bool, check: bool):
@@ -310,12 +316,13 @@ def main(file: str | None, directory: str, exit_on_error: bool, check: bool):
 if __name__ == "__main__":
     parser = ArgumentParser(
         description="""Formats code inside docs using black. Supports \
-doctest code blocks and also tries to format plain code block identifies as \
-all indented blocks of at least 4 spaces, unless '--no-plain' is specified.
+doctest code blocks and plain code block identified as indented sections \
+that are preceded by ``::`` or ``.. sourcecode:: py``.
 
-Plain code block may lead to false positive. To disable formatting on a \
-file section the comment ``.. format: off`` disables formatting until \
-``.. format: on`` is encountered or the file ends.
+To disable formatting on a file section the comment ``.. format: off`` \
+disables formatting until ``.. format: on`` is encountered or the file ends.
+
+Use --report-doctest to ignore errors on plain code blocks.
 """,
         formatter_class=RawDescriptionHelpFormatter,
     )
@@ -333,13 +340,13 @@ file section the comment ``.. format: off`` disables formatting until \
         "--check",
         help="Don't write the files back, just return the "
         "status. Return code 0 means nothing would change. "
-        "Return code 1 means some files would be reformatted.",
+        "Return code 1 means some files would be reformatted",
         action="store_true",
     )
     parser.add_argument(
         "-e",
         "--exit-on-error",
-        help="Exit in case of black format error instead of ignoring it.",
+        help="Exit in case of black format error instead of ignoring it",
         action="store_true",
     )
     parser.add_argument(
@@ -347,6 +354,12 @@ file section the comment ``.. format: off`` disables formatting until \
         "--project-line-length",
         help="Configure the line length to the project value instead "
         "of using the black default of 88",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-rd", "--report-doctest",
+        help="Report errors only when running doctest blocks. When active "
+        "exit-on-error will be valid only on doctest blocks",
         action="store_true",
     )
     args = parser.parse_args()
@@ -362,5 +375,6 @@ file section the comment ``.. format: off`` disables formatting until \
         if args.project_line_length
         else DEFAULT_LINE_LENGTH,
     )
+    REPORT_ONLY_DOCTEST = args.report_doctest
 
     main(args.file, args.directory, args.exit_on_error, args.check)
