@@ -290,6 +290,28 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         sess.close()
 
+    @testing.combinations(True, False)
+    def test_dont_mutate_binds(self, empty_dict):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mp = self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        if empty_dict:
+            bind_arguments = {}
+        else:
+            bind_arguments = {"mapper": mp}
+        sess.execute(select(1), bind_arguments=bind_arguments)
+
+        if empty_dict:
+            eq_(bind_arguments, {})
+        else:
+            eq_(bind_arguments, {"mapper": mp})
+
     @testing.combinations(
         (
             lambda session, Address: session.query(Address).statement,

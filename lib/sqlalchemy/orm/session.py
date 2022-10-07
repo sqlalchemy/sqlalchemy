@@ -1639,6 +1639,8 @@ class Session(_SessionClassMethods):
                 bind_arguments.update(kw)
         elif not bind_arguments:
             bind_arguments = {}
+        else:
+            bind_arguments = dict(bind_arguments)
 
         if (
             statement._propagate_attrs.get("compile_state_plugin", None)
