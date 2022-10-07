@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8614
+
+    The :paramref:`_orm.Session.execute.bind_arguments` dictionary is no longer
+    mutated when passed to :meth:`_orm.Session.execute` and similar; instead,
+    it's copied to an internal dictionary for state changes. Among other
+    things, this fixes and issue where the "clause" passed to the
+    :meth:`_orm.Session.get_bind` method would be incorrectly referring to the
+    :class:`_sql.Select` construct used for the "fetch" synchronization
+    strategy, when the actual query being emitted was a :class:`_dml.Delete` or
+    :class:`_dml.Update`. This would interfere with recipes for "routing
+    sessions".

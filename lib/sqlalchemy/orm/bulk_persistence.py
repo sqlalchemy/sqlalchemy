@@ -599,7 +599,6 @@ class BulkUDCompileState(ORMDMLState):
             execution_options,
             statement._execution_options,
         )
-
         bind_arguments["clause"] = statement
         try:
             plugin_subject = statement._propagate_attrs["plugin_subject"]

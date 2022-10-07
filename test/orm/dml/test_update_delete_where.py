@@ -26,6 +26,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import with_loader_criteria
+from sqlalchemy.sql.dml import Delete
+from sqlalchemy.sql.dml import Update
+from sqlalchemy.sql.selectable import Select
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -1885,6 +1888,50 @@ class UpdateDeleteTest(fixtures.MappedTest):
             "where some support RETURNING and others don't",
         ):
             session.execute(stmt)
+
+    @testing.combinations(("update",), ("delete",), argnames="stmt_type")
+    @testing.combinations(
+        ("evaluate",), ("fetch",), (None,), argnames="sync_type"
+    )
+    def test_routing_session(self, stmt_type, sync_type, connection):
+        User = self.classes.User
+
+        if stmt_type == "update":
+            stmt = update(User).values(age=123)
+            expected = [Update]
+        elif stmt_type == "delete":
+            stmt = delete(User)
+            expected = [Delete]
+        else:
+            assert False
+
+        received = []
+
+        class RoutingSession(Session):
+            def get_bind(self, **kw):
+                received.append(type(kw["clause"]))
+                return super(RoutingSession, self).get_bind(**kw)
+
+        stmt = stmt.execution_options(synchronize_session=sync_type)
+
+        if sync_type == "fetch":
+            expected.insert(0, Select)
+
+            if (
+                stmt_type == "update"
+                and not connection.dialect.update_returning
+            ):
+                expected.insert(0, Select)
+            elif (
+                stmt_type == "delete"
+                and not connection.dialect.delete_returning
+            ):
+                expected.insert(0, Select)
+
+        with RoutingSession(bind=connection) as sess:
+            sess.execute(stmt)
+
+        eq_(received, expected)
 
 
 class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
