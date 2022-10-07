@@ -93,12 +93,16 @@ from .interfaces import RelationshipDirection as RelationshipDirection
 from .interfaces import UserDefinedOption as UserDefinedOption
 from .loading import merge_frozen_result as merge_frozen_result
 from .loading import merge_result as merge_result
+from .mapped_collection import attribute_keyed_dict as attribute_keyed_dict
 from .mapped_collection import (
     attribute_mapped_collection as attribute_mapped_collection,
 )
+from .mapped_collection import column_keyed_dict as column_keyed_dict
 from .mapped_collection import (
     column_mapped_collection as column_mapped_collection,
 )
+from .mapped_collection import keyfunc_mapping as keyfunc_mapping
+from .mapped_collection import KeyFuncDict as KeyFuncDict
 from .mapped_collection import mapped_collection as mapped_collection
 from .mapped_collection import MappedCollection as MappedCollection
 from .mapper import configure_mappers as configure_mappers

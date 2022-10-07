@@ -1,0 +1,12 @@
+.. change::
+    :tags: orm, change
+    :tickets: 8608
+
+    For consistency with the prominent ORM concept :class:`_orm.Mapped`, the
+    names of the dictionary-oriented collections,
+    :func:`_orm.attribute_mapped_collection`,
+    :func:`_orm.column_mapped_collection`, and :class:`_orm.MappedCollection`,
+    are changed to :func:`_orm.attribute_keyed_dict`,
+    :func:`_orm.column_keyed_dict` and :class:`_orm.KeyFuncDict`, using the
+    phrase "dict" to minimize any confusion against the term "mapped". The old
+    names will remain indefinitely with no schedule for removal.

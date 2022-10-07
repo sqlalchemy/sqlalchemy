@@ -281,7 +281,7 @@ Proxying to Dictionary Based Collections
 ----------------------------------------
 
 The association proxy can proxy to dictionary based collections as well.   SQLAlchemy
-mappings usually use the :func:`.attribute_mapped_collection` collection type to
+mappings usually use the :func:`.attribute_keyed_dict` collection type to
 create dictionary collections, as well as the extended techniques described in
 :ref:`dictionary_collections`.
 
@@ -301,7 +301,7 @@ when new elements are added to the dictionary::
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
     from sqlalchemy.orm import DeclarativeBase, relationship
-    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
     class Base(DeclarativeBase):
@@ -318,7 +318,7 @@ when new elements are added to the dictionary::
         user_keyword_associations = relationship(
             "UserKeywordAssociation",
             back_populates="user",
-            collection_class=attribute_mapped_collection("special_key"),
+            collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
         )
         # proxy to 'user_keyword_associations', instantiating
@@ -386,7 +386,7 @@ present on ``UserKeywordAssociation``::
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
     from sqlalchemy.orm import DeclarativeBase, relationship
-    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
     class Base(DeclarativeBase):
@@ -401,7 +401,7 @@ present on ``UserKeywordAssociation``::
         user_keyword_associations = relationship(
             "UserKeywordAssociation",
             back_populates="user",
-            collection_class=attribute_mapped_collection("special_key"),
+            collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
         )
         # the same 'user_keyword_associations'->'keyword' proxy as in
@@ -496,7 +496,7 @@ to a related object, as in the example mapping below::
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy
     from sqlalchemy.orm import DeclarativeBase, relationship
-    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
     class Base(DeclarativeBase):

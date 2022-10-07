@@ -12,12 +12,12 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import Table
-from sqlalchemy.orm import attribute_mapped_collection
+from sqlalchemy.orm import attribute_keyed_dict
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import DynamicMapped
+from sqlalchemy.orm import KeyFuncDict
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import MappedCollection
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.testing import expect_raises_message
@@ -113,7 +113,7 @@ class MappedColumnTest(_MappedColumnTest):
                 is_true(optional_col.nullable)
 
 
-class MappedOneArg(MappedCollection[str, _R]):
+class MappedOneArg(KeyFuncDict[str, _R]):
     pass
 
 
@@ -210,8 +210,8 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[MappedCollection[str, B]] = relationship(  # noqa: F821
-                collection_class=attribute_mapped_collection("name")
+            bs: Mapped[KeyFuncDict[str, B]] = relationship(  # noqa: F821
+                collection_class=attribute_keyed_dict("name")
             )
 
         class B(decl_base):
@@ -231,10 +231,8 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[
-                MappedCollection[str, "B"]
-            ] = relationship(  # noqa: F821
-                collection_class=attribute_mapped_collection("name")
+            bs: Mapped[KeyFuncDict[str, "B"]] = relationship(  # noqa: F821
+                collection_class=attribute_keyed_dict("name")
             )
 
         class B(decl_base):
@@ -246,7 +244,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
         self._assert_dict(A, B)
 
     def test_collection_cls_not_locatable(self, decl_base):
-        class MyCollection(MappedCollection):
+        class MyCollection(KeyFuncDict):
             pass
 
         with expect_raises_message(
@@ -261,7 +259,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
                 data: Mapped[str] = mapped_column()
 
                 bs: Mapped[MyCollection["B"]] = relationship(  # noqa: F821
-                    collection_class=attribute_mapped_collection("name")
+                    collection_class=attribute_keyed_dict("name")
                 )
 
     def test_collection_cls_one_arg(self, decl_base):
@@ -272,7 +270,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             data: Mapped[str] = mapped_column()
 
             bs: Mapped[MappedOneArg["B"]] = relationship(  # noqa: F821
-                collection_class=attribute_mapped_collection("name")
+                collection_class=attribute_keyed_dict("name")
             )
 
         class B(decl_base):

@@ -16,7 +16,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
 class Base(DeclarativeBase):
@@ -80,11 +80,11 @@ class Address(Base):
     user_style_nine = relationship(User, uselist=True)
 
     user_style_ten = relationship(
-        User, collection_class=attribute_mapped_collection("name")
+        User, collection_class=attribute_keyed_dict("name")
     )
 
     user_style_ten_typed: Mapped[Dict[str, User]] = relationship(
-        User, collection_class=attribute_mapped_collection("name")
+        User, collection_class=attribute_keyed_dict("name")
     )
 
     # pylance rejects this however.  cannot get both to work at the same

@@ -134,19 +134,23 @@ from ..util.typing import Protocol
 if typing.TYPE_CHECKING:
     from .attributes import AttributeEventToken
     from .attributes import CollectionAttributeImpl
-    from .mapped_collection import attribute_mapped_collection
-    from .mapped_collection import column_mapped_collection
-    from .mapped_collection import mapped_collection
-    from .mapped_collection import MappedCollection  # noqa: F401
+    from .mapped_collection import attribute_keyed_dict
+    from .mapped_collection import column_keyed_dict
+    from .mapped_collection import keyfunc_mapping
+    from .mapped_collection import KeyFuncDict  # noqa: F401
     from .state import InstanceState
 
 
 __all__ = [
     "collection",
     "collection_adapter",
-    "mapped_collection",
-    "column_mapped_collection",
-    "attribute_mapped_collection",
+    "keyfunc_mapping",
+    "column_keyed_dict",
+    "attribute_keyed_dict",
+    "column_keyed_dict",
+    "attribute_keyed_dict",
+    "MappedCollection",
+    "KeyFuncDict",
 ]
 
 __instrumentation_mutex = threading.Lock()
@@ -1550,8 +1554,15 @@ __interfaces: util.immutabledict[
 
 def __go(lcls):
 
-    global mapped_collection, column_mapped_collection
-    global attribute_mapped_collection, MappedCollection
+    global keyfunc_mapping, mapped_collection
+    global column_keyed_dict, column_mapped_collection
+    global MappedCollection, KeyFuncDict
+    global attribute_keyed_dict, attribute_mapped_collection
+
+    from .mapped_collection import keyfunc_mapping
+    from .mapped_collection import column_keyed_dict
+    from .mapped_collection import attribute_keyed_dict
+    from .mapped_collection import KeyFuncDict
 
     from .mapped_collection import mapped_collection
     from .mapped_collection import column_mapped_collection
@@ -1565,7 +1576,7 @@ def __go(lcls):
     # see [ticket:2406].
     _instrument_class(InstrumentedList)
     _instrument_class(InstrumentedSet)
-    _instrument_class(MappedCollection)
+    _instrument_class(KeyFuncDict)
 
 
 __go(locals())

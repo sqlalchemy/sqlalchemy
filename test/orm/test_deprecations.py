@@ -873,7 +873,7 @@ class InstrumentationTest(fixtures.ORMTest):
             "AttributeEvents"
         ):
 
-            class MyDict(collections.MappedCollection):
+            class MyDict(collections.KeyFuncDict):
                 def __init__(self):
                     super(MyDict, self).__init__(lambda value: "k%d" % value)
 

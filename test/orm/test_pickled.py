@@ -17,8 +17,8 @@ from sqlalchemy.orm import state as sa_state
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy.orm.collections import column_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
+from sqlalchemy.orm.collections import column_keyed_dict
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -580,9 +580,7 @@ class PickleTest(fixtures.MappedTest):
             properties={
                 "addresses": relationship(
                     Address,
-                    collection_class=attribute_mapped_collection(
-                        "email_address"
-                    ),
+                    collection_class=attribute_keyed_dict("email_address"),
                 )
             },
         )
@@ -603,7 +601,7 @@ class PickleTest(fixtures.MappedTest):
             properties={
                 "addresses": relationship(
                     Address,
-                    collection_class=column_mapped_collection(
+                    collection_class=column_keyed_dict(
                         addresses.c.email_address
                     ),
                 )
@@ -629,7 +627,7 @@ class PickleTest(fixtures.MappedTest):
             properties={
                 "addresses": relationship(
                     Address,
-                    collection_class=column_mapped_collection(
+                    collection_class=column_keyed_dict(
                         [addresses.c.id, addresses.c.email_address]
                     ),
                 )

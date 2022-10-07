@@ -8,7 +8,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
 Base = declarative_base()
@@ -30,7 +30,7 @@ class TreeNode(Base):
         backref=backref("parent", remote_side=id),
         # children will be represented as a dictionary
         # on the "name" attribute.
-        collection_class=attribute_mapped_collection("name"),
+        collection_class=attribute_keyed_dict("name"),
     )
 
     def __init__(self, name, parent=None):

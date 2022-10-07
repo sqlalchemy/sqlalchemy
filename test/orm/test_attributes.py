@@ -9,7 +9,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import NO_KEY
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.testing import assert_raises
@@ -2584,7 +2584,7 @@ class HistoryTest(fixtures.TestBase):
             "someattr",
             uselist=True,
             useobject=True,
-            typecallable=attribute_mapped_collection("name"),
+            typecallable=attribute_keyed_dict("name"),
         )
         hi = Bar(name="hi")
         there = Bar(name="there")
@@ -3209,7 +3209,7 @@ class CollectionKeyTest(fixtures.ORMTest):
             "someattr",
             uselist=True,
             useobject=True,
-            typecallable=attribute_mapped_collection("name"),
+            typecallable=attribute_keyed_dict("name"),
         )
         _register_attribute(
             Bar,
