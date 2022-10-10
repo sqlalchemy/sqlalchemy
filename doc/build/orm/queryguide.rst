@@ -1092,11 +1092,6 @@ partitions. The size of each partition defaults to the integer value passed to
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
     ...
 
-When ``yield_per`` is used, the
-:paramref:`_engine.Connection.execution_options.stream_results` option is also
-set for the Core execution, so that a streaming / server side cursor will be
-used if the backend supports it.
-
 The ``yield_per`` execution option **is not compatible** with
 :ref:`"subquery" eager loading <subquery_eager_loading>` loading or
 :ref:`"joined" eager loading <joined_eager_loading>` when using collections. It
