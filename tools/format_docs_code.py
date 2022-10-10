@@ -1,8 +1,10 @@
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 import re
+from typing import NamedTuple
 
 from black import format_str
 from black.const import DEFAULT_LINE_LENGTH
@@ -12,16 +14,18 @@ from black.mode import TargetVersion
 
 
 home = Path(__file__).parent.parent
+ignore_paths = (re.compile(r"changelog/unreleased_\d{2}"),)
 
-_Block = list[
-    tuple[
-        str,
-        int,
-        str | None,
-        str | None,
-        str,
-    ]
-]
+
+class BlockLine(NamedTuple):
+    line: str
+    line_no: int
+    code: str
+    padding: str | None = None  # relevant only on first line of block
+    sql_marker: str | None = None
+
+
+_Block = list[BlockLine]
 
 
 def _format_block(
@@ -29,44 +33,44 @@ def _format_block(
     exit_on_error: bool,
     errors: list[tuple[int, str, Exception]],
     is_doctest: bool,
+    file: str,
 ) -> list[str]:
     if not is_doctest:
         # The first line may have additional padding. Remove then restore later
-        add_padding = start_space.match(input_block[0][4]).groups()[0]
+        add_padding = start_space.match(input_block[0].code).groups()[0]
         skip = len(add_padding)
         code = "\n".join(
-            c[skip:] if c.startswith(add_padding) else c
-            for *_, c in input_block
+            l.code[skip:] if l.code.startswith(add_padding) else l.code
+            for l in input_block
         )
     else:
         add_padding = None
-        code = "\n".join(c for *_, c in input_block)
+        code = "\n".join(l.code for l in input_block)
 
     try:
         formatted = format_str(code, mode=BLACK_MODE)
     except Exception as e:
-        start_line = input_block[0][1]
-        errors.append((start_line, code, e))
-        if is_doctest:
+        start_line = input_block[0].line_no
+        first_error = not errors
+        if not REPORT_ONLY_DOCTEST or is_doctest:
+            type_ = "doctest" if is_doctest else "plain"
+            errors.append((start_line, code, e))
+            if first_error:
+                print()  # add newline
             print(
-                "Could not format code block starting at "
-                f"line {start_line}:\n{code}\nError: {e}"
+                f"--- {file}:{start_line} Could not format {type_} code "
+                f"block:\n{code}\n---Error: {e}"
             )
             if exit_on_error:
                 print("Exiting since --exit-on-error was passed")
                 raise
             else:
                 print("Ignoring error")
-        elif VERBOSE:
-            print(
-                "Could not format code block starting at "
-                f"line {start_line}:\n---\n{code}\n---Error: {e}"
-            )
-        return [line for line, *_ in input_block]
+        return [l.line for l in input_block]
     else:
         formatted_code_lines = formatted.splitlines()
-        padding = input_block[0][2]
-        sql_prefix = input_block[0][3] or ""
+        padding = input_block[0].padding
+        sql_prefix = input_block[0].sql_marker or ""
 
         if is_doctest:
             formatted_lines = [
@@ -84,7 +88,7 @@ def _format_block(
                     for fcl in formatted_code_lines[1:]
                 ),
             ]
-            if not input_block[-1][0] and formatted_lines[-1]:
+            if not input_block[-1].line and formatted_lines[-1]:
                 # last line was empty and black removed it. restore it
                 formatted_lines.append("")
         return formatted_lines
@@ -94,7 +98,8 @@ format_directive = re.compile(r"^\.\.\s*format\s*:\s*(on|off)\s*$")
 
 doctest_code_start = re.compile(r"^(\s+)({(?:opensql|sql|stop)})?>>>\s?(.+)")
 doctest_code_continue = re.compile(r"^\s+\.\.\.\s?(\s*.*)")
-sql_code_start = re.compile(r"^(\s+){(?:open)?sql}")
+
+sql_code_start = re.compile(r"^(\s+)({(?:open)?sql})")
 sql_code_stop = re.compile(r"^(\s+){stop}")
 
 start_code_section = re.compile(
@@ -104,7 +109,7 @@ start_space = re.compile(r"^(\s*)[^ ]?")
 
 
 def format_file(
-    file: Path, exit_on_error: bool, check: bool, no_plain: bool
+    file: Path, exit_on_error: bool, check: bool
 ) -> tuple[bool, int]:
     buffer = []
     if not check:
@@ -120,18 +125,44 @@ def format_file(
 
     errors = []
 
+    do_doctest_format = partial(
+        _format_block,
+        exit_on_error=exit_on_error,
+        errors=errors,
+        is_doctest=True,
+        file=str(file),
+    )
+
+    def doctest_format():
+        nonlocal doctest_block
+        if doctest_block:
+            buffer.extend(do_doctest_format(doctest_block))
+            doctest_block = None
+
+    do_plain_format = partial(
+        _format_block,
+        exit_on_error=exit_on_error,
+        errors=errors,
+        is_doctest=False,
+        file=str(file),
+    )
+
+    def plain_format():
+        nonlocal plain_block
+        if plain_block:
+            buffer.extend(do_plain_format(plain_block))
+            plain_block = None
+
     disable_format = False
     for line_no, line in enumerate(original.splitlines(), 1):
-        # start_code_section requires no spaces at the start
 
-        if start_code_section.match(line.strip()):
-            if plain_block:
-                buffer.extend(
-                    _format_block(
-                        plain_block, exit_on_error, errors, is_doctest=False
-                    )
-                )
-                plain_block = None
+        if (
+            line
+            and not disable_format
+            and start_code_section.match(line.strip())
+        ):
+            # start_code_section regexp requires no spaces at the start
+            plain_format()
             plain_code_section = True
             assert not sql_section
             plain_padding = start_space.match(line).groups()[0]
@@ -145,22 +176,18 @@ def format_file(
         ):
             plain_code_section = sql_section = False
         elif match := format_directive.match(line):
+            assert not plain_code_section
             disable_format = match.groups()[0] == "off"
 
         if doctest_block:
             assert not plain_block
             if match := doctest_code_continue.match(line):
                 doctest_block.append(
-                    (line, line_no, None, None, match.groups()[0])
+                    BlockLine(line, line_no, match.groups()[0])
                 )
                 continue
             else:
-                buffer.extend(
-                    _format_block(
-                        doctest_block, exit_on_error, errors, is_doctest=True
-                    )
-                )
-                doctest_block = None
+                doctest_format()
         elif plain_block:
             if (
                 plain_code_section
@@ -168,87 +195,62 @@ def format_file(
                 and not sql_code_start.match(line)
             ):
                 plain_block.append(
-                    (line, line_no, None, None, line[plain_padding_len:])
+                    BlockLine(line, line_no, line[plain_padding_len:])
                 )
                 continue
             else:
-                buffer.extend(
-                    _format_block(
-                        plain_block, exit_on_error, errors, is_doctest=False
-                    )
-                )
-                plain_block = None
+                plain_format()
 
         if line and (match := doctest_code_start.match(line)):
+            # the line is in a doctest
             plain_code_section = sql_section = False
-            if plain_block:
-                buffer.extend(
-                    _format_block(
-                        plain_block, exit_on_error, errors, is_doctest=False
-                    )
-                )
-                plain_block = None
-            padding, code = match.group(1, 3)
-            doctest_block = [(line, line_no, padding, match.group(2), code)]
-        elif (
-            line
-            and plain_code_section
-            and (match := sql_code_start.match(line))
-        ):
-            if plain_block:
-                buffer.extend(
-                    _format_block(
-                        plain_block, exit_on_error, errors, is_doctest=False
-                    )
-                )
-                plain_block = None
-
-            sql_section = True
-            buffer.append(line)
-        elif line and sql_section and (match := sql_code_stop.match(line)):
-            sql_section = False
-            line = line.replace("{stop}", "")
+            plain_format()
+            padding, sql_marker, code = match.groups()
+            doctest_block = [
+                BlockLine(line, line_no, code, padding, sql_marker)
+            ]
+        elif line and plain_code_section:
+            assert not disable_format
             assert not doctest_block
-            # start of a plain block
-            if line.strip():
+            if match := sql_code_start.match(line):
+                plain_format()
+                sql_section = True
+                buffer.append(line)
+            elif sql_section:
+                if match := sql_code_stop.match(line):
+                    sql_section = False
+                    no_stop_line = line.replace("{stop}", "")
+                    # start of a plain block
+                    if no_stop_line.strip():
+                        assert not plain_block
+                        plain_block = [
+                            BlockLine(
+                                line,
+                                line_no,
+                                no_stop_line[plain_padding_len:],
+                                plain_padding,
+                                "{stop}",
+                            )
+                        ]
+                        continue
+                buffer.append(line)
+            else:
+                # start of a plain block
+                assert not doctest_block
                 plain_block = [
-                    (
+                    BlockLine(
                         line,
                         line_no,
-                        plain_padding,
-                        "{stop}",
                         line[plain_padding_len:],
+                        plain_padding,
                     )
                 ]
-
-        elif (
-            line
-            and not no_plain
-            and not disable_format
-            and plain_code_section
-            and not sql_section
-        ):
-            assert not doctest_block
-            # start of a plain block
-            plain_block = [
-                (line, line_no, plain_padding, None, line[plain_padding_len:])
-            ]
         else:
             buffer.append(line)
 
-    if doctest_block:
-        buffer.extend(
-            _format_block(
-                doctest_block, exit_on_error, errors, is_doctest=True
-            )
-        )
-    if plain_block:
-        buffer.extend(
-            _format_block(plain_block, exit_on_error, errors, is_doctest=False)
-        )
+    doctest_format()
+    plain_format()
     if buffer:
-        # if there is nothing in the buffer something strange happened so
-        # don't do anything
         buffer.append("")
         updated = "\n".join(buffer)
         equal = original == updated
@@ -261,6 +263,8 @@ def format_file(
                 # write only if there are changes to write
                 file.write_text(updated, "utf-8", newline="\n")
     else:
+        # if there is nothing in the buffer something strange happened so
+        # don't do anything
         if not check:
             print(".. Nothing to write")
         equal = bool(original) is False
@@ -271,22 +275,20 @@ def format_file(
     return equal, len(errors)
 
 
-def iter_files(directory) -> Iterator[Path]:
-    yield from (home / directory).glob("./**/*.rst")
+def iter_files(directory: str) -> Iterator[Path]:
+    yield from (
+        file
+        for file in (home / directory).glob("./**/*.rst")
+        if not any(pattern.search(file.as_posix()) for pattern in ignore_paths)
+    )
 
 
-def main(
-    file: str | None,
-    directory: str,
-    exit_on_error: bool,
-    check: bool,
-    no_plain: bool,
-):
+def main(file: str | None, directory: str, exit_on_error: bool, check: bool):
     if file is not None:
-        result = [format_file(Path(file), exit_on_error, check, no_plain)]
+        result = [format_file(Path(file), exit_on_error, check)]
     else:
         result = [
-            format_file(doc, exit_on_error, check, no_plain)
+            format_file(doc, exit_on_error, check)
             for doc in iter_files(directory)
         ]
 
@@ -308,22 +310,19 @@ def main(
                 else "no formatting errors reported",
             )
 
-            # interim, until we fix all formatting errors
-            if not to_reformat:
-                exit(0)
             exit(1)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(
         description="""Formats code inside docs using black. Supports \
-doctest code blocks and also tries to format plain code block identifies as \
-all indented blocks of at least 4 spaces, unless '--no-plain' is specified.
+doctest code blocks and plain code block identified as indented sections \
+that are preceded by ``::`` or ``.. sourcecode:: py``.
 
-Plain code block may lead to false positive. To disable formatting on a \
-file section the comment ``.. format: off`` disables formatting until \
-``.. format: on`` is encountered or the file ends.
-Another alterative is to use less than 4 spaces to indent the code block.
+To disable formatting on a file section the comment ``.. format: off`` \
+disables formatting until ``.. format: on`` is encountered or the file ends.
+
+Use --report-doctest to ignore errors on plain code blocks.
 """,
         formatter_class=RawDescriptionHelpFormatter,
     )
@@ -341,14 +340,13 @@ Another alterative is to use less than 4 spaces to indent the code block.
         "--check",
         help="Don't write the files back, just return the "
         "status. Return code 0 means nothing would change. "
-        "Return code 1 means some files would be reformatted.",
+        "Return code 1 means some files would be reformatted",
         action="store_true",
     )
     parser.add_argument(
         "-e",
         "--exit-on-error",
-        help="Exit in case of black format error instead of ignoring it. "
-        "This option is only valid for doctest code blocks",
+        help="Exit in case of black format error instead of ignoring it",
         action="store_true",
     )
     parser.add_argument(
@@ -359,16 +357,9 @@ Another alterative is to use less than 4 spaces to indent the code block.
         action="store_true",
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Increase verbosity",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-n",
-        "--no-plain",
-        help="Disable plain code blocks formatting that's more difficult "
-        "to parse compared to doctest code blocks",
+        "-rd", "--report-doctest",
+        help="Report errors only when running doctest blocks. When active "
+        "exit-on-error will be valid only on doctest blocks",
         action="store_true",
     )
     args = parser.parse_args()
@@ -384,12 +375,6 @@ Another alterative is to use less than 4 spaces to indent the code block.
         if args.project_line_length
         else DEFAULT_LINE_LENGTH,
     )
-    VERBOSE = args.verbose
+    REPORT_ONLY_DOCTEST = args.report_doctest
 
-    main(
-        args.file,
-        args.directory,
-        args.exit_on_error,
-        args.check,
-        args.no_plain,
-    )
+    main(args.file, args.directory, args.exit_on_error, args.check)
