@@ -283,9 +283,11 @@ def iter_files(directory: str) -> Iterator[Path]:
     )
 
 
-def main(file: str | None, directory: str, exit_on_error: bool, check: bool):
+def main(
+    file: list[str] | None, directory: str, exit_on_error: bool, check: bool
+):
     if file is not None:
-        result = [format_file(Path(file), exit_on_error, check)]
+        result = [format_file(Path(f), exit_on_error, check) for f in file]
     else:
         result = [
             format_file(doc, exit_on_error, check)
@@ -327,7 +329,10 @@ Use --report-doctest to ignore errors on plain code blocks.
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "-f", "--file", help="Format only this file instead of all docs"
+        "-f",
+        "--file",
+        help="Format only this file instead of all docs",
+        nargs="+",
     )
     parser.add_argument(
         "-d",
@@ -357,7 +362,8 @@ Use --report-doctest to ignore errors on plain code blocks.
         action="store_true",
     )
     parser.add_argument(
-        "-rd", "--report-doctest",
+        "-rd",
+        "--report-doctest",
         help="Report errors only when running doctest blocks. When active "
         "exit-on-error will be valid only on doctest blocks",
         action="store_true",
