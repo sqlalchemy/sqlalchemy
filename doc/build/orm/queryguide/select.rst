@@ -57,6 +57,8 @@ instances of ORM-mapped objects may be returned.  When using the
 :class:`_engine.Connection` directly, result rows will only contain
 column-level data.
 
+.. _orm_queryguide_select_orm_entities:
+
 Selecting ORM Entities
 ^^^^^^^^^^^^^^^^^^^^^^
 

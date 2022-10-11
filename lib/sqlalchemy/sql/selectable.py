@@ -5842,7 +5842,7 @@ class Select(
         self._raw_columns = [
             coercions.expect(roles.ColumnsClauseRole, c)
             for c in coercions._expression_collection_was_a_list(
-                "columns", "Select.with_only_columns", entities
+                "entities", "Select.with_only_columns", entities
             )
         ]
         return self

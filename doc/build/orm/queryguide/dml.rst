@@ -113,13 +113,8 @@ with the exception of MySQL (MariaDB is included).
 
 As an example, we can run the same statement as before, adding use of the
 :meth:`.UpdateBase.returning` method, passing the full ``User`` entity
-as what we'd like to return.  In the example below, we also
-make use of the :meth:`_orm.Session.scalars` method in order to
-invoke the statement, which is an optional
-facade around the :meth:`_orm.Session.execute` method that will yield a
-:class:`.ScalarResult` instead of a
-:class:`.Result` object, which for convenience will yield ``User`` objects
-directly without packaging them into :class:`.Row` objects::
+as what we'd like to return.  :meth:`_orm.Session.scalars` is used to allow
+iteration of ``User`` objects::
 
     >>> users = session.scalars(
     ...     insert(User).returning(User),
@@ -543,10 +538,9 @@ example in the previous section::
 The example above uses RETURNING to return ORM objects for each row inserted or
 upserted by the statement. The example also adds use of the
 :ref:`orm_queryguide_populate_existing` execution option. This option indicates
-that when a particular ``User`` object is being delivered by the statement,
-that the contents of an existing ``User`` object, if one were already present
-in the :class:`_orm.Session` for its particular identity key, should be
-**replaced** with that of the new row. For a pure :class:`_dml.Insert`
+that ``User`` objects which are already present
+in the :class:`_orm.Session` for rows that already exist should be
+**refreshed** with the data from the new row. For a pure :class:`_dml.Insert`
 statement, this option is not significant, because every row produced is a
 brand new primary key identity. However when the :class:`_dml.Insert` also
 includes "upsert" options, it may also be yielding results from rows that

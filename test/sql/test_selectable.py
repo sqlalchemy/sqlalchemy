@@ -824,7 +824,7 @@ class SelectableTest(
 
         with testing.expect_raises_message(
             exc.ArgumentError,
-            r"The \"columns\" argument to "
+            r"The \"entities\" argument to "
             r"Select.with_only_columns\(\), when referring "
             "to a sequence of items, is now passed",
         ):
