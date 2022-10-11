@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7545
+
+    A warning is emitted when attempting to configure a mapped class within an
+    inheritance hierarchy where the mapper is not given any polymorphic
+    identity, however there is a polymorphic discriminator column assigned.
+    Such classes should be abstract if they never intend to load directly.
+

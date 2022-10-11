@@ -1079,10 +1079,27 @@ class Mapper(
             else:
                 self.persist_selectable = self.local_table
 
-            if self.polymorphic_identity is not None and not self.concrete:
-                self._identity_class = self.inherits._identity_class
-            else:
+            if self.polymorphic_identity is None:
                 self._identity_class = self.class_
+
+                if self.inherits.base_mapper.polymorphic_on is not None:
+                    util.warn(
+                        "Mapper %s does not indicate a polymorphic_identity, "
+                        "yet is part of an inheritance hierarchy that has a "
+                        "polymorphic_on column of '%s'.  Objects of this type "
+                        "cannot be loaded polymorphically which can lead to "
+                        "degraded or incorrect loading behavior in some "
+                        "scenarios.  Please establish a polmorphic_identity "
+                        "for this class, or leave it un-mapped.  "
+                        "To omit mapping an intermediary class when using "
+                        "declarative, set the '__abstract__ = True' "
+                        "attribute on that class."
+                        % (self, self.inherits.base_mapper.polymorphic_on)
+                    )
+            elif self.concrete:
+                self._identity_class = self.class_
+            else:
+                self._identity_class = self.inherits._identity_class
 
             if self.version_id_col is None:
                 self.version_id_col = self.inherits.version_id_col

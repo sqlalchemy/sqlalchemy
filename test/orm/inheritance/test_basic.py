@@ -32,6 +32,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
@@ -3414,7 +3415,12 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
         cls.mapper_registry.map_imperatively(
             A, base, polymorphic_on=base.c.type
         )
-        cls.mapper_registry.map_imperatively(B, inherits=A)
+
+        with expect_warnings(
+            r"Mapper mapped class B->base does not indicate a "
+            "polymorphic_identity,"
+        ):
+            cls.mapper_registry.map_imperatively(B, inherits=A)
         cls.mapper_registry.map_imperatively(
             C, inherits=B, polymorphic_identity="c"
         )
@@ -3424,6 +3430,28 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
         cls.mapper_registry.map_imperatively(
             E, inherits=A, polymorphic_identity="e"
         )
+        cls.mapper_registry.configure()
+
+    def test_warning(self, decl_base):
+        """test #7545"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            type = Column(String)
+
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class B(A):
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+        with expect_warnings(
+            r"Mapper mapped class C->a does not indicate a "
+            "polymorphic_identity,"
+        ):
+
+            class C(A):
+                __mapper_args__ = {}
 
     def test_load_from_middle(self):
         C, B = self.classes.C, self.classes.B

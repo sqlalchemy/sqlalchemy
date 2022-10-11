@@ -38,6 +38,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
+    @testing.emits_warning(r".*does not indicate a polymorphic_identity")
     def test_we_must_copy_mapper_args(self):
         class Person(Base):
 
@@ -673,6 +674,9 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = "employee"
 
             id = Column(Integer, ForeignKey(Person.id), primary_key=True)
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+            }
 
         class Engineer(Employee):
             __mapper_args__ = {"polymorphic_identity": "engineer"}
@@ -1007,9 +1011,15 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_identity": "manager"}
             id = Column(Integer, ForeignKey("people.id"), primary_key=True)
             golf_swing = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+            }
 
         class Boss(Manager):
             boss_name = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "boss",
+            }
 
         is_(
             Boss.__mapper__.column_attrs["boss_name"].columns[0],

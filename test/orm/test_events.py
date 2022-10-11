@@ -1209,6 +1209,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         # not been loaded yet (Employer), and therefore cannot be configured:
         class Mammal(Animal):
             nonexistent = relationship("Nonexistent")
+            __mapper_args__ = {"polymorphic_identity": "mammal"}
 
         # These new classes should not be configured at this point:
         unconfigured = list(mapperlib._unconfigured_mappers())
