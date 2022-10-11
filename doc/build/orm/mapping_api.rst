@@ -66,7 +66,7 @@ Class Mapping API
 
 
             class MySubClass(MyClass):
-                """"""
+                """ """
 
                 # ...
 

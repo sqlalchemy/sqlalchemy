@@ -237,8 +237,10 @@ Glossary
         This term refers to a part of the :pep:`249` DBAPI specification
         indicating a single SQL statement that may be invoked against a
         database connection with multiple parameter sets.   The specific
-        method is known as ``cursor.executemany()``, and it has many
-        behavioral differences in comparison to the ``cursor.execute()``
+        method is known as
+        `cursor.executemany() <https://peps.python.org/pep-0249/#executemany>`_,
+        and it has many behavioral differences in comparison to the
+        `cursor.execute() <https://peps.python.org/pep-0249/#execute>`_
         method which is used for single-statement invocation.   The "executemany"
         method executes the given SQL statement multiple times, once for
         each set of parameters passed.  The general rationale for using

@@ -355,12 +355,12 @@ Sending Multiple Parameters
 
 In the example at :ref:`tutorial_committing_data`, we executed an INSERT
 statement where it appeared that we were able to INSERT multiple rows into the
-database at once.  For statements that **operate upon data, but do not return
-result sets**, namely :term:`DML` statements such as "INSERT" which don't
-include a phrase like "RETURNING", we can send **multi params** to the
+database at once.  For statements :term:`DML` statements such as "INSERT",
+"UPDATE" and "DELETE", we can send **multiple parameter sets** to the
 :meth:`_engine.Connection.execute` method by passing a list of dictionaries
-instead of a single dictionary, thus allowing the single SQL statement to
-be invoked against each parameter set individually:
+instead of a single dictionary, which indicates that the single SQL statement
+should be invoked multiple times, once for each parameter set.  This style
+of execution is known as :term:`executemany`:
 
 .. sourcecode:: pycon+sql
 
@@ -376,24 +376,29 @@ be invoked against each parameter set individually:
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
-Behind the scenes, the :class:`_engine.Connection` objects uses a DBAPI feature
-known as `cursor.executemany()
-<https://www.python.org/dev/peps/pep-0249/#id18>`_. This method performs the
-equivalent operation of invoking the given SQL statement against each parameter
-set individually.   The DBAPI may optimize this operation in a variety of ways,
-by using prepared statements, or by concatenating the parameter sets into a
-single SQL statement in some cases.  Some SQLAlchemy dialects may also use
-alternate APIs for this case, such as the :ref:`psycopg2 dialect for PostgreSQL
-<postgresql_psycopg2>` which uses more performant APIs
-for this use case.
+The above operation is equivalent to running the given INSERT statement once
+for each parameter set, except that the operation will be optimized for
+better performance across many rows.
 
-.. tip::  you may have noticed this section isn't tagged as an ORM concept.
-   That's because the "multiple parameters" use case is **usually** used
-   for INSERT statements, which when using the ORM are invoked in a different
-   way.   Multiple parameters also may be used with UPDATE and DELETE
-   statements to emit distinct UPDATE/DELETE operations on a per-row basis,
-   however again when using the ORM, there is a different technique
-   generally used for updating or deleting many individual rows separately.
+A key behavioral difference between "execute" and "executemany" is that the
+latter doesn't support returning of result rows, even if the statement includes
+the RETURNING clause. The one exception to this is when using a Core
+:func:`_sql.insert` construct, introduced later in this tutorial at
+:ref:`tutorial_core_insert`, which also indicates RETURNING using the
+:meth:`_sql.Insert.returning` method.  In that case, SQLAlchemy makes use of
+special logic to reorganize the INSERT statement so that it can be invoked
+for many rows while still supporting RETURNING.
+
+.. seealso::
+
+   :term:`executemany` - in the :doc:`Glossary <glossary>`, describes the
+   DBAPI-level
+   `cursor.executemany() <https://peps.python.org/pep-0249/#executemany>`_
+   method that's used for most "executemany" executions.
+
+   :ref:`engine_insertmanyvalues` - in :ref:`connections_toplevel`, describes
+   the specialized logic used by :meth:`_sql.Insert.returning` to deliver
+   result sets with "executemany" executions.
 
 
 .. rst-class:: orm-addin
