@@ -105,12 +105,15 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
         return cols
 
 
-def column_mapped_collection(
+def column_keyed_dict(
     mapping_spec, *, ignore_unpopulated_attribute: bool = False
 ):
     """A dictionary-based collection type with column-based keying.
 
-    Returns a :class:`.MappedCollection` factory which will produce new
+    .. versionchanged:: 2.0 Renamed :data:`.column_mapped_collection` to
+       :class:`.column_keyed_dict`.
+
+    Returns a :class:`.KeyFuncDict` factory which will produce new
     dictionary keys based on the value of a particular :class:`.Column`-mapped
     attribute on ORM mapped instances to be added to the dictionary.
 
@@ -137,7 +140,7 @@ def column_mapped_collection(
      .. versionadded:: 2.0 an error is raised by default if the attribute
         being used for the dictionary key is determined that it was never
         populated with any value.  The
-        :paramref:`.column_mapped_collection.ignore_unpopulated_attribute`
+        :paramref:`.column_keyed_dict.ignore_unpopulated_attribute`
         parameter may be set which will instead indicate that this condition
         should be ignored, and the append operation silently skipped.
         This is in contrast to the behavior of the 1.x series which would
@@ -170,12 +173,15 @@ class _AttrGetter:
         return _AttrGetter, (self.attr_name,)
 
 
-def attribute_mapped_collection(
+def attribute_keyed_dict(
     attr_name: str, *, ignore_unpopulated_attribute: bool = False
-) -> Type["MappedCollection"]:
+) -> Type["KeyFuncDict"]:
     """A dictionary-based collection type with attribute-based keying.
 
-    Returns a :class:`.MappedCollection` factory which will produce new
+    .. versionchanged:: 2.0 Renamed :data:`.attribute_mapped_collection` to
+       :func:`.attribute_keyed_dict`.
+
+    Returns a :class:`.KeyFuncDict` factory which will produce new
     dictionary keys based on the value of a particular named attribute on
     ORM mapped instances to be added to the dictionary.
 
@@ -200,7 +206,7 @@ def attribute_mapped_collection(
      .. versionadded:: 2.0 an error is raised by default if the attribute
         being used for the dictionary key is determined that it was never
         populated with any value.  The
-        :paramref:`.attribute_mapped_collection.ignore_unpopulated_attribute`
+        :paramref:`.attribute_keyed_dict.ignore_unpopulated_attribute`
         parameter may be set which will instead indicate that this condition
         should be ignored, and the append operation silently skipped.
         This is in contrast to the behavior of the 1.x series which would
@@ -216,14 +222,17 @@ def attribute_mapped_collection(
     )
 
 
-def mapped_collection(
+def keyfunc_mapping(
     keyfunc: Callable[[Any], _KT],
     *,
     ignore_unpopulated_attribute: bool = False,
-) -> Type["MappedCollection[_KT, Any]"]:
+) -> Type["KeyFuncDict[_KT, Any]"]:
     """A dictionary-based collection type with arbitrary keying.
 
-    Returns a :class:`.MappedCollection` factory with a keying function
+    .. versionchanged:: 2.0 Renamed :data:`.mapped_collection` to
+       :func:`.keyfunc_mapping`.
+
+    Returns a :class:`.KeyFuncDict` factory with a keying function
     generated from keyfunc, a callable that takes an entity and returns a
     key value.
 
@@ -262,21 +271,24 @@ def mapped_collection(
     )
 
 
-class MappedCollection(Dict[_KT, _VT]):
+class KeyFuncDict(Dict[_KT, _VT]):
     """Base for ORM mapped dictionary classes.
 
     Extends the ``dict`` type with additional methods needed by SQLAlchemy ORM
-    collection classes. Use of :class:`_orm.MappedCollection` is most directly
-    by using the :func:`.attribute_mapped_collection` or
-    :func:`.column_mapped_collection` class factories.
-    :class:`_orm.MappedCollection` may also serve as the base for user-defined
+    collection classes. Use of :class:`_orm.KeyFuncDict` is most directly
+    by using the :func:`.attribute_keyed_dict` or
+    :func:`.column_keyed_dict` class factories.
+    :class:`_orm.KeyFuncDict` may also serve as the base for user-defined
     custom dictionary classes.
+
+    .. versionchanged:: 2.0 Renamed :class:`.MappedCollection` to
+       :class:`.KeyFuncDict`.
 
     .. seealso::
 
-        :func:`_orm.attribute_mapped_collection`
+        :func:`_orm.attribute_keyed_dict`
 
-        :func:`_orm.column_mapped_collection`
+        :func:`_orm.column_keyed_dict`
 
         :ref:`orm_dictionary_collection`
 
@@ -304,12 +316,12 @@ class MappedCollection(Dict[_KT, _VT]):
 
     @classmethod
     def _unreduce(cls, keyfunc, values):
-        mp = MappedCollection(keyfunc)
+        mp = KeyFuncDict(keyfunc)
         mp.update(values)
         return mp
 
     def __reduce__(self):
-        return (MappedCollection._unreduce, (self.keyfunc, dict(self)))
+        return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
 
     def _raise_for_unpopulated(self, value, initiator):
         mapper = base.instance_state(value).mapper
@@ -322,7 +334,7 @@ class MappedCollection(Dict[_KT, _VT]):
         raise sa_exc.InvalidRequestError(
             f"In event triggered from population of attribute {relationship} "
             "(likely from a backref), "
-            f"can't populate value in MappedCollection; "
+            f"can't populate value in KeyFuncDict; "
             "dictionary key "
             f"derived from {base.instance_str(value)} is not "
             f"populated. Ensure appropriate state is set up on "
@@ -365,7 +377,7 @@ class MappedCollection(Dict[_KT, _VT]):
         if self[key] != value:
             raise sa_exc.InvalidRequestError(
                 "Can not remove '%s': collection holds '%s' for key '%s'. "
-                "Possible cause: is the MappedCollection key function "
+                "Possible cause: is the KeyFuncDict key function "
                 "based on mutable properties or properties that only obtain "
                 "values after flush?" % (value, self[key], key)
             )
@@ -373,7 +385,7 @@ class MappedCollection(Dict[_KT, _VT]):
 
 
 def _mapped_collection_cls(keyfunc, ignore_unpopulated_attribute):
-    class _MKeyfuncMapped(MappedCollection):
+    class _MKeyfuncMapped(KeyFuncDict):
         def __init__(self):
             super().__init__(
                 keyfunc,
@@ -381,3 +393,36 @@ def _mapped_collection_cls(keyfunc, ignore_unpopulated_attribute):
             )
 
     return _MKeyfuncMapped
+
+
+MappedCollection = KeyFuncDict
+"""A synonym for :class:`.KeyFuncDict`.
+
+.. versionchanged:: 2.0 Renamed :class:`.MappedCollection` to
+   :class:`.KeyFuncDict`.
+
+"""
+
+mapped_collection = keyfunc_mapping
+"""A synonym for :func:`_orm.keyfunc_mapping`.
+
+.. versionchanged:: 2.0 Renamed :data:`.mapped_collection` to
+   :func:`_orm.keyfunc_mapping`
+
+"""
+
+attribute_mapped_collection = attribute_keyed_dict
+"""A synonym for :func:`_orm.attribute_keyed_dict`.
+
+.. versionchanged:: 2.0 Renamed :data:`.attribute_mapped_collection` to
+   :func:`_orm.attribute_keyed_dict`
+
+"""
+
+column_mapped_collection = column_keyed_dict
+"""A synonym for :func:`_orm.column_keyed_dict.
+
+.. versionchanged:: 2.0 Renamed :func:`.column_mapped_collection` to
+   :func:`_orm.column_keyed_dict`
+
+"""

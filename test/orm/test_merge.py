@@ -20,7 +20,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -600,9 +600,7 @@ class MergeTest(_fixtures.FixtureTest):
                 "addresses": relationship(
                     self.mapper_registry.map_imperatively(Address, addresses),
                     backref="user",
-                    collection_class=attribute_mapped_collection(
-                        "email_address"
-                    ),
+                    collection_class=attribute_keyed_dict("email_address"),
                 )
             },
         )
@@ -1870,7 +1868,7 @@ class DeferredMergeTest(fixtures.MappedTest):
         class Book(cls.Basic):
             pass
 
-    def test_deferred_column_mapping(self):
+    def test_deferred_column_keyed_dict(self):
         # defer 'excerpt' at mapping level instead of query level
         Book, book = self.classes.Book, self.tables.book
         self.mapper_registry.map_imperatively(

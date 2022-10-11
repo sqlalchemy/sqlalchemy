@@ -89,7 +89,7 @@ class Canary:
 class OrderedDictFixture:
     @testing.fixture
     def ordered_dict_mro(self):
-        return type("ordered", (collections.MappedCollection,), {})
+        return type("ordered", (collections.KeyFuncDict,), {})
 
 
 class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
@@ -1403,7 +1403,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(MyDict, "_sa_instrumented") == id(MyDict))
 
     def test_dict_subclass2(self):
-        class MyEasyDict(collections.MappedCollection):
+        class MyEasyDict(collections.KeyFuncDict):
             def __init__(self):
                 super(MyEasyDict, self).__init__(lambda e: e.a)
 
@@ -1418,7 +1418,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
     def test_dict_subclass3(self, ordered_dict_mro):
         class MyOrdered(ordered_dict_mro):
             def __init__(self):
-                collections.MappedCollection.__init__(self, lambda e: e.a)
+                collections.KeyFuncDict.__init__(self, lambda e: e.a)
                 util.OrderedDict.__init__(self)
 
         self._test_adapter(
@@ -1988,15 +1988,15 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         )
 
     def test_mapped_collection(self):
-        collection_class = collections.mapped_collection(lambda c: c.a)
+        collection_class = collections.keyfunc_mapping(lambda c: c.a)
         self._test_scalar_mapped(collection_class)
 
     def test_mapped_collection2(self):
-        collection_class = collections.mapped_collection(lambda c: (c.a, c.b))
+        collection_class = collections.keyfunc_mapping(lambda c: (c.a, c.b))
         self._test_composite_mapped(collection_class)
 
     def test_attr_mapped_collection(self):
-        collection_class = collections.attribute_mapped_collection("a")
+        collection_class = collections.attribute_keyed_dict("a")
         self._test_scalar_mapped(collection_class)
 
     def test_declarative_column_mapped(self):
@@ -2015,7 +2015,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
             ((Foo.id, Foo.bar_id), Foo(id=3, bar_id=12), (3, 12)),
         ):
             eq_(
-                collections.column_mapped_collection(spec)().keyfunc(obj),
+                collections.column_keyed_dict(spec)().keyfunc(obj),
                 expected,
             )
 
@@ -2024,27 +2024,27 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
             sa_exc.ArgumentError,
             "Column expression expected "
             "for argument 'mapping_spec'; got 'a'.",
-            collections.column_mapped_collection,
+            collections.column_keyed_dict,
             "a",
         )
         assert_raises_message(
             sa_exc.ArgumentError,
             "Column expression expected "
             "for argument 'mapping_spec'; got .*TextClause.",
-            collections.column_mapped_collection,
+            collections.column_keyed_dict,
             text("a"),
         )
 
     def test_column_mapped_collection(self):
         children = self.tables.children
 
-        collection_class = collections.column_mapped_collection(children.c.a)
+        collection_class = collections.column_keyed_dict(children.c.a)
         self._test_scalar_mapped(collection_class)
 
     def test_column_mapped_collection2(self):
         children = self.tables.children
 
-        collection_class = collections.column_mapped_collection(
+        collection_class = collections.column_keyed_dict(
             (children.c.a, children.c.b)
         )
         self._test_composite_mapped(collection_class)
@@ -2052,7 +2052,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
     def test_mixin(self, ordered_dict_mro):
         class Ordered(ordered_dict_mro):
             def __init__(self):
-                collections.MappedCollection.__init__(self, lambda v: v.a)
+                collections.KeyFuncDict.__init__(self, lambda v: v.a)
                 util.OrderedDict.__init__(self)
 
         collection_class = Ordered
@@ -2061,7 +2061,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
     def test_mixin2(self, ordered_dict_mro):
         class Ordered2(ordered_dict_mro):
             def __init__(self, keyfunc):
-                collections.MappedCollection.__init__(self, keyfunc)
+                collections.KeyFuncDict.__init__(self, keyfunc)
                 util.OrderedDict.__init__(self)
 
         def collection_class():
@@ -2135,7 +2135,7 @@ class ColumnMappedWSerialize(fixtures.MappedTest):
         from sqlalchemy.testing.util import picklers
 
         for spec, obj, expected in specs:
-            coll = collections.column_mapped_collection(spec)()
+            coll = collections.column_keyed_dict(spec)()
             eq_(coll.keyfunc(obj), expected)
             # ensure we do the right thing with __reduce__
             for loads, dumps in picklers():
@@ -2294,7 +2294,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
             properties={
                 "bars": relationship(
                     Bar,
-                    collection_class=collections.column_mapped_collection(
+                    collection_class=collections.column_keyed_dict(
                         someothertable.c.data
                     ),
                 )
@@ -2641,11 +2641,11 @@ class UnpopulatedAttrTest(fixtures.TestBase):
             data = Column(String)
             a_id = Column(ForeignKey("a.id"))
 
-        if collection_fn is collections.attribute_mapped_collection:
+        if collection_fn is collections.attribute_keyed_dict:
             cc = collection_fn(
                 "data", ignore_unpopulated_attribute=ignore_unpopulated
             )
-        elif collection_fn is collections.column_mapped_collection:
+        elif collection_fn is collections.column_keyed_dict:
             cc = collection_fn(
                 B.data, ignore_unpopulated_attribute=ignore_unpopulated
             )
@@ -2665,8 +2665,8 @@ class UnpopulatedAttrTest(fixtures.TestBase):
         return A, B
 
     @testing.combinations(
-        collections.attribute_mapped_collection,
-        collections.column_mapped_collection,
+        collections.attribute_keyed_dict,
+        collections.column_keyed_dict,
         argnames="collection_fn",
     )
     @testing.combinations(True, False, argnames="ignore_unpopulated")
@@ -2689,8 +2689,8 @@ class UnpopulatedAttrTest(fixtures.TestBase):
                 a1.bs["bar"] = B(a=a1)
 
     @testing.combinations(
-        collections.attribute_mapped_collection,
-        collections.column_mapped_collection,
+        collections.attribute_keyed_dict,
+        collections.column_keyed_dict,
         argnames="collection_fn",
     )
     @testing.combinations(True, False, argnames="ignore_unpopulated")

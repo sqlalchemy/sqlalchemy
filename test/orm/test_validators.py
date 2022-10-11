@@ -225,7 +225,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             properties={
                 "addresses": relationship(
                     Address,
-                    collection_class=collections.attribute_mapped_collection(
+                    collection_class=collections.attribute_keyed_dict(
                         "email_address"
                     ),
                 )

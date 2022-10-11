@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm.attributes import instance_state
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.decl_api import declarative_base
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -4462,10 +4462,10 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
     @testing.combinations(
         (set, "add"),
         (list, "append"),
-        (attribute_mapped_collection("key"), "__setitem__"),
-        (attribute_mapped_collection("key"), "setdefault"),
-        (attribute_mapped_collection("key"), "update_dict"),
-        (attribute_mapped_collection("key"), "update_kw"),
+        (attribute_keyed_dict("key"), "__setitem__"),
+        (attribute_keyed_dict("key"), "setdefault"),
+        (attribute_keyed_dict("key"), "update_dict"),
+        (attribute_keyed_dict("key"), "update_kw"),
         argnames="collection_class,methname",
     )
     def test_cascades_on_collection(

@@ -15,7 +15,6 @@ This section presents additional information about collection configuration
 and techniques.
 
 
-.. currentmodule:: sqlalchemy.orm.collections
 
 .. _custom_collections:
 
@@ -144,25 +143,25 @@ Dictionary Collections
 A little extra detail is needed when using a dictionary as a collection.
 This because objects are always loaded from the database as lists, and a key-generation
 strategy must be available to populate the dictionary correctly.  The
-:func:`.attribute_mapped_collection` function is by far the most common way
+:func:`.attribute_keyed_dict` function is by far the most common way
 to achieve a simple dictionary collection.  It produces a dictionary class that will apply a particular attribute
 of the mapped class as a key.   Below we map an ``Item`` class containing
 a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute.
-When using :func:`.attribute_mapped_collection`, the :class:`_orm.Mapped`
-annotation may be typed using the :class:`_orm.MappedCollection`
-type, however the :paramref:`_orm.relationship.collection_class` parameter
-is required in this case so that the :func:`.attribute_mapped_collection`
+When using :func:`.attribute_keyed_dict`, the :class:`_orm.Mapped`
+annotation may be typed using the :class:`_orm.KeyFuncDict`
+or just plain ``dict`` as illustrated in the following example.   However,
+the :paramref:`_orm.relationship.collection_class` parameter
+is required in this case so that the :func:`.attribute_keyed_dict`
 may be appropriately parametrized::
 
     from typing import Optional
 
     from sqlalchemy import ForeignKey
-    from sqlalchemy.orm import attribute_mapped_collection
+    from sqlalchemy.orm import attribute_keyed_dict
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
-    from sqlalchemy.orm import MappedCollection
 
 
     class Base(DeclarativeBase):
@@ -174,8 +173,8 @@ may be appropriately parametrized::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
-            collection_class=attribute_mapped_collection("keyword"),
+        notes: Mapped[dict[str, "Note"]] = relationship(
+            collection_class=attribute_keyed_dict("keyword"),
             cascade="all, delete-orphan",
         )
 
@@ -199,7 +198,7 @@ may be appropriately parametrized::
     >>> item.notes.items()
     {'a': <__main__.Note object at 0x2eaaf0>}
 
-:func:`.attribute_mapped_collection` will ensure that
+:func:`.attribute_keyed_dict` will ensure that
 the ``.keyword`` attribute of each ``Note`` complies with the key in the
 dictionary.   Such as, when assigning to ``Item.notes``, the dictionary
 key we supply must match that of the actual ``Note`` object::
@@ -210,7 +209,7 @@ key we supply must match that of the actual ``Note`` object::
         "b": Note("b", "btext"),
     }
 
-The attribute which :func:`.attribute_mapped_collection` uses as a key
+The attribute which :func:`.attribute_keyed_dict` uses as a key
 does not need to be mapped at all!  Using a regular Python ``@property`` allows virtually
 any detail or combination of details about the object to be used as the key, as
 below when we establish it as a tuple of ``Note.keyword`` and the first ten letters
@@ -221,8 +220,8 @@ of the ``Note.text`` field::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
-            collection_class=attribute_mapped_collection("note_key"),
+        notes: Mapped[dict[str, "Note"]] = relationship(
+            collection_class=attribute_keyed_dict("note_key"),
             back_populates="item",
             cascade="all, delete-orphan",
         )
@@ -257,11 +256,11 @@ is added to the ``Item.notes`` dictionary and the key is generated for us automa
     >>> item.notes
     {('a', 'atext'): <__main__.Note object at 0x2eaaf0>}
 
-Other built-in dictionary types include :func:`.column_mapped_collection`,
-which is almost like :func:`.attribute_mapped_collection` except given the :class:`_schema.Column`
+Other built-in dictionary types include :func:`.column_keyed_dict`,
+which is almost like :func:`.attribute_keyed_dict` except given the :class:`_schema.Column`
 object directly::
 
-    from sqlalchemy.orm import column_mapped_collection
+    from sqlalchemy.orm import column_keyed_dict
 
 
     class Item(Base):
@@ -269,13 +268,13 @@ object directly::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
-            collection_class=column_mapped_collection(Note.__table__.c.keyword),
+        notes: Mapped[dict[str, "Note"]] = relationship(
+            collection_class=column_keyed_dict(Note.__table__.c.keyword),
             cascade="all, delete-orphan",
         )
 
 as well as :func:`.mapped_collection` which is passed any callable function.
-Note that it's usually easier to use :func:`.attribute_mapped_collection` along
+Note that it's usually easier to use :func:`.attribute_keyed_dict` along
 with a ``@property`` as mentioned earlier::
 
     from sqlalchemy.orm import mapped_collection
@@ -286,7 +285,7 @@ with a ``@property`` as mentioned earlier::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[MappedCollection[str, "Note"]] = relationship(
+        notes: Mapped[dict[str, "Note"]] = relationship(
             collection_class=mapped_collection(lambda note: note.text[0:10]),
             cascade="all, delete-orphan",
         )
@@ -300,7 +299,7 @@ for examples.
 Dealing with Key Mutations and back-populating for Dictionary collections
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When using :func:`.attribute_mapped_collection`, the "key" for the dictionary
+When using :func:`.attribute_keyed_dict`, the "key" for the dictionary
 is taken from an attribute on the target object.   **Changes to this key
 are not tracked**.  This means that the key must be assigned towards when
 it is first used, and if the key changes, the collection will not be mutated.
@@ -312,8 +311,8 @@ to populate an attribute mapped collection.  Given the following::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        bs: Mapped[MappedCollection[str, "B"]] = relationship(
-            collection_class=attribute_mapped_collection("data"),
+        bs: Mapped[dict[str, "B"]] = relationship(
+            collection_class=attribute_keyed_dict("data"),
             back_populates="a",
         )
 
@@ -375,12 +374,6 @@ collection as well::
             previous = None if previous == attributes.NO_VALUE else previous
             obj.a.bs[value] = obj
             obj.a.bs.pop(previous)
-
-.. autofunction:: attribute_mapped_collection
-
-.. autofunction:: column_mapped_collection
-
-.. autofunction:: mapped_collection
 
 .. _orm_custom_collection:
 
@@ -547,44 +540,41 @@ interface marked for SQLAlchemy's use. Append and remove methods will be
 called with a mapped entity as the single argument, and iterator methods are
 called with no arguments and must return an iterator.
 
-.. autoclass:: collection
-    :members:
-
 .. _dictionary_collections:
 
 Custom Dictionary-Based Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`.MappedCollection` class can be used as
+The :class:`.KeyFuncDict` class can be used as
 a base class for your custom types or as a mix-in to quickly add ``dict``
 collection support to other classes. It uses a keying function to delegate to
 ``__setitem__`` and ``__delitem__``:
 
 .. sourcecode:: python+sql
 
-    from sqlalchemy.orm.collections import MappedCollection
+    from sqlalchemy.orm.collections import KeyFuncDict
 
 
-    class MyNodeMap(MappedCollection):
+    class MyNodeMap(KeyFuncDict):
         """Holds 'Node' objects, keyed by the 'name' attribute."""
 
         def __init__(self, *args, **kw):
             super().__init__(keyfunc=lambda node: node.name)
             dict.__init__(self, *args, **kw)
 
-When subclassing :class:`.MappedCollection`, user-defined versions
+When subclassing :class:`.KeyFuncDict`, user-defined versions
 of ``__setitem__()`` or ``__delitem__()`` should be decorated
 with :meth:`.collection.internally_instrumented`, **if** they call down
-to those same methods on :class:`.MappedCollection`.  This because the methods
-on :class:`.MappedCollection` are already instrumented - calling them
+to those same methods on :class:`.KeyFuncDict`.  This because the methods
+on :class:`.KeyFuncDict` are already instrumented - calling them
 from within an already instrumented call can cause events to be fired off
 repeatedly, or inappropriately, leading to internal state corruption in
 rare cases::
 
-    from sqlalchemy.orm.collections import MappedCollection, collection
+    from sqlalchemy.orm.collections import KeyFuncDict, collection
 
 
-    class MyMappedCollection(MappedCollection):
+    class MyKeyFuncDict(KeyFuncDict):
         """Use @internally_instrumented when your methods
         call down to already-instrumented methods.
 
@@ -593,12 +583,12 @@ rare cases::
         @collection.internally_instrumented
         def __setitem__(self, key, value, _sa_initiator=None):
             # do something with key, value
-            super(MyMappedCollection, self).__setitem__(key, value, _sa_initiator)
+            super(MyKeyFuncDict, self).__setitem__(key, value, _sa_initiator)
 
         @collection.internally_instrumented
         def __delitem__(self, key, _sa_initiator=None):
             # do something with key
-            super(MyMappedCollection, self).__delitem__(key, _sa_initiator)
+            super(MyKeyFuncDict, self).__delitem__(key, _sa_initiator)
 
 The ORM understands the ``dict`` interface just like lists and sets, and will
 automatically instrument all "dict-like" methods if you choose to subclass
@@ -607,8 +597,6 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``values()`` unless otherwise decorated.
 
-.. autoclass:: sqlalchemy.orm.MappedCollection
-   :members:
 
 Instrumentation and Custom Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -634,12 +622,38 @@ to restrict the decorations to just your usage in relationships. For example:
 The ORM uses this approach for built-ins, quietly substituting a trivial
 subclass when a ``list``, ``set`` or ``dict`` is used directly.
 
-Collection Internals
---------------------
+Collection API
+-----------------------------
 
-Various internal methods.
+.. currentmodule:: sqlalchemy.orm
+
+.. autofunction:: attribute_keyed_dict
+
+.. autofunction:: column_keyed_dict
+
+.. autofunction:: keyfunc_mapping
+
+.. autodata:: attribute_mapped_collection
+
+.. autodata:: column_mapped_collection
+
+.. autodata:: mapped_collection
+
+.. autoclass:: sqlalchemy.orm.KeyFuncDict
+   :members:
+
+.. autodata:: sqlalchemy.orm.MappedCollection
+
+
+Collection Internals
+-----------------------------
+
+.. currentmodule:: sqlalchemy.orm.collections
 
 .. autofunction:: bulk_replace
+
+.. autoclass:: collection
+    :members:
 
 .. autodata:: collection_adapter
 

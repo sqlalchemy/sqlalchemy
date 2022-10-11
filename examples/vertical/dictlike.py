@@ -71,7 +71,7 @@ if __name__ == "__main__":
         create_engine,
     )
     from sqlalchemy.orm import relationship, Session
-    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.orm.collections import attribute_keyed_dict
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         name = Column(Unicode(100))
 
         facts = relationship(
-            "AnimalFact", collection_class=attribute_mapped_collection("key")
+            "AnimalFact", collection_class=attribute_keyed_dict("key")
         )
 
         _proxied = association_proxy(

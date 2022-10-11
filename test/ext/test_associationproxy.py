@@ -27,7 +27,7 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -195,7 +195,7 @@ class AutoFlushTest(fixtures.MappedTest):
             collection[obj.name] = obj
 
         self._test_premature_flush(
-            collections.attribute_mapped_collection("name"), set_, is_dict=True
+            collections.attribute_keyed_dict("name"), set_, is_dict=True
         )
 
 
@@ -1465,7 +1465,7 @@ class ReconstitutionTest(fixtures.MappedTest):
             properties=dict(
                 children=relationship(
                     KVChild,
-                    collection_class=collections.mapped_collection(
+                    collection_class=collections.keyfunc_mapping(
                         PickleKeyFunc("name")
                     ),
                 )
@@ -2356,7 +2356,7 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
             a,
             properties={
                 "orig": relationship(
-                    B, collection_class=attribute_mapped_collection("key")
+                    B, collection_class=attribute_keyed_dict("key")
                 )
             },
         )

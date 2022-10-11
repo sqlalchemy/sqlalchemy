@@ -23,7 +23,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.collections import MappedCollection
+from sqlalchemy.orm.collections import KeyFuncDict
 
 
 class Base:
@@ -33,7 +33,7 @@ class Base:
 Base = declarative_base(cls=Base)
 
 
-class GenDefaultCollection(MappedCollection):
+class GenDefaultCollection(KeyFuncDict):
     def __missing__(self, key):
         self[key] = b = B(key)
         return b

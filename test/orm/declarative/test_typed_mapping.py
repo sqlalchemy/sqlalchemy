@@ -42,8 +42,8 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
-from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy.orm.collections import MappedCollection
+from sqlalchemy.orm.collections import attribute_keyed_dict
+from sqlalchemy.orm.collections import KeyFuncDict
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -1412,10 +1412,8 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[
-                MappedCollection[str, "B"]  # noqa: F821
-            ] = relationship(
-                collection_class=attribute_mapped_collection("name")
+            bs: Mapped[KeyFuncDict[str, "B"]] = relationship(  # noqa: F821
+                collection_class=attribute_keyed_dict("name")
             )
 
         class B(decl_base):
