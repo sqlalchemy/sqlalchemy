@@ -1820,6 +1820,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             person_id: Mapped[int] = mapped_column(
                 ForeignKey("person.person_id"), primary_key=True
             )
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
 
             status: Mapped[str] = mapped_column(String(30))
             engineer_name: Mapped[opt_str50]
@@ -1833,6 +1834,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             )
             status: Mapped[str] = mapped_column(String(30))
             manager_name: Mapped[str50]
+            __mapper_args__ = {"polymorphic_identity": "manager"}
 
         is_(Person.__mapper__.polymorphic_on, Person.__table__.c.type)
 

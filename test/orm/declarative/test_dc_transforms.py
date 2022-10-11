@@ -303,6 +303,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             status: Mapped[str] = mapped_column(String(30))
             engineer_name: Mapped[str]
             primary_language: Mapped[str]
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
 
         e1 = Engineer("nm", "st", "en", "pl")
         eq_(e1.name, "nm")
@@ -451,6 +452,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             status: Mapped[str] = mapped_column(String(30))
             engineer_name: Mapped[str]
             primary_language: Mapped[str]
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
 
         e1 = Engineer("st", "en", "pl")
         eq_(e1.status, "st")
