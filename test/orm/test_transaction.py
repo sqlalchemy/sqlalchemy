@@ -2108,7 +2108,7 @@ class TransactionFlagsTest(fixtures.TestBase):
             eq_(s1.in_transaction(), True)
             is_(s1.get_transaction(), trans)
 
-            subtrans = s1.begin(_subtrans=True)
+            subtrans = s1._autobegin_t()._begin()
             is_(s1.get_transaction(), trans)
             eq_(s1.in_transaction(), True)
 

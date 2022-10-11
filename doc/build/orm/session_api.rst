@@ -13,12 +13,14 @@ Session and sessionmaker()
 .. autoclass:: ORMExecuteState
     :members:
 
-
 .. autoclass:: Session
    :members:
    :inherited-members:
 
 .. autoclass:: SessionTransaction
+   :members:
+
+.. autoclass:: SessionTransactionOrigin
    :members:
 
 Session Utilities

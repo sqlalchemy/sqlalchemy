@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import contextlib
+from enum import Enum
 import itertools
 import sys
 import typing
@@ -734,6 +735,30 @@ class ORMExecuteState(util.MemoizedSlots):
         ]
 
 
+class SessionTransactionOrigin(Enum):
+    """indicates the origin of a :class:`.SessionTransaction`.
+
+    This enumeration is present on the
+    :attr:`.SessionTransaction.origin` attribute of any
+    :class:`.SessionTransaction` object.
+
+    .. versionadded:: 2.0
+
+    """
+
+    AUTOBEGIN = 0
+    """transaction were started by autobegin"""
+
+    BEGIN = 1
+    """transaction were started by calling :meth:`_orm.Session.begin`"""
+
+    BEGIN_NESTED = 2
+    """tranaction were started by :meth:`_orm.Session.begin_nested`"""
+
+    SUBTRANSACTION = 3
+    """transaction is an internal "subtransaction" """
+
+
 class SessionTransaction(_StateChange, TransactionalContext):
     """A :class:`.Session`-level transaction.
 
@@ -790,29 +815,60 @@ class SessionTransaction(_StateChange, TransactionalContext):
         InstanceState[Any], Tuple[Any, Any]
     ]
 
+    origin: SessionTransactionOrigin
+    """Origin of this :class:`_orm.SessionTransaction`.
+
+    Refers to a :class:`.SessionTransactionOrigin` instance which is an
+    enumeration indicating the source event that led to constructing
+    this :class:`_orm.SessionTransaction`.
+
+    .. versionadded:: 2.0
+
+    """
+
+    nested: bool = False
+    """Indicates if this is a nested, or SAVEPOINT, transaction.
+
+    When :attr:`.SessionTransaction.nested` is True, it is expected
+    that :attr:`.SessionTransaction.parent` will be present as well,
+    linking to the enclosing :class:`.SessionTransaction`.
+
+    .. seealso::
+
+        :attr:`.SessionTransaction.origin`
+
+    """
+
     def __init__(
         self,
         session: Session,
+        origin: SessionTransactionOrigin,
         parent: Optional[SessionTransaction] = None,
-        nested: bool = False,
-        autobegin: bool = False,
     ):
         TransactionalContext._trans_ctx_check(session)
 
         self.session = session
         self._connections = {}
         self._parent = parent
-        self.nested = nested
-        if nested:
-            self._previous_nested_transaction = session._nested_transaction
-        self._state = SessionTransactionState.ACTIVE
-        if not parent and nested:
-            raise sa_exc.InvalidRequestError(
-                "Can't start a SAVEPOINT transaction when no existing "
-                "transaction is in progress"
-            )
+        self.nested = nested = origin is SessionTransactionOrigin.BEGIN_NESTED
+        self.origin = origin
 
-        self._take_snapshot(autobegin=autobegin)
+        if nested:
+            if not parent:
+                raise sa_exc.InvalidRequestError(
+                    "Can't start a SAVEPOINT transaction when no existing "
+                    "transaction is in progress"
+                )
+
+            self._previous_nested_transaction = session._nested_transaction
+        elif origin is SessionTransactionOrigin.SUBTRANSACTION:
+            assert parent is not None
+        else:
+            assert parent is None
+
+        self._state = SessionTransactionState.ACTIVE
+
+        self._take_snapshot()
 
         # make sure transaction is assigned before we call the
         # dispatch
@@ -866,14 +922,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         """
         return self._parent
 
-    nested: bool = False
-    """Indicates if this is a nested, or SAVEPOINT, transaction.
-
-    When :attr:`.SessionTransaction.nested` is True, it is expected
-    that :attr:`.SessionTransaction.parent` will be True as well.
-
-    """
-
     @property
     def is_active(self) -> bool:
         return (
@@ -901,7 +949,13 @@ class SessionTransaction(_StateChange, TransactionalContext):
         (SessionTransactionState.ACTIVE,), _StateChangeStates.NO_CHANGE
     )
     def _begin(self, nested: bool = False) -> SessionTransaction:
-        return SessionTransaction(self.session, self, nested=nested)
+        return SessionTransaction(
+            self.session,
+            SessionTransactionOrigin.BEGIN_NESTED
+            if nested
+            else SessionTransactionOrigin.SUBTRANSACTION,
+            self,
+        )
 
     def _iterate_self_and_parents(
         self, upto: Optional[SessionTransaction] = None
@@ -923,7 +977,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
         return result
 
-    def _take_snapshot(self, autobegin: bool = False) -> None:
+    def _take_snapshot(self) -> None:
         if not self._is_transaction_boundary:
             parent = self._parent
             assert parent is not None
@@ -933,7 +987,11 @@ class SessionTransaction(_StateChange, TransactionalContext):
             self._key_switches = parent._key_switches
             return
 
-        if not autobegin and not self.session._flushing:
+        is_begin = self.origin in (
+            SessionTransactionOrigin.BEGIN,
+            SessionTransactionOrigin.AUTOBEGIN,
+        )
+        if not is_begin and not self.session._flushing:
             self.session.flush()
 
         self._new = weakref.WeakKeyDictionary()
@@ -1307,6 +1365,7 @@ class Session(_SessionClassMethods, EventTarget):
         autoflush: bool = True,
         future: Literal[True] = True,
         expire_on_commit: bool = True,
+        autobegin: bool = True,
         twophase: bool = False,
         binds: Optional[Dict[_SessionBindKey, _SessionBind]] = None,
         enable_baked_queries: bool = True,
@@ -1329,6 +1388,20 @@ class Session(_SessionClassMethods, EventTarget):
            .. seealso::
 
                :ref:`session_flushing` - additional background on autoflush
+
+        :param autobegin: Automatically start transactions (i.e. equivalent to
+           invoking :meth:`_orm.Session.begin`) when database access is
+           requested by an operation.   Defaults to ``True``.    Set to
+           ``False`` to prevent a :class:`_orm.Session` from implicitly
+           beginning transactions after construction, as well as after any of
+           the :meth:`_orm.Session.rollback`, :meth:`_orm.Session.commit`,
+           or :meth:`_orm.Session.close` methods are called.
+
+           .. versionadded:: 2.0
+
+           .. seealso::
+
+                :ref:`session_autobegin_disable`
 
         :param bind: An optional :class:`_engine.Engine` or
            :class:`_engine.Connection` to
@@ -1455,6 +1528,7 @@ class Session(_SessionClassMethods, EventTarget):
         self._transaction = None
         self._nested_transaction = None
         self.hash_key = _new_sessionid()
+        self.autobegin = autobegin
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
@@ -1542,18 +1616,26 @@ class Session(_SessionClassMethods, EventTarget):
         """
         return {}
 
-    def _autobegin_t(self) -> SessionTransaction:
+    def _autobegin_t(self, begin: bool = False) -> SessionTransaction:
         if self._transaction is None:
 
-            trans = SessionTransaction(self, autobegin=True)
+            if not begin and not self.autobegin:
+                raise sa_exc.InvalidRequestError(
+                    "Autobegin is disabled on this Session; please call "
+                    "session.begin() to start a new transaction"
+                )
+            trans = SessionTransaction(
+                self,
+                SessionTransactionOrigin.BEGIN
+                if begin
+                else SessionTransactionOrigin.AUTOBEGIN,
+            )
             assert self._transaction is trans
             return trans
 
         return self._transaction
 
-    def begin(
-        self, nested: bool = False, _subtrans: bool = False
-    ) -> SessionTransaction:
+    def begin(self, nested: bool = False) -> SessionTransaction:
         """Begin a transaction, or nested transaction,
         on this :class:`.Session`, if one is not already begun.
 
@@ -1590,31 +1672,21 @@ class Session(_SessionClassMethods, EventTarget):
 
         trans = self._transaction
         if trans is None:
-            trans = self._autobegin_t()
+            trans = self._autobegin_t(begin=True)
 
-            if not nested and not _subtrans:
+            if not nested:
                 return trans
 
-        if trans is not None:
-            if _subtrans or nested:
-                trans = trans._begin(nested=nested)
-                assert self._transaction is trans
-                if nested:
-                    self._nested_transaction = trans
-            else:
-                raise sa_exc.InvalidRequestError(
-                    "A transaction is already begun on this Session."
-                )
-        else:
-            # outermost transaction.  must be a not nested and not
-            # a subtransaction
+        assert trans is not None
 
-            assert not nested and not _subtrans
-            trans = SessionTransaction(self)
+        if nested:
+            trans = trans._begin(nested=nested)
             assert self._transaction is trans
-
-            if TYPE_CHECKING:
-                assert self._transaction is not None
+            self._nested_transaction = trans
+        else:
+            raise sa_exc.InvalidRequestError(
+                "A transaction is already begun on this Session."
+            )
 
         return trans  # needed for __enter__/__exit__ hook
 
@@ -3957,7 +4029,7 @@ class Session(_SessionClassMethods, EventTarget):
         if not flush_context.has_work:
             return
 
-        flush_context.transaction = transaction = self.begin(_subtrans=True)
+        flush_context.transaction = transaction = self._autobegin_t()._begin()
         try:
             self._warn_on_events = True
             try:
@@ -4246,7 +4318,7 @@ class Session(_SessionClassMethods, EventTarget):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
 
-        transaction = self.begin(_subtrans=True)
+        transaction = self._autobegin_t()._begin()
         try:
             if isupdate:
                 bulk_persistence._bulk_update(

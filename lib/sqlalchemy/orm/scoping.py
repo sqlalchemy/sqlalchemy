@@ -382,9 +382,7 @@ class scoped_session(Generic[_S]):
 
         return self._proxied.add_all(instances)
 
-    def begin(
-        self, nested: bool = False, _subtrans: bool = False
-    ) -> SessionTransaction:
+    def begin(self, nested: bool = False) -> SessionTransaction:
         r"""Begin a transaction, or nested transaction,
         on this :class:`.Session`, if one is not already begun.
 
@@ -425,7 +423,7 @@ class scoped_session(Generic[_S]):
 
         """  # noqa: E501
 
-        return self._proxied.begin(nested=nested, _subtrans=_subtrans)
+        return self._proxied.begin(nested=nested)
 
     def begin_nested(self) -> SessionTransaction:
         r"""Begin a "nested" transaction on this Session, e.g. SAVEPOINT.
@@ -1771,6 +1769,11 @@ class scoped_session(Generic[_S]):
         :return:  a :class:`_result.ScalarResult` object
 
         .. versionadded:: 1.4.24
+
+        .. seealso::
+
+            :ref:`orm_queryguide_select_orm_entities` - contrasts the behavior
+            of :meth:`_orm.Session.execute` to :meth:`_orm.Session.scalars`
 
 
         """  # noqa: E501

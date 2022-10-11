@@ -562,12 +562,6 @@ document at :doc:`queryguide/dml` for documentation.
 Auto Begin
 ~~~~~~~~~~
 
-.. versionadded:: 1.4
-
-  This section describes a behavior that is new in SQLAlchemy 1.4 and does
-  not apply to previous versions.  Further details on the "autobegin"
-  change are at :ref:`change_5074`.
-
 The :class:`_orm.Session` object features a behavior known as **autobegin**.
 This indicates that the :class:`_orm.Session` will internally consider itself
 to be in a "transactional" state as soon as any work is performed with the
@@ -595,9 +589,33 @@ method is called, the :class:`_orm.Session` is placed into the "transactional"
 state unconditionally.   :meth:`_orm.Session.begin` may be used as a context
 manager as described at :ref:`session_begin_commit_rollback_block`.
 
-.. versionchanged:: 1.4.12 - autobegin now correctly occurs if object
-   attributes are modified; previously this was not occurring.
+.. _session_autobegin_disable:
 
+Disabling Autobegin to Prevent Implicit Transactions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The "autobegin" behavior may be disabled using the
+:paramref:`_orm.Session.autobegin` parameter set to ``False``. By using this
+parameter, a :class:`_orm.Session` will require that the
+:meth:`_orm.Session.begin` method is called explicitly. Upon construction, as
+well as after any of the :meth:`_orm.Session.rollback`,
+:meth:`_orm.Session.commit`, or :meth:`_orm.Session.close` methods are called,
+the :class:`_orm.Session` won't implicitly begin any new transactions and will
+raise an error if an attempt to use the :class:`_orm.Session` is made without
+first calling :meth:`_orm.Session.begin`::
+
+    with Session(engine, autobegin=False) as session:
+        session.begin()  # <-- required, else InvalidRequestError raised on next call
+
+        session.add(User(name="u1"))
+        session.commit()
+
+        session.begin()  # <-- required, else InvalidRequestError raised on next call
+
+        u1 = session.scalar(select(User).filter_by(name="u1"))
+
+.. versionadded:: 2.0 Added :paramref:`_orm.Session.autobegin`, allowing
+   "autobegin" behavior to be disabled
 
 .. _session_committing:
 
