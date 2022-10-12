@@ -127,6 +127,7 @@ from .session import ORMExecuteState as ORMExecuteState
 from .session import Session as Session
 from .session import sessionmaker as sessionmaker
 from .session import SessionTransaction as SessionTransaction
+from .session import SessionTransactionOrigin as SessionTransactionOrigin
 from .state import AttributeState as AttributeState
 from .state import InstanceState as InstanceState
 from .strategy_options import contains_eager as contains_eager

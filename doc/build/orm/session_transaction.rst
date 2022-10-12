@@ -251,12 +251,15 @@ Commit as you go
 Both :class:`_orm.Session` and :class:`_engine.Connection` feature
 :meth:`_engine.Connection.commit` and :meth:`_engine.Connection.rollback`
 methods.   Using SQLAlchemy 2.0-style operation, these methods affect the
-**outermost** transaction in all cases.
+**outermost** transaction in all cases.   For the :class:`_orm.Session`, it is
+assumed that :paramref:`_orm.Session.autobegin` is left at its default
+value of ``True``.
 
 
-Engine::
 
-    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
+:class:`_engine.Engine`::
+
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname")
 
     with engine.connect() as conn:
         conn.execute(
@@ -269,9 +272,9 @@ Engine::
         )
         conn.commit()
 
-Session::
+:class:`_orm.Session`::
 
-    Session = sessionmaker(engine, future=True)
+    Session = sessionmaker(engine)
 
     with Session() as session:
         session.add_all(
