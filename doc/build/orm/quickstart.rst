@@ -181,7 +181,7 @@ Create Objects and Persist
 ---------------------------
 
 We are now ready to insert data in the database.  We accomplish this by
-creating instances of ``User`` and ``Address`` objects, which have
+creating instances of ``User`` and ``Address`` classes, which have
 an ``__init__()`` method already as established automatically by the
 declarative mapping process.  We then pass them
 to the database using an object called a :ref:`Session <tutorial_executing_orm_session>`,
