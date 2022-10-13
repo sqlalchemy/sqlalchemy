@@ -32,14 +32,14 @@ SQLAlchemy Documentation
 
   .. container::
 
-    The SQLAlchemy 2.0 series represents a major rework of the classic 1.x
-    SQLAlchemy APIs that have evolved over more than 15 years. The new tutorial
-    is recommended for all new users as well as veterans of older SQLAlchemy
-    versions alike.
+    New users of SQLAlchemy, as well as veterans of older SQLAlchemy
+    release series, should start with the
+    :doc:`/tutorial/index`, which covers everything an Alchemist needs
+    to know when using the ORM or just Core.
 
     * **For a quick glance:** :doc:`/orm/quickstart` - a glimpse at what working with the ORM looks like
 
-    * **For all users:** :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial, for complete learning
+    * **For all users:** :doc:`/tutorial/index` - In depth tutorial for Core and ORM
 
 
 .. container:: left_right_container
@@ -52,6 +52,9 @@ SQLAlchemy Documentation
 
   .. container::
 
+    Users coming from older versions of SQLAlchemy, especially those transitioning
+    from the 1.x style of working, will want to review this documentation.
+
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
     * :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New 2.0 features and behaviors beyond the 1.x migration
     * :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions
@@ -63,28 +66,27 @@ SQLAlchemy Documentation
 
       .. rst-class:: h2
 
-      Reference Documentation
+      Reference and How To
 
 
   .. container:: orm
 
-    **SQLAlchemy ORM**
+    **SQLAlchemy ORM** - Detailed guides and API reference for using the ORM
 
-    * **ORM Configuration:**
-      :doc:`Mapped Class Configuration <orm/mapper_config>` |
+    * **Mapping Classes:**
+      :doc:`Mapping Python Classes <orm/mapper_config>` |
       :doc:`Relationship Configuration <orm/relationships>`
 
-    * **ORM Usage:**
-      :doc:`Session Usage and Guidelines <orm/session>` |
-      :doc:`Querying Guide <orm/queryguide/index>` |
-      :doc:`AsyncIO Support <orm/extensions/asyncio>`
+    * **Using the ORM:**
+      :doc:`Using the ORM Session <orm/session>` |
+      :doc:`ORM Querying Guide <orm/queryguide/index>` |
+      :doc:`Using AsyncIO <orm/extensions/asyncio>`
 
     * **Configuration Extensions:**
-      :doc:`Mypy integration <orm/extensions/mypy>` |
       :doc:`Association Proxy <orm/extensions/associationproxy>` |
       :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
-      :doc:`Automap <orm/extensions/automap>` |
       :doc:`Mutable Scalars <orm/extensions/mutable>` |
+      :doc:`Automap <orm/extensions/automap>` |
       :doc:`All extensions <orm/extensions/index>`
 
     * **Extending the ORM:**
@@ -95,7 +97,7 @@ SQLAlchemy Documentation
 
   .. container:: core
 
-    **SQLAlchemy Core**
+    **SQLAlchemy Core** - Detailed guides and API reference for working with Core
 
     * **Engines, Connections, Pools:**
       :doc:`Engine Configuration <core/engines>` |
@@ -111,13 +113,20 @@ SQLAlchemy Documentation
       :ref:`Constraints and Indexes <metadata_constraints_toplevel>` |
       :ref:`Using Data Definition Language (DDL) <metadata_ddl_toplevel>`
 
-    * **SQL Reference:**
-      :doc:`SQL Expression API docs <core/expression_api>`
+    * **SQL Statements:**
+      :doc:`SQL Expression Elements <core/sqlelement>` |
+      :doc:`Operator Reference <core/operators>` |
+      :doc:`SELECT and related constructs <core/selectable>` |
+      :doc:`INSERT, UPDATE, DELETE <core/dml>` |
+      :doc:`SQL Functions <core/functions>` |
+      :doc:`Table of Contents <core/expression_api>`
+
+
 
     * **Datatypes:**
       :ref:`Overview <types_toplevel>` |
       :ref:`Building Custom Types <types_custom>` |
-      :ref:`API <types_api>`
+      :ref:`Type API Reference <types_api>`
 
     * **Core Basics:**
       :doc:`Overview <core/api_basics>` |

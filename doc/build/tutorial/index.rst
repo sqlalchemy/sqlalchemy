@@ -1,4 +1,4 @@
-.. |tutorial_title| replace:: SQLAlchemy 2.0 Tutorial
+.. |tutorial_title| replace:: SQLAlchemy Unified Tutorial
 .. |next| replace:: :doc:`engine`
 
 .. footer_topic:: |tutorial_title|
@@ -9,14 +9,13 @@
 
 .. rst-class:: orm_core
 
-========================
-SQLAlchemy 2.0 Tutorial
-========================
+============================
+SQLAlchemy Unified Tutorial
+============================
 
 .. admonition:: About this document
 
-    The SQLAlchemy Tutorial for version 2.0, first published as a preview
-    within the 1.4 documentation, is integrated between the Core and ORM
+    The SQLAlchemy Unified Tutorial is integrated between the Core and ORM
     components of SQLAlchemy and serves as a unified introduction to SQLAlchemy
     as a whole. For users of SQLAlchemy within the 1.x series, in the
     :term:`2.0 style` of working, the ORM uses Core-style querying with the
@@ -26,8 +25,8 @@ SQLAlchemy 2.0 Tutorial
     topic is!
 
     Users who are already familiar with SQLAlchemy, and especially those
-    looking to migrate existing applications to work under SQLAlchemy 2.0
-    within the 1.4 transitional phase should check out the
+    looking to migrate existing applications to work under the SQLAlchemy 2.0
+    series within the 1.4 transitional phase should check out the
     :ref:`migration_20_toplevel` document as well.
 
     For the newcomer, this document has a **lot** of detail, however by the

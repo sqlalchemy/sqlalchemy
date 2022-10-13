@@ -383,8 +383,6 @@ events include:
 The reason the :class:`_engine.Connection` is passed is that it is encouraged that
 **simple SQL operations take place here**, directly on the :class:`_engine.Connection`,
 such as incrementing counters or inserting extra rows within log tables.
-When dealing with the :class:`_engine.Connection`, it is expected that Core-level
-SQL operations will be used; e.g. those described in :ref:`sqlexpression_toplevel`.
 
 There are also many per-object operations that don't need to be handled
 within a flush event at all.   The most common alternative is to simply

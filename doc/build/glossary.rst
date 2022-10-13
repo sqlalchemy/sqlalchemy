@@ -19,7 +19,9 @@ Glossary
         throughout the 1.x series of SQLAlchemy and earlier (e.g. 1.3, 1.2, etc)
         and the term "2.0 style" refers to the way an API will look in version
         2.0.   Version 1.4 implements nearly all of 2.0's API in so-called
-        "transition mode".
+        "transition mode", while version 2.0 still maintains the legacy
+        :class:`_orm.Query` object to allow legacy code to remain largely
+        2.0 compatible.
 
         .. seealso::
 

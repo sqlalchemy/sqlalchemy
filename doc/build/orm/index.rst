@@ -20,7 +20,3 @@ tutorial.
     extensions/index
     examples
 
-.. toctree::
-    :hidden:
-
-    tutorial

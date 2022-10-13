@@ -6,8 +6,8 @@ Relationship Configuration
 ==========================
 
 This section describes the :func:`relationship` function and in depth discussion
-of its usage.   For an introduction to relationships, start with the
-:ref:`ormtutorial_toplevel` and head into :ref:`tutorial_orm_related_objects`.
+of its usage.   For an introduction to relationships, start with
+:ref:`tutorial_orm_related_objects` in the :ref:`unified_tutorial`.
 
 .. toctree::
     :maxdepth: 3

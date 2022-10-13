@@ -77,8 +77,8 @@ any transactional state or locks are removed (this is known as
 Our example above illustrated the execution of a textual SQL string, which
 should be invoked by using the :func:`_expression.text` construct to indicate that
 we'd like to use textual SQL.  The :meth:`_engine.Connection.execute` method can of
-course accommodate more than that, including the variety of SQL expression
-constructs described in :ref:`sqlexpression_toplevel`.
+course accommodate more than that; see :ref:`tutorial_working_with_data`
+in the :ref:`unified_tutorial` for a tutorial.
 
 
 Using Transactions

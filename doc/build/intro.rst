@@ -58,17 +58,15 @@ The documentation is separated into four sections:
 * :ref:`unified_tutorial` - this all-new tutorial for the 1.4/2.0 series of
   SQLAlchemy introduces the entire library holistically, starting from a
   description of Core and working more and more towards ORM-specific concepts.
-  New users, as well as users coming from :term:`1.x style`, who wish to work
-  in :term:`2.0 style` should start here.
+  New users, as well as users coming from the 1.x series of
+  SQLAlchemy, should start here.
 
 * :ref:`orm_toplevel` - In this section, reference documentation for the ORM is
-  presented; this section also includes the now-legacy
-  :ref:`ormtutorial_toplevel`.
+  presented.
 
 * :ref:`core_toplevel` - Here, reference documentation for
-  everything else within Core is presented; section also includes the legacy
-  :ref:`sqlexpression_toplevel`. SQLAlchemy engine, connection, and pooling
-  services are also described here.
+  everything else within Core is presented. SQLAlchemy engine, connection, and
+  pooling services are also described here.
 
 * :ref:`dialect_toplevel` - Provides reference documentation
   for all :term:`dialect` implementations, including :term:`DBAPI` specifics.
@@ -125,11 +123,6 @@ approaches.
 
 Install via pip
 ---------------
-
-.. warning::  This section **does not apply until SQLAlchemy 2.0 is actually
-   released**, which as of January 26, 2022 the library is **not released yet**.
-   In the interim, these instructions **will not function** and will install
-   the latest 1.4 release.
 
 When ``pip`` is available, the distribution can be
 downloaded from PyPI and installed in one step:

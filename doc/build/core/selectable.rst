@@ -1,11 +1,16 @@
-Selectables, Tables, FROM objects
+SELECT and Related Constructs
 =================================
 
-The term "selectable" refers to any object that rows can be selected from;
-in SQLAlchemy, these objects descend from :class:`_expression.FromClause` and their
-distinguishing feature is their :attr:`_expression.FromClause.c` attribute, which is
-a namespace of all the columns contained within the FROM clause (these
-elements are themselves :class:`_expression.ColumnElement` subclasses).
+The term "selectable" refers to any object that represents database rows. In
+SQLAlchemy, these objects descend from :class:`_expression.Selectable`, the
+most prominent being :class:`_expression.Select`, which represents a SQL SELECT
+statement. A subset of :class:`_expression.Selectable` is
+:class:`_expression.FromClause`, which represents objects that can be within
+the FROM clause of a :class:`.Select` statement. A distinguishing feature of
+:class:`_expression.FromClause` is the :attr:`_expression.FromClause.c`
+attribute, which is a namespace of all the columns contained within the FROM
+clause (these elements are themselves :class:`_expression.ColumnElement`
+subclasses).
 
 .. currentmodule:: sqlalchemy.sql.expression
 

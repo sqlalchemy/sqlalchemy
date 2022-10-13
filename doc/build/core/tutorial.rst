@@ -1,4 +1,4 @@
-.. _sqlexpression_toplevel:
+:orphan:
 
 =================================
 SQL Expression Language Tutorial

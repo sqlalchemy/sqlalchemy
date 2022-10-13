@@ -9,6 +9,11 @@
 """Serializer/Deserializer objects for usage with SQLAlchemy query structures,
 allowing "contextual" deserialization.
 
+.. legacy::
+
+    The serializer extension is **legacy** and should not be used for
+    new development.
+
 Any SQLAlchemy query structure, either based on sqlalchemy.sql.*
 or sqlalchemy.orm.* can be used.  The mappers, Tables, Columns, Session
 etc. which are referenced by the structure are not persisted in serialized

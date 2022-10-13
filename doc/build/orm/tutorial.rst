@@ -1,4 +1,4 @@
-.. _ormtutorial_toplevel:
+:orphan:
 
 ==========================
 Object Relational Tutorial

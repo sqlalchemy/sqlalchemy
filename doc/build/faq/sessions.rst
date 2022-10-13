@@ -237,7 +237,7 @@ My Query does not return the same number of objects as query.count() tells me - 
 
 The :class:`_query.Query` object, when asked to return a list of ORM-mapped objects,
 will **deduplicate the objects based on primary key**.   That is, if we
-for example use the ``User`` mapping described at :ref:`ormtutorial_toplevel`,
+for example use the ``User`` mapping described at :ref:`tutorial_orm_table_metadata`,
 and we had a SQL query like the following::
 
     q = session.query(User).outerjoin(User.addresses).filter(User.name == "jack")
