@@ -5,7 +5,7 @@ Operator Reference
 
     >>> from sqlalchemy import column, select
     >>> from sqlalchemy import create_engine
-    >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
+    >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
     >>> from sqlalchemy import MetaData, Table, Column, Integer, String, Numeric
     >>> metadata_obj = MetaData()
     >>> user_table = Table(

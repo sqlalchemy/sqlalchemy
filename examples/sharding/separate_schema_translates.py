@@ -45,7 +45,6 @@ db4 = engine.execution_options(schema_translate_map={None: "schema_4"})
 # to databases within a ShardedSession and returns it.
 Session = sessionmaker(
     class_=ShardedSession,
-    future=True,
     shards={
         "north_america": db1,
         "asia": db2,

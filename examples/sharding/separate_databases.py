@@ -31,7 +31,6 @@ db4 = create_engine("sqlite://", echo=echo)
 # to databases within a ShardedSession and returns it.
 Session = sessionmaker(
     class_=ShardedSession,
-    future=True,
     shards={
         "north_america": db1,
         "asia": db2,

@@ -221,21 +221,16 @@ without the need for refreshing it from the database.
 Session-level vs. Engine level transaction control
 --------------------------------------------------
 
-As of SQLAlchemy 1.4, the :class:`_orm.sessionmaker` and Core
-:class:`_engine.Engine` objects both support :term:`2.0 style` operation,
-by making use of the :paramref:`_orm.Session.future` flag as well as the
-:paramref:`_engine.create_engine.future` flag so that these two objects
-assume 2.0-style semantics.
-
-When using future mode, there should be equivalent semantics between
-the two packages, at the level of the :class:`_orm.sessionmaker` vs.
+The :class:`_engine.Connection` in Core and
+:class:`_session.Session` in ORM feature equivalent transactional
+semantics, both at the level of the :class:`_orm.sessionmaker` vs.
 the :class:`_engine.Engine`, as well as the :class:`_orm.Session` vs.
 the :class:`_engine.Connection`.  The following sections detail
 these scenarios based on the following scheme:
 
 .. sourcecode:: text
 
-    ORM (using future Session)                    Core (using future engine)
+    ORM                                           Core
     -----------------------------------------     -----------------------------------
     sessionmaker                                  Engine
     Session                                       Connection
@@ -297,7 +292,7 @@ that will maintain a begin/commit/rollback context for that object.
 
 Engine::
 
-    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname")
 
     with engine.begin() as conn:
         conn.execute(
@@ -312,7 +307,7 @@ Engine::
 
 Session::
 
-    Session = sessionmaker(engine, future=True)
+    Session = sessionmaker(engine)
 
     with Session.begin() as session:
         session.add_all(
@@ -336,7 +331,7 @@ specific behavior that is reversed from the 1.x series.
 
 Engine::
 
-    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname")
 
     with engine.begin() as conn:
         savepoint = conn.begin_nested()
@@ -354,7 +349,7 @@ Engine::
 
 Session::
 
-    Session = sessionmaker(engine, future=True)
+    Session = sessionmaker(engine)
 
     with Session.begin() as session:
         savepoint = session.begin_nested()

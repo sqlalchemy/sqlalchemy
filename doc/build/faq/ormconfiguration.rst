@@ -347,4 +347,4 @@ loads directly to primary key values just loaded.
 
 .. seealso::
 
-    :ref:`subqueryload_ordering`
+    :ref:`subquery_eager_loading`

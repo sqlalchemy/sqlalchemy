@@ -45,7 +45,7 @@ interception of a query, which includes those emitted by
 provides accessors to allow modifications to statements, parameters, and
 options::
 
-    Session = sessionmaker(engine, future=True)
+    Session = sessionmaker(engine)
 
 
     @event.listens_for(Session, "do_orm_execute")
@@ -84,7 +84,7 @@ may be used on its own, or is ideally suited to be used within the
 
     from sqlalchemy.orm import with_loader_criteria
 
-    Session = sessionmaker(engine, future=True)
+    Session = sessionmaker(engine)
 
 
     @event.listens_for(Session, "do_orm_execute")

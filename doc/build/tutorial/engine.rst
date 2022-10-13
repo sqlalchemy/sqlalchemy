@@ -19,14 +19,13 @@ which will describe how it should connect to the database host or backend.
 
 For this tutorial we will use an in-memory-only SQLite database. This is an
 easy way to test things without needing to have an actual pre-existing database
-set up.  The :class:`_engine.Engine` is created by using :func:`_sa.create_engine`, specifying
-the :paramref:`_sa.create_engine.future` flag set to ``True`` so that we make full use
-of :term:`2.0 style` usage:
+set up.  The :class:`_engine.Engine` is created by using the
+:func:`_sa.create_engine` function:
 
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import create_engine
-    >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
+    >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
 
 The main argument to :class:`_sa.create_engine`
 is a string URL, above passed as the string ``"sqlite+pysqlite:///:memory:"``.

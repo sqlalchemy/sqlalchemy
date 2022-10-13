@@ -391,7 +391,7 @@ for many rows while still supporting RETURNING.
 
 .. seealso::
 
-   :term:`executemany` - in the :doc:`Glossary <glossary>`, describes the
+   :term:`executemany` - in the :doc:`Glossary </glossary>`, describes the
    DBAPI-level
    `cursor.executemany() <https://peps.python.org/pep-0249/#executemany>`_
    method that's used for most "executemany" executions.
