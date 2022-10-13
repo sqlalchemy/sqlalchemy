@@ -1465,9 +1465,16 @@ class DynamicUOWTest(
         sess.add(u)
         sess.commit()
 
+        from sqlalchemy import case
+
+        # the byzantine syntax here is so the query works on MSSQL
         isnull_stmt = select(
-            addresses.c.user_id == None, func.count("*")
-        ).group_by(addresses.c.user_id == None)
+            case((addresses.c.user_id == None, True), else_=False),
+            func.count("*"),
+        ).group_by(
+            case((addresses.c.user_id == None, True), else_=False),
+            addresses.c.user_id,
+        )
 
         eq_(
             {isnull: count for isnull, count in sess.execute(isnull_stmt)},
