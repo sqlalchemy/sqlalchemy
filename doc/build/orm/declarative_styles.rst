@@ -50,14 +50,16 @@ With the declarative base class, new mapped classes are declared as subclasses
 of the base::
 
     from datetime import datetime
-    from typing import List
     from typing import Optional
 
-    from sqlalchemy import Integer, String
+    from sqlalchemy import ForeignKey
     from sqlalchemy import func
+    from sqlalchemy import Integer
+    from sqlalchemy import String
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
 
 
     class Base(DeclarativeBase):
@@ -73,7 +75,7 @@ of the base::
         nickname: Mapped[Optional[str]] = mapped_column(String(64))
         create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
+        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
 
 
     class Address(Base):
@@ -123,8 +125,17 @@ The example below sets up the identical mapping as seen in the
 previous section, using the :meth:`_orm.registry.mapped`
 decorator rather than using the :class:`_orm.DeclarativeBase` superclass::
 
-    from sqlalchemy import mapped_column, ForeignKey, Integer, String, Text
-    from sqlalchemy.orm import registry, relationship
+    from datetime import datetime
+    from typing import Optional
+
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import func
+    from sqlalchemy import Integer
+    from sqlalchemy import String
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import relationship
 
     mapper_registry = registry()
 
@@ -139,7 +150,7 @@ decorator rather than using the :class:`_orm.DeclarativeBase` superclass::
         nickname: Mapped[Optional[str]] = mapped_column(String(64))
         create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
+        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
 
 
     @mapper_registry.mapped
