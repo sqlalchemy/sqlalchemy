@@ -1224,6 +1224,7 @@ calling form with links to documentation for each technique
 presented.  The individual migration notes are in the embedded sections
 following the table, and may include additional notes not summarized here.
 
+.. format: off
 
 .. container:: sliding-table
 
@@ -1250,9 +1251,15 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.execute(select(User)).scalars().all()
+          session.execute(
+            select(User)
+          ).scalars().all()
+
           # or
-          session.scalars(select(User)).all()
+
+          session.scalars(
+            select(User)
+          ).all()
 
       - :ref:`migration_20_unify_select`
 
@@ -1261,11 +1268,16 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).filter_by(name="some user").one()
+          session.query(User).\
+            filter_by(name="some user").\
+            one()
 
       - ::
 
-          session.execute(select(User).filter_by(name="some user")).scalar_one()
+          session.execute(
+            select(User).
+            filter_by(name="some user")
+          ).scalar_one()
 
       - :ref:`migration_20_unify_select`
 
@@ -1273,11 +1285,17 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).filter_by(name="some user").first()
+          session.query(User).\
+            filter_by(name="some user").\
+            first()
 
       - ::
 
-          session.scalars(select(User).filter_by(name="some user").limit(1)).first()
+          session.scalars(
+            select(User).
+            filter_by(name="some user").
+            limit(1)
+          ).first()
 
       - :ref:`migration_20_unify_select`
 
@@ -1285,22 +1303,38 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-            session.query(User).options(joinedload(User.addresses)).all()
+            session.query(User).options(
+              joinedload(User.addresses)
+            ).all()
 
       - ::
 
-            session.scalars(select(User).options(joinedload(User.addresses))).unique().all()
+            session.scalars(
+              select(User).
+              options(
+                joinedload(User.addresses)
+              )
+            ).unique().all()
 
       - :ref:`joinedload_not_uniqued`
 
     * - ::
 
-          session.query(User).join(Address).filter(Address.email == "e@sa.us").all()
+          session.query(User).\
+            join(Address).\
+            filter(
+              Address.email == "e@sa.us"
+            ).\
+            all()
 
       - ::
 
           session.execute(
-              select(User).join(Address).where(Address.email == "e@sa.us")
+            select(User).
+            join(Address).
+            where(
+              Address.email == "e@sa.us"
+            )
           ).scalars().all()
 
       - :ref:`migration_20_unify_select`
@@ -1309,27 +1343,43 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
-          session.query(User).from_statement(text("select * from users")).all()
+          session.query(User).\
+            from_statement(
+              text("select * from users")
+            ).\
+            all()
 
       - ::
 
-          session.scalars(select(User).from_statement(text("select * from users"))).all()
+          session.scalars(
+            select(User).
+            from_statement(
+              text("select * from users")
+            )
+          ).all()
 
       - :ref:`orm_queryguide_selecting_text`
 
     * - ::
 
-          session.query(User).join(User.addresses).options(
+          session.query(User).\
+            join(User.addresses).\
+            options(
               contains_eager(User.addresses)
-          ).populate_existing().all()
+            ).\
+            populate_existing().all()
 
       - ::
 
           session.execute(
-              select(User)
-              .join(User.addresses)
-              .options(contains_eager(User.addresses))
-              .execution_options(populate_existing=True)
+            select(User)
+            .join(User.addresses)
+            .options(
+              contains_eager(User.addresses)
+            )
+            .execution_options(
+                populate_existing=True
+            )
           ).scalars().all()
 
       -
@@ -1341,17 +1391,22 @@ following the table, and may include additional notes not summarized here.
     *
       - ::
 
-          session.query(User).filter(User.name == "foo").update(
-              {"fullname": "Foo Bar"}, synchronize_session="evaluate"
-          )
+          session.query(User).\
+            filter(User.name == "foo").\
+            update(
+              {"fullname": "Foo Bar"},
+              synchronize_session="evaluate"
+            )
 
       - ::
 
           session.execute(
-              update(User)
-              .where(User.name == "foo")
-              .values(fullname="Foo Bar")
-              .execution_options(synchronize_session="evaluate")
+            update(User)
+            .where(User.name == "foo")
+            .values(fullname="Foo Bar")
+            .execution_options(
+              synchronize_session="evaluate"
+            )
           )
 
       - :ref:`orm_expression_update_delete`
@@ -1363,10 +1418,17 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.scalar(select(func.count()).select_from(User))
-          session.scalar(select(func.count(User.id)))
+          session.scalar(
+            select(func.count()).
+            select_from(User)
+          )
+          session.scalar(
+            select(func.count(User.id))
+          )
 
       - :meth:`_orm.Session.scalar`
+
+.. format: on
 
 .. _migration_20_unify_select:
 
