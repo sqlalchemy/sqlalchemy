@@ -117,21 +117,16 @@ as being in this realm are as follows:
 For the full overview of SQLAlchemy 1.4 changes, see the
 :doc:`/changelog/migration_14` document.
 
-Migration to 2.0 Step One - Python 3 only (Python 3.6 minimum)
---------------------------------------------------------------
+Migration to 2.0 Step One - Python 3 only (Python 3.7 minimum for 2.0 compatibility)
+------------------------------------------------------------------------------------
 
-SQLAlchemy 2.0 was first inspired by the fact that Python 2's EOL was in
-2020.   SQLAlchemy is taking a longer period of time than other major
-projects to drop Python 2.7 support, since it is not too much in the way
-of things for the moment.   However, version 2.0 hopes to start embracing
-:pep:`484` and other new features to a great degree, so it is likely
-that release 1.4 will be the last Python 2 supporting version, even if
-there is a SQLAlchemy 1.5 (which is also unlikely at the moment).
-
-In order to use SQLAlchemy 2.0, the application will need to be runnable on
-at least **Python 3.6** as of this writing.  SQLAlchemy 1.4 now supports
-Python 3.6 or newer within the Python 3 series; throughout the 1.4 series,
-the application can remain running on Python 2.7 or on at least Python 3.6.
+SQLAlchemy 2.0 was first inspired by the fact that Python 2's EOL was in 2020.
+SQLAlchemy is taking a longer period of time than other major projects to drop
+Python 2.7 support. However, in order to use SQLAlchemy 2.0, the application
+will need to be runnable on at least **Python 3.7**. SQLAlchemy 1.4 supports
+Python 3.6 or newer within the Python 3 series; throughout the 1.4 series, the
+application can remain running on Python 2.7 or on at least Python 3.6. Version
+2.0 however starts at Python 3.7.
 
 .. _migration_20_deprecations_mode:
 
