@@ -320,7 +320,7 @@ assumed to be completed and the 'configure' step has finished::
     class MyClass(Base):
         @classmethod
         def __declare_last__(cls):
-            """"""
+            """ """
             # do something with mappings
 
 ``__declare_first__()``
@@ -332,7 +332,7 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
     class MyClass(Base):
         @classmethod
         def __declare_first__(cls):
-            """"""
+            """ """
             # do something before mappings are configured
 
 .. versionadded:: 0.9.3
@@ -423,7 +423,7 @@ subclasses to extend just from the special class::
         __abstract__ = True
 
         def some_helpful_method(self):
-            """"""
+            """ """
 
         @declared_attr
         def __mapper_args__(cls):

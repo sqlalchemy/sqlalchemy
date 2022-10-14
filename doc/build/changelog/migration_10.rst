@@ -181,7 +181,7 @@ applied::
 
 
     class MySubClass(MyClass):
-        """"""
+        """ """
 
         # ...
 
