@@ -16,6 +16,13 @@ black-line-length = 79
 [tool.slotscheck]
 exclude-modules = '^sqlalchemy\.testing'
 
+# disable isort, for IDEs that just default isort to be turned on, e.g. vscode.
+# we use flake8-import-order for import sorting, using zimports to actually
+# reformat code.  isort is nicer in many ways but doesn't have our
+# "import *" fixer and also is not 100% compatible with flake8-import-order.
+[tool.isort]
+skip_glob=['*']
+
 
 [tool.pytest.ini_options]
 addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-markers"
