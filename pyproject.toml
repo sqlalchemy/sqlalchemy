@@ -6,4 +6,11 @@ target-version = ['py27', 'py36']
 black-line-length = 79
 keep-unused-type-checking = true
 
+# disable isort, for IDEs that just default isort to be turned on, e.g. vscode.
+# we use flake8-import-order for import sorting, using zimports to actually
+# reformat code.  isort is nicer in many ways but doesn't have our
+# "import *" fixer and also is not 100% compatible with flake8-import-order.
+[tool.isort]
+skip_glob=['*']
+
 
