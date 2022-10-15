@@ -365,6 +365,22 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
 
 
 class RoundTripTestBase:
+    @testing.requires.insertmanyvalues
+    def test_insertmanyvalues_returning(self, connection):
+        tt = self.tables.test_table
+        result = connection.execute(
+            tt.insert().returning(tt.c["x", "y"]),
+            [
+                {"x": "X1", "y": "Y1"},
+                {"x": "X2", "y": "Y2"},
+                {"x": "X3", "y": "Y3"},
+            ],
+        )
+        eq_(
+            result.all(),
+            [("X1", "Y1"), ("X2", "Y2"), ("X3", "Y3")],
+        )
+
     def test_round_trip(self, connection):
         connection.execute(
             self.tables.test_table.insert(),

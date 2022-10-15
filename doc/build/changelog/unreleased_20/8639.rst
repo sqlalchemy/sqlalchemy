@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, regression, sql
+    :tickets: 8639
+
+    Fixed bug in new "insertmanyvalues" feature where INSERT that included a
+    subquery with :func:`_sql.bindparam` inside of it would fail to render
+    correctly in "insertmanyvalues" format. This affected psycopg2 most
+    directly as "insertmanyvalues" is used unconditionally with this driver.
+
