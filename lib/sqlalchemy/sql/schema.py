@@ -105,7 +105,7 @@ if typing.TYPE_CHECKING:
 
 _T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
-_ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement]
+_ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement[Any]]
 _TAB = TypeVar("_TAB", bound="Table")
 
 
