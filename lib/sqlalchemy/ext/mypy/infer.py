@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
+
 from typing import Optional
 from typing import Sequence
 
@@ -450,7 +452,9 @@ def _infer_type_from_decl_column(
         else:
             # x = Column(..., nullable=Flase, ...)
             with suppress(ValueError):
-                nullable_idx = right_hand_expression.arg_names.index("nullable")
+                nullable_idx = (
+                    right_hand_expression.arg_names.index("nullable")
+                )
                 expr = right_hand_expression.args[nullable_idx]
 
                 if expr.name == "False":
