@@ -448,6 +448,14 @@ def _infer_type_from_decl_column(
             )
 
         else:
+            # x = Column(..., nullable=Flase, ...)
+            with suppress(ValueError):
+                nullable_idx = right_hand_expression.arg_names.index("nullable")
+                expr = right_hand_expression.args[nullable_idx]
+
+                if expr.name == "False":
+                    return python_type_for_type
+
             return UnionType([python_type_for_type, NoneType()])
     else:
         # it's not TypeEngine, it's typically implicitly typed
