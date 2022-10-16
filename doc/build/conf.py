@@ -213,9 +213,9 @@ copyright = u"2007-2022, the SQLAlchemy authors and contributors"  # noqa
 # The short X.Y version.
 version = "1.4"
 # The full version, including alpha/beta/rc tags.
-release = "1.4.41"
+release = "1.4.42"
 
-release_date = "September 6, 2022"
+release_date = "October 16, 2022"
 
 site_base = os.environ.get("RTD_SITE_BASE", "https://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

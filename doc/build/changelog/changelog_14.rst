@@ -15,7 +15,116 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.42
-    :include_notes_from: unreleased_14
+    :released: October 16, 2022
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 8516
+
+        Improved implementation of ``asyncio.shield()`` used in context managers as
+        added in :ticket:`8145`, such that the "close" operation is enclosed within
+        an ``asyncio.Task`` which is then strongly referenced as the operation
+        proceeds. This is per Python documentation indicating that the task is
+        otherwise not strongly referenced.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8614
+
+        The :paramref:`_orm.Session.execute.bind_arguments` dictionary is no longer
+        mutated when passed to :meth:`_orm.Session.execute` and similar; instead,
+        it's copied to an internal dictionary for state changes. Among other
+        things, this fixes and issue where the "clause" passed to the
+        :meth:`_orm.Session.get_bind` method would be incorrectly referring to the
+        :class:`_sql.Select` construct used for the "fetch" synchronization
+        strategy, when the actual query being emitted was a :class:`_dml.Delete` or
+        :class:`_dml.Update`. This would interfere with recipes for "routing
+        sessions".
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7094
+
+        A warning is emitted in ORM configurations when an explicit
+        :func:`_orm.remote` annotation is applied to columns that are local to the
+        immediate mapped class, when the referenced class does not include any of
+        the same table columns. Ideally this would raise an error at some point as
+        it's not correct from a mapping point of view.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7545
+
+        A warning is emitted when attempting to configure a mapped class within an
+        inheritance hierarchy where the mapper is not given any polymorphic
+        identity, however there is a polymorphic discriminator column assigned.
+        Such classes should be abstract if they never intend to load directly.
+
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 8525
+
+        Fixed yet another regression in SQL Server isolation level fetch (see
+        :ticket:`8231`, :ticket:`8475`), this time with "Microsoft Dynamics CRM
+        Database via Azure Active Directory", which apparently lacks the
+        ``system_views`` view entirely. Error catching has been extended that under
+        no circumstances will this method ever fail, provided database connectivity
+        is present.
+
+    .. change::
+        :tags: orm, bug, regression
+        :tickets: 8569
+
+        Fixed regression for 1.4 in :func:`_orm.contains_eager` where the "wrap in
+        subquery" logic of :func:`_orm.joinedload` would be inadvertently triggered
+        for use of the :func:`_orm.contains_eager` function with similar statements
+        (e.g. those that use ``distinct()``, ``limit()`` or ``offset()``), which
+        would then lead to secondary issues with queries that used some
+        combinations of SQL label names and aliasing. This "wrapping" is not
+        appropriate for :func:`_orm.contains_eager` which has always had the
+        contract that the user-defined SQL statement is unmodified with the
+        exception of adding the appropriate columns to be fetched.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 8507
+
+        Fixed regression where using ORM update() with synchronize_session='fetch'
+        would fail due to the use of evaluators that are now used to determine the
+        in-Python value for expressions in the the SET clause when refreshing
+        objects; if the evaluators make use of math operators against non-numeric
+        values such as PostgreSQL JSONB, the non-evaluable condition would fail to
+        be detected correctly. The evaluator now limits the use of math mutation
+        operators to numeric types only, with the exception of "+" that continues
+        to work for strings as well. SQLAlchemy 2.0 may alter this further by
+        fetching the SET values completely rather than using evaluation.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 8574
+
+        :class:`_postgresql.aggregate_order_by` now supports cache generation.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 8588
+
+        Adjusted the regular expression used to match "CREATE VIEW" when
+        testing for views to work more flexibly, no longer requiring the
+        special keyword "ALGORITHM" in the middle, which was intended to be
+        optional but was not working correctly.  The change allows view reflection
+        to work more completely on MySQL-compatible variants such as StarRocks.
+        Pull request courtesy John Bodley.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8536
+
+        Fixed issue where mixing "*" with additional explicitly-named column
+        expressions within the columns clause of a :func:`_sql.select` construct
+        would cause result-column targeting to sometimes consider the label name or
+        other non-repeated names to be an ambiguous target.
 
 .. changelog::
     :version: 1.4.41
