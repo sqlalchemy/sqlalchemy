@@ -146,17 +146,18 @@ illustrates a complete example including mapper and session configuration::
 
     import asyncio
 
-    from sqlalchemy import (
-        Column,
-        DateTime,
-        ForeignKey,
-        Integer,
-        String,
-        func,
-        select,
-    )
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.orm import DeclarativeBase, relationship, selectinload
+    from sqlalchemy import DateTime
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import func
+    from sqlalchemy import Integer
+    from sqlalchemy import select
+    from sqlalchemy import String
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import selectinload
 
 
     class Base(DeclarativeBase):
