@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 8644
+
+    Fixed typing issue where pylance strict mode would report "partially
+    unknown" datatype for the :func:`_orm.mapped_column` construct.

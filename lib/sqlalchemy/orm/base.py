@@ -77,7 +77,7 @@ class LoaderCallableStatus(Enum):
     """
 
     ATTR_EMPTY = 3
-    """Symbol used internally to indicate an attribute had no callable.""",
+    """Symbol used internally to indicate an attribute had no callable."""
 
     NO_VALUE = 4
     """Symbol which may be placed as the 'previous' value of an attribute,
