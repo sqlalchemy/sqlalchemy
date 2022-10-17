@@ -64,6 +64,8 @@ if TYPE_CHECKING:
     from . import coercions
     from . import elements
     from . import type_api
+    from ._orm_types import DMLStrategyArgument
+    from ._orm_types import SynchronizeSessionArgument
     from .elements import BindParameter
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
@@ -77,15 +79,16 @@ if TYPE_CHECKING:
     from .selectable import FromClause
     from ..engine import Connection
     from ..engine import CursorResult
-    from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import _ExecuteOptions
-    from ..engine.interfaces import _ExecuteOptionsParameter
     from ..engine.interfaces import _ImmutableExecuteOptions
-    from ..engine.interfaces import _SchemaTranslateMapType
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import Compiled
+    from ..engine.interfaces import CompiledCacheType
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import Dialect
+    from ..engine.interfaces import IsolationLevel
+    from ..engine.interfaces import SchemaTranslateMapType
     from ..event import dispatcher
 
 if not TYPE_CHECKING:
@@ -1009,10 +1012,10 @@ class Executable(roles.StatementRole):
             self,
             dialect: Dialect,
             *,
-            compiled_cache: Optional[_CompiledCacheType],
+            compiled_cache: Optional[CompiledCacheType],
             column_keys: List[str],
             for_executemany: bool = False,
-            schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+            schema_translate_map: Optional[SchemaTranslateMapType] = None,
             **kw: Any,
         ) -> Tuple[
             Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
@@ -1023,7 +1026,7 @@ class Executable(roles.StatementRole):
             self,
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
-            execution_options: _ExecuteOptionsParameter,
+            execution_options: CoreExecuteOptionsParameter,
         ) -> CursorResult[Any]:
             ...
 
@@ -1031,7 +1034,7 @@ class Executable(roles.StatementRole):
             self,
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
-            execution_options: _ExecuteOptionsParameter,
+            execution_options: CoreExecuteOptionsParameter,
         ) -> Any:
             ...
 
@@ -1122,6 +1125,33 @@ class Executable(roles.StatementRole):
         """
         self._with_context_options += ((callable_, cache_args),)
         return self
+
+    @overload
+    def execution_options(
+        self: SelfExecutable,
+        *,
+        compiled_cache: Optional[CompiledCacheType] = ...,
+        logging_token: str = ...,
+        isolation_level: IsolationLevel = ...,
+        no_parameters: bool = False,
+        stream_results: bool = False,
+        max_row_buffer: int = ...,
+        yield_per: int = ...,
+        insertmanyvalues_page_size: int = ...,
+        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        populate_existing: bool = False,
+        autoflush: bool = False,
+        synchronize_session: SynchronizeSessionArgument = ...,
+        dml_strategy: DMLStrategyArgument = ...,
+        is_delete_using: bool = ...,
+        is_update_from: bool = ...,
+        **opt: Any,
+    ) -> SelfExecutable:
+        ...
+
+    @overload
+    def execution_options(self: SelfExecutable, **opt: Any) -> SelfExecutable:
+        ...
 
     @_generative
     def execution_options(self: SelfExecutable, **kw: Any) -> SelfExecutable:

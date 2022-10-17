@@ -68,6 +68,7 @@ from ..sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
+    from ._typing import OrmExecuteOptionsParameter
     from .loading import PostLoad
     from .mapper import Mapper
     from .query import Query
@@ -75,7 +76,6 @@ if TYPE_CHECKING:
     from .session import Session
     from ..engine import Result
     from ..engine.interfaces import _CoreSingleExecuteParams
-    from ..engine.interfaces import _ExecuteOptionsParameter
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql.compiler import SQLCompiler
     from ..sql.dml import _DMLTableElement
@@ -150,7 +150,7 @@ class QueryContext:
             Type[QueryContext.default_load_options],
             QueryContext.default_load_options,
         ],
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[OrmExecuteOptionsParameter] = None,
         bind_arguments: Optional[_BindArguments] = None,
     ):
         self.load_options = load_options

@@ -47,10 +47,10 @@ if TYPE_CHECKING:
     from ...engine import ScalarResult
     from ...engine.interfaces import _CoreAnyExecuteParams
     from ...engine.interfaces import _CoreSingleExecuteParams
-    from ...engine.interfaces import _ExecuteOptionsParameter
     from ...event import dispatcher
     from ...orm._typing import _IdentityKeyType
     from ...orm._typing import _O
+    from ...orm._typing import OrmExecuteOptionsParameter
     from ...orm.identity import IdentityMap
     from ...orm.interfaces import ORMOption
     from ...orm.session import _BindArguments
@@ -264,7 +264,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -277,7 +277,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -289,7 +289,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Result[Any]:
@@ -325,7 +325,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: TypedReturnsRows[Tuple[_T]],
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Optional[_T]:
@@ -337,7 +337,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
@@ -348,7 +348,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
@@ -383,7 +383,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: TypedReturnsRows[Tuple[_T]],
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[_T]:
@@ -395,7 +395,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
@@ -406,7 +406,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
@@ -442,7 +442,7 @@ class AsyncSession(ReversibleProxy[Session]):
         populate_existing: bool = False,
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:
 
         """Return an instance based on the given primary key identifier,
@@ -472,7 +472,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncResult[_T]:
@@ -484,7 +484,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncResult[Any]:
@@ -495,7 +495,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncResult[Any]:
@@ -528,7 +528,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: TypedReturnsRows[Tuple[_T]],
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncScalarResult[_T]:
@@ -540,7 +540,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncScalarResult[Any]:
@@ -551,7 +551,7 @@ class AsyncSession(ReversibleProxy[Session]):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncScalarResult[Any]:

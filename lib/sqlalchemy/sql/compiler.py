@@ -109,8 +109,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import _MutableCoreSingleExecuteParams
-    from ..engine.interfaces import _SchemaTranslateMapType
     from ..engine.interfaces import Dialect
+    from ..engine.interfaces import SchemaTranslateMapType
 
 _FromHintsType = Dict["FromClause", str]
 
@@ -535,7 +535,7 @@ class Compiled:
 
     _result_columns: Optional[List[ResultColumnsEntry]] = None
 
-    schema_translate_map: Optional[_SchemaTranslateMapType] = None
+    schema_translate_map: Optional[SchemaTranslateMapType] = None
 
     execution_options: _ExecuteOptions = util.EMPTY_DICT
     """
@@ -595,7 +595,7 @@ class Compiled:
         self,
         dialect: Dialect,
         statement: Optional[ClauseElement],
-        schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+        schema_translate_map: Optional[SchemaTranslateMapType] = None,
         render_schema_translate: bool = False,
         compile_kwargs: Mapping[str, Any] = util.immutabledict(),
     ):
@@ -5365,7 +5365,7 @@ class DDLCompiler(Compiled):
             self,
             dialect: Dialect,
             statement: ExecutableDDLElement,
-            schema_translate_map: Optional[_SchemaTranslateMapType] = ...,
+            schema_translate_map: Optional[SchemaTranslateMapType] = ...,
             render_schema_translate: bool = ...,
             compile_kwargs: Mapping[str, Any] = ...,
         ):

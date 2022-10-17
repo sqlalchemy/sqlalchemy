@@ -33,8 +33,8 @@ from ..sql import compiler
 if typing.TYPE_CHECKING:
     from .base import Engine
     from .interfaces import _ExecuteOptions
-    from .interfaces import _IsolationLevel
     from .interfaces import _ParamStyle
+    from .interfaces import IsolationLevel
     from .url import URL
     from ..log import _EchoFlagType
     from ..pool import _CreatorFnType
@@ -59,7 +59,7 @@ def create_engine(
     hide_parameters: bool = ...,
     implicit_returning: Literal[True] = ...,
     insertmanyvalues_page_size: int = ...,
-    isolation_level: _IsolationLevel = ...,
+    isolation_level: IsolationLevel = ...,
     json_deserializer: Callable[..., Any] = ...,
     json_serializer: Callable[..., Any] = ...,
     label_length: Optional[int] = ...,

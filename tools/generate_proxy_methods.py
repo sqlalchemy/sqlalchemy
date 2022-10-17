@@ -154,7 +154,7 @@ def _grab_overloads(fn):
             current_ov[:] = []
             break
 
-        fn_match = re.match(r"^    (?:    )?(?:async )?def (.*)\($", line)
+        fn_match = re.match(r"^    (?:    )?(?:async )?def (.*)\(", line)
         if fn_match and fn_match.group(1) != fn.__name__:
             current_ov[:] = []
             break
@@ -166,6 +166,7 @@ def _grab_overloads(fn):
 
         if re.match(r"^    if (?:typing\.)?TYPE_CHECKING:", line):
             output.append(line)
+            current_ov[:] = []
 
     output.reverse()
     return output

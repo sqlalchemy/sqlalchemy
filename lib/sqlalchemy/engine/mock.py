@@ -23,7 +23,7 @@ from .. import util
 if typing.TYPE_CHECKING:
     from .base import Engine
     from .interfaces import _CoreAnyExecuteParams
-    from .interfaces import _ExecuteOptionsParameter
+    from .interfaces import CoreExecuteOptionsParameter
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
@@ -64,7 +64,7 @@ class MockConnection:
         self,
         obj: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Any:
         return self._execute_impl(obj, parameters)
 

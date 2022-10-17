@@ -1,3 +1,10 @@
+# orm/_typing.py
+# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+
 from __future__ import annotations
 
 import operator
@@ -11,7 +18,12 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from ..engine.interfaces import _CoreKnownExecutionOptions
 from ..sql import roles
+from ..sql._orm_types import DMLStrategyArgument as DMLStrategyArgument
+from ..sql._orm_types import (
+    SynchronizeSessionArgument as SynchronizeSessionArgument,
+)
 from ..sql._typing import _HasClauseElement
 from ..sql.elements import ColumnElement
 from ..util.typing import Protocol
@@ -78,6 +90,20 @@ _ORMColumnExprArgument = Union[
 
 
 _ORMCOLEXPR = TypeVar("_ORMCOLEXPR", bound=ColumnElement[Any])
+
+
+class _OrmKnownExecutionOptions(_CoreKnownExecutionOptions, total=False):
+    populate_existing: bool
+    autoflush: bool
+    synchronize_session: SynchronizeSessionArgument
+    dml_strategy: DMLStrategyArgument
+    is_delete_using: bool
+    is_update_from: bool
+
+
+OrmExecuteOptionsParameter = Union[
+    _OrmKnownExecutionOptions, Mapping[str, Any]
+]
 
 
 class _ORMAdapterProto(Protocol):

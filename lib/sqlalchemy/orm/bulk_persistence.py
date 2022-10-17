@@ -55,6 +55,9 @@ from ..util import EMPTY_DICT
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
+    from ._typing import DMLStrategyArgument
+    from ._typing import OrmExecuteOptionsParameter
+    from ._typing import SynchronizeSessionArgument
     from .mapper import Mapper
     from .session import _BindArguments
     from .session import ORMExecuteState
@@ -64,13 +67,8 @@ if TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import cursor
     from ..engine.interfaces import _CoreAnyExecuteParams
-    from ..engine.interfaces import _ExecuteOptionsParameter
 
 _O = TypeVar("_O", bound=object)
-
-
-_SynchronizeSessionArgument = Literal[False, "auto", "evaluate", "fetch"]
-_DMLStrategyArgument = Literal["bulk", "raw", "orm", "auto"]
 
 
 @overload
@@ -82,7 +80,7 @@ def _bulk_insert(
     return_defaults: bool,
     render_nulls: bool,
     use_orm_insert_stmt: Literal[None] = ...,
-    execution_options: Optional[_ExecuteOptionsParameter] = ...,
+    execution_options: Optional[OrmExecuteOptionsParameter] = ...,
 ) -> None:
     ...
 
@@ -96,7 +94,7 @@ def _bulk_insert(
     return_defaults: bool,
     render_nulls: bool,
     use_orm_insert_stmt: Optional[dml.Insert] = ...,
-    execution_options: Optional[_ExecuteOptionsParameter] = ...,
+    execution_options: Optional[OrmExecuteOptionsParameter] = ...,
 ) -> cursor.CursorResult[Any]:
     ...
 
@@ -109,7 +107,7 @@ def _bulk_insert(
     return_defaults: bool,
     render_nulls: bool,
     use_orm_insert_stmt: Optional[dml.Insert] = None,
-    execution_options: Optional[_ExecuteOptionsParameter] = None,
+    execution_options: Optional[OrmExecuteOptionsParameter] = None,
 ) -> Optional[cursor.CursorResult[Any]]:
     base_mapper = mapper.base_mapper
 
@@ -547,8 +545,8 @@ class ORMDMLState(AbstractORMCompileState):
 
 class BulkUDCompileState(ORMDMLState):
     class default_update_options(Options):
-        _dml_strategy: _DMLStrategyArgument = "auto"
-        _synchronize_session: _SynchronizeSessionArgument = "auto"
+        _dml_strategy: DMLStrategyArgument = "auto"
+        _synchronize_session: SynchronizeSessionArgument = "auto"
         _can_use_returning: bool = False
         _is_delete_using: bool = False
         _is_update_from: bool = False
@@ -1075,7 +1073,7 @@ class BulkUDCompileState(ORMDMLState):
 @CompileState.plugin_for("orm", "insert")
 class BulkORMInsert(ORMDMLState, InsertDMLState):
     class default_insert_options(Options):
-        _dml_strategy: _DMLStrategyArgument = "auto"
+        _dml_strategy: DMLStrategyArgument = "auto"
         _render_nulls: bool = False
         _return_defaults: bool = False
         _subject_mapper: Optional[Mapper[Any]] = None
@@ -1163,7 +1161,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         session: Session,
         statement: dml.Insert,
         params: _CoreAnyExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: OrmExecuteOptionsParameter,
         bind_arguments: _BindArguments,
         conn: Connection,
     ) -> _result.Result:
@@ -1471,7 +1469,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         session: Session,
         statement: dml.Update,
         params: _CoreAnyExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: OrmExecuteOptionsParameter,
         bind_arguments: _BindArguments,
         conn: Connection,
     ) -> _result.Result:
@@ -1808,7 +1806,7 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
         session: Session,
         statement: dml.Delete,
         params: _CoreAnyExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: OrmExecuteOptionsParameter,
         bind_arguments: _BindArguments,
         conn: Connection,
     ) -> _result.Result:

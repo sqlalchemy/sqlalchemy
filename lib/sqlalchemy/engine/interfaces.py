@@ -250,10 +250,8 @@ _AnySingleExecuteParams = _DBAPISingleExecuteParams
 _AnyMultiExecuteParams = _DBAPIMultiExecuteParams
 _AnyExecuteParams = _DBAPIAnyExecuteParams
 
-
-_ExecuteOptions = immutabledict[str, Any]
-_ExecuteOptionsParameter = Mapping[str, Any]
-_SchemaTranslateMapType = Mapping[str, str]
+CompiledCacheType = MutableMapping[Any, "Compiled"]
+SchemaTranslateMapType = Mapping[Optional[str], Optional[str]]
 
 _ImmutableExecuteOptions = immutabledict[str, Any]
 
@@ -261,12 +259,30 @@ _ParamStyle = Literal["qmark", "numeric", "named", "format", "pyformat"]
 
 _GenericSetInputSizesType = List[Tuple[str, Any, "TypeEngine[Any]"]]
 
-_IsolationLevel = Literal[
+IsolationLevel = Literal[
     "SERIALIZABLE",
     "REPEATABLE READ",
     "READ COMMITTED",
     "READ UNCOMMITTED",
     "AUTOCOMMIT",
+]
+
+
+class _CoreKnownExecutionOptions(TypedDict, total=False):
+    compiled_cache: Optional[CompiledCacheType]
+    logging_token: str
+    isolation_level: IsolationLevel
+    no_parameters: bool
+    stream_results: bool
+    max_row_buffer: int
+    yield_per: int
+    insertmanyvalues_page_size: int
+    schema_translate_map: Optional[SchemaTranslateMapType]
+
+
+_ExecuteOptions = immutabledict[str, Any]
+CoreExecuteOptionsParameter = Union[
+    _CoreKnownExecutionOptions, Mapping[str, Any]
 ]
 
 
@@ -735,11 +751,11 @@ class Dialect(EventTarget):
 
     # NOTE: this does not take into effect engine-level isolation level.
     # not clear if this should be changed, seems like it should
-    default_isolation_level: Optional[_IsolationLevel]
+    default_isolation_level: Optional[IsolationLevel]
     """the isolation that is implicitly present on new connections"""
 
     # create_engine()  -> isolation_level  currently goes here
-    _on_connect_isolation_level: Optional[_IsolationLevel]
+    _on_connect_isolation_level: Optional[IsolationLevel]
 
     execution_ctx_cls: Type["ExecutionContext"]
     """a :class:`.ExecutionContext` class used to handle statement execution"""
@@ -2333,7 +2349,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def set_isolation_level(
-        self, dbapi_connection: DBAPIConnection, level: _IsolationLevel
+        self, dbapi_connection: DBAPIConnection, level: IsolationLevel
     ) -> None:
         """Given a DBAPI connection, set its isolation level.
 
@@ -2368,7 +2384,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level(
         self, dbapi_connection: DBAPIConnection
-    ) -> _IsolationLevel:
+    ) -> IsolationLevel:
         """Given a DBAPI connection, return its isolation level.
 
         When working with a :class:`_engine.Connection` object,
@@ -2403,7 +2419,7 @@ class Dialect(EventTarget):
 
     def get_default_isolation_level(
         self, dbapi_conn: DBAPIConnection
-    ) -> _IsolationLevel:
+    ) -> IsolationLevel:
         """Given a DBAPI connection, return its isolation level, or
         a default isolation level if one cannot be retrieved.
 
@@ -2425,7 +2441,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[_IsolationLevel]:
+    ) -> List[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -2468,7 +2484,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def _assert_and_set_isolation_level(
-        self, dbapi_conn: DBAPIConnection, level: _IsolationLevel
+        self, dbapi_conn: DBAPIConnection, level: IsolationLevel
     ) -> None:
         raise NotImplementedError()
 
@@ -2571,7 +2587,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def set_engine_execution_options(
-        self, engine: Engine, opt: _ExecuteOptionsParameter
+        self, engine: Engine, opts: CoreExecuteOptionsParameter
     ) -> None:
         """Establish execution options for a given engine.
 
@@ -2585,7 +2601,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def set_connection_execution_options(
-        self, connection: Connection, opt: _ExecuteOptionsParameter
+        self, connection: Connection, opts: CoreExecuteOptionsParameter
     ) -> None:
         """Establish execution options for a given connection.
 
