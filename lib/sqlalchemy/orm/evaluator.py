@@ -14,7 +14,6 @@ from .base import LoaderCallableStatus
 from .base import PassiveFlag
 from .. import exc
 from .. import inspect
-from .. import util
 from ..sql import and_
 from ..sql import operators
 from ..sql.sqltypes import Integer
@@ -73,61 +72,56 @@ class EvaluatorCompiler:
         return lambda obj: True
 
     def visit_column(self, clause):
-        if "parentmapper" in clause._annotations:
+        try:
             parentmapper = clause._annotations["parentmapper"]
-            if self.target_cls and not issubclass(
-                self.target_cls, parentmapper.class_
-            ):
-                raise UnevaluatableError(
-                    "Can't evaluate criteria against "
-                    f"alternate class {parentmapper.class_}"
-                )
+        except KeyError as ke:
+            raise UnevaluatableError(
+                f"Cannot evaluate column: {clause}"
+            ) from ke
 
-            try:
-                key = parentmapper._columntoproperty[clause].key
-            except orm_exc.UnmappedColumnError as err:
-                raise UnevaluatableError(
-                    f"Cannot evaluate expression: {err}"
-                ) from err
+        if self.target_cls and not issubclass(
+            self.target_cls, parentmapper.class_
+        ):
+            raise UnevaluatableError(
+                "Can't evaluate criteria against "
+                f"alternate class {parentmapper.class_}"
+            )
 
-            impl = parentmapper.class_manager[key].impl
+        parentmapper._check_configure()
 
-            if impl is not None:
+        # we'd like to use "proxy_key" annotation to get the "key", however
+        # in relationship primaryjoin cases proxy_key is sometimes deannotated
+        # and sometimes apparently not present in the first place (?).
+        # While I can stop it from being deannotated (though need to see if
+        # this breaks other things), not sure right now  about cases where it's
+        # not there in the first place.  can fix at some later point.
+        # key = clause._annotations["proxy_key"]
 
-                def get_corresponding_attr(obj):
-                    if obj is None:
-                        return _NO_OBJECT
-                    state = inspect(obj)
-                    dict_ = state.dict
+        # for now, use the old way
+        try:
+            key = parentmapper._columntoproperty[clause].key
+        except orm_exc.UnmappedColumnError as err:
+            raise UnevaluatableError(
+                f"Cannot evaluate expression: {err}"
+            ) from err
 
-                    value = impl.get(
-                        state, dict_, passive=PassiveFlag.PASSIVE_NO_FETCH
-                    )
-                    if value is LoaderCallableStatus.PASSIVE_NO_RESULT:
-                        return _EXPIRED_OBJECT
-                    return value
-
-                return get_corresponding_attr
-        else:
-            key = clause.key
-            if (
-                self.target_cls
-                and key in inspect(self.target_cls).column_attrs
-            ):
-                util.warn(
-                    f"Evaluating non-mapped column expression '{clause}' onto "
-                    "ORM instances; this is a deprecated use case.  Please "
-                    "make use of the actual mapped columns in ORM-evaluated "
-                    "UPDATE / DELETE expressions."
-                )
-
-            else:
-                raise UnevaluatableError(f"Cannot evaluate column: {clause}")
+        # note this used to fall back to a simple `getattr(obj, key)` evaluator
+        # if impl was None; as of #8656, we ensure mappers are configured
+        # so that impl is available
+        impl = parentmapper.class_manager[key].impl
 
         def get_corresponding_attr(obj):
             if obj is None:
                 return _NO_OBJECT
-            return getattr(obj, key, _EXPIRED_OBJECT)
+            state = inspect(obj)
+            dict_ = state.dict
+
+            value = impl.get(
+                state, dict_, passive=PassiveFlag.PASSIVE_NO_FETCH
+            )
+            if value is LoaderCallableStatus.PASSIVE_NO_RESULT:
+                return _EXPIRED_OBJECT
+            return value
 
         return get_corresponding_attr
 

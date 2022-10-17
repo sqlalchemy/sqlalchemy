@@ -2314,8 +2314,8 @@ class JoinCondition:
         """remove the parententity annotation from our join conditions which
         can leak in here based on some declarative patterns and maybe others.
 
-        We'd want to remove "parentmapper" also, but apparently there's
-        an exotic use case in _join_fixture_inh_selfref_w_entity
+        "parentmapper" is relied upon both by the ORM evaluator as well as
+        the use case in _join_fixture_inh_selfref_w_entity
         that relies upon it being present, see :ticket:`3364`.
 
         """

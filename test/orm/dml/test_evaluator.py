@@ -18,7 +18,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_raises_message
@@ -114,19 +113,19 @@ class EvaluateTest(fixtures.MappedTest):
             ],
         )
 
-    def test_warn_on_unannotated_matched_column(self):
+    def test_raise_on_unannotated_matched_column(self):
+        """test originally for warning emitted in #4073,
+        now updated for #8656."""
+
         User = self.classes.User
 
         compiler = evaluator.EvaluatorCompiler(User)
 
-        with expect_warnings(
-            r"Evaluating non-mapped column expression 'othername' "
-            "onto ORM instances; this is a deprecated use case."
+        with expect_raises_message(
+            evaluator.UnevaluatableError,
+            "Cannot evaluate column: othername",
         ):
-            meth = compiler.process(User.name == Column("othername", String))
-
-        u1 = User(id=5)
-        meth(u1)
+            compiler.process(User.name == Column("othername", String))
 
     def test_raise_on_unannotated_unmatched_column(self):
         User = self.classes.User

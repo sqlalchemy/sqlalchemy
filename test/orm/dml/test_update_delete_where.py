@@ -18,6 +18,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
+from sqlalchemy import values
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
@@ -236,6 +237,43 @@ class UpdateDeleteTest(fixtures.MappedTest):
             {},
             synchronize_session="fake",
         )
+
+    @testing.requires.table_value_constructor
+    def test_update_against_external_non_mapped_cols(self):
+        """test #8656"""
+        User = self.classes.User
+
+        data = values(
+            column("id", Integer),
+            column("name", String),
+            column("age_int", Integer),
+            name="myvalues",
+        ).data(
+            [
+                (1, "new john", 35),
+                (3, "new jill", 39),
+            ]
+        )
+
+        # this statement will use "fetch" strategy, as "evaluate" will
+        # not be available
+        stmt = (
+            update(User)
+            .where(User.id == data.c.id)
+            .values(age=data.c.age_int, name=data.c.name)
+        )
+        s = fixture_session()
+
+        john, jack, jill, jane = s.scalars(
+            select(User).order_by(User.id)
+        ).all()
+
+        s.execute(stmt)
+
+        eq_(john.name, "new john")
+        eq_(jill.name, "new jill")
+        eq_(john.age, 35)
+        eq_(jill.age, 39)
 
     def test_illegal_operations(self):
         User = self.classes.User
