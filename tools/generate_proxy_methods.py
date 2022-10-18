@@ -154,15 +154,18 @@ def _grab_overloads(fn):
             current_ov[:] = []
             break
 
-        fn_match = re.match(r"^    (?:async )?def (.*)\($", line)
+        fn_match = re.match(r"^    (?:    )?(?:async )?def (.*)\($", line)
         if fn_match and fn_match.group(1) != fn.__name__:
             current_ov[:] = []
             break
 
-        ov_match = re.match(r"^    @overload$", line)
+        ov_match = re.match(r"^    (?:    )?@overload$", line)
         if ov_match:
             output.append("".join(reversed(current_ov)))
             current_ov[:] = []
+
+        if re.match(r"^    if (?:typing\.)?TYPE_CHECKING:", line):
+            output.append(line)
 
     output.reverse()
     return output
