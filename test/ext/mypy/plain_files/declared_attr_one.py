@@ -2,12 +2,15 @@ from datetime import datetime
 import typing
 
 from sqlalchemy import DateTime
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql.schema import PrimaryKeyConstraint
 
 
 class Base(DeclarativeBase):
@@ -24,6 +27,13 @@ class Employee(Base):
         "polymorphic_on": type,
         "polymorphic_identity": "employee",
     }
+
+    __table_args__ = (
+        Index("my_index", name, type),
+        UniqueConstraint(name),
+        PrimaryKeyConstraint(id),
+        {"prefix": []},
+    )
 
 
 class Engineer(Employee):

@@ -31,7 +31,7 @@ class User(HasRelatedDataMixin, Base):
 
 
 class Foo(Base):
-    __tablename__: typing.ClassVar[str] = "foo"
+    __tablename__ = "foo"
 
     id = mapped_column(Integer, primary_key=True)
 

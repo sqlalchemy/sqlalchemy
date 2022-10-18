@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 8645
+
+    Fixed typing issue where pylance strict mode would report "instance
+    variable overrides class variable" when using a method to define
+    ``__tablename__``, ``__mapper_args__`` or ``__table_args__``.
