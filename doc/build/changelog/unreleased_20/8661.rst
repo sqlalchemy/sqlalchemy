@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 8661
+
+    Fixed regression caused by SQL Server pyodbc change :ticket:`8177` where we
+    now use ``setinputsizes()`` by default; for VARCHAR, this fails if the
+    character size is greater than 4000 (or 2000, depending on data) characters
+    as the incoming datatype is NVARCHAR, which has a limit of 4000 characters,
+    despite the fact that VARCHAR can handle unlimited characters. Additional
+    pyodbc-specific typing information is now passed to ``setinputsizes()``
+    when the datatype's size is > 2000 characters. The change is also applied
+    to the :class:`.JSON` type which was also impacted by this issue for large
+    JSON serializations.

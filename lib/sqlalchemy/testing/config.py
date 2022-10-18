@@ -12,10 +12,11 @@ from __future__ import annotations
 import collections
 import typing
 from typing import Any
+from typing import Callable
 from typing import Iterable
 from typing import Optional
-from typing import overload
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 
 from .. import util
@@ -39,16 +40,15 @@ else:
     _fixture_functions = None  # installed by plugin_base
 
 
-@overload
+_FN = TypeVar("_FN", bound=Callable[..., Any])
+
+
 def combinations(
     *comb: Union[Any, Tuple[Any, ...]],
     argnames: Optional[str] = None,
     id_: Optional[str] = None,
-):
-    ...
-
-
-def combinations(*comb: Union[Any, Tuple[Any, ...]], **kw: str):
+    **kw: str,
+) -> Callable[[_FN], _FN]:
     r"""Deliver multiple versions of a test based on positional combinations.
 
     This is a facade over pytest.mark.parametrize.
@@ -111,7 +111,9 @@ def combinations(*comb: Union[Any, Tuple[Any, ...]], **kw: str):
 
 
     """
-    return _fixture_functions.combinations(*comb, **kw)
+    return _fixture_functions.combinations(
+        *comb, id_=id_, argnames=argnames, **kw
+    )
 
 
 def combinations_list(

@@ -516,22 +516,31 @@ class _BINARY_pyodbc(_ms_binary_pyodbc, BINARY):
 
 class _String_pyodbc(sqltypes.String):
     def get_dbapi_type(self, dbapi):
-        return dbapi.SQL_VARCHAR
+        if self.length in (None, "max") or self.length >= 2000:
+            return (dbapi.SQL_VARCHAR, 0, 0)
+        else:
+            return dbapi.SQL_VARCHAR
 
 
 class _Unicode_pyodbc(_MSUnicode):
     def get_dbapi_type(self, dbapi):
-        return dbapi.SQL_WVARCHAR
+        if self.length in (None, "max") or self.length >= 2000:
+            return (dbapi.SQL_WVARCHAR, 0, 0)
+        else:
+            return dbapi.SQL_WVARCHAR
 
 
 class _UnicodeText_pyodbc(_MSUnicodeText):
     def get_dbapi_type(self, dbapi):
-        return dbapi.SQL_WVARCHAR
+        if self.length in (None, "max") or self.length >= 2000:
+            return (dbapi.SQL_WVARCHAR, 0, 0)
+        else:
+            return dbapi.SQL_WVARCHAR
 
 
 class _JSON_pyodbc(_MSJson):
     def get_dbapi_type(self, dbapi):
-        return dbapi.SQL_WVARCHAR
+        return (dbapi.SQL_WVARCHAR, 0, 0)
 
 
 class _JSONIndexType_pyodbc(_MSJsonIndexType):
