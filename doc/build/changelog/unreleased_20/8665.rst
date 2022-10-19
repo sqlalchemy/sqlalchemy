@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, declarative, orm
+    :tickets: 8665
+
+    Improved the :class:`.DeclarativeBase` class so that when combined with
+    other mixins like :class:`.MappedAsDataclass`, the order of the classes may
+    be in either order.
+
+
+.. change::
+    :tags: usecase, declarative, orm
+    :tickets: 8665
+
+    Added support for mapped classes that are also ``Generic`` subclasses,
+    to be specified as a ``GenericAlias`` object (e.g. ``MyClass[str]``)
+    within statements and calls to :func:`_sa.inspect`.
+
+

@@ -581,7 +581,6 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
         kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     ) -> None:
-
         apply_dc_transforms: _DataclassArguments = {
             "init": init,
             "repr": repr,
@@ -696,6 +695,7 @@ class DeclarativeBase(
             _setup_declarative_base(cls)
         else:
             _as_declarative(cls._sa_registry, cls, cls.__dict__)
+        super().__init_subclass__()
 
 
 def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:

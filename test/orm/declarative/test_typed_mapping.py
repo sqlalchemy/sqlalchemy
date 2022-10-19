@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 from decimal import Decimal
+from typing import Any
 from typing import ClassVar
 from typing import Dict
 from typing import Generic
@@ -22,6 +23,7 @@ from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import String
@@ -30,6 +32,7 @@ from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import VARCHAR
 from sqlalchemy.exc import ArgumentError
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import declarative_base
@@ -39,12 +42,14 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import DynamicMapped
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import KeyFuncDict
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
@@ -1898,3 +1903,52 @@ class WriteOnlyRelationshipTest(fixtures.TestBase):
             bs: WriteOnlyMapped[B] = relationship()
 
         self._assertions(A, B, "write_only")
+
+
+class GenericMappingQueryTest(AssertsCompiledSQL, fixtures.TestBase):
+    """test the Generic support added as part of #8665"""
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def mapping(self):
+        T_Value = TypeVar("T_Value")
+
+        class SomeBaseClass(DeclarativeBase):
+            pass
+
+        class GenericSetting(
+            MappedAsDataclass, SomeBaseClass, Generic[T_Value]
+        ):
+            """Represents key value pairs for settings or values"""
+
+            __tablename__ = "xx"
+
+            id: Mapped[int] = mapped_column(
+                Integer, primary_key=True, init=False
+            )
+
+            key: Mapped[str] = mapped_column(String, init=True)
+
+            value: Mapped[T_Value] = mapped_column(
+                MutableDict.as_mutable(JSON),
+                init=True,
+                default_factory=lambda: {},
+            )
+
+        return GenericSetting
+
+    def test_inspect(self, mapping):
+        GenericSetting = mapping
+
+        typ = GenericSetting[Dict[str, Any]]
+        is_(inspect(typ), GenericSetting.__mapper__)
+
+    def test_select(self, mapping):
+        GenericSetting = mapping
+
+        typ = GenericSetting[Dict[str, Any]]
+        self.assert_compile(
+            select(typ).where(typ.key == "x"),
+            "SELECT xx.id, xx.key, xx.value FROM xx WHERE xx.key = :key_1",
+        )

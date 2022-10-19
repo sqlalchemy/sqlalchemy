@@ -3,10 +3,13 @@ import inspect as pyinspect
 from itertools import product
 from typing import Any
 from typing import ClassVar
+from typing import Dict
+from typing import Generic
 from typing import List
 from typing import Optional
 from typing import Set
 from typing import Type
+from typing import TypeVar
 from unittest import mock
 
 from typing_extensions import Annotated
@@ -17,6 +20,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -47,6 +51,29 @@ from sqlalchemy.util import compat
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
+    @testing.fixture(params=["(MAD, DB)", "(DB, MAD)"])
+    def dc_decl_base(self, request, metadata):
+        _md = metadata
+
+        if request.param == "(MAD, DB)":
+
+            class Base(MappedAsDataclass, DeclarativeBase):
+                metadata = _md
+                type_annotation_map = {
+                    str: String().with_variant(String(50), "mysql", "mariadb")
+                }
+
+        else:
+            # test #8665 by reversing the order of the classes
+            class Base(DeclarativeBase, MappedAsDataclass):
+                metadata = _md
+                type_annotation_map = {
+                    str: String().with_variant(String(50), "mysql", "mariadb")
+                }
+
+        yield Base
+        Base.registry.dispose()
+
     def test_basic_constructor_repr_base_cls(
         self, dc_decl_base: Type[MappedAsDataclass]
     ):
@@ -110,6 +137,33 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
+
+    def test_generic_class(self):
+        """further test for #8665"""
+
+        T_Value = TypeVar("T_Value")
+
+        class SomeBaseClass(DeclarativeBase):
+            pass
+
+        class GenericSetting(
+            MappedAsDataclass, SomeBaseClass, Generic[T_Value]
+        ):
+            __tablename__ = "xx"
+
+            id: Mapped[int] = mapped_column(
+                Integer, primary_key=True, init=False
+            )
+
+            key: Mapped[str] = mapped_column(String, init=True)
+
+            value: Mapped[T_Value] = mapped_column(
+                JSON, init=True, default_factory=lambda: {}
+            )
+
+        new_instance: GenericSetting[  # noqa: F841
+            Dict[str, Any]
+        ] = GenericSetting(key="x", value={"foo": "bar"})
 
     def test_no_anno_doesnt_go_into_dc(
         self, dc_decl_base: Type[MappedAsDataclass]

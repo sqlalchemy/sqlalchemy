@@ -79,6 +79,7 @@ from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
+from ..util.typing import typing_get_origin
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -1359,6 +1360,18 @@ def _inspect_mc(
         return None
     else:
         return mapper
+
+
+GenericAlias = type(List[_T])
+
+
+@inspection._inspects(GenericAlias)
+def _inspect_generic_alias(
+    class_: Type[_O],
+) -> Optional[Mapper[_O]]:
+
+    origin = cast("Type[_O]", typing_get_origin(class_))
+    return _inspect_mc(origin)
 
 
 @inspection._self_inspects
