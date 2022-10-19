@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import typing
 from typing import Any
@@ -57,13 +58,15 @@ if compat.py310:
 else:
     NoneType = type(None)  # type: ignore
 
+NoneFwd = ForwardRef("None")
+
 typing_get_args = get_args
 typing_get_origin = get_origin
 
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()
 
-_AnnotationScanType = Union[Type[Any], str]
+_AnnotationScanType = Union[Type[Any], str, ForwardRef]
 
 
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -151,6 +154,13 @@ def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]:
     ...
 
 
+@overload
+def de_optionalize_union_types(
+    type_: _AnnotationScanType,
+) -> _AnnotationScanType:
+    ...
+
+
 def de_optionalize_union_types(
     type_: _AnnotationScanType,
 ) -> _AnnotationScanType:
@@ -158,15 +168,50 @@ def de_optionalize_union_types(
     to not include the ``NoneType``.
 
     """
-    if is_optional(type_):
+    if is_fwd_ref(type_):
+        return de_optionalize_fwd_ref_union_types(cast(ForwardRef, type_))
+
+    elif is_optional(type_):
         typ = set(type_.__args__)  # type: ignore
 
         typ.discard(NoneType)
+        typ.discard(NoneFwd)
 
         return make_union_type(*typ)
 
     else:
         return type_
+
+
+def de_optionalize_fwd_ref_union_types(
+    type_: ForwardRef,
+) -> _AnnotationScanType:
+    """return the non-optional type for Optional[], Union[None, ...], x|None,
+    etc. without de-stringifying forward refs.
+
+    unfortunately this seems to require lots of hardcoded heuristics
+
+    """
+
+    annotation = type_.__forward_arg__
+
+    mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
+    if mm:
+        if mm.group(1) == "Optional":
+            return ForwardRef(mm.group(2))
+        elif mm.group(1) == "Union":
+            elements = re.split(r",\s*", mm.group(2))
+            return make_union_type(
+                *[ForwardRef(elem) for elem in elements if elem != "None"]
+            )
+        else:
+            return type_
+
+    pipe_tokens = re.split(r"\s*\|\s*", annotation)
+    if "None" in pipe_tokens:
+        return ForwardRef("|".join(p for p in pipe_tokens if p != "None"))
+
+    return type_
 
 
 def make_union_type(*types: _AnnotationScanType) -> Type[Any]:

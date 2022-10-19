@@ -1784,7 +1784,7 @@ class RelationshipProperty(
             ):
                 self.uselist = False
 
-        self.argument = argument
+        self.argument = cast("_RelationshipArgumentType[_T]", argument)
 
     @util.preload_module("sqlalchemy.orm.mapper")
     def _setup_entity(self, __argument: Any = None) -> None:

@@ -12,6 +12,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy.orm import attribute_keyed_dict
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import DynamicMapped
@@ -291,6 +292,55 @@ class RelationshipLHSTest(_RelationshipLHSTest):
         a1.bs.set(b1)
 
         is_(a1.bs["foo"], b1)
+
+    @testing.combinations(
+        ("not_optional",),
+        ("optional",),
+        ("optional_fwd_ref",),
+        ("union_none",),
+        ("pep604", testing.requires.python310),
+        argnames="optional_on_m2o",
+    )
+    def test_basic_bidirectional(self, decl_base, optional_on_m2o):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+            bs: Mapped[List["B"]] = relationship(  # noqa: F821
+                back_populates="a"
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+            if optional_on_m2o == "optional":
+                a: Mapped[Optional["A"]] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "optional_fwd_ref":
+                a: Mapped["Optional[A]"] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "union_none":
+                a: Mapped[Union[A, None]] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "pep604":
+                a: Mapped[A | None] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            else:
+                a: Mapped["A"] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+
+        a1 = A(data="data")
+        b1 = B()
+        a1.bs.append(b1)
+        is_(a1, b1.a)
 
 
 class WriteOnlyRelationshipTest(_WriteOnlyRelationshipTest):

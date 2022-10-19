@@ -125,7 +125,10 @@ a collection of items represented by the child::
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
 side is a many to one, specify an additional :func:`_orm.relationship` and connect
-the two using the :paramref:`_orm.relationship.back_populates` parameter::
+the two using the :paramref:`_orm.relationship.back_populates` parameter,
+using the attribute name of each :func:`_orm.relationship`
+as the value for :paramref:`_orm.relationship.back_populates` on the other::
+
 
     class Parent(Base):
         __tablename__ = "parent_table"
@@ -142,34 +145,6 @@ the two using the :paramref:`_orm.relationship.back_populates` parameter::
         parent: Mapped["Parent"] = relationship(back_populates="children")
 
 ``Child`` will get a ``parent`` attribute with many-to-one semantics.
-
-Alternatively, the :paramref:`_orm.relationship.backref` option may be used
-on a single :func:`_orm.relationship` instead of using
-:paramref:`_orm.relationship.back_populates`; in this form, the ``Child.parent``
-relationship is generated implicitly::
-
-    class Parent(Base):
-        __tablename__ = "parent_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[list["Child"]] = relationship(backref="parent")
-
-
-    class Child(Base):
-        __tablename__ = "child_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
-
-.. note::
-
-  Using :paramref:`_orm.relationship.backref` will not provide
-  adequate information to :pep:`484` typing tools such that they will be
-  correctly aware of the ``Child.parent`` attribute, as it is not
-  explicitly present.  For modern Python styles,
-  :paramref:`_orm.relationship.back_populates` with explicit use of
-  :func:`_orm.relationship` on both classes in a bi-directional relationship
-  should be preferred.
 
 .. _relationship_patterns_o2m_collection:
 
@@ -240,9 +215,14 @@ attribute will be created::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
+The above example shows a many-to-one relationship that assumes non-nullable
+behavior; the next section, :ref:`relationship_patterns_nullable_m2o`,
+illustrates a nullable version.
+
 Bidirectional behavior is achieved by adding a second :func:`_orm.relationship`
 and applying the :paramref:`_orm.relationship.back_populates` parameter
-in both directions::
+in both directions, using the attribute name of each :func:`_orm.relationship`
+as the value for :paramref:`_orm.relationship.back_populates` on the other::
 
     class Parent(Base):
         __tablename__ = "parent_table"
@@ -258,11 +238,66 @@ in both directions::
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list["Parent"]] = relationship(back_populates="child")
 
-As is the case with :ref:`relationship_patterns_o2m`, the
-:paramref:`_orm.relationship.backref` parameter may be used in place of
-:paramref:`_orm.relationship.back_populates`, however :paramref:`_orm.relationship.back_populates`
-is preferred for its explicitness.
+.. _relationship_patterns_nullable_m2o:
 
+Nullable Many-to-One
+^^^^^^^^^^^^^^^^^^^^
+
+In the preceding example, the ``Parent.child`` relationship is not typed as
+allowing ``None``; this follows from the ``Parent.child_id`` column itself
+not being nullable, as it is typed with ``Mapped[int]``.    If we wanted
+``Parent.child`` to be a **nullable** many-to-one, we can set both
+``Parent.child_id`` and ``Parent.child`` to be ``Optional[]``, in which
+case the configuration would look like::
+
+    from typing import Optional
+
+
+    class Parent(Base):
+        __tablename__ = "parent_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        child_id: Mapped[Optional[int]] = mapped_column(ForeignKey("child_table.id"))
+        child: Mapped[Optional["Child"]] = relationship(back_populates="parents")
+
+
+    class Child(Base):
+        __tablename__ = "child_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        parents: Mapped[list["Parent"]] = relationship(back_populates="child")
+
+Above, the column for ``Parent.child_id`` will be created in DDL to allow
+``NULL`` values. When using :func:`_orm.mapped_column` with explicit typing
+declarations, the specification of ``child_id: Mapped[Optional[int]]`` is
+equivalent to setting :paramref:`_schema.Column.nullable` to ``True`` on the
+:class:`_schema.Column`, whereas ``child_id: Mapped[int]`` is equivalent to
+setting it to ``False``. See :ref:`orm_declarative_mapped_column_nullability`
+for background on this behavior.
+
+.. tip::
+
+  If using Python 3.10 or greater, :pep:`604` syntax is more convenient
+  to indicate optional types using ``| None``, which when combined with
+  :pep:`563` postponed annotation evaluation so that string-quoted types aren't
+  required, would look like::
+
+      from __future__ import annotations
+
+
+      class Parent(Base):
+          __tablename__ = "parent_table"
+
+          id: Mapped[int] = mapped_column(primary_key=True)
+          child_id: Mapped[int | None] = mapped_column(ForeignKey("child_table.id"))
+          child: Mapped[Child | None] = relationship(back_populates="parents")
+
+
+      class Child(Base):
+          __tablename__ = "child_table"
+
+          id: Mapped[int] = mapped_column(primary_key=True)
+          parents: Mapped[list[Parent]] = relationship(back_populates="child")
 
 .. _relationships_one_to_one:
 
@@ -463,48 +498,6 @@ for each :func:`_orm.relationship` specify the common association table::
             secondary=association_table, back_populates="children"
         )
 
-When using the :paramref:`_orm.relationship.backref` parameter instead of
-:paramref:`_orm.relationship.back_populates`, the backref will automatically
-use the same :paramref:`_orm.relationship.secondary` argument for the
-reverse relationship::
-
-    from __future__ import annotations
-
-    from sqlalchemy import Column
-    from sqlalchemy import Table
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import relationship
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    association_table = Table(
-        "association_table",
-        Base.metadata,
-        Column("left_id", ForeignKey("left_table.id"), primary_key=True),
-        Column("right_id", ForeignKey("right_table.id"), primary_key=True),
-    )
-
-
-    class Parent(Base):
-        __tablename__ = "left_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[list[Child]] = relationship(
-            secondary=association_table, backref="parents"
-        )
-
-
-    class Child(Base):
-        __tablename__ = "right_table"
-        id: Mapped[int] = mapped_column(primary_key=True)
-
 Using a late-evaluated form for the "secondary" argument
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -702,12 +695,6 @@ constructs, linked to the existing ones using :paramref:`_orm.relationship.back_
         __tablename__ = "right_table"
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list["Association"]] = relationship(back_populates="child")
-
-Schemes that use :paramref:`_orm.relationship.backref` are possible as well,
-where there would be two explicit :func:`_orm.relationship` constructs, each
-of which would then include :paramref:`_orm.relationship.backref`
-parameters that imply the production of two more
-:func:`_orm.relationship` constructs.
 
 Working with the association pattern in its direct form requires that child
 objects are associated with an association instance before being appended to

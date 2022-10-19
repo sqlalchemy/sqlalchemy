@@ -941,6 +941,9 @@ def relationship(
         :ref:`relationship_patterns` - includes many examples of
         :paramref:`_orm.relationship.back_populates`.
 
+        :paramref:`_orm.relationship.backref` - legacy form which allows
+        more succinct configuration, but does not support explicit typing
+
     :param overlaps:
        A string name or comma-delimited set of names of other relationships
        on either this mapper, a descendant mapper, or a target mapper with

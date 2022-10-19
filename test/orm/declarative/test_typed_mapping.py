@@ -1236,7 +1236,14 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select(A).join(A.bs), "SELECT a.id FROM a JOIN b ON a.id = b.a_id"
         )
 
-    @testing.combinations(True, False, argnames="optional_on_m2o")
+    @testing.combinations(
+        ("not_optional",),
+        ("optional",),
+        ("optional_fwd_ref",),
+        ("union_none",),
+        ("pep604", testing.requires.python310),
+        argnames="optional_on_m2o",
+    )
     def test_basic_bidirectional(self, decl_base, optional_on_m2o):
         class A(decl_base):
             __tablename__ = "a"
@@ -1252,8 +1259,20 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(Integer, primary_key=True)
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
 
-            if optional_on_m2o:
+            if optional_on_m2o == "optional":
                 a: Mapped[Optional["A"]] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "optional_fwd_ref":
+                a: Mapped["Optional[A]"] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "union_none":
+                a: Mapped["Union[A, None]"] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            elif optional_on_m2o == "pep604":
+                a: Mapped[A | None] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             else:
