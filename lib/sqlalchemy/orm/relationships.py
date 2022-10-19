@@ -86,6 +86,7 @@ from ..sql.util import ClauseAdapter
 from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
+from ..util.typing import de_optionalize_union_types
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
@@ -1742,18 +1743,21 @@ class RelationshipProperty(
             self.lazy = "dynamic"
             self.strategy_key = (("lazy", self.lazy),)
 
-        if hasattr(argument, "__origin__"):
+        argument = de_optionalize_union_types(argument)
 
-            collection_class = argument.__origin__  # type: ignore
-            if issubclass(collection_class, abc.Collection):
+        if hasattr(argument, "__origin__"):
+            arg_origin = argument.__origin__  # type: ignore
+            if isinstance(arg_origin, type) and issubclass(
+                arg_origin, abc.Collection
+            ):
                 if self.collection_class is None:
-                    self.collection_class = collection_class
+                    self.collection_class = arg_origin
             elif not is_write_only and not is_dynamic:
                 self.uselist = False
 
             if argument.__args__:  # type: ignore
-                if issubclass(
-                    argument.__origin__, typing.Mapping  # type: ignore
+                if isinstance(arg_origin, type) and issubclass(
+                    arg_origin, typing.Mapping  # type: ignore
                 ):
                     type_arg = argument.__args__[-1]  # type: ignore
                 else:

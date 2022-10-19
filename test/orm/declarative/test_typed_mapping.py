@@ -1236,7 +1236,8 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select(A).join(A.bs), "SELECT a.id FROM a JOIN b ON a.id = b.a_id"
         )
 
-    def test_basic_bidirectional(self, decl_base):
+    @testing.combinations(True, False, argnames="optional_on_m2o")
+    def test_basic_bidirectional(self, decl_base, optional_on_m2o):
         class A(decl_base):
             __tablename__ = "a"
 
@@ -1251,9 +1252,14 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(Integer, primary_key=True)
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
 
-            a: Mapped["A"] = relationship(
-                back_populates="bs", primaryjoin=a_id == A.id
-            )
+            if optional_on_m2o:
+                a: Mapped[Optional["A"]] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
+            else:
+                a: Mapped["A"] = relationship(
+                    back_populates="bs", primaryjoin=a_id == A.id
+                )
 
         a1 = A(data="data")
         b1 = B()
