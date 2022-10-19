@@ -37,17 +37,17 @@ class and collection type from the :class:`_orm.Mapped` annotation,
 which is the most modern form of SQLAlchemy Declarative mapping::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
         parent: Mapped["Parent"] = relationship(back_populates="children")
 
 In contrast, using a Declarative mapping **without** annotations is
@@ -55,17 +55,17 @@ the more "classic" form of mapping, where :func:`_orm.relationship`
 requires all parameters passed to it directly, as in the example below::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id = mapped_column(Integer, primary_key=True)
         children = relationship("Child", back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id = mapped_column(Integer, primary_key=True)
-        parent_id = mapped_column(ForeignKey("parent.id"))
+        parent_id = mapped_column(ForeignKey("parent_table.id"))
         parent = relationship("Parent", back_populates="children")
 
 Finally, using :ref:`Imperative Mapping <orm_imperative_mapping>`, which
@@ -90,7 +90,7 @@ Additionally, the default collection style for non-annotated mappings is
 it using the :paramref:`_orm.relationship.collection_class` parameter::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id = mapped_column(Integer, primary_key=True)
         children = relationship("Child", collection_class=set, ...)
@@ -111,34 +111,34 @@ the parent.  :func:`_orm.relationship` is then specified on the parent, as refer
 a collection of items represented by the child::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship()
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
 side is a many to one, specify an additional :func:`_orm.relationship` and connect
 the two using the :paramref:`_orm.relationship.back_populates` parameter::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
         parent: Mapped["Parent"] = relationship(back_populates="children")
 
 ``Child`` will get a ``parent`` attribute with many-to-one semantics.
@@ -149,17 +149,17 @@ on a single :func:`_orm.relationship` instead of using
 relationship is generated implicitly::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(backref="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
 
 .. note::
 
@@ -183,7 +183,7 @@ may be written to use a ``set`` rather than a ``list`` for the
 ``Parent.children`` collection using ``Mapped[set["Child"]]``::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[set["Child"]] = relationship(back_populates="parent")
@@ -228,15 +228,15 @@ Many to one places a foreign key in the parent table referencing the child.
 attribute will be created::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        child_id: Mapped[int] = mapped_column(ForeignKey("child.id"))
+        child_id: Mapped[int] = mapped_column(ForeignKey("child_table.id"))
         child: Mapped["Child"] = relationship()
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -245,15 +245,15 @@ and applying the :paramref:`_orm.relationship.back_populates` parameter
 in both directions::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        child_id: Mapped[int] = mapped_column(ForeignKey("child.id"))
+        child_id: Mapped[int] = mapped_column(ForeignKey("child_table.id"))
         child: Mapped["Child"] = relationship(back_populates="parents")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list["Parent"]] = relationship(back_populates="child")
@@ -280,17 +280,17 @@ imply to the ORM that a collection should not be used on either side, as in the
 example below::
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         child: Mapped["Child"] = relationship(back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
         parent: Mapped["Parent"] = relationship(back_populates="child")
 
 Above, when we load a ``Parent`` object, the ``Parent.child`` attribute
@@ -331,17 +331,17 @@ Declarative configuration below::
 
 
     class Parent(Base):
-        __tablename__ = "parent"
+        __tablename__ = "parent_table"
 
         id = mapped_column(Integer, primary_key=True)
         child = relationship("Child", uselist=False, back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "child"
+        __tablename__ = "child_table"
 
         id = mapped_column(Integer, primary_key=True)
-        parent_id = mapped_column(ForeignKey("parent.id"))
+        parent_id = mapped_column(ForeignKey("parent_table.id"))
         parent = relationship("Parent", back_populates="child")
 
 .. _relationships_many_to_many:
@@ -377,22 +377,22 @@ with which to link::
     # note for a Core table, we use the sqlalchemy.Column construct,
     # not sqlalchemy.orm.mapped_column
     association_table = Table(
-        "association",
+        "association_table",
         Base.metadata,
-        Column("left_id", ForeignKey("left.id")),
-        Column("right_id", ForeignKey("right.id")),
+        Column("left_id", ForeignKey("left_table.id")),
+        Column("right_id", ForeignKey("right_table.id")),
     )
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list[Child]] = relationship(secondary=association_table)
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -409,10 +409,10 @@ with which to link::
     of issues on the application side::
 
         association_table = Table(
-            "association",
+            "association_table",
             Base.metadata,
-            Column("left_id", ForeignKey("left.id"), primary_key=True),
-            Column("right_id", ForeignKey("right.id"), primary_key=True),
+            Column("left_id", ForeignKey("left_table.id"), primary_key=True),
+            Column("right_id", ForeignKey("right_table.id"), primary_key=True),
         )
 
 Setting Bi-Directional Many-to-many
@@ -439,15 +439,15 @@ for each :func:`_orm.relationship` specify the common association table::
 
 
     association_table = Table(
-        "association",
+        "association_table",
         Base.metadata,
-        Column("left_id", ForeignKey("left.id"), primary_key=True),
-        Column("right_id", ForeignKey("right.id"), primary_key=True),
+        Column("left_id", ForeignKey("left_table.id"), primary_key=True),
+        Column("right_id", ForeignKey("right_table.id"), primary_key=True),
     )
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list[Child]] = relationship(
@@ -456,7 +456,7 @@ for each :func:`_orm.relationship` specify the common association table::
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list[Parent]] = relationship(
@@ -485,15 +485,15 @@ reverse relationship::
 
 
     association_table = Table(
-        "association",
+        "association_table",
         Base.metadata,
-        Column("left_id", ForeignKey("left.id"), primary_key=True),
-        Column("right_id", ForeignKey("right.id"), primary_key=True),
+        Column("left_id", ForeignKey("left_table.id"), primary_key=True),
+        Column("right_id", ForeignKey("right_table.id"), primary_key=True),
     )
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list[Child]] = relationship(
@@ -502,7 +502,7 @@ reverse relationship::
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
         id: Mapped[int] = mapped_column(primary_key=True)
 
 Using a late-evaluated form for the "secondary" argument
@@ -526,7 +526,7 @@ type of collection used within the :class:`_orm.Mapped` generic class,
 such as ``set``::
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[set["Child"]] = relationship(secondary=association_table)
@@ -645,21 +645,23 @@ from ``Parent`` to ``Child`` makes explicit use of ``Association``::
 
 
     class Association(Base):
-        __tablename__ = "association"
-        left_id: Mapped[int] = mapped_column(ForeignKey("left.id"), primary_key=True)
-        right_id: Mapped[int] = mapped_column(ForeignKey("right.id"), primary_key=True)
+        __tablename__ = "association_table"
+        left_id: Mapped[int] = mapped_column(ForeignKey("left_table.id"), primary_key=True)
+        right_id: Mapped[int] = mapped_column(
+            ForeignKey("right_table.id"), primary_key=True
+        )
         extra_data: Mapped[Optional[str]]
         child: Mapped["Child"] = relationship()
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Association"]] = relationship()
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
         id: Mapped[int] = mapped_column(primary_key=True)
 
 To illustrate the bi-directional version, we add two more :func:`_orm.relationship`
@@ -680,22 +682,24 @@ constructs, linked to the existing ones using :paramref:`_orm.relationship.back_
 
 
     class Association(Base):
-        __tablename__ = "association"
-        left_id: Mapped[int] = mapped_column(ForeignKey("left.id"), primary_key=True)
-        right_id: Mapped[int] = mapped_column(ForeignKey("right.id"), primary_key=True)
+        __tablename__ = "association_table"
+        left_id: Mapped[int] = mapped_column(ForeignKey("left_table.id"), primary_key=True)
+        right_id: Mapped[int] = mapped_column(
+            ForeignKey("right_table.id"), primary_key=True
+        )
         extra_data: Mapped[Optional[str]]
         child: Mapped["Child"] = relationship(back_populates="parents")
         parent: Mapped["Parent"] = relationship(back_populates="children")
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Association"]] = relationship(back_populates="parent")
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list["Association"]] = relationship(back_populates="child")
 
@@ -777,10 +781,12 @@ and ``Child.parent_associations -> Association.parent``::
 
 
     class Association(Base):
-        __tablename__ = "association"
+        __tablename__ = "association_table"
 
-        left_id: Mapped[int] = mapped_column(ForeignKey("left.id"), primary_key=True)
-        right_id: Mapped[int] = mapped_column(ForeignKey("right.id"), primary_key=True)
+        left_id: Mapped[int] = mapped_column(ForeignKey("left_table.id"), primary_key=True)
+        right_id: Mapped[int] = mapped_column(
+            ForeignKey("right_table.id"), primary_key=True
+        )
         extra_data: Mapped[Optional[str]]
 
         # association between Assocation -> Child
@@ -791,13 +797,13 @@ and ``Child.parent_associations -> Association.parent``::
 
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Child, bypassing the `Association` class
         children: Mapped[list["Child"]] = relationship(
-            secondary="association", back_populates="parents"
+            secondary="association_table", back_populates="parents"
         )
 
         # association between Parent -> Association -> Child
@@ -807,13 +813,13 @@ and ``Child.parent_associations -> Association.parent``::
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Parent, bypassing the `Association` class
         parents: Mapped[list["Parent"]] = relationship(
-            secondary="association", back_populates="children"
+            secondary="association_table", back_populates="children"
         )
 
         # association between Child -> Association -> Parent
@@ -860,13 +866,13 @@ changes occurring, as well as preventing ``NULL`` being written to the
 additional association columns, as below::
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Child, bypassing the `Association` class
         children: Mapped[list["Child"]] = relationship(
-            secondary="association", back_populates="parents", viewonly=True
+            secondary="association_table", back_populates="parents", viewonly=True
         )
 
         # association between Parent -> Association -> Child
@@ -876,13 +882,13 @@ additional association columns, as below::
 
 
     class Child(Base):
-        __tablename__ = "right"
+        __tablename__ = "right_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
         # many-to-many relationship to Parent, bypassing the `Association` class
         parents: Mapped[list["Parent"]] = relationship(
-            secondary="association", back_populates="children", viewonly=True
+            secondary="association_table", back_populates="children", viewonly=True
         )
 
         # association between Child -> Association -> Parent
@@ -1155,7 +1161,7 @@ module than the mapped class itself, we may write the :func:`_orm.relationship`
 using a lambda as::
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list["Child"]] = relationship(
@@ -1165,14 +1171,14 @@ using a lambda as::
 Or to illustrate locating the same :class:`.Table` object by name,
 the name of the :class:`.Table` is used as the argument.
 From a Python perspective, this is a Python expression evaluated as a variable
-named "association" that is resolved against the table names within
+named "association_table" that is resolved against the table names within
 the :class:`.MetaData` collection::
 
     class Parent(Base):
-        __tablename__ = "left"
+        __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[list["Child"]] = relationship(secondary="association")
+        children: Mapped[list["Child"]] = relationship(secondary="association_table")
 
 .. warning:: When passed as a string,
     :paramref:`_orm.relationship.secondary` argument is interpreted using Python's
