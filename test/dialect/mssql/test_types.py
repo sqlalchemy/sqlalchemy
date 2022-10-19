@@ -6,6 +6,7 @@ import os
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean
+from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import Date
@@ -18,6 +19,7 @@ from sqlalchemy import LargeBinary
 from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
+from sqlalchemy import NVARCHAR
 from sqlalchemy import PickleType
 from sqlalchemy import schema
 from sqlalchemy import select
@@ -32,6 +34,7 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mssql import base as mssql
+from sqlalchemy.dialects.mssql import NTEXT
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
@@ -1234,6 +1237,170 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             column("x", Text()) == "foo", "x = 'foo'", literal_binds=True
         )
+
+
+class StringRoundTripTest(fixtures.TestBase):
+    """tests for #8661
+
+
+    at the moment most of these are using the default setinputsizes enabled
+    behavior, with the exception of the plain executemany() calls for inserts.
+
+
+    """
+
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    @testing.combinations(
+        ("unicode", True), ("ascii", False), argnames="unicode_", id_="ia"
+    )
+    @testing.combinations(
+        String,
+        Unicode,
+        NVARCHAR,
+        NTEXT,
+        Text,
+        UnicodeText,
+        argnames="datatype",
+    )
+    @testing.combinations(
+        100, 1999, 2000, 2001, 3999, 4000, 4001, 5000, argnames="length"
+    )
+    def test_long_strings_inpplace(
+        self, connection, unicode_, length, datatype
+    ):
+        if datatype is NVARCHAR and length != "max" and length > 4000:
+            return
+        elif unicode_ and datatype not in (NVARCHAR, UnicodeText):
+            return
+
+        if datatype in (String, NVARCHAR):
+            dt = datatype(length)
+        else:
+            dt = datatype()
+
+        if length == "max":
+            length = 12000
+
+        if unicode_:
+            data = "réve🐍illé" * ((length // 9) + 1)
+            data = data[0 : (length // 2)]
+        else:
+            data = "abcdefg" * ((length // 7) + 1)
+            data = data[0:length]
+            assert len(data) == length
+
+        stmt = select(cast(literal(data, type_=dt), type_=dt))
+        result = connection.scalar(stmt)
+        eq_(result, data)
+
+    @testing.combinations(
+        ("unicode", True), ("ascii", False), argnames="unicode_", id_="ia"
+    )
+    @testing.combinations(
+        ("returning", True),
+        ("noreturning", False),
+        argnames="use_returning",
+        id_="ia",
+    )
+    @testing.combinations(
+        ("insertmany", True),
+        ("insertsingle", False),
+        argnames="insertmany",
+        id_="ia",
+    )
+    @testing.combinations(
+        String,
+        Unicode,
+        NVARCHAR,
+        NTEXT,
+        Text,
+        UnicodeText,
+        argnames="datatype",
+    )
+    @testing.combinations(
+        100, 1999, 2000, 2001, 3999, 4000, 4001, 5000, "max", argnames="length"
+    )
+    def test_long_strings_in_context(
+        self,
+        connection,
+        metadata,
+        unicode_,
+        length,
+        datatype,
+        use_returning,
+        insertmany,
+    ):
+
+        if datatype is NVARCHAR and length != "max" and length > 4000:
+            return
+        elif unicode_ and datatype not in (NVARCHAR, UnicodeText):
+            return
+
+        if datatype in (String, NVARCHAR):
+            dt = datatype(length)
+        else:
+            dt = datatype()
+
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", dt),
+        )
+
+        t.create(connection)
+
+        if length == "max":
+            length = 12000
+
+        if unicode_:
+            data = "réve🐍illé" * ((length // 9) + 1)
+            data = data[0 : (length // 2)]
+        else:
+            data = "abcdefg" * ((length // 7) + 1)
+            data = data[0:length]
+            assert len(data) == length
+
+        if insertmany:
+            insert_data = [{"data": data}, {"data": data}, {"data": data}]
+            expected_data = [data, data, data]
+        else:
+            insert_data = {"data": data}
+            expected_data = [data]
+
+        if use_returning:
+            result = connection.execute(
+                t.insert().returning(t.c.data), insert_data
+            )
+            eq_(result.scalars().all(), expected_data)
+        else:
+            connection.execute(t.insert(), insert_data)
+
+        result = connection.scalars(select(t.c.data))
+        eq_(result.all(), expected_data)
+
+        # note that deprecate_large_types indicates that UnicodeText
+        # will be fulfilled by NVARCHAR, and not NTEXT.  However if NTEXT
+        # is used directly, it isn't supported in WHERE clauses:
+        # "The data types ntext and (anything, including ntext itself) are
+        # incompatible in the equal to operator."
+        if datatype is NTEXT:
+            return
+
+        # test WHERE criteria
+        connection.execute(
+            t.insert(), [{"data": "some other data %d" % i} for i in range(3)]
+        )
+
+        result = connection.scalars(select(t.c.data).where(t.c.data == data))
+        eq_(result.all(), expected_data)
+
+        result = connection.scalars(
+            select(t.c.data).where(t.c.data != data).order_by(t.c.id)
+        )
+        eq_(result.all(), ["some other data %d" % i for i in range(3)])
 
 
 class UniqueIdentifierTest(test_types.UuidTest):

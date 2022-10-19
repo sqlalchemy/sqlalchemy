@@ -1148,6 +1148,21 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_round_trip_data1(self, connection):
         self._test_round_trip({"key1": "value1", "key2": "value2"}, connection)
 
+    @testing.combinations(
+        ("unicode", True), ("ascii", False), argnames="unicode_", id_="ia"
+    )
+    @testing.combinations(100, 1999, 3000, 4000, 5000, 9000, argnames="length")
+    def test_round_trip_pretty_large_data(self, connection, unicode_, length):
+
+        if unicode_:
+            data = "réve🐍illé" * ((length // 9) + 1)
+            data = data[0 : (length // 2)]
+        else:
+            data = "abcdefg" * ((length // 7) + 1)
+            data = data[0:length]
+
+        self._test_round_trip({"key1": data, "key2": data}, connection)
+
     def _test_round_trip(self, data_element, connection):
         data_table = self.tables.data_table
 
