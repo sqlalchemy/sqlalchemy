@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8668
+
+    Fixed bug in new ORM typed declarative mappings where we did not include
+    the ability to use ``Optional[]`` in the type annotation for a many-to-one
+    relationship, even though this is common.

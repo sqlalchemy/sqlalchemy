@@ -321,7 +321,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             id: Mapped[intpk] = mapped_column(init=False)
             email_address: Mapped[str]
             user_id: Mapped[user_fk] = mapped_column(init=False)
-            user: Mapped["User"] = relationship(
+            user: Mapped[Optional["User"]] = relationship(
                 back_populates="addresses", default=None
             )
 
