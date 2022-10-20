@@ -1,7 +1,9 @@
 .. change::
-    :tags: bug, orm
+    :tags: bug, orm, declarative
     :tickets: 8668
 
-    Fixed bug in new ORM typed declarative mappings where we did not include
-    the ability to use ``Optional[]`` in the type annotation for a many-to-one
-    relationship, even though this is common.
+    Fixed bug in new ORM typed declarative mappings where the ability
+    to use ``Optional[MyClass]`` or similar forms such as ``MyClass | None``
+    in the type annotation for a many-to-one relationship was not implemented,
+    leading to errors.   Documentation has also been added for this use
+    case to the relationship configuration documentation.
