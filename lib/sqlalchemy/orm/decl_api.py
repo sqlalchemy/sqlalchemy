@@ -684,7 +684,11 @@ class DeclarativeBase(
         __mapper__: ClassVar[Mapper[Any]]
         __table__: ClassVar[Optional[FromClause]]
 
-        __tablename__: ClassVar[Any]
+        # pyright/pylance do not consider a classmethod a ClassVar so use Any
+        # https://github.com/microsoft/pylance-release/issues/3484
+        __tablename__: Any
+        __mapper_args__: Any
+        __table_args__: Any
 
         def __init__(self, **kw: Any):
             ...
