@@ -9,5 +9,5 @@
     despite the fact that VARCHAR can handle unlimited characters. Additional
     pyodbc-specific typing information is now passed to ``setinputsizes()``
     when the datatype's size is > 2000 characters. The change is also applied
-    to the :class:`.JSON` type which was also impacted by this issue for large
+    to the :class:`_types.JSON` type which was also impacted by this issue for large
     JSON serializations.
