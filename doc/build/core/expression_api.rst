@@ -12,7 +12,6 @@ see :ref:`sqlexpression_toplevel`.
 .. toctree::
     :maxdepth: 3
 
-    foundation
     sqlelement
     operators
     selectable
@@ -20,4 +19,5 @@ see :ref:`sqlexpression_toplevel`.
     functions
     compiler
     serializer
+    foundation
     visitors
