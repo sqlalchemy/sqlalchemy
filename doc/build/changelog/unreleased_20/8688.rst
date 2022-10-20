@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, declarative
-    :tickets: 8688
-
-    Fixed issue with new dataclass mapping feature where arguments passed to
-    the dataclasses API could sometimes be mis-ordered when dealing with mixins
-    that override :func:`_orm.mapped_column` declarations, leading to
-    initializer problems.

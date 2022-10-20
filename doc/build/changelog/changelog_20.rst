@@ -10,7 +10,116 @@
 
 .. changelog::
     :version: 2.0.0b2
-    :include_notes_from: unreleased_20
+    :released: October 20, 2022
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8656
+
+        Removed the warning that emits when using ORM-enabled update/delete
+        regarding evaluation of columns by name, first added in :ticket:`4073`;
+        this warning actually covers up a scenario that otherwise could populate
+        the wrong Python value for an ORM mapped attribute depending on what the
+        actual column is, so this deprecated case is removed. In 2.0, ORM enabled
+        update/delete uses "auto" for "synchronize_session", which should do the
+        right thing automatically for any given UPDATE expression.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 8661
+
+        Fixed regression caused by SQL Server pyodbc change :ticket:`8177` where we
+        now use ``setinputsizes()`` by default; for VARCHAR, this fails if the
+        character size is greater than 4000 (or 2000, depending on data) characters
+        as the incoming datatype is NVARCHAR, which has a limit of 4000 characters,
+        despite the fact that VARCHAR can handle unlimited characters. Additional
+        pyodbc-specific typing information is now passed to ``setinputsizes()``
+        when the datatype's size is > 2000 characters. The change is also applied
+        to the :class:`_types.JSON` type which was also impacted by this issue for large
+        JSON serializations.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 8645
+
+        Fixed typing issue where pylance strict mode would report "instance
+        variable overrides class variable" when using a method to define
+        ``__tablename__``, ``__mapper_args__`` or ``__table_args__``.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets: 7211
+
+        The :class:`.Sequence` construct restores itself to the DDL behavior it
+        had prior to the 1.4 series, where creating a :class:`.Sequence` with
+        no additional arguments will emit a simple ``CREATE SEQUENCE`` instruction
+        **without** any additional parameters for "start value".   For most backends,
+        this is how things worked previously in any case; **however**, for
+        MS SQL Server, the default value on this database is
+        ``-2**63``; to prevent this generally impractical default
+        from taking effect on SQL Server, the :paramref:`.Sequence.start` parameter
+        should be provided.   As usage of :class:`.Sequence` is unusual
+        for SQL Server which for many years has standardized on ``IDENTITY``,
+        it is hoped that this change has minimal impact.
+
+        .. seealso::
+
+            :ref:`change_7211`
+
+    .. change::
+        :tags: bug, declarative, orm
+        :tickets: 8665
+
+        Improved the :class:`.DeclarativeBase` class so that when combined with
+        other mixins like :class:`.MappedAsDataclass`, the order of the classes may
+        be in either order.
+
+
+    .. change::
+        :tags: usecase, declarative, orm
+        :tickets: 8665
+
+        Added support for mapped classes that are also ``Generic`` subclasses,
+        to be specified as a ``GenericAlias`` object (e.g. ``MyClass[str]``)
+        within statements and calls to :func:`_sa.inspect`.
+
+
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8668
+
+        Fixed bug in new ORM typed declarative mappings where the ability
+        to use ``Optional[MyClass]`` or similar forms such as ``MyClass | None``
+        in the type annotation for a many-to-one relationship was not implemented,
+        leading to errors.   Documentation has also been added for this use
+        case to the relationship configuration documentation.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 8644
+
+        Fixed typing issue where pylance strict mode would report "partially
+        unknown" datatype for the :func:`_orm.mapped_column` construct.
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 8639
+
+        Fixed bug in new "insertmanyvalues" feature where INSERT that included a
+        subquery with :func:`_sql.bindparam` inside of it would fail to render
+        correctly in "insertmanyvalues" format. This affected psycopg2 most
+        directly as "insertmanyvalues" is used unconditionally with this driver.
+
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8688
+
+        Fixed issue with new dataclass mapping feature where arguments passed to
+        the dataclasses API could sometimes be mis-ordered when dealing with mixins
+        that override :func:`_orm.mapped_column` declarations, leading to
+        initializer problems.
 
 .. changelog::
     :version: 2.0.0b1
