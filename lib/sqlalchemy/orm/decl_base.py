@@ -420,7 +420,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
     registry: _RegistryType
     clsdict_view: _ClassDict
-    collected_annotations: Dict[str, Tuple[Any, Any, Any, bool]]
+    collected_annotations: Dict[str, Tuple[Any, Any, Any, bool, Any]]
     collected_attributes: Dict[str, Any]
     local_table: Optional[FromClause]
     persist_selectable: Optional[FromClause]
@@ -831,7 +831,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # acting like that for now.
 
                     if isinstance(obj, (Column, MappedColumn)):
-                        self._collect_annotation(name, annotation, True, obj)
                         # already copied columns to the mapped class.
                         continue
                     elif isinstance(obj, MapperProperty):
@@ -1000,6 +999,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     mapped_container,
                     mapped_anno,
                     is_dc,
+                    attr_value,
                 ) in self.collected_annotations.items()
             )
         ]
@@ -1018,6 +1018,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         for k, v in defaults.items():
             setattr(self.cls, k, v)
+
         self.cls.__annotations__ = annotations
 
         self._assert_dc_arguments(dataclass_setup_arguments)
@@ -1056,6 +1057,10 @@ class _ClassScanMapperConfig(_MapperConfig):
         expect_mapped: Optional[bool],
         attr_value: Any,
     ) -> Any:
+
+        if name in self.collected_annotations:
+            return self.collected_annotations[name][4]
+
         if raw_annotation is None:
             return attr_value
 
@@ -1105,6 +1110,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             mapped_container,
             extracted_mapped_annotation,
             is_dataclass,
+            attr_value,
         )
         return attr_value
 
@@ -1133,6 +1139,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         # copy mixin columns to the mapped class
 
         for name, obj, annotation, is_dataclass in attributes_for_class():
+
             if (
                 not fixed_table
                 and obj is None
@@ -1146,6 +1153,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                 setattr(cls, name, obj)
 
             elif isinstance(obj, (Column, MappedColumn)):
+
+                obj = self._collect_annotation(name, annotation, True, obj)
+
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
                     # (like by the InstrumentedAttribute of the
@@ -1176,6 +1186,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
                     locally_collected_attributes[name] = copy_
                     setattr(cls, name, copy_)
+
         return locally_collected_attributes
 
     def _extract_mappable_attributes(self) -> None:
@@ -1260,8 +1271,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                         mapped_container,
                         extracted_mapped_annotation,
                         is_dataclass,
+                        attr_value,
                     ) = self.collected_annotations.get(
-                        k, (None, None, None, False)
+                        k, (None, None, None, False, None)
                     )
                     value.declarative_scan(
                         self.registry,
