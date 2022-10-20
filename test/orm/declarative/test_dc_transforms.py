@@ -14,6 +14,7 @@ from unittest import mock
 
 from typing_extensions import Annotated
 
+from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
@@ -552,6 +553,31 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         fas = pyinspect.getfullargspec(A.__init__)
         eq_(fas.args, ["self", "id"])
         eq_(fas.kwonlyargs, ["data"])
+
+    def test_mapped_column_overrides(self, dc_decl_base):
+        """test #8688"""
+
+        class TriggeringMixin:
+            mixin_value: Mapped[int] = mapped_column(BigInteger)
+
+        class NonTriggeringMixin:
+            mixin_value: Mapped[int]
+
+        class Foo(dc_decl_base, TriggeringMixin):
+            __tablename__ = "foo"
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            foo_value: Mapped[float] = mapped_column(default=78)
+
+        class Bar(dc_decl_base, NonTriggeringMixin):
+            __tablename__ = "bar"
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            bar_value: Mapped[float] = mapped_column(default=78)
+
+        f1 = Foo(mixin_value=5)
+        eq_(f1.foo_value, 78)
+
+        b1 = Bar(mixin_value=5)
+        eq_(b1.bar_value, 78)
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
