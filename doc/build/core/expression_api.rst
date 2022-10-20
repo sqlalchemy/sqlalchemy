@@ -13,7 +13,6 @@ in the :ref:`unified_tutorial`.
 .. toctree::
     :maxdepth: 3
 
-    foundation
     sqlelement
     operators
     selectable
@@ -21,4 +20,5 @@ in the :ref:`unified_tutorial`.
     functions
     compiler
     serializer
+    foundation
     visitors
