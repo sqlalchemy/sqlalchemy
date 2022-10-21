@@ -514,6 +514,8 @@
 
         .. seealso::
 
+            :ref:`change_7156`
+
             :ref:`postgresql_ranges`
 
     .. change::

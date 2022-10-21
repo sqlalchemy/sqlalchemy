@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 8690
+
+    Refined the new approach to range objects described at :ref:`change_7156`
+    to accommodate driver-specific range and multirange objects, to better
+    accommodate both legacy code as well as when passing results from raw SQL
+    result sets back into new range or multirange expressions.

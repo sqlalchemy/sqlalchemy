@@ -503,16 +503,14 @@ class _Psycopg2Range(ranges.AbstractRangeImpl):
     _psycopg2_range_cls = "none"
 
     def bind_processor(self, dialect):
-        Range = getattr(
+        psycopg2_Range = getattr(
             cast(PGDialect_psycopg2, dialect)._psycopg2_extras,
             self._psycopg2_range_cls,
         )
 
-        NoneType = type(None)
-
         def to_range(value):
-            if not isinstance(value, (str, NoneType)):
-                value = Range(
+            if isinstance(value, ranges.Range):
+                value = psycopg2_Range(
                     value.lower, value.upper, value.bounds, value.empty
                 )
             return value

@@ -293,13 +293,11 @@ class AsyncpgCHAR(sqltypes.CHAR):
 
 class _AsyncpgRange(ranges.AbstractRangeImpl):
     def bind_processor(self, dialect):
-        Range = dialect.dbapi.asyncpg.Range
-
-        NoneType = type(None)
+        asyncpg_Range = dialect.dbapi.asyncpg.Range
 
         def to_range(value):
-            if not isinstance(value, (str, NoneType)):
-                value = Range(
+            if isinstance(value, ranges.Range):
+                value = asyncpg_Range(
                     value.lower,
                     value.upper,
                     lower_inc=value.bounds[0] == "[",
@@ -328,7 +326,7 @@ class _AsyncpgRange(ranges.AbstractRangeImpl):
 
 class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
     def bind_processor(self, dialect):
-        Range = dialect.dbapi.asyncpg.Range
+        asyncpg_Range = dialect.dbapi.asyncpg.Range
 
         NoneType = type(None)
 
@@ -337,8 +335,8 @@ class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
                 return value
 
             def to_range(value):
-                if not isinstance(value, (str, NoneType)):
-                    value = Range(
+                if isinstance(value, ranges.Range):
+                    value = asyncpg_Range(
                         value.lower,
                         value.upper,
                         lower_inc=value.bounds[0] == "[",
