@@ -343,6 +343,23 @@ class ImmutableDictTest(fixtures.TestBase):
         i2 = util.immutabledict({"a": 42, 42: "a"})
         eq_(str(i2), "immutabledict({'a': 42, 42: 'a'})")
 
+    @testing.requires.python39
+    def test_pep584(self):
+        i = util.immutabledict({"a": 2})
+        with expect_raises_message(TypeError, "object is immutable"):
+            i |= {"b": 42}
+        eq_(i, {"a": 2})
+
+        i2 = i | {"x": 3}
+        eq_(i, {"a": 2})
+        eq_(i2, {"a": 2, "x": 3})
+        is_true(isinstance(i2, util.immutabledict))
+
+        i2 = {"x": 3} | i2
+        eq_(i, {"a": 2})
+        eq_(i2, {"a": 2, "x": 3})
+        is_true(isinstance(i2, util.immutabledict))
+
 
 class ImmutableTest(fixtures.TestBase):
     @combinations(util.immutabledict({1: 2, 3: 4}), util.FacadeDict({2: 3}))

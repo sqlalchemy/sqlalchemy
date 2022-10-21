@@ -32,6 +32,7 @@ class ImmutableDictBase(dict):
     __delitem__ = __setitem__ = __setattr__ = _immutable
     clear = pop = popitem = setdefault = update = _immutable
 
+
 cdef class immutabledict(dict):
     def __repr__(self):
         return f"immutabledict({dict.__repr__(self)})"
@@ -118,7 +119,9 @@ cdef class immutabledict(dict):
         _immutable_fn(self)
 
     def __or__(self, other):
-        return immutabledict(super().__or__(other))
+        return immutabledict(dict.__or__(self, other))
 
     def __ror__(self, other):
-        return immutabledict(super().__ror__(other))
+        # NOTE: this is used only in cython 3.x;
+        # version 0.x will call __or__ with args inversed
+        return immutabledict(dict.__ror__(self, other))
