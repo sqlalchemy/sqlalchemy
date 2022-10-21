@@ -591,24 +591,31 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: sqlalchemy.pool.Pool
 
+   .. automethod:: __init__
    .. automethod:: connect
    .. automethod:: dispose
    .. automethod:: recreate
 
 .. autoclass:: sqlalchemy.pool.QueuePool
 
+   .. automethod:: __init__
    .. automethod:: connect
 
 .. autoclass:: SingletonThreadPool
 
+   .. automethod:: __init__
 
 .. autoclass:: AssertionPool
 
+   .. automethod:: __init__
 
 .. autoclass:: NullPool
 
+   .. automethod:: __init__
 
 .. autoclass:: StaticPool
+
+   .. automethod:: __init__
 
 .. autoclass:: _ConnectionFairy
     :members:
