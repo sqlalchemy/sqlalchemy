@@ -723,6 +723,25 @@ and :class:`_engine.Row` objects::
     :ref:`orm_declarative_table` - Updated Declarative documentation for
     Declarative generation and mapping of :class:`.Table` columns.
 
+.. _whatsnew_20_mypy_legacy_models:
+
+Using Legacy Mypy-Typed Models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
+explicit annotations that don't use :class:`_orm.Mapped` in their annotations
+are subject to errors under the new system, as such annotations are flagged as
+errors when using constructs such as :func:`_orm.relationship`.
+
+The section :ref:`migration_20_step_six` illustrates how to temporarily
+disable these errors from being raised for a legacy ORM model that uses
+explicit annotations.
+
+.. seealso::
+
+    :ref:`migration_20_step_six`
+
+
 .. _whatsnew_20_dataclasses:
 
 Native Support for Dataclasses Mapped as ORM Models

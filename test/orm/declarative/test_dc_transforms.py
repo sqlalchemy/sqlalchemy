@@ -49,6 +49,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.util import compat
+from .test_typed_mapping import expect_annotation_syntax_error
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -372,12 +373,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         """since I made this mistake in my own mapping video, lets have it
         raise an error"""
 
-        with expect_raises_message(
-            exc.ArgumentError,
-            r'Type annotation for "A.data" should '
-            r'use the syntax "Mapped\[str\]".  '
-            r"To leave the attribute unmapped,",
-        ):
+        with expect_annotation_syntax_error("A.data"):
 
             class A(dc_decl_base):
                 __tablename__ = "a"

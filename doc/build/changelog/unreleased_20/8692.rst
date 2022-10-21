@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, declarative
+    :tickets: 8692
+
+    Improved support for legacy 1.4 mappings that use annotations which don't
+    include ``Mapped[]``, by ensuring the ``__allow_unmapped__`` attribute can
+    be used to allow such legacy annotations to pass through Annotated
+    Declarative without raising an error and without being interpreted in an
+    ORM runtime context. Additionally improved the error message generated when
+    this condition is detected, and added more documentation for how this
+    situation should be handled. Unfortunately the 1.4 WARN_SQLALCHEMY_20
+    migration warning cannot detect this particular configurational issue at
+    runtime with its current architecture.

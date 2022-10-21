@@ -7,10 +7,13 @@ from typing import Set
 from typing import TypeVar
 from typing import Union
 
+from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.orm import attribute_keyed_dict
@@ -292,6 +295,33 @@ class RelationshipLHSTest(_RelationshipLHSTest):
         a1.bs.set(b1)
 
         is_(a1.bs["foo"], b1)
+
+    def test_14_style_anno_accepted_w_allow_unmapped(self):
+        """test for #8692"""
+
+        class Base(DeclarativeBase):
+            __allow_unmapped__ = True
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: str = Column(String)
+            bs: List[B] = relationship("B", back_populates="a")
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[str]
+            a: A = relationship("A", back_populates="bs")
+
+        Base.registry.configure()
+
+        self.assert_compile(
+            select(A).join(A.bs),
+            "SELECT a.id, a.data FROM a JOIN b ON a.id = b.a_id",
+        )
 
     @testing.combinations(
         ("not_optional",),
