@@ -63,6 +63,15 @@ from sqlalchemy.util import compat
 from sqlalchemy.util.typing import Annotated
 
 
+def expect_annotation_syntax_error(name):
+    return expect_raises_message(
+        sa_exc.ArgumentError,
+        f'Type annotation for "{name}" '
+        "can't be correctly interpreted for "
+        "Annotated Declarative Table form.  ",
+    )
+
+
 class DeclarativeBaseTest(fixtures.TestBase):
     def test_class_getitem_as_declarative(self):
         T = TypeVar("T", bound="CommonBase")  # noqa
@@ -282,13 +291,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert "old_column" in inspect(MyClass).attrs
 
     def test_i_have_plain_attrs_on_my_class_disallowed(self, decl_base):
-        with expect_raises_message(
-            sa_exc.ArgumentError,
-            r'Type annotation for "MyClass.status" should use the syntax '
-            r'"Mapped\[int\]".  To leave the attribute unmapped, use '
-            r"ClassVar\[int\], assign a value to the attribute, or "
-            r"set __allow_unmapped__ = True on the class.",
-        ):
+        with expect_annotation_syntax_error("MyClass.status"):
 
             class MyClass(decl_base):
                 __tablename__ = "mytable"
@@ -926,11 +929,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 is_true(optional_col.nullable)
 
     def test_missing_mapped_lhs(self, decl_base):
-        with expect_raises_message(
-            ArgumentError,
-            r'Type annotation for "User.name" should use the '
-            r'syntax "Mapped\[str\]" or "MappedColumn\[str\]"',
-        ):
+        with expect_annotation_syntax_error("User.name"):
 
             class User(decl_base):
                 __tablename__ = "users"
@@ -1213,7 +1212,18 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 bs = relationship()
 
-    def test_rudimentary_dataclasses_support(self, registry):
+    def test_legacy_dataclasses_not_currently_using_annotations(
+        self, registry
+    ):
+        """test if relationship() inspects annotations when using
+        the legacy dataclass style.
+
+        As of #8692, we are not looking at any annotations that don't use
+        ``Mapped[]``.   dataclass users should use MappedAsDataclass and
+        new conventions.
+
+        """
+
         @registry.mapped
         @dataclasses.dataclass
         class A:
@@ -1232,8 +1242,39 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             a_id = mapped_column(ForeignKey("a.id"))
 
+        with expect_raises_message(
+            ArgumentError,
+            "relationship 'bs' expects a class or a mapper argument",
+        ):
+            registry.configure()
+
+    def test_14_style_anno_accepted_w_allow_unmapped(self):
+        """test for #8692"""
+
+        class Base(DeclarativeBase):
+            __allow_unmapped__ = True
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: str = Column(String)
+            bs: List["B"] = relationship("B", back_populates="a")  # noqa: F821
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[str]
+            a: A = relationship("A", back_populates="bs")
+
         self.assert_compile(
-            select(A).join(A.bs), "SELECT a.id FROM a JOIN b ON a.id = b.a_id"
+            select(A).join(A.bs),
+            "SELECT a.id, a.data FROM a JOIN b ON a.id = b.a_id",
+        )
+        self.assert_compile(
+            select(B).join(B.a),
+            "SELECT b.id, b.a_id, b.data FROM b JOIN a ON a.id = b.a_id",
         )
 
     @testing.combinations(
@@ -1287,11 +1328,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_wrong_annotation_type_one(self, decl_base):
 
-        with expect_raises_message(
-            sa_exc.ArgumentError,
-            r"Type annotation for \"A.data\" should use the "
-            r"syntax \"Mapped\['B'\]\" or \"Relationship\['B'\]\"",
-        ):
+        with expect_annotation_syntax_error("A.data"):
 
             class A(decl_base):
                 __tablename__ = "a"
@@ -1301,11 +1338,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_wrong_annotation_type_two(self, decl_base):
 
-        with expect_raises_message(
-            sa_exc.ArgumentError,
-            r"Type annotation for \"A.data\" should use the "
-            r"syntax \"Mapped\[B\]\" or \"Relationship\[B\]\"",
-        ):
+        with expect_annotation_syntax_error("A.data"):
 
             class B(decl_base):
                 __tablename__ = "b"
@@ -1320,12 +1353,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_wrong_annotation_type_three(self, decl_base):
 
-        with expect_raises_message(
-            sa_exc.ArgumentError,
-            r"Type annotation for \"A.data\" should use the "
-            r"syntax \"Mapped\['List\[B\]'\]\" or "
-            r"\"Relationship\['List\[B\]'\]\"",
-        ):
+        with expect_annotation_syntax_error("A.data"):
 
             class B(decl_base):
                 __tablename__ = "b"
@@ -1585,11 +1613,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             state: str
             zip_: str
 
-        with expect_raises_message(
-            ArgumentError,
-            r"Type annotation for \"User.address\" should use the syntax "
-            r"\"Mapped\['Address'\]\"",
-        ):
+        with expect_annotation_syntax_error("User.address"):
 
             class User(decl_base):
                 __tablename__ = "user"

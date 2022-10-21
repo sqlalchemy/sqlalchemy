@@ -1199,6 +1199,11 @@ class _ClassScanMapperConfig(_MapperConfig):
             cls, "_sa_decl_prepare_nocascade", strict=True
         )
 
+        expect_annotations_wo_mapped = (
+            self.allow_unmapped_annotations
+            or self.is_dataclass_prior_to_mapping
+        )
+
         for k in list(collected_attributes):
 
             if k in ("__table__", "__tablename__", "__mapper_args__"):
@@ -1275,15 +1280,28 @@ class _ClassScanMapperConfig(_MapperConfig):
                     ) = self.collected_annotations.get(
                         k, (None, None, None, False, None)
                     )
-                    value.declarative_scan(
-                        self.registry,
-                        cls,
-                        k,
-                        mapped_container,
-                        annotation,
-                        extracted_mapped_annotation,
-                        is_dataclass,
-                    )
+
+                    # issue #8692 - don't do any annotation interpretation if
+                    # an annotation were present and a container such as
+                    # Mapped[] etc. were not used.  If annotation is None,
+                    # do declarative_scan so that the property can raise
+                    # for required
+                    if mapped_container is not None or annotation is None:
+                        value.declarative_scan(
+                            self.registry,
+                            cls,
+                            k,
+                            mapped_container,
+                            annotation,
+                            extracted_mapped_annotation,
+                            is_dataclass,
+                        )
+                    else:
+                        # assert that we were expecting annotations
+                        # without Mapped[] were going to be passed.
+                        # otherwise an error should have been raised
+                        # by util._extract_mapped_subtype before we got here.
+                        assert expect_annotations_wo_mapped
 
                 if (
                     isinstance(value, (MapperProperty, _MapsColumns))

@@ -1312,6 +1312,30 @@ the :term:`detached` state.
    For background on buffering of the ``cursor`` results itself, see the
    section :ref:`engine_stream_results`.
 
+.. _error_zlpr:
+
+Type annotation can't be interpreted for Annotated Declarative Table form
+--------------------------------------------------------------------------
+
+SQLAlchemy 2.0 introduces a new
+:ref:`Annotated Declarative Table <orm_declarative_mapped_column>` declarative
+system which derives ORM mapped attribute information from :pep:`484`
+annotations within class definitions at runtime. A requirement of this form is
+that all ORM annotations must make use of a generic container called
+:class:`_orm.Mapped` to be properly annotated. Legacy SQLAlchemy mappings which
+include explicit :pep:`484` typing annotations, such as those which use the
+:ref:`legacy Mypy extension <mypy_toplevel>` for typing support, may include
+directives such as those for :func:`_orm.relationship` that don't include this
+generic.
+
+To resolve, the classes may be marked with the ``__allow_unmapped__`` boolean
+attribute until they can be fully migrated to the 2.0 syntax. See the migration
+notes at :ref:`migration_20_step_six` for an example.
+
+
+.. seealso::
+
+    :ref:`migration_20_step_six` - in the :ref:`migration_20_toplevel` document
 
 AsyncIO Exceptions
 ==================

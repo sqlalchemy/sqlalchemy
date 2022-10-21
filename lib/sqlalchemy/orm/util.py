@@ -2090,15 +2090,6 @@ def _extract_mapped_subtype(
         if not hasattr(annotated, "__origin__") or not is_origin_of_cls(
             annotated, _MappedAnnotationBase
         ):
-            anno_name = (
-                getattr(annotated, "__name__", None)
-                if not isinstance(annotated, str)
-                else None
-            )
-            if anno_name is None:
-                our_annotated_str = repr(annotated)
-            else:
-                our_annotated_str = anno_name
 
             if expect_mapped:
                 if getattr(annotated, "__origin__", None) is typing.ClassVar:
@@ -2107,29 +2098,22 @@ def _extract_mapped_subtype(
                 if not raiseerr:
                     return None
 
-                if attr_cls.__name__ == our_annotated_str or attr_cls is type(
-                    None
-                ):
-                    raise sa_exc.ArgumentError(
-                        f'Type annotation for "{cls.__name__}.{key}" '
-                        "should use the "
-                        f'syntax "Mapped[{our_annotated_str}]".  To leave '
-                        f"the attribute unmapped, use "
-                        f"ClassVar[{our_annotated_str}], assign a value to "
-                        f"the attribute, or "
-                        f"set __allow_unmapped__ = True on the class."
-                    )
-                else:
-                    raise sa_exc.ArgumentError(
-                        f'Type annotation for "{cls.__name__}.{key}" '
-                        "should use the "
-                        f'syntax "Mapped[{our_annotated_str}]" or '
-                        f'"{attr_cls.__name__}[{our_annotated_str}]".  To '
-                        f"leave the attribute unmapped, use "
-                        f"ClassVar[{our_annotated_str}], assign a value to "
-                        f"the attribute, or "
-                        f"set __allow_unmapped__ = True on the class."
-                    )
+                raise sa_exc.ArgumentError(
+                    f'Type annotation for "{cls.__name__}.{key}" '
+                    "can't be correctly interpreted for "
+                    "Annotated Declarative Table form.  ORM annotations "
+                    "should normally make use of the ``Mapped[]`` generic "
+                    "type, or other ORM-compatible generic type, as a "
+                    "container for the actual type, which indicates the "
+                    "intent that the attribute is mapped. "
+                    "Class variables that are not intended to be mapped "
+                    "by the ORM should use ClassVar[].  "
+                    "To allow Annotated Declarative to disregard legacy "
+                    "annotations which don't use Mapped[] to pass, set "
+                    '"__allow_unmapped__ = True" on the class or a '
+                    "superclass this class.",
+                    code="zlpr",
+                )
 
             else:
                 return annotated, None
