@@ -378,6 +378,86 @@ and all ``exc.RemovedIn20Warning`` occurrences set to raise an error,
 The sections that follow will detail the specific changes to make for all
 major API modifications.
 
+.. _migration_20_step_six:
+
+Migration to 2.0 Step Six - Add ``__allow_unmapped__`` to explicitly typed ORM models
+--------------------------------------------------------------------------------------
+
+SQLAlchemy 2.0 has new support for runtime interpretation of :pep:`484` typing annotations
+on ORM models.   A requirement of these annotations is that they must make use
+of the :class:`_orm.Mapped` generic container.  Annotations which don't use
+:class:`_orm.Mapped` which link to constructs such as :func:`_orm.relationship`
+will raise errors, as they suggest mis-configurations.
+
+SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
+explicit annotations that don't use :class:`_orm.Mapped` in their annotations
+are subject to these errors, as would occur in the example below::
+
+    Base = declarative_base()
+
+
+    class Foo(Base):
+        __tablename__ = "foo"
+
+        id: int = Column(Integer, primary_key=True)
+
+        # will raise
+        bars: list["Bar"] = relationship("Bar", back_populates="foo")
+
+
+    class Bar(Base):
+        __tablename__ = "bar"
+
+        id: int = Column(Integer, primary_key=True)
+        foo_id = Column(ForeignKey("foo.id"))
+
+        # will raise
+        foo: Foo = relationship(Foo, back_populates="bars", cascade="all")
+
+Above, the ``Foo.bars`` and ``Bar.foo`` :func:`_orm.relationship` declarations
+will raise an error at class construction time because they don't use
+:class:`_orm.Mapped` (by contrast, the annotations that use
+:class:`_schema.Column` are ignored by 2.0, as these are able to be
+recognized as a legacy configuration style). To allow all annotations that
+don't use :class:`_orm.Mapped` to pass without error,
+the ``__allow_unmapped__`` attribute may be used on the class or any
+subclasses, which will cause the annotations in these cases to be
+ignored completely by the new Declarative system.
+
+The example below illustrates the application of ``__allow_unmapped__``
+to the Declarative ``Base`` class, where it will take effect for all classes
+that descend from ``Base``::
+
+    # qualify the base with __allow_unmapped__.  Can also be
+    # applied to classes directly if preferred
+    class Base:
+        __allow_unmapped__ = True
+
+
+    Base = declarative_base(cls=Base)
+
+    # existing mapping proceeds, Declarative will ignore any annotations
+    # which don't include ``Mapped[]``
+    class Foo(Base):
+        __tablename__ = "foo"
+
+        id: int = Column(Integer, primary_key=True)
+
+        bars: list["Bar"] = relationship("Bar", back_populates="foo")
+
+
+    class Bar(Base):
+        __tablename__ = "bar"
+
+        id: int = Column(Integer, primary_key=True)
+        foo_id = Column(ForeignKey("foo.id"))
+
+        foo: Foo = relationship(Foo, back_populates="bars", cascade="all")
+
+.. versionchanged:: 2.0.0beta3 - improved the ``__allow_unmapped__``
+   attribute support to allow for 1.4-style explicit annotated relationships
+   that don't use :class:`_orm.Mapped` to remain usable.
+
 
 2.0 Migration - Core Connection / Transaction
 =============================================
