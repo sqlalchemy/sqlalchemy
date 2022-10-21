@@ -3891,6 +3891,23 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         cols = insp.get_columns("data_table")
         assert isinstance(cols[0]["type"], self._col_type)
 
+    def test_textual_round_trip_w_dialect_type(self, connection):
+        """test #8690"""
+        data_table = self.tables.data_table
+
+        data_obj = self._data_obj()
+        connection.execute(
+            self.tables.data_table.insert(), {"range": data_obj}
+        )
+
+        q1 = text("SELECT range from data_table")
+        v = connection.scalar(q1)
+
+        q2 = select(data_table).where(data_table.c.range == v)
+        v2 = connection.scalar(q2)
+
+        eq_(data_obj, v2)
+
     def _assert_data(self, conn):
         data = conn.execute(select(self.tables.data_table.c.range)).fetchall()
         eq_(data, [(self._data_obj(),)])
@@ -4347,6 +4364,23 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
     def _assert_data(self, conn):
         data = conn.execute(select(self.tables.data_table.c.range)).fetchall()
         eq_(data, [(self._data_obj(),)])
+
+    def test_textual_round_trip_w_dialect_type(self, connection):
+        """test #8690"""
+        data_table = self.tables.data_table
+
+        data_obj = self._data_obj()
+        connection.execute(
+            self.tables.data_table.insert(), {"range": data_obj}
+        )
+
+        q1 = text("SELECT range from data_table")
+        v = connection.scalar(q1)
+
+        q2 = select(data_table).where(data_table.c.range == v)
+        v2 = connection.scalar(q2)
+
+        eq_(data_obj, v2)
 
     def test_insert_obj(self, connection):
         connection.execute(

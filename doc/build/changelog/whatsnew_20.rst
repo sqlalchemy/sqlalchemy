@@ -1868,6 +1868,29 @@ the :meth:`_types.TypeEngine.with_variant` method as follows::
         Column("value", Float(5).with_variant(oracle.FLOAT(16), "oracle")),
     )
 
+.. _change_7156:
+
+New RANGE / MULTIRANGE support and changes for PostgreSQL backends
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+RANGE / MULTIRANGE support has been fully implemented for psycopg2, psycopg3,
+and asyncpg dialects.  The new support uses a new SQLAlchemy-specific
+:class:`_postgresql.Range` object that is agnostic of the different backends
+and does not require the use of backend-specific imports or extension
+steps.  For multirange support, lists of :class:`_postgresql.Range`
+objects are used.
+
+Code that used the previous psycopg2-specific types should be modified
+to use :class:`_postgresql.Range`, which presents a compatible interface.
+
+See the documentation at :ref:`postgresql_ranges` for background on
+using the new feature.
+
+
+.. seealso::
+
+    :ref:`postgresql_ranges`
+
 .. _change_7086:
 
 ``match()`` operator on PostgreSQL uses ``plainto_tsquery()`` rather than ``to_tsquery()``
