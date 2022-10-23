@@ -2959,11 +2959,8 @@ class MSDialect(default.DefaultDialect):
         else:
             tables = ischema.tables
 
-            s = sql.select(tables.c.table_name).where(
-                sql.and_(
-                    tables.c.table_type == "BASE TABLE",
-                    tables.c.table_name == tablename,
-                )
+            s = sql.select(tables.c.table_name, tables.c.table_type).where(
+                tables.c.table_name == tablename,
             )
 
             if owner:

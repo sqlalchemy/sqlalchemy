@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 8700
+
+    Fixed regression which occurred throughout the 1.4 series where the
+    :meth:`.Inspector.has_table` method, which historically reported on views
+    as well, stopped working for SQL Server.  The method never worked for
+    Oracle in this way, so for compatibility within the 1.4 series,
+    Oracle's dialect remains returning False for ``has_table()`` against a
+    view within the 1.4 series.
+
+    The issue is not present in the 2.0 series which uses a different
+    reflection architecture, where has_table() reports True for views on all
+    backends including SQL Server and Oracle. Test support is added within the
+    1.4 series to ensure ``has_table()`` remains working per spec re: views.
