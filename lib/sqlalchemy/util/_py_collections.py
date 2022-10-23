@@ -27,6 +27,7 @@ from typing import TypeVar
 from typing import Union
 
 _T = TypeVar("_T", bound=Any)
+_S = TypeVar("_S", bound=Any)
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 
@@ -129,8 +130,19 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
     def __repr__(self) -> str:
         return "immutabledict(%s)" % dict.__repr__(self)
 
+    # PEP 584
+    def __ior__(self, __value: Any) -> NoReturn:  # type: ignore
+        self._readonly()
 
-_S = TypeVar("_S", bound=Any)
+    def __or__(  # type: ignore[override]
+        self, __value: Mapping[_KT, _VT]
+    ) -> immutabledict[_KT, _VT]:
+        return immutabledict(super().__or__(__value))
+
+    def __ror__(  # type: ignore[override]
+        self, __value: Mapping[_KT, _VT]
+    ) -> immutabledict[_KT, _VT]:
+        return immutabledict(super().__ror__(__value))
 
 
 class OrderedSet(Set[_T]):
