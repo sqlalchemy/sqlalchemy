@@ -65,6 +65,28 @@ class HasTableTest(fixtures.TablesTest):
                 schema=config.test_schema,
             )
 
+        if testing.requires.view_reflection:
+            cls.define_views(metadata)
+
+    @classmethod
+    def define_views(cls, metadata):
+        query = "CREATE VIEW vv AS SELECT * FROM test_table"
+
+        event.listen(metadata, "after_create", DDL(query))
+        event.listen(metadata, "before_drop", DDL("DROP VIEW vv"))
+
+        if testing.requires.schemas.enabled:
+            query = "CREATE VIEW %s.vv AS SELECT * FROM %s.test_table_s" % (
+                config.test_schema,
+                config.test_schema,
+            )
+            event.listen(metadata, "after_create", DDL(query))
+            event.listen(
+                metadata,
+                "before_drop",
+                DDL("DROP VIEW %s.vv" % (config.test_schema)),
+            )
+
     def test_has_table(self):
         with config.db.begin() as conn:
             is_true(config.db.dialect.has_table(conn, "test_table"))
@@ -105,29 +127,14 @@ class HasTableTest(fixtures.TablesTest):
 
     @testing.requires.views
     def test_has_table_view(self, connection):
-        query = "CREATE VIEW vv AS SELECT * FROM test_table"
-        connection.execute(sa.sql.text(query))
         insp = inspect(connection)
-        try:
-            is_true(insp.has_table("vv"))
-        finally:
-            connection.execute(sa.sql.text("DROP VIEW vv"))
+        is_true(insp.has_table("vv"))
 
     @testing.requires.views
     @testing.requires.schemas
     def test_has_table_view_schema(self, connection):
-        query = "CREATE VIEW %s.vv AS SELECT * FROM %s.test_table_s" % (
-            config.test_schema,
-            config.test_schema,
-        )
-        connection.execute(sa.sql.text(query))
         insp = inspect(connection)
-        try:
-            is_true(insp.has_table("vv", config.test_schema))
-        finally:
-            connection.execute(
-                sa.sql.text("DROP VIEW %s.vv" % config.test_schema)
-            )
+        is_true(insp.has_table("vv", config.test_schema))
 
 
 class HasIndexTest(fixtures.TablesTest):
