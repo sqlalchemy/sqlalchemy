@@ -3432,6 +3432,13 @@ class Mapper(
         enable_opt = strategy_options.Load(entity)
 
         for prop in self.attrs:
+
+            # skip prop keys that are not instrumented on the mapped class.
+            # this is primarily the "_sa_polymorphic_on" property that gets
+            # created for an ad-hoc polymorphic_on SQL expression, issue #8704
+            if prop.key not in self.class_manager:
+                continue
+
             if prop.parent is self or prop in keep_props:
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
@@ -3440,7 +3447,8 @@ class Mapper(
 
                 enable_opt = enable_opt._set_generic_strategy(
                     # convert string name to an attribute before passing
-                    # to loader strategy
+                    # to loader strategy.   note this must be in terms
+                    # of given entity, such as AliasedClass, etc.
                     (getattr(entity.entity_namespace, prop.key),),
                     dict(prop.strategy_key),
                     _reconcile_to_other=True,
@@ -3451,7 +3459,8 @@ class Mapper(
                 # the options from the query to override them
                 disable_opt = disable_opt._set_generic_strategy(
                     # convert string name to an attribute before passing
-                    # to loader strategy
+                    # to loader strategy.   note this must be in terms
+                    # of given entity, such as AliasedClass, etc.
                     (getattr(entity.entity_namespace, prop.key),),
                     {"do_nothing": True},
                     _reconcile_to_other=False,

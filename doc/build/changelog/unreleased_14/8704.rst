@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8704
+
+    Fixed issue where "selectin_polymorphic" loading for inheritance mappers
+    would not function correctly if the :param:`_orm.Mapper.polymorphic_on`
+    parameter referred to a SQL expression that was not directly mapped on the
+    class.
