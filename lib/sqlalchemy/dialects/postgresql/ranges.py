@@ -89,19 +89,28 @@ class Range(Generic[_T]):
         if self.lower is None:
             if self.upper is None:
                 return True
-            return (self.upper is None or
-                    (value < self.upper if self.bounds[1] == ")"
-                     else value <= self.upper))
+            return self.upper is None or (
+                value < self.upper
+                if self.bounds[1] == ")"
+                else value <= self.upper
+            )
 
         if self.upper is None:
-            return (value > self.lower if self.bounds[0] == "("
-                    else value >= self.lower)
+            return (
+                value > self.lower
+                if self.bounds[0] == "("
+                else value >= self.lower
+            )
 
-        return ((value > self.lower if self.bounds[0] == "("
-                 else value >= self.lower)
-                and
-                (value < self.upper if self.bounds[1] == ")"
-                 else value <= self.upper))
+        return (
+            value > self.lower
+            if self.bounds[0] == "("
+            else value >= self.lower
+        ) and (
+            value < self.upper
+            if self.bounds[1] == ")"
+            else value <= self.upper
+        )
 
     def issubset(self, other) -> bool:
         "Determine whether this range is a contained by `other`."
@@ -130,7 +139,7 @@ class Range(Generic[_T]):
         if self.lower is not None and other.lower is not None:
             lower_side = other.lower < self.lower
             if not lower_side:
-                if self.bounds[0] == '(' or other.bounds[0] == '[':
+                if self.bounds[0] == "(" or other.bounds[0] == "[":
                     lower_side = other.lower == self.lower
             if not lower_side:
                 return False
@@ -143,7 +152,7 @@ class Range(Generic[_T]):
         # Check the upper end
         upper_side = other.upper > self.upper
         if not upper_side:
-            if self.bounds[1] == ')' or other.bounds[1] == ']':
+            if self.bounds[1] == ")" or other.bounds[1] == "]":
                 upper_side = other.upper == self.upper
         return upper_side
 
