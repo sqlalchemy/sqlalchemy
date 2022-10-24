@@ -80,7 +80,7 @@ class Range(Generic[_T]):
     def __bool__(self) -> bool:
         return self.empty
 
-    def contains_value(self, value: T) -> bool:
+    def contains_value(self, value: _T) -> bool:
         "Check whether this range contains the given `value`."
 
         if self.empty:
@@ -135,7 +135,8 @@ class Range(Generic[_T]):
             if not lower_side:
                 return False
 
-        # Lower end already considered, an upper-unbound range surely contains this
+        # Lower end already considered, an upper-unbound range surely contains
+        # this
         if other.upper is None:
             return True
 
