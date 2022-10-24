@@ -80,6 +80,77 @@ class Range(Generic[_T]):
     def __bool__(self) -> bool:
         return self.empty
 
+    def contains_value(self, value: T) -> bool:
+        "Check whether this range contains the given `value`."
+
+        if self.empty:
+            return False
+
+        if self.lower is None:
+            if self.upper is None:
+                return True
+            return (self.upper is None or
+                    (value < self.upper if self.bounds[1] == ")"
+                     else value <= self.upper))
+
+        if self.upper is None:
+            return (value > self.lower if self.bounds[0] == "("
+                    else value >= self.lower)
+
+        return ((value > self.lower if self.bounds[0] == "("
+                 else value >= self.lower)
+                and
+                (value < self.upper if self.bounds[1] == ")"
+                 else value <= self.upper))
+
+    def issubset(self, other) -> bool:
+        "Determine whether this range is a contained by `other`."
+
+        # Any range contains the empty one
+        if self.empty:
+            return True
+
+        # An empty range does not contain any range except the empty one
+        if other.empty:
+            return False
+
+        # A bilateral unbound range contains any other range
+        if other.lower is other.upper is None:
+            return True
+
+        # A lower-bound range cannot contain a lower-unbound range
+        if self.lower is None and other.lower is not None:
+            return False
+
+        # Likewise on the right side
+        if self.upper is None and other.upper is not None:
+            return False
+
+        # Check the lower end
+        if self.lower is not None and other.lower is not None:
+            lower_side = other.lower < self.lower
+            if not lower_side:
+                if self.bounds[0] == '(' or other.bounds[0] == '[':
+                    lower_side = other.lower == self.lower
+            if not lower_side:
+                return False
+
+        # Lower end already considered, an upper-unbound range surely contains this
+        if other.upper is None:
+            return True
+
+        # Check the upper end
+        upper_side = other.upper > self.upper
+        if not upper_side:
+            if self.bounds[1] == ')' or other.bounds[1] == ']':
+                upper_side = other.upper == self.upper
+        return upper_side
+
+    def issuperset(self, other) -> bool:
+        "Determine whether this range contains `other`."
+
+        return other.issubset(self)
+
 
 class AbstractRange(sqltypes.TypeEngine):
     """

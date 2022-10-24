@@ -1210,3 +1210,56 @@ class Psycopg3Test(fixtures.TestBase):
     def test_async_version(self):
         e = create_engine("postgresql+psycopg_async://")
         is_true(isinstance(e.dialect, psycopg_dialect.PGDialectAsync_psycopg))
+
+
+class TestRange(fixtures.TestBase):
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    @testing.combinations(0, 1, 2, 4, 5, argnames="v")
+    @testing.combinations(
+        (Range(empty=True), 'empty'),
+        (Range(None, None, bounds='()'), '(,)'),
+        (Range(None, 4, bounds='(]'), '(,4]'),
+        (Range(1, None, bounds='[)'), '[1,)'),
+        (Range(1, 4, bounds='[)'), '[1,4)'),
+        (Range(1, 4, bounds='[]'), '[1,4]'),
+        (Range(1, 4, bounds='(]'), '(1,4]'),
+        (Range(1, 4, bounds='()'), '(1,4)'),
+        argnames="r,rrepr",
+    )
+    def test_range_contains_value(self, connection, r, rrepr, v):
+        q = text(f"select {v} <@ '{rrepr}'::int4range")
+        eq_(r.contains_value(v), connection.scalar(q))
+
+    @testing.combinations(
+        (Range(empty=True), 'empty'),
+        (Range(1, 2, bounds='()'), '(1,2)'),
+        (Range(None, None, bounds='()'), '(,)'),
+        (Range(None, 1, bounds='[)'), '[,1)'),
+        (Range(1, None, bounds='[)'), '[1,)'),
+        (Range(1, 4, bounds='[)'), '[1,4)'),
+        (Range(1, 4, bounds='[]'), '[1,4]'),
+        (Range(1, 4, bounds='(]'), '(1,4]'),
+        (Range(1, 4, bounds='()'), '(1,4)'),
+        argnames="r2,r2repr",
+    )
+    @testing.combinations(
+        (Range(empty=True), 'empty'),
+        (Range(None, None, bounds='[)'), '[,)'),
+        (Range(None, 1, bounds='[)'), '[,1)'),
+        (Range(1, None, bounds='[)'), '[1,)'),
+        (Range(1, 4, bounds='[)'), '[1,4)'),
+        (Range(1, 4, bounds='[]'), '[1,4]'),
+        (Range(1, 4, bounds='(]'), '(1,4]'),
+        (Range(1, 4, bounds='()'), '(1,4)'),
+        (Range(-4, 1, bounds='[)'), '[-4,1)'),
+        (Range(2, 3, bounds='[)'), '[2,3)'),
+        (Range(0, 6, bounds='[)'), '[0,6)'),
+        argnames="r1,r1repr",
+    )
+    def test_is_sub_super_set(self, connection, r1, r1repr, r2, r2repr):
+        q = text(f"select '{r1repr}'::int4range <@ '{r2repr}'::int4range")
+        eq_(r1.issubset(r2), connection.scalar(q))
+        q = text(f"select '{r2repr}'::int4range @> '{r1repr}'::int4range")
+        eq_(r2.issuperset(r1), connection.scalar(q))
