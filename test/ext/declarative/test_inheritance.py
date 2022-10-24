@@ -975,8 +975,9 @@ class ConcreteExtensionConfigTest(
         session = Session()
         self.assert_compile(
             session.query(Document),
-            "SELECT pjoin.documenttype AS pjoin_documenttype, "
-            "pjoin.id AS pjoin_id, pjoin.type AS pjoin_type FROM "
+            "SELECT "
+            "pjoin.id AS pjoin_id, pjoin.documenttype AS pjoin_documenttype, "
+            "pjoin.type AS pjoin_type FROM "
             "(SELECT offers.id AS id, offers.documenttype AS documenttype, "
             "'offer' AS type FROM offers) AS pjoin",
         )

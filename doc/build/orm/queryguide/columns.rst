@@ -455,7 +455,7 @@ as deferred::
 
     >>> from sqlalchemy.orm import undefer
     >>> book = session.scalar(select(Book).where(Book.id == 2).options(undefer(Book.summary)))
-    {opensql}SELECT book.summary, book.id, book.owner_id, book.title
+    {opensql}SELECT book.id, book.owner_id, book.title, book.summary
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -528,7 +528,7 @@ option, passing the string name of the group to be eagerly loaded::
     >>> book = session.scalar(
     ...     select(Book).where(Book.id == 2).options(undefer_group("book_attrs"))
     ... )
-    {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
+    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -547,7 +547,7 @@ columns can be undeferred at once, without using a group name, by indicating
 a wildcard::
 
     >>> book = session.scalar(select(Book).where(Book.id == 3).options(undefer("*")))
-    {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
+    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (3,)
@@ -607,7 +607,7 @@ Only by overridding their behavior at query time, typically using
     ...     .options(undefer("*"))
     ...     .execution_options(populate_existing=True)
     ... )
-    {opensql}SELECT book.summary, book.cover_photo, book.id, book.owner_id, book.title
+    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)

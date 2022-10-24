@@ -2017,11 +2017,11 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         s = fixture_session()
         self.assert_compile(
             s.query(A),
-            "SELECT a.x + :x_1 AS anon_1, a.x AS a_x, a.id AS a_id FROM a",
+            "SELECT a.x + :x_1 AS anon_1, a.id AS a_id, a.x AS a_x FROM a",
         )
         self.assert_compile(
             s.query(B),
-            "SELECT b.x + :x_1 AS anon_1, b.x AS b_x, b.id AS b_id FROM b",
+            "SELECT b.x + :x_1 AS anon_1, b.id AS b_id, b.x AS b_x FROM b",
         )
 
     @testing.requires.predictable_gc

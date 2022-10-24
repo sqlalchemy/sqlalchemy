@@ -1,3 +1,5 @@
+import random
+
 import sqlalchemy as sa
 from sqlalchemy import CheckConstraint
 from sqlalchemy import event
@@ -7,6 +9,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
@@ -27,6 +30,7 @@ from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedColumn
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
@@ -2588,3 +2592,132 @@ class DeclarativeMultiBaseTest(
 
         mt = MyTable(id=5)
         eq_(mt.id, 5)
+
+
+class NamedAttrOrderingTest(fixtures.TestBase):
+    """test for #8705"""
+
+    @testing.combinations(
+        "decl_base_fn",
+        "decl_base_base",
+        "classical_mapping",
+        argnames="mapping_style",
+    )
+    def test_ordering_of_attrs_cols_named_or_unnamed(self, mapping_style):
+        def make_name():
+            uppercase = random.randint(1, 3) == 1
+            name = "".join(
+                random.choice("abcdefghijklmnopqrstuvxyz")
+                for i in range(random.randint(4, 10))
+            )
+            if uppercase:
+                name = random.choice("ABCDEFGHIJKLMNOP") + name
+            return name
+
+        def make_column(assign_col_name):
+            use_key = random.randint(1, 3) == 1
+            use_name = random.randint(1, 3) == 1
+
+            args = []
+            kw = {}
+            name = col_name = make_name()
+
+            if use_name:
+                use_different_name = random.randint(1, 3) != 3
+                if use_different_name:
+                    col_name = make_name()
+
+                args.append(col_name)
+            elif assign_col_name:
+                args.append(col_name)
+
+            if use_key:
+                kw["key"] = name
+                expected_c_name = name
+            else:
+                expected_c_name = col_name
+
+            args.append(Integer)
+
+            if mapping_style.startswith("decl"):
+                use_mapped_column = random.randint(1, 2) == 1
+            else:
+                use_mapped_column = False
+
+            if use_mapped_column:
+                col = mapped_column(*args, **kw)
+            else:
+                col = Column(*args, **kw)
+
+            use_explicit_property = (
+                not use_mapped_column and random.randint(1, 6) == 1
+            )
+            if use_explicit_property:
+                col_prop = column_property(col)
+            else:
+                col_prop = col
+
+            return name, expected_c_name, col, col_prop
+
+        assign_col_name = mapping_style == "classical_mapping"
+
+        names = [
+            make_column(assign_col_name) for i in range(random.randint(10, 15))
+        ]
+        len_names = len(names)
+
+        pk_col = names[random.randint(0, len_names - 1)][2]
+        if isinstance(pk_col, MappedColumn):
+            pk_col.column.primary_key = True
+        else:
+            pk_col.primary_key = True
+
+        names_only = [name for name, _, _, _ in names]
+        col_names_only = [col_name for _, col_name, _, _ in names]
+        cols_only = [col for _, _, col, _ in names]
+
+        if mapping_style in ("decl_base_fn", "decl_base_base"):
+            if mapping_style == "decl_base_fn":
+                Base = declarative_base()
+            elif mapping_style == "decl_base_base":
+
+                class Base(DeclarativeBase):
+                    pass
+
+            else:
+                assert False
+
+            clsdict = {
+                "__tablename__": "new_table",
+            }
+            clsdict.update({name: colprop for name, _, _, colprop in names})
+
+            new_cls = type("NewCls", (Base,), clsdict)
+
+        elif mapping_style == "classical_mapping":
+
+            class new_cls:
+                pass
+
+            reg = registry()
+            t = Table("new_table", reg.metadata, *cols_only)
+
+            reg.map_imperatively(
+                new_cls,
+                t,
+                properties={
+                    key: colprop
+                    for key, col_name, col, colprop in names
+                    if col_name != key
+                },
+            )
+        else:
+            assert False
+
+        eq_(new_cls.__table__.c.keys(), col_names_only)
+        eq_(new_cls.__mapper__.attrs.keys(), names_only)
+        eq_(list(new_cls._sa_class_manager.keys()), names_only)
+        eq_([k for k in new_cls.__dict__ if not k.startswith("_")], names_only)
+
+        stmt = select(new_cls)
+        eq_(stmt.selected_columns.keys(), col_names_only)

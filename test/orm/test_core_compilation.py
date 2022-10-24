@@ -774,8 +774,8 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q,
             "SELECT anon_1.id "
-            "FROM (SELECT users.name AS name, "
-            "users.id AS id FROM users) AS anon_1",
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users) AS anon_1",
         )
 
         # testing deferred opts separately for deterministic SQL generation
@@ -784,9 +784,9 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q,
-            "SELECT anon_1.name, anon_1.id "
-            "FROM (SELECT users.name AS name, "
-            "users.id AS id FROM users) AS anon_1",
+            "SELECT anon_1.id, anon_1.name "
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users) AS anon_1",
         )
 
         q = select(u1).options(undefer(u1.name_upper))
@@ -794,8 +794,8 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q,
             "SELECT upper(anon_1.name) AS upper_1, anon_1.id "
-            "FROM (SELECT users.name AS name, "
-            "users.id AS id FROM users) AS anon_1",
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users) AS anon_1",
         )
 
     def test_non_deferred_subq_one(self, non_deferred_fixture):
@@ -876,9 +876,9 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "WITH RECURSIVE anon_1(name, id) AS "
-            "(SELECT users.name AS name, users.id AS id FROM users "
-            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "WITH RECURSIVE anon_1(id, name) AS "
+            "(SELECT users.id AS id, users.name AS name FROM users "
+            "UNION ALL SELECT users.id AS id, users.name AS name "
             "FROM users JOIN anon_1 ON anon_1.id = users.id) "
             "SELECT users.id FROM users JOIN anon_1 ON users.id = anon_1.id",
         )
@@ -886,9 +886,9 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         # testing deferred opts separately for deterministic SQL generation
         self.assert_compile(
             stmt.options(undefer(User.name_upper)),
-            "WITH RECURSIVE anon_1(name, id) AS "
-            "(SELECT users.name AS name, users.id AS id FROM users "
-            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "WITH RECURSIVE anon_1(id, name) AS "
+            "(SELECT users.id AS id, users.name AS name FROM users "
+            "UNION ALL SELECT users.id AS id, users.name AS name "
             "FROM users JOIN anon_1 ON anon_1.id = users.id) "
             "SELECT upper(users.name) AS upper_1, users.id "
             "FROM users JOIN anon_1 ON users.id = anon_1.id",
@@ -896,11 +896,11 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt.options(undefer(User.name)),
-            "WITH RECURSIVE anon_1(name, id) AS "
-            "(SELECT users.name AS name, users.id AS id FROM users "
-            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "WITH RECURSIVE anon_1(id, name) AS "
+            "(SELECT users.id AS id, users.name AS name FROM users "
+            "UNION ALL SELECT users.id AS id, users.name AS name "
             "FROM users JOIN anon_1 ON anon_1.id = users.id) "
-            "SELECT users.name, users.id "
+            "SELECT users.id, users.name "
             "FROM users JOIN anon_1 ON users.id = anon_1.id",
         )
 
@@ -919,12 +919,13 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(u_alias),
-            "SELECT anon_1.id FROM ((SELECT users.name AS name, "
-            "users.id AS id FROM users "
-            "WHERE users.id = :id_1 UNION SELECT users.name AS name, "
-            "users.id AS id "
+            "SELECT anon_1.id FROM ((SELECT users.id AS id, "
+            "users.name AS name "
+            "FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.id AS id, "
+            "users.name AS name "
             "FROM users WHERE users.id = :id_2) "
-            "UNION SELECT users.name AS name, users.id AS id "
+            "UNION SELECT users.id AS id, users.name AS name "
             "FROM users WHERE users.id = :id_3) AS anon_1",
         )
 
@@ -949,12 +950,12 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(u_alias).options(undefer(u_alias.name)),
-            "SELECT anon_1.name, anon_1.id FROM "
-            "((SELECT users.name AS name, users.id AS id FROM users "
-            "WHERE users.id = :id_1 UNION SELECT users.name AS name, "
-            "users.id AS id "
+            "SELECT anon_1.id, anon_1.name FROM "
+            "((SELECT users.id AS id, users.name AS name FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.id AS id, "
+            "users.name AS name "
             "FROM users WHERE users.id = :id_2) "
-            "UNION SELECT users.name AS name, users.id AS id "
+            "UNION SELECT users.id AS id, users.name AS name "
             "FROM users WHERE users.id = :id_3) AS anon_1",
         )
 

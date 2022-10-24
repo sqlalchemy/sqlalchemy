@@ -2901,14 +2901,14 @@ class BetweenSubclassJoinWExtraJoinedLoad(
         ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
-                "SELECT people.type AS people_type, engineers.id AS "
+                "SELECT engineers.id AS "
                 "engineers_id, "
-                "people.id AS people_id, "
+                "people.id AS people_id, people.type AS people_type, "
                 "engineers.primary_language AS engineers_primary_language, "
                 "engineers.manager_id AS engineers_manager_id, "
-                "people_1.type AS people_1_type, "
                 "managers_1.id AS managers_1_id, "
-                "people_1.id AS people_1_id, seen_1.id AS seen_1_id, "
+                "people_1.id AS people_1_id, people_1.type AS people_1_type, "
+                "seen_1.id AS seen_1_id, "
                 "seen_1.timestamp AS seen_1_timestamp, "
                 "seen_2.id AS seen_2_id, "
                 "seen_2.timestamp AS seen_2_timestamp "

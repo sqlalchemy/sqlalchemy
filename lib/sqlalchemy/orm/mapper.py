@@ -1618,7 +1618,6 @@ class Mapper(
 
     def _configure_properties(self) -> None:
 
-        # TODO: consider using DedupeColumnCollection
         self.columns = self.c = sql_base.ColumnCollection()  # type: ignore
 
         # object attribute names mapped to MapperProperty objects
@@ -1627,23 +1626,83 @@ class Mapper(
         # table columns mapped to MapperProperty
         self._columntoproperty = _ColumnMapping(self)
 
-        # load custom properties
+        explicit_col_props_by_column: Dict[
+            KeyedColumnElement[Any], Tuple[str, ColumnProperty[Any]]
+        ] = {}
+        explicit_col_props_by_key: Dict[str, ColumnProperty[Any]] = {}
+
+        # step 1: go through properties that were explicitly passed
+        # in the properties dictionary.  For Columns that are local, put them
+        # aside in a separate collection we will reconcile with the Table
+        # that's given.  For other properties, set them up in _props now.
         if self._init_properties:
-            for key, prop in self._init_properties.items():
-                self._configure_property(key, prop, False)
+            for key, prop_arg in self._init_properties.items():
 
-        # pull properties from the inherited mapper if any.
+                if not isinstance(prop_arg, MapperProperty):
+                    possible_col_prop = self._make_prop_from_column(
+                        key, prop_arg
+                    )
+                else:
+                    possible_col_prop = prop_arg
+
+                # issue #8705.  if the explicit property is actually a
+                # Column that is local to the local Table, don't set it up
+                # in ._props yet, integrate it into the order given within
+                # the Table.
+                if isinstance(possible_col_prop, properties.ColumnProperty):
+                    given_col = possible_col_prop.columns[0]
+                    if self.local_table.c.contains_column(given_col):
+                        explicit_col_props_by_key[key] = possible_col_prop
+                        explicit_col_props_by_column[given_col] = (
+                            key,
+                            possible_col_prop,
+                        )
+                        continue
+
+                self._configure_property(key, possible_col_prop, False)
+
+        # step 2: pull properties from the inherited mapper.  reconcile
+        # columns with those which are explicit above.  for properties that
+        # are only in the inheriting mapper, set them up as local props
         if self.inherits:
-            for key, prop in self.inherits._props.items():
-                if key not in self._props and not self._should_exclude(
-                    key, key, local=False, column=None
-                ):
-                    self._adapt_inherited_property(key, prop, False)
+            for key, inherited_prop in self.inherits._props.items():
+                if self._should_exclude(key, key, local=False, column=None):
+                    continue
 
-        # create properties for each column in the mapped table,
-        # for those columns which don't already map to a property
+                incoming_prop = explicit_col_props_by_key.get(key)
+                if incoming_prop:
+
+                    new_prop = self._reconcile_prop_with_incoming_columns(
+                        key,
+                        inherited_prop,
+                        warn_only=False,
+                        incoming_prop=incoming_prop,
+                    )
+                    explicit_col_props_by_key[key] = new_prop
+                    explicit_col_props_by_column[incoming_prop.columns[0]] = (
+                        key,
+                        new_prop,
+                    )
+                elif key not in self._props:
+                    self._adapt_inherited_property(key, inherited_prop, False)
+
+        # step 3.  Iterate through all columns in the persist selectable.
+        # this includes not only columns in the local table / fromclause,
+        # but also those columns in the superclass table if we are joined
+        # inh or single inh mapper.  map these columns as well. additional
+        # reconciliation against inherited columns occurs here also.
+
         for column in self.persist_selectable.columns:
-            if column in self._columntoproperty:
+
+            if column in explicit_col_props_by_column:
+                # column was explicitly passed to properties; configure
+                # it now in the order in which it corresponds to the
+                # Table / selectable
+                key, prop = explicit_col_props_by_column[column]
+                self._configure_property(key, prop, False)
+                continue
+
+            elif column in self._columntoproperty:
                 continue
 
             column_key = (self.column_prefix or "") + column.key
@@ -1913,7 +1972,9 @@ class Mapper(
         )
 
         if not isinstance(prop_arg, MapperProperty):
-            prop = self._property_from_column(key, prop_arg)
+            prop: MapperProperty[Any] = self._property_from_column(
+                key, prop_arg
+            )
         else:
             prop = prop_arg
 
@@ -2030,79 +2091,129 @@ class Mapper(
 
         return prop
 
+    def _make_prop_from_column(
+        self,
+        key: str,
+        column: Union[
+            Sequence[KeyedColumnElement[Any]], KeyedColumnElement[Any]
+        ],
+    ) -> ColumnProperty[Any]:
+
+        columns = util.to_list(column)
+        mapped_column = []
+        for c in columns:
+            mc = self.persist_selectable.corresponding_column(c)
+            if mc is None:
+                mc = self.local_table.corresponding_column(c)
+                if mc is not None:
+                    # if the column is in the local table but not the
+                    # mapped table, this corresponds to adding a
+                    # column after the fact to the local table.
+                    # [ticket:1523]
+                    self.persist_selectable._refresh_for_new_column(mc)
+                mc = self.persist_selectable.corresponding_column(c)
+                if mc is None:
+                    raise sa_exc.ArgumentError(
+                        "When configuring property '%s' on %s, "
+                        "column '%s' is not represented in the mapper's "
+                        "table. Use the `column_property()` function to "
+                        "force this column to be mapped as a read-only "
+                        "attribute." % (key, self, c)
+                    )
+            mapped_column.append(mc)
+        return properties.ColumnProperty(*mapped_column)
+
+    def _reconcile_prop_with_incoming_columns(
+        self,
+        key: str,
+        existing_prop: MapperProperty[Any],
+        warn_only: bool,
+        incoming_prop: Optional[ColumnProperty[Any]] = None,
+        single_column: Optional[KeyedColumnElement[Any]] = None,
+    ) -> ColumnProperty[Any]:
+
+        if incoming_prop and (
+            self.concrete
+            or not isinstance(existing_prop, properties.ColumnProperty)
+        ):
+            return incoming_prop
+
+        existing_column = existing_prop.columns[0]
+
+        if incoming_prop and existing_column in incoming_prop.columns:
+            return incoming_prop
+
+        if incoming_prop is None:
+            assert single_column is not None
+            incoming_column = single_column
+            equated_pair_key = (existing_prop.columns[0], incoming_column)
+        else:
+            assert single_column is None
+            incoming_column = incoming_prop.columns[0]
+            equated_pair_key = (incoming_column, existing_prop.columns[0])
+
+        if (
+            (
+                not self._inherits_equated_pairs
+                or (equated_pair_key not in self._inherits_equated_pairs)
+            )
+            and not existing_column.shares_lineage(incoming_column)
+            and existing_column is not self.version_id_col
+            and incoming_column is not self.version_id_col
+        ):
+            msg = (
+                "Implicitly combining column %s with column "
+                "%s under attribute '%s'.  Please configure one "
+                "or more attributes for these same-named columns "
+                "explicitly."
+                % (
+                    existing_prop.columns[-1],
+                    incoming_column,
+                    key,
+                )
+            )
+            if warn_only:
+                util.warn(msg)
+            else:
+                raise sa_exc.InvalidRequestError(msg)
+
+        # existing properties.ColumnProperty from an inheriting
+        # mapper. make a copy and append our column to it
+        # breakpoint()
+        new_prop = existing_prop.copy()
+
+        new_prop.columns.insert(0, incoming_column)
+        self._log(
+            "inserting column to existing list "
+            "in properties.ColumnProperty %s",
+            key,
+        )
+        return new_prop  # type: ignore
+
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(
         self,
         key: str,
-        prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
-    ) -> MapperProperty[Any]:
+        column: KeyedColumnElement[Any],
+    ) -> ColumnProperty[Any]:
         """generate/update a :class:`.ColumnProperty` given a
-        :class:`_schema.Column` object."""
+        :class:`_schema.Column` or other SQL expression object."""
+
         descriptor_props = util.preloaded.orm_descriptor_props
-        # we were passed a Column or a list of Columns;
-        # generate a properties.ColumnProperty
-        columns = util.to_list(prop_arg)
-        column = columns[0]
 
         prop = self._props.get(key)
 
         if isinstance(prop, properties.ColumnProperty):
-            if (
-                (
-                    not self._inherits_equated_pairs
-                    or (prop.columns[0], column)
-                    not in self._inherits_equated_pairs
-                )
-                and not prop.columns[0].shares_lineage(column)
-                and prop.columns[0] is not self.version_id_col
-                and column is not self.version_id_col
-            ):
-                warn_only = prop.parent is not self
-                msg = (
-                    "Implicitly combining column %s with column "
-                    "%s under attribute '%s'.  Please configure one "
-                    "or more attributes for these same-named columns "
-                    "explicitly." % (prop.columns[-1], column, key)
-                )
-                if warn_only:
-                    util.warn(msg)
-                else:
-                    raise sa_exc.InvalidRequestError(msg)
-
-            # existing properties.ColumnProperty from an inheriting
-            # mapper. make a copy and append our column to it
-            prop = prop.copy()
-            prop.columns.insert(0, column)
-            self._log(
-                "inserting column to existing list "
-                "in properties.ColumnProperty %s" % (key)
+            return self._reconcile_prop_with_incoming_columns(
+                key,
+                prop,
+                single_column=column,
+                warn_only=prop.parent is not self,
             )
-            return prop
         elif prop is None or isinstance(
             prop, descriptor_props.ConcreteInheritedProperty
         ):
-            mapped_column = []
-            for c in columns:
-                mc = self.persist_selectable.corresponding_column(c)
-                if mc is None:
-                    mc = self.local_table.corresponding_column(c)
-                    if mc is not None:
-                        # if the column is in the local table but not the
-                        # mapped table, this corresponds to adding a
-                        # column after the fact to the local table.
-                        # [ticket:1523]
-                        self.persist_selectable._refresh_for_new_column(mc)
-                    mc = self.persist_selectable.corresponding_column(c)
-                    if mc is None:
-                        raise sa_exc.ArgumentError(
-                            "When configuring property '%s' on %s, "
-                            "column '%s' is not represented in the mapper's "
-                            "table. Use the `column_property()` function to "
-                            "force this column to be mapped as a read-only "
-                            "attribute." % (key, self, c)
-                        )
-                mapped_column.append(mc)
-            return properties.ColumnProperty(*mapped_column)
+            return self._make_prop_from_column(key, column)
         else:
             raise sa_exc.ArgumentError(
                 "WARNING: when configuring property '%s' on %s, "
