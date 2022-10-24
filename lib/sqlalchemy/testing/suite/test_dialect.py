@@ -379,6 +379,8 @@ class DifficultParametersTest(fixtures.TestBase):
         ("par(ens)",),
         ("percent%(ens)yah",),
         ("col:ons",),
+        ("_starts_with_underscore",),
+        ("dot.s",),
         ("more :: %colons%",),
         ("/slashes/",),
         ("more/slashes",),
@@ -413,6 +415,13 @@ class DifficultParametersTest(fixtures.TestBase):
 
         # name works as the key from cursor.description
         eq_(row._mapping[name], "some name")
+
+        # use expanding IN
+        stmt = select(t.c[name]).where(
+            t.c[name].in_(["some name", "some other_name"])
+        )
+
+        row = connection.execute(stmt).first()
 
 
 class ReturningGuardsTest(fixtures.TablesTest):

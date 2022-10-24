@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 8708
+
+    Fixed issue where bound parameter names, including those automatically
+    derived from similarly-named database columns, which contained characters
+    that normally require quoting with Oracle would not be escaped when using
+    "expanding parameters" with the Oracle dialect, causing execution errors.
+    The usual "quoting" for bound parameters used by the Oracle dialect is not
+    used with the "expanding parameters" architecture, so escaping for a large
+    range of characters is used instead, now using a list of characters/escapes
+    that are specific to Oracle.
+
+
