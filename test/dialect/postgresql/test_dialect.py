@@ -1218,14 +1218,14 @@ class TestRange(fixtures.TestBase):
 
     @testing.combinations(0, 1, 2, 4, 5, argnames="v")
     @testing.combinations(
-        (Range(empty=True), 'empty'),
-        (Range(None, None, bounds='()'), '(,)'),
-        (Range(None, 4, bounds='(]'), '(,4]'),
-        (Range(1, None, bounds='[)'), '[1,)'),
-        (Range(1, 4, bounds='[)'), '[1,4)'),
-        (Range(1, 4, bounds='[]'), '[1,4]'),
-        (Range(1, 4, bounds='(]'), '(1,4]'),
-        (Range(1, 4, bounds='()'), '(1,4)'),
+        (Range(empty=True), "empty"),
+        (Range(None, None, bounds="()"), "(,)"),
+        (Range(None, 4, bounds="(]"), "(,4]"),
+        (Range(1, None, bounds="[)"), "[1,)"),
+        (Range(1, 4, bounds="[)"), "[1,4)"),
+        (Range(1, 4, bounds="[]"), "[1,4]"),
+        (Range(1, 4, bounds="(]"), "(1,4]"),
+        (Range(1, 4, bounds="()"), "(1,4)"),
         argnames="r,rrepr",
     )
     def test_range_contains_value(self, connection, r, rrepr, v):
@@ -1233,29 +1233,29 @@ class TestRange(fixtures.TestBase):
         eq_(r.contains_value(v), connection.scalar(q))
 
     @testing.combinations(
-        (Range(empty=True), 'empty'),
-        (Range(1, 2, bounds='()'), '(1,2)'),
-        (Range(None, None, bounds='()'), '(,)'),
-        (Range(None, 1, bounds='[)'), '[,1)'),
-        (Range(1, None, bounds='[)'), '[1,)'),
-        (Range(1, 4, bounds='[)'), '[1,4)'),
-        (Range(1, 4, bounds='[]'), '[1,4]'),
-        (Range(1, 4, bounds='(]'), '(1,4]'),
-        (Range(1, 4, bounds='()'), '(1,4)'),
+        (Range(empty=True), "empty"),
+        (Range(1, 2, bounds="()"), "(1,2)"),
+        (Range(None, None, bounds="()"), "(,)"),
+        (Range(None, 1, bounds="[)"), "[,1)"),
+        (Range(1, None, bounds="[)"), "[1,)"),
+        (Range(1, 4, bounds="[)"), "[1,4)"),
+        (Range(1, 4, bounds="[]"), "[1,4]"),
+        (Range(1, 4, bounds="(]"), "(1,4]"),
+        (Range(1, 4, bounds="()"), "(1,4)"),
         argnames="r2,r2repr",
     )
     @testing.combinations(
-        (Range(empty=True), 'empty'),
-        (Range(None, None, bounds='[)'), '[,)'),
-        (Range(None, 1, bounds='[)'), '[,1)'),
-        (Range(1, None, bounds='[)'), '[1,)'),
-        (Range(1, 4, bounds='[)'), '[1,4)'),
-        (Range(1, 4, bounds='[]'), '[1,4]'),
-        (Range(1, 4, bounds='(]'), '(1,4]'),
-        (Range(1, 4, bounds='()'), '(1,4)'),
-        (Range(-4, 1, bounds='[)'), '[-4,1)'),
-        (Range(2, 3, bounds='[)'), '[2,3)'),
-        (Range(0, 6, bounds='[)'), '[0,6)'),
+        (Range(empty=True), "empty"),
+        (Range(None, None, bounds="[)"), "[,)"),
+        (Range(None, 1, bounds="[)"), "[,1)"),
+        (Range(1, None, bounds="[)"), "[1,)"),
+        (Range(1, 4, bounds="[)"), "[1,4)"),
+        (Range(1, 4, bounds="[]"), "[1,4]"),
+        (Range(1, 4, bounds="(]"), "(1,4]"),
+        (Range(1, 4, bounds="()"), "(1,4)"),
+        (Range(-4, 1, bounds="[)"), "[-4,1)"),
+        (Range(2, 3, bounds="[)"), "[2,3)"),
+        (Range(0, 6, bounds="[)"), "[0,6)"),
         argnames="r1,r1repr",
     )
     def test_is_sub_super_set(self, connection, r1, r1repr, r2, r2repr):
