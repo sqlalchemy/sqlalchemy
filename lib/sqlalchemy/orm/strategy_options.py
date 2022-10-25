@@ -518,7 +518,19 @@ class Load(Generative, LoaderOption):
                 "for 'unbound' loader options"
             )
         for opt in opts:
-            opt._apply_to_parent(self, apply_cache, bound)
+            try:
+                opt._apply_to_parent(self, apply_cache, bound)
+            except AttributeError as ae:
+                if not isinstance(opt, Load):
+                    util.raise_(
+                        sa_exc.ArgumentError(
+                            "Loader option %s is not compatible with the "
+                            "Load.options() method." % (opt,)
+                        ),
+                        from_=ae,
+                    )
+                else:
+                    raise
 
     @_generative
     def set_relationship_strategy(

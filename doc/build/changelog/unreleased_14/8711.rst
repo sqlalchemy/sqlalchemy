@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8711
+
+    Fixed the exception that's raised when the
+    :func:`_orm.with_loader_criteria` option is attempted to be used within a
+    specific loader path, like in loader.options().
+    :func:`_orm.with_loader_criteria` is only intended to be used at the top
+    level.
