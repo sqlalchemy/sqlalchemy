@@ -87,8 +87,6 @@ class Range(Generic[_T]):
             return False
 
         if self.lower is None:
-            if self.upper is None:
-                return True
             return self.upper is None or (
                 value < self.upper
                 if self.bounds[1] == ")"
