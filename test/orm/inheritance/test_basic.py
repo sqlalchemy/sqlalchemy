@@ -32,6 +32,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2518,6 +2519,50 @@ class OverrideColKeyTest(fixtures.MappedTest):
         # PK col
         assert s2.id == s2.base_id != 15
 
+    def test_subclass_renames_superclass_col_single_inh(self, decl_base):
+        """tested as part of #8705.
+
+        The step where we configure columns mapped to specific keys must
+        take place even if the given column is already in _columntoproperty,
+        as would be the case if the superclass maps that column already.
+
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            a_data = Column(String)
+
+        class B(A):
+            b_data = column_property(A.__table__.c.a_data)
+
+        is_(A.a_data.property.columns[0], A.__table__.c.a_data)
+        is_(B.a_data.property.columns[0], A.__table__.c.a_data)
+        is_(B.b_data.property.columns[0], A.__table__.c.a_data)
+
+    def test_column_setup_sanity_check(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            a_data = Column(String)
+
+        class B(A):
+            __tablename__ = "b"
+            id = Column(Integer, ForeignKey("a.id"), primary_key=True)
+            b_data = Column(String)
+
+        is_(A.id.property.parent, inspect(A))
+        # overlapping cols get a new prop on the subclass, with cols merged
+        is_(B.id.property.parent, inspect(B))
+        eq_(B.id.property.columns, [B.__table__.c.id, A.__table__.c.id])
+
+        # totally independent cols remain w/ parent on the originating
+        # mapper
+        is_(B.a_data.property.parent, inspect(A))
+        is_(B.b_data.property.parent, inspect(B))
+
     def test_override_implicit(self):
         # this is originally [ticket:1111].
         # the pattern here is now disallowed by [ticket:1892]
@@ -2532,19 +2577,18 @@ class OverrideColKeyTest(fixtures.MappedTest):
             Base, base, properties={"id": base.c.base_id}
         )
 
-        def go():
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            "Implicitly combining column base.base_id with column "
+            "subtable.base_id under attribute 'id'.  Please configure one "
+            "or more attributes for these same-named columns explicitly.",
+        ):
             self.mapper_registry.map_imperatively(
                 Sub,
                 subtable,
                 inherits=Base,
                 properties={"id": subtable.c.base_id},
             )
-
-        # Sub mapper compilation needs to detect that "base.c.base_id"
-        # is renamed in the inherited mapper as "id", even though
-        # it has its own "id" property.  It then generates
-        # an exception in 0.7 due to the implicit conflict.
-        assert_raises(sa_exc.InvalidRequestError, go)
 
     def test_pk_fk_different(self):
         class Base:
@@ -2745,9 +2789,9 @@ class OptimizedLoadTest(fixtures.MappedTest):
             go,
             CompiledSQL(
                 "SELECT base.id AS base_id, sub.id AS sub_id, "
+                "base.data AS base_data, base.type AS base_type, "
                 "base.counter AS base_counter, "
                 "sub.subcounter AS sub_subcounter, "
-                "base.data AS base_data, base.type AS base_type, "
                 "sub.sub AS sub_sub, sub.subcounter2 AS sub_subcounter2 "
                 "FROM base LEFT OUTER JOIN sub ON base.id = sub.id "
                 "WHERE base.id = :pk_1",

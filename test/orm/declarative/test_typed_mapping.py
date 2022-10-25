@@ -1004,7 +1004,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(select(User), "SELECT users.id FROM users")
         self.assert_compile(
             select(User).options(undefer(User.data)),
-            "SELECT users.data, users.id FROM users",
+            "SELECT users.id, users.data FROM users",
         )
 
     def test_deferred_kw(self, decl_base):
@@ -1017,7 +1017,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(select(User), "SELECT users.id FROM users")
         self.assert_compile(
             select(User).options(undefer(User.data)),
-            "SELECT users.data, users.id FROM users",
+            "SELECT users.id, users.data FROM users",
         )
 
     @testing.combinations(

@@ -316,9 +316,9 @@ class ColumnPropertyWParamTest(
         # note in the original, the same bound parameter is used twice
         self.assert_compile(
             expr,
-            "SELECT test.some_id AS test_some_id, "
+            "SELECT "
             "CAST(left(test.some_id, :left_1) AS INTEGER) AS anon_1, "
-            "test.id AS test_id FROM test WHERE "
+            "test.id AS test_id, test.some_id AS test_some_id FROM test WHERE "
             "CAST(left(test.some_id, :left_1) AS INTEGER) = :param_1",
             checkparams={"left_1": 6, "param_1": 123456},
         )
@@ -328,9 +328,8 @@ class ColumnPropertyWParamTest(
         # the same value however
         self.assert_compile(
             expr2,
-            "SELECT test.some_id AS test_some_id, "
-            "CAST(left(test.some_id, :left_1) AS INTEGER) AS anon_1, "
-            "test.id AS test_id FROM test WHERE "
+            "SELECT CAST(left(test.some_id, :left_1) AS INTEGER) AS anon_1, "
+            "test.id AS test_id, test.some_id AS test_some_id FROM test WHERE "
             "CAST(left(test.some_id, :left_2) AS INTEGER) = :param_1",
             checkparams={"left_1": 6, "left_2": 6, "param_1": 123456},
         )

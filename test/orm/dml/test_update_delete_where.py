@@ -533,15 +533,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
         to_assert = [
             # refresh john
             CompiledSQL(
-                "SELECT users.age_int AS users_age_int, "
-                "users.id AS users_id, users.name AS users_name FROM users "
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "users.age_int AS users_age_int FROM users "
                 "WHERE users.id = :pk_1",
                 [{"pk_1": 1}],
             ),
             # refresh jill
             CompiledSQL(
-                "SELECT users.age_int AS users_age_int, "
-                "users.id AS users_id, users.name AS users_name FROM users "
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "users.age_int AS users_age_int FROM users "
                 "WHERE users.id = :pk_1",
                 [{"pk_1": 3}],
             ),
@@ -551,8 +551,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
             to_assert.append(
                 # refresh jane for partial attributes
                 CompiledSQL(
-                    "SELECT users.age_int AS users_age_int, "
-                    "users.name AS users_name FROM users "
+                    "SELECT users.name AS users_name, "
+                    "users.age_int AS users_age_int FROM users "
                     "WHERE users.id = :pk_1",
                     [{"pk_1": 4}],
                 )
@@ -677,15 +677,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
         asserter.assert_(
             # refresh john
             CompiledSQL(
-                "SELECT users.age_int AS users_age_int, "
-                "users.id AS users_id, users.name AS users_name FROM users "
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "users.age_int AS users_age_int FROM users "
                 "WHERE users.id = :pk_1",
                 [{"pk_1": 1}],
             ),
             # refresh jill
             CompiledSQL(
-                "SELECT users.age_int AS users_age_int, "
-                "users.id AS users_id, users.name AS users_name FROM users "
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "users.age_int AS users_age_int FROM users "
                 "WHERE users.id = :pk_1",
                 [{"pk_1": 3}],
             ),

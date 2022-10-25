@@ -98,7 +98,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = fixture_session()
         self.assert_compile(
             sess.query(aliased(A)).filter_by(value="foo"),
-            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "SELECT a_1.id AS a_1_id, a_1.value AS a_1_value "
             "FROM a AS a_1 WHERE upper(a_1.value) = upper(:upper_1)",
         )
 
@@ -467,7 +467,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = fixture_session()
         self.assert_compile(
             sess.query(A).filter_by(value="foo"),
-            "SELECT a.value AS a_value, a.id AS a_id "
+            "SELECT a.id AS a_id, a.value AS a_value "
             "FROM a WHERE foo(a.value) + bar(a.value) = :param_1",
         )
 
@@ -476,7 +476,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = fixture_session()
         self.assert_compile(
             sess.query(aliased(A)).filter_by(value="foo"),
-            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "SELECT a_1.id AS a_1_id, a_1.value AS a_1_value "
             "FROM a AS a_1 WHERE foo(a_1.value) + bar(a_1.value) = :param_1",
         )
 
@@ -914,7 +914,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = fixture_session()
         self.assert_compile(
             sess.query(A).filter(A.value(5) == "foo"),
-            "SELECT a.value AS a_value, a.id AS a_id "
+            "SELECT a.id AS a_id, a.value AS a_value "
             "FROM a WHERE foo(a.value, :foo_1) + :foo_2 = :param_1",
         )
 
@@ -924,7 +924,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         a1 = aliased(A)
         self.assert_compile(
             sess.query(a1).filter(a1.value(5) == "foo"),
-            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "SELECT a_1.id AS a_1_id, a_1.value AS a_1_value "
             "FROM a AS a_1 WHERE foo(a_1.value, :foo_1) + :foo_2 = :param_1",
         )
 
@@ -1381,8 +1381,9 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             query,
-            "SELECT bank_account.balance AS bank_account_balance, "
-            "bank_account.id AS bank_account_id FROM bank_account "
+            "SELECT bank_account.id AS bank_account_id, "
+            "bank_account.balance AS bank_account_balance "
+            "FROM bank_account "
             "WHERE bank_account.balance = :balance_1",
             checkparams={"balance_1": Decimal("9886.110000")},
         )
@@ -1403,8 +1404,8 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             query,
-            "SELECT bank_account.balance AS bank_account_balance, "
-            "bank_account.id AS bank_account_id "
+            "SELECT bank_account.id AS bank_account_id, "
+            "bank_account.balance AS bank_account_balance "
             "FROM bank_account "
             "WHERE :balance_1 * bank_account.balance > :param_1 "
             "AND :balance_2 * bank_account.balance < :param_2",
@@ -1426,8 +1427,9 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             query,
-            "SELECT bank_account.balance AS bank_account_balance, "
-            "bank_account.id AS bank_account_id FROM bank_account "
+            "SELECT bank_account.id AS bank_account_id, "
+            "bank_account.balance AS bank_account_balance "
+            "FROM bank_account "
             "WHERE :balance_1 * bank_account.balance > "
             ":param_1 * :balance_2 * bank_account.balance",
             checkparams={

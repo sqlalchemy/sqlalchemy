@@ -910,9 +910,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 self.assert_compile(
                     q,
                     "SELECT "
-                    "addresses_1.id AS addresses_1_id, "
                     "users_1.id AS users_1_id, "
                     "users_1.name AS users_1_name, "
+                    "addresses_1.id AS addresses_1_id, "
                     "addresses_1.user_id AS addresses_1_user_id, "
                     "addresses_1.email_address AS "
                     "addresses_1_email_address, "
@@ -928,9 +928,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.assert_compile(
                 q,
                 "SELECT "
-                "addresses_1.id AS addresses_1_id, "
                 "users_1.id AS users_1_id, "
                 "users_1.name AS users_1_name, "
+                "addresses_1.id AS addresses_1_id, "
                 "addresses_1.user_id AS addresses_1_user_id, "
                 "addresses_1.email_address AS "
                 "addresses_1_email_address, "

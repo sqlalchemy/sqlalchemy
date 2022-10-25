@@ -162,8 +162,9 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             )
             self.assert_compile(
                 select(Order).options(undefer_group("g1")),
-                "SELECT orders.isopen, orders.description, orders.id, "
-                "orders.user_id, orders.address_id FROM orders",
+                "SELECT orders.id, orders.user_id, orders.address_id, "
+                "orders.isopen, orders.description "
+                "FROM orders",
             )
         else:
             self.assert_compile(
@@ -583,11 +584,11 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             go,
             [
                 (
-                    "SELECT orders.user_id AS orders_user_id, "
+                    "SELECT orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
                     "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen, "
-                    "orders.id AS orders_id, "
-                    "orders.address_id AS orders_address_id "
+                    "orders.isopen AS orders_isopen "
                     "FROM orders ORDER BY orders.id",
                     {},
                 )
@@ -628,11 +629,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             go,
             [
                 (
-                    "SELECT orders.user_id AS orders_user_id, "
-                    "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen, "
+                    "SELECT "
                     "orders.id AS orders_id, "
-                    "orders.address_id AS orders_address_id "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen "
                     "FROM orders ORDER BY orders.id",
                     {},
                 )
@@ -673,11 +675,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             go,
             [
                 (
-                    "SELECT orders.user_id AS orders_user_id, "
-                    "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen, "
+                    "SELECT "
                     "orders.id AS orders_id, "
-                    "orders.address_id AS orders_address_id "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen "
                     "FROM orders ORDER BY orders.id",
                     {},
                 )
@@ -735,11 +738,11 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.user_id AS orders_user_id, "
-                    "orders.description "
-                    "AS orders_description, orders.isopen AS orders_isopen, "
-                    "orders.id AS orders_id, orders.address_id "
-                    "AS orders_address_id "
+                    "SELECT orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen "
                     "FROM orders WHERE :param_1 = orders.user_id "
                     "ORDER BY orders.id",
                     {"param_1": 7},
@@ -798,11 +801,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.user_id AS orders_user_id, "
-                    "orders.description "
-                    "AS orders_description, orders.isopen AS orders_isopen, "
+                    "SELECT "
                     "orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
                     "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen, "
                     "anon_1.users_id AS anon_1_users_id "
                     "FROM (SELECT users.id AS "
                     "users_id FROM users WHERE users.id = :id_1) AS anon_1 "
@@ -860,11 +864,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name, "
+                    "orders_1.id AS orders_1_id, "
                     "orders_1.user_id AS orders_1_user_id, "
+                    "orders_1.address_id AS orders_1_address_id, "
                     "orders_1.description AS orders_1_description, "
-                    "orders_1.isopen AS orders_1_isopen, "
-                    "orders_1.id AS orders_1_id, orders_1.address_id AS "
-                    "orders_1_address_id FROM users "
+                    "orders_1.isopen AS orders_1_isopen "
+                    "FROM users "
                     "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
                     "orders_1.user_id WHERE users.id = :id_1 "
                     "ORDER BY orders_1.id",
@@ -923,12 +928,13 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name, "
-                    "orders_1.user_id AS orders_1_user_id, "
                     "lower(orders_1.description) AS lower_1, "
-                    "orders_1.isopen AS orders_1_isopen, "
                     "orders_1.id AS orders_1_id, "
+                    "orders_1.user_id AS orders_1_user_id, "
                     "orders_1.address_id AS orders_1_address_id, "
-                    "orders_1.description AS orders_1_description FROM users "
+                    "orders_1.description AS orders_1_description, "
+                    "orders_1.isopen AS orders_1_isopen "
+                    "FROM users "
                     "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
                     "orders_1.user_id WHERE users.id = :id_1 "
                     "ORDER BY orders_1.id",
@@ -956,11 +962,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         q = sess.query(Order).options(Load(Order).undefer("*"))
         self.assert_compile(
             q,
-            "SELECT orders.user_id AS orders_user_id, "
-            "orders.description AS orders_description, "
-            "orders.isopen AS orders_isopen, "
+            "SELECT "
             "orders.id AS orders_id, "
-            "orders.address_id AS orders_address_id "
+            "orders.user_id AS orders_user_id, "
+            "orders.address_id AS orders_address_id, "
+            "orders.description AS orders_description, "
+            "orders.isopen AS orders_isopen "
             "FROM orders",
         )
 
@@ -1322,9 +1329,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
         self.assert_compile(
             q,
-            "SELECT orders.description AS orders_description, "
-            "orders.id AS orders_id, "
-            "orders.user_id AS orders_user_id, "
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, "
+            "orders.description AS orders_description, "
             "orders.isopen AS orders_isopen FROM orders",
         )
 

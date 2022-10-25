@@ -4221,10 +4221,10 @@ class SetOpsWDeferredTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "SELECT anon_1.users_id AS anon_1_users_id FROM "
-            "(SELECT users.name AS users_name, users.id AS users_id "
+            "(SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_1 "
             "UNION "
-            "SELECT users.name AS users_name, users.id AS users_id FROM users "
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "WHERE users.id = :id_2) AS anon_1 ORDER BY anon_1.users_id",
         )
 
@@ -4253,12 +4253,13 @@ class SetOpsWDeferredTest(QueryTest, AssertsCompiledSQL):
         stmt = s1.union(s2).options(undefer(User.name)).order_by(User.id)
         self.assert_compile(
             stmt,
-            "SELECT anon_1.users_name AS anon_1_users_name, "
-            "anon_1.users_id AS anon_1_users_id FROM "
-            "(SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name "
+            "FROM "
+            "(SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_1 "
             "UNION "
-            "SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_2) AS anon_1 "
             "ORDER BY anon_1.users_id",
         )
@@ -4298,14 +4299,15 @@ class SetOpsWDeferredTest(QueryTest, AssertsCompiledSQL):
             stmt,
             "SELECT anon_1.anon_2_users_id AS anon_1_anon_2_users_id "
             "FROM ("
-            "SELECT anon_2.users_name AS anon_2_users_name, "
-            "anon_2.users_id AS anon_2_users_id FROM "
-            "(SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT anon_2.users_id AS anon_2_users_id, "
+            "anon_2.users_name AS anon_2_users_name "
+            "FROM "
+            "(SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_1 UNION "
-            "SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_2) AS anon_2 "
             "UNION "
-            "SELECT users.name AS users_name, users.id AS users_id FROM users "
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "WHERE users.id = :id_3) AS anon_1 "
             "ORDER BY anon_1.anon_2_users_id",
         )
@@ -4342,17 +4344,18 @@ class SetOpsWDeferredTest(QueryTest, AssertsCompiledSQL):
         )
         self.assert_compile(
             stmt,
-            "SELECT anon_1.anon_2_users_name AS anon_1_anon_2_users_name, "
-            "anon_1.anon_2_users_id AS anon_1_anon_2_users_id "
+            "SELECT anon_1.anon_2_users_id AS anon_1_anon_2_users_id, "
+            "anon_1.anon_2_users_name AS anon_1_anon_2_users_name "
             "FROM ("
-            "SELECT anon_2.users_name AS anon_2_users_name, "
-            "anon_2.users_id AS anon_2_users_id FROM "
-            "(SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT anon_2.users_id AS anon_2_users_id, "
+            "anon_2.users_name AS anon_2_users_name "
+            "FROM "
+            "(SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_1 UNION "
-            "SELECT users.name AS users_name, users.id AS users_id "
+            "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users WHERE users.id = :id_2) AS anon_2 "
             "UNION "
-            "SELECT users.name AS users_name, users.id AS users_id FROM users "
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "WHERE users.id = :id_3) AS anon_1 "
             "ORDER BY anon_1.anon_2_users_id",
         )
