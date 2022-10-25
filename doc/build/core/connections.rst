@@ -16,7 +16,7 @@ higher level management services, the :class:`_engine.Engine` and
 :class:`_engine.Connection` are king (and queen?) - read on.
 
 Basic Usage
-===========
+-----------
 
 Recall from :doc:`/core/engines` that an :class:`_engine.Engine` is created via
 the :func:`_sa.create_engine` call::
@@ -82,7 +82,7 @@ in the :ref:`unified_tutorial` for a tutorial.
 
 
 Using Transactions
-==================
+------------------
 
 .. note::
 
@@ -94,7 +94,7 @@ Using Transactions
   information.
 
 Commit As You Go
-----------------
+~~~~~~~~~~~~~~~~
 
 The :class:`~sqlalchemy.engine.Connection` object always emits SQL statements
 within the context of a transaction block.   The first time the
@@ -156,7 +156,7 @@ emitted, a new transaction begins implicitly::
    mode when using a "future" style engine.
 
 Begin Once
-----------------
+~~~~~~~~~~
 
 The :class:`_engine.Connection` object provides a more explicit transaction
 management style referred towards as **begin once**. In contrast to "commit as
@@ -184,7 +184,7 @@ once" block::
         # transaction is committed
 
 Connect and Begin Once from the Engine
----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A convenient shorthand form for the above "begin once" block is to use
 the :meth:`_engine.Engine.begin` method at the level of the originating
@@ -226,7 +226,7 @@ returned by the :meth:`_engine.Connection.begin` method::
         further commands.
 
 Mixing Styles
--------------
+~~~~~~~~~~~~~
 
 The "commit as you go" and "begin once" styles can be freely mixed within
 a single :meth:`_engine.Engine.connect` block, provided that the call to
@@ -262,7 +262,7 @@ When developing code that uses "begin once", the library will raise
 .. _dbapi_autocommit:
 
 Setting Transaction Isolation Levels including DBAPI Autocommit
-=================================================================
+---------------------------------------------------------------
 
 Most DBAPIs support the concept of configurable transaction :term:`isolation` levels.
 These are traditionally the four levels "READ UNCOMMITTED", "READ COMMITTED",
@@ -294,7 +294,7 @@ SQLAlchemy dialects should support these isolation levels as well as autocommit
 to as great a degree as possible.
 
 Setting Isolation Level or DBAPI Autocommit for a Connection
-------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For an individual :class:`_engine.Connection` object that's acquired from
 :meth:`.Engine.connect`, the isolation level can be set for the duration of
@@ -341,7 +341,7 @@ begin a transaction::
    on a per-transaction basis.
 
 Setting Isolation Level or DBAPI Autocommit for an Engine
-----------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :paramref:`_engine.Connection.execution_options.isolation_level` option may
 also be set engine wide, as is often preferable.  This may be
@@ -361,7 +361,7 @@ subsequent operations.
 .. _dbapi_autocommit_multiple:
 
 Maintaining Multiple Isolation Levels for a Single Engine
-----------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The isolation level may also be set per engine, with a potentially greater
 level of flexibility, using either the
@@ -429,7 +429,7 @@ reverted when a connection is returned to the connection pool.
 .. _dbapi_autocommit_understanding:
 
 Understanding the DBAPI-Level Autocommit Isolation Level
----------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the parent section, we introduced the concept of the
 :paramref:`_engine.Connection.execution_options.isolation_level`
@@ -588,7 +588,7 @@ To sum up:
 .. _engine_stream_results:
 
 Using Server Side Cursors (a.k.a. stream results)
-==================================================
+-------------------------------------------------
 
 Some backends feature explicit support for the concept of "server
 side cursors" versus "client side cursors".  A client side cursor here
@@ -644,7 +644,7 @@ or per-statement basis.    Similar options exist when using an ORM
 
 
 Streaming with a fixed buffer via yield_per
---------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As individual row-fetch operations with fully unbuffered server side cursors
 are typically more expensive than fetching batches of rows at once, The
@@ -683,12 +683,13 @@ combination has includes:
 These three behaviors are illustrated in the example below::
 
     with engine.connect() as conn:
-        result = conn.execution_options(yield_per=100).execute(text("select * from table"))
-
-        for partition in result.partitions():
-            # partition is an iterable that will be at most 100 items
-            for row in partition:
-                print(f"{row}")
+        with conn.execution_options(yield_per=100).execute(
+            text("select * from table")
+        ) as result:
+            for partition in result.partitions():
+                # partition is an iterable that will be at most 100 items
+                for row in partition:
+                    print(f"{row}")
 
 The above example illustrates the combination of ``yield_per=100`` along
 with using the :meth:`_engine.Result.partitions` method to run processing
@@ -698,6 +699,13 @@ use of :meth:`_engine.Result.partitions` is optional, and if the
 buffered for each 100 rows fetched.    Calling a method such as
 :meth:`_engine.Result.all` should **not** be used, as this will fully
 fetch all remaining rows at once and defeat the purpose of using ``yield_per``.
+
+.. tip::
+
+    The :class:`.Result` object may be used as a context manager as illustrated
+    above.  When iterating with a server-side cursor, this is the best way to
+    ensure the :class:`.Result` object is closed, even if exceptions are
+    raised within the iteration process.
 
 The :paramref:`_engine.Connection.execution_options.yield_per` option
 is portable to the ORM as well, used by a :class:`_orm.Session` to fetch
@@ -715,7 +723,7 @@ for further background on using
 .. _engine_stream_results_sr:
 
 Streaming with a dynamically growing buffer using stream_results
------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To enable server side cursors without a specific partition size, the
 :paramref:`_engine.Connection.execution_options.stream_results` option may be
@@ -731,11 +739,12 @@ of 1000 rows.   The maximum size of this buffer can be affected using the
 :paramref:`_engine.Connection.execution_options.max_row_buffer` execution option::
 
     with engine.connect() as conn:
-        conn = conn.execution_options(stream_results=True, max_row_buffer=100)
-        result = conn.execute(text("select * from table"))
+        with conn.execution_options(stream_results=True, max_row_buffer=100).execute(
+            text("select * from table")
+        ) as result:
 
-        for row in result:
-            print(f"{row}")
+            for row in result:
+                print(f"{row}")
 
 While the :paramref:`_engine.Connection.execution_options.stream_results`
 option may be combined with use of the :meth:`_engine.Result.partitions`
@@ -757,7 +766,7 @@ up to use the :meth:`_engine.Result.partitions` method.
 .. _schema_translating:
 
 Translation of Schema Names
-===========================
+---------------------------
 
 To support multi-tenancy applications that distribute common sets of tables
 into multiple schemas, the
@@ -853,7 +862,7 @@ as the schema name is passed to these methods explicitly.
 
 
 SQL Compilation Caching
-=======================
+-----------------------
 
 .. versionadded:: 1.4  SQLAlchemy now has a transparent query caching system
    that substantially lowers the Python computational overhead involved in
@@ -903,7 +912,7 @@ detail the configuration and advanced usage patterns for the cache.
 
 
 Configuration
--------------
+~~~~~~~~~~~~~
 
 The cache itself is a dictionary-like object called an ``LRUCache``, which is
 an internal SQLAlchemy dictionary subclass that tracks the usage of particular
@@ -930,7 +939,7 @@ cache's behavior, described in the next section.
 .. _sql_caching_logging:
 
 Estimating Cache Performance Using Logging
-------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The above cache size of 1200 is actually fairly large.   For small applications,
 a size of 100 is likely sufficient.  To estimate the optimal size of the cache,
@@ -1148,7 +1157,7 @@ obviously an extremely small size, and the default size of 500 is fine to be lef
 at its default.
 
 How much memory does the cache use?
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The previous section detailed some techniques to check if the
 :paramref:`_sa.create_engine.query_cache_size` needs to be bigger.   How do we know
@@ -1170,7 +1179,7 @@ moderate Core statement takes up about 12K while a small ORM statement takes abo
 .. _engine_compiled_cache:
 
 Disabling or using an alternate dictionary to cache some (or all) statements
------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The internal cache used is known as ``LRUCache``, but this is mostly just
 a dictionary.  Any dictionary may be used as a cache for any series of
@@ -1200,7 +1209,7 @@ The cache can also be disabled with this argument by sending a value of
 .. _engine_thirdparty_caching:
 
 Caching for Third Party Dialects
----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The caching feature requires that the dialect's compiler produces SQL
 strings that are safe to reuse for many statement invocations, given
@@ -1342,7 +1351,7 @@ SELECTs with LIMIT/OFFSET are correctly rendered and cached.
 .. _engine_lambda_caching:
 
 Using Lambdas to add significant speed gains to statement production
---------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. deepalchemy:: This technique is generally non-essential except in very performance
    intensive scenarios, and intended for experienced Python programmers.
@@ -1764,7 +1773,7 @@ performance example.
 .. _engine_insertmanyvalues:
 
 "Insert Many Values" Behavior for INSERT statements
-====================================================
+---------------------------------------------------
 
 .. versionadded:: 2.0 see :ref:`change_6047` for background on the change
    including sample performance tests
@@ -1853,7 +1862,7 @@ as follows:
   the same usage patterns and equivalent performance benefits.
 
 Enabling/Disabling the feature
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To disable the "insertmanyvalues" feature for a given backend for an
 :class:`.Engine` overall, pass the
@@ -1886,7 +1895,7 @@ such a table may need to include ``implicit_returning=False`` (see
 .. _engine_insertmanyvalues_page_size:
 
 Controlling the Batch Size
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A key characteristic of "insertmanyvalues" is that the size of the INSERT
 statement is limited on a fixed max number of "values" clauses as well as a
@@ -1954,7 +1963,7 @@ Or configured on the statement itself::
 .. _engine_insertmanyvalues_events:
 
 Logging and Events
--------------------
+~~~~~~~~~~~~~~~~~~
 
 The "insertmanyvalues" feature integrates fully with SQLAlchemy's statement
 logging as well as cursor events such as :meth:`.ConnectionEvents.before_cursor_execute`.
@@ -1979,7 +1988,7 @@ an excerpt of this logging:
   [insertmanyvalues batch 10 of 10] ('d900', 900, 9000, 'd901', ...
 
 Upsert Support
---------------
+~~~~~~~~~~~~~~
 
 The PostgreSQL, SQLite, and MariaDB dialects offer backend-specific
 "upsert" constructs :func:`_postgresql.insert`, :func:`_sqlite.insert`
@@ -1993,7 +2002,7 @@ with RETURNING to take place.
 .. _engine_disposal:
 
 Engine Disposal
-===============
+---------------
 
 The :class:`_engine.Engine` refers to a connection pool, which means under normal
 circumstances, there are open database connections present while the
@@ -2070,7 +2079,7 @@ for guidelines on how to disable pooling.
 .. _dbapi_connections:
 
 Working with Driver SQL and Raw DBAPI Connections
-=================================================
+-------------------------------------------------
 
 The introduction on using :meth:`_engine.Connection.execute` made use of the
 :func:`_expression.text` construct in order to illustrate how textual SQL statements
@@ -2082,7 +2091,7 @@ SQL in that it normalizes how bound parameters are passed, as well as that
 it supports datatyping behavior for parameters and result set rows.
 
 Invoking SQL strings directly to the driver
---------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For the use case where one wants to invoke textual SQL directly passed to the
 underlying driver (known as the :term:`DBAPI`) without any intervention
@@ -2097,7 +2106,7 @@ method may be used::
 .. _dbapi_connections_cursor:
 
 Working with the DBAPI cursor directly
---------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are some cases where SQLAlchemy does not provide a genericized way
 at accessing some :term:`DBAPI` functions, such as calling stored procedures as well
@@ -2153,7 +2162,7 @@ Some recipes for DBAPI connection use follow.
 .. _stored_procedures:
 
 Calling Stored Procedures and User Defined Functions
-------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy supports calling stored procedures and user defined functions
 several ways. Please note that all DBAPIs have different practices, so you must
@@ -2198,7 +2207,7 @@ situations to determine the correct syntax and patterns to use.
 
 
 Multiple Result Sets
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 Multiple result set support is available from a raw DBAPI cursor using the
 `nextset <https://legacy.python.org/dev/peps/pep-0249/#nextset>`_ method::
@@ -2215,7 +2224,7 @@ Multiple result set support is available from a raw DBAPI cursor using the
         connection.close()
 
 Registering New Dialects
-========================
+------------------------
 
 The :func:`_sa.create_engine` function call locates the given dialect
 using setuptools entrypoints.   These entry points can be established
@@ -2250,7 +2259,7 @@ The above entrypoint would then be accessed as ``create_engine("mysql+foodialect
 
 
 Registering Dialects In-Process
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy also allows a dialect to be registered within the current process, bypassing
 the need for separate installation.   Use the ``register()`` function as follows::
@@ -2265,7 +2274,7 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 
 
 Connection / Engine API
-=======================
+-----------------------
 
 .. autoclass:: Connection
    :members:
@@ -2296,7 +2305,7 @@ Connection / Engine API
 
 
 Result Set  API
-=================
+---------------
 
 .. autoclass:: ChunkedIteratorResult
     :members:

@@ -1539,6 +1539,37 @@ backend::
 
 :ticket:`7631`
 
+
+.. _change_8710:
+
+Context Manager Support for ``Result``, ``AsyncResult``
+-------------------------------------------------------
+
+The :class:`.Result` object now supports context manager use, which will
+ensure the object and its underlying cursor is closed at the end of the block.
+This is useful in particular with server side cursors, where it's important that
+the open cursor object is closed at the end of an operation, even if user-defined
+exceptions have occurred::
+
+    with engine.connect() as conn:
+        with conn.execution_options(yield_per=100).execute(
+            text("select * from table")
+        ) as result:
+            for row in result:
+                print(f"{row}")
+
+With asyncio use, the :class:`.AsyncResult` and :class:`.AsyncConnection` have
+been altered to provide for optional async context manager use, as in::
+
+    async with async_engine.connect() as conn:
+        async with conn.execution_options(yield_per=100).execute(
+            text("select * from table")
+        ) as result:
+            for row in result:
+                print(f"{row}")
+
+:ticket:`8710`
+
 Behavioral Changes
 ------------------
 

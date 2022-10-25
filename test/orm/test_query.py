@@ -5417,6 +5417,58 @@ class YieldTest(_fixtures.FixtureTest):
         result.close()
         assert_raises(sa.exc.ResourceClosedError, result.all)
 
+    def test_yield_per_close_on_interrupted_iteration_legacy(self):
+        """test #8710"""
+
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        asserted_result = None
+
+        class _Query(Query):
+            def _iter(self):
+                nonlocal asserted_result
+                asserted_result = super(_Query, self)._iter()
+                return asserted_result
+
+        sess = fixture_session(query_cls=_Query)
+
+        with expect_raises_message(Exception, "hi"):
+            for i, row in enumerate(sess.query(User).yield_per(1)):
+                assert not asserted_result._soft_closed
+                assert not asserted_result.closed
+
+                if i > 1:
+                    raise Exception("hi")
+
+        assert asserted_result._soft_closed
+        assert not asserted_result.closed
+
+    def test_yield_per_close_on_interrupted_iteration(self):
+        """test #8710"""
+
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with expect_raises_message(Exception, "hi"):
+            result = sess.execute(select(User).execution_options(yield_per=1))
+            for i, row in enumerate(result):
+                assert not result._soft_closed
+                assert not result.closed
+
+                if i > 1:
+                    raise Exception("hi")
+
+        assert not result._soft_closed
+        assert not result.closed
+        result.close()
+        assert result._soft_closed
+        assert result.closed
+
     def test_yield_per_and_execution_options_legacy(self):
         self._eagerload_mappings()
 

@@ -2713,7 +2713,14 @@ class Query(
             return None
 
     def __iter__(self) -> Iterable[_T]:
-        return self._iter().__iter__()  # type: ignore
+        result = self._iter()
+        try:
+            yield from result
+        except GeneratorExit:
+            # issue #8710 - direct iteration is not re-usable after
+            # an iterable block is broken, so close the result
+            result._soft_close()
+            raise
 
     def _iter(self) -> Union[ScalarResult[_T], Result[_T]]:
         # new style execution.

@@ -47,10 +47,20 @@ class AsyncCommon(FilterResult[_R]):
     _real_result: Result[Any]
     _metadata: ResultMetaData
 
-    async def close(self) -> None:
+    async def close(self) -> None:  # type: ignore[override]
         """Close this result."""
 
         await greenlet_spawn(self._real_result.close)
+
+    @property
+    def closed(self) -> bool:
+        """proxies the .closed attribute of the underlying result object,
+        if any, else raises ``AttributeError``.
+
+        .. versionadded:: 2.0.0b3
+
+        """
+        return self._real_result.closed  # type: ignore
 
 
 SelfAsyncResult = TypeVar("SelfAsyncResult", bound="AsyncResult[Any]")
@@ -94,6 +104,16 @@ class AsyncResult(AsyncCommon[Row[_TP]]):
             self._set_memoized_attribute(
                 "_row_getter", real_result.__dict__["_row_getter"]
             )
+
+    @property
+    def closed(self) -> bool:
+        """proxies the .closed attribute of the underlying result object,
+        if any, else raises ``AttributeError``.
+
+        .. versionadded:: 2.0.0b3
+
+        """
+        return self._real_result.closed  # type: ignore
 
     @property
     def t(self) -> AsyncTupleResult[_TP]:

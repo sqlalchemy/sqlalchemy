@@ -1547,7 +1547,8 @@ class _AsyncSessionContextManager(Generic[_AS]):
 
 
 class AsyncSessionTransaction(
-    ReversibleProxy[SessionTransaction], StartableContext
+    ReversibleProxy[SessionTransaction],
+    StartableContext["AsyncSessionTransaction"],
 ):
     """A wrapper for the ORM :class:`_orm.SessionTransaction` object.
 

@@ -928,6 +928,12 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
     def __init__(self, cursor_metadata: ResultMetaData):
         self._metadata = cursor_metadata
 
+    def __enter__(self) -> Result[_TP]:
+        return self
+
+    def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
+        self.close()
+
     def close(self) -> None:
         """close this :class:`_result.Result`.
 
@@ -949,6 +955,19 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
         """
         self._soft_close(hard=True)
+
+    @property
+    def _soft_closed(self) -> bool:
+        raise NotImplementedError()
+
+    @property
+    def closed(self) -> bool:
+        """return True if this :class:`.Result` reports .closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        raise NotImplementedError()
 
     @_generative
     def yield_per(self: SelfResult, num: int) -> SelfResult:
@@ -1574,6 +1593,12 @@ class FilterResult(ResultInternal[_R]):
 
     _real_result: Result[Any]
 
+    def __enter__(self: SelfFilterResult) -> SelfFilterResult:
+        return self
+
+    def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
+        self._real_result.__exit__(type_, value, traceback)
+
     @_generative
     def yield_per(self: SelfFilterResult, num: int) -> SelfFilterResult:
         """Configure the row-fetching strategy to fetch ``num`` rows at a time.
@@ -1598,6 +1623,27 @@ class FilterResult(ResultInternal[_R]):
 
     def _soft_close(self, hard: bool = False) -> None:
         self._real_result._soft_close(hard=hard)
+
+    @property
+    def _soft_closed(self) -> bool:
+        return self._real_result._soft_closed
+
+    @property
+    def closed(self) -> bool:
+        """return True if the underlying :class:`.Result` reports .closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        return self._real_result.closed
+
+    def close(self) -> None:
+        """Close this :class:`.FilterResult`.
+
+        .. versionadded:: 1.4.43
+
+        """
+        self._real_result.close()
 
     @property
     def _attributes(self) -> Dict[Any, Any]:
@@ -2172,13 +2218,22 @@ class IteratorResult(Result[_TP]):
         self,
         cursor_metadata: ResultMetaData,
         iterator: Iterator[_InterimSupportsScalarsRowType],
-        raw: Optional[Any] = None,
+        raw: Optional[Result[Any]] = None,
         _source_supports_scalars: bool = False,
     ):
         self._metadata = cursor_metadata
         self.iterator = iterator
         self.raw = raw
         self._source_supports_scalars = _source_supports_scalars
+
+    @property
+    def closed(self) -> bool:
+        """return True if this :class:`.IteratorResult` has been closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        return self._hard_closed
 
     def _soft_close(self, hard: bool = False, **kw: Any) -> None:
         if hard:
@@ -2262,7 +2317,7 @@ class ChunkedIteratorResult(IteratorResult[_TP]):
             [Optional[int]], Iterator[Sequence[_InterimRowType[_R]]]
         ],
         source_supports_scalars: bool = False,
-        raw: Optional[Any] = None,
+        raw: Optional[Result[Any]] = None,
         dynamic_yield_per: bool = False,
     ):
         self._metadata = cursor_metadata
