@@ -304,6 +304,64 @@ def select1(db):
     return str(select(1).compile(dialect=db.dialect))
 
 
+class ResetEventTest(fixtures.TestBase):
+    def _fixture(self, **kw):
+        dbapi = Mock()
+        return (
+            dbapi,
+            pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw),
+        )
+
+    def _engine_fixture(self, **kw):
+        dbapi = Mock()
+
+        return dbapi, create_engine(
+            "postgresql://",
+            module=dbapi,
+            creator=lambda: dbapi.connect("foo.db"),
+            _initialize=False,
+        )
+
+    def test_custom(self):
+        dbapi, p = self._fixture(reset_on_return=None)
+
+        @event.listens_for(p, "reset")
+        def custom_reset(dbapi_conn, record):
+            dbapi_conn.special_reset_method()
+
+        c1 = p.connect()
+        with expect_deprecated(
+            'The argument signature for the "PoolEvents.reset" event '
+            "listener has changed as of version 2.0"
+        ):
+            c1.close()
+
+        assert dbapi.connect().special_reset_method.called
+        assert not dbapi.connect().rollback.called
+        assert not dbapi.connect().commit.called
+
+    @testing.combinations(True, False, argnames="use_engine_transaction")
+    def test_custom_via_engine(self, use_engine_transaction):
+        dbapi, engine = self._engine_fixture(reset_on_return=None)
+
+        @event.listens_for(engine, "reset")
+        def custom_reset(dbapi_conn, record):
+            dbapi_conn.special_reset_method()
+
+        c1 = engine.connect()
+        if use_engine_transaction:
+            c1.begin()
+
+        with expect_deprecated(
+            'The argument signature for the "PoolEvents.reset" event '
+            "listener has changed as of version 2.0"
+        ):
+            c1.close()
+        assert dbapi.connect().rollback.called
+
+        assert dbapi.connect().special_reset_method.called
+
+
 class EngineEventsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
     __backend__ = True

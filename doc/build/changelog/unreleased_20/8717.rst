@@ -1,0 +1,20 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 8717
+
+    Added new parameter :paramref:`.PoolEvents.reset.reset_state` parameter to
+    the :meth:`.PoolEvents.reset` event, with deprecation logic in place that
+    will continue to accept event hooks using the previous set of arguments.
+    This indicates various state information about how the reset is taking
+    place and is used to allow custom reset schemes to take place with full
+    context given.
+
+    Within this change a fix that's also backported to 1.4 is included which
+    re-enables the :meth:`.PoolEvents.reset` event to continue to take place
+    under all circumstances, including when :class:`.Connection` has already
+    "reset" the connection.
+
+    The two changes together allow custom reset schemes to be implemented using
+    the :meth:`.PoolEvents.reset` event, instead of the
+    :meth:`.PoolEvents.checkin` event (which continues to function as it always
+    has).

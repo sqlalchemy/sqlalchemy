@@ -1220,7 +1220,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             # as we just closed the transaction, close the connection
             # pool connection without doing an additional reset
             if skip_reset:
-                cast("_ConnectionFairy", conn)._close_no_reset()
+                cast("_ConnectionFairy", conn)._close_special(
+                    transaction_reset=True
+                )
             else:
                 conn.close()
 

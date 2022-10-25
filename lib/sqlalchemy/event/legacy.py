@@ -194,9 +194,9 @@ def _version_signature_changes(
 ) -> str:
     since, args, conv = dispatch_collection.legacy_signatures[0]
     return (
-        "\n.. deprecated:: %(since)s\n"
-        "    The :class:`.%(clsname)s.%(event_name)s` event now accepts the \n"
-        "    arguments ``%(named_event_arguments)s%(has_kw_arguments)s``.\n"
+        "\n.. versionchanged:: %(since)s\n"
+        "    The :meth:`.%(clsname)s.%(event_name)s` event now accepts the \n"
+        "    arguments %(named_event_arguments)s%(has_kw_arguments)s.\n"
         "    Support for listener functions which accept the previous \n"
         '    argument signature(s) listed above as "deprecated" will be \n'
         "    removed in a future release."
@@ -204,7 +204,15 @@ def _version_signature_changes(
             "since": since,
             "clsname": parent_dispatch_cls.__name__,
             "event_name": dispatch_collection.name,
-            "named_event_arguments": ", ".join(dispatch_collection.arg_names),
+            "named_event_arguments": ", ".join(
+                ":paramref:`.%(clsname)s.%(event_name)s.%(param_name)s`"
+                % {
+                    "clsname": parent_dispatch_cls.__name__,
+                    "event_name": dispatch_collection.name,
+                    "param_name": param_name,
+                }
+                for param_name in dispatch_collection.arg_names
+            ),
             "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else "",
         }
     )
