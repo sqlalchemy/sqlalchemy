@@ -230,6 +230,68 @@ SERIALIZABLE isolation.
 .. versionadded:: 1.4 added support for the ``postgresql_readonly``
    and ``postgresql_deferrable`` execution options.
 
+.. _postgresql_reset_on_return:
+
+Temporary Table / Resource Reset for Connection Pooling
+-------------------------------------------------------
+
+The :class:`.QueuePool` connection pool implementation used
+by the SQLAlchemy :class:`_sa.Engine` object includes
+:ref:`reset on return <pool_reset_on_return>` behavior that will invoke
+the DBAPI ``.rollback()`` method when connections are returned to the pool.
+While this rollback will clear out the immediate state used by the previous
+transaction, it does not cover a wider range of session-level state, including
+temporary tables as well as other server state such as prepared statement
+handles and statement caches.   The PostgreSQL database includes a variety
+of commands which may be used to reset this state, including
+``DISCARD``, ``RESET``, ``DEALLOCATE``, and ``UNLISTEN``.
+
+
+To install
+one or more of these commands as the means of performing reset-on-return,
+the :meth:`.PoolEvents.reset` event hook may be used, as demonstrated
+in the example below (**requires SQLAlchemy 1.4.43 or greater**). The implementation
+will end transactions in progress as well as discard temporary tables
+using the ``CLOSE``, ``RESET`` and ``DISCARD`` commands; see the PostgreSQL
+documentation for background on what each of these statements do.
+
+The :paramref:`_sa.create_engine.pool_reset_on_return` parameter
+is set to ``None`` so that the custom scheme can replace the default behavior
+completely.   The custom hook implementation calls ``.rollback()`` in any case,
+as it's usually important that the DBAPI's own tracking of commit/rollback
+will remain consistent with the state of the transaction::
+
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import event
+
+    postgresql_engine = create_engine(
+        "postgresql+pyscopg2://scott:tiger@hostname/dbname",
+
+        # disable default reset-on-return scheme
+        pool_reset_on_return=None,
+    )
+
+
+    @event.listens_for(postgresql_engine, "reset")
+    def _reset_mssql(dbapi_connection, connection_record, reset_state):
+        dbapi_connection.execute("CLOSE ALL")
+        dbapi_connection.execute("RESET ALL")
+        dbapi_connection.execute("DISCARD TEMP")
+
+        # so that the DBAPI itself knows that the connection has been
+        # reset
+        dbapi_connection.rollback()
+
+.. versionchanged:: 1.4.43  Ensured the :meth:`.PoolEvents.reset` event
+   is invoked for all "reset" occurrences, so that it's appropriate
+   as a place for custom "reset" handlers.   Previous schemes which
+   use the :meth:`.PoolEvents.checkin` handler remain usable as well.
+
+.. seealso::
+
+    :ref:`pool_reset_on_return` - in the :ref:`pooling_toplevel` documentation
+
 .. _postgresql_alternate_search_path:
 
 Setting Alternate Search Paths on Connect

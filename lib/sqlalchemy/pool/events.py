@@ -151,16 +151,36 @@ class PoolEvents(event.Events):
     def reset(self, dbapi_connection, connection_record):
         """Called before the "reset" action occurs for a pooled connection.
 
-        This event represents
-        when the ``rollback()`` method is called on the DBAPI connection
-        before it is returned to the pool.  The behavior of "reset" can
-        be controlled, including disabled, using the ``reset_on_return``
-        pool argument.
+        This event represents when the ``rollback()`` method is called on the
+        DBAPI connection before it is returned to the pool or discarded. A
+        custom "reset" strategy may be implemented using this event hook, which
+        may also be combined with disabling the default "reset" behavior using
+        the :paramref:`_pool.Pool.reset_on_return` parameter.
 
+        The primary difference between the :meth:`_events.PoolEvents.reset` and
+        :meth:`_events.PoolEvents.checkin` events are that
+        :meth:`_events.PoolEvents.reset` is called not just for pooled
+        connections that are being returned to the pool, but also for
+        connections that were detached using the
+        :meth:`_engine.Connection.detach` method.
 
+        Note that the event **is not** invoked for connections that were
+        invalidated using :meth:`_engine.Connection.invalidate`.    These
+        events may be intercepted using the :meth:`.PoolEvents.soft_invalidate`
+        and :meth:`.PoolEvents.invalidate` event hooks, and all "connection
+        close" events may be intercepted using :meth:`.PoolEvents.close`.
         The :meth:`_events.PoolEvents.reset` event is usually followed by the
-        :meth:`_events.PoolEvents.checkin` event is called, except in those
+        :meth:`_events.PoolEvents.checkin` event, except in those
         cases where the connection is discarded immediately after reset.
+
+        In the 1.4 series, the event is also not invoked for asyncio
+        connections that are being garbage collected without their being
+        explicitly returned to the pool. This is due to the lack of an event
+        loop which prevents "reset" operations from taking place. Version 2.0
+        will feature an enhanced version of :meth:`.PoolEvents.reset` which is
+        invoked in this scenario while passing additional contextual
+        information indicating that an event loop is not guaranteed
+        to be present.
 
         :param dbapi_connection: a DBAPI connection.
          The :attr:`._ConnectionRecord.dbapi_connection` attribute.

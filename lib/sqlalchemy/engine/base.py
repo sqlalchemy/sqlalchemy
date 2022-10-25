@@ -1241,7 +1241,7 @@ class Connection(Connectable):
             # as we just closed the transaction, close the connection
             # pool connection without doing an additional reset
             if skip_reset:
-                conn._close_no_reset()
+                conn._close_special(transaction_reset=True)
             else:
                 conn.close()
 

@@ -133,43 +133,116 @@ however and in particular is not supported with asyncio DBAPI drivers.
 Reset On Return
 ---------------
 
-The pool also includes the a "reset on return" feature which will call the
-``rollback()`` method of the DBAPI connection when the connection is returned
-to the pool. This is so that any existing
-transaction on the connection is removed, not only ensuring that no existing
-state remains on next usage, but also so that table and row locks are released
-as well as that any isolated data snapshots are removed.   This ``rollback()``
-occurs in most cases even when using an :class:`_engine.Engine` object,
-except in the case when the :class:`_engine.Connection` can guarantee
-that a ``rollback()`` has been called immediately before the connection
-is returned to the pool.
-
-For most DBAPIs, the call to ``rollback()`` is very inexpensive and if the
+The pool includes "reset on return" behavior which will call the ``rollback()``
+method of the DBAPI connection when the connection is returned to the pool.
+This is so that any existing transactional state is removed from the
+connection, which includes not just uncommitted data but table and row locks as
+well. For most DBAPIs, the call to ``rollback()`` is inexpensive, and if the
 DBAPI has already completed a transaction, the method should be a no-op.
-However, for DBAPIs that incur performance issues with ``rollback()`` even if
-there's no state on the connection, this behavior can be disabled using the
-``reset_on_return`` option of :class:`_pool.Pool`.   The behavior is safe
-to disable under the following conditions:
 
-* If the database does not support transactions at all, such as using
-  MySQL with the MyISAM engine, or the DBAPI is used in autocommit
-  mode only, the behavior can be disabled.
-* If the pool itself doesn't maintain a connection after it's checked in,
-  such as when using :class:`.NullPool`, the behavior can be disabled.
-* Otherwise, it must be ensured that:
+Disabling Reset on Return for non-transactional connections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  * the application ensures that all :class:`_engine.Connection`
-    objects are explicitly closed out using a context manager (i.e. ``with``
-    block) or a ``try/finally`` style block
-  * connections are never allowed to be garbage collected before being explicitly
-    closed.
-  * the DBAPI connection itself, e.g. ``connection.connection``, is not used
-    directly, or the application ensures that ``.rollback()`` is called
-    on this connection before releasing it back to the connection pool.
+For very specific cases where this ``rollback()`` is not useful, such as when
+using a connection that is configured for
+:ref:`autocommit <dbapi_autocommit_understanding>` or when using a database
+that has no ACID capabilities such as the MyISAM engine of MySQL, the
+reset-on-return behavior can be disabled, which is typically done for
+performance reasons. This can be affected by using the
+:paramref:`_pool.Pool.reset_on_return` parameter of :class:`_pool.Pool`, which
+is also available from :func:`_sa.create_engine` as
+:paramref:`_sa.create_engine.pool_reset_on_return`, passing a value of ``None``.
+This is illustrated in the example below, in conjunction with the
+:paramref:`.create_engine.isolation_level` parameter setting of
+``AUTOCOMMIT``::
 
-The "reset on return" step may be logged using the ``logging.DEBUG``
+    non_acid_engine = create_engine(
+        "mysql://scott:tiger@host/db",
+        pool_reset_on_return=None,
+        isolation_level="AUTOCOMMIT",
+    )
+
+The above engine won't actually perform ROLLBACK when connections are returned
+to the pool; since AUTOCOMMIT is enabled, the driver will also not perform
+any BEGIN operation.
+
+Custom Reset-on-Return Schemes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+"reset on return" consisting of a single ``rollback()`` may not be sufficient
+for some use cases; in particular, applications which make use of temporary
+tables may wish for these tables to be automatically removed on connection
+checkin. Some (but notably not all) backends include features that can "reset"
+such tables within the scope of a database connection, which may be a desirable
+behavior for connection pool reset. Other server resources such as prepared
+statement handles and server-side statement caches may persist beyond the
+checkin process, which may or may not be desirable, depending on specifics.
+Again, some (but again not all) backends may provide for a means of resetting
+this state.  The two SQLAlchemy included dialects which are known to have
+such reset schemes include Microsoft SQL Server, where an undocumented but
+widely known stored procedure called ``sp_reset_connection`` is often used,
+and PostgreSQL, which has a well-documented series of commands including
+``DISCARD`` ``RESET``, ``DEALLOCATE``, and ``UNLISTEN``.
+
+.. note: next paragraph + example should match mssql/base.py example
+
+The following example illustrates how to replace reset on return with the
+Microsoft SQL Server ``sp_reset_connection`` stored procedure, using the
+:meth:`.PoolEvents.reset` event hook (**requires SQLAlchemy 1.4.43 or greater**).
+The :paramref:`_sa.create_engine.pool_reset_on_return` parameter is set to
+``None`` so that the custom scheme can replace the default behavior completely.
+The custom hook implementation calls ``.rollback()`` in any case, as it's
+usually important that the DBAPI's own tracking of commit/rollback will remain
+consistent with the state of the transaction::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import event
+
+    mssql_engine = create_engine(
+        "mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
+        # disable default reset-on-return scheme
+        pool_reset_on_return=None,
+    )
+
+
+    @event.listens_for(mssql_engine, "reset")
+    def _reset_mssql(dbapi_connection, connection_record, reset_state):
+        dbapi_connection.execute("{call sys.sp_reset_connection}")
+
+        # so that the DBAPI itself knows that the connection has been
+        # reset
+        dbapi_connection.rollback()
+
+.. versionchanged:: 1.4.43  Ensured the :meth:`.PoolEvents.reset` event
+   is invoked for all "reset" occurrences, so that it's appropriate
+   as a place for custom "reset" handlers.   Previous schemes which
+   use the :meth:`.PoolEvents.checkin` handler remain usable as well.
+
+.. seealso::
+    * :ref:`mssql_reset_on_return` - in the :ref:`mssql_toplevel` documentation
+    * :ref:`postgresql_reset_on_return` in the :ref:`postgresql_toplevel` documentation
+
+Logging reset-on-return events
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Logging for pool events including reset on return can be set
+``logging.DEBUG``
 log level along with the ``sqlalchemy.pool`` logger, or by setting
-``echo_pool='debug'`` with :func:`_sa.create_engine`.
+:paramref:`_sa.create_engine.echo_pool` to ``"debug"`` when using
+:func:`_sa.create_engine`::
+
+    >>> from sqlalchemy import create_engine
+    >>> engine = create_engine("postgresql://scott:tiger@localhost/test", echo_pool="debug")
+
+The above pool will show verbose logging including reset on return::
+
+    >>> c1 = engine.connect()
+    DEBUG sqlalchemy.pool.impl.QueuePool Created new connection <connection object ...>
+    DEBUG sqlalchemy.pool.impl.QueuePool Connection <connection object ...> checked out from pool
+    >>> c1.close()
+    DEBUG sqlalchemy.pool.impl.QueuePool Connection <connection object ...> being returned to pool
+    DEBUG sqlalchemy.pool.impl.QueuePool Connection <connection object ...> rollback-on-return
+
 
 Pool Events
 -----------
@@ -590,32 +663,22 @@ API Documentation - Available Pool Implementations
 --------------------------------------------------
 
 .. autoclass:: sqlalchemy.pool.Pool
-
-   .. automethod:: __init__
-   .. automethod:: connect
-   .. automethod:: dispose
-   .. automethod:: recreate
+    :members:
 
 .. autoclass:: sqlalchemy.pool.QueuePool
-
-   .. automethod:: __init__
-   .. automethod:: connect
+    :members:
 
 .. autoclass:: SingletonThreadPool
-
-   .. automethod:: __init__
+    :members:
 
 .. autoclass:: AssertionPool
-
-   .. automethod:: __init__
+    :members:
 
 .. autoclass:: NullPool
-
-   .. automethod:: __init__
+    :members:
 
 .. autoclass:: StaticPool
-
-   .. automethod:: __init__
+    :members:
 
 .. autoclass:: _ConnectionFairy
     :members:

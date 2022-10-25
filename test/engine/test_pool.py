@@ -5,6 +5,7 @@ import time
 import weakref
 
 import sqlalchemy as tsa
+from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import pool
 from sqlalchemy import select
@@ -1922,13 +1923,89 @@ class ResetOnReturnTest(PoolTestBase):
             pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw),
         )
 
-    def test_plain_rollback(self):
+    def _engine_fixture(self, **kw):
+        dbapi = Mock()
+
+        return dbapi, create_engine(
+            "postgresql://",
+            module=dbapi,
+            creator=lambda: dbapi.connect("foo.db"),
+            _initialize=False,
+        )
+
+    def test_custom(self):
+        dbapi, p = self._fixture(reset_on_return=None)
+
+        @event.listens_for(p, "reset")
+        def custom_reset(dbapi_conn, record):
+            dbapi_conn.special_reset_method()
+
+        c1 = p.connect()
+        c1.close()
+
+        assert dbapi.connect().special_reset_method.called
+        assert not dbapi.connect().rollback.called
+        assert not dbapi.connect().commit.called
+
+    @testing.combinations(True, False, argnames="assert_w_event")
+    @testing.combinations(True, False, argnames="use_engine_transaction")
+    def test_custom_via_engine(self, assert_w_event, use_engine_transaction):
+        dbapi, engine = self._engine_fixture(reset_on_return=None)
+
+        if assert_w_event:
+
+            @event.listens_for(engine, "reset")
+            def custom_reset(dbapi_conn, record):
+                dbapi_conn.special_reset_method()
+
+        c1 = engine.connect()
+        if use_engine_transaction:
+            c1.begin()
+        c1.close()
+        assert dbapi.connect().rollback.called
+
+        if assert_w_event:
+            assert dbapi.connect().special_reset_method.called
+
+    @testing.combinations(True, False, argnames="assert_w_event")
+    def test_plain_rollback(self, assert_w_event):
         dbapi, p = self._fixture(reset_on_return="rollback")
+
+        if assert_w_event:
+
+            @event.listens_for(p, "reset")
+            def custom_reset(dbapi_conn, record):
+                dbapi_conn.special_reset_method()
 
         c1 = p.connect()
         c1.close()
         assert dbapi.connect().rollback.called
         assert not dbapi.connect().commit.called
+
+        if assert_w_event:
+            assert dbapi.connect().special_reset_method.called
+
+    @testing.combinations(True, False, argnames="assert_w_event")
+    @testing.combinations(True, False, argnames="use_engine_transaction")
+    def test_plain_rollback_via_engine(
+        self, assert_w_event, use_engine_transaction
+    ):
+        dbapi, engine = self._engine_fixture(reset_on_return="rollback")
+
+        if assert_w_event:
+
+            @event.listens_for(engine, "reset")
+            def custom_reset(dbapi_conn, record):
+                dbapi_conn.special_reset_method()
+
+        c1 = engine.connect()
+        if use_engine_transaction:
+            c1.begin()
+        c1.close()
+        assert dbapi.connect().rollback.called
+
+        if assert_w_event:
+            assert dbapi.connect().special_reset_method.called
 
     def test_plain_commit(self):
         dbapi, p = self._fixture(reset_on_return="commit")
