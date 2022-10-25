@@ -3226,26 +3226,13 @@ class MSDialect(default.DefaultDialect):
         if tablename.startswith("#"):  # temporary table
             # mssql does not support temporary views
             # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
-            tables = ischema.mssql_temp_table_columns
-
-            s = sql.select(tables.c.table_name).where(
-                tables.c.table_name.like(
-                    self._temp_table_name_like_pattern(tablename)
+            if bool(
+                connection.scalar(
+                    text("SELECT object_id(:table_name)"),
+                    {"table_name": "tempdb.dbo.[{}]".format(tablename)},
                 )
-            )
-
-            # #7168: fetch all (not just first match) in case some other #temp
-            #        table with the same name happens to appear first
-            table_names = connection.scalars(s).all()
-            # #6910: verify it's not a temp table from another session
-            for table_name in table_names:
-                if bool(
-                    connection.scalar(
-                        text("SELECT object_id(:table_name)"),
-                        {"table_name": "tempdb.dbo.[{}]".format(table_name)},
-                    )
-                ):
-                    return True
+            ):
+                return True
             else:
                 return False
         else:
