@@ -26,6 +26,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
@@ -230,6 +231,22 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "SELECT users.id, users.name "
             "FROM users WHERE users.name != :name_1",
         )
+
+    def test_err_given_in_pathed(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Loader option <.*LoaderCriteriaOption.*> is not compatible "
+            r"with the Load.options\(\) method.",
+        ):
+            select(User).options(
+                selectinload(User.addresses).options(
+                    with_loader_criteria(
+                        Address, Address.email_address != "foo"
+                    )
+                )
+            )
 
     def test_criteria_post_replace(self, user_address_fixture):
         User, Address = user_address_fixture

@@ -1218,7 +1218,16 @@ class Load(_AbstractLoad):
 
         """
         for opt in opts:
-            opt._apply_to_parent(self)
+            try:
+                opt._apply_to_parent(self)
+            except AttributeError as ae:
+                if not isinstance(opt, _AbstractLoad):
+                    raise sa_exc.ArgumentError(
+                        f"Loader option {opt} is not compatible with the "
+                        "Load.options() method."
+                    ) from ae
+                else:
+                    raise
         return self
 
     def _clone_for_bind_strategy(
