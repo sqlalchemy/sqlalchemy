@@ -3228,7 +3228,7 @@ class MSDialect(default.DefaultDialect):
             # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
             if bool(
                 connection.scalar(
-                    text("SELECT object_id(:table_name)"),
+                    text("SELECT object_id(:table_name, 'U')"), # U filters on user tables only.
                     {"table_name": "tempdb.dbo.[{}]".format(tablename)},
                 )
             ):
