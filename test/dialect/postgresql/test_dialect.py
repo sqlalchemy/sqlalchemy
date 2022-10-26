@@ -1235,6 +1235,7 @@ class TestRange(fixtures.TestBase):
     @testing.combinations(
         (Range(empty=True), "empty"),
         (Range(1, 2, bounds="(]"), "(1,2]"),
+        (Range(1, 2, bounds="[)"), "[1,2)"),
         (Range(None, None, bounds="()"), "(,)"),
         (Range(None, 1, bounds="[)"), "[,1)"),
         (Range(1, None, bounds="[)"), "[1,)"),
@@ -1255,6 +1256,7 @@ class TestRange(fixtures.TestBase):
         (Range(1, 4, bounds="()"), "(1,4)"),
         (Range(-4, 1, bounds="[)"), "[-4,1)"),
         (Range(2, 3, bounds="[)"), "[2,3)"),
+        (Range(0, 1, bounds="(]"), "(0,1]"),
         (Range(0, 6, bounds="[)"), "[0,6)"),
         argnames="r1,r1repr",
     )
