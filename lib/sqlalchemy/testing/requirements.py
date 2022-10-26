@@ -664,6 +664,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def has_temp_table(self):
+        """target dialect supports checking a single temp table name"""
+        return exclusions.closed()
+
+    @property
     def temporary_tables(self):
         """target database supports temporary tables"""
         return exclusions.open()

@@ -609,6 +609,18 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql"])
 
     @property
+    def has_temp_table(self):
+        """target dialect supports checking a single temp table name
+
+        unfortunately this is not the same as temp_table_names
+
+        """
+
+        return only_on(["sqlite", "oracle", "postgresql", "mssql"]) + skip_if(
+            self._sqlite_file_db
+        )
+
+    @property
     def default_schema_name_switch(self):
         return only_on(["postgresql", "oracle"])
 

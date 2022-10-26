@@ -33,7 +33,23 @@ from ...testing import is_true
 metadata, users = None, None
 
 
-class HasTableTest(fixtures.TablesTest):
+class OneConnectionTablesTest(fixtures.TablesTest):
+    @classmethod
+    def setup_bind(cls):
+        # TODO: when temp tables are subject to server reset,
+        # this will also have to disable that server reset from
+        # happening
+        if config.requirements.independent_connections.enabled:
+            from sqlalchemy import pool
+
+            return engines.testing_engine(
+                options=dict(poolclass=pool.StaticPool, scope="class"),
+            )
+        else:
+            return config.db
+
+
+class HasTableTest(OneConnectionTablesTest):
     __backend__ = True
 
     @classmethod
@@ -55,6 +71,8 @@ class HasTableTest(fixtures.TablesTest):
 
         if testing.requires.view_reflection:
             cls.define_views(metadata)
+        if testing.requires.has_temp_table.enabled:
+            cls.define_temp_tables(metadata)
 
     @classmethod
     def define_views(cls, metadata):
@@ -74,6 +92,37 @@ class HasTableTest(fixtures.TablesTest):
                 "before_drop",
                 DDL("DROP VIEW %s.vv" % (config.test_schema)),
             )
+
+    @classmethod
+    def temp_table_name(cls):
+        return get_temp_table_name(
+            config, config.db, "user_tmp_%s" % (config.ident,)
+        )
+
+    @classmethod
+    def define_temp_tables(cls, metadata):
+        kw = temp_table_keyword_args(config, config.db)
+        table_name = cls.temp_table_name()
+        user_tmp = Table(
+            table_name,
+            metadata,
+            Column("id", sa.INT, primary_key=True),
+            Column("name", sa.VARCHAR(50)),
+            **kw
+        )
+        if (
+            testing.requires.view_reflection.enabled
+            and testing.requires.temporary_views.enabled
+        ):
+            event.listen(
+                user_tmp,
+                "after_create",
+                DDL(
+                    "create temporary view user_tmp_v as "
+                    "select * from user_tmp_%s" % config.ident
+                ),
+            )
+            event.listen(user_tmp, "before_drop", DDL("drop view user_tmp_v"))
 
     def test_has_table(self):
         with config.db.begin() as conn:
@@ -109,6 +158,19 @@ class HasTableTest(fixtures.TablesTest):
     def test_has_table_view(self, connection):
         insp = inspect(connection)
         is_true(insp.has_table("vv"))
+
+    @testing.requires.has_temp_table
+    def test_has_table_temp_table(self, connection):
+        insp = inspect(connection)
+        temp_table_name = self.temp_table_name()
+        is_true(insp.has_table(temp_table_name))
+
+    @testing.requires.has_temp_table
+    @testing.requires.view_reflection
+    @testing.requires.temporary_views
+    def test_has_table_temp_view(self, connection):
+        insp = inspect(connection)
+        is_true(insp.has_table("user_tmp_v"))
 
     @testing.fails_on(
         "oracle",
@@ -326,21 +388,10 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
         assert insp.get_check_constraints(name)
 
 
-class ComponentReflectionTest(fixtures.TablesTest):
+class ComponentReflectionTest(OneConnectionTablesTest):
     run_inserts = run_deletes = None
 
     __backend__ = True
-
-    @classmethod
-    def setup_bind(cls):
-        if config.requirements.independent_connections.enabled:
-            from sqlalchemy import pool
-
-            return engines.testing_engine(
-                options=dict(poolclass=pool.StaticPool, scope="class"),
-            )
-        else:
-            return config.db
 
     @classmethod
     def define_tables(cls, metadata):
