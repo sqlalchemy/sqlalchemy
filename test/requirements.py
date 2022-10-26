@@ -610,6 +610,18 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def has_temp_table(self):
+        """target dialect supports checking a single temp table name
+
+        unfortunately this is not the same as temp_table_names
+
+        """
+
+        return only_on(["sqlite", "oracle", "postgresql", "mssql"]) + skip_if(
+            self._sqlite_file_db
+        )
+
+    @property
     def temporary_views(self):
         """target database supports temporary views"""
         return only_on(["sqlite", "postgresql"]) + skip_if(
