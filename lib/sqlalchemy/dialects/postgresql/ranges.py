@@ -137,13 +137,13 @@ class Range(Generic[_T]):
             return False
 
         slower = self.lower
-        slower_inc = self.bounds[0] == '['
+        slower_inc = self.bounds[0] == "["
         supper = self.upper
-        supper_inc = self.bounds[1] == ']'
+        supper_inc = self.bounds[1] == "]"
         olower = other.lower
-        olower_inc = other.bounds[0] == '['
+        olower_inc = other.bounds[0] == "["
         oupper = other.upper
-        oupper_inc = other.bounds[1] == ']'
+        oupper_inc = other.bounds[1] == "]"
 
         # A bilateral unbound range contains any other range
         if olower is oupper is None:
