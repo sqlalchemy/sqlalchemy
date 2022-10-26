@@ -213,7 +213,11 @@ class _AttributeOptions(NamedTuple):
 
     @classmethod
     def _get_arguments_for_make_dataclass(
-        cls, key: str, annotation: Type[Any], elem: _T
+        cls,
+        key: str,
+        annotation: Type[Any],
+        mapped_container: Optional[Any],
+        elem: _T,
     ) -> Union[
         Tuple[str, Type[Any]], Tuple[str, Type[Any], dataclasses.Field[Any]]
     ]:
@@ -229,7 +233,21 @@ class _AttributeOptions(NamedTuple):
         elif elem is not _NoArg.NO_ARG:
             # why is typing not erroring on this?
             return (key, annotation, elem)
+        elif mapped_container is not None:
+            # it's Mapped[], but there's no "element", which means declarative
+            # did not actually do anything for this field.  this shouldn't
+            # happen.
+            # previously, this would occur because _scan_attributes would
+            # skip a field that's on an already mapped superclass, but it
+            # would still include it in the annotations, leading
+            # to issue #8718
+
+            assert False, "Mapped[] received without a mapping declaration"
+
         else:
+            # plain dataclass field, not mapped.  Is only possible
+            # if __allow_unmapped__ is set up.  I can see this mode causing
+            # problems...
             return (key, annotation)
 
 

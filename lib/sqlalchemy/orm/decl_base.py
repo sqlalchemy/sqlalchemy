@@ -772,7 +772,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 annotation,
                 is_dataclass_field,
             ) in local_attributes_for_class():
-
                 if re.match(r"^__.+__$", name):
                     if name == "__mapper_args__":
                         check_decl = _check_declared_props_nocascade(
@@ -825,6 +824,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                             "not applying to subclass %s."
                             % (base.__name__, name, base, cls)
                         )
+
                     continue
                 elif base is not cls:
                     # we're a mixin, abstract base, or something that is
@@ -990,10 +990,15 @@ class _ClassScanMapperConfig(_MapperConfig):
             _AttributeOptions._get_arguments_for_make_dataclass(
                 key,
                 anno,
+                mapped_container,
                 self.collected_attributes.get(key, _NoArg.NO_ARG),
             )
-            for key, anno in (
-                (key, mapped_anno if mapped_anno else raw_anno)
+            for key, anno, mapped_container in (
+                (
+                    key,
+                    mapped_anno if mapped_anno else raw_anno,
+                    mapped_container,
+                )
                 for key, (
                     raw_anno,
                     mapped_container,
@@ -1003,7 +1008,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 ) in self.collected_annotations.items()
             )
         ]
-
         annotations = {}
         defaults = {}
         for item in field_list:
@@ -1139,7 +1143,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         # copy mixin columns to the mapped class
 
         for name, obj, annotation, is_dataclass in attributes_for_class():
-
             if (
                 not fixed_table
                 and obj is None
@@ -1154,14 +1157,16 @@ class _ClassScanMapperConfig(_MapperConfig):
 
             elif isinstance(obj, (Column, MappedColumn)):
 
-                obj = self._collect_annotation(name, annotation, True, obj)
-
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
                     # (like by the InstrumentedAttribute of the
-                    # superclass), skip
+                    # superclass), skip.  don't collect the annotation
+                    # either (issue #8718)
                     continue
-                elif name not in dict_ and not (
+
+                obj = self._collect_annotation(name, annotation, True, obj)
+
+                if name not in dict_ and not (
                     "__table__" in dict_
                     and (getattr(obj, "name", None) or name)
                     in dict_["__table__"].c

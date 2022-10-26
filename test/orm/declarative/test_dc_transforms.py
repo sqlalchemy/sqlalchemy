@@ -406,6 +406,33 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             },
         )
 
+    def test_allow_unmapped_fields_wo_mapped_or_dc_w_inherits(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+            __allow_unmapped__ = True
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: str
+            ctrl_one: str = dataclasses.field()
+            some_field: int = dataclasses.field(default=5)
+
+        class B(A):
+            b_data: Mapped[str] = mapped_column(default="bd")
+
+        b1 = B(data="data", ctrl_one="ctrl_one", some_field=5, b_data="x")
+        eq_(
+            dataclasses.asdict(b1),
+            {
+                "ctrl_one": "ctrl_one",
+                "data": "data",
+                "id": None,
+                "some_field": 5,
+                "b_data": "x",
+            },
+        )
+
     def test_integrated_dc(self, dc_decl_base: Type[MappedAsDataclass]):
         """We will be telling users "this is a dataclass that is also
         mapped". Therefore, they will want *any* kind of attribute to do what
@@ -1184,6 +1211,138 @@ class DataclassArgsTest(fixtures.TestBase):
             relationship("Foo", **kw),
         ]:
             eq_(prop._attribute_options, exp)
+
+
+class MixinColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """tests for #8718"""
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def model(self):
+        def go(use_mixin, use_inherits, mad_setup):
+
+            if use_mixin:
+
+                if mad_setup == "dc, mad":
+
+                    class BaseEntity(DeclarativeBase, MappedAsDataclass):
+                        pass
+
+                elif mad_setup == "mad, dc":
+
+                    class BaseEntity(MappedAsDataclass, DeclarativeBase):
+                        pass
+
+                elif mad_setup == "subclass":
+
+                    class BaseEntity(DeclarativeBase):
+                        pass
+
+                class IdMixin:
+                    id: Mapped[int] = mapped_column(
+                        primary_key=True, init=False
+                    )
+
+                if mad_setup == "subclass":
+
+                    class A(IdMixin, MappedAsDataclass, BaseEntity):
+                        __mapper_args__ = {
+                            "polymorphic_on": "type",
+                            "polymorphic_identity": "a",
+                        }
+
+                        __tablename__ = "a"
+                        type: Mapped[str] = mapped_column(String, init=False)
+                        data: Mapped[str] = mapped_column(String, init=False)
+
+                else:
+
+                    class A(IdMixin, BaseEntity):
+                        __mapper_args__ = {
+                            "polymorphic_on": "type",
+                            "polymorphic_identity": "a",
+                        }
+
+                        __tablename__ = "a"
+                        type: Mapped[str] = mapped_column(String, init=False)
+                        data: Mapped[str] = mapped_column(String, init=False)
+
+            else:
+
+                if mad_setup == "dc, mad":
+
+                    class BaseEntity(DeclarativeBase, MappedAsDataclass):
+                        id: Mapped[int] = mapped_column(
+                            primary_key=True, init=False
+                        )
+
+                elif mad_setup == "mad, dc":
+
+                    class BaseEntity(MappedAsDataclass, DeclarativeBase):
+                        id: Mapped[int] = mapped_column(
+                            primary_key=True, init=False
+                        )
+
+                elif mad_setup == "subclass":
+
+                    class BaseEntity(DeclarativeBase):
+                        id: Mapped[int] = mapped_column(
+                            primary_key=True, init=False
+                        )
+
+                if mad_setup == "subclass":
+
+                    class A(MappedAsDataclass, BaseEntity):
+                        __mapper_args__ = {
+                            "polymorphic_on": "type",
+                            "polymorphic_identity": "a",
+                        }
+
+                        __tablename__ = "a"
+                        type: Mapped[str] = mapped_column(String, init=False)
+                        data: Mapped[str] = mapped_column(String, init=False)
+
+                else:
+
+                    class A(BaseEntity):
+                        __mapper_args__ = {
+                            "polymorphic_on": "type",
+                            "polymorphic_identity": "a",
+                        }
+
+                        __tablename__ = "a"
+                        type: Mapped[str] = mapped_column(String, init=False)
+                        data: Mapped[str] = mapped_column(String, init=False)
+
+            if use_inherits:
+
+                class B(A):
+                    __mapper_args__ = {
+                        "polymorphic_identity": "b",
+                    }
+                    b_data: Mapped[str] = mapped_column(String, init=False)
+
+                return B
+            else:
+                return A
+
+        yield go
+
+    @testing.combinations("inherits", "plain", argnames="use_inherits")
+    @testing.combinations("mixin", "base", argnames="use_mixin")
+    @testing.combinations(
+        "mad, dc", "dc, mad", "subclass", argnames="mad_setup"
+    )
+    def test_mapping(self, model, use_inherits, use_mixin, mad_setup):
+        target_cls = model(
+            use_inherits=use_inherits == "inherits",
+            use_mixin=use_mixin == "mixin",
+            mad_setup=mad_setup,
+        )
+
+        obj = target_cls()
+        assert "id" not in obj.__dict__
 
 
 class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
