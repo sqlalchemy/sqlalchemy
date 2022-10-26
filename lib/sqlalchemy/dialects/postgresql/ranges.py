@@ -12,6 +12,7 @@ from typing import Any
 from typing import Generic
 from typing import Optional
 from typing import TypeVar
+from typing import Union
 
 from ... import types as sqltypes
 from ...util import py310
@@ -80,7 +81,7 @@ class Range(Generic[_T]):
     def __bool__(self) -> bool:
         return self.empty
 
-    def contains_value(self, value: _T) -> bool:
+    def _contains_value(self, value: _T) -> bool:
         "Check whether this range contains the given `value`."
 
         if self.empty:
@@ -110,7 +111,7 @@ class Range(Generic[_T]):
             else value <= self.upper
         )
 
-    def issubset(self, other) -> bool:
+    def _contained_by(self, other: Range) -> bool:
         "Determine whether this range is a contained by `other`."
 
         # Any range contains the empty one
@@ -154,10 +155,18 @@ class Range(Generic[_T]):
                 upper_side = other.upper == self.upper
         return upper_side
 
-    def issuperset(self, other) -> bool:
-        "Determine whether this range contains `other`."
+    def contains(self, value: Union[_T, Range]) -> bool:
+        "Determine whether this range contains `value`."
 
-        return other.issubset(self)
+        if isinstance(value, Range):
+            return value._contained_by(self)
+        else:
+            return self._contains_value(value)
+
+    def contained_by(self, other: Range) -> bool:
+        "Determine whether this range is a contained by `other`."
+
+        return self._contained_by_range(other)
 
 
 class AbstractRange(sqltypes.TypeEngine):

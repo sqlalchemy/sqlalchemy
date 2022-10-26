@@ -1228,13 +1228,13 @@ class TestRange(fixtures.TestBase):
         (Range(1, 4, bounds="()"), "(1,4)"),
         argnames="r,rrepr",
     )
-    def test_range_contains_value(self, connection, r, rrepr, v):
+    def test_contains_value(self, connection, r, rrepr, v):
         q = text(f"select {v} <@ '{rrepr}'::int4range")
-        eq_(r.contains_value(v), connection.scalar(q))
+        eq_(r.contains(v), connection.scalar(q))
 
     @testing.combinations(
         (Range(empty=True), "empty"),
-        (Range(1, 2, bounds="()"), "(1,2)"),
+        (Range(1, 2, bounds="(]"), "(1,2]"),
         (Range(None, None, bounds="()"), "(,)"),
         (Range(None, 1, bounds="[)"), "[,1)"),
         (Range(1, None, bounds="[)"), "[1,)"),
@@ -1258,8 +1258,8 @@ class TestRange(fixtures.TestBase):
         (Range(0, 6, bounds="[)"), "[0,6)"),
         argnames="r1,r1repr",
     )
-    def test_is_sub_super_set(self, connection, r1, r1repr, r2, r2repr):
-        q = text(f"select '{r1repr}'::int4range <@ '{r2repr}'::int4range")
-        eq_(r1.issubset(r2), connection.scalar(q))
+    def test_contains_range(self, connection, r1, r1repr, r2, r2repr):
+        q = text(f"select '{r1repr}'::int4range @> '{r2repr}'::int4range")
+        eq_(r1.contains(r2), connection.scalar(q))
         q = text(f"select '{r2repr}'::int4range @> '{r1repr}'::int4range")
-        eq_(r2.issuperset(r1), connection.scalar(q))
+        eq_(r2.contains(r1), connection.scalar(q))
