@@ -17,6 +17,7 @@ from sqlalchemy import extract
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import schema
@@ -30,6 +31,7 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.dialects.postgresql import INT4RANGE
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
@@ -1218,50 +1220,55 @@ class TestRange(fixtures.TestBase):
 
     @testing.combinations(0, 1, 2, 4, 5, argnames="v")
     @testing.combinations(
-        (Range(empty=True), "empty"),
-        (Range(None, None, bounds="()"), "(,)"),
-        (Range(None, 4, bounds="(]"), "(,4]"),
-        (Range(1, None, bounds="[)"), "[1,)"),
-        (Range(1, 4, bounds="[)"), "[1,4)"),
-        (Range(1, 4, bounds="[]"), "[1,4]"),
-        (Range(1, 4, bounds="(]"), "(1,4]"),
-        (Range(1, 4, bounds="()"), "(1,4)"),
-        argnames="r,rrepr",
+        "empty",
+        "(,)",
+        "(,4]",
+        "[1,)",
+        "[1,4)",
+        "[1,4]",
+        "(1,4]",
+        "(1,4)",
+        argnames="rrepr",
     )
-    def test_contains_value(self, connection, r, rrepr, v):
-        q = text(f"select {v} <@ '{rrepr}'::int4range")
-        eq_(r.contains(v), connection.scalar(q))
+    def test_contains_value(self, connection, rrepr, v):
+        q = select(literal_column(f"'{rrepr}'::int4range", INT4RANGE),
+                   literal_column(f"{v} <@ '{rrepr}'::int4range"))
+        r, expected = connection.execute(q).first()
+        eq_(r.contains(v), expected)
 
     @testing.combinations(
-        (Range(empty=True), "empty"),
-        (Range(1, 2, bounds="(]"), "(1,2]"),
-        (Range(1, 2, bounds="[)"), "[1,2)"),
-        (Range(None, None, bounds="()"), "(,)"),
-        (Range(None, 1, bounds="[)"), "[,1)"),
-        (Range(1, None, bounds="[)"), "[1,)"),
-        (Range(1, 4, bounds="[)"), "[1,4)"),
-        (Range(1, 4, bounds="[]"), "[1,4]"),
-        (Range(1, 4, bounds="(]"), "(1,4]"),
-        (Range(1, 4, bounds="()"), "(1,4)"),
-        argnames="r2,r2repr",
+        "empty",
+        "(1,2]",
+        "[1,2)",
+        "(,)",
+        "[,1)",
+        "[1,)",
+        "[1,4)",
+        "[1,4]",
+        "(1,4]",
+        "(1,4)",
+        argnames="r2repr",
     )
     @testing.combinations(
-        (Range(empty=True), "empty"),
-        (Range(None, None, bounds="[)"), "[,)"),
-        (Range(None, 1, bounds="[)"), "[,1)"),
-        (Range(1, None, bounds="[)"), "[1,)"),
-        (Range(1, 4, bounds="[)"), "[1,4)"),
-        (Range(1, 4, bounds="[]"), "[1,4]"),
-        (Range(1, 4, bounds="(]"), "(1,4]"),
-        (Range(1, 4, bounds="()"), "(1,4)"),
-        (Range(-4, 1, bounds="[)"), "[-4,1)"),
-        (Range(2, 3, bounds="[)"), "[2,3)"),
-        (Range(0, 1, bounds="(]"), "(0,1]"),
-        (Range(0, 6, bounds="[)"), "[0,6)"),
-        argnames="r1,r1repr",
+        "empty",
+        "[,)",
+        "[,1)",
+        "[1,)",
+        "[1,4)",
+        "[1,4]",
+        "(1,4]",
+        "(1,4)",
+        "[-4,1)",
+        "[2,3)",
+        "(0,1]",
+        "[0,6)",
+        argnames="r1repr",
     )
-    def test_contains_range(self, connection, r1, r1repr, r2, r2repr):
-        q = text(f"select '{r1repr}'::int4range @> '{r2repr}'::int4range")
-        eq_(r1.contains(r2), connection.scalar(q))
-        q = text(f"select '{r2repr}'::int4range @> '{r1repr}'::int4range")
-        eq_(r2.contains(r1), connection.scalar(q))
+    def test_contains_range(self, connection, r1repr, r2repr):
+        q = select(literal_column(f"'{r1repr}'::int4range", INT4RANGE).label("r1"),
+                   literal_column(f"'{r2repr}'::int4range", INT4RANGE).label("r2"),
+                   literal_column(f"'{r1repr}'::int4range @> '{r2repr}'::int4range"),
+                   literal_column(f"'{r1repr}'::int4range <@ '{r2repr}'::int4range"))
+        r1, r2, contains, contained = connection.execute(q).first()
+        eq_(r1.contains(r2), contains)
+        eq_(r2.contains(r1), contained)
