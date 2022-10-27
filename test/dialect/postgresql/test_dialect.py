@@ -1265,10 +1265,11 @@ class TestRange(fixtures.TestBase):
         argnames="r1repr",
     )
     def test_contains_range(self, connection, r1repr, r2repr):
-        q = select(literal_column(f"'{r1repr}'::int4range", INT4RANGE).label("r1"),
-                   literal_column(f"'{r2repr}'::int4range", INT4RANGE).label("r2"),
-                   literal_column(f"'{r1repr}'::int4range @> '{r2repr}'::int4range"),
-                   literal_column(f"'{r1repr}'::int4range <@ '{r2repr}'::int4range"))
+        q = select(
+            literal_column(f"'{r1repr}'::int4range", INT4RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::int4range", INT4RANGE).label("r2"),
+            literal_column(f"'{r1repr}'::int4range @> '{r2repr}'::int4range"),
+            literal_column(f"'{r1repr}'::int4range <@ '{r2repr}'::int4range"))
         r1, r2, contains, contained = connection.execute(q).first()
         eq_(r1.contains(r2), contains)
         eq_(r2.contains(r1), contained)
