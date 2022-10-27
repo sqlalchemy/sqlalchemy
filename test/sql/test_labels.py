@@ -3,6 +3,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import exc as exceptions
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -16,6 +17,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import roles
 from sqlalchemy.sql import table
+from sqlalchemy.sql.base import prefix_anon_map
 from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import WrapsColumnExpression
@@ -1038,3 +1040,35 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             "SOME_COL_THING(some_table.value) "
             "AS some_table_value FROM some_table",
         )
+
+    @testing.combinations(
+        # the resulting strings are completely arbitrary and are not
+        # exposed in SQL with current implementations.  we want to
+        # only assert that the operation doesn't fail.  It's safe to
+        # change the assertion cases for this test if the label escaping
+        # format changes
+        (literal_column("'(1,2]'"), "'_1,2]'_1"),
+        (literal_column("))"), "__1"),
+        (literal_column("'%('"), "'_'_1"),
+    )
+    def test_labels_w_strformat_chars_in_isolation(self, test_case, expected):
+        """test #8724"""
+
+        pa = prefix_anon_map()
+        eq_(test_case._anon_key_label % pa, expected)
+
+    @testing.combinations(
+        (
+            select(literal_column("'(1,2]'"), literal_column("'(1,2]'")),
+            "SELECT '(1,2]', '(1,2]'",
+        ),
+        (select(literal_column("))"), literal_column("))")), "SELECT )), ))"),
+        (
+            select(literal_column("'%('"), literal_column("'%('")),
+            "SELECT '%(', '%('",
+        ),
+    )
+    def test_labels_w_strformat_chars_in_statements(self, test_case, expected):
+        """test #8724"""
+
+        self.assert_compile(test_case, expected)
