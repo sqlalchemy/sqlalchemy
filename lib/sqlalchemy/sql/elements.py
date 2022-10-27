@@ -5063,8 +5063,13 @@ class _anonymous_label(_truncated_label):
         sanitize_key: bool = False,
     ) -> _anonymous_label:
 
+        # need to escape chars that interfere with format
+        # strings in any case, issue #8724
+        body = re.sub(r"[%\(\) \$]+", "_", body)
+
         if sanitize_key:
-            body = re.sub(r"[%\(\) \$]+", "_", body).strip("_")
+            # sanitize_key is then an extra step used by BindParameter
+            body = body.strip("_")
 
         label = "%%(%d %s)s" % (seed, body.replace("%", "%%"))
         if enclosing_label:
