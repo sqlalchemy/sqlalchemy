@@ -2282,8 +2282,16 @@ def join(
                 join(User.addresses).\
                 filter(Address.email_address=='foo@bar.com')
 
-    See :ref:`orm_queryguide_joins` for information on modern usage
-    of ORM level joins.
+    .. warning:: using :func:`_orm.join` directly may not work properly
+       with modern ORM options such as :func:`_orm.with_loader_criteria`.
+       It is strongly recommended to use the idiomatic join patterns
+       provided by methods such as :meth:`.Select.join` and
+       :meth:`.Select.join_from` when creating ORM joins.
+
+    .. seealso::
+
+        :ref:`orm_queryguide_joins` - in the :ref:`queryguide_toplevel` for
+        background on idiomatic ORM join patterns
 
     """
     return _ORMJoin(left, right, onclause, isouter, full)

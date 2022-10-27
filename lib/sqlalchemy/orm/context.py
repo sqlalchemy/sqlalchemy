@@ -2246,6 +2246,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         for fromclause in self.from_clauses:
             ext_info = fromclause._annotations.get("parententity", None)
+
             if (
                 ext_info
                 and (
