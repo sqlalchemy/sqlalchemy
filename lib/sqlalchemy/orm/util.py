@@ -1774,6 +1774,24 @@ class _ORMJoin(expression.Join):
 
             self._target_adapter = target_adapter
 
+            # we don't use the normal coercions logic for _ORMJoin
+            # (probably should), so do some gymnastics to get the entity.
+            # logic here is for #8721, which was a major bug in 1.4
+            # for almost two years, not reported/fixed until 1.4.43 (!)
+            if left_info.is_selectable:
+                parententity = left_selectable._annotations.get(
+                    "parententity", None
+                )
+            elif left_info.is_mapper or left_info.is_aliased_class:
+                parententity = left_info
+            else:
+                parententity = None
+
+            if parententity is not None:
+                self._annotations = self._annotations.union(
+                    {"parententity": parententity}
+                )
+
         augment_onclause = onclause is None and _extra_criteria
         expression.Join.__init__(self, left, right, onclause, isouter, full)
 
@@ -1875,13 +1893,16 @@ def join(
                 join(User.addresses).\
                 filter(Address.email_address=='foo@bar.com')
 
-    See :ref:`orm_queryguide_joins` for information on modern usage
-    of ORM level joins.
+    .. warning:: using :func:`_orm.join` directly may not work properly
+       with modern ORM options such as :func:`_orm.with_loader_criteria`.
+       It is strongly recommended to use the idiomatic join patterns
+       provided by methods such as :meth:`.Select.join` and
+       :meth:`.Select.join_from` when creating ORM joins.
 
-    .. deprecated:: 0.8
+    .. seealso::
 
-        the ``join_to_left`` parameter is deprecated, and will be removed
-        in a future release.  The parameter has no effect.
+        :ref:`orm_queryguide_joins` - in the :ref:`queryguide_toplevel` for
+        background on idiomatic ORM join patterns
 
     """
     return _ORMJoin(left, right, onclause, isouter, full)

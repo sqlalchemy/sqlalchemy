@@ -14,6 +14,7 @@ from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -393,6 +394,124 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             sess.query(literal("1")).select_from(a1),
             "SELECT :param_1 AS anon_1 FROM employees AS employees_1 "
             "WHERE employees_1.type IN (__[POSTCOMPILE_type_1])",
+        )
+
+    @testing.combinations(
+        (
+            lambda Engineer, Report: select(Report)
+            .select_from(Engineer)
+            .join(Engineer.reports),
+        ),
+        (
+            lambda Engineer, Report: select(Report).select_from(
+                orm_join(Engineer, Report, Engineer.reports)
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report).join_from(
+                Engineer, Report, Engineer.reports
+            ),
+        ),
+        argnames="stmt_fn",
+    )
+    @testing.combinations(True, False, argnames="alias_engineer")
+    def test_select_from_w_join_left(self, stmt_fn, alias_engineer):
+        """test #8721"""
+
+        Engineer = self.classes.Engineer
+        Report = self.classes.Report
+
+        if alias_engineer:
+            Engineer = aliased(Engineer)
+        stmt = testing.resolve_lambda(
+            stmt_fn, Engineer=Engineer, Report=Report
+        )
+
+        if alias_engineer:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id, reports.employee_id, reports.name "
+                "FROM employees AS employees_1 JOIN reports "
+                "ON employees_1.employee_id = reports.employee_id "
+                "WHERE employees_1.type IN (__[POSTCOMPILE_type_1])",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id, reports.employee_id, reports.name "
+                "FROM employees JOIN reports ON employees.employee_id = "
+                "reports.employee_id "
+                "WHERE employees.type IN (__[POSTCOMPILE_type_1])",
+            )
+
+    @testing.combinations(
+        (
+            lambda Engineer, Report: select(
+                Report.report_id, Engineer.employee_id
+            )
+            .select_from(Engineer)
+            .join(Engineer.reports),
+        ),
+        (
+            lambda Engineer, Report: select(
+                Report.report_id, Engineer.employee_id
+            ).select_from(orm_join(Engineer, Report, Engineer.reports)),
+        ),
+        (
+            lambda Engineer, Report: select(
+                Report.report_id, Engineer.employee_id
+            ).join_from(Engineer, Report, Engineer.reports),
+        ),
+    )
+    def test_select_from_w_join_left_including_entity(self, stmt_fn):
+        """test #8721"""
+
+        Engineer = self.classes.Engineer
+        Report = self.classes.Report
+        stmt = testing.resolve_lambda(
+            stmt_fn, Engineer=Engineer, Report=Report
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT reports.report_id, employees.employee_id "
+            "FROM employees JOIN reports ON employees.employee_id = "
+            "reports.employee_id "
+            "WHERE employees.type IN (__[POSTCOMPILE_type_1])",
+        )
+
+    @testing.combinations(
+        (
+            lambda Engineer, Report: select(Report).join(
+                Report.employee.of_type(Engineer)
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report).select_from(
+                orm_join(Report, Engineer, Report.employee.of_type(Engineer))
+            )
+        ),
+        (
+            lambda Engineer, Report: select(Report).join_from(
+                Report, Engineer, Report.employee.of_type(Engineer)
+            ),
+        ),
+    )
+    def test_select_from_w_join_right(self, stmt_fn):
+        """test #8721"""
+
+        Engineer = self.classes.Engineer
+        Report = self.classes.Report
+        stmt = testing.resolve_lambda(
+            stmt_fn, Engineer=Engineer, Report=Report
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT reports.report_id, reports.employee_id, reports.name "
+            "FROM reports JOIN employees ON employees.employee_id = "
+            "reports.employee_id AND employees.type "
+            "IN (__[POSTCOMPILE_type_1])",
         )
 
     def test_from_statement_select(self):
