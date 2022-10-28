@@ -622,11 +622,16 @@ adding a ``FOREIGN KEY`` constraint as well as substituting
       FOREIGN KEY(id) REFERENCES parent (id)
     )
 
-.. note:: The above feature of :func:`_orm.mapped_column` can in theory
-   work for other constructs as well such as :func:`_orm.relationship` and
-   :func:`_orm.composite`.  At the moment, these other use cases are not
-   implemented and raise a ``NotImplementedError``, but may be implemented
-   in future releases.
+.. note:: The feature of :func:`_orm.mapped_column` just described, where
+   a fully constructed set of column arguments may be indicated using
+   :pep:`593` ``Annotated`` objects that contain a "template"
+   :func:`_orm.mapped_column` object to be copied into the attribute, is
+   currently not implemented for other ORM constructs such as
+   :func:`_orm.relationship` and :func:`_orm.composite`.   While this functionality
+   is in theory possible, for the moment attempting to use ``Annotated``
+   to indicate further arguments for :func:`_orm.relationship` and similar
+   will raise a ``NotImplementedError`` exception at runtime, but
+   may be implemented in future releases.
 
 Dataclass features in ``mapped_column()``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
