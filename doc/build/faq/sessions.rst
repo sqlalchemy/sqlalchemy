@@ -400,14 +400,21 @@ an "expire" event of the :func:`_orm.relationship` in which it's involved.  This
 that for the following sequence::
 
     o = Session.query(SomeClass).first()
-    assert o.foo is None  # accessing an un-set attribute sets it to None
+
+    # assume the existing o.foo_id value is None;
+    # accessing o.foo will reconcile this as ``None``, but will effectively
+    # "load" the value of None
+    assert o.foo is None
+
+    # now set foo_id to something.  o.foo will not be immediately affected
     o.foo_id = 7
 
-``o.foo`` is initialized to ``None`` when we first accessed it.  Setting
-``o.foo_id = 7`` will have the value of "7" as pending, but no flush
+``o.foo`` is loaded with its effective database value of ``None`` when it
+is first accessed.  Setting
+``o.foo_id = 7`` will have the value of "7" as a pending change, but no flush
 has occurred - so ``o.foo`` is still ``None``::
 
-    # attribute is already set to None, has not been
+    # attribute is already "loaded" as None, has not been
     # reconciled with o.foo_id = 7 yet
     assert o.foo is None
 
@@ -415,11 +422,12 @@ For ``o.foo`` to load based on the foreign key mutation is usually achieved
 naturally after the commit, which both flushes the new foreign key value
 and expires all state::
 
-    Session.commit()  # expires all attributes
+    session.commit()  # expires all attributes
 
     foo_7 = Session.query(Foo).get(7)
 
-    assert o.foo is foo_7  # o.foo lazyloads on access
+    # o.foo will lazyload again, this time getting the new object
+    assert o.foo is foo_7
 
 A more minimal operation is to expire the attribute individually - this can
 be performed for any :term:`persistent` object using :meth:`.Session.expire`::
@@ -442,13 +450,12 @@ have meaning until the row is inserted; otherwise there is no row yet::
 
     Session.add(new_obj)
 
-    # accessing an un-set attribute sets it to None
+    # returns None but this is not a "lazyload", as the object is not
+    # persistent in the DB yet, and the None value is not part of the
+    # object's state
     assert new_obj.foo is None
 
     Session.flush()  # emits INSERT
-
-    # expire this because we already set .foo to None
-    Session.expire(o, ["foo"])
 
     assert new_obj.foo is foo_7  # now it loads
 
