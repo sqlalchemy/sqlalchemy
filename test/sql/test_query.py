@@ -1230,7 +1230,7 @@ class CompoundTest(fixtures.TablesTest):
 
     @testing.crashes("oracle", "FIXME: unknown, verify not fails_on")
     @testing.fails_on(
-        testing.requires._mysql_not_mariadb_104, "FIXME: unknown"
+        testing.requires._mysql_not_mariadb_104_not_mysql8031, "FIXME: unknown"
     )
     @testing.fails_on("sqlite", "FIXME: unknown")
     def test_union_all(self, connection):
@@ -1351,7 +1351,7 @@ class CompoundTest(fixtures.TablesTest):
         eq_(found2, wanted)
 
     @testing.fails_on(
-        ["sqlite", testing.requires._mysql_not_mariadb_104],
+        ["sqlite", testing.requires._mysql_not_mariadb_104_not_mysql8031],
         "Can't handle this style of nesting",
     )
     @testing.requires.except_
@@ -1389,7 +1389,7 @@ class CompoundTest(fixtures.TablesTest):
 
     @testing.requires.intersect
     @testing.fails_on(
-        ["sqlite", testing.requires._mysql_not_mariadb_104],
+        ["sqlite", testing.requires._mysql_not_mariadb_104_not_mysql8031],
         "sqlite can't handle leading parenthesis",
     )
     def test_intersect_unions(self, connection):
