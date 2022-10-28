@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8724
+
+    Fixed issue which prevented the :func:`_sql.literal_column` construct from
+    working properly within the context of a :class:`.Select` construct as well
+    as other potential places where "anonymized labels" might be generated, if
+    the literal expression contained characters which could interfere with
+    format strings, such as open parenthesis, due to an implementation detail
+    of the "anonymous label" structure.
+
