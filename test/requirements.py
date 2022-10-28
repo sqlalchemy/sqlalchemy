@@ -731,7 +731,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support INTERSECT or equivalent."""
 
         return fails_if(
-            ["firebird", self._mysql_not_mariadb_103, "sybase"],
+            ["firebird", self._mysql_not_mariadb_103_not_mysql8031, "sybase"],
             "no support for INTERSECT",
         )
 
@@ -739,7 +739,7 @@ class DefaultRequirements(SuiteRequirements):
     def except_(self):
         """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
         return fails_if(
-            ["firebird", self._mysql_not_mariadb_103, "sybase"],
+            ["firebird", self._mysql_not_mariadb_103_not_mysql8031, "sybase"],
             "no support for EXCEPT",
         )
 
@@ -1732,10 +1732,36 @@ class DefaultRequirements(SuiteRequirements):
             or config.db.dialect._mariadb_normalized_version_info < (10, 3)
         )
 
+    def _mysql_not_mariadb_103_not_mysql8031(self, config):
+        return (against(config, ["mysql", "mariadb"])) and (
+            (
+                config.db.dialect._is_mariadb
+                and config.db.dialect._mariadb_normalized_version_info
+                < (10, 3)
+            )
+            or (
+                not config.db.dialect._is_mariadb
+                and config.db.dialect.server_version_info < (8, 0, 31)
+            )
+        )
+
     def _mysql_not_mariadb_104(self, config):
         return (against(config, ["mysql", "mariadb"])) and (
             not config.db.dialect._is_mariadb
             or config.db.dialect._mariadb_normalized_version_info < (10, 4)
+        )
+
+    def _mysql_not_mariadb_104_not_mysql8031(self, config):
+        return (against(config, ["mysql", "mariadb"])) and (
+            (
+                config.db.dialect._is_mariadb
+                and config.db.dialect._mariadb_normalized_version_info
+                < (10, 4)
+            )
+            or (
+                not config.db.dialect._is_mariadb
+                and config.db.dialect.server_version_info < (8, 0, 31)
+            )
         )
 
     def _has_mysql_on_windows(self, config):
