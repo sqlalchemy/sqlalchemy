@@ -68,6 +68,7 @@ from ..sql import lambdas
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql._typing import is_selectable
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import ColumnCollection
 from ..sql.cache_key import HasCacheKey
@@ -1703,6 +1704,24 @@ class _ORMJoin(expression.Join):
                 onclause = pj
 
             self._target_adapter = target_adapter
+
+            # we don't use the normal coercions logic for _ORMJoin
+            # (probably should), so do some gymnastics to get the entity.
+            # logic here is for #8721, which was a major bug in 1.4
+            # for almost two years, not reported/fixed until 1.4.43 (!)
+            if is_selectable(left_info):
+                parententity = left_selectable._annotations.get(
+                    "parententity", None
+                )
+            elif insp_is_mapper(left_info) or insp_is_aliased_class(left_info):
+                parententity = left_info
+            else:
+                parententity = None
+
+            if parententity is not None:
+                self._annotations = self._annotations.union(
+                    {"parententity": parententity}
+                )
 
         augment_onclause = onclause is None and _extra_criteria
         expression.Join.__init__(self, left, right, onclause, isouter, full)

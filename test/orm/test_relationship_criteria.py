@@ -16,6 +16,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defer
+from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import registry
@@ -262,6 +263,144 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT count(*) AS count_1 FROM users "
             "WHERE users.name != :name_1",
+        )
+
+    @testing.combinations(
+        (
+            lambda User, Address: select(Address)
+            .select_from(User)
+            .join(User.addresses)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
+            lambda User, Address: select(Address)
+            .select_from(orm_join(User, Address, User.addresses))
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
+            lambda User, Address: select(Address)
+            .join_from(User, Address, User.addresses)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        argnames="stmt_fn",
+    )
+    @testing.combinations(True, False, argnames="alias_user")
+    def test_criteria_select_from_w_join_left(
+        self, user_address_fixture, stmt_fn, alias_user
+    ):
+        """test #8721"""
+        User, Address = user_address_fixture
+
+        if alias_user:
+            User = aliased(User)
+
+        stmt = testing.resolve_lambda(stmt_fn, User=User, Address=Address)
+
+        if alias_user:
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address FROM users AS users_1 "
+                "JOIN addresses ON users_1.id = addresses.user_id "
+                "WHERE users_1.name != :name_1",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "WHERE users.name != :name_1",
+            )
+
+    @testing.combinations(
+        (
+            lambda User, Address: select(Address.id, User.id)
+            .select_from(User)
+            .join(User.addresses)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
+            lambda User, Address: select(Address.id, User.id)
+            .select_from(orm_join(User, Address, User.addresses))
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
+            lambda User, Address: select(Address.id, User.id)
+            .join_from(User, Address, User.addresses)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        argnames="stmt_fn",
+    )
+    @testing.combinations(True, False, argnames="alias_user")
+    def test_criteria_select_from_w_join_left_including_entity(
+        self, user_address_fixture, stmt_fn, alias_user
+    ):
+        """test #8721"""
+        User, Address = user_address_fixture
+
+        if alias_user:
+            User = aliased(User)
+
+        stmt = testing.resolve_lambda(stmt_fn, User=User, Address=Address)
+
+        if alias_user:
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id, users_1.id AS id_1 "
+                "FROM users AS users_1 JOIN addresses "
+                "ON users_1.id = addresses.user_id "
+                "WHERE users_1.name != :name_1",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id, users.id AS id_1 "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "WHERE users.name != :name_1",
+            )
+
+    @testing.combinations(
+        (
+            lambda User, Address: select(Address)
+            .select_from(User)
+            .join(User.addresses)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "email")
+            ),
+        ),
+        (
+            # for orm_join(), this is set up before we have the context
+            # available that allows with_loader_criteria to be set up
+            # correctly
+            lambda User, Address: select(Address)
+            .select_from(orm_join(User, Address, User.addresses))
+            .options(
+                with_loader_criteria(Address, Address.email_address != "email")
+            ),
+            testing.fails("not implemented right now"),
+        ),
+        (
+            lambda User, Address: select(Address)
+            .join_from(User, Address, User.addresses)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "email")
+            ),
+        ),
+        argnames="stmt_fn",
+    )
+    def test_criteria_select_from_w_join_right(
+        self, user_address_fixture, stmt_fn
+    ):
+        """test #8721"""
+        User, Address = user_address_fixture
+
+        stmt = testing.resolve_lambda(stmt_fn, User=User, Address=Address)
+        self.assert_compile(
+            stmt,
+            "SELECT addresses.id, addresses.user_id, addresses.email_address "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "AND addresses.email_address != :email_address_1",
         )
 
     @testing.combinations(

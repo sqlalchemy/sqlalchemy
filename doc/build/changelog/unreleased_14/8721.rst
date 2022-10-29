@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8721
+
+    Fixed bug involving :class:`.Select` constructs which used a combination of
+    :meth:`.Select.select_from` with an ORM entity followed by
+    :meth:`.Select.join` against the entity sent in
+    :meth:`.Select.select_from`, as well as using plain
+    :meth:`.Select.join_from`, which when combined with a columns clause that
+    didn't explicitly include that entity would then cause "automatic WHERE
+    criteria" features such as the IN expression required for a single-table
+    inheritance subclass, as well as the criteria set up by the
+    :func:`_orm.with_loader_criteria` option, to not be rendered for that
+    entity. The correct entity is now transferred to the :class:`.Join` object
+    that's generated internally, so that the criteria against the left
+    side entity is correctly added.
+
