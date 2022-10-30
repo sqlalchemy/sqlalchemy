@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8731
+
+    Fixed issue in joined eager loading where an assertion fail would occur
+    with a particular combination of outer/inner joined eager loads in
+    conjunction with an inherited subclass mapper as the middle target.
+
