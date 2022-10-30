@@ -761,10 +761,10 @@ object is declared inline with the declarative class.   The
 ``@define`` decorator is applied to the class first, then the
 :meth:`_orm.registry.mapped` decorator second::
 
-
     from __future__ import annotations
 
     from typing import List
+    from typing import Optional
 
     from attrs import define
     from sqlalchemy import Column
@@ -773,6 +773,7 @@ object is declared inline with the declarative class.   The
     from sqlalchemy import MetaData
     from sqlalchemy import String
     from sqlalchemy import Table
+    from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import registry
     from sqlalchemy.orm import relationship
 
@@ -787,14 +788,14 @@ object is declared inline with the declarative class.   The
             mapper_registry.metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
-            Column("fullname", String(50)),
+            Column("FullName", String(50), key="fullname"),
             Column("nickname", String(12)),
         )
-        id: int
-        name: str
-        fullname: str
-        nickname: str
-        addresses: List[Address]
+        id: Mapped[int]
+        name: Mapped[str]
+        fullname: Mapped[str]
+        nickname: Mapped[str]
+        addresses: Mapped[List[Address]]
 
         __mapper_args__ = {  # type: ignore
             "properties": {
@@ -813,9 +814,9 @@ object is declared inline with the declarative class.   The
             Column("user_id", Integer, ForeignKey("user.id")),
             Column("email_address", String(50)),
         )
-        id: int
-        user_id: int
-        email_address: Optional[str]
+        id: Mapped[int]
+        user_id: Mapped[int]
+        email_address: Mapped[Optional[str]]
 
 .. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
    a mapped class, cannot be used with SQLAlchemy mappings without fully
