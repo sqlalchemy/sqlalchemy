@@ -52,6 +52,7 @@ from .pool import (
 from .pool import NullPool as NullPool
 from .pool import Pool as Pool
 from .pool import PoolProxiedConnection as PoolProxiedConnection
+from .pool import PoolResetState as PoolResetState
 from .pool import QueuePool as QueuePool
 from .pool import SingletonThreadPool as SingleonThreadPool
 from .pool import StaticPool as StaticPool

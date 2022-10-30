@@ -29,6 +29,7 @@ from .base import ConnectionPoolEntry as ConnectionPoolEntry
 from .base import ManagesConnection as ManagesConnection
 from .base import Pool as Pool
 from .base import PoolProxiedConnection as PoolProxiedConnection
+from .base import PoolResetState as PoolResetState
 from .base import reset_commit as reset_commit
 from .base import reset_none as reset_none
 from .base import reset_rollback as reset_rollback

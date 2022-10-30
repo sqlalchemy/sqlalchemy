@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from collections import deque
+import dataclasses
 from enum import Enum
 import threading
 import time
@@ -44,6 +45,51 @@ if TYPE_CHECKING:
     from ..event import _ListenerFnType
     from ..event import dispatcher
     from ..sql._typing import _InfoType
+
+
+@dataclasses.dataclass(frozen=True)
+class PoolResetState:
+    """describes the state of a DBAPI connection as it is being passed to
+    the :meth:`.PoolEvents.reset` connection pool event.
+
+    .. versionadded:: 2.0.0b3
+
+    """
+
+    __slots__ = ("transaction_was_reset", "terminate_only", "asyncio_safe")
+
+    transaction_was_reset: bool
+    """Indicates if the transaction on the DBAPI connection was already
+    essentially "reset" back by the :class:`.Connection` object.
+
+    This boolean is True if the :class:`.Connection` had transactional
+    state present upon it, which was then not closed using the
+    :meth:`.Connection.rollback` or :meth:`.Connection.commit` method;
+    instead, the transaction was closed inline within the
+    :meth:`.Connection.close` method so is guaranteed to remain non-present
+    when this event is reached.
+
+    """
+
+    terminate_only: bool
+    """indicates if the connection is to be immediately terminated and
+    not checked in to the pool.
+
+    This occurs for connections that were invalidated, as well as asyncio
+    connections that were not cleanly handled by the calling code that
+    are instead being garbage collected.   In the latter case,
+    operations can't be safely run on asyncio connections within garbage
+    collection as there is not necessarily an event loop present.
+
+    """
+
+    asyncio_safe: bool
+    """Indicates if the reset operation is occurring within a scope where
+    an enclosing event loop is expected to be present for asyncio applications.
+
+    Will be False in the case that the connection is being garbage collected.
+
+    """
 
 
 class ResetStyle(Enum):
@@ -168,38 +214,45 @@ class Pool(log.Identified, event.EventTarget):
              logging.
 
         :param reset_on_return: Determine steps to take on
-          connections as they are returned to the pool, which were
-          not otherwise handled by a :class:`_engine.Connection`.
+         connections as they are returned to the pool, which were
+         not otherwise handled by a :class:`_engine.Connection`.
+         Available from :func:`_sa.create_engine` via the
+         :paramref:`_sa.create_engine.pool_reset_on_return` parameter.
 
-          reset_on_return can have any of these values:
+         :paramref:`_pool.Pool.reset_on_return` can have any of these values:
 
-          * ``"rollback"`` - call rollback() on the connection,
-            to release locks and transaction resources.
-            This is the default value.  The vast majority
-            of use cases should leave this value set.
-          * ``True`` - same as 'rollback', this is here for
-            backwards compatibility.
-          * ``"commit"`` - call commit() on the connection,
-            to release locks and transaction resources.
-            A commit here may be desirable for databases that
-            cache query plans if a commit is emitted,
-            such as Microsoft SQL Server.  However, this
-            value is more dangerous than 'rollback' because
-            any data changes present on the transaction
-            are committed unconditionally.
-          * ``None`` - don't do anything on the connection.
-            This setting may be appropriate if the database / DBAPI
-            works in pure "autocommit" mode at all times, or if the
-            application uses the :class:`_engine.Engine` with consistent
-            connectivity patterns.   See the section
-            :ref:`pool_reset_on_return` for more details.
+         * ``"rollback"`` - call rollback() on the connection,
+           to release locks and transaction resources.
+           This is the default value.  The vast majority
+           of use cases should leave this value set.
+         * ``"commit"`` - call commit() on the connection,
+           to release locks and transaction resources.
+           A commit here may be desirable for databases that
+           cache query plans if a commit is emitted,
+           such as Microsoft SQL Server.  However, this
+           value is more dangerous than 'rollback' because
+           any data changes present on the transaction
+           are committed unconditionally.
+         * ``None`` - don't do anything on the connection.
+           This setting may be appropriate if the database / DBAPI
+           works in pure "autocommit" mode at all times, or if
+           a custom reset handler is established using the
+           :meth:`.PoolEvents.reset` event handler.
 
-          * ``False`` - same as None, this is here for
-            backwards compatibility.
+         * ``True`` - same as 'rollback', this is here for
+           backwards compatibility.
+         * ``False`` - same as None, this is here for
+           backwards compatibility.
+
+         For further customization of reset on return, the
+         :meth:`.PoolEvents.reset` event hook may be used which can perform
+         any connection activity desired on reset.
 
          .. seealso::
 
             :ref:`pool_reset_on_return`
+
+            :meth:`.PoolEvents.reset`
 
         :param events: a list of 2-tuples, each of the form
          ``(callable, target)`` which will be passed to :func:`.event.listen`
@@ -671,7 +724,9 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
         rec.fairy_ref = ref = weakref.ref(
             fairy,
-            lambda ref: _finalize_fairy(None, rec, pool, ref, echo, True)
+            lambda ref: _finalize_fairy(
+                None, rec, pool, ref, echo, transaction_was_reset=False
+            )
             if _finalize_fairy
             else None,
         )
@@ -864,7 +919,7 @@ def _finalize_fairy(
         weakref.ref[_ConnectionFairy]
     ],  # this is None when called directly, not by the gc
     echo: Optional[log._EchoFlagType],
-    reset: bool = True,
+    transaction_was_reset: bool = False,
     fairy: Optional[_ConnectionFairy] = None,
 ) -> None:
     """Cleanup for a :class:`._ConnectionFairy` whether or not it's already
@@ -906,11 +961,7 @@ def _finalize_fairy(
     if dbapi_connection is not None:
         if connection_record and echo:
             pool.logger.debug(
-                "Connection %r being returned to pool%s",
-                dbapi_connection,
-                ", transaction state was already reset by caller"
-                if not reset
-                else "",
+                "Connection %r being returned to pool", dbapi_connection
             )
 
         try:
@@ -923,8 +974,13 @@ def _finalize_fairy(
                     echo,
                 )
             assert fairy.dbapi_connection is dbapi_connection
-            if reset and can_manipulate_connection:
-                fairy._reset(pool)
+
+            fairy._reset(
+                pool,
+                transaction_was_reset=transaction_was_reset,
+                terminate_only=detach,
+                asyncio_safe=can_manipulate_connection,
+            )
 
             if detach:
                 if connection_record:
@@ -1293,29 +1349,55 @@ class _ConnectionFairy(PoolProxiedConnection):
     def _checkout_existing(self) -> _ConnectionFairy:
         return _ConnectionFairy._checkout(self._pool, fairy=self)
 
-    def _checkin(self, reset: bool = True) -> None:
+    def _checkin(self, transaction_was_reset: bool = False) -> None:
         _finalize_fairy(
             self.dbapi_connection,
             self._connection_record,
             self._pool,
             None,
             self._echo,
-            reset=reset,
+            transaction_was_reset=transaction_was_reset,
             fairy=self,
         )
 
     def _close(self) -> None:
         self._checkin()
 
-    def _reset(self, pool: Pool) -> None:
+    def _reset(
+        self,
+        pool: Pool,
+        transaction_was_reset: bool,
+        terminate_only: bool,
+        asyncio_safe: bool,
+    ) -> None:
         if pool.dispatch.reset:
-            pool.dispatch.reset(self.dbapi_connection, self._connection_record)
+            pool.dispatch.reset(
+                self.dbapi_connection,
+                self._connection_record,
+                PoolResetState(
+                    transaction_was_reset=transaction_was_reset,
+                    terminate_only=terminate_only,
+                    asyncio_safe=asyncio_safe,
+                ),
+            )
+
+        if not asyncio_safe:
+            return
+
         if pool._reset_on_return is reset_rollback:
-            if self._echo:
-                pool.logger.debug(
-                    "Connection %s rollback-on-return", self.dbapi_connection
-                )
-            pool._dialect.do_rollback(self)
+            if transaction_was_reset:
+                if self._echo:
+                    pool.logger.debug(
+                        "Connection %s reset, transaction already reset",
+                        self.dbapi_connection,
+                    )
+            else:
+                if self._echo:
+                    pool.logger.debug(
+                        "Connection %s rollback-on-return",
+                        self.dbapi_connection,
+                    )
+                pool._dialect.do_rollback(self)
         elif pool._reset_on_return is reset_commit:
             if self._echo:
                 pool.logger.debug(
@@ -1396,7 +1478,7 @@ class _ConnectionFairy(PoolProxiedConnection):
         if self._counter == 0:
             self._checkin()
 
-    def _close_no_reset(self) -> None:
+    def _close_special(self, transaction_reset: bool = False) -> None:
         self._counter -= 1
         if self._counter == 0:
-            self._checkin(reset=False)
+            self._checkin(transaction_was_reset=transaction_reset)

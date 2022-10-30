@@ -17,6 +17,9 @@ Connection Pool Events
 .. autoclass:: sqlalchemy.events.PoolEvents
    :members:
 
+.. autoclass:: sqlalchemy.events.PoolResetState
+   :members:
+
 .. _core_sql_events:
 
 SQL Execution and Connection Events

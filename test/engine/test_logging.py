@@ -553,6 +553,14 @@ class PoolLoggingTest(fixtures.TestBase):
         conn = None
 
         conn = q.connect()
+        conn._close_special(transaction_reset=True)
+        conn = None
+
+        conn = q.connect()
+        conn._close_special(transaction_reset=False)
+        conn = None
+
+        conn = q.connect()
         conn = None
         del conn
         lazy_gc()
@@ -563,13 +571,19 @@ class PoolLoggingTest(fixtures.TestBase):
             [
                 "Created new connection %r",
                 "Connection %r checked out from pool",
-                "Connection %r being returned to pool%s",
+                "Connection %r being returned to pool",
                 "Connection %s rollback-on-return",
                 "Connection %r checked out from pool",
-                "Connection %r being returned to pool%s",
+                "Connection %r being returned to pool",
                 "Connection %s rollback-on-return",
                 "Connection %r checked out from pool",
-                "Connection %r being returned to pool%s",
+                "Connection %r being returned to pool",
+                "Connection %s reset, transaction already reset",
+                "Connection %r checked out from pool",
+                "Connection %r being returned to pool",
+                "Connection %s rollback-on-return",
+                "Connection %r checked out from pool",
+                "Connection %r being returned to pool",
                 "Connection %s rollback-on-return",
                 "%s connection %r",
             ]

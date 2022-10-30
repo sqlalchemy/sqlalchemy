@@ -480,6 +480,61 @@ different isolation level settings.  See the discussion at
 
     :ref:`dbapi_autocommit`
 
+.. _mssql_reset_on_return:
+
+Temporary Table / Resource Reset for Connection Pooling
+-------------------------------------------------------
+
+The :class:`.QueuePool` connection pool implementation used
+by the SQLAlchemy :class:`.Engine` object includes
+:ref:`reset on return <pool_reset_on_return>` behavior that will invoke
+the DBAPI ``.rollback()`` method when connections are returned to the pool.
+While this rollback will clear out the immediate state used by the previous
+transaction, it does not cover a wider range of session-level state, including
+temporary tables as well as other server state such as prepared statement
+handles and statement caches.   An undocumented SQL Server procedure known
+as ``sp_reset_connection`` is known to be a workaround for this issue which
+will reset most of the session state that builds up on a connection, including
+temporary tables.
+
+To install ``sp_reset_connection`` as the means of performing reset-on-return,
+the :meth:`.PoolEvents.reset` event hook may be used, as demonstrated in the
+example below. The :paramref:`_sa.create_engine.pool_reset_on_return` parameter
+is set to ``None`` so that the custom scheme can replace the default behavior
+completely.   The custom hook implementation calls ``.rollback()`` in any case,
+as it's usually important that the DBAPI's own tracking of commit/rollback
+will remain consistent with the state of the transaction::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import event
+
+    mssql_engine = create_engine(
+        "mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
+
+        # disable default reset-on-return scheme
+        pool_reset_on_return=None,
+    )
+
+
+    @event.listens_for(mssql_engine, "reset")
+    def _reset_mssql(dbapi_connection, connection_record, reset_state):
+        if not reset_state.terminate_only:
+            dbapi_connection.execute("{call sys.sp_reset_connection}")
+
+        # so that the DBAPI itself knows that the connection has been
+        # reset
+        dbapi_connection.rollback()
+
+.. versionchanged:: 2.0.0b3  Added additional state arguments to
+   the :meth:`.PoolEvents.reset` event and additionally ensured the event
+   is invoked for all "reset" occurrences, so that it's appropriate
+   as a place for custom "reset" handlers.   Previous schemes which
+   use the :meth:`.PoolEvents.checkin` handler remain usable as well.
+
+.. seealso::
+
+    :ref:`pool_reset_on_return` - in the :ref:`pooling_toplevel` documentation
+
 Nullability
 -----------
 MSSQL has support for three levels of column nullability. The default
