@@ -106,7 +106,7 @@ changelog_render_pullreq = {
 
 changelog_render_changeset = "https://www.sqlalchemy.org/trac/changeset/%s"
 
-exclude_patterns = ["build", "**/unreleased*/*", "**/*_include.rst"]
+exclude_patterns = ["build", "**/unreleased*/*", "**/*_include.rst", ".venv"]
 
 # zzzeeksphinx makes these conversions when it is rendering the
 # docstrings classes, methods, and functions within the scope of

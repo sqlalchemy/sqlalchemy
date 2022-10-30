@@ -445,7 +445,7 @@ def create_engine(url, **kwargs):
 
         .. seealso::
 
-            :paramref:`_pool.Pool.reset_on_return`
+            :ref:`pool_reset_on_return`
 
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used

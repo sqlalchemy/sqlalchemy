@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, engine, regression
+    :tickets: 8717
+
+    Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be
+    called when a :class:`.Connection` were closed which already called
+    ``.rollback()`` on its own transaction, due to an enhancement in the 1.4
+    series that ensures ``.rollback()`` is only called once in this scenario,
+    rather than twice. This would prevent custom pool reset schemes from being
+    used within this hook. This was a regression that appeared in version 1.4.
+
+    For version 1.4, the :meth:`.PoolEvents.checkin` likely remains a better
+    event to use for custom "reset" implementations. Version 2.0 will feature
+    an improved version of :meth:`.PoolEvents.reset` which is called for
+    additional scenarios such as termination of asyncio connections, and is
+    also passed contextual information about the reset, to allow for "custom
+    connection reset" schemes which can respond to different reset scenarios in
+    different ways.
+
