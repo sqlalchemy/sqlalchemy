@@ -2386,6 +2386,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         self, path, join_obj, clauses, onclause, extra_criteria, splicing=False
     ):
 
+        # recursive fn to splice a nested join into an existing one.
+        # splicing=False means this is the outermost call, and it
+        # should return a value.  splicing=<from object> is the recursive
+        # form, where it can return None to indicate the end of the recursion
+
         if splicing is False:
             # first call is always handed a join object
             # from the outside
@@ -2400,7 +2405,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 splicing,
             )
         elif not isinstance(join_obj, orm_util._ORMJoin):
-            if path[-2] is splicing:
+            if path[-2].isa(splicing):
                 return orm_util._ORMJoin(
                     join_obj,
                     clauses.aliased_class,
@@ -2411,7 +2416,6 @@ class JoinedLoader(AbstractRelationshipLoader):
                     _extra_criteria=extra_criteria,
                 )
             else:
-                # only here if splicing == True
                 return None
 
         target_join = self._splice_nested_inner_join(
@@ -2434,7 +2438,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             )
             if target_join is None:
                 # should only return None when recursively called,
-                # e.g. splicing==True
+                # e.g. splicing refers to a from obj
                 assert (
                     splicing is not False
                 ), "assertion failed attempting to produce joined eager loads"

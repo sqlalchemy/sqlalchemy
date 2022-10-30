@@ -3015,3 +3015,111 @@ class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):
 
         is_(obj.child2, None)
         is_(obj.parent, c1)
+
+
+class JoinedLoadSpliceFromJoinedTest(
+    testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """test #8378"""
+
+    __dialect__ = "default"
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Root(Base):
+            __tablename__ = "root"
+
+            id = Column(Integer, primary_key=True)
+            root_elements = relationship("BaseModel")
+
+        class BaseModel(Base):
+            __tablename__ = "base_model"
+
+            id = Column(Integer, primary_key=True)
+            root_id = Column(Integer, ForeignKey("root.id"), nullable=False)
+            type = Column(String, nullable=False)
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class SubModel(BaseModel):
+            elements = relationship("SubModelElement")
+            __mapper_args__ = {"polymorphic_identity": "sub_model"}
+
+        class SubModelElement(Base):
+            __tablename__ = "sub_model_element"
+
+            id = Column(Integer, primary_key=True)
+            model_id = Column(ForeignKey("base_model.id"), nullable=False)
+
+    def test_oj_ij(self):
+        Root, SubModel = self.classes("Root", "SubModel")
+
+        s = Session()
+        query = s.query(Root)
+        query = query.options(
+            joinedload(Root.root_elements.of_type(SubModel)).joinedload(
+                SubModel.elements, innerjoin=True
+            )
+        )
+        self.assert_compile(
+            query,
+            "SELECT root.id AS root_id, base_model_1.id AS base_model_1_id, "
+            "base_model_1.root_id AS base_model_1_root_id, "
+            "base_model_1.type AS base_model_1_type, "
+            "sub_model_element_1.id AS sub_model_element_1_id, "
+            "sub_model_element_1.model_id AS sub_model_element_1_model_id "
+            "FROM root LEFT OUTER JOIN (base_model AS base_model_1 "
+            "JOIN sub_model_element AS sub_model_element_1 "
+            "ON base_model_1.id = sub_model_element_1.model_id) "
+            "ON root.id = base_model_1.root_id",
+        )
+
+    def test_ij_oj(self):
+        Root, SubModel = self.classes("Root", "SubModel")
+
+        s = Session()
+        query = s.query(Root)
+        query = query.options(
+            joinedload(
+                Root.root_elements.of_type(SubModel), innerjoin=True
+            ).joinedload(SubModel.elements)
+        )
+        self.assert_compile(
+            query,
+            "SELECT root.id AS root_id, base_model_1.id AS base_model_1_id, "
+            "base_model_1.root_id AS base_model_1_root_id, "
+            "base_model_1.type AS base_model_1_type, "
+            "sub_model_element_1.id AS sub_model_element_1_id, "
+            "sub_model_element_1.model_id AS sub_model_element_1_model_id "
+            "FROM root JOIN base_model AS base_model_1 "
+            "ON root.id = base_model_1.root_id "
+            "LEFT OUTER JOIN sub_model_element AS sub_model_element_1 "
+            "ON base_model_1.id = sub_model_element_1.model_id"
+            "",
+        )
+
+    def test_ij_ij(self):
+        Root, SubModel = self.classes("Root", "SubModel")
+
+        s = Session()
+        query = s.query(Root)
+        query = query.options(
+            joinedload(
+                Root.root_elements.of_type(SubModel), innerjoin=True
+            ).joinedload(SubModel.elements, innerjoin=True)
+        )
+        self.assert_compile(
+            query,
+            "SELECT root.id AS root_id, base_model_1.id AS base_model_1_id, "
+            "base_model_1.root_id AS base_model_1_root_id, "
+            "base_model_1.type AS base_model_1_type, "
+            "sub_model_element_1.id AS sub_model_element_1_id, "
+            "sub_model_element_1.model_id AS sub_model_element_1_model_id "
+            "FROM root JOIN base_model AS base_model_1 "
+            "ON root.id = base_model_1.root_id "
+            "JOIN sub_model_element AS sub_model_element_1 "
+            "ON base_model_1.id = sub_model_element_1.model_id"
+            "",
+        )
