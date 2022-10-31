@@ -122,8 +122,10 @@ class Range(Generic[_T]):
 
         if isinstance(self.lower, int) or isinstance(self.upper, int):
             return 1
-        if isinstance(self.lower, date) or isinstance(self.upper, date):
+        elif isinstance(self.lower, date) or isinstance(self.upper, date):
             return timedelta(days=1)
+        else:
+            return None
 
     def _contained_by(self, other: Range) -> bool:
         "Determine whether this range is a contained by `other`."
