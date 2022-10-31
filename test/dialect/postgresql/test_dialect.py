@@ -1232,8 +1232,8 @@ class TestRange(fixtures.TestBase):
     )
     def test_contains_value(self, connection, rrepr, v):
         q = select(
-            literal_column(f"'{rrepr}'::int4range", INT4RANGE),
-            literal_column(f"{v} <@ '{rrepr}'::int4range"),
+            literal(rrepr, INT4RANGE),
+            literal(rrepr, INT4RANGE).contains(v),
         )
         r, expected = connection.execute(q).first()
         eq_(r.contains(v), expected)
