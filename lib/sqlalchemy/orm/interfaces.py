@@ -157,6 +157,7 @@ class _IntrospectsAnnotations:
         self,
         registry: RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
@@ -215,11 +216,12 @@ class _AttributeOptions(NamedTuple):
     def _get_arguments_for_make_dataclass(
         cls,
         key: str,
-        annotation: Type[Any],
+        annotation: _AnnotationScanType,
         mapped_container: Optional[Any],
         elem: _T,
     ) -> Union[
-        Tuple[str, Type[Any]], Tuple[str, Type[Any], dataclasses.Field[Any]]
+        Tuple[str, _AnnotationScanType],
+        Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
     ]:
         """given attribute key, annotation, and value from a class, return
         the argument tuple we would pass to dataclasses.make_dataclass()

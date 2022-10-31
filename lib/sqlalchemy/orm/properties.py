@@ -197,6 +197,7 @@ class ColumnProperty(
         self,
         registry: _RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
@@ -637,6 +638,7 @@ class MappedColumn(
         self,
         registry: _RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
@@ -658,7 +660,7 @@ class MappedColumn(
                 return
 
         self._init_column_for_annotation(
-            cls, registry, extracted_mapped_annotation
+            cls, registry, extracted_mapped_annotation, originating_module
         )
 
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -666,27 +668,37 @@ class MappedColumn(
         self,
         registry: _RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         param_name: str,
         param_annotation: _AnnotationScanType,
     ) -> None:
         decl_base = util.preloaded.orm_decl_base
         decl_base._undefer_column_name(param_name, self.column)
-        self._init_column_for_annotation(cls, registry, param_annotation)
+        self._init_column_for_annotation(
+            cls, registry, param_annotation, originating_module
+        )
 
     def _init_column_for_annotation(
         self,
         cls: Type[Any],
         registry: _RegistryType,
         argument: _AnnotationScanType,
+        originating_module: Optional[str],
     ) -> None:
         sqltype = self.column.type
 
         if is_fwd_ref(argument):
-            argument = de_stringify_annotation(cls, argument)
+            assert originating_module is not None
+            argument = de_stringify_annotation(
+                cls, argument, originating_module
+            )
 
         if is_union(argument):
-            argument = de_stringify_union_elements(cls, argument)
+            assert originating_module is not None
+            argument = de_stringify_union_elements(
+                cls, argument, originating_module
+            )
 
         nullable = is_optional_union(argument)
 

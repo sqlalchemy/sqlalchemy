@@ -6,6 +6,7 @@ from typing import Optional
 from typing import Set
 from typing import TypeVar
 from typing import Union
+import uuid
 
 from sqlalchemy import Column
 from sqlalchemy import exc
@@ -16,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import Uuid
 from sqlalchemy.orm import attribute_keyed_dict
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import DynamicMapped
@@ -115,6 +117,26 @@ class MappedColumnTest(_MappedColumnTest):
                 is_false(reverse_col.nullable)
                 is_(optional_col.type, our_type)
                 is_true(optional_col.nullable)
+
+    def test_typ_not_in_cls_namespace(self, decl_base):
+        """test #8742.
+
+        This tests that when types are resolved, they use the ``__module__``
+        of they class they are used within, not the mapped class.
+
+        """
+
+        class Mixin:
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[uuid.UUID]
+
+        class MyClass(Mixin, decl_base):
+            # basically no type will be resolvable here
+            __module__ = "some.module"
+            __tablename__ = "mytable"
+
+        is_(MyClass.id.expression.type._type_affinity, Integer)
+        is_(MyClass.data.expression.type._type_affinity, Uuid)
 
 
 class MappedOneArg(KeyFuncDict[str, _R]):

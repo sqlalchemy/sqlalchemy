@@ -2020,10 +2020,14 @@ def _getitem(iterable_query: Query[Any], item: Any) -> Any:
 
 
 def _is_mapped_annotation(
-    raw_annotation: _AnnotationScanType, cls: Type[Any]
+    raw_annotation: _AnnotationScanType,
+    cls: Type[Any],
+    originating_cls: Type[Any],
 ) -> bool:
     try:
-        annotated = de_stringify_annotation(cls, raw_annotation)
+        annotated = de_stringify_annotation(
+            cls, raw_annotation, originating_cls.__module__
+        )
     except NameError:
         return False
     else:
@@ -2065,6 +2069,7 @@ def _cleanup_mapped_str_annotation(annotation: str) -> str:
 def _extract_mapped_subtype(
     raw_annotation: Optional[_AnnotationScanType],
     cls: type,
+    originating_module: str,
     key: str,
     attr_cls: Type[Any],
     required: bool,
@@ -2091,7 +2096,10 @@ def _extract_mapped_subtype(
 
     try:
         annotated = de_stringify_annotation(
-            cls, raw_annotation, _cleanup_mapped_str_annotation
+            cls,
+            raw_annotation,
+            originating_module,
+            _cleanup_mapped_str_annotation,
         )
     except NameError as ne:
         if raiseerr and "Mapped[" in raw_annotation:  # type: ignore

@@ -19,6 +19,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import Sequence
@@ -70,6 +71,7 @@ from ..util.typing import typing_get_args
 if TYPE_CHECKING:
     from ._typing import _ClassDict
     from ._typing import _RegistryType
+    from .base import Mapped
     from .decl_api import declared_attr
     from .instrumentation import ClassManager
     from ..sql.elements import NamedColumn
@@ -397,6 +399,15 @@ class _ImperativeMapperConfig(_MapperConfig):
         self.inherits = inherits
 
 
+class _CollectedAnnotation(NamedTuple):
+    raw_annotation: _AnnotationScanType
+    mapped_container: Optional[Type[Mapped[Any]]]
+    extracted_mapped_annotation: Union[Type[Any], str]
+    is_dataclass: bool
+    attr_value: Any
+    originating_module: str
+
+
 class _ClassScanMapperConfig(_MapperConfig):
     __slots__ = (
         "registry",
@@ -420,7 +431,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
     registry: _RegistryType
     clsdict_view: _ClassDict
-    collected_annotations: Dict[str, Tuple[Any, Any, Any, bool, Any]]
+    collected_annotations: Dict[str, _CollectedAnnotation]
     collected_attributes: Dict[str, Any]
     local_table: Optional[FromClause]
     persist_selectable: Optional[FromClause]
@@ -740,6 +751,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     local_attributes_for_class,
                     attribute_is_overridden,
                     fixed_table,
+                    base,
                 )
             else:
                 locally_collected_columns = {}
@@ -913,10 +925,11 @@ class _ClassScanMapperConfig(_MapperConfig):
                         self._collect_annotation(
                             name,
                             obj._collect_return_annotation(),
+                            base,
                             True,
                             obj,
                         )
-                    elif _is_mapped_annotation(annotation, cls):
+                    elif _is_mapped_annotation(annotation, cls, base):
                         # Mapped annotation without any object.
                         # product_column_copies should have handled this.
                         # if future support for other MapperProperty,
@@ -948,15 +961,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                         obj = obj.fget()
 
                     collected_attributes[name] = obj
-                    self._collect_annotation(name, annotation, False, obj)
+                    self._collect_annotation(
+                        name, annotation, base, False, obj
+                    )
                 else:
                     generated_obj = self._collect_annotation(
-                        name, annotation, None, obj
+                        name, annotation, base, None, obj
                     )
                     if (
                         obj is None
                         and not fixed_table
-                        and _is_mapped_annotation(annotation, cls)
+                        and _is_mapped_annotation(annotation, cls, base)
                     ):
                         collected_attributes[name] = (
                             generated_obj
@@ -1005,6 +1020,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     mapped_anno,
                     is_dc,
                     attr_value,
+                    originating_module,
                 ) in self.collected_annotations.items()
             )
         ]
@@ -1058,6 +1074,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self,
         name: str,
         raw_annotation: _AnnotationScanType,
+        originating_class: Type[Any],
         expect_mapped: Optional[bool],
         attr_value: Any,
     ) -> Any:
@@ -1088,6 +1105,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         extracted = _extract_mapped_subtype(
             raw_annotation,
             self.cls,
+            originating_class.__module__,
             name,
             type(attr_value),
             required=False,
@@ -1109,12 +1127,13 @@ class _ClassScanMapperConfig(_MapperConfig):
                 if isinstance(elem, _IntrospectsAnnotations):
                     attr_value = elem.found_in_pep593_annotated()
 
-        self.collected_annotations[name] = (
+        self.collected_annotations[name] = _CollectedAnnotation(
             raw_annotation,
             mapped_container,
             extracted_mapped_annotation,
             is_dataclass,
             attr_value,
+            originating_class.__module__,
         )
         return attr_value
 
@@ -1135,6 +1154,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         ],
         attribute_is_overridden: Callable[[str, Any], bool],
         fixed_table: bool,
+        originating_class: Type[Any],
     ) -> Dict[str, Union[Column[Any], MappedColumn[Any]]]:
         cls = self.cls
         dict_ = self.clsdict_view
@@ -1146,9 +1166,11 @@ class _ClassScanMapperConfig(_MapperConfig):
             if (
                 not fixed_table
                 and obj is None
-                and _is_mapped_annotation(annotation, cls)
+                and _is_mapped_annotation(annotation, cls, originating_class)
             ):
-                obj = self._collect_annotation(name, annotation, True, obj)
+                obj = self._collect_annotation(
+                    name, annotation, originating_class, True, obj
+                )
                 if obj is None:
                     obj = MappedColumn()
 
@@ -1164,7 +1186,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # either (issue #8718)
                     continue
 
-                obj = self._collect_annotation(name, annotation, True, obj)
+                obj = self._collect_annotation(
+                    name, annotation, originating_class, True, obj
+                )
 
                 if name not in dict_ and not (
                     "__table__" in dict_
@@ -1282,8 +1306,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                         extracted_mapped_annotation,
                         is_dataclass,
                         attr_value,
+                        originating_module,
                     ) = self.collected_annotations.get(
-                        k, (None, None, None, False, None)
+                        k, (None, None, None, False, None, None)
                     )
 
                     # issue #8692 - don't do any annotation interpretation if
@@ -1295,6 +1320,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                         value.declarative_scan(
                             self.registry,
                             cls,
+                            originating_module,
                             k,
                             mapped_container,
                             annotation,

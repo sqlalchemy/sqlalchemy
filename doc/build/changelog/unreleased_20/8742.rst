@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm declarative
+    :tickets: 8742
+
+    Fixed issues within the declarative typing resolver (i.e. which resolves
+    ``ForwardRef`` objects) where types that were declared for columns in one
+    particular source file would raise ``NameError`` when the ultimate mapped
+    class were in another source file.  The types are now resolved in terms
+    of the module for each class in which the types are used.

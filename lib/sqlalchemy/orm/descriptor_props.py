@@ -332,6 +332,7 @@ class CompositeProperty(
         self,
         registry: _RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
@@ -365,7 +366,7 @@ class CompositeProperty(
             self.composite_class = argument
 
         if is_dataclass(self.composite_class):
-            self._setup_for_dataclass(registry, cls, key)
+            self._setup_for_dataclass(registry, cls, originating_module, key)
         else:
             for attr in self.attrs:
                 if (
@@ -408,7 +409,11 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
     def _setup_for_dataclass(
-        self, registry: _RegistryType, cls: Type[Any], key: str
+        self,
+        registry: _RegistryType,
+        cls: Type[Any],
+        originating_module: Optional[str],
+        key: str,
     ) -> None:
         MappedColumn = util.preloaded.orm_properties.MappedColumn
 
@@ -432,7 +437,12 @@ class CompositeProperty(
 
             if isinstance(attr, MappedColumn):
                 attr.declarative_scan_for_composite(
-                    registry, cls, key, param.name, param.annotation
+                    registry,
+                    cls,
+                    originating_module,
+                    key,
+                    param.name,
+                    param.annotation,
                 )
             elif isinstance(attr, schema.Column):
                 decl_base._undefer_column_name(param.name, attr)

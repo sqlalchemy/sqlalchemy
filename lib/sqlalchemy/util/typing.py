@@ -84,6 +84,7 @@ _LiteralStar = Literal["*"]
 def de_stringify_annotation(
     cls: Type[Any],
     annotation: _AnnotationScanType,
+    originating_module: str,
     str_cleanup_fn: Optional[Callable[[str], str]] = None,
 ) -> Type[Any]:
     """Resolve annotations that may be string based into real objects.
@@ -109,14 +110,14 @@ def de_stringify_annotation(
     if isinstance(annotation, str):
         if str_cleanup_fn:
             annotation = str_cleanup_fn(annotation)
-
         base_globals: "Dict[str, Any]" = getattr(
-            sys.modules.get(cls.__module__, None), "__dict__", {}
+            sys.modules.get(originating_module, None), "__dict__", {}
         )
 
         try:
             annotation = eval(annotation, base_globals, None)
         except NameError as err:
+            # breakpoint()
             raise NameError(
                 f"Could not de-stringify annotation {annotation}"
             ) from err
@@ -126,11 +127,14 @@ def de_stringify_annotation(
 def de_stringify_union_elements(
     cls: Type[Any],
     annotation: _AnnotationScanType,
+    originating_module: str,
     str_cleanup_fn: Optional[Callable[[str], str]] = None,
 ) -> Type[Any]:
     return make_union_type(
         *[
-            de_stringify_annotation(cls, anno, str_cleanup_fn)
+            de_stringify_annotation(
+                cls, anno, originating_module, str_cleanup_fn
+            )
             for anno in annotation.__args__  # type: ignore
         ]
     )

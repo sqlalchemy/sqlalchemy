@@ -1712,6 +1712,7 @@ class RelationshipProperty(
         self,
         registry: _RegistryType,
         cls: Type[Any],
+        originating_module: Optional[str],
         key: str,
         mapped_container: Optional[Type[Mapped[Any]]],
         annotation: Optional[_AnnotationScanType],
