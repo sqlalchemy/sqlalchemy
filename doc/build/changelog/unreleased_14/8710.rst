@@ -1,0 +1,30 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8710
+
+    Fixed issue where the underlying DBAPI cursor would not be closed when
+    using :class:`_orm.Query` and direct iteration, if a user-defined exception
+    case were raised within the iteration process, interrupting the iterator
+    which otherwise is not possible to re-use in this context. When using
+    :meth:`_orm.Query.yield_per` to create server-side cursors, this would lead
+    to the usual MySQL-related issues with server side cursors out of sync.
+
+    To resolve, a catch for ``GeneratorExit`` is applied within the default
+    iterator, which applies only in those cases where the interpreter is
+    calling ``.close()`` on the iterator in any case.
+
+    A similar scenario can occur when using :term:`2.x` executions with direct
+    use of :class:`.Result`, in that case the end-user code has access to the
+    :class:`.Result` itself and should call :meth:`.Result.close` directly.
+    Version 2.0 will feature context-manager calling patterns to address this
+    use case.  However within the 1.4 scope, ensured that ``.close()`` methods
+    are available on all :class:`.Result` implementations including
+    :class:`.ScalarResult`, :class:`.MappingResult`.
+
+.. change::
+    :tags: bug, engine
+    :tickets: 8710
+
+    Ensured all :class:`.Result` objects include a :meth:`.Result.close` method
+    as well as a :attr:`.Result.closed` attribute, including on
+    :class:`.ScalarResult` and :class:`.MappingResult`.

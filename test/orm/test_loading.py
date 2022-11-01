@@ -6,6 +6,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -151,6 +152,24 @@ class InstancesTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         cls._setup_stock_mapping()
+
+    def test_cursor_close_exception_raised_in_iteration(self):
+        """test #8710"""
+
+        User = self.classes.User
+        s = fixture_session()
+
+        stmt = select(User).execution_options(yield_per=1)
+
+        result = s.execute(stmt)
+        raw_cursor = result.raw
+
+        for row in result:
+            with expect_raises_message(Exception, "whoops"):
+                for row in result:
+                    raise Exception("whoops")
+
+        is_true(raw_cursor._soft_closed)
 
     def test_cursor_close_w_failed_rowproc(self):
         User = self.classes.User

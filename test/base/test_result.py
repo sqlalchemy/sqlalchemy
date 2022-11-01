@@ -224,6 +224,21 @@ class ResultTest(fixtures.TestBase):
 
         return res
 
+    def test_close_attributes(self):
+        """test #8710"""
+        r1 = self._fixture()
+
+        is_false(r1.closed)
+        is_false(r1._soft_closed)
+
+        r1._soft_close()
+        is_false(r1.closed)
+        is_true(r1._soft_closed)
+
+        r1.close()
+        is_true(r1.closed)
+        is_true(r1._soft_closed)
+
     def test_class_presented(self):
         """To support different kinds of objects returned vs. rows,
         there are two wrapper classes for Result.
