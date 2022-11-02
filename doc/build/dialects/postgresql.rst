@@ -216,6 +216,7 @@ The available range datatypes are as follows:
 * :class:`_postgresql.TSTZRANGE`
 
 .. autoclass:: sqlalchemy.dialects.postgresql.Range
+    :members:
 
 Multiranges
 ^^^^^^^^^^^
@@ -349,6 +350,12 @@ construction arguments, are as follows:
    in the sphinx build
 
 .. currentmodule:: sqlalchemy.dialects.postgresql
+
+.. autoclass:: sqlalchemy.dialects.postgresql.AbstractRange
+    :members: comparator_factory
+
+.. autoclass:: sqlalchemy.dialects.postgresql.AbstractMultiRange
+    :members: comparator_factory
 
 .. autoclass:: aggregate_order_by
 
