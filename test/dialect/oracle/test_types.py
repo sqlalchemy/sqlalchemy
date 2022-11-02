@@ -1103,62 +1103,67 @@ class EuroNumericTest(fixtures.TestBase):
     def teardown_test(self):
         self.engine.dispose()
 
-    def test_were_getting_a_comma(self):
-        connection = self.engine.pool._creator()
-        cursor = connection.cursor()
-        try:
-            cx_Oracle = self.engine.dialect.dbapi
-
-            def output_type_handler(
-                cursor, name, defaultType, size, precision, scale
-            ):
-                return cursor.var(
-                    cx_Oracle.STRING, 255, arraysize=cursor.arraysize
-                )
-
-            cursor.outputtypehandler = output_type_handler
-            cursor.execute("SELECT 1.1 FROM DUAL")
-            row = cursor.fetchone()
-            eq_(row[0], "1,1")
-        finally:
-            cursor.close()
-            connection.close()
-
-    def test_output_type_handler(self):
+    def test_detection(self):
+        # revised as of #8744
         with self.engine.connect() as conn:
-            for stmt, exp, kw in [
-                ("SELECT 0.1 FROM DUAL", decimal.Decimal("0.1"), {}),
-                ("SELECT CAST(15 AS INTEGER) FROM DUAL", 15, {}),
-                (
-                    "SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL",
-                    decimal.Decimal("15"),
-                    {},
-                ),
-                (
-                    "SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL",
-                    decimal.Decimal("0.1"),
-                    {},
-                ),
-                (
-                    "SELECT :num FROM DUAL",
-                    decimal.Decimal("2.5"),
-                    {"num": decimal.Decimal("2.5")},
-                ),
-                (
-                    text(
-                        "SELECT CAST(28.532 AS NUMERIC(5, 3)) "
-                        "AS val FROM DUAL"
-                    ).columns(val=Numeric(5, 3, asdecimal=True)),
-                    decimal.Decimal("28.532"),
-                    {},
-                ),
-            ]:
-                if isinstance(stmt, util.string_types):
-                    test_exp = conn.exec_driver_sql(stmt, kw).scalar()
+            connection = conn.connection
+
+            with connection.cursor() as cursor:
+                cx_Oracle = self.engine.dialect.dbapi
+
+                def output_type_handler(
+                    cursor, name, defaultType, size, precision, scale
+                ):
+                    return cursor.var(
+                        cx_Oracle.STRING, 255, arraysize=cursor.arraysize
+                    )
+
+                cursor.outputtypehandler = output_type_handler
+                cursor.execute("SELECT 1.1 FROM DUAL")
+                row = cursor.fetchone()
+                decimal_char = row[0][1]
+
+                if testing.against("+cx_oracle"):
+                    eq_(decimal_char, ",")
                 else:
-                    test_exp = conn.scalar(stmt, **kw)
-                eq_(test_exp, exp)
-                assert type(test_exp) is type(exp)
+                    assert decimal_char in ",."
+
+                eq_(conn.dialect._decimal_char, decimal_char)
+
+    @testing.combinations(
+        ("SELECT 0.1 FROM DUAL", decimal.Decimal("0.1"), {}),
+        ("SELECT CAST(15 AS INTEGER) FROM DUAL", 15, {}),
+        (
+            "SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL",
+            decimal.Decimal("15"),
+            {},
+        ),
+        (
+            "SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL",
+            decimal.Decimal("0.1"),
+            {},
+        ),
+        (
+            "SELECT :num FROM DUAL",
+            decimal.Decimal("2.5"),
+            {"num": decimal.Decimal("2.5")},
+        ),
+        (
+            text(
+                "SELECT CAST(28.532 AS NUMERIC(5, 3)) " "AS val FROM DUAL"
+            ).columns(val=Numeric(5, 3, asdecimal=True)),
+            decimal.Decimal("28.532"),
+            {},
+        ),
+    )
+    def test_output_type_handler(self, stmt, expected, kw):
+        with self.engine.connect() as conn:
+            if isinstance(stmt, str):
+                test_exp = conn.exec_driver_sql(stmt, kw).scalar()
+            else:
+                test_exp = conn.scalar(stmt, **kw)
+            eq_(test_exp, expected)
+            assert type(test_exp) is type(expected)
 
 
 class SetInputSizesTest(fixtures.TestBase):

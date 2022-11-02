@@ -1140,10 +1140,33 @@ class OracleDialect_cx_oracle(OracleDialect):
         # NLS_TERRITORY or formatting behavior of the DB, we opt
         # to just look at it
 
-        self._decimal_char = connection.exec_driver_sql(
-            "select value from nls_session_parameters "
-            "where parameter = 'NLS_NUMERIC_CHARACTERS'"
-        ).scalar()[0]
+        dbapi_connection = connection.connection
+
+        with dbapi_connection.cursor() as cursor:
+            # issue #8744
+            # nls_session_parameters is not available in some Oracle
+            # modes like "mount mode".  But then, v$nls_parameters is not
+            # available if the connection doesn't have SYSDBA priv.
+            #
+            # simplify the whole thing and just use the method that we were
+            # doing in the test suite already, selecting a number
+
+            def output_type_handler(
+                cursor, name, defaultType, size, precision, scale
+            ):
+                return cursor.var(
+                    self.dbapi.STRING, 255, arraysize=cursor.arraysize
+                )
+
+            cursor.outputtypehandler = output_type_handler
+            cursor.execute("SELECT 1.1 FROM DUAL")
+            value = cursor.fetchone()[0]
+
+            decimal_char = value.lstrip("0")[1]
+            assert not decimal_char[0].isdigit()
+
+        self._decimal_char = decimal_char
+
         if self._decimal_char != ".":
             _detect_decimal = self._detect_decimal
             _to_decimal = self._to_decimal
