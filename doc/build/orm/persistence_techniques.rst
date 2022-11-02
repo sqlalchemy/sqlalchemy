@@ -881,18 +881,27 @@ ORM extension.   An example of use is at: :ref:`examples_sharding`.
 Bulk Operations
 ===============
 
-.. deepalchemy:: Bulk operations are essentially lower-functionality versions
+.. tip::
+
+   Bulk operations are essentially lower-functionality versions
    of the Unit of Work's facilities for emitting INSERT and UPDATE statements
    on primary key targeted rows.   These routines were added to suit some
    cases where many rows being inserted or updated could be run into the
-   database without as much of the usual unit of work overhead, in that
-   most unit of work features are **disabled**.
+   database without as much of the usual unit of work overhead, by bypassing
+   a large portion of the functionality that the unit of work provides.
 
-   There is **usually no need to use these routines, and they are not easy
-   to use as there are many missing behaviors that are usually expected when
-   using ORM objects**; for efficient
-   bulk inserts, it's better to use the Core :class:`_sql.Insert` construct
-   directly.   Please read all caveats at :ref:`bulk_operations_caveats`.
+   SQLAlchemy 2.0 features new and improved bulk techniques with clarified
+   behavior, better integration with ORM objects as well as INSERT/UPDATE/DELETE
+   statements, and new capabilities.  They additionally repair some long lived
+   performance issues that plagued both regular unit of work and "bulk" routines,
+   most notably in the area of INSERT operations.
+
+   For these reasons, the previous bulk methods move into legacy status, which
+   is revised from the original plan that "bulk" features were to be deprecated
+   entirely.
+
+   When using the legacy 1.4 versions of these features, please read all
+   caveats at :ref:`bulk_operations_caveats`, as they are not always obvious.
 
 .. note:: Bulk INSERT and UPDATE should not be confused with the
    more common feature known as :ref:`orm_expression_update_delete`.   This
@@ -974,11 +983,13 @@ transaction, like any other::
     s = Session()
     objects = [User(name="u1"), User(name="u2"), User(name="u3")]
     s.bulk_save_objects(objects)
+    s.commit()
 
 For :meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`,
 dictionaries are passed::
 
     s.bulk_insert_mappings(User, [dict(name="u1"), dict(name="u2"), dict(name="u3")])
+    s.commit()
 
 .. seealso::
 

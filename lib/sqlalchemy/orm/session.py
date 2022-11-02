@@ -3595,23 +3595,19 @@ class Session(_SessionClassMethods):
         as an alternative newer mass-insert features such as
         :ref:`orm_dml_returning_objects`.
 
-        .. warning::
+        .. legacy::
 
             The bulk save feature allows for a lower-latency INSERT/UPDATE
             of rows at the expense of most other unit-of-work features.
             Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
+            and SQL clause support are silently omitted in favor of raw
             INSERT/UPDATES of records.
 
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
+            In SQLAlchemy 2.0, improved versions of the bulk insert/update
+            methods are introduced, with clearer behavior and
+            documentation, new capabilities, and much better performance.
 
-            **Please read the list of caveats at**
+            For 1.4 use, **please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and
             fully test and confirm the functionality of all code developed
             using these systems.**
@@ -3716,23 +3712,19 @@ class Session(_SessionClassMethods):
 
         .. versionadded:: 1.0.0
 
-        .. warning::
+        .. legacy::
 
             The bulk insert feature allows for a lower-latency INSERT
             of rows at the expense of most other unit-of-work features.
             Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
+            and SQL clause support are silently omitted in favor of raw
             INSERT of records.
 
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
+            In SQLAlchemy 2.0, improved versions of the bulk insert/update
+            methods are introduced, with clearer behavior and
+            documentation, new capabilities, and much better performance.
 
-            **Please read the list of caveats at**
+            For 1.4 use, **please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and
             fully test and confirm the functionality of all code developed
             using these systems.**
@@ -3817,23 +3809,19 @@ class Session(_SessionClassMethods):
 
         .. versionadded:: 1.0.0
 
-        .. warning::
+        .. legacy::
 
             The bulk update feature allows for a lower-latency UPDATE
             of rows at the expense of most other unit-of-work features.
             Features such as object management, relationship handling,
-            and SQL clause support are **silently omitted** in favor of raw
+            and SQL clause support are silently omitted in favor of raw
             UPDATES of records.
 
-            Please note that newer versions of SQLAlchemy are **greatly
-            improving the efficiency** of the standard flush process. It is
-            **strongly recommended** to not use the bulk methods as they
-            represent a forking of SQLAlchemy's functionality and are slowly
-            being moved into legacy status.  New features such as
-            :ref:`orm_dml_returning_objects` are both more efficient than
-            the "bulk" methods and provide more predictable functionality.
+            In SQLAlchemy 2.0, improved versions of the bulk insert/update
+            methods are introduced, with clearer behavior and
+            documentation, new capabilities, and much better performance.
 
-            **Please read the list of caveats at**
+            For 1.4 use, **please read the list of caveats at**
             :ref:`bulk_operations_caveats` **before using this method, and
             fully test and confirm the functionality of all code developed
             using these systems.**
