@@ -1408,7 +1408,7 @@ class async_sessionmaker(Generic[_AS]):
         async def main():
             # an AsyncEngine, which the AsyncSession will use for connection
             # resources
-            engine = create_async_engine('postgresql+asycncpg://scott:tiger@localhost/')
+            engine = create_async_engine('postgresql+asyncpg://scott:tiger@localhost/')
 
             AsyncSession = async_sessionmaker(engine)
 
