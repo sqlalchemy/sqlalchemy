@@ -277,7 +277,7 @@ will remain consistent with the state of the transaction::
 
 
     @event.listens_for(postgresql_engine, "reset")
-    def _reset_mssql(dbapi_connection, connection_record, reset_state):
+    def _reset_postgresql(dbapi_connection, connection_record, reset_state):
         if not reset_state.terminate_only:
             dbapi_connection.execute("CLOSE ALL")
             dbapi_connection.execute("RESET ALL")
