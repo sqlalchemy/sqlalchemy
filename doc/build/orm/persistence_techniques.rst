@@ -765,7 +765,7 @@ ORM extension.   An example of use is at: :ref:`examples_sharding`.
 Bulk Operations
 ===============
 
-..legacy::
+.. legacy::
 
   SQLAlchemy 2.0 has integrated the :class:`_orm.Session` "bulk insert" and
   "bulk update" capabilities into 2.0 style :meth:`_orm.Session.execute`
