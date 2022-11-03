@@ -97,7 +97,7 @@ if TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
-    from .bulk_persistence import _SynchronizeSessionArgument
+    from ._typing import SynchronizeSessionArgument
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .session import _PKIdentityArgument
@@ -105,6 +105,9 @@ if TYPE_CHECKING:
     from .state import InstanceState
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _ImmutableExecuteOptions
+    from ..engine.interfaces import CompiledCacheType
+    from ..engine.interfaces import IsolationLevel
+    from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import FrozenResult
     from ..engine.result import ScalarResult
     from ..sql._typing import _ColumnExpressionArgument
@@ -1654,6 +1657,29 @@ class Query(
         """
         return self._execution_options
 
+    @overload
+    def execution_options(
+        self: SelfQuery,
+        *,
+        compiled_cache: Optional[CompiledCacheType] = ...,
+        logging_token: str = ...,
+        isolation_level: IsolationLevel = ...,
+        no_parameters: bool = False,
+        stream_results: bool = False,
+        max_row_buffer: int = ...,
+        yield_per: int = ...,
+        insertmanyvalues_page_size: int = ...,
+        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        populate_existing: bool = False,
+        autoflush: bool = False,
+        **opt: Any,
+    ) -> SelfQuery:
+        ...
+
+    @overload
+    def execution_options(self: SelfQuery, **opt: Any) -> SelfQuery:
+        ...
+
     @_generative
     def execution_options(self: SelfQuery, **kwargs: Any) -> SelfQuery:
         """Set non-SQL options which take effect during execution.
@@ -2975,7 +3001,7 @@ class Query(
         )
 
     def delete(
-        self, synchronize_session: _SynchronizeSessionArgument = "auto"
+        self, synchronize_session: SynchronizeSessionArgument = "auto"
     ) -> int:
         r"""Perform a DELETE with an arbitrary WHERE clause.
 
@@ -3039,7 +3065,7 @@ class Query(
     def update(
         self,
         values: Dict[_DMLColumnArgument, Any],
-        synchronize_session: _SynchronizeSessionArgument = "auto",
+        synchronize_session: SynchronizeSessionArgument = "auto",
         update_args: Optional[Dict[Any, Any]] = None,
     ) -> int:
         r"""Perform an UPDATE with an arbitrary WHERE clause.

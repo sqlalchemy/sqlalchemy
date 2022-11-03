@@ -105,7 +105,6 @@ and_ = BooleanClauseList.and_
 _T = TypeVar("_T", bound=Any)
 
 if TYPE_CHECKING:
-    import sqlalchemy
     from ._typing import _ColumnExpressionArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
@@ -130,6 +129,7 @@ if TYPE_CHECKING:
     from .cache_key import _CacheKeyTraversalType
     from .compiler import SQLCompiler
     from .dml import Delete
+    from .dml import Insert
     from .dml import Update
     from .elements import KeyedColumnElement
     from .elements import Label
@@ -2997,7 +2997,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         c.table = self
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def insert(self) -> sqlalchemy.sql.expression.Insert:
+    def insert(self) -> Insert:
         """Generate an :func:`_expression.insert` construct against this
         :class:`_expression.TableClause`.
 

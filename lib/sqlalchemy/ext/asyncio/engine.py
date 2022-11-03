@@ -42,9 +42,11 @@ if TYPE_CHECKING:
     from ...engine.interfaces import _CoreSingleExecuteParams
     from ...engine.interfaces import _DBAPIAnyExecuteParams
     from ...engine.interfaces import _ExecuteOptions
-    from ...engine.interfaces import _ExecuteOptionsParameter
-    from ...engine.interfaces import _IsolationLevel
+    from ...engine.interfaces import CompiledCacheType
+    from ...engine.interfaces import CoreExecuteOptionsParameter
     from ...engine.interfaces import Dialect
+    from ...engine.interfaces import IsolationLevel
+    from ...engine.interfaces import SchemaTranslateMapType
     from ...engine.result import ScalarResult
     from ...engine.url import URL
     from ...pool import Pool
@@ -291,7 +293,7 @@ class AsyncConnection(
             self._proxied.invalidate, exception=exception
         )
 
-    async def get_isolation_level(self) -> _IsolationLevel:
+    async def get_isolation_level(self) -> IsolationLevel:
         return await greenlet_spawn(self._proxied.get_isolation_level)
 
     def in_transaction(self) -> bool:
@@ -344,6 +346,27 @@ class AsyncConnection(
             return AsyncTransaction._retrieve_proxy_for_target(trans)
         else:
             return None
+
+    @overload
+    async def execution_options(
+        self,
+        *,
+        compiled_cache: Optional[CompiledCacheType] = ...,
+        logging_token: str = ...,
+        isolation_level: IsolationLevel = ...,
+        no_parameters: bool = False,
+        stream_results: bool = False,
+        max_row_buffer: int = ...,
+        yield_per: int = ...,
+        insertmanyvalues_page_size: int = ...,
+        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        **opt: Any,
+    ) -> AsyncConnection:
+        ...
+
+    @overload
+    async def execution_options(self, **opt: Any) -> AsyncConnection:
+        ...
 
     async def execution_options(self, **opt: Any) -> AsyncConnection:
         r"""Set non-SQL options for the connection which take effect
@@ -405,7 +428,7 @@ class AsyncConnection(
         self,
         statement: str,
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> CursorResult[Any]:
         r"""Executes a driver-level SQL string and return buffered
         :class:`_engine.Result`.
@@ -428,7 +451,7 @@ class AsyncConnection(
         statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncResult[_T]:
         ...
 
@@ -438,7 +461,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncResult[Any]:
         ...
 
@@ -447,7 +470,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncResult[Any]:
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object."""
@@ -472,7 +495,7 @@ class AsyncConnection(
         statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> CursorResult[_T]:
         ...
 
@@ -482,7 +505,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> CursorResult[Any]:
         ...
 
@@ -491,7 +514,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> CursorResult[Any]:
         r"""Executes a SQL statement construct and return a buffered
         :class:`_engine.Result`.
@@ -539,7 +562,7 @@ class AsyncConnection(
         statement: TypedReturnsRows[Tuple[_T]],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Optional[_T]:
         ...
 
@@ -549,7 +572,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Any:
         ...
 
@@ -558,7 +581,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Any:
         r"""Executes a SQL statement construct and returns a scalar object.
 
@@ -581,7 +604,7 @@ class AsyncConnection(
         statement: TypedReturnsRows[Tuple[_T]],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[_T]:
         ...
 
@@ -591,7 +614,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
         ...
 
@@ -600,7 +623,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
         r"""Executes a SQL statement construct and returns a scalar objects.
 
@@ -624,7 +647,7 @@ class AsyncConnection(
         statement: TypedReturnsRows[Tuple[_T]],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncScalarResult[_T]:
         ...
 
@@ -634,7 +657,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncScalarResult[Any]:
         ...
 
@@ -643,7 +666,7 @@ class AsyncConnection(
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> AsyncScalarResult[Any]:
         r"""Executes a SQL statement and returns a streaming scalar result
         object.
@@ -925,6 +948,23 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
 
         """
         return await greenlet_spawn(self.sync_engine.raw_connection)
+
+    @overload
+    def execution_options(
+        self,
+        *,
+        compiled_cache: Optional[CompiledCacheType] = ...,
+        logging_token: str = ...,
+        isolation_level: IsolationLevel = ...,
+        insertmanyvalues_page_size: int = ...,
+        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        **opt: Any,
+    ) -> AsyncEngine:
+        ...
+
+    @overload
+    def execution_options(self, **opt: Any) -> AsyncEngine:
+        ...
 
     def execution_options(self, **opt: Any) -> AsyncEngine:
         """Return a new :class:`_asyncio.AsyncEngine` that will provide

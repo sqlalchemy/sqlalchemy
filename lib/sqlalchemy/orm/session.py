@@ -93,6 +93,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _IdentityKeyType
     from ._typing import _InstanceDict
+    from ._typing import OrmExecuteOptionsParameter
     from .interfaces import ORMOption
     from .interfaces import UserDefinedOption
     from .mapper import Mapper
@@ -106,7 +107,6 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
-    from ..engine.interfaces import _ExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..event import _InstanceLevelDispatch
     from ..sql._typing import _ColumnsClauseArgument
@@ -365,7 +365,7 @@ class ORMExecuteState(util.MemoizedSlots):
         self,
         statement: Optional[Executable] = None,
         params: Optional[_CoreAnyExecuteParams] = None,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[OrmExecuteOptionsParameter] = None,
         bind_arguments: Optional[_BindArguments] = None,
     ) -> Result[Any]:
         """Execute the statement represented by this
@@ -1858,7 +1858,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -1872,7 +1872,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -1885,7 +1885,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -1997,7 +1997,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -2010,7 +2010,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -2022,7 +2022,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
@@ -2093,7 +2093,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: TypedReturnsRows[Tuple[_T]],
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Optional[_T]:
@@ -2105,7 +2105,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
@@ -2116,7 +2116,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
@@ -2143,7 +2143,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: TypedReturnsRows[Tuple[_T]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[_T]:
@@ -2155,7 +2155,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
@@ -2166,7 +2166,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
@@ -3246,7 +3246,7 @@ class Session(_SessionClassMethods, EventTarget):
         populate_existing: bool = False,
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
-        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
@@ -3364,7 +3364,7 @@ class Session(_SessionClassMethods, EventTarget):
         populate_existing: bool = False,
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
-        execution_options: Optional[_ExecuteOptionsParameter] = None,
+        execution_options: Optional[OrmExecuteOptionsParameter] = None,
     ) -> Optional[_O]:
 
         # convert composite types to individual args

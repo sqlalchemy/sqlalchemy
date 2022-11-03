@@ -1,3 +1,10 @@
+# sql/_typing.py
+# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+
 from __future__ import annotations
 
 import operator

@@ -75,10 +75,10 @@ if typing.TYPE_CHECKING:
     from .interfaces import _DBAPICursorDescription
     from .interfaces import _DBAPIMultiExecuteParams
     from .interfaces import _ExecuteOptions
-    from .interfaces import _IsolationLevel
     from .interfaces import _MutableCoreSingleExecuteParams
     from .interfaces import _ParamStyle
     from .interfaces import DBAPIConnection
+    from .interfaces import IsolationLevel
     from .row import Row
     from .url import URL
     from ..event import _ListenerFnType
@@ -280,7 +280,7 @@ class DefaultDialect(Dialect):
     def __init__(
         self,
         paramstyle: Optional[_ParamStyle] = None,
-        isolation_level: Optional[_IsolationLevel] = None,
+        isolation_level: Optional[IsolationLevel] = None,
         dbapi: Optional[ModuleType] = None,
         implicit_returning: Literal[True] = True,
         supports_native_boolean: Optional[bool] = None,
@@ -582,13 +582,13 @@ class DefaultDialect(Dialect):
         return [[], opts]
 
     def set_engine_execution_options(
-        self, engine: Engine, opts: Mapping[str, str]
+        self, engine: Engine, opts: Mapping[str, Any]
     ) -> None:
         supported_names = set(self.connection_characteristics).intersection(
             opts
         )
         if supported_names:
-            characteristics: Mapping[str, str] = util.immutabledict(
+            characteristics: Mapping[str, Any] = util.immutabledict(
                 (name, opts[name]) for name in supported_names
             )
 
@@ -599,13 +599,13 @@ class DefaultDialect(Dialect):
                 )
 
     def set_connection_execution_options(
-        self, connection: Connection, opts: Mapping[str, str]
+        self, connection: Connection, opts: Mapping[str, Any]
     ) -> None:
         supported_names = set(self.connection_characteristics).intersection(
             opts
         )
         if supported_names:
-            characteristics: Mapping[str, str] = util.immutabledict(
+            characteristics: Mapping[str, Any] = util.immutabledict(
                 (name, opts[name]) for name in supported_names
             )
             self._set_connection_characteristics(connection, characteristics)

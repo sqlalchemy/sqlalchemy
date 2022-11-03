@@ -104,11 +104,11 @@ if typing.TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
-    from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import _ExecuteOptions
-    from ..engine.interfaces import _SchemaTranslateMapType
     from ..engine.interfaces import CacheStats
+    from ..engine.interfaces import CompiledCacheType
+    from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
 
 _NUMERIC = Union[float, Decimal]
@@ -618,10 +618,10 @@ class ClauseElement(
         self,
         dialect: Dialect,
         *,
-        compiled_cache: Optional[_CompiledCacheType],
+        compiled_cache: Optional[CompiledCacheType],
         column_keys: List[str],
         for_executemany: bool = False,
-        schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+        schema_translate_map: Optional[SchemaTranslateMapType] = None,
         **kw: Any,
     ) -> typing_Tuple[
         Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats

@@ -29,7 +29,7 @@ from ..engine import URL
 from ..sql.type_api import TypeEngine
 
 if typing.TYPE_CHECKING:
-    from ..engine.interfaces import _IsolationLevel
+    from ..engine.interfaces import IsolationLevel
 
 
 class PyODBCConnector(Connector):
@@ -223,7 +223,7 @@ class PyODBCConnector(Connector):
 
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
-    ) -> List[_IsolationLevel]:
+    ) -> List[IsolationLevel]:
         return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa: E501
             "AUTOCOMMIT"
         ]
@@ -231,7 +231,7 @@ class PyODBCConnector(Connector):
     def set_isolation_level(
         self,
         dbapi_connection: interfaces.DBAPIConnection,
-        level: _IsolationLevel,
+        level: IsolationLevel,
     ) -> None:
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"

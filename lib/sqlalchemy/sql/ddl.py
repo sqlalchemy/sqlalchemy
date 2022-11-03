@@ -42,11 +42,11 @@ if typing.TYPE_CHECKING:
     from .schema import SchemaItem
     from .schema import Sequence
     from .schema import Table
-    from ..engine.base import _CompiledCacheType
     from ..engine.base import Connection
-    from ..engine.interfaces import _SchemaTranslateMapType
     from ..engine.interfaces import CacheStats
+    from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
+    from ..engine.interfaces import SchemaTranslateMapType
 
 
 class BaseDDLElement(ClauseElement):
@@ -70,10 +70,10 @@ class BaseDDLElement(ClauseElement):
         self,
         dialect: Dialect,
         *,
-        compiled_cache: Optional[_CompiledCacheType],
+        compiled_cache: Optional[CompiledCacheType],
         column_keys: List[str],
         for_executemany: bool = False,
-        schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+        schema_translate_map: Optional[SchemaTranslateMapType] = None,
         **kw: Any,
     ) -> Tuple[
         Compiled, Optional[typing_Sequence[BindParameter[Any]]], CacheStats

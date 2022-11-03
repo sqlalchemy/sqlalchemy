@@ -97,7 +97,7 @@ if typing.TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import Engine
     from ..engine.interfaces import _CoreMultiExecuteParams
-    from ..engine.interfaces import _ExecuteOptionsParameter
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
     from ..engine.mock import MockConnection
     from ..engine.reflection import _ReflectionInfo
@@ -3034,7 +3034,7 @@ class DefaultGenerator(Executable, SchemaItem):
         self,
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: CoreExecuteOptionsParameter,
     ) -> Any:
         util.warn_deprecated(
             "Using the .execute() method to invoke a "
@@ -3050,7 +3050,7 @@ class DefaultGenerator(Executable, SchemaItem):
         self,
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: CoreExecuteOptionsParameter,
     ) -> Any:
         return connection._execute_default(
             self, distilled_params, execution_options

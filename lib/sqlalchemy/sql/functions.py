@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from ..engine.base import Connection
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
-    from ..engine.interfaces import _ExecuteOptionsParameter
+    from ..engine.interfaces import CoreExecuteOptionsParameter
 
 _T = TypeVar("_T", bound=Any)
 
@@ -175,7 +175,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         self,
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptionsParameter,
+        execution_options: CoreExecuteOptionsParameter,
     ) -> CursorResult[Any]:
         return connection._execute_function(
             self, distilled_params, execution_options

@@ -1426,6 +1426,12 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def python311(self):
+        return exclusions.only_if(
+            lambda: util.py311, "Python 3.11 or above required"
+        )
+
+    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"
