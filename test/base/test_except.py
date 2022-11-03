@@ -1,5 +1,3 @@
-#! coding:utf-8
-
 """Tests exceptions and DB-API exception wrapping."""
 
 from itertools import product

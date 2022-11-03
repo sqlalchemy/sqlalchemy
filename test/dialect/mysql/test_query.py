@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from sqlalchemy import all_
 from sqlalchemy import and_
 from sqlalchemy import any_

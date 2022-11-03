@@ -31,8 +31,8 @@ class NamedType(sqltypes.TypeEngine):
     """Base for named types."""
 
     __abstract__ = True
-    DDLGenerator: Type["NamedTypeGenerator"]
-    DDLDropper: Type["NamedTypeDropper"]
+    DDLGenerator: Type[NamedTypeGenerator]
+    DDLDropper: Type[NamedTypeDropper]
     create_type: bool
 
     def create(self, bind, checkfirst=True, **kw):

@@ -2854,7 +2854,7 @@ class TwoPhaseTransaction(RootTransaction):
     def __init__(self, connection: Connection, xid: Any):
         self._is_prepared = False
         self.xid = xid
-        super(TwoPhaseTransaction, self).__init__(connection)
+        super().__init__(connection)
 
     def prepare(self) -> None:
         """Prepare this :class:`.TwoPhaseTransaction`.

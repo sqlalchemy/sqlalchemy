@@ -1,4 +1,3 @@
-# coding: utf-8
 import datetime
 import decimal
 import importlib
@@ -511,9 +510,9 @@ class _UserDefinedTypeFixture:
             cache_ok = True
 
             def bind_processor(self, dialect):
-                impl_processor = super(MyDecoratedType, self).bind_processor(
-                    dialect
-                ) or (lambda value: value)
+                impl_processor = super().bind_processor(dialect) or (
+                    lambda value: value
+                )
 
                 def process(value):
                     if value is None:
@@ -523,7 +522,7 @@ class _UserDefinedTypeFixture:
                 return process
 
             def result_processor(self, dialect, coltype):
-                impl_processor = super(MyDecoratedType, self).result_processor(
+                impl_processor = super().result_processor(
                     dialect, coltype
                 ) or (lambda value: value)
 
@@ -577,9 +576,9 @@ class _UserDefinedTypeFixture:
             cache_ok = True
 
             def bind_processor(self, dialect):
-                impl_processor = super(MyUnicodeType, self).bind_processor(
-                    dialect
-                ) or (lambda value: value)
+                impl_processor = super().bind_processor(dialect) or (
+                    lambda value: value
+                )
 
                 def process(value):
                     if value is None:
@@ -590,7 +589,7 @@ class _UserDefinedTypeFixture:
                 return process
 
             def result_processor(self, dialect, coltype):
-                impl_processor = super(MyUnicodeType, self).result_processor(
+                impl_processor = super().result_processor(
                     dialect, coltype
                 ) or (lambda value: value)
 
@@ -1070,7 +1069,7 @@ class UserDefinedTest(
                 if dialect.name == "sqlite":
                     return String(50)
                 else:
-                    return super(MyType, self).load_dialect_impl(dialect)
+                    return super().load_dialect_impl(dialect)
 
         sl = dialects.sqlite.dialect()
         pg = dialects.postgresql.dialect()
@@ -1143,7 +1142,7 @@ class UserDefinedTest(
     def test_user_defined_dialect_specific_args(self):
         class MyType(types.UserDefinedType):
             def __init__(self, foo="foo", **kwargs):
-                super(MyType, self).__init__()
+                super().__init__()
                 self.foo = foo
                 self.dialect_specific_args = kwargs
 

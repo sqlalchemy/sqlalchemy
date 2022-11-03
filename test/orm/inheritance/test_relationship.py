@@ -478,7 +478,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
     def _five_obj_fixture(self):
         sess = fixture_session()
-        e1, e2, e3, e4, e5 = [Engineer(name="e%d" % (i + 1)) for i in range(5)]
+        e1, e2, e3, e4, e5 = (Engineer(name="e%d" % (i + 1)) for i in range(5))
         e3.reports_to = e1
         e4.reports_to = e2
         sess.add_all([e1, e2, e3, e4, e5])
@@ -801,13 +801,13 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
-                set([c11, c12, c13]),
+                {c11, c12, c13},
             )
 
         with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.query(Child1, Child2).join(Child1.left_child2)),
-                set([(c11, c22), (c12, c22), (c13, c23)]),
+                {(c11, c22), (c12, c22), (c13, c23)},
             )
 
         # manual alias test:
@@ -817,12 +817,12 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         eq_(
             set(sess.execute(stmt).scalars().unique()),
-            set([c11, c12, c13]),
+            {c11, c12, c13},
         )
 
         eq_(
             set(sess.query(Child1, c2).join(Child1.left_child2.of_type(c2))),
-            set([(c11, c22), (c12, c22), (c13, c23)]),
+            {(c11, c22), (c12, c22), (c13, c23)},
         )
 
         # test __eq__() on property is annotating correctly
@@ -835,7 +835,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         with _aliased_join_warning(r"Child1\(child1\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
-                set([c22]),
+                {c22},
             )
 
         # manual aliased version
@@ -847,7 +847,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
         eq_(
             set(sess.execute(stmt).scalars().unique()),
-            set([c22]),
+            {c22},
         )
 
         # test the same again

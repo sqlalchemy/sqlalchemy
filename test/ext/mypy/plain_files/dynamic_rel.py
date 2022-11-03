@@ -74,7 +74,7 @@ with Session() as session:
         # EXPECTED_TYPE: AppenderQuery[Address]
         reveal_type(u.addresses)
 
-    u.addresses = set([Address(), Address()])
+    u.addresses = {Address(), Address()}
 
     if typing.TYPE_CHECKING:
         # still an AppenderQuery

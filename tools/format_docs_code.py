@@ -372,11 +372,11 @@ Use --report-doctest to ignore errors on plain code blocks.
 
     config = parse_pyproject_toml(home / "pyproject.toml")
     BLACK_MODE = Mode(
-        target_versions=set(
+        target_versions={
             TargetVersion[val.upper()]
             for val in config.get("target_version", [])
             if val != "py27"
-        ),
+        },
         line_length=config.get("line_length", DEFAULT_LINE_LENGTH)
         if args.project_line_length
         else DEFAULT_LINE_LENGTH,

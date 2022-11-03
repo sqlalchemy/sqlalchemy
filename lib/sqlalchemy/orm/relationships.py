@@ -2966,15 +2966,13 @@ class JoinCondition:
 
                 # 2. columns that are FK but are not remote (e.g. local)
                 # suggest manytoone.
-                manytoone_local = set(
-                    [
-                        c
-                        for c in self._gather_columns_with_annotation(
-                            self.primaryjoin, "foreign"
-                        )
-                        if "remote" not in c._annotations
-                    ]
-                )
+                manytoone_local = {
+                    c
+                    for c in self._gather_columns_with_annotation(
+                        self.primaryjoin, "foreign"
+                    )
+                    if "remote" not in c._annotations
+                }
 
                 # 3. if both collections are present, remove columns that
                 # refer to themselves.  This is for the case of
@@ -3204,13 +3202,11 @@ class JoinCondition:
         self, clause: ColumnElement[Any], *annotation: Iterable[str]
     ) -> Set[ColumnElement[Any]]:
         annotation_set = set(annotation)
-        return set(
-            [
-                cast(ColumnElement[Any], col)
-                for col in visitors.iterate(clause, {})
-                if annotation_set.issubset(col._annotations)
-            ]
-        )
+        return {
+            cast(ColumnElement[Any], col)
+            for col in visitors.iterate(clause, {})
+            if annotation_set.issubset(col._annotations)
+        }
 
     def join_targets(
         self,

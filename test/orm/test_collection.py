@@ -488,7 +488,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj.attr = like_me
         self.assert_(obj.attr is not direct)
         self.assert_(obj.attr is not like_me)
-        self.assert_(set(obj.attr) == set([e2]))
+        self.assert_(set(obj.attr) == {e2})
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
 
@@ -496,13 +496,13 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         real_list = [e3]
         obj.attr = real_list
         self.assert_(obj.attr is not real_list)
-        self.assert_(set(obj.attr) == set([e3]))
+        self.assert_(set(obj.attr) == {e3})
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
 
         e4 = creator()
         try:
-            obj.attr = set([e4])
+            obj.attr = {e4}
             self.assert_(False)
         except TypeError:
             self.assert_(e4 not in canary.data)
@@ -785,7 +785,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             e = creator()
             addall(e)
 
-            values = set([e, creator(), creator()])
+            values = {e, creator(), creator()}
 
             direct.update(values)
             control.update(values)
@@ -796,14 +796,14 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             e = creator()
             addall(e)
 
-            values = set([e, creator(), creator()])
+            values = {e, creator(), creator()}
 
             direct |= values
             control |= values
             assert_eq()
 
             # cover self-assignment short-circuit
-            values = set([e, creator(), creator()])
+            values = {e, creator(), creator()}
             obj.attr |= values
             control |= values
             assert_eq()
@@ -837,12 +837,12 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             zap()
             e = creator()
             addall(creator(), creator())
-            values = set([creator()])
+            values = {creator()}
 
             direct.difference_update(values)
             control.difference_update(values)
             assert_eq()
-            values.update(set([e, creator()]))
+            values.update({e, creator()})
             direct.difference_update(values)
             control.difference_update(values)
             assert_eq()
@@ -851,17 +851,17 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             zap()
             e = creator()
             addall(creator(), creator())
-            values = set([creator()])
+            values = {creator()}
 
             direct -= values
             control -= values
             assert_eq()
-            values.update(set([e, creator()]))
+            values.update({e, creator()})
             direct -= values
             control -= values
             assert_eq()
 
-            values = set([creator()])
+            values = {creator()}
             obj.attr -= values
             control -= values
             assert_eq()
@@ -887,7 +887,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control.intersection_update(values)
             assert_eq()
 
-            values.update(set([e, creator()]))
+            values.update({e, creator()})
             direct.intersection_update(values)
             control.intersection_update(values)
             assert_eq()
@@ -902,12 +902,12 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control &= values
             assert_eq()
 
-            values.update(set([e, creator()]))
+            values.update({e, creator()})
             direct &= values
             control &= values
             assert_eq()
 
-            values.update(set([creator()]))
+            values.update({creator()})
             obj.attr &= values
             control &= values
             assert_eq()
@@ -923,14 +923,14 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             e = creator()
             addall(e, creator(), creator())
 
-            values = set([e, creator()])
+            values = {e, creator()}
             direct.symmetric_difference_update(values)
             control.symmetric_difference_update(values)
             assert_eq()
 
             e = creator()
             addall(e)
-            values = set([e])
+            values = {e}
             direct.symmetric_difference_update(values)
             control.symmetric_difference_update(values)
             assert_eq()
@@ -945,14 +945,14 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             e = creator()
             addall(e, creator(), creator())
 
-            values = set([e, creator()])
+            values = {e, creator()}
             direct ^= values
             control ^= values
             assert_eq()
 
             e = creator()
             addall(e)
-            values = set([e])
+            values = {e}
             direct ^= values
             control ^= values
             assert_eq()
@@ -962,7 +962,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control ^= values
             assert_eq()
 
-            values = set([creator()])
+            values = {creator()}
             obj.attr ^= values
             control ^= values
             assert_eq()
@@ -1005,15 +1005,15 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj.attr = like_me
         self.assert_(obj.attr is not direct)
         self.assert_(obj.attr is not like_me)
-        self.assert_(obj.attr == set([e2]))
+        self.assert_(obj.attr == {e2})
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
 
         e3 = creator()
-        real_set = set([e3])
+        real_set = {e3}
         obj.attr = real_set
         self.assert_(obj.attr is not real_set)
-        self.assert_(obj.attr == set([e3]))
+        self.assert_(obj.attr == {e3})
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
 
@@ -1291,14 +1291,14 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         if hasattr(direct, "update"):
             e = creator()
-            d = dict([(ee.a, ee) for ee in [e, creator(), creator()]])
+            d = {ee.a: ee for ee in [e, creator(), creator()]}
             addall(e, creator())
 
             direct.update(d)
             control.update(d)
             assert_eq()
 
-            kw = dict([(ee.a, ee) for ee in [e, creator()]])
+            kw = {ee.a: ee for ee in [e, creator()]}
             direct.update(**kw)
             control.update(**kw)
             assert_eq()
@@ -1335,9 +1335,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj.attr = like_me
         self.assert_(obj.attr is not direct)
         self.assert_(obj.attr is not like_me)
-        self.assert_(
-            set(collections.collection_adapter(obj.attr)) == set([e2])
-        )
+        self.assert_(set(collections.collection_adapter(obj.attr)) == {e2})
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
 
@@ -1349,7 +1347,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj.attr = real_dict
         self.assert_(obj.attr is not real_dict)
         self.assert_("keyignored1" not in obj.attr)
-        eq_(set(collections.collection_adapter(obj.attr)), set([e3]))
+        eq_(set(collections.collection_adapter(obj.attr)), {e3})
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
 
@@ -1405,7 +1403,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
     def test_dict_subclass2(self):
         class MyEasyDict(collections.KeyFuncDict):
             def __init__(self):
-                super(MyEasyDict, self).__init__(lambda e: e.a)
+                super().__init__(lambda e: e.a)
 
         self._test_adapter(
             MyEasyDict, self.dictable_entity, to_set=lambda c: set(c.values())
@@ -1878,7 +1876,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        eq_(set(p.children.keys()), set(["foo", "bar"]))
+        eq_(set(p.children.keys()), {"foo", "bar"})
         cid = p.children["foo"].id
 
         collections.collection_adapter(p.children).append_with_event(
@@ -1890,7 +1888,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(set(p.children.keys()) == set(["foo", "bar"]))
+        self.assert_(set(p.children.keys()) == {"foo", "bar"})
         self.assert_(p.children["foo"].id != cid)
 
         self.assert_(
@@ -1964,9 +1962,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(
-            set(p.children.keys()) == set([("foo", "1"), ("foo", "2")])
-        )
+        self.assert_(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
         cid = p.children[("foo", "1")].id
 
         collections.collection_adapter(p.children).append_with_event(
@@ -1978,9 +1974,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(
-            set(p.children.keys()) == set([("foo", "1"), ("foo", "2")])
-        )
+        self.assert_(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
         self.assert_(p.children[("foo", "1")].id != cid)
 
         self.assert_(
@@ -2314,7 +2308,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         assert len(list(f.bars)) == 2
 
         strongref = list(f.bars.values())
-        existing = set([id(b) for b in strongref])
+        existing = {id(b) for b in strongref}
 
         col = collections.collection_adapter(f.bars)
         col.append_with_event(Bar("b"))
@@ -2324,7 +2318,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f = sess.get(Foo, f.col1)
         assert len(list(f.bars)) == 2
 
-        replaced = set([id(b) for b in list(f.bars.values())])
+        replaced = {id(b) for b in list(f.bars.values())}
         ne_(existing, replaced)
 
     @testing.combinations("direct", "as_callable", argnames="factory_type")

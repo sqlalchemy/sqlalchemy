@@ -66,11 +66,11 @@ class OperatorType(Protocol):
 
     def __call__(
         self,
-        left: "Operators",
+        left: Operators,
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> "Operators":
+    ) -> Operators:
         ...
 
 
@@ -184,7 +184,7 @@ class Operators:
         precedence: int = 0,
         is_comparison: bool = False,
         return_type: Optional[
-            Union[Type["TypeEngine[Any]"], "TypeEngine[Any]"]
+            Union[Type[TypeEngine[Any]], TypeEngine[Any]]
         ] = None,
         python_impl: Optional[Callable[..., Any]] = None,
     ) -> Callable[[Any], Operators]:
@@ -397,7 +397,7 @@ class custom_op(OperatorType, Generic[_T]):
         precedence: int = 0,
         is_comparison: bool = False,
         return_type: Optional[
-            Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
+            Union[Type[TypeEngine[_T]], TypeEngine[_T]]
         ] = None,
         natural_self_precedent: bool = False,
         eager_grouping: bool = False,

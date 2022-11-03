@@ -115,104 +115,102 @@ if typing.TYPE_CHECKING:
 
 _FromHintsType = Dict["FromClause", str]
 
-RESERVED_WORDS = set(
-    [
-        "all",
-        "analyse",
-        "analyze",
-        "and",
-        "any",
-        "array",
-        "as",
-        "asc",
-        "asymmetric",
-        "authorization",
-        "between",
-        "binary",
-        "both",
-        "case",
-        "cast",
-        "check",
-        "collate",
-        "column",
-        "constraint",
-        "create",
-        "cross",
-        "current_date",
-        "current_role",
-        "current_time",
-        "current_timestamp",
-        "current_user",
-        "default",
-        "deferrable",
-        "desc",
-        "distinct",
-        "do",
-        "else",
-        "end",
-        "except",
-        "false",
-        "for",
-        "foreign",
-        "freeze",
-        "from",
-        "full",
-        "grant",
-        "group",
-        "having",
-        "ilike",
-        "in",
-        "initially",
-        "inner",
-        "intersect",
-        "into",
-        "is",
-        "isnull",
-        "join",
-        "leading",
-        "left",
-        "like",
-        "limit",
-        "localtime",
-        "localtimestamp",
-        "natural",
-        "new",
-        "not",
-        "notnull",
-        "null",
-        "off",
-        "offset",
-        "old",
-        "on",
-        "only",
-        "or",
-        "order",
-        "outer",
-        "overlaps",
-        "placing",
-        "primary",
-        "references",
-        "right",
-        "select",
-        "session_user",
-        "set",
-        "similar",
-        "some",
-        "symmetric",
-        "table",
-        "then",
-        "to",
-        "trailing",
-        "true",
-        "union",
-        "unique",
-        "user",
-        "using",
-        "verbose",
-        "when",
-        "where",
-    ]
-)
+RESERVED_WORDS = {
+    "all",
+    "analyse",
+    "analyze",
+    "and",
+    "any",
+    "array",
+    "as",
+    "asc",
+    "asymmetric",
+    "authorization",
+    "between",
+    "binary",
+    "both",
+    "case",
+    "cast",
+    "check",
+    "collate",
+    "column",
+    "constraint",
+    "create",
+    "cross",
+    "current_date",
+    "current_role",
+    "current_time",
+    "current_timestamp",
+    "current_user",
+    "default",
+    "deferrable",
+    "desc",
+    "distinct",
+    "do",
+    "else",
+    "end",
+    "except",
+    "false",
+    "for",
+    "foreign",
+    "freeze",
+    "from",
+    "full",
+    "grant",
+    "group",
+    "having",
+    "ilike",
+    "in",
+    "initially",
+    "inner",
+    "intersect",
+    "into",
+    "is",
+    "isnull",
+    "join",
+    "leading",
+    "left",
+    "like",
+    "limit",
+    "localtime",
+    "localtimestamp",
+    "natural",
+    "new",
+    "not",
+    "notnull",
+    "null",
+    "off",
+    "offset",
+    "old",
+    "on",
+    "only",
+    "or",
+    "order",
+    "outer",
+    "overlaps",
+    "placing",
+    "primary",
+    "references",
+    "right",
+    "select",
+    "session_user",
+    "set",
+    "similar",
+    "some",
+    "symmetric",
+    "table",
+    "then",
+    "to",
+    "trailing",
+    "true",
+    "union",
+    "unique",
+    "user",
+    "using",
+    "verbose",
+    "when",
+    "where",
+}
 
 LEGAL_CHARACTERS = re.compile(r"^[A-Z0-9_$]+$", re.I)
 LEGAL_CHARACTERS_PLUS_SPACE = re.compile(r"^[A-Z0-9_ $]+$", re.I)
@@ -505,8 +503,7 @@ class FromLinter(collections.namedtuple("FromLinter", ["froms", "edges"])):
                     "between each element to resolve."
                 )
                 froms_str = ", ".join(
-                    '"{elem}"'.format(elem=self.froms[from_])
-                    for from_ in froms
+                    f'"{self.froms[from_]}"' for from_ in froms
                 )
                 message = template.format(
                     froms=froms_str, start=self.froms[start_with]
@@ -1259,11 +1256,8 @@ class SQLCompiler(Compiled):
 
         # mypy is not able to see the two value types as the above Union,
         # it just sees "object".  don't know how to resolve
-        return dict(
-            (
-                key,
-                value,
-            )  # type: ignore
+        return {
+            key: value  # type: ignore
             for key, value in (
                 (
                     self.bind_names[bindparam],
@@ -1277,7 +1271,7 @@ class SQLCompiler(Compiled):
                 for bindparam in self.bind_names
             )
             if value is not None
-        )
+        }
 
     def is_subquery(self):
         return len(self.stack) > 1
@@ -4147,17 +4141,12 @@ class SQLCompiler(Compiled):
     def _setup_select_hints(
         self, select: Select[Any]
     ) -> Tuple[str, _FromHintsType]:
-        byfrom = dict(
-            [
-                (
-                    from_,
-                    hinttext
-                    % {"name": from_._compiler_dispatch(self, ashint=True)},
-                )
-                for (from_, dialect), hinttext in select._hints.items()
-                if dialect in ("*", self.dialect.name)
-            ]
-        )
+        byfrom = {
+            from_: hinttext
+            % {"name": from_._compiler_dispatch(self, ashint=True)}
+            for (from_, dialect), hinttext in select._hints.items()
+            if dialect in ("*", self.dialect.name)
+        }
         hint_text = self.get_select_hint_text(byfrom)
         return hint_text, byfrom
 
@@ -4583,13 +4572,11 @@ class SQLCompiler(Compiled):
         )
 
     def _setup_crud_hints(self, stmt, table_text):
-        dialect_hints = dict(
-            [
-                (table, hint_text)
-                for (table, dialect), hint_text in stmt._hints.items()
-                if dialect in ("*", self.dialect.name)
-            ]
-        )
+        dialect_hints = {
+            table: hint_text
+            for (table, dialect), hint_text in stmt._hints.items()
+            if dialect in ("*", self.dialect.name)
+        }
         if stmt.table in dialect_hints:
             table_text = self.format_from_hint_text(
                 table_text, stmt.table, dialect_hints[stmt.table], True
@@ -5318,9 +5305,7 @@ class StrSQLCompiler(SQLCompiler):
             if not isinstance(compiler, StrSQLCompiler):
                 return compiler.process(element)
 
-        return super(StrSQLCompiler, self).visit_unsupported_compilation(
-            element, err
-        )
+        return super().visit_unsupported_compilation(element, err)
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
@@ -6603,14 +6588,14 @@ class IdentifierPreparer:
 
     @util.memoized_property
     def _r_identifiers(self):
-        initial, final, escaped_final = [
+        initial, final, escaped_final = (
             re.escape(s)
             for s in (
                 self.initial_quote,
                 self.final_quote,
                 self._escape_identifier(self.final_quote),
             )
-        ]
+        )
         r = re.compile(
             r"(?:"
             r"(?:%(initial)s((?:%(escaped)s|[^%(final)s])+)%(final)s"

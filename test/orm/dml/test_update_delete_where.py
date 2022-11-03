@@ -1950,7 +1950,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         class RoutingSession(Session):
             def get_bind(self, **kw):
                 received.append(type(kw["clause"]))
-                return super(RoutingSession, self).get_bind(**kw)
+                return super().get_bind(**kw)
 
         stmt = stmt.execution_options(synchronize_session=sync_type)
 
@@ -2181,16 +2181,14 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
 
         eq_(
             set(s.query(Document.id, Document.flag)),
-            set(
-                [
-                    (1, True),
-                    (2, None),
-                    (3, None),
-                    (4, True),
-                    (5, True),
-                    (6, None),
-                ]
-            ),
+            {
+                (1, True),
+                (2, None),
+                (3, None),
+                (4, True),
+                (5, True),
+                (6, None),
+            },
         )
 
     @testing.requires.delete_using
@@ -2210,7 +2208,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
 
         eq_(
             set(s.query(Document.id, Document.flag)),
-            set([(2, None), (3, None), (6, None)]),
+            {(2, None), (3, None), (6, None)},
         )
 
     def test_no_eval_against_multi_table_criteria(self):
@@ -2271,16 +2269,14 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
 
         eq_(
             set(s.query(Document.id, Document.flag)),
-            set(
-                [
-                    (1, True),
-                    (2, None),
-                    (3, None),
-                    (4, True),
-                    (5, True),
-                    (6, None),
-                ]
-            ),
+            {
+                (1, True),
+                (2, None),
+                (3, None),
+                (4, True),
+                (5, True),
+                (6, None),
+            },
         )
 
     @testing.requires.update_where_target_in_subquery
@@ -2305,16 +2301,14 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
 
         eq_(
             set(s.query(Document.id, Document.flag)),
-            set(
-                [
-                    (1, True),
-                    (2, False),
-                    (3, False),
-                    (4, True),
-                    (5, True),
-                    (6, False),
-                ]
-            ),
+            {
+                (1, True),
+                (2, False),
+                (3, False),
+                (4, True),
+                (5, True),
+                (6, False),
+            },
         )
 
     @testing.requires.multi_table_update
@@ -2616,7 +2610,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
 
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
-            set([("e1", "e1"), ("e2", "e5"), ("pp1", "pp1")]),
+            {("e1", "e1"), ("e2", "e5"), ("pp1", "pp1")},
         )
 
     @testing.requires.delete_using
@@ -2714,7 +2708,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         # delete actually worked
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
-            set([("pp1", "pp1"), ("e1", "e1")]),
+            {("pp1", "pp1"), ("e1", "e1")},
         )
 
     @testing.only_on(["mysql", "mariadb"], "Multi table update")
@@ -2733,7 +2727,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
 
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
-            set([("e1", "e1"), ("e22", "e55"), ("pp1", "pp1")]),
+            {("e1", "e1"), ("e22", "e55"), ("pp1", "pp1")},
         )
 
 

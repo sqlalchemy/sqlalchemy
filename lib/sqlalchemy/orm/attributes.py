@@ -1200,7 +1200,7 @@ class ScalarAttributeImpl(AttributeImpl):
     __slots__ = "_replace_token", "_append_token", "_remove_token"
 
     def __init__(self, *arg, **kw):
-        super(ScalarAttributeImpl, self).__init__(*arg, **kw)
+        super().__init__(*arg, **kw)
         self._replace_token = self._append_token = AttributeEventToken(
             self, OP_REPLACE
         )
@@ -1628,7 +1628,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         compare_function=None,
         **kwargs,
     ):
-        super(CollectionAttributeImpl, self).__init__(
+        super().__init__(
             class_,
             key,
             callable_,

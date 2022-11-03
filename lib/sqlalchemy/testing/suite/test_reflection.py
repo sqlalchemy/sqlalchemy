@@ -1871,14 +1871,12 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         # "unique constraints" are actually unique indexes (with possible
         # exception of a unique that is a dupe of another one in the case
         # of Oracle).  make sure # they aren't duplicated.
-        idx_names = set([idx.name for idx in reflected.indexes])
-        uq_names = set(
-            [
-                uq.name
-                for uq in reflected.constraints
-                if isinstance(uq, sa.UniqueConstraint)
-            ]
-        ).difference(["unique_c_a_b"])
+        idx_names = {idx.name for idx in reflected.indexes}
+        uq_names = {
+            uq.name
+            for uq in reflected.constraints
+            if isinstance(uq, sa.UniqueConstraint)
+        }.difference(["unique_c_a_b"])
 
         assert not idx_names.intersection(uq_names)
         if names_that_duplicate_index:
@@ -2519,10 +2517,10 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         )
         t.create(connection)
         eq_(
-            dict(
-                (col["name"], col["nullable"])
+            {
+                col["name"]: col["nullable"]
                 for col in inspect(connection).get_columns("t")
-            ),
+            },
             {"a": True, "b": False},
         )
 
@@ -2613,7 +2611,7 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         # that can reflect these, since alembic looks for this
         opts = insp.get_foreign_keys("table")[0]["options"]
 
-        eq_(dict((k, opts[k]) for k in opts if opts[k]), {})
+        eq_({k: opts[k] for k in opts if opts[k]}, {})
 
         opts = insp.get_foreign_keys("user")[0]["options"]
         eq_(opts, expected)

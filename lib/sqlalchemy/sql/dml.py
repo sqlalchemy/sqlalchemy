@@ -1179,7 +1179,7 @@ class Insert(ValuesBase):
     )
 
     def __init__(self, table: _DMLTableArgument):
-        super(Insert, self).__init__(table)
+        super().__init__(table)
 
     @_generative
     def inline(self: SelfInsert) -> SelfInsert:
@@ -1498,7 +1498,7 @@ class Update(DMLWhereBase, ValuesBase):
     )
 
     def __init__(self, table: _DMLTableArgument):
-        super(Update, self).__init__(table)
+        super().__init__(table)
 
     @_generative
     def ordered_values(

@@ -374,7 +374,7 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def _assert_type_map(self, t, compare):
-        map_ = dict((b.key, b.type) for b in t._bindparams.values())
+        map_ = {b.key: b.type for b in t._bindparams.values()}
         for k in compare:
             assert compare[k]._type_affinity is map_[k]._type_affinity
 
@@ -642,11 +642,11 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _mapping(self, stmt):
         compiled = stmt.compile()
-        return dict(
-            (elem, key)
+        return {
+            elem: key
             for key, elements in compiled._create_result_map().items()
             for elem in elements[1]
-        )
+        }
 
     def test_select_label_alt_name(self):
         t = self._xy_table_fixture()
@@ -815,7 +815,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         t = t.bindparams(bar=String)
         t = t.bindparams(bindparam("bat", value="bat"))
 
-        eq_(set(t.element._bindparams), set(["bat", "foo", "bar"]))
+        eq_(set(t.element._bindparams), {"bat", "foo", "bar"})
 
 
 class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):

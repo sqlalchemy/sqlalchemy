@@ -767,7 +767,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
                 ._pending_mutations["keywords"]
                 .added_items
             ),
-            set([k2]),
+            {k2},
         )
         # because autoflush is off, k2 is still
         # coming in from pending

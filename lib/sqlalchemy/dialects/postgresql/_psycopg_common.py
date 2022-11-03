@@ -60,15 +60,13 @@ class _PsycopgHStore(HSTORE):
         if dialect._has_native_hstore:
             return None
         else:
-            return super(_PsycopgHStore, self).bind_processor(dialect)
+            return super().bind_processor(dialect)
 
     def result_processor(self, dialect, coltype):
         if dialect._has_native_hstore:
             return None
         else:
-            return super(_PsycopgHStore, self).result_processor(
-                dialect, coltype
-            )
+            return super().result_processor(dialect, coltype)
 
 
 class _PsycopgARRAY(PGARRAY):

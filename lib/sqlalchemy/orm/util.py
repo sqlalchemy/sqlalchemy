@@ -1011,7 +1011,7 @@ class AliasedInsp(
         our_classes = util.to_set(
             mp.class_ for mp in self.with_polymorphic_mappers
         )
-        new_classes = set([mp.class_ for mp in other.with_polymorphic_mappers])
+        new_classes = {mp.class_ for mp in other.with_polymorphic_mappers}
         if our_classes == new_classes:
             return other
         else:
@@ -1278,8 +1278,7 @@ class LoaderCriteriaOption(CriteriaOption):
     def _all_mappers(self) -> Iterator[Mapper[Any]]:
 
         if self.entity:
-            for mp_ent in self.entity.mapper.self_and_descendants:
-                yield mp_ent
+            yield from self.entity.mapper.self_and_descendants
         else:
             assert self.root_entity
             stack = list(self.root_entity.__subclasses__())
@@ -1290,8 +1289,7 @@ class LoaderCriteriaOption(CriteriaOption):
                     inspection.inspect(subclass, raiseerr=False),
                 )
                 if ent:
-                    for mp in ent.mapper.self_and_descendants:
-                        yield mp
+                    yield from ent.mapper.self_and_descendants
                 else:
                     stack.extend(subclass.__subclasses__())
 

@@ -1664,7 +1664,7 @@ class CycleTest(_fixtures.FixtureTest):
         go()
 
     def test_visit_binary_product(self):
-        a, b, q, e, f, j, r = [column(chr_) for chr_ in "abqefjr"]
+        a, b, q, e, f, j, r = (column(chr_) for chr_ in "abqefjr")
 
         from sqlalchemy import and_, func
         from sqlalchemy.sql.util import visit_binary_product

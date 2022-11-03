@@ -920,11 +920,11 @@ class Table(
             :attr:`_schema.Table.indexes`
 
         """
-        return set(
+        return {
             fkc.constraint
             for fkc in self.foreign_keys
             if fkc.constraint is not None
-        )
+        }
 
     def _init_existing(self, *args: Any, **kwargs: Any) -> None:
         autoload_with = kwargs.pop("autoload_with", None)
@@ -1895,7 +1895,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         # name = None is expected to be an interim state
         # note this use case is legacy now that ORM declarative has a
         # dedicated "column" construct local to the ORM
-        super(Column, self).__init__(name, type_)  # type: ignore
+        super().__init__(name, type_)  # type: ignore
 
         self.key = key if key is not None else name  # type: ignore
         self.primary_key = primary_key
@@ -3573,7 +3573,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         column = parent
         assert isinstance(column, Column)
-        super(Sequence, self)._set_parent(column)
+        super()._set_parent(column)
         column._on_table_attach(self._set_table)
 
     def _copy(self) -> Sequence:
@@ -3712,7 +3712,7 @@ class DefaultClause(FetchedValue):
         _reflected: bool = False,
     ) -> None:
         util.assert_arg_type(arg, (str, ClauseElement, TextClause), "arg")
-        super(DefaultClause, self).__init__(for_update)
+        super().__init__(for_update)
         self.arg = arg
         self.reflected = _reflected
 
@@ -3914,9 +3914,9 @@ class ColumnCollectionMixin:
 
             # issue #3411 - don't do the per-column auto-attach if some of the
             # columns are specified as strings.
-            has_string_cols = set(
+            has_string_cols = {
                 c for c in self._pending_colargs if c is not None
-            ).difference(col_objs)
+            }.difference(col_objs)
             if not has_string_cols:
 
                 def _col_attached(column: Column[Any], table: Table) -> None:
@@ -4434,7 +4434,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         return self.elements[0].column.table
 
     def _validate_dest_table(self, table: Table) -> None:
-        table_keys = set([elem._table_key() for elem in self.elements])
+        table_keys = {elem._table_key() for elem in self.elements}
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
@@ -4624,7 +4624,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         **dialect_kw: Any,
     ) -> None:
         self._implicit_generated = _implicit_generated
-        super(PrimaryKeyConstraint, self).__init__(
+        super().__init__(
             *columns,
             name=name,
             deferrable=deferrable,
@@ -4636,7 +4636,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        super(PrimaryKeyConstraint, self)._set_parent(table)
+        super()._set_parent(table)
 
         if table.primary_key is not self:
             table.constraints.discard(table.primary_key)
@@ -5219,13 +5219,9 @@ class MetaData(HasSchemaAttr):
             for fk in removed.foreign_keys:
                 fk._remove_from_metadata(self)
         if self._schemas:
-            self._schemas = set(
-                [
-                    t.schema
-                    for t in self.tables.values()
-                    if t.schema is not None
-                ]
-            )
+            self._schemas = {
+                t.schema for t in self.tables.values() if t.schema is not None
+            }
 
     def __getstate__(self) -> Dict[str, Any]:
         return {

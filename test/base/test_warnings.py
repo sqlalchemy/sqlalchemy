@@ -42,7 +42,7 @@ class WarnDeprecatedLimitedTest(fixtures.TestBase):
 class ClsWarningTest(fixtures.TestBase):
     @testing.fixture
     def dep_cls_fixture(self):
-        class Connectable(object):
+        class Connectable:
             """a docstring"""
 
             some_member = "foo"
@@ -63,7 +63,7 @@ class ClsWarningTest(fixtures.TestBase):
 
         import inspect
 
-        class PlainClass(object):
+        class PlainClass:
             some_member = "bar"
 
         pc_keys = dict(inspect.getmembers(PlainClass()))

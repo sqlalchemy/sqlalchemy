@@ -185,9 +185,7 @@ class Properties(Generic[_T]):
         return iter(list(self._data.values()))
 
     def __dir__(self) -> List[str]:
-        return dir(super(Properties, self)) + [
-            str(k) for k in self._data.keys()
-        ]
+        return dir(super()) + [str(k) for k in self._data.keys()]
 
     def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
         return list(self) + list(other)  # type: ignore
@@ -477,8 +475,7 @@ def flatten_iterator(x: Iterable[_T]) -> Iterator[_T]:
     elem: _T
     for elem in x:
         if not isinstance(elem, str) and hasattr(elem, "__iter__"):
-            for y in flatten_iterator(elem):
-                yield y
+            yield from flatten_iterator(elem)
         else:
             yield elem
 
@@ -504,7 +501,7 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
     capacity: int
     threshold: float
-    size_alert: Optional[Callable[["LRUCache[_KT, _VT]"], None]]
+    size_alert: Optional[Callable[[LRUCache[_KT, _VT]], None]]
 
     def __init__(
         self,

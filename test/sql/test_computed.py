@@ -1,4 +1,3 @@
-# coding: utf-8
 from sqlalchemy import Column
 from sqlalchemy import Computed
 from sqlalchemy import Integer

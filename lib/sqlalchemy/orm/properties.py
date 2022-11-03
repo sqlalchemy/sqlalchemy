@@ -151,9 +151,7 @@ class ColumnProperty(
         doc: Optional[str] = None,
         _instrument: bool = True,
     ):
-        super(ColumnProperty, self).__init__(
-            attribute_options=attribute_options
-        )
+        super().__init__(attribute_options=attribute_options)
         columns = (column,) + additional_columns
         self.columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
@@ -211,7 +209,7 @@ class ColumnProperty(
             column.name = key
 
     @property
-    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
         return self
 
     @property
@@ -601,7 +599,7 @@ class MappedColumn(
         return self.column.name
 
     @property
-    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
         if self.deferred:
             return ColumnProperty(
                 self.column,

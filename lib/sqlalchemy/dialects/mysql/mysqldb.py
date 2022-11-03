@@ -137,7 +137,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     preparer = MySQLIdentifierPreparer
 
     def __init__(self, **kwargs):
-        super(MySQLDialect_mysqldb, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._mysql_dbapi_version = (
             self._parse_dbapi_version(self.dbapi.__version__)
             if self.dbapi is not None and hasattr(self.dbapi, "__version__")
@@ -165,7 +165,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
         return __import__("MySQLdb")
 
     def on_connect(self):
-        super_ = super(MySQLDialect_mysqldb, self).on_connect()
+        super_ = super().on_connect()
 
         def on_connect(conn):
             if super_ is not None:
@@ -221,9 +221,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             ]
         else:
             additional_tests = []
-        return super(MySQLDialect_mysqldb, self)._check_unicode_returns(
-            connection, additional_tests
-        )
+        return super()._check_unicode_returns(connection, additional_tests)
 
     def create_connect_args(self, url, _translate_args=None):
         if _translate_args is None:
@@ -324,9 +322,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             dbapi_connection.autocommit(True)
         else:
             dbapi_connection.autocommit(False)
-            super(MySQLDialect_mysqldb, self).set_isolation_level(
-                dbapi_connection, level
-            )
+            super().set_isolation_level(dbapi_connection, level)
 
 
 dialect = MySQLDialect_mysqldb

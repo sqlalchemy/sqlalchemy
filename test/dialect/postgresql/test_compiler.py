@@ -1,4 +1,3 @@
-# coding: utf-8
 from sqlalchemy import and_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
@@ -2871,7 +2870,7 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         i = i.on_conflict_do_update(
             constraint=self.excl_constr_anon,
             set_=dict(name=i.excluded.name),
-            where=((self.table1.c.name != i.excluded.name)),
+            where=(self.table1.c.name != i.excluded.name),
         )
         self.assert_compile(
             i,
@@ -2913,7 +2912,7 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
             i.on_conflict_do_update(
                 constraint=self.excl_constr_anon,
                 set_=dict(name=i.excluded.name),
-                where=((self.table1.c.name != i.excluded.name)),
+                where=(self.table1.c.name != i.excluded.name),
             )
             .returning(literal_column("1"))
             .cte("i_upsert")

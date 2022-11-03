@@ -63,7 +63,7 @@ def apply_mypy_mapped_attr(
         ):
             break
     else:
-        util.fail(api, "Can't find mapped attribute {}".format(name), cls)
+        util.fail(api, f"Can't find mapped attribute {name}", cls)
         return None
 
     if stmt.type is None:

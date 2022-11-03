@@ -384,7 +384,7 @@ class _ms_numeric_pyodbc:
 
     def bind_processor(self, dialect):
 
-        super_process = super(_ms_numeric_pyodbc, self).bind_processor(dialect)
+        super_process = super().bind_processor(dialect)
 
         if not dialect._need_decimal_fix:
             return super_process
@@ -570,7 +570,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
         """
 
-        super(MSExecutionContext_pyodbc, self).pre_exec()
+        super().pre_exec()
 
         # don't embed the scope_identity select into an
         # "INSERT .. DEFAULT VALUES"
@@ -601,7 +601,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
             self._lastrowid = int(row[0])
         else:
-            super(MSExecutionContext_pyodbc, self).post_exec()
+            super().post_exec()
 
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
@@ -648,9 +648,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         use_setinputsizes=True,
         **params,
     ):
-        super(MSDialect_pyodbc, self).__init__(
-            use_setinputsizes=use_setinputsizes, **params
-        )
+        super().__init__(use_setinputsizes=use_setinputsizes, **params)
         self.use_scope_identity = (
             self.use_scope_identity
             and self.dbapi
@@ -674,9 +672,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             # SQL Server docs indicate this function isn't present prior to
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
-            return super(MSDialect_pyodbc, self)._get_server_version_info(
-                connection
-            )
+            return super()._get_server_version_info(connection)
         else:
             version = []
             r = re.compile(r"[.\-]")
@@ -688,7 +684,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             return tuple(version)
 
     def on_connect(self):
-        super_ = super(MSDialect_pyodbc, self).on_connect()
+        super_ = super().on_connect()
 
         def on_connect(conn):
             if super_ is not None:
@@ -723,9 +719,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def do_executemany(self, cursor, statement, parameters, context=None):
         if self.fast_executemany:
             cursor.fast_executemany = True
-        super(MSDialect_pyodbc, self).do_executemany(
-            cursor, statement, parameters, context=context
-        )
+        super().do_executemany(cursor, statement, parameters, context=context)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
@@ -743,9 +737,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 "10054",
             }:
                 return True
-        return super(MSDialect_pyodbc, self).is_disconnect(
-            e, connection, cursor
-        )
+        return super().is_disconnect(e, connection, cursor)
 
 
 dialect = MSDialect_pyodbc

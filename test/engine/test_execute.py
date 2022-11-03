@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import collections.abc as collections_abc
 from contextlib import contextmanager
 from contextlib import nullcontext
@@ -507,7 +505,7 @@ class ExecuteTest(fixtures.TablesTest):
     def test_stmt_exception_bytestring_utf8(self):
         # uncommon case for Py3K, bytestring object passed
         # as the error message
-        message = "some message méil".encode("utf-8")
+        message = "some message méil".encode()
 
         err = tsa.exc.SQLAlchemyError(message)
         eq_(str(err), "some message méil")
@@ -537,7 +535,7 @@ class ExecuteTest(fixtures.TablesTest):
         eq_(str(err), "('some message', 206)")
 
     def test_stmt_exception_str_multi_args_bytestring(self):
-        message = "some message méil".encode("utf-8")
+        message = "some message méil".encode()
 
         err = tsa.exc.SQLAlchemyError(message, 206)
         eq_(str(err), str((message, 206)))
@@ -2500,60 +2498,52 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(
             canary,
             [
-                ("begin", set(["conn"])),
+                ("begin", {"conn"}),
                 (
                     "execute",
-                    set(
-                        [
-                            "conn",
-                            "clauseelement",
-                            "multiparams",
-                            "params",
-                            "execution_options",
-                        ]
-                    ),
+                    {
+                        "conn",
+                        "clauseelement",
+                        "multiparams",
+                        "params",
+                        "execution_options",
+                    },
                 ),
                 (
                     "cursor_execute",
-                    set(
-                        [
-                            "conn",
-                            "cursor",
-                            "executemany",
-                            "statement",
-                            "parameters",
-                            "context",
-                        ]
-                    ),
+                    {
+                        "conn",
+                        "cursor",
+                        "executemany",
+                        "statement",
+                        "parameters",
+                        "context",
+                    },
                 ),
-                ("rollback", set(["conn"])),
-                ("begin", set(["conn"])),
+                ("rollback", {"conn"}),
+                ("begin", {"conn"}),
                 (
                     "execute",
-                    set(
-                        [
-                            "conn",
-                            "clauseelement",
-                            "multiparams",
-                            "params",
-                            "execution_options",
-                        ]
-                    ),
+                    {
+                        "conn",
+                        "clauseelement",
+                        "multiparams",
+                        "params",
+                        "execution_options",
+                    },
                 ),
                 (
                     "cursor_execute",
-                    set(
-                        [
-                            "conn",
-                            "cursor",
-                            "executemany",
-                            "statement",
-                            "parameters",
-                            "context",
-                        ]
-                    ),
+                    {
+                        "conn",
+                        "cursor",
+                        "executemany",
+                        "statement",
+                        "parameters",
+                        "context",
+                    },
                 ),
-                ("commit", set(["conn"])),
+                ("commit", {"conn"}),
             ],
         )
 
@@ -3383,11 +3373,11 @@ class OnConnectTest(fixtures.TestBase):
 
         class SomeDialect(cls_):
             def initialize(self, connection):
-                super(SomeDialect, self).initialize(connection)
+                super().initialize(connection)
                 m1.initialize(connection)
 
             def on_connect(self):
-                oc = super(SomeDialect, self).on_connect()
+                oc = super().on_connect()
 
                 def my_on_connect(conn):
                     if oc:
@@ -3456,11 +3446,11 @@ class OnConnectTest(fixtures.TestBase):
             supports_statement_cache = True
 
             def initialize(self, connection):
-                super(SomeDialect, self).initialize(connection)
+                super().initialize(connection)
                 m1.append("initialize")
 
             def on_connect(self):
-                oc = super(SomeDialect, self).on_connect()
+                oc = super().on_connect()
 
                 def my_on_connect(conn):
                     if oc:

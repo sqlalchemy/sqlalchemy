@@ -536,9 +536,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             dbapi_connection.isolation_level = None
         else:
             dbapi_connection.isolation_level = ""
-            return super(SQLiteDialect_pysqlite, self).set_isolation_level(
-                dbapi_connection, level
-            )
+            return super().set_isolation_level(dbapi_connection, level)
 
     def on_connect(self):
         def regexp(a, b):

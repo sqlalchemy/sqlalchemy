@@ -535,15 +535,11 @@ def load_on_pk_identity(
         # None present in ident - turn those comparisons
         # into "IS NULL"
         if None in primary_key_identity:
-            nones = set(
-                [
-                    _get_params[col].key
-                    for col, value in zip(
-                        mapper.primary_key, primary_key_identity
-                    )
-                    if value is None
-                ]
-            )
+            nones = {
+                _get_params[col].key
+                for col, value in zip(mapper.primary_key, primary_key_identity)
+                if value is None
+            }
 
             _get_clause = sql_util.adapt_criterion_to_null(_get_clause, nones)
 
@@ -558,14 +554,12 @@ def load_on_pk_identity(
             sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
         )
 
-        params = dict(
-            [
-                (_get_params[primary_key].key, id_val)
-                for id_val, primary_key in zip(
-                    primary_key_identity, mapper.primary_key
-                )
-            ]
-        )
+        params = {
+            _get_params[primary_key].key: id_val
+            for id_val, primary_key in zip(
+                primary_key_identity, mapper.primary_key
+            )
+        }
     else:
         params = None
 

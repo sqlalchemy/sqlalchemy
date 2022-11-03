@@ -169,7 +169,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         rel = inspect(User).relationships
 
         eq_(rel.addresses, User.addresses.property)
-        eq_(set(rel.keys()), set(["orders", "addresses"]))
+        eq_(set(rel.keys()), {"orders", "addresses"})
 
     def test_insp_relationship_prop(self):
         User = self.classes.User
@@ -284,10 +284,10 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         insp = inspect(SomeSubClass)
         eq_(
-            dict(
-                (k, v.extension_type)
+            {
+                k: v.extension_type
                 for k, v in list(insp.all_orm_descriptors.items())
-            ),
+            },
             {
                 "id": NotExtension.NOT_EXTENSION,
                 "name": NotExtension.NOT_EXTENSION,
@@ -330,7 +330,7 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         eq_(
             set(insp.attrs.keys()),
-            set(["id", "name", "name_syn", "addresses", "orders"]),
+            {"id", "name", "name_syn", "addresses", "orders"},
         )
         eq_(insp.attrs.name.value, "ed")
         eq_(insp.attrs.name.loaded_value, "ed")
@@ -416,10 +416,10 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         m = self.mapper_registry.map_imperatively(AnonClass, self.tables.users)
 
-        eq_(set(inspect(AnonClass).attrs.keys()), set(["id", "name"]))
+        eq_(set(inspect(AnonClass).attrs.keys()), {"id", "name"})
         eq_(
             set(inspect(AnonClass).all_orm_descriptors.keys()),
-            set(["id", "name"]),
+            {"id", "name"},
         )
 
         m.add_property("q", column_property(self.tables.users.c.name))
@@ -429,10 +429,10 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         AnonClass.foob = hybrid_property(desc)
 
-        eq_(set(inspect(AnonClass).attrs.keys()), set(["id", "name", "q"]))
+        eq_(set(inspect(AnonClass).attrs.keys()), {"id", "name", "q"})
         eq_(
             set(inspect(AnonClass).all_orm_descriptors.keys()),
-            set(["id", "name", "q", "foob"]),
+            {"id", "name", "q", "foob"},
         )
 
     def _random_names(self):
@@ -456,9 +456,9 @@ class TestORMInspection(_fixtures.FixtureTest):
         names = self._random_names()
 
         if base is supercls:
-            pk_names = set(
+            pk_names = {
                 random.choice(names) for i in range(random.randint(1, 3))
-            )
+            }
             fk_name = random.choice(
                 [name for name in names if name not in pk_names]
             )

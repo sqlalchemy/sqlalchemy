@@ -285,21 +285,21 @@ def reconnecting_engine(url=None, options=None):
 
 @typing.overload
 def testing_engine(
-    url: Optional["URL"] = None,
+    url: Optional[URL] = None,
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[False] = False,
     transfer_staticpool: bool = False,
-) -> "Engine":
+) -> Engine:
     ...
 
 
 @typing.overload
 def testing_engine(
-    url: Optional["URL"] = None,
+    url: Optional[URL] = None,
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[True] = True,
     transfer_staticpool: bool = False,
-) -> "AsyncEngine":
+) -> AsyncEngine:
     ...
 
 

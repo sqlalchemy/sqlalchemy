@@ -440,13 +440,11 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         # test cancellation of None, replacement with nothing
         eq_(
             set(u.addresses.order_by(None)),
-            set(
-                [
-                    Address(email_address="ed@bettyboop.com"),
-                    Address(email_address="ed@lala.com"),
-                    Address(email_address="ed@wood.com"),
-                ]
-            ),
+            {
+                Address(email_address="ed@bettyboop.com"),
+                Address(email_address="ed@lala.com"),
+                Address(email_address="ed@wood.com"),
+            },
         )
 
     def test_count(self, user_address_fixture):
@@ -865,13 +863,11 @@ class WriteOnlyTest(
         # test cancellation of None, replacement with nothing
         eq_(
             set(sess.scalars(u.addresses.select().order_by(None))),
-            set(
-                [
-                    Address(email_address="ed@bettyboop.com"),
-                    Address(email_address="ed@lala.com"),
-                    Address(email_address="ed@wood.com"),
-                ]
-            ),
+            {
+                Address(email_address="ed@bettyboop.com"),
+                Address(email_address="ed@lala.com"),
+                Address(email_address="ed@wood.com"),
+            },
         )
 
     def test_secondary_as_join(self):
@@ -1286,8 +1282,8 @@ class _UOWTests:
             u.addresses.remove(a)
 
         eq_(
-            set(ad for ad, in sess.query(Address.email_address)),
-            set(["a", "b", "d"]),
+            {ad for ad, in sess.query(Address.email_address)},
+            {"a", "b", "d"},
         )
 
     @testing.combinations(True, False, argnames="autoflush")

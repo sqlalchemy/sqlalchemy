@@ -175,7 +175,7 @@ class _AttrGetter:
 
 def attribute_keyed_dict(
     attr_name: str, *, ignore_unpopulated_attribute: bool = False
-) -> Type["KeyFuncDict"]:
+) -> Type[KeyFuncDict]:
     """A dictionary-based collection type with attribute-based keying.
 
     .. versionchanged:: 2.0 Renamed :data:`.attribute_mapped_collection` to
@@ -226,7 +226,7 @@ def keyfunc_mapping(
     keyfunc: Callable[[Any], _KT],
     *,
     ignore_unpopulated_attribute: bool = False,
-) -> Type["KeyFuncDict[_KT, Any]"]:
+) -> Type[KeyFuncDict[_KT, Any]]:
     """A dictionary-based collection type with arbitrary keying.
 
     .. versionchanged:: 2.0 Renamed :data:`.mapped_collection` to

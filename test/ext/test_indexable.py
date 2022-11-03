@@ -265,11 +265,11 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
 
         class json_property(index_property):
             def __init__(self, attr_name, index, cast_type):
-                super(json_property, self).__init__(attr_name, index)
+                super().__init__(attr_name, index)
                 self.cast_type = cast_type
 
             def expr(self, model):
-                expr = super(json_property, self).expr(model)
+                expr = super().expr(model)
                 return expr.astext.cast(self.cast_type)
 
         class Json(fixtures.ComparableEntity, Base):

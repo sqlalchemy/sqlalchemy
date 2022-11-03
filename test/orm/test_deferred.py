@@ -1635,7 +1635,7 @@ class InheritanceTest(_Polymorphic):
 
     @classmethod
     def setup_mappers(cls):
-        super(InheritanceTest, cls).setup_mappers()
+        super().setup_mappers()
         from sqlalchemy import inspect
 
         inspect(Company).add_property(

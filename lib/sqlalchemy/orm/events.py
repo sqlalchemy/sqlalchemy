@@ -111,7 +111,7 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _clear(cls):
-        super(InstrumentationEvents, cls)._clear()
+        super()._clear()
         instrumentation._instrumentation_factory.dispatch._clear()
 
     def class_instrument(self, cls):
@@ -266,7 +266,7 @@ class InstanceEvents(event.Events):
 
     @classmethod
     def _clear(cls):
-        super(InstanceEvents, cls)._clear()
+        super()._clear()
         _InstanceEventsHold._clear()
 
     def first_init(self, manager, cls):
@@ -798,7 +798,7 @@ class MapperEvents(event.Events):
 
     @classmethod
     def _clear(cls):
-        super(MapperEvents, cls)._clear()
+        super()._clear()
         _MapperEventsHold._clear()
 
     def instrument_class(self, mapper, class_):

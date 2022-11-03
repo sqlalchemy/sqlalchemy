@@ -37,7 +37,7 @@ class _PolymorphicTestBase:
 
     @classmethod
     def setup_mappers(cls):
-        super(_PolymorphicTestBase, cls).setup_mappers()
+        super().setup_mappers()
         global people, engineers, managers, boss
         global companies, paperwork, machines
         people, engineers, managers, boss, companies, paperwork, machines = (
@@ -52,7 +52,7 @@ class _PolymorphicTestBase:
 
     @classmethod
     def insert_data(cls, connection):
-        super(_PolymorphicTestBase, cls).insert_data(connection)
+        super().insert_data(connection)
 
         global all_employees, c1_employees, c2_employees
         global c1, c2, e1, e2, e3, b1, m1

@@ -36,7 +36,7 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
 
 class DeferredReflectBase(DeclarativeReflectionBase):
     def teardown_test(self):
-        super(DeferredReflectBase, self).teardown_test()
+        super().teardown_test()
         _DeferredMapperConfig._configs.clear()
 
 

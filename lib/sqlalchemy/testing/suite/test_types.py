@@ -832,8 +832,8 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             result = {row[0] for row in connection.execute(t.select())}
             output = set(output)
             if filter_:
-                result = set(filter_(x) for x in result)
-                output = set(filter_(x) for x in output)
+                result = {filter_(x) for x in result}
+                output = {filter_(x) for x in output}
             eq_(result, output)
             if check_scale:
                 eq_([str(x) for x in result], [str(x) for x in output])
@@ -969,13 +969,11 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.requires.precision_numerics_general
     def test_precision_decimal(self, do_numeric_test):
-        numbers = set(
-            [
-                decimal.Decimal("54.234246451650"),
-                decimal.Decimal("0.004354"),
-                decimal.Decimal("900.0"),
-            ]
-        )
+        numbers = {
+            decimal.Decimal("54.234246451650"),
+            decimal.Decimal("0.004354"),
+            decimal.Decimal("900.0"),
+        }
 
         do_numeric_test(Numeric(precision=18, scale=12), numbers, numbers)
 
@@ -988,52 +986,46 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
         """
 
-        numbers = set(
-            [
-                decimal.Decimal("1E-2"),
-                decimal.Decimal("1E-3"),
-                decimal.Decimal("1E-4"),
-                decimal.Decimal("1E-5"),
-                decimal.Decimal("1E-6"),
-                decimal.Decimal("1E-7"),
-                decimal.Decimal("1E-8"),
-                decimal.Decimal("0.01000005940696"),
-                decimal.Decimal("0.00000005940696"),
-                decimal.Decimal("0.00000000000696"),
-                decimal.Decimal("0.70000000000696"),
-                decimal.Decimal("696E-12"),
-            ]
-        )
+        numbers = {
+            decimal.Decimal("1E-2"),
+            decimal.Decimal("1E-3"),
+            decimal.Decimal("1E-4"),
+            decimal.Decimal("1E-5"),
+            decimal.Decimal("1E-6"),
+            decimal.Decimal("1E-7"),
+            decimal.Decimal("1E-8"),
+            decimal.Decimal("0.01000005940696"),
+            decimal.Decimal("0.00000005940696"),
+            decimal.Decimal("0.00000000000696"),
+            decimal.Decimal("0.70000000000696"),
+            decimal.Decimal("696E-12"),
+        }
         do_numeric_test(Numeric(precision=18, scale=14), numbers, numbers)
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self, do_numeric_test):
         """test exceedingly large decimals."""
 
-        numbers = set(
-            [
-                decimal.Decimal("4E+8"),
-                decimal.Decimal("5748E+15"),
-                decimal.Decimal("1.521E+15"),
-                decimal.Decimal("00000000000000.1E+12"),
-            ]
-        )
+        numbers = {
+            decimal.Decimal("4E+8"),
+            decimal.Decimal("5748E+15"),
+            decimal.Decimal("1.521E+15"),
+            decimal.Decimal("00000000000000.1E+12"),
+        }
         do_numeric_test(Numeric(precision=25, scale=2), numbers, numbers)
 
     @testing.requires.precision_numerics_many_significant_digits
     def test_many_significant_digits(self, do_numeric_test):
-        numbers = set(
-            [
-                decimal.Decimal("31943874831932418390.01"),
-                decimal.Decimal("319438950232418390.273596"),
-                decimal.Decimal("87673.594069654243"),
-            ]
-        )
+        numbers = {
+            decimal.Decimal("31943874831932418390.01"),
+            decimal.Decimal("319438950232418390.273596"),
+            decimal.Decimal("87673.594069654243"),
+        }
         do_numeric_test(Numeric(precision=38, scale=12), numbers, numbers)
 
     @testing.requires.precision_numerics_retains_significant_digits
     def test_numeric_no_decimal(self, do_numeric_test):
-        numbers = set([decimal.Decimal("1.000")])
+        numbers = {decimal.Decimal("1.000")}
         do_numeric_test(
             Numeric(precision=5, scale=3), numbers, numbers, check_scale=True
         )
@@ -1258,7 +1250,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 def default(self, o):
                     if isinstance(o, decimal.Decimal):
                         return str(o)
-                    return super(DecimalEncoder, self).default(o)
+                    return super().default(o)
 
             json_data = json.dumps(data_element, cls=DecimalEncoder)
 

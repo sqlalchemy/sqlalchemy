@@ -1621,8 +1621,8 @@ class MultiLevelTest(fixtures.MappedTest):
         session.add(b)
         session.add(c)
         session.flush()
-        assert set(session.query(Employee).all()) == set([a, b, c])
-        assert set(session.query(Engineer).all()) == set([b, c])
+        assert set(session.query(Employee).all()) == {a, b, c}
+        assert set(session.query(Engineer).all()) == {b, c}
         assert session.query(Manager).all() == [c]
 
 

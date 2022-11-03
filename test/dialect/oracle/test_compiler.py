@@ -1,4 +1,3 @@
-# coding: utf-8
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import cast

@@ -118,7 +118,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             return None
 
     def on_connect(self):
-        super_ = super(MySQLDialect_pyodbc, self).on_connect()
+        super_ = super().on_connect()
 
         def on_connect(conn):
             if super_ is not None:

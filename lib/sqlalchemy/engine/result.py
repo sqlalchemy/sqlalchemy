@@ -2342,7 +2342,7 @@ class ChunkedIteratorResult(IteratorResult[_TP]):
         return self
 
     def _soft_close(self, hard: bool = False, **kw: Any) -> None:
-        super(ChunkedIteratorResult, self)._soft_close(hard=hard, **kw)
+        super()._soft_close(hard=hard, **kw)
         self.chunks = lambda size: []  # type: ignore
 
     def _fetchmany_impl(
@@ -2370,7 +2370,7 @@ class MergedResult(IteratorResult[_TP]):
         self, cursor_metadata: ResultMetaData, results: Sequence[Result[_TP]]
     ):
         self._results = results
-        super(MergedResult, self).__init__(
+        super().__init__(
             cursor_metadata,
             itertools.chain.from_iterable(
                 r._raw_row_iterator() for r in results

@@ -107,9 +107,7 @@ class match(Generative, elements.BinaryExpression):
         if kw:
             raise exc.ArgumentError("unknown arguments: %s" % (", ".join(kw)))
 
-        super(match, self).__init__(
-            left, against, operators.match_op, modifiers=flags
-        )
+        super().__init__(left, against, operators.match_op, modifiers=flags)
 
     @_generative
     def in_boolean_mode(self: Selfmatch) -> Selfmatch:

@@ -1,4 +1,3 @@
-# -*- encoding: utf-8
 import datetime
 import decimal
 import random
@@ -514,7 +513,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=connection)
 
-        eq_(set(list(t2.indexes)[0].columns), set([t2.c["x"], t2.c.y]))
+        eq_(set(list(t2.indexes)[0].columns), {t2.c["x"], t2.c.y})
 
     def test_indexes_cols_with_commas(self, metadata, connection):
 
@@ -530,7 +529,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=connection)
 
-        eq_(set(list(t2.indexes)[0].columns), set([t2.c["x, col"], t2.c.y]))
+        eq_(set(list(t2.indexes)[0].columns), {t2.c["x, col"], t2.c.y})
 
     def test_indexes_cols_with_spaces(self, metadata, connection):
 
@@ -546,7 +545,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=connection)
 
-        eq_(set(list(t2.indexes)[0].columns), set([t2.c["x col"], t2.c.y]))
+        eq_(set(list(t2.indexes)[0].columns), {t2.c["x col"], t2.c.y})
 
     def test_indexes_with_filtered(self, metadata, connection):
 

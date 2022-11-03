@@ -1,5 +1,3 @@
-#!coding: utf-8
-
 """SQLite-specific tests."""
 import datetime
 import json

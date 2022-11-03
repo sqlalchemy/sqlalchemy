@@ -242,11 +242,11 @@ def _bulk_update(
         search_keys = {mapper._version_id_prop.key}.union(search_keys)
 
     def _changed_dict(mapper, state):
-        return dict(
-            (k, v)
+        return {
+            k: v
             for k, v in state.dict.items()
             if k in state.committed_state or k in search_keys
-        )
+        }
 
     if isstates:
         if update_changed_only:
@@ -1701,7 +1701,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
                 value_evaluators[key] = _evaluator
 
         evaluated_keys = list(value_evaluators.keys())
-        attrib = set(k for k, v in resolved_keys_as_propnames)
+        attrib = {k for k, v in resolved_keys_as_propnames}
 
         states = set()
         for obj, state, dict_ in matched_objects:

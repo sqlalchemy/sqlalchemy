@@ -195,7 +195,7 @@ class ProfileStatsFile:
     def _read(self):
         try:
             profile_f = open(self.fname)
-        except IOError:
+        except OSError:
             return
         for lineno, line in enumerate(profile_f):
             line = line.strip()
@@ -212,7 +212,7 @@ class ProfileStatsFile:
         profile_f.close()
 
     def _write(self):
-        print(("Writing profile file %s" % self.fname))
+        print("Writing profile file %s" % self.fname)
         profile_f = open(self.fname, "w")
         profile_f.write(self._header())
         for test_key in sorted(self.data):
@@ -293,7 +293,7 @@ def count_functions(variance=0.05):
     else:
         line_no, expected_count = expected
 
-    print(("Pstats calls: %d Expected %s" % (callcount, expected_count)))
+    print("Pstats calls: %d Expected %s" % (callcount, expected_count))
     stats.sort_stats(*re.split(r"[, ]", _profile_stats.sort))
     stats.print_stats()
     if _profile_stats.dump:

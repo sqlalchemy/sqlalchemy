@@ -552,14 +552,14 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         assert r.lastrow_has_defaults()
         eq_(
             set(r.context.postfetch_cols),
-            set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]),
+            {t.c.col3, t.c.col5, t.c.col4, t.c.col6},
         )
 
         r = connection.execute(t.insert().inline())
         assert r.lastrow_has_defaults()
         eq_(
             set(r.context.postfetch_cols),
-            set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]),
+            {t.c.col3, t.c.col5, t.c.col4, t.c.col6},
         )
 
         connection.execute(t.insert())
@@ -599,7 +599,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
         eq_(
             set(r.context.postfetch_cols),
-            set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]),
+            {t.c.col3, t.c.col5, t.c.col4, t.c.col6},
         )
 
         eq_(

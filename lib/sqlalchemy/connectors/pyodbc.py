@@ -51,7 +51,7 @@ class PyODBCConnector(Connector):
     dbapi: ModuleType
 
     def __init__(self, use_setinputsizes: bool = False, **kw: Any):
-        super(PyODBCConnector, self).__init__(**kw)
+        super().__init__(**kw)
         if use_setinputsizes:
             self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
@@ -83,7 +83,7 @@ class PyODBCConnector(Connector):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
 
-            keys = dict((k, check_quote(v)) for k, v in keys.items())
+            keys = {k: check_quote(v) for k, v in keys.items()}
 
             dsn_connection = "dsn" in keys or (
                 "host" in keys and "database" not in keys

@@ -264,7 +264,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
             ValueError,
             "Attribute 'data' does not accept objects of type",
             Foo,
-            data=set([1, 2, 3]),
+            data={1, 2, 3},
         )
 
     def test_in_place_mutation(self):
@@ -488,7 +488,7 @@ class _MutableListTestBase(_MutableListTestFixture):
             ValueError,
             "Attribute 'data' does not accept objects of type",
             Foo,
-            data=set([1, 2, 3]),
+            data={1, 2, 3},
         )
 
     def test_in_place_mutation(self):
@@ -780,7 +780,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
     def test_clear(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
@@ -792,7 +792,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
     def test_pop(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1]))
+        f1 = Foo(data={1})
         sess.add(f1)
         sess.commit()
 
@@ -806,144 +806,144 @@ class _MutableSetTestBase(_MutableSetTestFixture):
     def test_add(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
         f1.data.add(5)
         sess.commit()
 
-        eq_(f1.data, set([1, 2, 5]))
+        eq_(f1.data, {1, 2, 5})
 
     def test_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data.update(set([2, 5]))
+        f1.data.update({2, 5})
         sess.commit()
 
-        eq_(f1.data, set([1, 2, 5]))
+        eq_(f1.data, {1, 2, 5})
 
     def test_binary_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data |= set([2, 5])
+        f1.data |= {2, 5}
         sess.commit()
 
-        eq_(f1.data, set([1, 2, 5]))
+        eq_(f1.data, {1, 2, 5})
 
     def test_intersection_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data.intersection_update(set([2, 5]))
+        f1.data.intersection_update({2, 5})
         sess.commit()
 
-        eq_(f1.data, set([2]))
+        eq_(f1.data, {2})
 
     def test_binary_intersection_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data &= set([2, 5])
+        f1.data &= {2, 5}
         sess.commit()
 
-        eq_(f1.data, set([2]))
+        eq_(f1.data, {2})
 
     def test_difference_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data.difference_update(set([2, 5]))
+        f1.data.difference_update({2, 5})
         sess.commit()
 
-        eq_(f1.data, set([1]))
+        eq_(f1.data, {1})
 
     def test_operator_difference_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data -= set([2, 5])
+        f1.data -= {2, 5}
         sess.commit()
 
-        eq_(f1.data, set([1]))
+        eq_(f1.data, {1})
 
     def test_symmetric_difference_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data.symmetric_difference_update(set([2, 5]))
+        f1.data.symmetric_difference_update({2, 5})
         sess.commit()
 
-        eq_(f1.data, set([1, 5]))
+        eq_(f1.data, {1, 5})
 
     def test_binary_symmetric_difference_update(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
 
-        f1.data ^= set([2, 5])
+        f1.data ^= {2, 5}
         sess.commit()
 
-        eq_(f1.data, set([1, 5]))
+        eq_(f1.data, {1, 5})
 
     def test_remove(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2, 3]))
+        f1 = Foo(data={1, 2, 3})
         sess.add(f1)
         sess.commit()
 
         f1.data.remove(2)
         sess.commit()
 
-        eq_(f1.data, set([1, 3]))
+        eq_(f1.data, {1, 3})
 
     def test_discard(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2, 3]))
+        f1 = Foo(data={1, 2, 3})
         sess.add(f1)
         sess.commit()
 
         f1.data.discard(2)
         sess.commit()
 
-        eq_(f1.data, set([1, 3]))
+        eq_(f1.data, {1, 3})
 
         f1.data.discard(2)
         sess.commit()
 
-        eq_(f1.data, set([1, 3]))
+        eq_(f1.data, {1, 3})
 
     def test_pickle_parent(self):
         sess = fixture_session()
 
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         sess.add(f1)
         sess.commit()
         f1.data
@@ -958,24 +958,24 @@ class _MutableSetTestBase(_MutableSetTestFixture):
 
     def test_unrelated_flush(self):
         sess = fixture_session()
-        f1 = Foo(data=set([1, 2]), unrelated_data="unrelated")
+        f1 = Foo(data={1, 2}, unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
         f1.unrelated_data = "unrelated 2"
         sess.flush()
         f1.data.add(3)
         sess.commit()
-        eq_(f1.data, set([1, 2, 3]))
+        eq_(f1.data, {1, 2, 3})
 
     def test_copy(self):
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         f1.data = copy.copy(f1.data)
-        eq_(f1.data, set([1, 2]))
+        eq_(f1.data, {1, 2})
 
     def test_deepcopy(self):
-        f1 = Foo(data=set([1, 2]))
+        f1 = Foo(data={1, 2})
         f1.data = copy.deepcopy(f1.data)
-        eq_(f1.data, set([1, 2]))
+        eq_(f1.data, {1, 2})
 
 
 class _MutableNoHashFixture:
@@ -1349,9 +1349,7 @@ class CustomMutableAssociationScalarJSONTest(
     @classmethod
     def _type_fixture(cls):
         if not (getattr(cls, "CustomMutableDict")):
-            MutableDict = super(
-                CustomMutableAssociationScalarJSONTest, cls
-            )._type_fixture()
+            MutableDict = super()._type_fixture()
 
             class CustomMutableDict(MutableDict):
                 pass

@@ -124,10 +124,10 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         class MyColumn(schema.Column):
             def __init__(self, *args, **kw):
                 self.widget = kw.pop("widget", None)
-                super(MyColumn, self).__init__(*args, **kw)
+                super().__init__(*args, **kw)
 
             def _copy(self, *arg, **kw):
-                c = super(MyColumn, self)._copy(*arg, **kw)
+                c = super()._copy(*arg, **kw)
                 c.widget = self.widget
                 return c
 
@@ -160,7 +160,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         Table("t2", metadata, Column("x", Integer), schema="bar")
         Table("t3", metadata, Column("x", Integer))
 
-        eq_(metadata._schemas, set(["foo", "bar"]))
+        eq_(metadata._schemas, {"foo", "bar"})
         eq_(len(metadata.tables), 3)
 
     def test_schema_collection_remove(self):
@@ -171,11 +171,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         t3 = Table("t3", metadata, Column("x", Integer), schema="bar")
 
         metadata.remove(t3)
-        eq_(metadata._schemas, set(["foo", "bar"]))
+        eq_(metadata._schemas, {"foo", "bar"})
         eq_(len(metadata.tables), 2)
 
         metadata.remove(t1)
-        eq_(metadata._schemas, set(["bar"]))
+        eq_(metadata._schemas, {"bar"})
         eq_(len(metadata.tables), 1)
 
     def test_schema_collection_remove_all(self):
@@ -1778,15 +1778,15 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         fk3 = ForeignKeyConstraint(["b", "c"], ["r.x", "r.y"])
 
         t1.append_column(Column("b", Integer, fk1))
-        eq_(t1.foreign_key_constraints, set([fk1.constraint]))
+        eq_(t1.foreign_key_constraints, {fk1.constraint})
 
         t1.append_column(Column("c", Integer, fk2))
-        eq_(t1.foreign_key_constraints, set([fk1.constraint, fk2.constraint]))
+        eq_(t1.foreign_key_constraints, {fk1.constraint, fk2.constraint})
 
         t1.append_constraint(fk3)
         eq_(
             t1.foreign_key_constraints,
-            set([fk1.constraint, fk2.constraint, fk3]),
+            {fk1.constraint, fk2.constraint, fk3},
         )
 
     def test_c_immutable(self):
@@ -2167,20 +2167,16 @@ class SchemaTypeTest(fixtures.TestBase):
         evt_targets = ()
 
         def _set_table(self, column, table):
-            super(SchemaTypeTest.TrackEvents, self)._set_table(column, table)
+            super()._set_table(column, table)
             self.column = column
             self.table = table
 
         def _on_table_create(self, target, bind, **kw):
-            super(SchemaTypeTest.TrackEvents, self)._on_table_create(
-                target, bind, **kw
-            )
+            super()._on_table_create(target, bind, **kw)
             self.evt_targets += (target,)
 
         def _on_metadata_create(self, target, bind, **kw):
-            super(SchemaTypeTest.TrackEvents, self)._on_metadata_create(
-                target, bind, **kw
-            )
+            super()._on_metadata_create(target, bind, **kw)
             self.evt_targets += (target,)
 
     # TODO: Enum and Boolean put TypeEngine first.  Changing that here
@@ -2951,7 +2947,7 @@ class ConstraintTest(fixtures.TestBase):
         return t1, t2, t3
 
     def _assert_index_col_x(self, t, i, columns=True):
-        eq_(t.indexes, set([i]))
+        eq_(t.indexes, {i})
         if columns:
             eq_(list(i.columns), [t.c.x])
         else:
@@ -3075,7 +3071,7 @@ class ConstraintTest(fixtures.TestBase):
 
         idx = Index("bar", MyThing(), t.c.y)
 
-        eq_(set(t.indexes), set([idx]))
+        eq_(set(t.indexes), {idx})
 
     def test_clauseelement_extraction_three(self):
         t = Table("t", MetaData(), Column("x", Integer), Column("y", Integer))

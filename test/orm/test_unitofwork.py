@@ -1,4 +1,3 @@
-# coding: utf-8
 """Tests unitofwork operations."""
 
 import datetime
@@ -2565,7 +2564,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session = fixture_session()
 
         objects = []
-        _keywords = dict([(k.name, k) for k in session.query(Keyword)])
+        _keywords = {k.name: k for k in session.query(Keyword)}
 
         for elem in data[1:]:
             item = Item(description=elem["description"])
@@ -2797,7 +2796,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session = fixture_session()
 
         def fixture():
-            _kw = dict([(k.name, k) for k in session.query(Keyword)])
+            _kw = {k.name: k for k in session.query(Keyword)}
             for n in (
                 "big",
                 "green",
@@ -3232,7 +3231,7 @@ class RowSwitchTest(fixtures.MappedTest):
                     t5t7.select(),
                 )
             ),
-            set([(1, 1), (1, 2)]),
+            {(1, 1), (1, 2)},
         )
         eq_(
             list(
@@ -3513,7 +3512,7 @@ class NoRowInsertedTest(fixtures.TestBase):
     @testing.fixture
     def null_server_default_fixture(self, registry, connection):
         @registry.mapped
-        class MyClass(object):
+        class MyClass:
             __tablename__ = "my_table"
 
             id = Column(Integer, primary_key=True)
@@ -3676,7 +3675,7 @@ class EnsurePKSortableTest(fixtures.MappedTest):
 
         class T3(cls.Basic):
             def __str__(self):
-                return "T3(id={})".format(self.id)
+                return f"T3(id={self.id})"
 
     @classmethod
     def setup_mappers(cls):

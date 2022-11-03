@@ -1170,12 +1170,12 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         configure_mappers()
 
         def assert_props(cls, want):
-            have = set([n for n in dir(cls) if not n.startswith("_")])
+            have = {n for n in dir(cls) if not n.startswith("_")}
             want = set(want)
             eq_(have, want)
 
         def assert_instrumented(cls, want):
-            have = set([p.key for p in class_mapper(cls).iterate_properties])
+            have = {p.key for p in class_mapper(cls).iterate_properties}
             want = set(want)
             eq_(have, want)
 
@@ -1979,7 +1979,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         class MyFakeProperty(sa.orm.properties.ColumnProperty):
             def post_instrument_class(self, mapper):
-                super(MyFakeProperty, self).post_instrument_class(mapper)
+                super().post_instrument_class(mapper)
                 configure_mappers()
 
         self.mapper(
@@ -1992,7 +1992,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         class MyFakeProperty(sa.orm.properties.ColumnProperty):
             def post_instrument_class(self, mapper):
-                super(MyFakeProperty, self).post_instrument_class(mapper)
+                super().post_instrument_class(mapper)
                 configure_mappers()
 
         self.mapper(
@@ -2677,7 +2677,7 @@ class IsUserlandTest(fixtures.MappedTest):
         self._test({"bar": "bat"})
 
     def test_set(self):
-        self._test(set([6]))
+        self._test({6})
 
     def test_column(self):
         self._test_not(self.tables.foo.c.someprop)

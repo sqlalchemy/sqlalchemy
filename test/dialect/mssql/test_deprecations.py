@@ -1,4 +1,3 @@
-# -*- encoding: utf-8
 from unittest.mock import Mock
 
 from sqlalchemy import Column

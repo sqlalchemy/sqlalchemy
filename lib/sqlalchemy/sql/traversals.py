@@ -301,9 +301,7 @@ class _CopyInternalsTraversal(HasTraversalDispatch):
     def visit_string_clauseelement_dict(
         self, attrname, parent, element, clone=_clone, **kw
     ):
-        return dict(
-            (key, clone(value, **kw)) for key, value in element.items()
-        )
+        return {key: clone(value, **kw) for key, value in element.items()}
 
     def visit_setup_join_tuple(
         self, attrname, parent, element, clone=_clone, **kw

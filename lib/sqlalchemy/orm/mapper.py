@@ -143,8 +143,7 @@ def _all_registries() -> Set[registry]:
 
 def _unconfigured_mappers() -> Iterator[Mapper[Any]]:
     for reg in _all_registries():
-        for mapper in reg._mappers_to_configure():
-            yield mapper
+        yield from reg._mappers_to_configure()
 
 
 _already_compiling = False
@@ -905,8 +904,8 @@ class Mapper(
 
     with_polymorphic: Optional[
         Tuple[
-            Union[Literal["*"], Sequence[Union["Mapper[Any]", Type[Any]]]],
-            Optional["FromClause"],
+            Union[Literal["*"], Sequence[Union[Mapper[Any], Type[Any]]]],
+            Optional[FromClause],
         ]
     ]
 
@@ -2518,105 +2517,85 @@ class Mapper(
 
     @HasMemoized_ro_memoized_attribute
     def _insert_cols_evaluating_none(self):
-        return dict(
-            (
-                table,
-                frozenset(
-                    col for col in columns if col.type.should_evaluate_none
-                ),
+        return {
+            table: frozenset(
+                col for col in columns if col.type.should_evaluate_none
             )
             for table, columns in self._cols_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _insert_cols_as_none(self):
-        return dict(
-            (
-                table,
-                frozenset(
-                    col.key
-                    for col in columns
-                    if not col.primary_key
-                    and not col.server_default
-                    and not col.default
-                    and not col.type.should_evaluate_none
-                ),
+        return {
+            table: frozenset(
+                col.key
+                for col in columns
+                if not col.primary_key
+                and not col.server_default
+                and not col.default
+                and not col.type.should_evaluate_none
             )
             for table, columns in self._cols_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _propkey_to_col(self):
-        return dict(
-            (
-                table,
-                dict(
-                    (self._columntoproperty[col].key, col) for col in columns
-                ),
-            )
+        return {
+            table: {self._columntoproperty[col].key: col for col in columns}
             for table, columns in self._cols_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _pk_keys_by_table(self):
-        return dict(
-            (table, frozenset([col.key for col in pks]))
+        return {
+            table: frozenset([col.key for col in pks])
             for table, pks in self._pks_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _pk_attr_keys_by_table(self):
-        return dict(
-            (
-                table,
-                frozenset([self._columntoproperty[col].key for col in pks]),
-            )
+        return {
+            table: frozenset([self._columntoproperty[col].key for col in pks])
             for table, pks in self._pks_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _server_default_cols(
         self,
     ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
-        return dict(
-            (
-                table,
-                frozenset(
-                    [
-                        col
-                        for col in cast("Iterable[Column[Any]]", columns)
-                        if col.server_default is not None
-                        or (
-                            col.default is not None
-                            and col.default.is_clause_element
-                        )
-                    ]
-                ),
+        return {
+            table: frozenset(
+                [
+                    col
+                    for col in cast("Iterable[Column[Any]]", columns)
+                    if col.server_default is not None
+                    or (
+                        col.default is not None
+                        and col.default.is_clause_element
+                    )
+                ]
             )
             for table, columns in self._cols_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _server_onupdate_default_cols(
         self,
     ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
-        return dict(
-            (
-                table,
-                frozenset(
-                    [
-                        col
-                        for col in cast("Iterable[Column[Any]]", columns)
-                        if col.server_onupdate is not None
-                        or (
-                            col.onupdate is not None
-                            and col.onupdate.is_clause_element
-                        )
-                    ]
-                ),
+        return {
+            table: frozenset(
+                [
+                    col
+                    for col in cast("Iterable[Column[Any]]", columns)
+                    if col.server_onupdate is not None
+                    or (
+                        col.onupdate is not None
+                        and col.onupdate.is_clause_element
+                    )
+                ]
             )
             for table, columns in self._cols_by_table.items()
-        )
+        }
 
     @HasMemoized.memoized_attribute
     def _server_default_col_keys(self) -> Mapping[FromClause, FrozenSet[str]]:

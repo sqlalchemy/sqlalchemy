@@ -2612,7 +2612,7 @@ class HistoryTest(fixtures.TestBase):
                     )
                 ]
             ),
-            (set([hi, there]), set(), set()),
+            ({hi, there}, set(), set()),
         )
         self._commit_someattr(f)
         eq_(
@@ -2624,7 +2624,7 @@ class HistoryTest(fixtures.TestBase):
                     )
                 ]
             ),
-            (set(), set([hi, there]), set()),
+            (set(), {hi, there}, set()),
         )
 
     def test_object_collections_mutate(self):

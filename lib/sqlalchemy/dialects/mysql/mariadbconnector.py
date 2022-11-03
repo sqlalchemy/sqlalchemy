@@ -102,7 +102,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             return (99, 99, 99)
 
     def __init__(self, **kwargs):
-        super(MySQLDialect_mariadbconnector, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.paramstyle = "qmark"
         if self.dbapi is not None:
             if self._dbapi_version < mariadb_cpy_minimum_version:
@@ -117,9 +117,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         return __import__("mariadb")
 
     def is_disconnect(self, e, connection, cursor):
-        if super(MySQLDialect_mariadbconnector, self).is_disconnect(
-            e, connection, cursor
-        ):
+        if super().is_disconnect(e, connection, cursor):
             return True
         elif isinstance(e, self.dbapi.Error):
             str_e = str(e).lower()
@@ -188,9 +186,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             connection.autocommit = True
         else:
             connection.autocommit = False
-            super(MySQLDialect_mariadbconnector, self).set_isolation_level(
-                connection, level
-            )
+            super().set_isolation_level(connection, level)
 
     def do_begin_twophase(self, connection, xid):
         connection.execute(

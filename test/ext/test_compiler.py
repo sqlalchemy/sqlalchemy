@@ -40,7 +40,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             inherit_cache = False
 
             def __init__(self, arg=None):
-                super(MyThingy, self).__init__(arg or "MYTHINGY!")
+                super().__init__(arg or "MYTHINGY!")
 
         @compiles(MyThingy)
         def visit_thingy(thingy, compiler, **kw):
@@ -125,7 +125,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             inherit_cache = False
 
             def __init__(self):
-                super(MyThingy, self).__init__("MYTHINGY!")
+                super().__init__("MYTHINGY!")
 
         @compiles(MyThingy)
         def visit_thingy(thingy, compiler, **kw):

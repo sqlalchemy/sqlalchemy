@@ -25,7 +25,7 @@ class _NumericType:
     def __init__(self, unsigned=False, zerofill=False, **kw):
         self.unsigned = unsigned
         self.zerofill = zerofill
-        super(_NumericType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -43,9 +43,7 @@ class _FloatType(_NumericType, sqltypes.Float):
                 "You must specify both precision and scale or omit "
                 "both altogether."
             )
-        super(_FloatType, self).__init__(
-            precision=precision, asdecimal=asdecimal, **kw
-        )
+        super().__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
     def __repr__(self):
@@ -57,7 +55,7 @@ class _FloatType(_NumericType, sqltypes.Float):
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
-        super(_IntegerType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -87,7 +85,7 @@ class _StringType(sqltypes.String):
         self.unicode = unicode
         self.binary = binary
         self.national = national
-        super(_StringType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -123,7 +121,7 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
           numeric.
 
         """
-        super(NUMERIC, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -149,7 +147,7 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
           numeric.
 
         """
-        super(DECIMAL, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -183,7 +181,7 @@ class DOUBLE(_FloatType, sqltypes.DOUBLE):
           numeric.
 
         """
-        super(DOUBLE, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -217,7 +215,7 @@ class REAL(_FloatType, sqltypes.REAL):
           numeric.
 
         """
-        super(REAL, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -243,7 +241,7 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
           numeric.
 
         """
-        super(FLOAT, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -269,7 +267,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
           numeric.
 
         """
-        super(INTEGER, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class BIGINT(_IntegerType, sqltypes.BIGINT):
@@ -290,7 +288,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
           numeric.
 
         """
-        super(BIGINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class MEDIUMINT(_IntegerType):
@@ -311,7 +309,7 @@ class MEDIUMINT(_IntegerType):
           numeric.
 
         """
-        super(MEDIUMINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class TINYINT(_IntegerType):
@@ -332,7 +330,7 @@ class TINYINT(_IntegerType):
           numeric.
 
         """
-        super(TINYINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class SMALLINT(_IntegerType, sqltypes.SMALLINT):
@@ -353,7 +351,7 @@ class SMALLINT(_IntegerType, sqltypes.SMALLINT):
           numeric.
 
         """
-        super(SMALLINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class BIT(sqltypes.TypeEngine):
@@ -417,7 +415,7 @@ class TIME(sqltypes.TIME):
             MySQL Connector/Python.
 
         """
-        super(TIME, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
     def result_processor(self, dialect, coltype):
@@ -462,7 +460,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
             MySQL Connector/Python.
 
         """
-        super(TIMESTAMP, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
 
@@ -487,7 +485,7 @@ class DATETIME(sqltypes.DATETIME):
             MySQL Connector/Python.
 
         """
-        super(DATETIME, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
 
@@ -533,7 +531,7 @@ class TEXT(_StringType, sqltypes.TEXT):
           only the collation of character data.
 
         """
-        super(TEXT, self).__init__(length=length, **kw)
+        super().__init__(length=length, **kw)
 
 
 class TINYTEXT(_StringType):
@@ -565,7 +563,7 @@ class TINYTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(TINYTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class MEDIUMTEXT(_StringType):
@@ -597,7 +595,7 @@ class MEDIUMTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(MEDIUMTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class LONGTEXT(_StringType):
@@ -629,7 +627,7 @@ class LONGTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(LONGTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class VARCHAR(_StringType, sqltypes.VARCHAR):
@@ -661,7 +659,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           only the collation of character data.
 
         """
-        super(VARCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class CHAR(_StringType, sqltypes.CHAR):
@@ -682,7 +680,7 @@ class CHAR(_StringType, sqltypes.CHAR):
           compatible with the national character set.
 
         """
-        super(CHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
     @classmethod
     def _adapt_string_for_cast(self, type_):
@@ -728,7 +726,7 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
 
         """
         kwargs["national"] = True
-        super(NVARCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class NCHAR(_StringType, sqltypes.NCHAR):
@@ -754,7 +752,7 @@ class NCHAR(_StringType, sqltypes.NCHAR):
 
         """
         kwargs["national"] = True
-        super(NCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class TINYBLOB(sqltypes._Binary):

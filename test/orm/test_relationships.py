@@ -1398,25 +1398,21 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         employee_t = self.tables.employee_t
         eq_(
             set(Employee.employees.property.local_remote_pairs),
-            set(
-                [
-                    (employee_t.c.company_id, employee_t.c.company_id),
-                    (employee_t.c.emp_id, employee_t.c.reports_to_id),
-                ]
-            ),
+            {
+                (employee_t.c.company_id, employee_t.c.company_id),
+                (employee_t.c.emp_id, employee_t.c.reports_to_id),
+            },
         )
         eq_(
             Employee.employees.property.remote_side,
-            set([employee_t.c.company_id, employee_t.c.reports_to_id]),
+            {employee_t.c.company_id, employee_t.c.reports_to_id},
         )
         eq_(
             set(Employee.reports_to.property.local_remote_pairs),
-            set(
-                [
-                    (employee_t.c.company_id, employee_t.c.company_id),
-                    (employee_t.c.reports_to_id, employee_t.c.emp_id),
-                ]
-            ),
+            {
+                (employee_t.c.company_id, employee_t.c.company_id),
+                (employee_t.c.reports_to_id, employee_t.c.emp_id),
+            },
         )
 
     def _setup_data(self, sess):
@@ -3301,8 +3297,8 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
         sess.expunge_all()
 
         c1 = sess.get(C1, c1.id)
-        assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
-        assert set([x.id for x in c1.t2_view]) == set([c2b.id])
+        assert {x.id for x in c1.t2s} == {c2a.id, c2b.id}
+        assert {x.id for x in c1.t2_view} == {c2b.id}
 
 
 class ViewOnlySyncBackref(fixtures.MappedTest):
@@ -3565,8 +3561,8 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
         sess.expunge_all()
 
         c1 = sess.get(C1, c1.t1id)
-        assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
-        assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
+        assert {x.t2id for x in c1.t2s} == {c2a.t2id, c2b.t2id}
+        assert {x.t2id for x in c1.t2_view} == {c2b.t2id}
 
 
 class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
@@ -4524,7 +4520,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
-        eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
+        eq_(A.bs.property._calculated_foreign_keys, {b.c.aid_1})
 
     def test_with_pj_o2m(self):
         A, B = self.classes.A, self.classes.B
@@ -4539,7 +4535,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
-        eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
+        eq_(A.bs.property._calculated_foreign_keys, {b.c.aid_1})
 
     def test_with_annotated_pj_o2m(self):
         A, B = self.classes.A, self.classes.B
@@ -4554,7 +4550,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
-        eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
+        eq_(A.bs.property._calculated_foreign_keys, {b.c.aid_1})
 
     def test_no_fks_m2m(self):
         A, B = self.classes.A, self.classes.B
@@ -5456,8 +5452,8 @@ class InvalidRelationshipEscalationTestM2M(
         )
         self.mapper_registry.map_imperatively(Bar, bars)
         sa.orm.configure_mappers()
-        eq_(Foo.bars.property._join_condition.local_columns, set([foos.c.id]))
-        eq_(Bar.foos.property._join_condition.local_columns, set([bars.c.id]))
+        eq_(Foo.bars.property._join_condition.local_columns, {foos.c.id})
+        eq_(Bar.foos.property._join_condition.local_columns, {bars.c.id})
 
     def test_bad_primaryjoin(self):
         foobars_with_fks, bars, Bar, foobars, Foo, foos = (
@@ -6593,7 +6589,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
         s = fixture_session()
 
         with assert_engine(testing.db) as asserter_:
-            eq_(set(id_ for id_, in s.query(A.id).filter(A.bs.any())), {1, 2})
+            eq_({id_ for id_, in s.query(A.id).filter(A.bs.any())}, {1, 2})
 
         asserter_.assert_(
             CompiledSQL(

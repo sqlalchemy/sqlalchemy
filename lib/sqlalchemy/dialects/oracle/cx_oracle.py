@@ -672,9 +672,7 @@ class _OracleBinary(_LOBDataType, sqltypes.LargeBinary):
         if not dialect.auto_convert_lobs:
             return None
         else:
-            return super(_OracleBinary, self).result_processor(
-                dialect, coltype
-            )
+            return super().result_processor(dialect, coltype)
 
 
 class _OracleInterval(oracle.INTERVAL):

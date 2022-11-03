@@ -1,5 +1,3 @@
-#! coding: utf-8
-
 from sqlalchemy import alias
 from sqlalchemy import and_
 from sqlalchemy import bindparam
