@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 8706
+
+    Added new methods :meth:`_postgresql.Range.contains` and
+    :meth:`_postgresql.Range.contained_by` to the new :class:`.Range` data
+    object, which mirror the behavior of the PostgreSQL ``@>`` and ``<@``
+    operators, as well as the
+    :meth:`_postgresql.AbstractRange.comparator_factory.contains` and
+    :meth:`_postgresql.AbstractRange.comparator_factory.contained_by` SQL
+    operator methods. Pull request courtesy Lele Gaifax.

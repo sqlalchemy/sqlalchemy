@@ -48,6 +48,8 @@ from .named_types import DropDomainType
 from .named_types import DropEnumType
 from .named_types import ENUM
 from .named_types import NamedType
+from .ranges import AbstractMultiRange
+from .ranges import AbstractRange
 from .ranges import DATEMULTIRANGE
 from .ranges import DATERANGE
 from .ranges import INT4MULTIRANGE

@@ -1883,6 +1883,12 @@ objects are used.
 Code that used the previous psycopg2-specific types should be modified
 to use :class:`_postgresql.Range`, which presents a compatible interface.
 
+The :class:`_postgresql.Range` object also features comparison support which
+mirrors that of PostgreSQL.  Implemented so far are :meth:`_postgresql.Range.contains`
+and :meth:`_postgresql.Range.contained_by` methods which work in the same way as
+the PostgreSQL ``@>`` and ``<@``.  Additional operator support may be added
+in future releases.
+
 See the documentation at :ref:`postgresql_ranges` for background on
 using the new feature.
 
@@ -1890,6 +1896,9 @@ using the new feature.
 .. seealso::
 
     :ref:`postgresql_ranges`
+
+:ticket:`7156`
+:ticket:`8706`
 
 .. _change_7086:
 
