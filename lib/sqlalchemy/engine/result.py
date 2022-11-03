@@ -822,6 +822,19 @@ class Result(_WithKeys, ResultInternal):
         """
         self._yield_per = num
 
+    @property
+    def _soft_closed(self):
+        raise NotImplementedError()
+
+    @property
+    def closed(self):
+        """return True if this :class:`.Result` reports .closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        raise NotImplementedError()
+
     @_generative
     def unique(self, strategy=None):
         """Apply unique filtering to the objects returned by this
@@ -1330,6 +1343,27 @@ class FilterResult(ResultInternal):
         self._real_result._soft_close(hard=hard)
 
     @property
+    def _soft_closed(self):
+        return self._real_result._soft_closed
+
+    @property
+    def closed(self):
+        """return True if the underlying result reports .closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        return self._real_result.closed  # type: ignore
+
+    def close(self):
+        """Close this :class:`.FilterResult`.
+
+        .. versionadded:: 1.4.43
+
+        """
+        self._real_result.close()
+
+    @property
     def _attributes(self):
         return self._real_result._attributes
 
@@ -1704,6 +1738,7 @@ class IteratorResult(Result):
     """
 
     _hard_closed = False
+    _soft_closed = False
 
     def __init__(
         self,
@@ -1724,6 +1759,16 @@ class IteratorResult(Result):
             self.raw._soft_close(hard=hard, **kw)
         self.iterator = iter([])
         self._reset_memoizations()
+        self._soft_closed = True
+
+    @property
+    def closed(self):
+        """return True if this :class:`.IteratorResult` has been closed
+
+        .. versionadded:: 1.4.43
+
+        """
+        return self._hard_closed
 
     def _raise_hard_closed(self):
         raise exc.ResourceClosedError("This result object is closed.")

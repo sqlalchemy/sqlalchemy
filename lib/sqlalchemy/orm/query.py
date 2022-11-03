@@ -2897,7 +2897,15 @@ class Query(
             return None
 
     def __iter__(self):
-        return self._iter().__iter__()
+        result = self._iter()
+        try:
+            for row in result:
+                yield row
+        except GeneratorExit:
+            # issue #8710 - direct iteration is not re-usable after
+            # an iterable block is broken, so close the result
+            result._soft_close()
+            raise
 
     def _iter(self):
         # new style execution.
