@@ -12,7 +12,7 @@
     call.  However, this prevented custom pool reset schemes from being
     used within this hook, as such hooks by definition are doing more than
     just calling ``.rollback()``, and need to be invoked under all
-    circumstances  This was a regression that appeared in version 1.4.
+    circumstances.  This was a regression that appeared in version 1.4.
 
     For version 1.4, the :meth:`.PoolEvents.checkin` remains viable as an
     alternate event hook to use for custom "reset" implementations. Version 2.0
