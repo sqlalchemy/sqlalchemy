@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 8714
-
-    Fixed issue with :meth:`.Inspector.has_table`, which when used against a
-    temporary table with the SQL Server dialect would fail on some Azure
-    variants, due to an unnecessary information schema query that is not
-    supported on those server versions. Pull request courtesy Mike Barry.
