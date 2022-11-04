@@ -3399,6 +3399,21 @@ class Session(_SessionClassMethods, EventTarget):
             )
 
         if is_dict:
+
+            pk_synonyms = mapper._pk_synonyms
+
+            if pk_synonyms:
+                correct_keys = set(pk_synonyms).intersection(
+                    primary_key_identity
+                )
+
+                if correct_keys:
+                    primary_key_identity = dict(primary_key_identity)
+                    for k in correct_keys:
+                        primary_key_identity[
+                            pk_synonyms[k]
+                        ] = primary_key_identity[k]
+
             try:
                 primary_key_identity = list(
                     primary_key_identity[prop.key]
@@ -3409,7 +3424,7 @@ class Session(_SessionClassMethods, EventTarget):
                 raise sa_exc.InvalidRequestError(
                     "Incorrect names of values in identifier to formulate "
                     "primary key for session.get(); primary key attribute "
-                    "names are %s"
+                    "names are %s (synonym names are also accepted)"
                     % ",".join(
                         "'%s'" % prop.key
                         for prop in mapper._identity_key_props
