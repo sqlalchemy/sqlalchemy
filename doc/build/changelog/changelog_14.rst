@@ -15,7 +15,176 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.43
-    :include_notes_from: unreleased_14
+    :released: November 4, 2022
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8738
+
+        Fixed issue in joined eager loading where an assertion fail would occur
+        with a particular combination of outer/inner joined eager loads, when
+        eager loading across three mappers where the middle mapper was
+        an inherited subclass mapper.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 8708
+
+        Fixed issue where bound parameter names, including those automatically
+        derived from similarly-named database columns, which contained characters
+        that normally require quoting with Oracle would not be escaped when using
+        "expanding parameters" with the Oracle dialect, causing execution errors.
+        The usual "quoting" for bound parameters used by the Oracle dialect is not
+        used with the "expanding parameters" architecture, so escaping for a large
+        range of characters is used instead, now using a list of characters/escapes
+        that are specific to Oracle.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8721
+
+        Fixed bug involving :class:`.Select` constructs, where combinations of
+        :meth:`.Select.select_from` with :meth:`.Select.join`, as well as when
+        using :meth:`.Select.join_from`, would cause the
+        :func:`_orm.with_loader_criteria` feature as well as the IN criteria needed
+        for single-table inheritance queries to not render, in cases where the
+        columns clause of the query did not explicitly include the left-hand side
+        entity of the JOIN. The correct entity is now transferred to the
+        :class:`.Join` object that's generated internally, so that the criteria
+        against the left side entity is correctly added.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 8714
+
+        Fixed issue with :meth:`.Inspector.has_table`, which when used against a
+        temporary table with the SQL Server dialect would fail on some Azure
+        variants, due to an unnecessary information schema query that is not
+        supported on those server versions. Pull request courtesy Mike Barry.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8711
+
+        An informative exception is now raised when the
+        :func:`_orm.with_loader_criteria` option is used as a loader option added
+        to a specific "loader path", such as when using it within
+        :meth:`.Load.options`. This use is not supported as
+        :func:`_orm.with_loader_criteria` is only intended to be used as a top
+        level loader option. Previously, an internal error would be generated.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 8744
+
+        Fixed issue where the ``nls_session_parameters`` view queried on first
+        connect in order to get the default decimal point character may not be
+        available depending on Oracle connection modes, and would therefore raise
+        an error.  The approach to detecting decimal char has been simplified to
+        test a decimal value directly, instead of reading system views, which
+        works on any backend / driver.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8753
+
+        Improved "dictionary mode" for :meth:`_orm.Session.get` so that synonym
+        names which refer to primary key attribute names may be indicated in the
+        named dictionary.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 8717
+
+        Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be be
+        called in all cases when a :class:`_engine.Connection` were closed and was
+        in the process of returning its DBAPI connection to the connection pool.
+
+        The scenario was when the :class:`_engine.Connection` had already emitted
+        ``.rollback()`` on its DBAPI connection within the process of returning
+        the connection to the pool, where it would then instruct the connection
+        pool to forego doing its own "reset" to save on the additional method
+        call.  However, this prevented custom pool reset schemes from being
+        used within this hook, as such hooks by definition are doing more than
+        just calling ``.rollback()``, and need to be invoked under all
+        circumstances.  This was a regression that appeared in version 1.4.
+
+        For version 1.4, the :meth:`.PoolEvents.checkin` remains viable as an
+        alternate event hook to use for custom "reset" implementations. Version 2.0
+        will feature an improved version of :meth:`.PoolEvents.reset` which is
+        called for additional scenarios such as termination of asyncio connections,
+        and is also passed contextual information about the reset, to allow for
+        "custom connection reset" schemes which can respond to different reset
+        scenarios in different ways.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8704
+
+        Fixed issue where "selectin_polymorphic" loading for inheritance mappers
+        would not function correctly if the :paramref:`_orm.Mapper.polymorphic_on`
+        parameter referred to a SQL expression that was not directly mapped on the
+        class.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8710
+
+        Fixed issue where the underlying DBAPI cursor would not be closed when
+        using the :class:`_orm.Query` object as an iterator, if a user-defined exception
+        case were raised within the iteration process, thereby causing the iterator
+        to be closed by the Python interpreter.  When using
+        :meth:`_orm.Query.yield_per` to create server-side cursors, this would lead
+        to the usual MySQL-related issues with server side cursors out of sync,
+        and without direct access to the :class:`.Result` object, end-user code
+        could not access the cursor in order to close it.
+
+        To resolve, a catch for ``GeneratorExit`` is applied within the iterator
+        method, which will close the result object in those cases when the
+        iterator were interrupted, and by definition will be closed by the
+        Python interpreter.
+
+        As part of this change as implemented for the 1.4 series, ensured that
+        ``.close()`` methods are available on all :class:`.Result` implementations
+        including :class:`.ScalarResult`, :class:`.MappingResult`.  The 2.0
+        version of this change also includes new context manager patterns for use
+        with :class:`.Result` classes.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8710
+
+        Ensured all :class:`.Result` objects include a :meth:`.Result.close` method
+        as well as a :attr:`.Result.closed` attribute, including on
+        :class:`.ScalarResult` and :class:`.MappingResult`.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 8700
+
+        Fixed issue with :meth:`.Inspector.has_table`, which when used against a
+        view with the SQL Server dialect would erroneously return ``False``, due to
+        a regression in the 1.4 series which removed support for this on SQL
+        Server. The issue is not present in the 2.0 series which uses a different
+        reflection architecture. Test support is added to ensure ``has_table()``
+        remains working per spec re: views.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8724
+
+        Fixed issue which prevented the :func:`_sql.literal_column` construct from
+        working properly within the context of a :class:`.Select` construct as well
+        as other potential places where "anonymized labels" might be generated, if
+        the literal expression contained characters which could interfere with
+        format strings, such as open parenthesis, due to an implementation detail
+        of the "anonymous label" structure.
+
 
 .. changelog::
     :version: 1.4.42
