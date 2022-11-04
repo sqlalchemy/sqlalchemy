@@ -1210,6 +1210,31 @@ class GetTest(QueryTest):
         u2 = s.get(User, 7)
         assert u is not u2
 
+    def test_get_synonym_direct_name(self, decl_base):
+        """test #8753"""
+
+        class MyUser(decl_base):
+            __table__ = self.tables.users
+
+            syn_id = synonym("id")
+
+        s = fixture_session()
+        u = s.get(MyUser, {"syn_id": 7})
+        eq_(u.id, 7)
+
+    def test_get_synonym_indirect(self, decl_base):
+        """test #8753"""
+
+        class MyUser(decl_base):
+            __table__ = self.tables.users
+
+            uid = __table__.c.id
+            syn_id = synonym("uid")
+
+        s = fixture_session()
+        u = s.get(MyUser, {"syn_id": 7})
+        eq_(u.uid, 7)
+
     def test_get_composite_pk_no_result(self):
         CompositePk = self.classes.CompositePk
 

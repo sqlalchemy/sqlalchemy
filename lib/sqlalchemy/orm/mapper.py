@@ -2577,6 +2577,24 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
+    def _pk_synonyms(self):
+        """return a dictionary of {syn_attribute_name: pk_attr_name} for
+        all synonyms that refer to primary key columns
+
+        """
+        descriptor_props = util.preloaded.orm_descriptor_props
+
+        pk_keys = {prop.key for prop in self._identity_key_props}
+
+        return {
+            syn.key: syn.name
+            for k, syn in self._props.items()
+            if isinstance(syn, descriptor_props.SynonymProperty)
+            and syn.name in pk_keys
+        }
+
+    @HasMemoized.memoized_attribute
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def synonyms(self):
         """Return a namespace of all :class:`.SynonymProperty`
         properties maintained by this :class:`_orm.Mapper`.

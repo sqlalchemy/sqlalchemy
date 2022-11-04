@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8753
+
+    Improved "dictionary mode" for :meth:`_orm.Session.get` so that synonym
+    names which refer to primary key attribute names may be indicated in the
+    named dictionary.
