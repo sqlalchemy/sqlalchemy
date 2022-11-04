@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.0.0b4
+    :include_notes_from: unreleased_20
+
+.. changelog::
     :version: 2.0.0b3
     :released: November 4, 2022
 
