@@ -2,8 +2,9 @@
     :tags: bug, orm
     :tickets: 8711
 
-    Fixed the exception that's raised when the
-    :func:`_orm.with_loader_criteria` option is attempted to be used within a
-    specific loader path, like in loader.options().
-    :func:`_orm.with_loader_criteria` is only intended to be used at the top
-    level.
+    An informative exception is now raised when the
+    :func:`_orm.with_loader_criteria` option is used as a loader option added
+    to a specific "loader path", such as when using it within
+    :meth:`.Load.options`. This use is not supported as
+    :func:`_orm.with_loader_criteria` is only intended to be used as a top
+    level loader option. Previously, an internal error would be generated.

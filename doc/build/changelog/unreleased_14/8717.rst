@@ -3,17 +3,21 @@
     :tickets: 8717
 
     Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be
-    called when a :class:`.Connection` were closed which already called
-    ``.rollback()`` on its own transaction, due to an enhancement in the 1.4
-    series that ensures ``.rollback()`` is only called once in this scenario,
-    rather than twice. This would prevent custom pool reset schemes from being
-    used within this hook. This was a regression that appeared in version 1.4.
+    be called in all cases when a :class:`.Connection` were closed and was
+    in the process of returning its DBAPI connection to the connection pool.
+    The scenario was when the :class:`.Connection` had already emitted
+    ``.rollback()`` on its DBAPI connection within the process of returning
+    the connection to the pool, where it would then instruct the connection
+    pool to forego doing its own "reset" to save on the additional method
+    call.  However, this prevented custom pool reset schemes from being
+    used within this hook, as such hooks by definition are doing more than
+    just calling ``.rollback()``, and need to be invoked under all
+    circumstances  This was a regression that appeared in version 1.4.
 
-    For version 1.4, the :meth:`.PoolEvents.checkin` likely remains a better
-    event to use for custom "reset" implementations. Version 2.0 will feature
-    an improved version of :meth:`.PoolEvents.reset` which is called for
-    additional scenarios such as termination of asyncio connections, and is
-    also passed contextual information about the reset, to allow for "custom
-    connection reset" schemes which can respond to different reset scenarios in
-    different ways.
-
+    For version 1.4, the :meth:`.PoolEvents.checkin` remains viable as an
+    alternate event hook to use for custom "reset" implementations. Version 2.0
+    will feature an improved version of :meth:`.PoolEvents.reset` which is
+    called for additional scenarios such as termination of asyncio connections,
+    and is also passed contextual information about the reset, to allow for
+    "custom connection reset" schemes which can respond to different reset
+    scenarios in different ways.
