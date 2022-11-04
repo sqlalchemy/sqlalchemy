@@ -2,7 +2,7 @@
     :tags: bug, mssql
     :tickets: 8714
 
-    Fixed issue with :meth:`.Inspector.has_table` when used against a temporary
-    table for the SQL Server dialect would fail an invalid object name error on
-    some Azure variants, due to an unnecessary information schema query that is
-    not supported on those server versions. Pull request courtesy Mike Barry.
+    Fixed issue with :meth:`.Inspector.has_table`, which when used against a
+    temporary table with the SQL Server dialect would fail on some Azure
+    variants, due to an unnecessary information schema query that is not
+    supported on those server versions. Pull request courtesy Mike Barry.
