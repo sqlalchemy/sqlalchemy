@@ -78,6 +78,7 @@ from ..sql.elements import KeyedColumnElement
 from ..sql.selectable import FromClause
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation
+from ..util.typing import eval_name_only
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 from ..util.typing import typing_get_origin
@@ -2034,35 +2035,75 @@ def _is_mapped_annotation(
         return is_origin_of_cls(annotated, _MappedAnnotationBase)
 
 
-def _cleanup_mapped_str_annotation(annotation: str) -> str:
+class _CleanupError(Exception):
+    pass
+
+
+def _cleanup_mapped_str_annotation(
+    annotation: str, originating_module: str
+) -> str:
     # fix up an annotation that comes in as the form:
     # 'Mapped[List[Address]]'  so that it instead looks like:
     # 'Mapped[List["Address"]]' , which will allow us to get
     # "Address" as a string
 
+    # additionally, resolve symbols for these names since this is where
+    # we'd have to do it
+
     inner: Optional[Match[str]]
 
     mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
-    if mm and mm.group(1) in ("Mapped", "WriteOnlyMapped", "DynamicMapped"):
-        stack = []
-        inner = mm
-        while True:
-            stack.append(inner.group(1))
-            g2 = inner.group(2)
-            inner = re.match(r"^(.+?)\[(.+)\]$", g2)
-            if inner is None:
-                stack.append(g2)
-                break
 
-        # stack: ['Mapped', 'List', 'Address']
-        if not re.match(r"""^["'].*["']$""", stack[-1]):
-            stripchars = "\"' "
-            stack[-1] = ", ".join(
-                f'"{elem.strip(stripchars)}"' for elem in stack[-1].split(",")
-            )
-            # stack: ['Mapped', 'List', '"Address"']
+    if not mm:
+        return annotation
 
-            annotation = "[".join(stack) + ("]" * (len(stack) - 1))
+    # ticket #8759.  Resolve the Mapped name to a real symbol.
+    # originally this just checked the name.
+    try:
+        obj = eval_name_only(mm.group(1), originating_module)
+    except NameError as ne:
+        raise _CleanupError(
+            f'For annotation "{annotation}", could not resolve '
+            f'container type "{mm.group(1)}".  '
+            "Please ensure this type is imported at the module level "
+            "outside of TYPE_CHECKING blocks"
+        ) from ne
+
+    try:
+        if issubclass(obj, _MappedAnnotationBase):
+            real_symbol = obj.__name__
+        else:
+            return annotation
+    except TypeError:
+        # avoid isinstance(obj, type) check, just catch TypeError
+        return annotation
+
+    # note: if one of the codepaths above didn't define real_symbol and
+    # then didn't return, real_symbol raises UnboundLocalError
+    # which is actually a NameError, and the calling routines don't
+    # notice this since they are catching NameError anyway.   Just in case
+    # this is being modified in the future, something to be aware of.
+
+    stack = []
+    inner = mm
+    while True:
+        stack.append(real_symbol if mm is inner else inner.group(1))
+        g2 = inner.group(2)
+        inner = re.match(r"^(.+?)\[(.+)\]$", g2)
+        if inner is None:
+            stack.append(g2)
+            break
+
+    # stack: ['Mapped', 'List', 'Address']
+    if not re.match(r"""^["'].*["']$""", stack[-1]):
+        stripchars = "\"' "
+        stack[-1] = ", ".join(
+            f'"{elem.strip(stripchars)}"' for elem in stack[-1].split(",")
+        )
+        # stack: ['Mapped', 'List', '"Address"']
+
+        annotation = "[".join(stack) + ("]" * (len(stack) - 1))
+
     return annotation
 
 
@@ -2101,12 +2142,18 @@ def _extract_mapped_subtype(
             originating_module,
             _cleanup_mapped_str_annotation,
         )
+    except _CleanupError as ce:
+        raise sa_exc.ArgumentError(
+            f"Could not interpret annotation {raw_annotation}.  "
+            "Check that it uses names that are correctly imported at the "
+            "module level. See chained stack trace for more hints."
+        ) from ce
     except NameError as ne:
         if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
             raise sa_exc.ArgumentError(
                 f"Could not interpret annotation {raw_annotation}.  "
-                "Check that it's not using names that might not be imported "
-                "at the module level.  See chained stack trace for more hints."
+                "Check that it uses names that are correctly imported at the "
+                "module level. See chained stack trace for more hints."
             ) from ne
 
         annotated = raw_annotation  # type: ignore

@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import uuid
@@ -31,6 +32,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.util import compat
+from .test_typed_mapping import expect_annotation_syntax_error
 from .test_typed_mapping import MappedColumnTest as _MappedColumnTest
 from .test_typed_mapping import RelationshipLHSTest as _RelationshipLHSTest
 from .test_typed_mapping import (
@@ -45,8 +47,97 @@ having ``from __future__ import annotations`` in effect.
 
 _R = TypeVar("_R")
 
+M = Mapped
+
+
+class M3:
+    pass
+
 
 class MappedColumnTest(_MappedColumnTest):
+    def test_indirect_mapped_name_module_level(self, decl_base):
+        """test #8759
+
+
+        Note that M by definition has to be at the module level to be
+        valid, and not locally declared here, this is in accordance with
+        mypy::
+
+
+            def make_class() -> None:
+                ll = list
+
+                x: ll[int] = [1, 2, 3]
+
+        Will return::
+
+            $ mypy test3.py
+            test3.py:4: error: Variable "ll" is not valid as a type  [valid-type]
+            test3.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+            Found 1 error in 1 file (checked 1 source file)
+
+        Whereas the correct form is::
+
+            ll = list
+
+            def make_class() -> None:
+
+                x: ll[int] = [1, 2, 3]
+
+
+        """  # noqa: E501
+
+        class Foo(decl_base):
+            __tablename__ = "foo"
+
+            id: M[int] = mapped_column(primary_key=True)
+
+            data: M[int] = mapped_column()
+
+            data2: M[int]
+
+        self.assert_compile(
+            select(Foo), "SELECT foo.id, foo.data, foo.data2 FROM foo"
+        )
+
+    def test_indirect_mapped_name_local_level(self, decl_base):
+        """test #8759.
+
+        this should raise an error.
+
+        """
+
+        M2 = Mapped
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Could not interpret annotation M2\[int\].  Check that it "
+            "uses names that are correctly imported at the module level.",
+        ):
+
+            class Foo(decl_base):
+                __tablename__ = "foo"
+
+                id: M2[int] = mapped_column(primary_key=True)
+
+                data2: M2[int]
+
+    def test_indirect_mapped_name_itswrong(self, decl_base):
+        """test #8759.
+
+        this should raise an error.
+
+        """
+
+        with expect_annotation_syntax_error("Foo.id"):
+
+            class Foo(decl_base):
+                __tablename__ = "foo"
+
+                id: M3[int] = mapped_column(primary_key=True)
+
+                data2: M3[int]
+
     def test_unions(self):
         our_type = Numeric(10, 2)
 
@@ -393,6 +484,124 @@ class RelationshipLHSTest(_RelationshipLHSTest):
         b1 = B()
         a1.bs.append(b1)
         is_(a1, b1.a)
+
+    @testing.combinations(
+        "include_relationship",
+        "no_relationship",
+        argnames="include_relationship",
+    )
+    @testing.combinations(
+        "direct_name", "indirect_name", argnames="indirect_name"
+    )
+    def test_indirect_name_collection(
+        self, decl_base, include_relationship, indirect_name
+    ):
+        """test #8759"""
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+        global B_
+        B_ = B
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+            if indirect_name == "indirect_name":
+                if include_relationship == "include_relationship":
+                    bs: Mapped[List[B_]] = relationship("B")
+                else:
+                    bs: Mapped[List[B_]] = relationship()
+            else:
+                if include_relationship == "include_relationship":
+                    bs: Mapped[List[B]] = relationship("B")
+                else:
+                    bs: Mapped[List[B]] = relationship()
+
+        self.assert_compile(
+            select(A).join(A.bs),
+            "SELECT a.id, a.data FROM a JOIN b ON a.id = b.a_id",
+        )
+
+    @testing.combinations(
+        "include_relationship",
+        "no_relationship",
+        argnames="include_relationship",
+    )
+    @testing.combinations(
+        "direct_name", "indirect_name", argnames="indirect_name"
+    )
+    def test_indirect_name_scalar(
+        self, decl_base, include_relationship, indirect_name
+    ):
+        """test #8759"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+        global A_
+        A_ = A
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+            if indirect_name == "indirect_name":
+                if include_relationship == "include_relationship":
+                    a: Mapped[A_] = relationship("A")
+                else:
+                    a: Mapped[A_] = relationship()
+            else:
+                if include_relationship == "include_relationship":
+                    a: Mapped[A] = relationship("A")
+                else:
+                    a: Mapped[A] = relationship()
+
+        self.assert_compile(
+            select(B).join(B.a),
+            "SELECT b.id, b.a_id FROM b JOIN a ON a.id = b.a_id",
+        )
+
+    def test_indirect_name_relationship_arg_override(self, decl_base):
+        """test #8759
+
+        in this test we assume a case where the type for the Mapped annnotation
+        a. has to be a different name than the actual class name and
+        b. cannot be imported outside of TYPE CHECKING.  user will then put
+        the real name inside of relationship().  we have to succeed even though
+        we can't resolve the annotation.
+
+        """
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+        if TYPE_CHECKING:
+            BNonExistent = B
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+            bs: Mapped[List[BNonExistent]] = relationship("B")
+
+        self.assert_compile(
+            select(A).join(A.bs),
+            "SELECT a.id, a.data FROM a JOIN b ON a.id = b.a_id",
+        )
 
 
 class WriteOnlyRelationshipTest(_WriteOnlyRelationshipTest):

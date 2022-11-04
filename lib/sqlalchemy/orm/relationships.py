@@ -88,6 +88,7 @@ from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import Literal
+from ..util.typing import resolve_name_to_real_class_name
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -1729,6 +1730,7 @@ class RelationshipProperty(
                 return
 
         argument = extracted_mapped_annotation
+        assert originating_module is not None
 
         is_write_only = mapped_container is not None and issubclass(
             mapped_container, WriteOnlyMapped
@@ -1765,7 +1767,10 @@ class RelationshipProperty(
                     type_arg = argument.__args__[0]  # type: ignore
                 if hasattr(type_arg, "__forward_arg__"):
                     str_argument = type_arg.__forward_arg__
-                    argument = str_argument
+
+                    argument = resolve_name_to_real_class_name(
+                        str_argument, originating_module
+                    )
                 else:
                     argument = type_arg
             else:
@@ -1774,6 +1779,10 @@ class RelationshipProperty(
                 )
         elif hasattr(argument, "__forward_arg__"):
             argument = argument.__forward_arg__  # type: ignore
+
+            argument = resolve_name_to_real_class_name(
+                argument, originating_module
+            )
 
             # we don't allow the collection class to be a
             # __forward_arg__ right now, so if we see a forward arg here,
@@ -1785,7 +1794,14 @@ class RelationshipProperty(
             ):
                 self.uselist = False
 
-        self.argument = cast("_RelationshipArgumentType[_T]", argument)
+        # ticket #8759
+        # if a lead argument was given to relationship(), like
+        # `relationship("B")`, use that, don't replace it with class we
+        # found in the annotation.  The declarative_scan() method call here is
+        # still useful, as we continue to derive collection type and do
+        # checking of the annotation in any case.
+        if self.argument is None:
+            self.argument = cast("_RelationshipArgumentType[_T]", argument)
 
     @util.preload_module("sqlalchemy.orm.mapper")
     def _setup_entity(self, __argument: Any = None) -> None:

@@ -85,7 +85,7 @@ def de_stringify_annotation(
     cls: Type[Any],
     annotation: _AnnotationScanType,
     originating_module: str,
-    str_cleanup_fn: Optional[Callable[[str], str]] = None,
+    str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
 ) -> Type[Any]:
     """Resolve annotations that may be string based into real objects.
 
@@ -109,26 +109,65 @@ def de_stringify_annotation(
 
     if isinstance(annotation, str):
         if str_cleanup_fn:
-            annotation = str_cleanup_fn(annotation)
-        base_globals: "Dict[str, Any]" = getattr(
-            sys.modules.get(originating_module, None), "__dict__", {}
-        )
+            annotation = str_cleanup_fn(annotation, originating_module)
 
-        try:
-            annotation = eval(annotation, base_globals, None)
-        except NameError as err:
-            # breakpoint()
-            raise NameError(
-                f"Could not de-stringify annotation {annotation}"
-            ) from err
+        annotation = eval_expression(annotation, originating_module)
     return annotation  # type: ignore
+
+
+def eval_expression(expression: str, module_name: str) -> Any:
+    try:
+        base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
+    except KeyError as ke:
+        raise NameError(
+            f"Module {module_name} isn't present in sys.modules; can't "
+            f"evaluate expression {expression}"
+        ) from ke
+    try:
+        annotation = eval(expression, base_globals, None)
+    except Exception as err:
+        raise NameError(
+            f"Could not de-stringify annotation {expression}"
+        ) from err
+    else:
+        return annotation
+
+
+def eval_name_only(name: str, module_name: str) -> Any:
+
+    try:
+        base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
+    except KeyError as ke:
+        raise NameError(
+            f"Module {module_name} isn't present in sys.modules; can't "
+            f"resolve name {name}"
+        ) from ke
+
+    # name only, just look in globals.  eval() works perfectly fine here,
+    # however we are seeking to have this be faster, as this occurs for
+    # every Mapper[] keyword, etc. depending on configuration
+    try:
+        return base_globals[name]
+    except KeyError as ke:
+        raise NameError(
+            f"Could not locate name {name} in module {module_name}"
+        ) from ke
+
+
+def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
+    try:
+        obj = eval_name_only(name, module_name)
+    except NameError:
+        return name
+    else:
+        return getattr(obj, "__name__", name)
 
 
 def de_stringify_union_elements(
     cls: Type[Any],
     annotation: _AnnotationScanType,
     originating_module: str,
-    str_cleanup_fn: Optional[Callable[[str], str]] = None,
+    str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
 ) -> Type[Any]:
     return make_union_type(
         *[
