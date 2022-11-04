@@ -403,7 +403,7 @@ table will include:
   :paramref:`.MetaData.schema` setting on the :class:`.MetaData` in use;
   see :ref:`sequence_metadata` for background.
 
-When :class:`.Insert` DML constructs are invoked against the ``cartitems``
+When :class:`_dml .Insert` DML constructs are invoked against the ``cartitems``
 table, without an explicit value passed for the ``cart_id`` column, the
 ``cart_id_seq`` sequence will be used to generate a value on participating
 backends. Typically, the sequence function is embedded in the INSERT statement,
@@ -416,10 +416,11 @@ returned to the Python process:
     VALUES (next_val(cart_id_seq), 'some description', '2015-10-15 12:00:15')
     RETURNING cart_id
 
-When using :meth:`.Connection.execute` to invoke an :class:`.Insert` construct,
-newly generated primary key identifiers, including but not limited to those
-generated using :class:`.Sequence`, are available from the :class:`.CursorResult`
-construct using the :attr:`.CursorResult.inserted_primary_key` attribute.
+When using :meth:`_engine.Connection.execute` to invoke an :class:`_dml.Insert`
+construct, newly generated primary key identifiers, including but not limited
+to those generated using :class:`.Sequence`, are available from the
+:class:`.CursorResult` construct using the
+:attr:`.CursorResult.inserted_primary_key` attribute.
 
 When the :class:`~sqlalchemy.schema.Sequence` is associated with a
 :class:`_schema.Column` as its **Python-side** default generator, the

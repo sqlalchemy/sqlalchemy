@@ -153,7 +153,7 @@ performance reasons. This can be affected by using the
 is also available from :func:`_sa.create_engine` as
 :paramref:`_sa.create_engine.pool_reset_on_return`, passing a value of ``None``.
 This is illustrated in the example below, in conjunction with the
-:paramref:`.create_engine.isolation_level` parameter setting of
+:paramref:`_sa.create_engine.isolation_level` parameter setting of
 ``AUTOCOMMIT``::
 
     non_acid_engine = create_engine(
