@@ -355,7 +355,6 @@ construction arguments, are as follows:
     :members: comparator_factory
 
 .. autoclass:: sqlalchemy.dialects.postgresql.AbstractMultiRange
-    :members: comparator_factory
 
 .. autoclass:: aggregate_order_by
 

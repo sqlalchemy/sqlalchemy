@@ -771,5 +771,5 @@ Bulk Operations
   "bulk update" capabilities into 2.0 style :meth:`_orm.Session.execute`
   method, making direct use of :class:`_dml.Insert` and :class:`_dml.Update`
   constructs. See the document at :doc:`queryguide/dml` for documentation,
-  including :ref:`orm_queryguide_legacy_bulk` which illustrates migration
+  including :ref:`orm_queryguide_legacy_bulk_insert` which illustrates migration
   from the older methods to the new methods.
