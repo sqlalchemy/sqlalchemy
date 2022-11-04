@@ -1490,6 +1490,46 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         is_(a1.bs["foo"], b1)
 
+    @testing.combinations(
+        "include_relationship",
+        "no_relationship",
+        argnames="include_relationship",
+    )
+    @testing.combinations(
+        "direct_name", "indirect_name", argnames="indirect_name"
+    )
+    def test_indirect_name(
+        self, decl_base, include_relationship, indirect_name
+    ):
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+        B_ = B
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+            if indirect_name == "indirect_name":
+                if include_relationship == "include_relationship":
+                    bs: Mapped[List[B_]] = relationship("B")
+                else:
+                    bs: Mapped[List[B_]] = relationship()
+            else:
+                if include_relationship == "include_relationship":
+                    bs: Mapped[List[B]] = relationship("B")
+                else:
+                    bs: Mapped[List[B]] = relationship()
+
+        self.assert_compile(
+            select(A).join(A.bs),
+            "SELECT a.id, a.data FROM a JOIN b ON a.id = b.a_id",
+        )
+
 
 class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
