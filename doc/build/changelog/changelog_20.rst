@@ -10,7 +10,157 @@
 
 .. changelog::
     :version: 2.0.0b3
-    :include_notes_from: unreleased_20
+    :released: November 4, 2022
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8759
+
+        Added support in ORM declarative annotations for class names specified for
+        :func:`_orm.relationship`, as well as the name of the :class:`_orm.Mapped`
+        symbol itself, to be different names than their direct class name, to
+        support scenarios such as where :class:`_orm.Mapped` is imported as
+        ``from sqlalchemy.orm import Mapped as M``, or where related class names
+        are imported with an alternate name in a similar fashion. Additionally, a
+        target class name given as the lead argument for :func:`_orm.relationship`
+        will always supersede the name given in the left hand annotation, so that
+        otherwise un-importable names that also don't match the class name can
+        still be used in annotations.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8692
+
+        Improved support for legacy 1.4 mappings that use annotations which don't
+        include ``Mapped[]``, by ensuring the ``__allow_unmapped__`` attribute can
+        be used to allow such legacy annotations to pass through Annotated
+        Declarative without raising an error and without being interpreted in an
+        ORM runtime context. Additionally improved the error message generated when
+        this condition is detected, and added more documentation for how this
+        situation should be handled. Unfortunately the 1.4 WARN_SQLALCHEMY_20
+        migration warning cannot detect this particular configurational issue at
+        runtime with its current architecture.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 8690
+
+        Refined the new approach to range objects described at :ref:`change_7156`
+        to accommodate driver-specific range and multirange objects, to better
+        accommodate both legacy code as well as when passing results from raw SQL
+        result sets back into new range or multirange expressions.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 8717
+
+        Added new parameter :paramref:`.PoolEvents.reset.reset_state` parameter to
+        the :meth:`.PoolEvents.reset` event, with deprecation logic in place that
+        will continue to accept event hooks using the previous set of arguments.
+        This indicates various state information about how the reset is taking
+        place and is used to allow custom reset schemes to take place with full
+        context given.
+
+        Within this change a fix that's also backported to 1.4 is included which
+        re-enables the :meth:`.PoolEvents.reset` event to continue to take place
+        under all circumstances, including when :class:`.Connection` has already
+        "reset" the connection.
+
+        The two changes together allow custom reset schemes to be implemented using
+        the :meth:`.PoolEvents.reset` event, instead of the
+        :meth:`.PoolEvents.checkin` event (which continues to function as it always
+        has).
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8705
+
+        Changed a fundamental configuration behavior of :class:`.Mapper`, where
+        :class:`_schema.Column` objects that are explicitly present in the
+        :paramref:`_orm.Mapper.properties` dictionary, either directly or enclosed
+        within a mapper property object, will now be mapped within the order of how
+        they appear within the mapped :class:`.Table` (or other selectable) itself
+        (assuming they are in fact part of that table's list of columns), thereby
+        maintaining the same order of columns in the mapped selectable as is
+        instrumented on the mapped class, as well as what renders in an ORM SELECT
+        statement for that mapper. Previously (where "previously" means since
+        version 0.0.1), :class:`.Column` objects in the
+        :paramref:`_orm.Mapper.properties` dictionary would always be mapped first,
+        ahead of when the other columns in the mapped :class:`.Table` would be
+        mapped, causing a discrepancy in the order in which the mapper would
+        assign attributes to the mapped class as well as the order in which they
+        would render in statements.
+
+        The change most prominently takes place in the way that Declarative
+        assigns declared columns to the :class:`.Mapper`, specifically how
+        :class:`.Column` (or :func:`_orm.mapped_column`) objects are handled
+        when they have a DDL name that is explicitly different from the mapped
+        attribute name, as well as when constructs such as :func:`_orm.deferred`
+        etc. are used.   The new behavior will see the column ordering within
+        the mapped :class:`.Table` being the same order in which the attributes
+        are mapped onto the class, assigned within the :class:`.Mapper` itself,
+        and rendered in ORM statements such as SELECT statements, independent
+        of how the :class:`_schema.Column` was configured against the
+        :class:`.Mapper`.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 8710
+
+        To better support the use case of iterating :class:`.Result` and
+        :class:`.AsyncResult` objects where user-defined exceptions may interrupt
+        the iteration, both objects as well as variants such as
+        :class:`.ScalarResult`, :class:`.MappingResult`,
+        :class:`.AsyncScalarResult`, :class:`.AsyncMappingResult` now support
+        context manager usage, where the result will be closed at the end of
+        the context manager block.
+
+        In addition, ensured that all the above
+        mentioned :class:`.Result` objects include a :meth:`.Result.close` method
+        as well as :attr:`.Result.closed` accessors, including
+        :class:`.ScalarResult` and :class:`.MappingResult` which previously did
+        not have a ``.close()`` method.
+
+        .. seealso::
+
+            :ref:`change_8710`
+
+
+    .. change::
+        :tags: bug, typing
+
+        Corrected various typing issues within the engine and async engine
+        packages.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 8718
+
+        Fixed issue in new dataclass mapping feature where a column declared on the
+        decalrative base / abstract base / mixin would leak into the constructor
+        for an inheriting subclass under some circumstances.
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 8742
+
+        Fixed issues within the declarative typing resolver (i.e. which resolves
+        ``ForwardRef`` objects) where types that were declared for columns in one
+        particular source file would raise ``NameError`` when the ultimate mapped
+        class were in another source file.  The types are now resolved in terms
+        of the module for each class in which the types are used.
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 8706
+
+        Added new methods :meth:`_postgresql.Range.contains` and
+        :meth:`_postgresql.Range.contained_by` to the new :class:`.Range` data
+        object, which mirror the behavior of the PostgreSQL ``@>`` and ``<@``
+        operators, as well as the
+        :meth:`_postgresql.AbstractRange.comparator_factory.contains` and
+        :meth:`_postgresql.AbstractRange.comparator_factory.contained_by` SQL
+        operator methods. Pull request courtesy Lele Gaifax.
 
 .. changelog::
     :version: 2.0.0b2

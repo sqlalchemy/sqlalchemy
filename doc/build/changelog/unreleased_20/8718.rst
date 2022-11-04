@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm, declarative
-    :tickets: 8718
-
-    Fixed issue in new dataclass mapping feature where a column declared on the
-    decalrative base / abstract base / mixin would leak into the constructor
-    for an inheriting subclass under some circumstances.
