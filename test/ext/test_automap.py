@@ -501,6 +501,7 @@ class ConcurrentAutomapTest(fixtures.TestBase):
         finally:
             e.dispose()
 
+    @testing.requires.timing_intensive
     def test_concurrent_automaps_w_configure(self):
         self._success = True
         threads = [threading.Thread(target=self._chaos) for i in range(30)]
