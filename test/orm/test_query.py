@@ -81,6 +81,7 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.types import NullType
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.util import collections_abc
@@ -5439,6 +5440,7 @@ class YieldTest(_fixtures.FixtureTest):
                 if i > 1:
                     raise Exception("hi")
 
+        gc_collect()  # needed for pypy, #8762
         assert asserted_result[0]._soft_closed
         assert not asserted_result[0].closed
 
@@ -5460,6 +5462,7 @@ class YieldTest(_fixtures.FixtureTest):
                 if i > 1:
                     raise Exception("hi")
 
+        gc_collect()  # not apparently needed, but defensive for pypy re: #8762
         assert not result._soft_closed
         assert not result.closed
         result.close()
