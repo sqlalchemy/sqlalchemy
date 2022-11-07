@@ -3849,10 +3849,16 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
-    def test_different(self):
+    def test_difference(self):
         self._test_clause(
             self.col - self.col,
             "data_table.range - data_table.range",
+            self.col.type,
+        )
+
+        self._test_clause(
+            self.col.difference(self._data_str()),
+            "data_table.range - %(range_1)s",
             self.col.type,
         )
 
@@ -4258,6 +4264,51 @@ class _RangeComparisonFixtures:
                 r1.union(r2),
                 union,
                 f"{r1}.union({r2}) != {union}",
+            )
+
+    @testing.combinations(
+        ("empty", "empty", False),
+        ("empty", "[{le},{re_}]", False),
+        ("[{le},{re_}]", "empty", False),
+        ("[{ll},{ih}]", "({le},{ih}]", False),
+        ("[{ll},{rh})", "[{le},{re_}]", False),
+        ("[{le},{re_}]", "({le},{re_})", True),
+        ("[{ll},{rh}]", "[{le},{re_}]", True),
+        argnames="r1repr,r2repr,err",
+    )
+    def test_difference(self, connection, r1repr, r2repr, err):
+        data = self._value_values()
+
+        if r1repr != "empty":
+            r1repr = r1repr.format(**data)
+        if r2repr != "empty":
+            r2repr = r2repr.format(**data)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+        )
+
+        r1, r2 = connection.execute(q).first()
+
+        resq = select(
+            literal_column(f"'{r1}'::{range_typ}-'{r2}'::{range_typ}", RANGE),
+        )
+
+        if err:
+            with expect_raises(DataError):
+                connection.execute(resq).scalar()
+            with expect_raises(ValueError):
+                r1.difference(r2)
+        else:
+            difference = connection.execute(resq).scalar()
+            eq_(
+                r1.difference(r2),
+                difference,
+                f"{r1}.difference({r2}) != {difference}",
             )
 
 
@@ -4759,7 +4810,7 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
-    def test_different(self):
+    def test_difference(self):
         self._test_clause(
             self.col - self.col,
             "data_table.multirange - data_table.multirange",

@@ -452,6 +452,67 @@ class Range(Generic[_T]):
 
     __add__ = union
 
+    def difference(self, other: Range) -> Range:
+        """Compute the difference between this range and the `other`.
+
+        This raises a ``ValueError`` exception if the two ranges are
+        "disjunct", that is neither adjacent nor overlapping.
+        """
+
+        # Subtracting an empty range is a no-op
+        if self.empty or other.empty:
+            return self
+
+        slower = self.lower
+        slower_b = self.bounds[0]
+        supper = self.upper
+        supper_b = self.bounds[1]
+        olower = other.lower
+        olower_b = other.bounds[0]
+        oupper = other.upper
+        oupper_b = other.bounds[1]
+
+        sl_vs_ol = self._compare_edges(slower, slower_b, olower, olower_b)
+        su_vs_ou = self._compare_edges(supper, supper_b, oupper, oupper_b)
+        if sl_vs_ol < 0 and su_vs_ou > 0:
+            raise ValueError(
+                "Subtracting a strictly inner range is not implemented"
+            )
+
+        sl_vs_ou = self._compare_edges(slower, slower_b, oupper, oupper_b)
+        su_vs_ol = self._compare_edges(supper, supper_b, olower, olower_b)
+
+        # If the ranges do not overlap, result is simply the first
+        if sl_vs_ou > 0 or su_vs_ol < 0:
+            return self
+
+        # If this range is completely contained by the other, result is empty
+        if sl_vs_ol >= 0 and su_vs_ou <= 0:
+            return Range(None, None, empty=True)
+
+        # If this range extends to the left of the other and ends in its
+        # middle
+        if sl_vs_ol <= 0 and su_vs_ol >= 0 and su_vs_ou <= 0:
+            rupper_b = ")" if olower_b == "[" else "]"
+            if self._compare_edges(slower, slower_b, olower, rupper_b) == 0:
+                return Range(None, None, empty=True)
+            else:
+                return Range(slower, olower, bounds=slower_b + rupper_b)
+
+        # If this range starts in the middle of the other and extends to its
+        # right
+        if sl_vs_ol >= 0 and su_vs_ou >= 0 and sl_vs_ou <= 0:
+            rlower_b = "(" if oupper_b == "]" else "("
+            if self._compare_edges(oupper, rlower_b, supper, supper_b) == 0:
+                return Range(None, None, empty=True)
+            else:
+                return Range(oupper, supper, bounds=rlower_b + supper_b)
+
+        # TODO: figure out if I handled all the cases above
+        assert False
+
+    __sub__ = difference
+
     def __str__(self):
         return self._stringify()
 
@@ -583,6 +644,15 @@ class AbstractRange(sqltypes.TypeEngine):
             return self.expr.op("+")(other)
 
         __add__ = union
+
+        def difference(self, other):
+            """Range expression. Returns the union of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.op("-")(other)
+
+        __sub__ = difference
 
 
 class AbstractRangeImpl(AbstractRange):
