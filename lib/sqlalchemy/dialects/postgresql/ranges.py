@@ -134,6 +134,86 @@ class Range(Generic[_T]):
         else:
             return None
 
+    def _compare_edges(
+        self,
+        value1: Optional[_T],
+        bound1: str,
+        value2: Optional[_T],
+        bound2: str,
+        only_values: bool = False,
+    ) -> int:
+        """Compare two range bounds.
+
+        Return -1, 0 or 1 respectively when `value1` is less than,
+        equal to or greater than `value2`.
+
+        When `only_value` is ``True``, do not consider the *inclusivity*
+        of the edges, just their values.
+        """
+
+        value1_is_lower_bound = bound1 in {"[", "("}
+        value2_is_lower_bound = bound2 in {"[", "("}
+
+        # Infinite edges are equal when they are on the same side,
+        # otherwise a lower edge is considered less than the upper end
+        if value1 is value2 is None:
+            if value1_is_lower_bound == value2_is_lower_bound:
+                return 0
+            else:
+                return -1 if value1_is_lower_bound else 1
+        elif value1 is None:
+            return -1 if value1_is_lower_bound else 1
+        elif value2 is None:
+            return 1 if value2_is_lower_bound else -1
+
+        value1_inc = bound1 in {"[", "]"}
+        value2_inc = bound2 in {"[", "]"}
+        step = self._get_discrete_step()
+
+        if step is not None:
+            # "Normalize" the two edges as '[)', to simplify successive logic
+            if value1_is_lower_bound:
+                if not value1_inc:
+                    value1 -= step
+                    value1_inc = True
+            else:
+                if value1_inc:
+                    value1 += step
+                    value1_inc = False
+            if value2_is_lower_bound:
+                if not value2_inc:
+                    value2 -= step
+                    value2_inc = True
+            else:
+                if value2_inc:
+                    value2 += step
+                    value2_inc = False
+
+        if value1 < value2:
+            return -1
+        elif value1 > value2:
+            return 1
+        elif only_values:
+            return 0
+        else:
+            # Neither one is infinite but are equal, so we
+            # need to consider the respective inclusive/exclusive
+            # flag
+
+            if value1_inc and value2_inc:
+                return 0
+            elif not value1_inc and not value2_inc:
+                if value1_is_lower_bound == value2_is_lower_bound:
+                    return 0
+                else:
+                    return 1 if value1_is_lower_bound else -1
+            elif not value1_inc:
+                return 1 if value1_is_lower_bound else -1
+            elif not value2_inc:
+                return -1 if value2_is_lower_bound else 1
+            else:
+                return 0
+
     def contained_by(self, other: Range) -> bool:
         "Determine whether this range is a contained by `other`."
 
