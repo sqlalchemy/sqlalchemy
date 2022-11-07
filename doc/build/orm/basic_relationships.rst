@@ -486,7 +486,7 @@ for each :func:`_orm.relationship` specify the common association table::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[list[Child]] = relationship(
-            secondary=association_table, back_populates="parents"
+            secondary=association_table, back_populates="left_table"
         )
 
 
@@ -495,7 +495,7 @@ for each :func:`_orm.relationship` specify the common association table::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         parents: Mapped[list[Parent]] = relationship(
-            secondary=association_table, back_populates="children"
+            secondary=association_table, back_populates="right_table"
         )
 
 Using a late-evaluated form for the "secondary" argument
