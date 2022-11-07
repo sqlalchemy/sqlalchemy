@@ -4039,6 +4039,174 @@ class _RangeComparisonFixtures:
         )
         eq_(r2.contains(r1), contained, f"{r2}.contains({r1} != {contained})")
 
+    def test_overlaps(
+        self,
+        connection,
+        bounds_obj_combinations,
+        contains_range_obj_combinations,
+    ):
+        r1repr = contains_range_obj_combinations._stringify()
+        r2repr = bounds_obj_combinations._stringify()
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(contains_range_obj_combinations, RANGE).label("r1"),
+            cast(bounds_obj_combinations, RANGE).label("r2"),
+            cast(contains_range_obj_combinations, RANGE).overlaps(
+                bounds_obj_combinations
+            ),
+        )
+        validate_q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+            literal_column(
+                f"'{r1repr}'::{range_typ} && '{r2repr}'::{range_typ}"
+            ),
+        )
+        orig_row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(orig_row, validate_row)
+
+        r1, r2, overlaps = orig_row
+        eq_(r1.overlaps(r2), overlaps, f"{r1}.overlaps({r2}) != {overlaps}")
+
+    def test_strictly_left_or_right_of(
+        self,
+        connection,
+        bounds_obj_combinations,
+        contains_range_obj_combinations,
+    ):
+        r1repr = contains_range_obj_combinations._stringify()
+        r2repr = bounds_obj_combinations._stringify()
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(contains_range_obj_combinations, RANGE).label("r1"),
+            cast(bounds_obj_combinations, RANGE).label("r2"),
+            cast(contains_range_obj_combinations, RANGE).strictly_left_of(
+                bounds_obj_combinations
+            ),
+            cast(contains_range_obj_combinations, RANGE).strictly_right_of(
+                bounds_obj_combinations
+            ),
+        )
+        validate_q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+            literal_column(
+                f"'{r1repr}'::{range_typ} << '{r2repr}'::{range_typ}"
+            ),
+            literal_column(
+                f"'{r1repr}'::{range_typ} >> '{r2repr}'::{range_typ}"
+            ),
+        )
+        orig_row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(orig_row, validate_row)
+
+        r1, r2, leftof, rightof = orig_row
+        eq_(
+            r1.strictly_left_of(r2),
+            leftof,
+            f"{r1}.strictly_left_of({r2}) != {leftof}",
+        )
+        eq_(r1 << r2, leftof, f"{r1} << {r2} != {leftof}")
+        eq_(
+            r1.strictly_right_of(r2),
+            rightof,
+            f"{r1}.strictly_right_of({r2}) != {rightof}",
+        )
+        eq_(r1 >> r2, rightof, f"{r1} >> {r2} != {rightof}")
+
+    def test_not_extend_left_or_right_of(
+        self,
+        connection,
+        bounds_obj_combinations,
+        contains_range_obj_combinations,
+    ):
+        r1repr = contains_range_obj_combinations._stringify()
+        r2repr = bounds_obj_combinations._stringify()
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(contains_range_obj_combinations, RANGE).label("r1"),
+            cast(bounds_obj_combinations, RANGE).label("r2"),
+            cast(contains_range_obj_combinations, RANGE).not_extend_left_of(
+                bounds_obj_combinations
+            ),
+            cast(contains_range_obj_combinations, RANGE).not_extend_right_of(
+                bounds_obj_combinations
+            ),
+        )
+        validate_q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+            literal_column(
+                f"'{r1repr}'::{range_typ} &> '{r2repr}'::{range_typ}"
+            ),
+            literal_column(
+                f"'{r1repr}'::{range_typ} &< '{r2repr}'::{range_typ}"
+            ),
+        )
+        orig_row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(orig_row, validate_row)
+
+        r1, r2, leftof, rightof = orig_row
+        eq_(
+            r1.not_extend_left_of(r2),
+            leftof,
+            f"{r1}.not_extend_left_of({r2}) != {leftof}",
+        )
+        eq_(
+            r1.not_extend_right_of(r2),
+            rightof,
+            f"{r1}.not_extend_right_of({r2}) != {rightof}",
+        )
+
+    def test_adjacent(
+        self,
+        connection,
+        bounds_obj_combinations,
+        contains_range_obj_combinations,
+    ):
+        r1repr = contains_range_obj_combinations._stringify()
+        r2repr = bounds_obj_combinations._stringify()
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(contains_range_obj_combinations, RANGE).label("r1"),
+            cast(bounds_obj_combinations, RANGE).label("r2"),
+            cast(contains_range_obj_combinations, RANGE).adjacent_to(
+                bounds_obj_combinations
+            ),
+        )
+        validate_q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+            literal_column(
+                f"'{r1repr}'::{range_typ} -|- '{r2repr}'::{range_typ}"
+            ),
+        )
+        orig_row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(orig_row, validate_row)
+
+        r1, r2, adjacent = orig_row
+        eq_(
+            r1.adjacent_to(r2),
+            adjacent,
+            f"{r1}.adjacent_to({r2}) != {adjacent}",
+        )
+
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
     __requires__ = ("range_types",)
