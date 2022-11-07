@@ -468,6 +468,7 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
+from ...sql import expression
 from ...util import compat
 
 
@@ -887,11 +888,12 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                 self.cursor,
                 [
                     (getattr(col, "name", col._anon_name_label), None)
-                    for col in self.compiled.returning
+                    for col in expression._select_iterables(
+                        self.compiled.returning
+                    )
                 ],
                 initial_buffer=[tuple(returning_params)],
             )
-
             self.cursor_fetch_strategy = fetch_strategy
 
     def create_cursor(self):

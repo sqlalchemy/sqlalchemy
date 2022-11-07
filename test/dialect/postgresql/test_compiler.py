@@ -59,6 +59,7 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.types import TypeEngine
 from sqlalchemy.util import OrderedDict
 from sqlalchemy.util import u
 
@@ -203,6 +204,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(%(name)s) RETURNING length(mytable.name) "
             "AS length_1",
             dialect=dialect,
+        )
+
+    @testing.fixture
+    def column_expression_fixture(self):
+        class MyString(TypeEngine):
+            def column_expression(self, column):
+                return func.lower(column)
+
+        return table(
+            "some_table", column("name", String), column("value", MyString)
+        )
+
+    @testing.combinations("columns", "table", argnames="use_columns")
+    def test_plain_returning_column_expression(
+        self, column_expression_fixture, use_columns
+    ):
+        """test #8770"""
+        table1 = column_expression_fixture
+
+        if use_columns == "columns":
+            stmt = insert(table1).returning(table1)
+        else:
+            stmt = insert(table1).returning(table1.c.name, table1.c.value)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO some_table (name, value) "
+            "VALUES (%(name)s, %(value)s) RETURNING some_table.name, "
+            "lower(some_table.value) AS value",
         )
 
     def test_create_drop_enum(self):

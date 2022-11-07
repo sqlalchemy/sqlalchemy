@@ -350,6 +350,50 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             "inserted_primary_key",
         )
 
+    @testing.fixture
+    def column_expression_fixture(self, metadata, connection):
+        class MyString(TypeDecorator):
+            cache_ok = True
+            impl = String(50)
+
+            def column_expression(self, column):
+                return func.lower(column)
+
+        t1 = Table(
+            "some_table",
+            metadata,
+            Column("name", String(50)),
+            Column("value", MyString(50)),
+        )
+        metadata.create_all(connection)
+        return t1
+
+    @testing.combinations("columns", "table", argnames="use_columns")
+    def test_plain_returning_column_expression(
+        self, column_expression_fixture, use_columns, connection
+    ):
+        """test #8770"""
+        table1 = column_expression_fixture
+
+        if use_columns == "columns":
+            stmt = (
+                insert(table1)
+                .values(name="n1", value="ValUE1")
+                .returning(table1)
+            )
+        else:
+            stmt = (
+                insert(table1)
+                .values(name="n1", value="ValUE1")
+                .returning(table1.c.name, table1.c.value)
+            )
+
+        result = connection.execute(stmt)
+        row = result.first()
+
+        eq_(row._mapping["name"], "n1")
+        eq_(row._mapping["value"], "value1")
+
     @testing.fails_on_everything_except("postgresql", "firebird")
     def test_literal_returning(self, connection):
         if testing.against("postgresql"):

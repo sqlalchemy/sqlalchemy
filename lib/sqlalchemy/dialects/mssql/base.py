@@ -2154,6 +2154,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 stmt,
                 adapter.traverse(c),
                 {"result_map_targets": (c,)},
+                fallback_label_name=c._non_anon_label,
             )
             for c in expression._select_iterables(returning_cols)
         ]

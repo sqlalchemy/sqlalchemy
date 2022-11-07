@@ -1,0 +1,23 @@
+.. change::
+    :tags: bug, postgresql, mssql
+    :tickets: 8770
+
+    For the PostgreSQL and SQL Server dialects only, adjusted the compiler so
+    that when rendering column expressions in the RETURNING clause, the "non
+    anon" label that's used in SELECT statements is suggested for SQL
+    expression elements that generate a label; the primary example is a SQL
+    function that may be emitting as part of the column's type, where the label
+    name should match the column's name by default. This restores a not-well
+    defined behavior that had changed in version 1.4.21 due to :ticket:`6718`,
+    :ticket:`6710`. The Oracle dialect has a different RETURNING implementation
+    and was not affected by this issue. Version 2.0 features an across the
+    board change for its widely expanded support of RETURNING on other
+    backends.
+
+
+.. change::
+    :tags: bug, oracle
+
+    Fixed issue in the Oracle dialect where an INSERT statement that used
+    ``insert(some_table).values(...).returning(some_table)`` against a full
+    :class:`.Table` object at once would fail to execute, raising an exception.
