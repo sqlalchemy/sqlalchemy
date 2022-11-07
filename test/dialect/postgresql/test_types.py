@@ -60,11 +60,13 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import CompileError
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
@@ -4212,6 +4214,51 @@ class _RangeComparisonFixtures:
             adjacent,
             f"{r1}.adjacent_to({r2}) != {adjacent}",
         )
+
+    @testing.combinations(
+        ("empty", "empty", False),
+        ("empty", "[{le},{re_}]", False),
+        ("[{le},{re_}]", "empty", False),
+        ("[{le},{re_}]", "[{le},{re_}]", False),
+        ("[{ll},{rh})", "[{le},{re_}]", False),
+        ("[{ll},{ll}]", "({le},{rh}]", True),
+        ("[{ll},{ll}]", "[{rh},{rh}]", True),
+        argnames="r1repr,r2repr,err",
+    )
+    def test_union(self, connection, r1repr, r2repr, err):
+        data = self._value_values()
+
+        if r1repr != "empty":
+            r1repr = r1repr.format(**data)
+        if r2repr != "empty":
+            r2repr = r2repr.format(**data)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+        )
+
+        r1, r2 = connection.execute(q).first()
+
+        resq = select(
+            literal_column(f"'{r1}'::{range_typ}+'{r2}'::{range_typ}", RANGE),
+        )
+
+        if err:
+            with expect_raises(DataError):
+                connection.execute(resq).scalar()
+            with expect_raises(ValueError):
+                r1.union(r2)
+        else:
+            union = connection.execute(resq).scalar()
+            eq_(
+                r1.union(r2),
+                union,
+                f"{r1}.union({r2}) != {union}",
+            )
 
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):

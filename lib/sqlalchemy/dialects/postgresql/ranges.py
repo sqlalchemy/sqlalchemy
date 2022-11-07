@@ -406,12 +406,51 @@ class Range(Generic[_T]):
             oupper, oupper_b, slower, slower_b
         )
 
-    def __add__(self, other):
-        """Range expression. Returns the union of the two ranges.
-        Will raise an exception if the resulting range is not
-        contiguous.
+    def union(self, other: Range) -> Range:
+        """Compute the union of this range with the `other`.
+
+        This raises a ``ValueError`` exception if the two ranges are
+        "disjunct", that is neither adjacent nor overlapping.
         """
-        raise NotImplementedError("not yet implemented")
+
+        # Empty ranges are "additive identities"
+        if self.empty:
+            return other
+        if other.empty:
+            return self
+
+        if not self.overlaps(other) and not self.adjacent_to(other):
+            raise ValueError(
+                "Adding non-overlapping and non-adjacent"
+                " ranges is not implemented"
+            )
+
+        slower = self.lower
+        slower_b = self.bounds[0]
+        supper = self.upper
+        supper_b = self.bounds[1]
+        olower = other.lower
+        olower_b = other.bounds[0]
+        oupper = other.upper
+        oupper_b = other.bounds[1]
+
+        if self._compare_edges(slower, slower_b, olower, olower_b) < 0:
+            rlower = slower
+            rlower_b = slower_b
+        else:
+            rlower = olower
+            rlower_b = olower_b
+
+        if self._compare_edges(supper, supper_b, oupper, oupper_b) > 0:
+            rupper = supper
+            rupper_b = supper_b
+        else:
+            rupper = oupper
+            rupper_b = oupper_b
+
+        return Range(rlower, rupper, bounds=rlower_b + rupper_b)
+
+    __add__ = union
 
     def __str__(self):
         return self._stringify()
