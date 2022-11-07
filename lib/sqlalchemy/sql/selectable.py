@@ -2193,7 +2193,9 @@ class SelectsRows(ReturnsRows):
     _label_style: SelectLabelStyle = LABEL_STYLE_NONE
 
     def _generate_columns_plus_names(
-        self, anon_for_dupe_key: bool
+        self,
+        anon_for_dupe_key: bool,
+        cols: Optional[_SelectIterable] = None,
     ) -> List[_ColumnsPlusNames]:
         """Generate column names as rendered in a SELECT statement by
         the compiler.
@@ -2204,7 +2206,9 @@ class SelectsRows(ReturnsRows):
         _column_naming_convention as well.
 
         """
-        cols = self._all_selected_columns
+
+        if cols is None:
+            cols = self._all_selected_columns
 
         key_naming_convention = SelectState._column_naming_convention(
             self._label_style
