@@ -3834,6 +3834,12 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
+        self._test_clause(
+            self.col.union(self._data_str()),
+            "data_table.range + %(range_1)s",
+            self.col.type,
+        )
+
     def test_intersection(self):
         self._test_clause(
             self.col * self.col,

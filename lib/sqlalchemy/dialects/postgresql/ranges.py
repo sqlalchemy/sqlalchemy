@@ -536,12 +536,14 @@ class AbstractRange(sqltypes.TypeEngine):
             """
             return self.expr.op("-|-", is_comparison=True)(other)
 
-        def __add__(self, other):
+        def union(self, other):
             """Range expression. Returns the union of the two ranges.
             Will raise an exception if the resulting range is not
             contiguous.
             """
             return self.expr.op("+")(other)
+
+        __add__ = union
 
 
 class AbstractRangeImpl(AbstractRange):
