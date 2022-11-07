@@ -4031,9 +4031,13 @@ class _RangeComparisonFixtures:
         eq_(orig_row, validate_row)
 
         r1, r2, contains, contained = orig_row
-        eq_(r1.contains(r2), contains)
-        eq_(r1.contained_by(r2), contained)
-        eq_(r2.contains(r1), contained)
+        eq_(r1.contains(r2), contains, f"{r1}.contains({r2}) != {contains}")
+        eq_(
+            r1.contained_by(r2),
+            contained,
+            f"{r1}.contained_by({r2}) != {contained}",
+        )
+        eq_(r2.contains(r1), contained, f"{r2}.contains({r1} != {contained})")
 
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
