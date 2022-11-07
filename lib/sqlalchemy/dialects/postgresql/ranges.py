@@ -225,72 +225,23 @@ class Range(Generic[_T]):
         if other.empty:
             return False
 
-        olower = other.lower
-        oupper = other.upper
-
-        # A bilateral unbound range contains any other range
-        if olower is oupper is None:
-            return True
-
         slower = self.lower
+        slower_b = self.bounds[0]
+        olower = other.lower
+        olower_b = other.bounds[0]
+
+        if self._compare_edges(slower, slower_b, olower, olower_b) < 0:
+            return False
+
         supper = self.upper
+        supper_b = self.bounds[1]
+        oupper = other.upper
+        oupper_b = other.bounds[1]
 
-        # A lower-bound range cannot contain a lower-unbound range
-        if slower is None and olower is not None:
+        if self._compare_edges(supper, supper_b, oupper, oupper_b) > 0:
             return False
 
-        # Likewise on the right side
-        if supper is None and oupper is not None:
-            return False
-
-        slower_inc = self.bounds[0] == "["
-        supper_inc = self.bounds[1] == "]"
-        olower_inc = other.bounds[0] == "["
-        oupper_inc = other.bounds[1] == "]"
-
-        # Check the lower end
-        step = -1
-        if slower is not None and olower is not None:
-            lside = olower < slower
-            if not lside:
-                if not slower_inc or olower_inc:
-                    lside = olower == slower
-            if not lside:
-                # Cover (1,x] vs [2,x) and (0,x] vs [1,x)
-                if not slower_inc and olower_inc and slower < olower:
-                    step = self._get_discrete_step()
-                    if step is not None:
-                        lside = olower == (slower + step)
-                elif slower_inc and not olower_inc and slower > olower:
-                    step = self._get_discrete_step()
-                    if step is not None:
-                        lside = (olower + step) == slower
-            if not lside:
-                return False
-
-        # Lower end already considered, an upper-unbound range surely contains
-        # this
-        if oupper is None:
-            return True
-
-        # Check the upper end
-        uside = oupper > supper
-        if not uside:
-            if not supper_inc or oupper_inc:
-                uside = oupper == supper
-            if not uside:
-                # Cover (x,2] vs [x,3) and (x,1] vs [x,2)
-                if supper_inc and not oupper_inc and supper < oupper:
-                    if step == -1:
-                        step = self._get_discrete_step()
-                    if step is not None:
-                        uside = oupper == (supper + step)
-                elif not supper_inc and oupper_inc and supper > oupper:
-                    if step == -1:
-                        step = self._get_discrete_step()
-                    if step is not None:
-                        uside = (oupper + step) == supper
-        return uside
+        return True
 
     def contains(self, value: Union[_T, Range]) -> bool:
         "Determine whether this range contains `value`."
