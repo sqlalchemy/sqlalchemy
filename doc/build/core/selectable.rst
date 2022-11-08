@@ -155,6 +155,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Values
    :members:
 
+.. autoclass:: ScalarValues
+   :members:
+
 Label Style Constants
 ---------------------
 

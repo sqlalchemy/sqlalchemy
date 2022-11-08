@@ -12,6 +12,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
+from sqlalchemy import values
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import ClauseElement
@@ -188,6 +189,22 @@ class RoleTest(fixtures.TestBase):
                 roles.LabeledColumnExprRole,
                 select(column("q")).alias(),
             )
+
+    def test_values_advice(self):
+        value_expr = values(
+            column("id", Integer), column("name", String), name="my_values"
+        ).data([(1, "name1"), (2, "name2"), (3, "name3")])
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"SQL expression element expected, got <.*Values.*my_values>. To "
+            r"create a "
+            r"column expression from a VALUES clause, "
+            r"use the .scalar_values\(\) method.",
+            expect,
+            roles.ExpressionElementRole,
+            value_expr,
+        )
 
     def test_table_valued_advice(self):
         msg = (

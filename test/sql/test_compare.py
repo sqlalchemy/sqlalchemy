@@ -625,6 +625,15 @@ class CoreFixtures:
                 column("mykey", Integer),
                 column("mytext", String),
                 column("myint", Integer),
+                name="myvalues",
+                literal_binds=True,
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
                 name="myothervalues",
             )
             .data([(1, "textA", 99), (2, "textB", 88)])
@@ -647,15 +656,62 @@ class CoreFixtures:
             ._annotate({"nocache": True}),
             # TODO: difference in type
             # values(
-            #    [
-            #        column("mykey", Integer),
-            #        column("mytext", Text),
-            #        column("myint", Integer),
-            #    ],
-            #    (1, "textA", 99),
-            #    (2, "textB", 88),
-            #    alias_name="myvalues",
-            # ),
+            #     column("mykey", Integer),
+            #     column("mytext", Text),
+            #     column("myint", Integer),
+            #     name="myvalues",
+            # )
+            # .data([(1, "textA", 99), (2, "textB", 88)])
+            # ._annotate({"nocache": True}),
+        ),
+        lambda: (
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            .scalar_values()
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+                literal_binds=True,
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            .scalar_values()
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 89), (2, "textG", 88)])
+            .scalar_values()
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mynottext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            .scalar_values()
+            ._annotate({"nocache": True}),
+            # TODO: difference in type
+            # values(
+            #     column("mykey", Integer),
+            #     column("mytext", Text),
+            #     column("myint", Integer),
+            #     name="myvalues",
+            # )
+            # .data([(1, "textA", 99), (2, "textB", 88)])
+            # .scalar_values()
+            # ._annotate({"nocache": True}),
         ),
         lambda: (
             select(table_a.c.a),
@@ -1304,9 +1360,8 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                                 compare_annotations=True,
                                 compare_values=compare_values,
                             ),
-                            "%r != %r" % (case_a[a], case_b[b]),
+                            f"{case_a[a]!r} != {case_b[b]!r} (index {a} {b})",
                         )
-
                     else:
                         is_false(
                             case_a[a].compare(
@@ -1314,7 +1369,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                                 compare_annotations=True,
                                 compare_values=compare_values,
                             ),
-                            "%r == %r" % (case_a[a], case_b[b]),
+                            f"{case_a[a]!r} == {case_b[b]!r} (index {a} {b})",
                         )
 
     def test_compare_col_identity(self):

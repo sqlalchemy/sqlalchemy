@@ -97,7 +97,6 @@ if typing.TYPE_CHECKING:
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import NamedFromClause
-    from .selectable import Select
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
@@ -860,13 +859,17 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
 
         def in_(
             self,
-            other: Union[Sequence[Any], BindParameter[Any], Select[Any]],
+            other: Union[
+                Sequence[Any], BindParameter[Any], roles.InElementRole
+            ],
         ) -> BinaryExpression[bool]:
             ...
 
         def not_in(
             self,
-            other: Union[Sequence[Any], BindParameter[Any], Select[Any]],
+            other: Union[
+                Sequence[Any], BindParameter[Any], roles.InElementRole
+            ],
         ) -> BinaryExpression[bool]:
             ...
 

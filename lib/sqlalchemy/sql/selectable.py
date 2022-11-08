@@ -3127,7 +3127,7 @@ class ForUpdateArg(ClauseElement):
 SelfValues = typing.TypeVar("SelfValues", bound="Values")
 
 
-class Values(Generative, LateralFromClause):
+class Values(roles.InElementRole, Generative, LateralFromClause):
     """Represent a ``VALUES`` construct that can be used as a FROM element
     in a statement.
 
@@ -3228,8 +3228,7 @@ class Values(Generative, LateralFromClause):
     @_generative
     def data(self: SelfValues, values: List[Tuple[Any, ...]]) -> SelfValues:
         """Return a new :class:`_expression.Values` construct,
-        adding the given data
-        to the data list.
+        adding the given data to the data list.
 
         E.g.::
 
@@ -3244,6 +3243,15 @@ class Values(Generative, LateralFromClause):
         self._data += (values,)
         return self
 
+    def scalar_values(self) -> ScalarValues:
+        """Returns a scalar ``VALUES`` construct that can be used as a
+        COLUMN element in a statement.
+
+        .. versionadded:: 2.0.0b4
+
+        """
+        return ScalarValues(self._column_args, self._data, self.literal_binds)
+
     def _populate_column_collection(self) -> None:
         for c in self._column_args:
             self._columns.add(c)
@@ -3252,6 +3260,46 @@ class Values(Generative, LateralFromClause):
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return [self]
+
+
+class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
+    """Represent a scalar ``VALUES`` construct that can be used as a
+    COLUMN element in a statement.
+
+    The :class:`_expression.ScalarValues` object is created from the
+    :meth:`_expression.Values.scalar_values` method. It's also
+    automatically generated when a :class:`_expression.Values` is used in
+    an ``IN`` or ``NOT IN`` condition.
+
+    .. versionadded:: 2.0.0b4
+
+    """
+
+    __visit_name__ = "scalar_values"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("_column_args", InternalTraversal.dp_clauseelement_list),
+        ("_data", InternalTraversal.dp_dml_multi_values),
+        ("literal_binds", InternalTraversal.dp_boolean),
+    ]
+
+    def __init__(
+        self,
+        columns: Sequence[ColumnClause[Any]],
+        data: Tuple[List[Tuple[Any, ...]], ...],
+        literal_binds: bool,
+    ):
+        super().__init__()
+        self._column_args = columns
+        self._data = data
+        self.literal_binds = literal_binds
+
+    @property
+    def _column_types(self):
+        return [col.type for col in self._column_args]
+
+    def __clause_element__(self):
+        return self
 
 
 SelfSelectBase = TypeVar("SelfSelectBase", bound=Any)

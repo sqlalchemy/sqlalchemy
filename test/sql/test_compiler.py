@@ -4526,10 +4526,16 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "((myothertable.otherid, myothertable.othername))",
         )
 
+    @testing.variation("scalar_subquery", [True, False])
+    def test_select_in(self, scalar_subquery):
+
+        stmt = select(table2.c.otherid, table2.c.othername)
+
+        if scalar_subquery:
+            stmt = stmt.scalar_subquery()
+
         self.assert_compile(
-            tuple_(table1.c.myid, table1.c.name).in_(
-                select(table2.c.otherid, table2.c.othername)
-            ),
+            tuple_(table1.c.myid, table1.c.name).in_(stmt),
             "(mytable.myid, mytable.name) IN (SELECT "
             "myothertable.otherid, myothertable.othername FROM myothertable)",
         )

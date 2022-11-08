@@ -3612,9 +3612,9 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def visit_values(self, element, asfrom=False, from_linter=None, **kw):
+    def _render_values(self, element, **kw):
         kw.setdefault("literal_binds", element.literal_binds)
-        v = "VALUES %s" % ", ".join(
+        tuples = ", ".join(
             self.process(
                 elements.Tuple(
                     types=element._column_types, *elem
@@ -3624,6 +3624,10 @@ class SQLCompiler(Compiled):
             for chunk in element._data
             for elem in chunk
         )
+        return f"VALUES {tuples}"
+
+    def visit_values(self, element, asfrom=False, from_linter=None, **kw):
+        v = self._render_values(element, **kw)
 
         if element._unnamed:
             name = None
@@ -3660,6 +3664,9 @@ class SQLCompiler(Compiled):
             else:
                 v = "%s(%s)" % (lateral, v)
         return v
+
+    def visit_scalar_values(self, element, **kw):
+        return f"({self._render_values(element, **kw)})"
 
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text

@@ -41,6 +41,7 @@ from .. import util
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
+    # elements lambdas schema selectable are set by __init__
     from . import elements
     from . import lambdas
     from . import schema
@@ -354,11 +355,7 @@ def expect(
 
     if not isinstance(
         element,
-        (
-            elements.CompilerElement,
-            schema.SchemaItem,
-            schema.FetchedValue,
-        ),
+        (elements.CompilerElement, schema.SchemaItem, schema.FetchedValue),
     ):
         resolved = None
 
@@ -773,10 +770,15 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
                 self._raise_for_expected(element, err=err)
 
     def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
-        if isinstance(element, roles.AnonymizedFromClauseRole):
+        # select uses implicit coercion with warning instead of raising
+        if isinstance(element, selectable.Values):
             advice = (
-                "To create a "
-                "column expression from a FROM clause row "
+                "To create a column expression from a VALUES clause, "
+                "use the .scalar_values() method."
+            )
+        elif isinstance(element, roles.AnonymizedFromClauseRole):
+            advice = (
+                "To create a column expression from a FROM clause row "
                 "as a whole, use the .table_valued() method."
             )
         else:
@@ -886,6 +888,8 @@ class InElementImpl(RoleImpl):
             element.expand_op = operator
 
             return element
+        elif isinstance(element, selectable.Values):
+            return element.scalar_values()
         else:
             return element
 
