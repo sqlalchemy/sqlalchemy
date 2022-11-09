@@ -174,7 +174,7 @@ class Range(Generic[_T]):
             # "Normalize" the two edges as '[)', to simplify successive logic
             if value1_is_lower_bound:
                 if not value1_inc:
-                    value1 -= step
+                    value1 += step
                     value1_inc = True
             else:
                 if value1_inc:
@@ -182,7 +182,7 @@ class Range(Generic[_T]):
                     value1_inc = False
             if value2_is_lower_bound:
                 if not value2_inc:
-                    value2 -= step
+                    value2 += step
                     value2_inc = True
             else:
                 if value2_inc:
