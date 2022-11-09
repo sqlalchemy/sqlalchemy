@@ -3670,7 +3670,28 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             eq_(s.query(Data.data, Data).all(), [(d.data, d)])
 
 
-class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
+class _RangeTests:
+    _col_type = None
+    "The concrete range class these tests are for."
+
+    _col_str = None
+    "The corresponding PG type name."
+
+    _epsilon = None
+    """A small value used to generate range variants"""
+
+    def _data_str(self):
+        """return string form of a sample range"""
+        raise NotImplementedError()
+
+    def _data_obj(self):
+        """return Range form of the same range"""
+        raise NotImplementedError()
+
+
+class _RangeTypeCompilation(
+    AssertsCompiledSQL, _RangeTests, fixtures.TestBase
+):
     __dialect__ = "postgresql"
 
     # operator tests
@@ -3863,15 +3884,7 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
         )
 
 
-class _RangeComparisonFixtures:
-    def _data_str(self):
-        """return string form of a sample range"""
-        raise NotImplementedError()
-
-    def _data_obj(self):
-        """return Range form of the same range"""
-        raise NotImplementedError()
-
+class _RangeComparisonFixtures(_RangeTests):
     def _step_value_up(self, value):
         """given a value, return a step up
 
