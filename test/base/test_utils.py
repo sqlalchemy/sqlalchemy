@@ -2346,17 +2346,92 @@ class SymbolTest(fixtures.TestBase):
 
     def test_fast_int_flag(self):
         class Enum(FastIntFlag):
-            sym1 = 1
-            sym2 = 2
+            fi_sym1 = 1
+            fi_sym2 = 2
 
-            sym3 = 3
+            fi_sym3 = 3
 
-        assert Enum.sym1 is not Enum.sym3
-        assert Enum.sym1 != Enum.sym3
+        assert Enum.fi_sym1 is not Enum.fi_sym3
+        assert Enum.fi_sym1 != Enum.fi_sym3
 
-        assert Enum.sym1.name == "sym1"
+        assert Enum.fi_sym1.name == "fi_sym1"
 
-        eq_(list(Enum), [Enum.sym1, Enum.sym2, Enum.sym3])
+        # modified for #8783
+        eq_(
+            list(Enum.__members__.values()),
+            [Enum.fi_sym1, Enum.fi_sym2, Enum.fi_sym3],
+        )
+
+    def test_fast_int_flag_still_global(self):
+        """FastIntFlag still causes elements to be global symbols.
+
+        This is to support pickling.  There are likely other ways to
+        achieve this, however this is what we have for now.
+
+        """
+
+        class Enum1(FastIntFlag):
+            fi_sym1 = 1
+            fi_sym2 = 2
+
+        class Enum2(FastIntFlag):
+            fi_sym1 = 1
+            fi_sym2 = 2
+
+        # they are global
+        assert Enum1.fi_sym1 is Enum2.fi_sym1
+
+    def test_fast_int_flag_dont_allow_conflicts(self):
+        """FastIntFlag still causes elements to be global symbols.
+
+        While we do this and haven't yet changed it, make sure conflicting
+        int values for the same name don't come in.
+
+        """
+
+        class Enum1(FastIntFlag):
+            fi_sym1 = 1
+            fi_sym2 = 2
+
+        with expect_raises_message(
+            TypeError,
+            "Can't replace canonical symbol for fi_sym1 with new int value 2",
+        ):
+
+            class Enum2(FastIntFlag):
+                fi_sym1 = 2
+                fi_sym2 = 3
+
+    @testing.combinations("native", "ours", argnames="native")
+    def test_compare_to_native_py_intflag(self, native):
+        """monitor IntFlag behavior in upstream Python for #8783"""
+
+        if native == "native":
+            from enum import IntFlag
+        else:
+            from sqlalchemy.util import FastIntFlag as IntFlag
+
+        class Enum(IntFlag):
+            fi_sym1 = 1
+            fi_sym2 = 2
+            fi_sym4 = 4
+
+            fi_sym1plus2 = 3
+
+            # not an alias because there's no 16
+            fi_sym17 = 17
+
+        sym1, sym2, sym4, sym1plus2, sym17 = Enum.__members__.values()
+        eq_(
+            [sym1, sym2, sym4, sym1plus2, sym17],
+            [
+                Enum.fi_sym1,
+                Enum.fi_sym2,
+                Enum.fi_sym4,
+                Enum.fi_sym1plus2,
+                Enum.fi_sym17,
+            ],
+        )
 
     def test_pickle(self):
         sym1 = util.symbol("foo")
@@ -2395,6 +2470,20 @@ class SymbolTest(fixtures.TestBase):
         assert not (sym1 | sym2) & (sym3 | sym4)
         assert (sym1 | sym2) & (sym2 | sym4)
 
+    def test_fast_int_flag_no_more_iter(self):
+        """test #8783"""
+
+        class MyEnum(FastIntFlag):
+            sym1 = 1
+            sym2 = 2
+            sym3 = 4
+            sym4 = 8
+
+        with expect_raises_message(
+            NotImplementedError, "iter not implemented to ensure compatibility"
+        ):
+            list(MyEnum)
+
     def test_parser(self):
         class MyEnum(FastIntFlag):
             sym1 = 1
@@ -2402,7 +2491,7 @@ class SymbolTest(fixtures.TestBase):
             sym3 = 4
             sym4 = 8
 
-        sym1, sym2, sym3, sym4 = tuple(MyEnum)
+        sym1, sym2, sym3, sym4 = tuple(MyEnum.__members__.values())
         lookup_one = {sym1: [], sym2: [True], sym3: [False], sym4: [None]}
         lookup_two = {sym1: [], sym2: [True], sym3: [False]}
         lookup_three = {sym1: [], sym2: ["symbol2"], sym3: []}
