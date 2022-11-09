@@ -171,7 +171,12 @@ class Range(Generic[_T]):
         step = self._get_discrete_step()
 
         if step is not None:
-            # "Normalize" the two edges as '[)', to simplify successive logic
+            # "Normalize" the two edges as '[)', to simplify successive
+            # logic when the range is discrete: otherwise we would need
+            # to handle the comparison between ``(0`` and ``[1`` that
+            # are equal when dealing with integers while for floats the
+            # former is lesser than the latter
+
             if value1_is_lower_bound:
                 if not value1_inc:
                     value1 += step
