@@ -525,7 +525,12 @@ class Range(Generic[_T]):
         # middle
         if sl_vs_ol <= 0 and su_vs_ol >= 0 and su_vs_ou <= 0:
             rupper_b = ")" if olower_b == "[" else "]"
-            if self._compare_edges(slower, slower_b, olower, rupper_b) == 0:
+            if (
+                slower_b != "["
+                and rupper_b != "]"
+                and self._compare_edges(slower, slower_b, olower, rupper_b)
+                == 0
+            ):
                 return Range(None, None, empty=True)
             else:
                 return Range(slower, olower, bounds=slower_b + rupper_b)
@@ -533,8 +538,13 @@ class Range(Generic[_T]):
         # If this range starts in the middle of the other and extends to its
         # right
         if sl_vs_ol >= 0 and su_vs_ou >= 0 and sl_vs_ou <= 0:
-            rlower_b = "(" if oupper_b == "]" else "("
-            if self._compare_edges(oupper, rlower_b, supper, supper_b) == 0:
+            rlower_b = "(" if oupper_b == "]" else "["
+            if (
+                rlower_b != "["
+                and supper_b != "]"
+                and self._compare_edges(oupper, rlower_b, supper, supper_b)
+                == 0
+            ):
                 return Range(None, None, empty=True)
             else:
                 return Range(oupper, supper, bounds=rlower_b + supper_b)

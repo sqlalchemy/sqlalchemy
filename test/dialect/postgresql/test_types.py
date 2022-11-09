@@ -4280,29 +4280,37 @@ class _RangeComparisonFixtures(_RangeTests):
             )
 
     @testing.combinations(
-        ("empty", "empty", False),
-        ("empty", "[{le},{re_}]", False),
-        ("[{le},{re_}]", "empty", False),
-        ("[{ll},{ih}]", "({le},{ih}]", False),
-        ("[{ll},{rh})", "[{le},{re_}]", False),
-        ("[{le},{re_}]", "({le},{re_})", True),
-        ("[{ll},{rh}]", "[{le},{re_}]", True),
-        argnames="r1repr,r2repr,err",
+        lambda r, e: Range(empty=True),
+        lambda r, e: r,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[]"),
+        argnames="r1t",
     )
-    def test_difference(self, connection, r1repr, r2repr, err):
-        data = self._value_values()
-
-        if r1repr != "empty":
-            r1repr = r1repr.format(**data)
-        if r2repr != "empty":
-            r2repr = r2repr.format(**data)
+    @testing.combinations(
+        lambda r, e: Range(empty=True),
+        lambda r, e: r,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower, bounds="(]"),
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="()"),
+        lambda r, e: Range(r.lower, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="()"),
+        argnames="r2t",
+    )
+    def test_difference(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
 
         RANGE = self._col_type
         range_typ = self._col_str
 
         q = select(
-            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
-            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
+            literal_column(f"'{r1}'::{range_typ}", RANGE).label("r1"),
+            literal_column(f"'{r2}'::{range_typ}", RANGE).label("r2"),
         )
 
         r1, r2 = connection.execute(q).first()
@@ -4311,17 +4319,17 @@ class _RangeComparisonFixtures(_RangeTests):
             literal_column(f"'{r1}'::{range_typ}-'{r2}'::{range_typ}", RANGE),
         )
 
-        if err:
-            with expect_raises(DataError):
-                connection.execute(resq).scalar()
+        try:
+            difference = connection.execute(resq).scalar()
+        except DataError:
             with expect_raises(ValueError):
                 r1.difference(r2)
         else:
-            difference = connection.execute(resq).scalar()
             eq_(
                 r1.difference(r2),
                 difference,
-                f"{r1}.difference({r2}) != {difference}",
+                f"{r1}.difference({r2}): got {r1.difference(r2)},"
+                f" expected {difference}",
             )
 
     @testing.combinations(
