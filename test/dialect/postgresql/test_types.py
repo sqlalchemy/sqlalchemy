@@ -4324,6 +4324,47 @@ class _RangeComparisonFixtures(_RangeTests):
                 f"{r1}.difference({r2}) != {difference}",
             )
 
+    @testing.combinations(
+        lambda r, e: Range(empty=True),
+        lambda r, e: r,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        argnames="r1t",
+    )
+    @testing.combinations(
+        lambda r, e: Range(empty=True),
+        lambda r, e: r,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower, bounds="(]"),
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="()"),
+        argnames="r2t",
+    )
+    def test_equality(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        range_typ = self._col_str
+
+        q = select(
+            literal_column(f"'{r1}'::{range_typ} = '{r2}'::{range_typ}")
+        )
+        equal = connection.execute(q).scalar()
+        eq_(
+            r1 == r2,
+            equal,
+            f"{r1} == {r2} != {equal}",
+        )
+
+        q = select(
+            literal_column(f"'{r1}'::{range_typ} <> '{r2}'::{range_typ}")
+        )
+        different = connection.execute(q).scalar()
+        eq_(
+            r1 != r2,
+            different,
+            f"{r1} != {r2} != {different}",
+        )
+
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
     __requires__ = ("range_types",)
@@ -4482,6 +4523,8 @@ class _Int4RangeTests:
     def _data_obj(self):
         return Range(1, 4)
 
+    _epsilon = 1
+
     def _step_value_up(self, value):
         return value + 1
 
@@ -4499,6 +4542,8 @@ class _Int8RangeTests:
 
     def _data_obj(self):
         return Range(9223372036854775306, 9223372036854775800)
+
+    _epsilon = 1
 
     def _step_value_up(self, value):
         return value + 5
@@ -4518,6 +4563,8 @@ class _NumRangeTests:
     def _data_obj(self):
         return Range(decimal.Decimal("1.0"), decimal.Decimal("9.0"))
 
+    _epsilon = decimal.Decimal(1)
+
     def _step_value_up(self, value):
         return value + decimal.Decimal("1.8")
 
@@ -4535,6 +4582,8 @@ class _DateRangeTests:
 
     def _data_obj(self):
         return Range(datetime.date(2013, 3, 23), datetime.date(2013, 3, 30))
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)
@@ -4556,6 +4605,8 @@ class _DateTimeRangeTests:
             datetime.datetime(2013, 3, 23, 14, 30),
             datetime.datetime(2013, 3, 30, 23, 30),
         )
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)
@@ -4583,6 +4634,8 @@ class _DateTimeTZRangeTests:
 
     def _data_obj(self):
         return Range(*self.tstzs())
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)

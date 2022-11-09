@@ -223,6 +223,28 @@ class Range(Generic[_T]):
             else:
                 return 0
 
+    def __eq__(self, other: Range) -> bool:
+        """Compare this range to the `other` taking into account
+        bounds inclusivity, returning ``True`` if they are equal.
+        """
+
+        if self.empty and other.empty:
+            return True
+
+        slower = self.lower
+        slower_b = self.bounds[0]
+        olower = other.lower
+        olower_b = other.bounds[0]
+        supper = self.upper
+        supper_b = self.bounds[1]
+        oupper = other.upper
+        oupper_b = other.bounds[1]
+
+        return (
+            self._compare_edges(slower, slower_b, olower, olower_b) == 0
+            and self._compare_edges(supper, supper_b, oupper, oupper_b) == 0
+        )
+
     def contained_by(self, other: Range) -> bool:
         "Determine whether this range is a contained by `other`."
 
