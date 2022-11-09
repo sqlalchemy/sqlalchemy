@@ -166,6 +166,10 @@ class Range(Generic[_T]):
         elif value2 is None:
             return 1 if value2_is_lower_bound else -1
 
+        # Short path for trivial case
+        if bound1 == bound2 and value1 == value2:
+            return 0
+
         value1_inc = bound1 in {"[", "]"}
         value2_inc = bound2 in {"[", "]"}
         step = self._get_discrete_step()
