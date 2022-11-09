@@ -1230,10 +1230,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 .execution_options(synchronize_session="fetch")
                 .returning(User, User.name)
             )
-            expected = [
+            expected = {
                 (User(age=37), "jack"),
                 (User(age=27), "jane"),
-            ]
+            }
         elif crud_type == "delete":
             stmt = (
                 delete(User)
@@ -1241,16 +1241,18 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 .execution_options(synchronize_session="fetch")
                 .returning(User, User.name)
             )
-            expected = [
+            expected = {
                 (User(age=47), "jack"),
                 (User(age=37), "jane"),
-            ]
+            }
         else:
             assert False
 
         result = sess.execute(stmt)
 
-        eq_(result.all(), expected)
+        # note that ComparableEntity sets up __hash__ for mapped objects
+        # to point to the class, so you can test eq with sets
+        eq_(set(result.all()), expected)
 
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_delete_fetch_returning(self, implicit_returning):
