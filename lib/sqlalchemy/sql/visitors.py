@@ -553,7 +553,7 @@ class HasTraversalDispatch:
         names = []
         for attrname, visit_sym in internal_dispatch:
             meth = self.dispatch(visit_sym)
-            if meth:
+            if meth is not None:
                 visit_name = _dispatch_lookup[visit_sym]
                 names.append((attrname, visit_name))
 

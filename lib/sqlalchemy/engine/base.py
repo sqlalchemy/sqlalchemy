@@ -2947,7 +2947,7 @@ class Engine(
             self.update_execution_options(**execution_options)
 
     def _lru_size_alert(self, cache: util.LRUCache[Any, Any]) -> None:
-        if self._should_log_info:
+        if self._should_log_info():
             self.logger.info(
                 "Compiled cache size pruning from %d items to %d.  "
                 "Increase cache size to reduce the frequency of pruning.",

@@ -1694,7 +1694,7 @@ class SQLCompiler(Compiled):
             # at all if the key were present in the parameters
             if autoinc_key in self.binds:
 
-                def autoinc_getter(lastrowid, parameters):
+                def _autoinc_getter(lastrowid, parameters):
                     param_value = parameters.get(autoinc_key, lastrowid)
                     if param_value is not None:
                         # they supplied non-None parameter, use that.
@@ -1705,6 +1705,9 @@ class SQLCompiler(Compiled):
                     else:
                         # use lastrowid
                         return lastrowid
+
+                # work around mypy https://github.com/python/mypy/issues/14027
+                autoinc_getter = _autoinc_getter
 
         else:
             lastrowid_processor = None
@@ -1727,7 +1730,7 @@ class SQLCompiler(Compiled):
                 return row_fn(
                     (
                         autoinc_getter(lastrowid, parameters)
-                        if autoinc_getter
+                        if autoinc_getter is not None
                         else lastrowid
                     )
                     if col is autoinc_col

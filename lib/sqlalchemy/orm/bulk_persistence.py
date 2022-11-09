@@ -885,9 +885,11 @@ class BulkUDCompileState(ORMDMLState):
         if crit:
             eval_condition = evaluator_compiler.process(*crit)
         else:
-
-            def eval_condition(obj):
+            # workaround for mypy https://github.com/python/mypy/issues/14027
+            def _eval_condition(obj):
                 return True
+
+            eval_condition = _eval_condition
 
         return eval_condition
 

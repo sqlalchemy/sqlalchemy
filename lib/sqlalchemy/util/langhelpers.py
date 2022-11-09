@@ -1448,7 +1448,7 @@ def duck_type_collection(
         else:
             return specimen.__emulates__  # type: ignore
 
-    isa = isinstance(specimen, type) and issubclass or isinstance
+    isa = issubclass if isinstance(specimen, type) else isinstance
     if isa(specimen, list):
         return list
     elif isa(specimen, set):

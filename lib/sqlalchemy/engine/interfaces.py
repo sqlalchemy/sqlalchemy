@@ -1272,7 +1272,10 @@ class Dialect(EventTarget):
 
         This is an internal dialect method. Applications should use
         :meth:`.Inspector.get_columns`.
+
         """
+
+        raise NotImplementedError()
 
     def get_multi_columns(
         self,

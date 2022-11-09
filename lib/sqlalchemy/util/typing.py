@@ -1,3 +1,9 @@
+# util/typing.py
+# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ from typing import Optional
 from typing import overload
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -368,14 +375,16 @@ class DescriptorReference(Generic[_DESC]):
 
     """
 
-    def __get__(self, instance: object, owner: Any) -> _DESC:
-        ...
+    if TYPE_CHECKING:
 
-    def __set__(self, instance: Any, value: _DESC) -> None:
-        ...
+        def __get__(self, instance: object, owner: Any) -> _DESC:
+            ...
 
-    def __delete__(self, instance: Any) -> None:
-        ...
+        def __set__(self, instance: Any, value: _DESC) -> None:
+            ...
+
+        def __delete__(self, instance: Any) -> None:
+            ...
 
 
 _DESC_co = TypeVar("_DESC_co", bound=DescriptorProto, covariant=True)
@@ -389,14 +398,16 @@ class RODescriptorReference(Generic[_DESC_co]):
 
     """
 
-    def __get__(self, instance: object, owner: Any) -> _DESC_co:
-        ...
+    if TYPE_CHECKING:
 
-    def __set__(self, instance: Any, value: Any) -> NoReturn:
-        ...
+        def __get__(self, instance: object, owner: Any) -> _DESC_co:
+            ...
 
-    def __delete__(self, instance: Any) -> NoReturn:
-        ...
+        def __set__(self, instance: Any, value: Any) -> NoReturn:
+            ...
+
+        def __delete__(self, instance: Any) -> NoReturn:
+            ...
 
 
 _FN = TypeVar("_FN", bound=Optional[Callable[..., Any]])
@@ -411,14 +422,16 @@ class CallableReference(Generic[_FN]):
 
     """
 
-    def __get__(self, instance: object, owner: Any) -> _FN:
-        ...
+    if TYPE_CHECKING:
 
-    def __set__(self, instance: Any, value: _FN) -> None:
-        ...
+        def __get__(self, instance: object, owner: Any) -> _FN:
+            ...
 
-    def __delete__(self, instance: Any) -> None:
-        ...
+        def __set__(self, instance: Any, value: _FN) -> None:
+            ...
+
+        def __delete__(self, instance: Any) -> None:
+            ...
 
 
 # $def ro_descriptor_reference(fn: Callable[])
