@@ -60,7 +60,7 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import CompileError
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
@@ -4308,9 +4308,9 @@ class _RangeComparisonFixtures(_RangeTests):
 
         try:
             pg_res = connection.execute(q).scalar()
-        except DataError:
+        except DBAPIError:
             connection.rollback()
-            with expect_raises(DataError):
+            with expect_raises(DBAPIError):
                 connection.execute(validate_q).scalar()
             with expect_raises(ValueError):
                 r1.union(r2)
@@ -4359,9 +4359,9 @@ class _RangeComparisonFixtures(_RangeTests):
 
         try:
             pg_res = connection.execute(q).scalar()
-        except DataError:
+        except DBAPIError:
             connection.rollback()
-            with expect_raises(DataError):
+            with expect_raises(DBAPIError):
                 connection.execute(validate_q).scalar()
             with expect_raises(ValueError):
                 r1.difference(r2)
