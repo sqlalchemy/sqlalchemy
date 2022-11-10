@@ -230,6 +230,8 @@ class Range(Generic[_T]):
 
         if self.empty and other.empty:
             return True
+        elif self.empty != other.empty:
+            return False
 
         slower = self.lower
         slower_b = self.bounds[0]
@@ -406,6 +408,16 @@ class Range(Generic[_T]):
                 else:
                     return value1 == value2 - step
         elif res == 0:
+            # Cover cases like [0,0] -|- [1,] and [0,2) -|- (1,3]
+            if (
+                bound1 == "]"
+                and bound2 == "["
+                or bound1 == ")"
+                and bound2 == "("
+            ):
+                step = self._get_discrete_step()
+                if step is not None:
+                    return True
             return (
                 bound1 == ")"
                 and bound2 == "["
