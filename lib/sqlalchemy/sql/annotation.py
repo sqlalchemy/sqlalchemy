@@ -94,12 +94,18 @@ class SupportsAnnotations(ExternallyTraversible):
     @util.memoized_property
     def _annotations_cache_key(self) -> Tuple[Any, ...]:
         anon_map_ = anon_map()
+
+        return self._gen_annotations_cache_key(anon_map_)
+
+    def _gen_annotations_cache_key(
+        self, anon_map: anon_map
+    ) -> Tuple[Any, ...]:
         return (
             "_annotations",
             tuple(
                 (
                     key,
-                    value._gen_cache_key(anon_map_, [])
+                    value._gen_cache_key(anon_map, [])
                     if isinstance(value, HasCacheKey)
                     else value,
                 )

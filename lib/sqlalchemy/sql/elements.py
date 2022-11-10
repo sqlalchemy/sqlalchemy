@@ -334,6 +334,7 @@ class ClauseElement(
     _is_column_element = False
     _is_keyed_column_element = False
     _is_table = False
+    _gen_static_annotations_cache_key = False
     _is_textual = False
     _is_from_clause = False
     _is_returns_rows = False
@@ -3224,7 +3225,7 @@ class Cast(WrapsColumnExpression[_T]):
 
     _traverse_internals: _TraverseInternalsType = [
         ("clause", InternalTraversal.dp_clauseelement),
-        ("typeclause", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
     ]
 
     clause: ColumnElement[Any]
@@ -3631,7 +3632,20 @@ class BinaryExpression(OperatorExpression[_T]):
         (
             "type",
             InternalTraversal.dp_type,
-        ),  # affects JSON CAST operators
+        ),
+    ]
+
+    _cache_key_traversal = [
+        ("left", InternalTraversal.dp_clauseelement),
+        ("right", InternalTraversal.dp_clauseelement),
+        ("operator", InternalTraversal.dp_operator),
+        ("modifiers", InternalTraversal.dp_plain_dict),
+        # "type" affects JSON CAST operators, so while redundant in most cases,
+        # is needed for that one
+        (
+            "type",
+            InternalTraversal.dp_type,
+        ),
     ]
 
     _is_implicitly_boolean = True
@@ -3814,6 +3828,10 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement),
         ("type", InternalTraversal.dp_type),
+    ]
+
+    _cache_key_traversal = [
+        ("element", InternalTraversal.dp_clauseelement),
     ]
 
     element: Union[TextClause, ClauseList, ColumnElement[_T]]
@@ -4319,6 +4337,11 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     _traverse_internals: _TraverseInternalsType = [
         ("name", InternalTraversal.dp_anon_name),
         ("type", InternalTraversal.dp_type),
+        ("_element", InternalTraversal.dp_clauseelement),
+    ]
+
+    _cache_key_traversal = [
+        ("name", InternalTraversal.dp_anon_name),
         ("_element", InternalTraversal.dp_clauseelement),
     ]
 

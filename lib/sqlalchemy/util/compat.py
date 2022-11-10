@@ -30,6 +30,7 @@ from typing import Tuple
 from typing import Type
 
 
+py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)
 py39 = sys.version_info >= (3, 9)
