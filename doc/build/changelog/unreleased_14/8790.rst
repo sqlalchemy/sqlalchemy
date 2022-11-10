@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8790
+
+    Fixed critical memory issue identified in cache key generation, where for
+    very large and complex ORM statements that make use of lots of ORM aliases
+    with subqueries, cache key generation could produce excessively large keys
+    that were orders of magnitude bigger than the statement itself. Much thanks
+    to Rollo Konig Brock for their very patient, long term help in finally
+    identifying this issue.

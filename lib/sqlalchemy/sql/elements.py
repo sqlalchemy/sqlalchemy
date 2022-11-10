@@ -203,7 +203,8 @@ class ClauseElement(
 
     is_clause_element = True
     is_selectable = False
-
+    _gen_static_annotations_cache_key = False
+    _is_table = False
     _is_textual = False
     _is_from_clause = False
     _is_returns_rows = False
@@ -3079,7 +3080,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
     _traverse_internals = [
         ("clause", InternalTraversal.dp_clauseelement),
-        ("typeclause", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
     ]
 
     def __init__(self, expression, type_):
@@ -3880,7 +3881,20 @@ class BinaryExpression(ColumnElement):
         (
             "type",
             InternalTraversal.dp_type,
-        ),  # affects JSON CAST operators
+        ),
+    ]
+
+    _cache_key_traversal = [
+        ("left", InternalTraversal.dp_clauseelement),
+        ("right", InternalTraversal.dp_clauseelement),
+        ("operator", InternalTraversal.dp_operator),
+        ("modifiers", InternalTraversal.dp_plain_dict),
+        # "type" affects JSON CAST operators, so while redundant in most cases,
+        # is needed for that one
+        (
+            "type",
+            InternalTraversal.dp_type,
+        ),
     ]
 
     _is_implicitly_boolean = True
@@ -4014,6 +4028,10 @@ class Grouping(GroupedElement, ColumnElement):
     _traverse_internals = [
         ("element", InternalTraversal.dp_clauseelement),
         ("type", InternalTraversal.dp_type),
+    ]
+
+    _cache_key_traversal = [
+        ("element", InternalTraversal.dp_clauseelement),
     ]
 
     def __init__(self, element):
@@ -4513,6 +4531,11 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
     _traverse_internals = [
         ("name", InternalTraversal.dp_anon_name),
         ("_type", InternalTraversal.dp_type),
+        ("_element", InternalTraversal.dp_clauseelement),
+    ]
+
+    _cache_key_traversal = [
+        ("name", InternalTraversal.dp_anon_name),
         ("_element", InternalTraversal.dp_clauseelement),
     ]
 

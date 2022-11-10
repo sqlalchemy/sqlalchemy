@@ -26,12 +26,16 @@ class SupportsAnnotations(object):
     @util.memoized_property
     def _annotations_cache_key(self):
         anon_map_ = anon_map()
+
+        return self._gen_annotations_cache_key(anon_map_)
+
+    def _gen_annotations_cache_key(self, anon_map):
         return (
             "_annotations",
             tuple(
                 (
                     key,
-                    value._gen_cache_key(anon_map_, [])
+                    value._gen_cache_key(anon_map, [])
                     if isinstance(value, HasCacheKey)
                     else value,
                 )
