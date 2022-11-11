@@ -3047,7 +3047,9 @@ class SQLCompiler(Compiled):
             )
         self._result_columns.append((keyname, name, objects, type_))
 
-    def _label_returning_column(self, stmt, column, column_clause_args=None):
+    def _label_returning_column(
+        self, stmt, column, column_clause_args=None, **kw
+    ):
         """Render a column with necessary labels inside of a RETURNING clause.
 
         This method is provided for individual dialects in place of calling
@@ -3063,6 +3065,7 @@ class SQLCompiler(Compiled):
             True,
             False,
             {} if column_clause_args is None else column_clause_args,
+            **kw
         )
 
     def _label_select_column(
@@ -3127,7 +3130,6 @@ class SQLCompiler(Compiled):
             "_label_select_column is only relevant within "
             "the columns clause of a SELECT or RETURNING"
         )
-
         if isinstance(column, elements.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(
@@ -4319,7 +4321,9 @@ class StrSQLCompiler(SQLCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         columns = [
-            self._label_select_column(None, c, True, False, {})
+            self._label_select_column(
+                None, c, True, False, {}, fallback_label_name=c._non_anon_label
+            )
             for c in base._select_iterables(returning_cols)
         ]
 

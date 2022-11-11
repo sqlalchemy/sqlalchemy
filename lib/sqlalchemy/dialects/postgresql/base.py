@@ -2515,7 +2515,9 @@ class PGCompiler(compiler.SQLCompiler):
     def returning_clause(self, stmt, returning_cols):
 
         columns = [
-            self._label_returning_column(stmt, c)
+            self._label_returning_column(
+                stmt, c, fallback_label_name=c._non_anon_label
+            )
             for c in expression._select_iterables(returning_cols)
         ]
 

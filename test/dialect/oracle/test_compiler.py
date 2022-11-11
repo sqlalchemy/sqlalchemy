@@ -8,6 +8,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
@@ -39,6 +40,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import TypeEngine
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1148,6 +1150,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .returning(t1.c.c2.label("c2_l"), t1.c.c3.label("c3_l")),
             "INSERT INTO t1 (c1) VALUES (:c1) RETURNING "
             "t1.c2, t1.c3 INTO :ret_0, :ret_1",
+        )
+
+    @testing.fixture
+    def column_expression_fixture(self):
+        class MyString(TypeEngine):
+            def column_expression(self, column):
+                return func.lower(column)
+
+        return table(
+            "some_table", column("name", String), column("value", MyString)
+        )
+
+    @testing.combinations("columns", "table", argnames="use_columns")
+    def test_plain_returning_column_expression(
+        self, column_expression_fixture, use_columns
+    ):
+        """test #8770"""
+        table1 = column_expression_fixture
+
+        if use_columns == "columns":
+            stmt = insert(table1).returning(table1)
+        else:
+            stmt = insert(table1).returning(table1.c.name, table1.c.value)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO some_table (name, value) VALUES (:name, :value) "
+            "RETURNING some_table.name, lower(some_table.value) "
+            "INTO :ret_0, :ret_1",
         )
 
     def test_returning_insert_computed(self):

@@ -2,6 +2,8 @@ from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import exc as exceptions
+from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -32,6 +34,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import TypeEngine
 
 IDENT_LENGTH = 29
 
@@ -802,7 +805,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
 
     """
 
-    __dialect__ = "default"
+    __dialect__ = "default_enhanced"
 
     table1 = table("some_table", column("name"), column("value"))
 
@@ -826,6 +829,101 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
         return SomeColThing
+
+    @testing.fixture
+    def compiler_column_fixture(self):
+        return self._fixture()
+
+    @testing.fixture
+    def column_expression_fixture(self):
+        class MyString(TypeEngine):
+            def column_expression(self, column):
+                return func.lower(column)
+
+        return table(
+            "some_table", column("name", String), column("value", MyString)
+        )
+
+    def test_plain_select_compiler_expression(self, compiler_column_fixture):
+        expr = compiler_column_fixture
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                table1.c.name,
+                expr(table1.c.value),
+            ),
+            "SELECT some_table.name, SOME_COL_THING(some_table.value) "
+            "AS value FROM some_table",
+        )
+
+    def test_plain_select_column_expression(self, column_expression_fixture):
+        table1 = column_expression_fixture
+
+        self.assert_compile(
+            select(table1),
+            "SELECT some_table.name, lower(some_table.value) AS value "
+            "FROM some_table",
+        )
+
+    def test_plain_returning_compiler_expression(
+        self, compiler_column_fixture
+    ):
+        expr = compiler_column_fixture
+        table1 = self.table1
+
+        self.assert_compile(
+            insert(table1).returning(
+                table1.c.name,
+                expr(table1.c.value),
+            ),
+            "INSERT INTO some_table (name, value) VALUES (:name, :value) "
+            "RETURNING some_table.name, "
+            "SOME_COL_THING(some_table.value) AS value",
+        )
+
+    @testing.combinations("columns", "table", argnames="use_columns")
+    def test_plain_returning_column_expression(
+        self, column_expression_fixture, use_columns
+    ):
+        table1 = column_expression_fixture
+
+        if use_columns == "columns":
+            stmt = insert(table1).returning(table1)
+        else:
+            stmt = insert(table1).returning(table1.c.name, table1.c.value)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO some_table (name, value) VALUES (:name, :value) "
+            "RETURNING some_table.name, lower(some_table.value) AS value",
+        )
+
+    def test_select_dupes_column_expression(self, column_expression_fixture):
+        table1 = column_expression_fixture
+
+        self.assert_compile(
+            select(table1.c.name, table1.c.value, table1.c.value),
+            "SELECT some_table.name, lower(some_table.value) AS value, "
+            "lower(some_table.value) AS value__1 FROM some_table",
+        )
+
+    def test_returning_dupes_column_expression(
+        self, column_expression_fixture
+    ):
+        table1 = column_expression_fixture
+
+        stmt = insert(table1).returning(
+            table1.c.name, table1.c.value, table1.c.value
+        )
+
+        # 1.4 behavior only; limited support for labels in RETURNING
+        self.assert_compile(
+            stmt,
+            "INSERT INTO some_table (name, value) VALUES (:name, :value) "
+            "RETURNING some_table.name, lower(some_table.value) AS value, "
+            "lower(some_table.value) AS value",
+        )
 
     def test_column_auto_label_dupes_label_style_none(self):
         expr = self._fixture()
@@ -991,6 +1089,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             # not sure if this SQL is right but this is what it was
             # before the new labeling, just different label name
             "SELECT value = 0 AS value, value",
+            dialect="default",
         )
 
     def test_label_auto_label_use_labels(self):

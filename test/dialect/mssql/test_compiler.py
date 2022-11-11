@@ -37,6 +37,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
+from sqlalchemy.types import TypeEngine
 
 tbl = table("t", column("a"))
 
@@ -102,6 +103,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT sometable.somecolumn FROM sometable "
             "ORDER BY sometable.somecolumn COLLATE "
             "Latin1_General_CS_AS_KS_WS_CI ASC",
+        )
+
+    @testing.fixture
+    def column_expression_fixture(self):
+        class MyString(TypeEngine):
+            def column_expression(self, column):
+                return func.lower(column)
+
+        return table(
+            "some_table", column("name", String), column("value", MyString)
+        )
+
+    @testing.combinations("columns", "table", argnames="use_columns")
+    def test_plain_returning_column_expression(
+        self, column_expression_fixture, use_columns
+    ):
+        """test #8770"""
+        table1 = column_expression_fixture
+
+        if use_columns == "columns":
+            stmt = insert(table1).returning(table1)
+        else:
+            stmt = insert(table1).returning(table1.c.name, table1.c.value)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO some_table (name, value) OUTPUT inserted.name, "
+            "lower(inserted.value) AS value VALUES (:name, :value)",
         )
 
     def test_join_with_hint(self):
