@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import platform
 
+from . import asyncio as _test_asyncio
 from . import config
 from . import exclusions
 from . import only_on
@@ -1509,6 +1510,9 @@ class SuiteRequirements(Requirements):
     @property
     def greenlet(self):
         def go(config):
+            if not _test_asyncio.ENABLE_ASYNCIO:
+                return False
+
             try:
                 import greenlet  # noqa: F401
             except ImportError:

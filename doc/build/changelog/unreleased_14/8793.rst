@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 8793
+
+    Fixed issue where the ``--disable-asyncio`` parameter to the test suite
+    would fail to not actually run greenlet tests and would also not prevent
+    the suite from using a "wrapping" greenlet for the whole suite. This
+    parameter now ensures that no greenlet or asyncio use will occur within the
+    entire run when set.
