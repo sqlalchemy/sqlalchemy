@@ -28,6 +28,7 @@ from .assertions import expect_raises
 from .assertions import expect_raises_message
 from .assertions import expect_warnings
 from .assertions import in_
+from .assertions import int_within_variance
 from .assertions import is_
 from .assertions import is_false
 from .assertions import is_instance_of
@@ -48,6 +49,7 @@ from .config import combinations_list
 from .config import db
 from .config import fixture
 from .config import requirements as requires
+from .config import skip_test
 from .exclusions import _is_excluded
 from .exclusions import _server_version
 from .exclusions import against as _against

@@ -246,12 +246,16 @@ class HasCacheKey(object):
                             else None,
                         )
                     elif meth is InternalTraversal.dp_annotations_key:
-                        # obj is here is the _annotations dict.   however, we
-                        # want to use the memoized cache key version of it. for
-                        # Columns, this should be long lived.   For select()
-                        # statements, not so much, but they usually won't have
-                        # annotations.
-                        result += self._annotations_cache_key
+                        # obj is here is the _annotations dict.  Table uses
+                        # a memoized version of it.  however in other cases,
+                        # we generate it given anon_map as we may be from a
+                        # Join, Aliased, etc.
+                        # see #8790
+
+                        if self._gen_static_annotations_cache_key:  # type: ignore  # noqa: E501
+                            result += self._annotations_cache_key  # type: ignore  # noqa: E501
+                        else:
+                            result += self._gen_annotations_cache_key(anon_map)  # type: ignore  # noqa: E501
                     elif (
                         meth is InternalTraversal.dp_clauseelement_list
                         or meth is InternalTraversal.dp_clauseelement_tuple

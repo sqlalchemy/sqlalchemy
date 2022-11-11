@@ -5,10 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from collections import deque
 import decimal
 import gc
+from itertools import chain
 import random
 import sys
+from sys import getsizeof
 import types
 
 from . import config
@@ -456,3 +459,63 @@ def teardown_events(event_cls):
             event_cls._clear()
 
     return decorate
+
+
+def total_size(o):
+    """Returns the approximate memory footprint an object and all of its
+    contents.
+
+    source: https://code.activestate.com/recipes/577504/
+
+
+    """
+
+    def dict_handler(d):
+        return chain.from_iterable(d.items())
+
+    all_handlers = {
+        tuple: iter,
+        list: iter,
+        deque: iter,
+        dict: dict_handler,
+        set: iter,
+        frozenset: iter,
+    }
+    seen = set()  # track which object id's have already been seen
+    default_size = getsizeof(0)  # estimate sizeof object without __sizeof__
+
+    def sizeof(o):
+        if id(o) in seen:  # do not double count the same object
+            return 0
+        seen.add(id(o))
+        s = getsizeof(o, default_size)
+
+        for typ, handler in all_handlers.items():
+            if isinstance(o, typ):
+                s += sum(map(sizeof, handler(o)))
+                break
+        return s
+
+    return sizeof(o)
+
+
+def count_cache_key_tuples(tup):
+    """given a cache key tuple, counts how many instances of actual
+    tuples are found.
+
+    used to alert large jumps in cache key complexity.
+
+    """
+    stack = [tup]
+
+    sentinel = object()
+    num_elements = 0
+
+    while stack:
+        elem = stack.pop(0)
+        if elem is sentinel:
+            num_elements += 1
+        elif isinstance(elem, tuple):
+            if elem:
+                stack = list(elem) + [sentinel] + stack
+    return num_elements

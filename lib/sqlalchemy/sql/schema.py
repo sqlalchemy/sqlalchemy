@@ -544,6 +544,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ("schema", InternalTraversal.dp_string)
     ]
 
+    _is_table = True
+
     def _gen_cache_key(self, anon_map, bindparams):
         if self._annotations:
             return (self,) + self._annotations_cache_key
@@ -1809,6 +1811,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
            :attr:`_schema.Table.constraints`.
 
     """
+
+    @util.memoized_property
+    def _gen_static_annotations_cache_key(self):
+        """special attribute used by cache key gen, if true, we will
+        use a static cache key for the annotations dictionary, else we
+        will generate a new cache key for annotations each time.
+
+        Added for #8790
+
+        """
+        return self.table is not None and self.table._is_table
 
     def _extra_kwargs(self, **kwargs):
         self._validate_dialect_kwargs(kwargs)

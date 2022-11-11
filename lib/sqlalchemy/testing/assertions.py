@@ -243,6 +243,17 @@ def _assert_no_stray_pool_connections():
     engines.testing_reaper.assert_all_closed()
 
 
+def int_within_variance(expected, received, variance):
+    deviance = int(expected * variance)
+    assert (
+        abs(received - expected) < deviance
+    ), "Given int value %s is not within %d%% of expected value %s" % (
+        received,
+        variance * 100,
+        expected,
+    )
+
+
 def eq_regex(a, b, msg=None):
     assert re.match(b, a), msg or "%r !~ %r" % (a, b)
 

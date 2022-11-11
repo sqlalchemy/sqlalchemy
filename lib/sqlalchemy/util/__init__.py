@@ -77,7 +77,9 @@ from .compat import perf_counter
 from .compat import pickle
 from .compat import print_
 from .compat import py2k
+from .compat import py310
 from .compat import py311
+from .compat import py312
 from .compat import py37
 from .compat import py38
 from .compat import py39
