@@ -391,7 +391,7 @@ def _init_symbols(options, file_config):
     config._fixture_functions = _fixture_fn_class()
 
 
-@post
+@pre
 def _set_disable_asyncio(opt, file_config):
     if opt.disable_asyncio or not py3k:
         from sqlalchemy.testing import asyncio

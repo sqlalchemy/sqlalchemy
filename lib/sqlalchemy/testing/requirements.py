@@ -18,6 +18,7 @@ to provide specific inclusion/exclusions.
 import platform
 import sys
 
+from . import asyncio as _test_asyncio
 from . import exclusions
 from . import only_on
 from .. import util
@@ -1393,6 +1394,9 @@ class SuiteRequirements(Requirements):
     @property
     def greenlet(self):
         def go(config):
+            if not _test_asyncio.ENABLE_ASYNCIO:
+                return False
+
             try:
                 import greenlet  # noqa: F401
             except ImportError:
