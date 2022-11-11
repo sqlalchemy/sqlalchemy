@@ -2295,11 +2295,24 @@ class MSSQLCompiler(compiler.SQLCompiler):
         columns = [
             self._label_returning_column(
                 stmt,
-                adapter.traverse(c),
+                adapter.traverse(column),
                 populate_result_map,
-                {"result_map_targets": (c,)},
+                {"result_map_targets": (column,)},
+                fallback_label_name=fallback_label_name,
+                column_is_repeated=repeated,
+                name=name,
+                proxy_name=proxy_name,
+                **kw,
             )
-            for c in expression._select_iterables(returning_cols)
+            for (
+                name,
+                proxy_name,
+                fallback_label_name,
+                column,
+                repeated,
+            ) in stmt._generate_columns_plus_names(
+                True, cols=expression._select_iterables(returning_cols)
+            )
         ]
 
         return "OUTPUT " + ", ".join(columns)
