@@ -940,7 +940,9 @@ class TypeEngine(Visitable, Generic[_T]):
                 else self.__dict__[k],
             )
             for k in names
-            if k in self.__dict__ and not k.startswith("_")
+            if k in self.__dict__
+            and not k.startswith("_")
+            and self.__dict__[k] is not None
         )
 
     @overload

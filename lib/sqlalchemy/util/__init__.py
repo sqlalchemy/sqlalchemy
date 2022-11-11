@@ -62,6 +62,7 @@ from .compat import local_dataclass_fields as local_dataclass_fields
 from .compat import osx as osx
 from .compat import py310 as py310
 from .compat import py311 as py311
+from .compat import py312 as py312
 from .compat import py38 as py38
 from .compat import py39 as py39
 from .compat import pypy as pypy
