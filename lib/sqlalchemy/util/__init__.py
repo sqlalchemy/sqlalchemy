@@ -64,6 +64,7 @@ from .compat import dottedgetter
 from .compat import has_refcount_gc
 from .compat import inspect_getfullargspec
 from .compat import int_types
+from .compat import is64bit
 from .compat import iterbytes
 from .compat import itertools_filter
 from .compat import itertools_filterfalse

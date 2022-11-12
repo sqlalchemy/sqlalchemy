@@ -29,6 +29,7 @@ cpython = platform.python_implementation() == "CPython"
 win32 = sys.platform.startswith("win")
 osx = sys.platform.startswith("darwin")
 arm = "aarch" in platform.machine().lower()
+is64bit = platform.architecture()[0] == "64bit"
 
 has_refcount_gc = bool(cpython)
 
