@@ -63,7 +63,18 @@ class MypyPluginTest(fixtures.TestBase):
                 ),
             ]
 
-            args.append(path)
+            if incremental:
+                args.append(path)
+            else:
+                # mypy as of 0.990 is more aggressively blocking messaging
+                # for paths that are in sys.path, and as pytest puts currdir,
+                # test/ etc in sys.path, just copy the source file to the
+                # tempdir we are working in so that we don't have to try to
+                # manipulate sys.path and/or guess what mypy is doing
+                filename = os.path.basename(path)
+                test_program = os.path.join(cachedir, filename)
+                shutil.copyfile(path, test_program)
+                args.append(test_program)
 
             result = api.run(args)
             return result
@@ -185,7 +196,9 @@ class MypyPluginTest(fixtures.TestBase):
         not_located = []
 
         if expected_errors:
-            eq_(result[2], 1, msg=result)
+            # mypy 0.990 changed how return codes work, so don't assume a
+            # 1 or a 0 return code here, could be either depending on if
+            # errors were generated or not
 
             print(result[0])
 
