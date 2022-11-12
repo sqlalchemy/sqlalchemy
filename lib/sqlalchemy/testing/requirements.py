@@ -1439,6 +1439,10 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def is64bit(self):
+        return exclusions.only_if(lambda: util.is64bit, "64bit required")
+
+    @property
     def patch_library(self):
         def check_lib():
             try:
