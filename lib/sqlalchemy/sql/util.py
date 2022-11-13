@@ -1197,7 +1197,9 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         elif self.exclude_fn and self.exclude_fn(col):
             return None
         else:
-            return self._corresponding_column(col, True)  # type: ignore
+            return self._corresponding_column(  # type: ignore
+                col, require_embedded=True
+            )
 
 
 class _ColumnLookup(Protocol):

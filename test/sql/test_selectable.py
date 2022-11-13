@@ -3167,32 +3167,74 @@ class AnnotationsTest(fixtures.TestBase):
         binary_2 = col_anno == 5
         eq_(binary_2.left._annotations, {"foo": "bar"})
 
-    def test_annotated_corresponding_column(self):
+    @testing.combinations(
+        ("plain",),
+        ("annotated",),
+        ("deep_annotated",),
+        ("deep_annotated_w_ind_col",),
+        argnames="testcase",
+    )
+    def test_annotated_corresponding_column(self, testcase):
+        """ensures the require_embedded case remains when an inner statement
+        was copied out for annotations.
+
+        First implemented in 2008 in d3621ae961a, the implementation is
+        updated for #8796 as a performance improvement as well as to
+        establish a discovered implicit behavior where clone() would break
+        the contract of corresponding_column() into an explicit option,
+        fixing the implicit behavior.
+
+        """
         table1 = table("table1", column("col1"))
 
         s1 = select(table1.c.col1).subquery()
-        t1 = s1._annotate({})
-        t2 = s1
+
+        expect_same = True
+
+        if testcase == "plain":
+            t1 = s1
+        elif testcase == "annotated":
+            t1 = s1._annotate({})
+        elif testcase == "deep_annotated":
+            # was failing prior to #8796
+            t1 = sql_util._deep_annotate(s1, {"foo": "bar"})
+        elif testcase == "deep_annotated_w_ind_col":
+            # was implicit behavior w/ annotate prior to #8796
+            t1 = sql_util._deep_annotate(
+                s1, {"foo": "bar"}, ind_cols_on_fromclause=True
+            )
+            expect_same = False
+        else:
+            assert False
 
         # t1 needs to share the same _make_proxy() columns as t2, even
         # though it's annotated.  otherwise paths will diverge once they
         # are corresponded against "inner" below.
 
-        assert t1.c is t2.c
-        assert t1.c.col1 is t2.c.col1
+        if expect_same:
+            assert t1.c is s1.c
+            assert t1.c.col1 is s1.c.col1
+        else:
+            assert t1.c is not s1.c
+            assert t1.c.col1 is not s1.c.col1
 
         inner = select(s1).subquery()
 
         assert (
-            inner.corresponding_column(t2.c.col1, require_embedded=False)
-            is inner.corresponding_column(t2.c.col1, require_embedded=True)
-            is inner.c.col1
-        )
-        assert (
             inner.corresponding_column(t1.c.col1, require_embedded=False)
-            is inner.corresponding_column(t1.c.col1, require_embedded=True)
             is inner.c.col1
         )
+
+        if expect_same:
+            assert (
+                inner.corresponding_column(t1.c.col1, require_embedded=True)
+                is inner.c.col1
+            )
+        else:
+            assert (
+                inner.corresponding_column(t1.c.col1, require_embedded=True)
+                is not inner.c.col1
+            )
 
     def test_annotated_visit(self):
         table1 = table("table1", column("col1"), column("col2"))

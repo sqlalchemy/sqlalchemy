@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import decl_base as _orm_decl_base
     from sqlalchemy.orm import dependency as _orm_dependency
     from sqlalchemy.orm import descriptor_props as _orm_descriptor_props
-    from sqlalchemy.orm import mapper as _orm_mapper
+    from sqlalchemy.orm import mapperlib as _orm_mapper
     from sqlalchemy.orm import properties as _orm_properties
     from sqlalchemy.orm import relationships as _orm_relationships
     from sqlalchemy.orm import session as _orm_session

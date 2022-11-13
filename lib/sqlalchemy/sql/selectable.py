@@ -6752,8 +6752,28 @@ TextAsFrom = TextualSelect
 
 
 class AnnotatedFromClause(Annotated):
-    def __init__(self, element, values):
-        # force FromClause to generate their internal
-        # collections into __dict__
-        element.c
-        Annotated.__init__(self, element, values)
+    def _copy_internals(self, **kw):
+        super()._copy_internals(**kw)
+        if kw.get("ind_cols_on_fromclause", False):
+            ee = self._Annotated__element  # type: ignore
+
+            self.c = ee.__class__.c.fget(self)  # type: ignore
+
+    @util.ro_memoized_property
+    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+        """proxy the .c collection of the underlying FromClause.
+
+        Originally implemented in 2008 as a simple load of the .c collection
+        when the annotated construct was created (see d3621ae961a), in modern
+        SQLAlchemy versions this can be expensive for statements constructed
+        with ORM aliases.   So for #8796 SQLAlchemy 2.0 we instead proxy
+        it, which works just as well.
+
+        Two different use cases seem to require the collection either copied
+        from the underlying one, or unique to this AnnotatedFromClause.
+
+        See test_selectable->test_annotated_corresponding_column
+
+        """
+        ee = self._Annotated__element  # type: ignore
+        return ee.c  # type: ignore
