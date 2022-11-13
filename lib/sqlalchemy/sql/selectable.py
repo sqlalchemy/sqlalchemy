@@ -4092,9 +4092,10 @@ class GenerativeSelect(SelectBase, Generative):
 
             stmt = select(table).order_by(table.c.id, table.c.name)
 
-        All existing ORDER BY criteria may be cancelled by passing
-        ``None`` by itself.  New ORDER BY criteria may then be added by
-        invoking :meth:`_sql.Select.order_by` again, e.g.::
+        Calling this method multiple times is equivalent to calling it once
+        with all the clauses concatenated. All existing ORDER BY criteria may
+        be cancelled by passing ``None`` by itself.  New ORDER BY criteria may
+        then be added by invoking :meth:`_orm.Query.order_by` again, e.g.::
 
             # will erase all ORDER BY and ORDER BY new_col alone
             stmt = stmt.order_by(None).order_by(new_col)
