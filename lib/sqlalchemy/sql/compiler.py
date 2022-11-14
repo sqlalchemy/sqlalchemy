@@ -63,6 +63,7 @@ from . import roles
 from . import schema
 from . import selectable
 from . import sqltypes
+from . import util as sql_util
 from ._typing import is_column_element
 from ._typing import is_dml
 from .base import _from_objects
@@ -1530,7 +1531,8 @@ class SQLCompiler(Compiled):
                 replacement_expressions[
                     escaped_name
                 ] = self.render_literal_bindparam(
-                    parameter, render_literal_value=value
+                    parameter,
+                    render_literal_value=value,
                 )
                 continue
 
@@ -3154,10 +3156,22 @@ class SQLCompiler(Compiled):
 
         processor = type_._cached_literal_processor(self.dialect)
         if processor:
-            return processor(value)
+            try:
+                return processor(value)
+            except Exception as e:
+                raise exc.CompileError(
+                    f"Could not render literal value "
+                    f'"{sql_util._repr_single_value(value)}" '
+                    f"with datatype "
+                    f"{type_}; see parent stack trace for "
+                    "more detail."
+                ) from e
+
         else:
-            raise NotImplementedError(
-                "Don't know how to literal-quote value %r" % value
+            raise exc.CompileError(
+                f"No literal value renderer is available for literal value "
+                f'"{sql_util._repr_single_value(value)}" '
+                f"with datatype {type_}"
             )
 
     def _truncate_bindparam(self, bindparam):
