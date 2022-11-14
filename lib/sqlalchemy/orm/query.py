@@ -1819,9 +1819,10 @@ class Query(
 
             q = session.query(Entity).order_by(Entity.id, Entity.name)
 
-        All existing ORDER BY criteria may be cancelled by passing
-        ``None`` by itself.  New ORDER BY criteria may then be added by
-        invoking :meth:`_orm.Query.order_by` again, e.g.::
+        Calling this method multiple times is equivalent to calling it once
+        with all the clauses concatenated. All existing ORDER BY criteria may
+        be cancelled by passing ``None`` by itself.  New ORDER BY criteria may
+        then be added by invoking :meth:`_orm.Query.order_by` again, e.g.::
 
             # will erase all ORDER BY and ORDER BY new_col alone
             q = q.order_by(None).order_by(new_col)
