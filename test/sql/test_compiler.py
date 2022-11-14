@@ -98,6 +98,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import pep435_enum
+from sqlalchemy.types import UserDefinedType
 from sqlalchemy.util import u
 
 table1 = table(
@@ -4518,6 +4519,51 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "SELECT * FROM mytable WHERE mytable.myid = :myid_1 "
             "OR mytable.myid = :myid_2 OR mytable.myid = :myid_3",
         )
+
+    @testing.combinations("plain", "expanding", argnames="exprtype")
+    def test_literal_bind_typeerror(self, exprtype):
+        """test #8800"""
+
+        if exprtype == "expanding":
+            stmt = select(table1).where(
+                table1.c.myid.in_([("tuple",), ("tuple",)])
+            )
+        elif exprtype == "plain":
+            stmt = select(table1).where(table1.c.myid == ("tuple",))
+        else:
+            assert False
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Could not render literal value \"\(\'tuple\',\)\" "
+            r"with datatype INTEGER; see parent "
+            r"stack trace for more detail.",
+        ):
+            stmt.compile(compile_kwargs={"literal_binds": True})
+
+    @testing.combinations("plain", "expanding", argnames="exprtype")
+    def test_literal_bind_dont_know_how_to_quote(self, exprtype):
+        """test #8800"""
+
+        class MyType(UserDefinedType):
+            def get_col_spec(self, **kw):
+                return "MYTYPE"
+
+        col = column("x", MyType())
+
+        if exprtype == "expanding":
+            stmt = select(table1).where(col.in_([("tuple",), ("tuple",)]))
+        elif exprtype == "plain":
+            stmt = select(table1).where(col == ("tuple",))
+        else:
+            assert False
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"No literal value renderer is available for literal "
+            r"value \"\('tuple',\)\" with datatype MYTYPE",
+        ):
+            stmt.compile(compile_kwargs={"literal_binds": True})
 
     @testing.fixture
     def ansi_compiler_fixture(self):

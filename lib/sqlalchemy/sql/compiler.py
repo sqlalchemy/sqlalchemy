@@ -38,6 +38,7 @@ from . import operators
 from . import schema
 from . import selectable
 from . import sqltypes
+from . import util as sql_util
 from .base import NO_ARG
 from .base import prefix_anon_map
 from .elements import quoted_name
@@ -1216,7 +1217,8 @@ class SQLCompiler(Compiled):
                 replacement_expressions[
                     escaped_name
                 ] = self.render_literal_bindparam(
-                    parameter, render_literal_value=value
+                    parameter,
+                    render_literal_value=value,
                 )
                 continue
 
@@ -2590,10 +2592,29 @@ class SQLCompiler(Compiled):
 
         processor = type_._cached_literal_processor(self.dialect)
         if processor:
-            return processor(value)
+            try:
+                return processor(value)
+            except Exception as e:
+                util.raise_(
+                    exc.CompileError(
+                        "Could not render literal value "
+                        '"%s" '
+                        "with datatype "
+                        "%s; see parent stack trace for "
+                        "more detail."
+                        % (
+                            sql_util._repr_single_value(value),
+                            type_,
+                        )
+                    ),
+                    from_=e,
+                )
+
         else:
-            raise NotImplementedError(
-                "Don't know how to literal-quote value %r" % value
+            raise exc.CompileError(
+                "No literal value renderer is available for literal value "
+                '"%s" with datatype %s'
+                % (sql_util._repr_single_value(value), type_)
             )
 
     def _truncate_bindparam(self, bindparam):

@@ -277,7 +277,8 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
         with expect_raises_message(
             exc.CompileError,
-            "Don't know how to render literal SQL value: 'textA'",
+            r"No literal value renderer is available for literal "
+            r"value \"'textA'\" with datatype NULL",
         ):
             str(stmt)
 

@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 8800
+
+    An informative re-raise is now thrown in the case where any "literal
+    bindparam" render operation fails, indicating the value itself and
+    the datatype in use, to assist in debugging when literal params
+    are being rendered in a statement.

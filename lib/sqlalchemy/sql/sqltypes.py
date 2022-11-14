@@ -3262,12 +3262,7 @@ class NullType(TypeEngine):
     _isnull = True
 
     def literal_processor(self, dialect):
-        def process(value):
-            raise exc.CompileError(
-                "Don't know how to render literal SQL value: %r" % (value,)
-            )
-
-        return process
+        return None
 
     class Comparator(TypeEngine.Comparator):
         def _adapt_expression(self, op, other_comparator):
