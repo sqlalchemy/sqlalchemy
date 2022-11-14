@@ -48,7 +48,6 @@ from sqlalchemy.testing.util import count_cache_key_tuples
 from sqlalchemy.testing.util import total_size
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
-from .test_events import _RemoveListeners
 from .test_query import QueryTest
 
 
@@ -1047,7 +1046,9 @@ class CompositeTest(fixtures.MappedTest):
         eq_(stmt._generate_cache_key(), stmt2._generate_cache_key())
 
 
-class EmbeddedSubqTest(_RemoveListeners, DeclarativeMappedTest):
+class EmbeddedSubqTest(
+    fixtures.RemoveORMEventsGlobally, DeclarativeMappedTest
+):
     """test #8790.
 
     it's expected that cache key structures will change, this test is here

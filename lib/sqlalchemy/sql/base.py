@@ -13,8 +13,8 @@
 
 from __future__ import annotations
 
+import collections
 from enum import Enum
-from functools import reduce
 import itertools
 from itertools import zip_longest
 import operator
@@ -280,10 +280,6 @@ def _expand_cloned(elements):
 
     """
     # TODO: cython candidate
-    # and/or change approach: in
-    # https://gerrit.sqlalchemy.org/c/sqlalchemy/sqlalchemy/+/3712 we propose
-    # getting rid of _cloned_set.
-    # turning this into chain.from_iterable adds all kinds of callcount
     return itertools.chain(*[x._cloned_set for x in elements])
 
 
@@ -1316,6 +1312,50 @@ _COL_co = TypeVar("_COL_co", bound="ColumnElement[Any]", covariant=True)
 _COL = TypeVar("_COL", bound="KeyedColumnElement[Any]")
 
 
+class _ColumnMetrics(Generic[_COL_co]):
+    __slots__ = ("column",)
+
+    column: _COL_co
+
+    def __init__(
+        self, collection: ColumnCollection[Any, _COL_co], col: _COL_co
+    ):
+        self.column = col
+
+        # proxy_index being non-empty means it was initialized.
+        # so we need to update it
+        pi = collection._proxy_index
+        if pi:
+            for eps_col in col._expanded_proxy_set:
+                pi[eps_col].add(self)
+
+    def get_expanded_proxy_set(self):
+        return self.column._expanded_proxy_set
+
+    def dispose(self, collection):
+        pi = collection._proxy_index
+        if not pi:
+            return
+        for col in self.column._expanded_proxy_set:
+            colset = pi.get(col, None)
+            if colset:
+                colset.discard(self)
+            if colset is not None and not colset:
+                del pi[col]
+
+    def embedded(
+        self,
+        target_set: Union[
+            Set[ColumnElement[Any]], FrozenSet[ColumnElement[Any]]
+        ],
+    ) -> bool:
+        expanded_proxy_set = self.column._expanded_proxy_set
+        for t in target_set.difference(expanded_proxy_set):
+            if not expanded_proxy_set.intersection(_expand_cloned([t])):
+                return False
+        return True
+
+
 class ColumnCollection(Generic[_COLKEY, _COL_co]):
     """Collection of :class:`_expression.ColumnElement` instances,
     typically for
@@ -1425,10 +1465,11 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     """
 
-    __slots__ = "_collection", "_index", "_colset"
+    __slots__ = "_collection", "_index", "_colset", "_proxy_index"
 
-    _collection: List[Tuple[_COLKEY, _COL_co]]
+    _collection: List[Tuple[_COLKEY, _COL_co, _ColumnMetrics[_COL_co]]]
     _index: Dict[Union[None, str, int], Tuple[_COLKEY, _COL_co]]
+    _proxy_index: Dict[ColumnElement[Any], Set[_ColumnMetrics[_COL_co]]]
     _colset: Set[_COL_co]
 
     def __init__(
@@ -1436,6 +1477,9 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     ):
         object.__setattr__(self, "_colset", set())
         object.__setattr__(self, "_index", {})
+        object.__setattr__(
+            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
+        )
         object.__setattr__(self, "_collection", [])
         if columns:
             self._initial_populate(columns)
@@ -1457,18 +1501,18 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     @property
     def _all_columns(self) -> List[_COL_co]:
-        return [col for (_, col) in self._collection]
+        return [col for (_, col, _) in self._collection]
 
     def keys(self) -> List[_COLKEY]:
         """Return a sequence of string key names for all columns in this
         collection."""
-        return [k for (k, _) in self._collection]
+        return [k for (k, _, _) in self._collection]
 
     def values(self) -> List[_COL_co]:
         """Return a sequence of :class:`_sql.ColumnClause` or
         :class:`_schema.Column` objects for all columns in this
         collection."""
-        return [col for (_, col) in self._collection]
+        return [col for (_, col, _) in self._collection]
 
     def items(self) -> List[Tuple[_COLKEY, _COL_co]]:
         """Return a sequence of (key, column) tuples for all columns in this
@@ -1477,7 +1521,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         :class:`_schema.Column` object.
         """
 
-        return list(self._collection)
+        return [(k, col) for (k, col, _) in self._collection]
 
     def __bool__(self) -> bool:
         return bool(self._collection)
@@ -1487,7 +1531,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     def __iter__(self) -> Iterator[_COL_co]:
         # turn to a list first to maintain over a course of changes
-        return iter([col for _, col in self._collection])
+        return iter([col for _, col, _ in self._collection])
 
     @overload
     def __getitem__(self, key: Union[str, int]) -> _COL_co:
@@ -1591,16 +1635,15 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         self, iter_: Iterable[Tuple[_COLKEY, _COL_co]]
     ) -> None:
         """populate from an iterator of (key, column)"""
-        cols = list(iter_)
 
-        self._collection[:] = cols
-        self._colset.update(c for k, c in self._collection)
+        self._collection[:] = collection = [
+            (k, c, _ColumnMetrics(self, c)) for k, c in iter_
+        ]
+        self._colset.update(c._deannotate() for _, c, _ in collection)
         self._index.update(
-            (idx, (k, c)) for idx, (k, c) in enumerate(self._collection)
+            {idx: (k, c) for idx, (k, c, _) in enumerate(collection)}
         )
-        self._index.update(
-            {k: (k, col) for k, col in reversed(self._collection)}
-        )
+        self._index.update({k: (k, col) for k, col, _ in reversed(collection)})
 
     def add(
         self, column: ColumnElement[Any], key: Optional[_COLKEY] = None
@@ -1630,23 +1673,35 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
         _column = cast(_COL_co, column)
 
-        self._collection.append((colkey, _column))
-        self._colset.add(_column)
+        self._collection.append(
+            (colkey, _column, _ColumnMetrics(self, _column))
+        )
+        self._colset.add(_column._deannotate())
         self._index[l] = (colkey, _column)
         if colkey not in self._index:
             self._index[colkey] = (colkey, _column)
 
     def __getstate__(self) -> Dict[str, Any]:
         return {
-            "_collection": self._collection,
+            "_collection": [(k, c) for k, c, _ in self._collection],
             "_index": self._index,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         object.__setattr__(self, "_index", state["_index"])
-        object.__setattr__(self, "_collection", state["_collection"])
         object.__setattr__(
-            self, "_colset", {col for k, col in self._collection}
+            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
+        )
+        object.__setattr__(
+            self,
+            "_collection",
+            [
+                (k, c, _ColumnMetrics(self, c))
+                for (k, c) in state["_collection"]
+            ],
+        )
+        object.__setattr__(
+            self, "_colset", {col for k, col, _ in self._collection}
         )
 
     def contains_column(self, col: ColumnElement[Any]) -> bool:
@@ -1666,6 +1721,32 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         :class:`_sql.ColumnCollection`."""
 
         return ReadOnlyColumnCollection(self)
+
+    def _init_proxy_index(self):
+        """populate the "proxy index", if empty.
+
+        proxy index is added in 2.0 to provide more efficient operation
+        for the corresponding_column() method.
+
+        For reasons of both time to construct new .c collections as well as
+        memory conservation for large numbers of large .c collections, the
+        proxy_index is only filled if corresponding_column() is called. once
+        filled it stays that way, and new _ColumnMetrics objects created after
+        that point will populate it with new data. Note this case would be
+        unusual, if not nonexistent, as it means a .c collection is being
+        mutated after corresponding_column() were used, however it is tested in
+        test/base/test_utils.py.
+
+        """
+        pi = self._proxy_index
+        if pi:
+            return
+
+        for _, _, metrics in self._collection:
+            eps = metrics.column._expanded_proxy_set
+
+            for eps_col in eps:
+                pi[eps_col].add(metrics)
 
     def corresponding_column(
         self, column: _COL, require_embedded: bool = False
@@ -1706,38 +1787,40 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         if column in self._colset:
             return column
 
-        def embedded(expanded_proxy_set, target_set):
-            for t in target_set.difference(expanded_proxy_set):
-                if not set(_expand_cloned([t])).intersection(
-                    expanded_proxy_set
-                ):
-                    return False
-            return True
-
-        col, intersect = None, None
+        selected_intersection, selected_metrics = None, None
         target_set = column.proxy_set
-        cols = [c for (_, c) in self._collection]
-        for c in cols:
-            expanded_proxy_set = set(_expand_cloned(c.proxy_set))
-            i = target_set.intersection(expanded_proxy_set)
-            if i and (
-                not require_embedded
-                or embedded(expanded_proxy_set, target_set)
-            ):
-                if col is None or intersect is None:
 
+        pi = self._proxy_index
+        if not pi:
+            self._init_proxy_index()
+
+        for current_metrics in (
+            mm for ts in target_set if ts in pi for mm in pi[ts]
+        ):
+            if not require_embedded or current_metrics.embedded(target_set):
+                if selected_metrics is None:
                     # no corresponding column yet, pick this one.
+                    selected_metrics = current_metrics
+                    continue
 
-                    col, intersect = c, i
-                elif len(i) > len(intersect):
+                current_intersection = target_set.intersection(
+                    current_metrics.column._expanded_proxy_set
+                )
+                if selected_intersection is None:
+                    selected_intersection = target_set.intersection(
+                        selected_metrics.column._expanded_proxy_set
+                    )
 
-                    # 'c' has a larger field of correspondence than
-                    # 'col'. i.e. selectable.c.a1_x->a1.c.x->table.c.x
+                if len(current_intersection) > len(selected_intersection):
+
+                    # 'current' has a larger field of correspondence than
+                    # 'selected'. i.e. selectable.c.a1_x->a1.c.x->table.c.x
                     # matches a1.c.x->table.c.x better than
                     # selectable.c.x->table.c.x does.
 
-                    col, intersect = c, i
-                elif i == intersect:
+                    selected_metrics = current_metrics
+                    selected_intersection = current_intersection
+                elif current_intersection == selected_intersection:
                     # they have the same field of correspondence. see
                     # which proxy_set has fewer columns in it, which
                     # indicates a closer relationship with the root
@@ -1748,25 +1831,29 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
                     # columns that have no reference to the target
                     # column (also occurs with CompoundSelect)
 
-                    col_distance = reduce(
-                        operator.add,
+                    selected_col_distance = sum(
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in col._uncached_proxy_set()
+                            for sc in (
+                                selected_metrics.column._uncached_proxy_list()
+                            )
                             if sc.shares_lineage(column)
                         ],
                     )
-                    c_distance = reduce(
-                        operator.add,
+                    current_col_distance = sum(
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in c._uncached_proxy_set()
+                            for sc in (
+                                current_metrics.column._uncached_proxy_list()
+                            )
                             if sc.shares_lineage(column)
                         ],
                     )
-                    if c_distance < col_distance:
-                        col, intersect = c, i
-        return col
+                    if current_col_distance < selected_col_distance:
+                        selected_metrics = current_metrics
+                        selected_intersection = current_intersection
+
+        return selected_metrics.column if selected_metrics else None
 
 
 _NAMEDCOL = TypeVar("_NAMEDCOL", bound="NamedColumn[Any]")
@@ -1816,8 +1903,10 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             util.memoized_property.reset(named_column, "proxy_set")
         else:
             l = len(self._collection)
-            self._collection.append((key, named_column))
-            self._colset.add(named_column)
+            self._collection.append(
+                (key, named_column, _ColumnMetrics(self, named_column))
+            )
+            self._colset.add(named_column._deannotate())
             self._index[l] = (key, named_column)
             self._index[key] = (key, named_column)
 
@@ -1840,11 +1929,11 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
                 replace_col.append(col)
             else:
                 self._index[k] = (k, col)
-                self._collection.append((k, col))
-        self._colset.update(c for (k, c) in self._collection)
+                self._collection.append((k, col, _ColumnMetrics(self, col)))
+        self._colset.update(c._deannotate() for (k, c, _) in self._collection)
 
         self._index.update(
-            (idx, (k, c)) for idx, (k, c) in enumerate(self._collection)
+            (idx, (k, c)) for idx, (k, c, _) in enumerate(self._collection)
         )
         for col in replace_col:
             self.replace(col)
@@ -1861,11 +1950,15 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         del self._index[column.key]
         self._colset.remove(column)
         self._collection[:] = [
-            (k, c) for (k, c) in self._collection if c is not column
+            (k, c, metrics)
+            for (k, c, metrics) in self._collection
+            if c is not column
         ]
+        for metrics in self._proxy_index.get(column, ()):
+            metrics.dispose(self)
 
         self._index.update(
-            {idx: (k, col) for idx, (k, col) in enumerate(self._collection)}
+            {idx: (k, col) for idx, (k, col, _) in enumerate(self._collection)}
         )
         # delete higher index
         del self._index[len(self._collection)]
@@ -1897,31 +1990,37 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         if column.key in self._index:
             remove_col.add(self._index[column.key][1])
 
-        new_cols: List[Tuple[str, _NAMEDCOL]] = []
+        new_cols: List[Tuple[str, _NAMEDCOL, _ColumnMetrics[_NAMEDCOL]]] = []
         replaced = False
-        for k, col in self._collection:
+        for k, col, metrics in self._collection:
             if col in remove_col:
                 if not replaced:
                     replaced = True
-                    new_cols.append((column.key, column))
+                    new_cols.append(
+                        (column.key, column, _ColumnMetrics(self, column))
+                    )
             else:
-                new_cols.append((k, col))
+                new_cols.append((k, col, metrics))
 
         if remove_col:
             self._colset.difference_update(remove_col)
 
-        if not replaced:
-            new_cols.append((column.key, column))
+            for rc in remove_col:
+                for metrics in self._proxy_index.get(rc, ()):
+                    metrics.dispose(self)
 
-        self._colset.add(column)
+        if not replaced:
+            new_cols.append((column.key, column, _ColumnMetrics(self, column)))
+
+        self._colset.add(column._deannotate())
         self._collection[:] = new_cols
 
         self._index.clear()
 
         self._index.update(
-            {idx: (k, col) for idx, (k, col) in enumerate(self._collection)}
+            {idx: (k, col) for idx, (k, col, _) in enumerate(self._collection)}
         )
-        self._index.update({k: (k, col) for (k, col) in self._collection})
+        self._index.update({k: (k, col) for (k, col, _) in self._collection})
 
 
 class ReadOnlyColumnCollection(
@@ -1934,6 +2033,7 @@ class ReadOnlyColumnCollection(
         object.__setattr__(self, "_colset", collection._colset)
         object.__setattr__(self, "_index", collection._index)
         object.__setattr__(self, "_collection", collection._collection)
+        object.__setattr__(self, "_proxy_index", collection._proxy_index)
 
     def __getstate__(self):
         return {"_parent": self._parent}

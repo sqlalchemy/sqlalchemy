@@ -3316,6 +3316,15 @@ class SelectBase(
         """
         raise NotImplementedError()
 
+    def _generate_fromclause_column_proxies(
+        self,
+        subquery: FromClause,
+        proxy_compound_columns: Optional[
+            Iterable[Sequence[ColumnElement[Any]]]
+        ] = None,
+    ) -> None:
+        raise NotImplementedError()
+
     @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         """A sequence of expressions that correspond to what is rendered
@@ -3621,9 +3630,15 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     #    return self.element._generate_columns_plus_names(anon_for_dupe_key)
 
     def _generate_fromclause_column_proxies(
-        self, subquery: FromClause
+        self,
+        subquery: FromClause,
+        proxy_compound_columns: Optional[
+            Iterable[Sequence[ColumnElement[Any]]]
+        ] = None,
     ) -> None:
-        self.element._generate_fromclause_column_proxies(subquery)
+        self.element._generate_fromclause_column_proxies(
+            subquery, proxy_compound_columns=proxy_compound_columns
+        )
 
     @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
@@ -4307,38 +4322,50 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         return self
 
     def _generate_fromclause_column_proxies(
-        self, subquery: FromClause
+        self,
+        subquery: FromClause,
+        proxy_compound_columns: Optional[
+            Iterable[Sequence[ColumnElement[Any]]]
+        ] = None,
     ) -> None:
 
         # this is a slightly hacky thing - the union exports a
         # column that resembles just that of the *first* selectable.
         # to get at a "composite" column, particularly foreign keys,
         # you have to dig through the proxies collection which we
-        # generate below.  We may want to improve upon this, such as
-        # perhaps _make_proxy can accept a list of other columns
-        # that are "shared" - schema.column can then copy all the
-        # ForeignKeys in. this would allow the union() to have all
-        # those fks too.
+        # generate below.
         select_0 = self.selects[0]
 
         if self._label_style is not LABEL_STYLE_DEFAULT:
             select_0 = select_0.set_label_style(self._label_style)
-        select_0._generate_fromclause_column_proxies(subquery)
 
         # hand-construct the "_proxies" collection to include all
         # derived columns place a 'weight' annotation corresponding
         # to how low in the list of select()s the column occurs, so
         # that the corresponding_column() operation can resolve
         # conflicts
-
-        for subq_col, select_cols in zip(
-            subquery.c._all_columns,
-            zip(*[s.selected_columns for s in self.selects]),
-        ):
-            subq_col._proxies = [
-                c._annotate({"weight": i + 1})
-                for (i, c) in enumerate(select_cols)
+        extra_col_iterator = zip(
+            *[
+                [
+                    c._annotate(dd)
+                    for c in stmt._all_selected_columns
+                    if is_column_element(c)
+                ]
+                for dd, stmt in [
+                    ({"weight": i + 1}, stmt)
+                    for i, stmt in enumerate(self.selects)
+                ]
             ]
+        )
+
+        # the incoming proxy_compound_columns can be present also if this is
+        # a compound embedded in a compound.  it's probably more appropriate
+        # that we generate new weights local to this nested compound, though
+        # i haven't tried to think what it means for compound nested in
+        # compound
+        select_0._generate_fromclause_column_proxies(
+            subquery, proxy_compound_columns=extra_col_iterator
+        )
 
     def _refresh_for_new_column(self, column):
         super(CompoundSelect, self)._refresh_for_new_column(column)
@@ -6171,27 +6198,60 @@ class Select(
         return self
 
     def _generate_fromclause_column_proxies(
-        self, subquery: FromClause
+        self,
+        subquery: FromClause,
+        proxy_compound_columns: Optional[
+            Iterable[Sequence[ColumnElement[Any]]]
+        ] = None,
     ) -> None:
         """Generate column proxies to place in the exported ``.c``
         collection of a subquery."""
 
-        prox = [
-            c._make_proxy(
-                subquery,
-                key=proxy_key,
-                name=required_label_name,
-                name_is_truncatable=True,
-            )
-            for (
-                required_label_name,
-                proxy_key,
-                fallback_label_name,
-                c,
-                repeated,
-            ) in (self._generate_columns_plus_names(False))
-            if is_column_element(c)
-        ]
+        if proxy_compound_columns:
+            extra_col_iterator = proxy_compound_columns
+            prox = [
+                c._make_proxy(
+                    subquery,
+                    key=proxy_key,
+                    name=required_label_name,
+                    name_is_truncatable=True,
+                    compound_select_cols=extra_cols,
+                )
+                for (
+                    (
+                        required_label_name,
+                        proxy_key,
+                        fallback_label_name,
+                        c,
+                        repeated,
+                    ),
+                    extra_cols,
+                ) in (
+                    zip(
+                        self._generate_columns_plus_names(False),
+                        extra_col_iterator,
+                    )
+                )
+                if is_column_element(c)
+            ]
+        else:
+
+            prox = [
+                c._make_proxy(
+                    subquery,
+                    key=proxy_key,
+                    name=required_label_name,
+                    name_is_truncatable=True,
+                )
+                for (
+                    required_label_name,
+                    proxy_key,
+                    fallback_label_name,
+                    c,
+                    repeated,
+                ) in (self._generate_columns_plus_names(False))
+                if is_column_element(c)
+            ]
 
         subquery._columns._populate_separate_keys(prox)
 
@@ -6738,10 +6798,20 @@ class TextualSelect(SelectBase, Executable, Generative):
         self.element = self.element.bindparams(*binds, **bind_as_values)
         return self
 
-    def _generate_fromclause_column_proxies(self, fromclause):
-        fromclause._columns._populate_separate_keys(
-            c._make_proxy(fromclause) for c in self.column_args
-        )
+    def _generate_fromclause_column_proxies(
+        self, fromclause, proxy_compound_columns=None
+    ):
+        if proxy_compound_columns:
+            fromclause._columns._populate_separate_keys(
+                c._make_proxy(fromclause, compound_select_cols=extra_cols)
+                for c, extra_cols in zip(
+                    self.column_args, proxy_compound_columns
+                )
+            )
+        else:
+            fromclause._columns._populate_separate_keys(
+                c._make_proxy(fromclause) for c in self.column_args
+            )
 
     def _scalar_type(self):
         return self.column_args[0].type
