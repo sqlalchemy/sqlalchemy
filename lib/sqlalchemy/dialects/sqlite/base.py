@@ -2643,6 +2643,20 @@ class SQLiteDialect(default.DefaultDialect):
         )
         indexes = []
 
+        # regular expression to extract the filter predicate of a partial index.
+        # this could fail to extract the predicate correctly on indexes created like
+        #   CREATE INDEX i ON t (col || ') where') WHERE col <> ''
+        # but as this function does not support expression-based indexes this case
+        # does not occur.
+        partial_pred_re = re.compile(r"\)\s+where\s+(.+)", re.IGNORECASE)
+
+        if schema:
+            schema_expr = "%s." % self.identifier_preparer.quote_identifier(
+                schema
+            )
+        else:
+            schema_expr = ""
+
         include_auto_indexes = kw.pop("include_auto_indexes", False)
         for row in pragma_indexes:
             # ignore implicit primary key index.
@@ -2653,9 +2667,24 @@ class SQLiteDialect(default.DefaultDialect):
                 continue
             indexes.append(
                 dict(
-                    name=row[1], column_names=[], unique=row[2], partial=row[4]
+                    name=row[1],
+                    column_names=[],
+                    unique=row[2],
+                    dialect_options={},
                 )
             )
+
+            # check partial indexes
+            if row[4]:
+                s = (
+                    "SELECT sql FROM %(schema)ssqlite_master "
+                    "WHERE name = ? "
+                    "AND type = 'index'" % {"schema": schema_expr}
+                )
+                rs = connection.exec_driver_sql(s, (row[1],))
+                index_sql = rs.scalar()
+                predicate = partial_pred_re.search(index_sql).group(1)
+                indexes[-1]["dialect_options"]["sqlite_where"] = predicate
 
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):
@@ -2673,6 +2702,7 @@ class SQLiteDialect(default.DefaultDialect):
                     break
                 else:
                     idx["column_names"].append(row[2])
+
         indexes.sort(key=lambda d: d["name"] or "~")  # sort None as last
         if indexes:
             return indexes

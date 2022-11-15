@@ -2282,7 +2282,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 1,
                     "name": "sqlite_autoindex_o_1",
                     "column_names": ["foo"],
-                    "partial": False,
+                    "dialect_options": {},
                 }
             ],
         )
@@ -2298,7 +2298,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 0,
                     "name": "ix_main_l_bar",
                     "column_names": ["bar"],
-                    "partial": False,
+                    "dialect_options": {},
                 }
             ],
         )
@@ -2323,13 +2323,13 @@ class ConstraintReflectionTest(fixtures.TestBase):
                         "unique": 1,
                         "name": "ix_no_partial",
                         "column_names": ["x"],
-                        "partial": False,
+                        "dialect_options": {},
                     },
                     {
                         "unique": 1,
                         "name": "ix_partial",
                         "column_names": ["x"],
-                        "partial": True,
+                        "dialect_options": {"sqlite_where": "y > 10"},
                     },
                 ],
             )
