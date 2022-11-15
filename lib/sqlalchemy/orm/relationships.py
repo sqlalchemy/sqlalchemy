@@ -164,6 +164,7 @@ _ORMOrderByArgument = Union[
     Literal[False],
     str,
     _ColumnExpressionArgument[Any],
+    Callable[[], Iterable[ColumnElement[Any]]],
     Iterable[Union[str, _ColumnExpressionArgument[Any]]],
 ]
 _ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
