@@ -561,8 +561,7 @@ class Range(Generic[_T]):
             else:
                 return Range(oupper, supper, bounds=rlower_b + supper_b)
 
-        # TODO: figure out if I handled all the cases above
-        assert False
+        assert False, f"Unhandled case computing {self} - {other}"
 
     __sub__ = difference
 
