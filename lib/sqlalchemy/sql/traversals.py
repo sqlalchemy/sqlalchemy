@@ -565,7 +565,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                 assert right_attrname is not None
 
                 dispatch = self.dispatch(left_visit_sym)
-                assert dispatch, (
+                assert dispatch is not None, (
                     f"{self.__class__} has no dispatch for "
                     f"'{self._dispatch_lookup[left_visit_sym]}'"
                 )

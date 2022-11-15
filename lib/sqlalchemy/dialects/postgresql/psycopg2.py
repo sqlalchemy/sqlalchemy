@@ -583,7 +583,7 @@ class ExecutemanyMode(FastIntFlag):
 (
     EXECUTEMANY_VALUES,
     EXECUTEMANY_VALUES_PLUS_BATCH,
-) = tuple(ExecutemanyMode)
+) = ExecutemanyMode.__members__.values()
 
 
 class PGDialect_psycopg2(_PGDialect_common_psycopg):

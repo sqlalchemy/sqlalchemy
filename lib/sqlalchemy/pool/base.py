@@ -727,7 +727,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
             lambda ref: _finalize_fairy(
                 None, rec, pool, ref, echo, transaction_was_reset=False
             )
-            if _finalize_fairy
+            if _finalize_fairy is not None
             else None,
         )
         _strong_ref_connection_records[ref] = rec

@@ -1528,8 +1528,9 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
                 return "MYTYPE"
 
         with expect_raises_message(
-            NotImplementedError,
-            r"Don't know how to literal-quote value \[1, 2, 3\]",
+            exc.CompileError,
+            r"No literal value renderer is available for literal "
+            r"value \"\[1, 2, 3\]\" with datatype ARRAY",
         ):
             self.assert_compile(
                 select(literal([1, 2, 3], ARRAY(MyType()))),

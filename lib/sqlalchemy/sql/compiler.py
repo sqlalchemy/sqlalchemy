@@ -63,6 +63,7 @@ from . import roles
 from . import schema
 from . import selectable
 from . import sqltypes
+from . import util as sql_util
 from ._typing import is_column_element
 from ._typing import is_dml
 from .base import _from_objects
@@ -1530,7 +1531,8 @@ class SQLCompiler(Compiled):
                 replacement_expressions[
                     escaped_name
                 ] = self.render_literal_bindparam(
-                    parameter, render_literal_value=value
+                    parameter,
+                    render_literal_value=value,
                 )
                 continue
 
@@ -1694,7 +1696,7 @@ class SQLCompiler(Compiled):
             # at all if the key were present in the parameters
             if autoinc_key in self.binds:
 
-                def autoinc_getter(lastrowid, parameters):
+                def _autoinc_getter(lastrowid, parameters):
                     param_value = parameters.get(autoinc_key, lastrowid)
                     if param_value is not None:
                         # they supplied non-None parameter, use that.
@@ -1705,6 +1707,9 @@ class SQLCompiler(Compiled):
                     else:
                         # use lastrowid
                         return lastrowid
+
+                # work around mypy https://github.com/python/mypy/issues/14027
+                autoinc_getter = _autoinc_getter
 
         else:
             lastrowid_processor = None
@@ -1727,7 +1732,7 @@ class SQLCompiler(Compiled):
                 return row_fn(
                     (
                         autoinc_getter(lastrowid, parameters)
-                        if autoinc_getter
+                        if autoinc_getter is not None
                         else lastrowid
                     )
                     if col is autoinc_col
@@ -3151,10 +3156,22 @@ class SQLCompiler(Compiled):
 
         processor = type_._cached_literal_processor(self.dialect)
         if processor:
-            return processor(value)
+            try:
+                return processor(value)
+            except Exception as e:
+                raise exc.CompileError(
+                    f"Could not render literal value "
+                    f'"{sql_util._repr_single_value(value)}" '
+                    f"with datatype "
+                    f"{type_}; see parent stack trace for "
+                    "more detail."
+                ) from e
+
         else:
-            raise NotImplementedError(
-                "Don't know how to literal-quote value %r" % value
+            raise exc.CompileError(
+                f"No literal value renderer is available for literal value "
+                f'"{sql_util._repr_single_value(value)}" '
+                f"with datatype {type_}"
             )
 
     def _truncate_bindparam(self, bindparam):
@@ -3757,7 +3774,6 @@ class SQLCompiler(Compiled):
             "_label_select_column is only relevant within "
             "the columns clause of a SELECT or RETURNING"
         )
-
         if isinstance(column, elements.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(
@@ -4413,9 +4429,27 @@ class SQLCompiler(Compiled):
         populate_result_map: bool,
         **kw: Any,
     ) -> str:
+
         columns = [
-            self._label_returning_column(stmt, c, populate_result_map, **kw)
-            for c in base._select_iterables(returning_cols)
+            self._label_returning_column(
+                stmt,
+                column,
+                populate_result_map,
+                fallback_label_name=fallback_label_name,
+                column_is_repeated=repeated,
+                name=name,
+                proxy_name=proxy_name,
+                **kw,
+            )
+            for (
+                name,
+                proxy_name,
+                fallback_label_name,
+                column,
+                repeated,
+            ) in stmt._generate_columns_plus_names(
+                True, cols=base._select_iterables(returning_cols)
+            )
         ]
 
         return "RETURNING " + ", ".join(columns)

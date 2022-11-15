@@ -128,6 +128,7 @@ import weakref
 from .base import NO_KEY
 from .. import exc as sa_exc
 from .. import util
+from ..sql.base import NO_ARG
 from ..util.compat import inspect_getfullargspec
 from ..util.typing import Protocol
 
@@ -1222,8 +1223,6 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         fn._sa_instrumented = True
         fn.__doc__ = getattr(dict, fn.__name__).__doc__
 
-    Unspecified = util.symbol("Unspecified")
-
     def __setitem__(fn):
         def __setitem__(self, key, value, _sa_initiator=None):
             if key in self:
@@ -1253,10 +1252,10 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         return clear
 
     def pop(fn):
-        def pop(self, key, default=Unspecified):
+        def pop(self, key, default=NO_ARG):
             __before_pop(self)
             _to_del = key in self
-            if default is Unspecified:
+            if default is NO_ARG:
                 item = fn(self, key)
             else:
                 item = fn(self, key, default)
@@ -1293,8 +1292,8 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
         return setdefault
 
     def update(fn):
-        def update(self, __other=Unspecified, **kw):
-            if __other is not Unspecified:
+        def update(self, __other=NO_ARG, **kw):
+            if __other is not NO_ARG:
                 if hasattr(__other, "keys"):
                     for key in list(__other):
                         if key not in self or self[key] is not __other[key]:
@@ -1318,7 +1317,6 @@ def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
     l = locals().copy()
     l.pop("_tidy")
-    l.pop("Unspecified")
     return l
 
 
@@ -1345,8 +1343,6 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     def _tidy(fn):
         fn._sa_instrumented = True
         fn.__doc__ = getattr(set, fn.__name__).__doc__
-
-    Unspecified = util.symbol("Unspecified")
 
     def add(fn):
         def add(self, value, _sa_initiator=None):
@@ -1500,7 +1496,6 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
     l = locals().copy()
     l.pop("_tidy")
-    l.pop("Unspecified")
     return l
 
 

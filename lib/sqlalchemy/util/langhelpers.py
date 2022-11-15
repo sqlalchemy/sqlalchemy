@@ -1448,7 +1448,7 @@ def duck_type_collection(
         else:
             return specimen.__emulates__  # type: ignore
 
-    isa = isinstance(specimen, type) and issubclass or isinstance
+    isa = issubclass if isinstance(specimen, type) else isinstance
     if isa(specimen, list):
         return list
     elif isa(specimen, set):
@@ -1603,11 +1603,6 @@ class symbol(int):
 
     Repeated calls of symbol('name') will all return the same instance.
 
-    In SQLAlchemy 2.0, symbol() is used for the implementation of
-    ``_FastIntFlag``, but otherwise should be mostly replaced by
-    ``enum.Enum`` and variants.
-
-
     """
 
     name: str
@@ -1632,7 +1627,17 @@ class symbol(int):
                 if doc:
                     sym.__doc__ = doc
 
+                # NOTE: we should ultimately get rid of this global thing,
+                # however, currently it is to support pickling.  The best
+                # change would be when we are on py3.11 at a minimum, we
+                # switch to stdlib enum.IntFlag.
                 cls.symbols[name] = sym
+            else:
+                if canonical and canonical != sym:
+                    raise TypeError(
+                        f"Can't replace canonical symbol for {name} "
+                        f"with new int value {canonical}"
+                    )
             return sym
 
     def __reduce__(self):
@@ -1665,8 +1670,16 @@ class _IntFlagMeta(type):
             setattr(cls, k, sym)
             items.append(sym)
 
+        cls.__members__ = _collections.immutabledict(
+            {sym.name: sym for sym in items}
+        )
+
     def __iter__(self) -> Iterator[symbol]:
-        return iter(self._items)
+        raise NotImplementedError(
+            "iter not implemented to ensure compatibility with "
+            "Python 3.11 IntFlag.  Please use __members__.  See "
+            "https://github.com/python/cpython/issues/99304"
+        )
 
 
 class _FastIntFlag(metaclass=_IntFlagMeta):

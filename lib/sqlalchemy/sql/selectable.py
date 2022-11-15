@@ -2193,7 +2193,9 @@ class SelectsRows(ReturnsRows):
     _label_style: SelectLabelStyle = LABEL_STYLE_NONE
 
     def _generate_columns_plus_names(
-        self, anon_for_dupe_key: bool
+        self,
+        anon_for_dupe_key: bool,
+        cols: Optional[_SelectIterable] = None,
     ) -> List[_ColumnsPlusNames]:
         """Generate column names as rendered in a SELECT statement by
         the compiler.
@@ -2204,7 +2206,9 @@ class SelectsRows(ReturnsRows):
         _column_naming_convention as well.
 
         """
-        cols = self._all_selected_columns
+
+        if cols is None:
+            cols = self._all_selected_columns
 
         key_naming_convention = SelectState._column_naming_convention(
             self._label_style
@@ -4092,9 +4096,10 @@ class GenerativeSelect(SelectBase, Generative):
 
             stmt = select(table).order_by(table.c.id, table.c.name)
 
-        All existing ORDER BY criteria may be cancelled by passing
-        ``None`` by itself.  New ORDER BY criteria may then be added by
-        invoking :meth:`_sql.Select.order_by` again, e.g.::
+        Calling this method multiple times is equivalent to calling it once
+        with all the clauses concatenated. All existing ORDER BY criteria may
+        be cancelled by passing ``None`` by itself.  New ORDER BY criteria may
+        then be added by invoking :meth:`_orm.Query.order_by` again, e.g.::
 
             # will erase all ORDER BY and ORDER BY new_col alone
             stmt = stmt.order_by(None).order_by(new_col)

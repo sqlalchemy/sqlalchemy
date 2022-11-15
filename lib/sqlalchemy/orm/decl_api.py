@@ -1,4 +1,4 @@
-# ext/declarative/api.py
+# orm/declarative/api.py
 # Copyright (C) 2005-2022 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
@@ -1274,7 +1274,7 @@ class registry:
         if isinstance(cls, type):
             class_dict["__doc__"] = cls.__doc__
 
-        if self.constructor:
+        if self.constructor is not None:
             class_dict["__init__"] = self.constructor
 
         class_dict["__abstract__"] = True

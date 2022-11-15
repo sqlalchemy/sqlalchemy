@@ -59,6 +59,7 @@ from .selectable import FromClause
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .selectable import Join
+from .selectable import SelectLabelStyle
 from .selectable import TableClause
 from .selectable import TypedReturnsRows
 from .sqltypes import NullType
@@ -399,6 +400,9 @@ class UpdateBase(
     ] = util.EMPTY_DICT
     named_with_column = False
 
+    _label_style: SelectLabelStyle = (
+        SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY
+    )
     table: _DMLTableElement
 
     _return_defaults = False

@@ -188,7 +188,7 @@ class PassiveFlag(FastIntFlag):
     PASSIVE_NO_FETCH,
     PASSIVE_NO_FETCH_RELATED,
     PASSIVE_ONLY_PERSISTENT,
-) = tuple(PassiveFlag)
+) = PassiveFlag.__members__.values()
 
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
 DEFAULT_STATE_ATTR = "_sa_instance_state"

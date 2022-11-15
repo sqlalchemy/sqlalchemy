@@ -3125,8 +3125,9 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
                 return "MYTYPE"
 
         with expect_raises_message(
-            NotImplementedError,
-            r"Don't know how to literal-quote value \[1, 2, 3\]",
+            exc.CompileError,
+            r"No literal value renderer is available for literal value "
+            r"\"\[1, 2, 3\]\" with datatype ARRAY",
         ):
             self.assert_compile(
                 select(literal([1, 2, 3], ARRAY(MyType()))),
@@ -3629,7 +3630,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_compile_err_formatting(self):
         with expect_raises_message(
             exc.CompileError,
-            r"Don't know how to render literal SQL value: \(1, 2, 3\)",
+            r"No literal value renderer is available for literal "
+            r"value \"\(1, 2, 3\)\" with datatype NULL",
         ):
             func.foo((1, 2, 3)).compile(compile_kwargs={"literal_binds": True})
 

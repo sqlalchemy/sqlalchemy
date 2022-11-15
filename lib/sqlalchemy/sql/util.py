@@ -581,6 +581,12 @@ class _repr_base:
         return rep
 
 
+def _repr_single_value(value):
+    rp = _repr_base()
+    rp.max_chars = 300
+    return rp.trunc(value)
+
+
 class _repr_row(_repr_base):
     """Provide a string view of a row."""
 

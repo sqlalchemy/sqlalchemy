@@ -14,8 +14,67 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.44
+    :version: 1.4.45
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.44
+    :released: November 12, 2022
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8790
+
+        Fixed critical memory issue identified in cache key generation, where for
+        very large and complex ORM statements that make use of lots of ORM aliases
+        with subqueries, cache key generation could produce excessively large keys
+        that were orders of magnitude bigger than the statement itself. Much thanks
+        to Rollo Konig Brock for their very patient, long term help in finally
+        identifying this issue.
+
+    .. change::
+        :tags: bug, postgresql, mssql
+        :tickets: 8770
+
+        For the PostgreSQL and SQL Server dialects only, adjusted the compiler so
+        that when rendering column expressions in the RETURNING clause, the "non
+        anon" label that's used in SELECT statements is suggested for SQL
+        expression elements that generate a label; the primary example is a SQL
+        function that may be emitting as part of the column's type, where the label
+        name should match the column's name by default. This restores a not-well
+        defined behavior that had changed in version 1.4.21 due to :ticket:`6718`,
+        :ticket:`6710`. The Oracle dialect has a different RETURNING implementation
+        and was not affected by this issue. Version 2.0 features an across the
+        board change for its widely expanded support of RETURNING on other
+        backends.
+
+
+    .. change::
+        :tags: bug, oracle
+
+        Fixed issue in the Oracle dialect where an INSERT statement that used
+        ``insert(some_table).values(...).returning(some_table)`` against a full
+        :class:`.Table` object at once would fail to execute, raising an exception.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 8793
+
+        Fixed issue where the ``--disable-asyncio`` parameter to the test suite
+        would fail to not actually run greenlet tests and would also not prevent
+        the suite from using a "wrapping" greenlet for the whole suite. This
+        parameter now ensures that no greenlet or asyncio use will occur within the
+        entire run when set.
+
+    .. change::
+        :tags: bug, tests
+
+        Adjusted the test suite which tests the Mypy plugin to accommodate for
+        changes in Mypy 0.990 regarding how it handles message output, which affect
+        how sys.path is interpreted when determining if notes and errors should be
+        printed for particular files. The change broke the test suite as the files
+        within the test directory itself no longer produced messaging when run
+        under the mypy API.
 
 .. changelog::
     :version: 1.4.43

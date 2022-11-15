@@ -58,10 +58,12 @@ from .compat import decode_backslashreplace as decode_backslashreplace
 from .compat import dottedgetter as dottedgetter
 from .compat import has_refcount_gc as has_refcount_gc
 from .compat import inspect_getfullargspec as inspect_getfullargspec
+from .compat import is64bit as is64bit
 from .compat import local_dataclass_fields as local_dataclass_fields
 from .compat import osx as osx
 from .compat import py310 as py310
 from .compat import py311 as py311
+from .compat import py312 as py312
 from .compat import py38 as py38
 from .compat import py39 as py39
 from .compat import pypy as pypy

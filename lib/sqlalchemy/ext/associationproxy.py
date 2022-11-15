@@ -148,30 +148,32 @@ class _GetterProtocol(Protocol[_T_co]):
         ...
 
 
-class _SetterProtocol(Protocol[_T_co]):
+# mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
+class _SetterProtocol(Protocol):
     ...
 
 
-class _PlainSetterProtocol(_SetterProtocol[_T_con]):
+class _PlainSetterProtocol(_SetterProtocol, Protocol[_T_con]):
     def __call__(self, instance: Any, value: _T_con) -> None:
         ...
 
 
-class _DictSetterProtocol(_SetterProtocol[_T_con]):
+class _DictSetterProtocol(_SetterProtocol, Protocol[_T_con]):
     def __call__(self, instance: Any, key: Any, value: _T_con) -> None:
         ...
 
 
-class _CreatorProtocol(Protocol[_T_co]):
+# mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
+class _CreatorProtocol(Protocol):
     ...
 
 
-class _PlainCreatorProtocol(_CreatorProtocol[_T_con]):
+class _PlainCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
     def __call__(self, value: _T_con) -> Any:
         ...
 
 
-class _KeyCreatorProtocol(_CreatorProtocol[_T_con]):
+class _KeyCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
     def __call__(self, key: Any, value: Optional[_T_con]) -> Any:
         ...
 
@@ -188,7 +190,7 @@ class _GetSetFactoryProtocol(Protocol):
         self,
         collection_class: Optional[Type[Any]],
         assoc_instance: AssociationProxyInstance[Any],
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol[Any]]:
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
         ...
 
 
@@ -196,7 +198,7 @@ class _ProxyFactoryProtocol(Protocol):
     def __call__(
         self,
         lazy_collection: _LazyCollectionProtocol[Any],
-        creator: _CreatorProtocol[Any],
+        creator: _CreatorProtocol,
         value_attr: str,
         parent: AssociationProxyInstance[Any],
     ) -> Any:
@@ -214,7 +216,7 @@ class _AssociationProxyProtocol(Protocol[_T]):
     """describes the interface of :class:`.AssociationProxy`
     without including descriptor methods in the interface."""
 
-    creator: Optional[_CreatorProtocol[Any]]
+    creator: Optional[_CreatorProtocol]
     key: str
     target_collection: str
     value_attr: str
@@ -233,7 +235,7 @@ class _AssociationProxyProtocol(Protocol[_T]):
 
     def _default_getset(
         self, collection_class: Any
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol[Any]]:
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
         ...
 
 
@@ -256,7 +258,7 @@ class AssociationProxy(
         self,
         target_collection: str,
         attr: str,
-        creator: Optional[_CreatorProtocol[Any]] = None,
+        creator: Optional[_CreatorProtocol] = None,
         getset_factory: Optional[_GetSetFactoryProtocol] = None,
         proxy_factory: Optional[_ProxyFactoryProtocol] = None,
         proxy_bulk_set: Optional[_ProxyBulkSetProtocol] = None,
@@ -459,7 +461,7 @@ class AssociationProxy(
 
     def _default_getset(
         self, collection_class: Any
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol[Any]]:
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
         attr = self.value_attr
         _getter = operator.attrgetter(attr)
 
@@ -760,7 +762,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
 
     def _default_getset(
         self, collection_class: Any
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol[Any]]:
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
         attr = self.value_attr
         _getter = operator.attrgetter(attr)
 
@@ -864,7 +866,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         creator = (
             self.parent.creator
             if self.parent.creator is not None
-            else cast("_CreatorProtocol[_T]", self.target_class)
+            else cast("_CreatorProtocol", self.target_class)
         )
         collection_class = util.duck_type_collection(lazy_collection())
 
@@ -945,7 +947,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         creator = (
             self.parent.creator
             and self.parent.creator
-            or cast(_CreatorProtocol[Any], self.target_class)
+            or cast(_CreatorProtocol, self.target_class)
         )
 
         if self.parent.getset_factory:
@@ -1266,7 +1268,7 @@ class _AssociationCollection(Generic[_IT]):
     getter: _GetterProtocol[_IT]
     """A function.  Given an associated object, return the 'value'."""
 
-    creator: _CreatorProtocol[_IT]
+    creator: _CreatorProtocol
     """
     A function that creates new target entities.  Given one parameter:
     value.  This assertion is assumed::
@@ -1276,7 +1278,7 @@ class _AssociationCollection(Generic[_IT]):
     """
 
     parent: AssociationProxyInstance[_IT]
-    setter: _SetterProtocol[_IT]
+    setter: _SetterProtocol
     """A function.  Given an associated object and a value, store that
         value on the object.
     """
@@ -1288,9 +1290,9 @@ class _AssociationCollection(Generic[_IT]):
     def __init__(
         self,
         lazy_collection: _LazyCollectionProtocol[_IT],
-        creator: _CreatorProtocol[_IT],
+        creator: _CreatorProtocol,
         getter: _GetterProtocol[_IT],
-        setter: _SetterProtocol[_IT],
+        setter: _SetterProtocol,
         parent: AssociationProxyInstance[_IT],
     ):
         """Constructs an _AssociationCollection.
