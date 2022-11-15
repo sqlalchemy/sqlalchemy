@@ -893,6 +893,7 @@ from .json import JSONPathType
 from ... import exc
 from ... import schema as sa_schema
 from ... import sql
+from ... import text
 from ... import types as sqltypes
 from ... import util
 from ...engine import default
@@ -2684,7 +2685,9 @@ class SQLiteDialect(default.DefaultDialect):
                 rs = connection.exec_driver_sql(s, (row[1],))
                 index_sql = rs.scalar()
                 predicate = partial_pred_re.search(index_sql).group(1)
-                indexes[-1]["dialect_options"]["sqlite_where"] = predicate
+                indexes[-1]["dialect_options"]["sqlite_where"] = text(
+                    predicate
+                )
 
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):

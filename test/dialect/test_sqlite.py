@@ -4,6 +4,7 @@
 import datetime
 import json
 import os
+from unittest.mock import ANY
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -2311,27 +2312,22 @@ class ConstraintReflectionTest(fixtures.TestBase):
             conn.exec_driver_sql(
                 "create unique index ix_partial on foo_with_partial_index (x) where y > 10"
             )
-            conn.exec_driver_sql(
-                "create unique index ix_no_partial on foo_with_partial_index (x)"
-            )
 
             inspector = inspect(conn)
+            indexes = inspector.get_indexes("foo_with_partial_index")
             eq_(
-                inspector.get_indexes("foo_with_partial_index"),
+                indexes,
                 [
-                    {
-                        "unique": 1,
-                        "name": "ix_no_partial",
-                        "column_names": ["x"],
-                        "dialect_options": {},
-                    },
                     {
                         "unique": 1,
                         "name": "ix_partial",
                         "column_names": ["x"],
-                        "dialect_options": {"sqlite_where": "y > 10"},
-                    },
+                        "dialect_options": {"sqlite_where": ANY},
+                    }
                 ],
+            )
+            assert (
+                indexes[0]["dialect_options"]["sqlite_where"].text == "y > 10"
             )
 
     def test_unique_constraint_named(self):
