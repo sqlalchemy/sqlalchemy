@@ -2282,6 +2282,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 1,
                     "name": "sqlite_autoindex_o_1",
                     "column_names": ["foo"],
+                    "partial": False,
                 }
             ],
         )
@@ -2297,9 +2298,41 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 0,
                     "name": "ix_main_l_bar",
                     "column_names": ["bar"],
+                    "partial": False,
                 }
             ],
         )
+
+    def test_reflect_partial_indexes(self):
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql(
+                "create table foo_with_partial_index (x integer, y integer)"
+            )
+            conn.exec_driver_sql(
+                "create unique index ix_partial on foo_with_partial_index (x) where y > 10"
+            )
+            conn.exec_driver_sql(
+                "create unique index ix_no_partial on foo_with_partial_index (x)"
+            )
+
+            inspector = inspect(conn)
+            eq_(
+                inspector.get_indexes("foo_with_partial_index"),
+                [
+                    {
+                        "unique": 1,
+                        "name": "ix_no_partial",
+                        "column_names": ["x"],
+                        "partial": False,
+                    },
+                    {
+                        "unique": 1,
+                        "name": "ix_partial",
+                        "column_names": ["x"],
+                        "partial": True,
+                    },
+                ],
+            )
 
     def test_unique_constraint_named(self):
         inspector = inspect(testing.db)

@@ -2651,7 +2651,11 @@ class SQLiteDialect(default.DefaultDialect):
                 "sqlite_autoindex"
             ):
                 continue
-            indexes.append(dict(name=row[1], column_names=[], unique=row[2]))
+            indexes.append(
+                dict(
+                    name=row[1], column_names=[], unique=row[2], partial=row[4]
+                )
+            )
 
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):
