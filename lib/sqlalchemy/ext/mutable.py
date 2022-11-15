@@ -365,9 +365,7 @@ from typing import List
 from typing import Optional
 from typing import overload
 from typing import Set
-from typing import SupportsIndex
 from typing import Tuple
-from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -392,6 +390,8 @@ from ..sql.base import SchemaEventTarget
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import memoized_property
+from ..util.typing import SupportsIndex
+from ..util.typing import TypeGuard
 
 _KT = TypeVar("_KT")  # Key type.
 _VT = TypeVar("_VT")  # Value type.
@@ -750,7 +750,7 @@ def _setup_composite_listener() -> None:
 _setup_composite_listener()
 
 
-class MutableDict(Mutable, dict[_KT, _VT]):
+class MutableDict(Mutable, Dict[_KT, _VT]):
     """A dictionary type that implements :class:`.Mutable`.
 
     The :class:`.MutableDict` object implements a dictionary that will
@@ -853,7 +853,7 @@ class MutableDict(Mutable, dict[_KT, _VT]):
         self.update(state)
 
 
-class MutableList(Mutable, list[_T]):
+class MutableList(Mutable, List[_T]):
     """A list type that implements :class:`.Mutable`.
 
     The :class:`.MutableList` object implements a list that will
@@ -959,7 +959,7 @@ class MutableList(Mutable, list[_T]):
             return value
 
 
-class MutableSet(Mutable, set[_T]):
+class MutableSet(Mutable, Set[_T]):
     """A set type that implements :class:`.Mutable`.
 
     The :class:`.MutableSet` object implements a set that will
