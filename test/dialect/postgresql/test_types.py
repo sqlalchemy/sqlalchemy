@@ -60,11 +60,13 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import CompileError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
@@ -3669,7 +3671,28 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             eq_(s.query(Data.data, Data).all(), [(d.data, d)])
 
 
-class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
+class _RangeTests:
+    _col_type = None
+    "The concrete range class these tests are for."
+
+    _col_str = None
+    "The corresponding PG type name."
+
+    _epsilon = None
+    """A small value used to generate range variants"""
+
+    def _data_str(self):
+        """return string form of a sample range"""
+        raise NotImplementedError()
+
+    def _data_obj(self):
+        """return Range form of the same range"""
+        raise NotImplementedError()
+
+
+class _RangeTypeCompilation(
+    AssertsCompiledSQL, _RangeTests, fixtures.TestBase
+):
     __dialect__ = "postgresql"
 
     # operator tests
@@ -3835,6 +3858,12 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
+        self._test_clause(
+            self.col.union(self._data_str()),
+            "data_table.range + %(range_1)s",
+            self.col.type,
+        )
+
     def test_intersection(self):
         self._test_clause(
             self.col * self.col,
@@ -3842,23 +3871,21 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
-    def test_different(self):
+    def test_difference(self):
         self._test_clause(
             self.col - self.col,
             "data_table.range - data_table.range",
             self.col.type,
         )
 
+        self._test_clause(
+            self.col.difference(self._data_str()),
+            "data_table.range - %(range_1)s",
+            self.col.type,
+        )
 
-class _RangeComparisonFixtures:
-    def _data_str(self):
-        """return string form of a sample range"""
-        raise NotImplementedError()
 
-    def _data_obj(self):
-        """return Range form of the same range"""
-        raise NotImplementedError()
-
+class _RangeComparisonFixtures(_RangeTests):
     def _step_value_up(self, value):
         """given a value, return a step up
 
@@ -3995,46 +4022,394 @@ class _RangeComparisonFixtures:
         r, expected = connection.execute(q).first()
         eq_(r.contains(v), expected)
 
-    def test_contains_range(
-        self,
-        connection,
-        bounds_obj_combinations,
-        contains_range_obj_combinations,
-    ):
-        r1repr = contains_range_obj_combinations._stringify()
-        r2repr = bounds_obj_combinations._stringify()
+    _common_ranges_to_test = (
+        lambda r, e: Range(empty=True),
+        lambda r, e: Range(None, None, bounds="()"),
+        lambda r, e: Range(r.lower, None, bounds="[)"),
+        lambda r, e: Range(None, r.upper, bounds="(]"),
+        lambda r, e: r,
+        lambda r, e: Range(r.lower, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="(]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="()"),
+    )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower + e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower + e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower + e, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower + e, r.upper, bounds="(]"),
+        lambda r, e: Range(r.lower + e, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower + e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower - e, bounds="(]"),
+        lambda r, e: Range(r.lower - 4 * e, r.lower, bounds="[)"),
+        lambda r, e: Range(r.upper + 4 * e, r.upper + 6 * e, bounds="()"),
+        argnames="r2t",
+    )
+    def test_contains_range(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
 
         RANGE = self._col_type
         range_typ = self._col_str
 
         q = select(
-            cast(contains_range_obj_combinations, RANGE).label("r1"),
-            cast(bounds_obj_combinations, RANGE).label("r2"),
-            cast(contains_range_obj_combinations, RANGE).contains(
-                bounds_obj_combinations
-            ),
-            cast(contains_range_obj_combinations, RANGE).contained_by(
-                bounds_obj_combinations
-            ),
+            cast(r1, RANGE).contains(r2),
+            cast(r1, RANGE).contained_by(r2),
+        )
+
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ} @> '{r2}'::{range_typ}"),
+            literal_column(f"'{r1}'::{range_typ} <@ '{r2}'::{range_typ}"),
+        )
+
+        row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(row, validate_row)
+
+        pg_contains, pg_contained = row
+        py_contains = r1.contains(r2)
+        eq_(
+            py_contains,
+            pg_contains,
+            f"{r1}.contains({r2}): got {py_contains},"
+            f" expected {pg_contains}",
+        )
+        py_contained = r1.contained_by(r2)
+        eq_(
+            py_contained,
+            pg_contained,
+            f"{r1}.contained_by({r2}): got {py_contained},"
+            f" expected {pg_contained}",
+        )
+        eq_(
+            r2.contains(r1),
+            pg_contained,
+            f"{r2}.contains({r1}: got {r2.contains(r1)},"
+            f" expected {pg_contained})",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower - 2 * e, r.lower - e, bounds="(]"),
+        lambda r, e: Range(r.upper + e, r.upper + 2 * e, bounds="[)"),
+        argnames="r2t",
+    )
+    def test_overlaps(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).overlaps(r2),
         )
         validate_q = select(
-            literal_column(f"'{r1repr}'::{range_typ}", RANGE).label("r1"),
-            literal_column(f"'{r2repr}'::{range_typ}", RANGE).label("r2"),
-            literal_column(
-                f"'{r1repr}'::{range_typ} @> '{r2repr}'::{range_typ}"
-            ),
-            literal_column(
-                f"'{r1repr}'::{range_typ} <@ '{r2repr}'::{range_typ}"
-            ),
+            literal_column(f"'{r1}'::{range_typ} && '{r2}'::{range_typ}"),
         )
-        orig_row = connection.execute(q).first()
+        row = connection.execute(q).first()
         validate_row = connection.execute(validate_q).first()
-        eq_(orig_row, validate_row)
+        eq_(row, validate_row)
 
-        r1, r2, contains, contained = orig_row
-        eq_(r1.contains(r2), contains)
-        eq_(r1.contained_by(r2), contained)
-        eq_(r2.contains(r1), contained)
+        pg_res = row[0]
+        py_res = r1.overlaps(r2)
+        eq_(
+            py_res,
+            pg_res,
+            f"{r1}.overlaps({r2}): got {py_res}, expected {pg_res}",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.upper, r.upper + 2 * e, bounds="[]"),
+        lambda r, e: Range(r.upper, r.upper + 2 * e, bounds="(]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower, bounds="[)"),
+        argnames="r2t",
+    )
+    def test_strictly_left_or_right_of(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).strictly_left_of(r2),
+            cast(r1, RANGE).strictly_right_of(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ} << '{r2}'::{range_typ}"),
+            literal_column(f"'{r1}'::{range_typ} >> '{r2}'::{range_typ}"),
+        )
+
+        row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(row, validate_row)
+
+        pg_left, pg_right = row
+        py_left = r1.strictly_left_of(r2)
+        eq_(
+            py_left,
+            pg_left,
+            f"{r1}.strictly_left_of({r2}): got {py_left}, expected {pg_left}",
+        )
+        py_left = r1 << r2
+        eq_(
+            py_left,
+            pg_left,
+            f"{r1} << {r2}: got {py_left}, expected {pg_left}",
+        )
+        py_right = r1.strictly_right_of(r2)
+        eq_(
+            py_right,
+            pg_right,
+            f"{r1}.strictly_right_of({r2}): got {py_left},"
+            f" expected {pg_right}",
+        )
+        py_right = r1 >> r2
+        eq_(
+            py_right,
+            pg_right,
+            f"{r1} >> {r2}: got {py_left}, expected {pg_right}",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.upper, r.upper + 2 * e, bounds="[]"),
+        lambda r, e: Range(r.upper, r.upper + 2 * e, bounds="(]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower, bounds="[)"),
+        argnames="r2t",
+    )
+    def test_not_extend_left_or_right_of(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).not_extend_left_of(r2),
+            cast(r1, RANGE).not_extend_right_of(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ} &> '{r2}'::{range_typ}"),
+            literal_column(f"'{r1}'::{range_typ} &< '{r2}'::{range_typ}"),
+        )
+        row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(row, validate_row)
+
+        pg_left, pg_right = row
+        py_left = r1.not_extend_left_of(r2)
+        eq_(
+            py_left,
+            pg_left,
+            f"{r1}.not_extend_left_of({r2}): got {py_left},"
+            f" expected {pg_left}",
+        )
+        py_right = r1.not_extend_right_of(r2)
+        eq_(
+            py_right,
+            pg_right,
+            f"{r1}.not_extend_right_of({r2}): got {py_right},"
+            f" expected {pg_right}",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower - e, bounds="[]"),
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower - e, bounds="[]"),
+        lambda r, e: Range(r.lower + e, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower + e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower + e, r.upper, bounds="(]"),
+        lambda r, e: Range(r.lower + e, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower + e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower - e, bounds="[]"),
+        lambda r, e: Range(r.lower - 2 * e, r.lower - e, bounds="(]"),
+        lambda r, e: Range(r.lower - 4 * e, r.lower, bounds="[)"),
+        lambda r, e: Range(r.upper + 4 * e, r.upper + 6 * e, bounds="()"),
+        argnames="r2t",
+    )
+    def test_adjacent(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).adjacent_to(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ} -|- '{r2}'::{range_typ}"),
+        )
+
+        row = connection.execute(q).first()
+        validate_row = connection.execute(validate_q).first()
+        eq_(row, validate_row)
+
+        pg_res = row[0]
+        py_res = r1.adjacent_to(r2)
+        eq_(
+            py_res,
+            pg_res,
+            f"{r1}.adjacent_to({r2}): got {py_res}, expected {pg_res}",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[]"),
+        lambda r, e: Range(r.upper + 4 * e, r.upper + 6 * e, bounds="()"),
+        argnames="r2t",
+    )
+    def test_union(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).union(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ}+'{r2}'::{range_typ}", RANGE),
+        )
+
+        try:
+            pg_res = connection.execute(q).scalar()
+        except DBAPIError:
+            connection.rollback()
+            with expect_raises(DBAPIError):
+                connection.execute(validate_q).scalar()
+            with expect_raises(ValueError):
+                r1.union(r2)
+        else:
+            validate_union = connection.execute(validate_q).scalar()
+            eq_(pg_res, validate_union)
+            py_res = r1.union(r2)
+            eq_(
+                py_res,
+                pg_res,
+                f"{r1}.union({r2}): got {py_res}, expected {pg_res}",
+            )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[]"),
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower, bounds="(]"),
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="()"),
+        lambda r, e: Range(r.lower, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="()"),
+        argnames="r2t",
+    )
+    def test_difference(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).difference(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ}-'{r2}'::{range_typ}", RANGE),
+        )
+
+        try:
+            pg_res = connection.execute(q).scalar()
+        except DBAPIError:
+            connection.rollback()
+            with expect_raises(DBAPIError):
+                connection.execute(validate_q).scalar()
+            with expect_raises(ValueError):
+                r1.difference(r2)
+        else:
+            validate_difference = connection.execute(validate_q).scalar()
+            eq_(pg_res, validate_difference)
+            py_res = r1.difference(r2)
+            eq_(
+                py_res,
+                pg_res,
+                f"{r1}.difference({r2}): got {py_res}, expected {pg_res}",
+            )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower, bounds="(]"),
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="()"),
+        argnames="r2t",
+    )
+    def test_equality(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        range_typ = self._col_str
+
+        q = select(
+            literal_column(f"'{r1}'::{range_typ} = '{r2}'::{range_typ}")
+        )
+        equal = connection.execute(q).scalar()
+        eq_(r1 == r2, equal, f"{r1} == {r2}: got {r1 == r2}, expected {equal}")
+
+        q = select(
+            literal_column(f"'{r1}'::{range_typ} <> '{r2}'::{range_typ}")
+        )
+        different = connection.execute(q).scalar()
+        eq_(
+            r1 != r2,
+            different,
+            f"{r1} != {r2}: got {r1 != r2}, expected {different}",
+        )
 
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
@@ -4194,6 +4569,8 @@ class _Int4RangeTests:
     def _data_obj(self):
         return Range(1, 4)
 
+    _epsilon = 1
+
     def _step_value_up(self, value):
         return value + 1
 
@@ -4211,6 +4588,8 @@ class _Int8RangeTests:
 
     def _data_obj(self):
         return Range(9223372036854775306, 9223372036854775800)
+
+    _epsilon = 1
 
     def _step_value_up(self, value):
         return value + 5
@@ -4230,6 +4609,8 @@ class _NumRangeTests:
     def _data_obj(self):
         return Range(decimal.Decimal("1.0"), decimal.Decimal("9.0"))
 
+    _epsilon = decimal.Decimal(1)
+
     def _step_value_up(self, value):
         return value + decimal.Decimal("1.8")
 
@@ -4247,6 +4628,8 @@ class _DateRangeTests:
 
     def _data_obj(self):
         return Range(datetime.date(2013, 3, 23), datetime.date(2013, 3, 30))
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)
@@ -4268,6 +4651,8 @@ class _DateTimeRangeTests:
             datetime.datetime(2013, 3, 23, 14, 30),
             datetime.datetime(2013, 3, 30, 23, 30),
         )
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)
@@ -4295,6 +4680,8 @@ class _DateTimeTZRangeTests:
 
     def _data_obj(self):
         return Range(*self.tstzs())
+
+    _epsilon = datetime.timedelta(days=1)
 
     def _step_value_up(self, value):
         return value + datetime.timedelta(days=1)
@@ -4535,7 +4922,7 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
             self.col.type,
         )
 
-    def test_different(self):
+    def test_difference(self):
         self._test_clause(
             self.col - self.col,
             "data_table.multirange - data_table.multirange",
