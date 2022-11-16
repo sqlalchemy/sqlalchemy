@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 8667
+
+    The ``sqlalchemy.ext.mutable`` extension is now fully pep-484 typed. Huge
+    thanks to Gleb Kisenkov for their efforts on this.
