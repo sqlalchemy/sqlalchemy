@@ -992,7 +992,7 @@ def _emit_insert_statements(
                 or (
                     has_all_defaults
                     or not base_mapper.eager_defaults
-                    or not base_mapper.local_table.implicit_returning
+                    or not table.implicit_returning
                     or not connection.dialect.insert_returning
                 )
             )
