@@ -52,6 +52,7 @@ from ._typing import is_tuple_type
 from .annotation import Annotated
 from .annotation import SupportsWrappingAnnotations
 from .base import _clone
+from .base import _expand_cloned
 from .base import _generative
 from .base import _NoArg
 from .base import Executable
@@ -1464,21 +1465,32 @@ class ColumnElement(
 
     @util.memoized_property
     def proxy_set(self) -> FrozenSet[ColumnElement[Any]]:
-        return frozenset([self]).union(
-            itertools.chain.from_iterable(c.proxy_set for c in self._proxies)
-        )
+        """set of all columns we are proxying
 
-    def _uncached_proxy_set(self) -> FrozenSet[ColumnElement[Any]]:
-        """An 'uncached' version of proxy set.
-
-        This is so that we can read annotations from the list of columns
-        without breaking the caching of the above proxy_set.
+        as of 2.0 this is explicitly deannotated columns.  previously it was
+        effectively deannotated columns but wasn't enforced.  annotated
+        columns should basically not go into sets if at all possible because
+        their hashing behavior is very non-performant.
 
         """
-        return frozenset([self]).union(
-            itertools.chain.from_iterable(
-                c._uncached_proxy_set() for c in self._proxies
-            )
+        return frozenset([self._deannotate()]).union(
+            itertools.chain(*[c.proxy_set for c in self._proxies])
+        )
+
+    @util.memoized_property
+    def _expanded_proxy_set(self) -> FrozenSet[ColumnElement[Any]]:
+        return frozenset(_expand_cloned(self.proxy_set))
+
+    def _uncached_proxy_list(self) -> List[ColumnElement[Any]]:
+        """An 'uncached' version of proxy set.
+
+        This list includes annotated columns which perform very poorly in
+        set operations.
+
+        """
+
+        return [self] + list(
+            itertools.chain(*[c._uncached_proxy_list() for c in self._proxies])
         )
 
     def shares_lineage(self, othercolumn: ColumnElement[Any]) -> bool:
@@ -1540,6 +1552,7 @@ class ColumnElement(
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
+        compound_select_cols: Optional[Sequence[ColumnElement[Any]]] = None,
         **kw: Any,
     ) -> typing_Tuple[str, ColumnClause[_T]]:
         """Create a new :class:`_expression.ColumnElement` representing this
@@ -1565,7 +1578,10 @@ class ColumnElement(
         )
 
         co._propagate_attrs = selectable._propagate_attrs
-        co._proxies = [self]
+        if compound_select_cols:
+            co._proxies = list(compound_select_cols)
+        else:
+            co._proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
         return key, co
@@ -4303,6 +4319,7 @@ class NamedColumn(KeyedColumnElement[_T]):
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
+        compound_select_cols: Optional[Sequence[ColumnElement[Any]]] = None,
         disallow_is_literal: bool = False,
         **kw: Any,
     ) -> typing_Tuple[str, ColumnClause[_T]]:
@@ -4318,7 +4335,11 @@ class NamedColumn(KeyedColumnElement[_T]):
         c._propagate_attrs = selectable._propagate_attrs
         if name is None:
             c.key = self.key
-        c._proxies = [self]
+        if compound_select_cols:
+            c._proxies = list(compound_select_cols)
+        else:
+            c._proxies = [self]
+
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
         return c.key, c
@@ -4466,6 +4487,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         selectable: FromClause,
         *,
         name: Optional[str] = None,
+        compound_select_cols: Optional[Sequence[ColumnElement[Any]]] = None,
         **kw: Any,
     ) -> typing_Tuple[str, ColumnClause[_T]]:
         name = self.name if not name else name
@@ -4475,6 +4497,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
             name=name,
             disallow_is_literal=True,
             name_is_truncatable=isinstance(name, _truncated_label),
+            compound_select_cols=compound_select_cols,
         )
 
         # there was a note here to remove this assertion, which was here
@@ -4710,6 +4733,7 @@ class ColumnClause(
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
+        compound_select_cols: Optional[Sequence[ColumnElement[Any]]] = None,
         disallow_is_literal: bool = False,
         **kw: Any,
     ) -> typing_Tuple[str, ColumnClause[_T]]:
@@ -4740,7 +4764,11 @@ class ColumnClause(
         c._propagate_attrs = selectable._propagate_attrs
         if name is None:
             c.key = self.key
-        c._proxies = [self]
+        if compound_select_cols:
+            c._proxies = list(compound_select_cols)
+        else:
+            c._proxies = [self]
+
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
         return c.key, c

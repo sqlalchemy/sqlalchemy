@@ -421,6 +421,7 @@ def _deep_annotate(
     annotations: _AnnotationDict,
     exclude: Optional[Sequence[SupportsAnnotations]] = None,
     detect_subquery_cols: bool = False,
+    ind_cols_on_fromclause: bool = False,
 ) -> _SA:
     """Deep copy the given ClauseElement, annotating each element
     with the given annotations dictionary.
@@ -435,6 +436,16 @@ def _deep_annotate(
     cloned_ids: Dict[int, SupportsAnnotations] = {}
 
     def clone(elem: SupportsAnnotations, **kw: Any) -> SupportsAnnotations:
+
+        # ind_cols_on_fromclause means make sure an AnnotatedFromClause
+        # has its own .c collection independent of that which its proxying.
+        # this is used specifically by orm.LoaderCriteriaOption to break
+        # a reference cycle that it's otherwise prone to building,
+        # see test_relationship_criteria->
+        # test_loader_criteria_subquery_w_same_entity.  logic here was
+        # changed for #8796 and made explicit; previously it occurred
+        # by accident
+
         kw["detect_subquery_cols"] = detect_subquery_cols
         id_ = id(elem)
 
@@ -454,7 +465,11 @@ def _deep_annotate(
                 newelem = elem._annotate(annotations)
         else:
             newelem = elem
-        newelem._copy_internals(clone=clone)
+
+        newelem._copy_internals(
+            clone=clone, ind_cols_on_fromclause=ind_cols_on_fromclause
+        )
+
         cloned_ids[id_] = newelem
         return newelem
 

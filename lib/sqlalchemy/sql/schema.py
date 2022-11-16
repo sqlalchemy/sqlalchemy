@@ -2360,6 +2360,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
+        compound_select_cols: Optional[
+            _typing_Sequence[ColumnElement[Any]]
+        ] = None,
         **kw: Any,
     ) -> Tuple[str, ColumnClause[_T]]:
         """Create a *proxy* for this column.
@@ -2401,7 +2404,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
                 nullable=self.nullable,
-                _proxies=[self],
+                _proxies=list(compound_select_cols)
+                if compound_select_cols
+                else [self],
                 *fk,
             )
         except TypeError as err:

@@ -567,14 +567,31 @@ class ToListTest(fixtures.TestBase):
 
 class ColumnCollectionCommon(testing.AssertsCompiledSQL):
     def _assert_collection_integrity(self, coll):
-        eq_(coll._colset, set(c for k, c in coll._collection))
+        eq_(coll._colset, set(c for k, c, _ in coll._collection))
         d = {}
-        for k, col in coll._collection:
+        for k, col, _ in coll._collection:
             d.setdefault(k, (k, col))
         d.update(
-            {idx: (k, col) for idx, (k, col) in enumerate(coll._collection)}
+            {idx: (k, col) for idx, (k, col, _) in enumerate(coll._collection)}
         )
         eq_(coll._index, d)
+
+        if not coll._proxy_index:
+            coll._init_proxy_index()
+
+        all_metrics = {
+            metrics for mm in coll._proxy_index.values() for metrics in mm
+        }
+        eq_(
+            all_metrics,
+            {m for (_, _, m) in coll._collection},
+        )
+
+        for mm in all_metrics:
+            for eps_col in mm.get_expanded_proxy_set():
+                assert mm in coll._proxy_index[eps_col]
+                for mm_ in coll._proxy_index[eps_col]:
+                    assert eps_col in mm_.get_expanded_proxy_set()
 
     def test_keys(self):
         c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")

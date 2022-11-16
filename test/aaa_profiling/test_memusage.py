@@ -1246,8 +1246,11 @@ class CycleTest(_fixtures.FixtureTest):
 
         # unfortunately there's a lot of cycles with an aliased()
         # for now, however calling upon clause_element does not seem
-        # to make it worse which is what this was looking to test
-        @assert_cycles(69)
+        # to make it worse which is what this was looking to test.
+        #
+        # update as of #8796.  clause_element makes it a little bit worse
+        # as we now generate more metrics for the .c collection.
+        @assert_cycles(79)
         def go():
             a1 = aliased(Foo)
             a1.user_name.__clause_element__()

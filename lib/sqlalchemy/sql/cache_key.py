@@ -949,7 +949,7 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             attrname,
             tuple(
                 col._gen_cache_key(anon_map, bindparams)
-                for k, col in obj._collection
+                for k, col, _ in obj._collection
             ),
         )
 

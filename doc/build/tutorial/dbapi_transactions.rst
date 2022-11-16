@@ -479,7 +479,7 @@ the block with a "commit as you go" commit.
 .. tip:: The :class:`_orm.Session` doesn't actually hold onto the
    :class:`_engine.Connection` object after it ends the transaction.  It
    gets a new :class:`_engine.Connection` from the :class:`_engine.Engine`
-   when executing SQL against the database is next needed.
+   the next time it needs to execute SQL against the database.
 
 The :class:`_orm.Session` obviously has a lot more tricks up its sleeve
 than that, however understanding that it has a :meth:`_orm.Session.execute`
