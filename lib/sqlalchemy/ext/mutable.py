@@ -514,10 +514,10 @@ class MutableBase:
 
         def set_(
             target: InstanceState[_O],
-            value: Any,
-            oldvalue: Any,
+            value: MutableBase | None,
+            oldvalue: MutableBase | None,
             initiator: AttributeEventToken,
-        ) -> Any:
+        ) -> MutableBase | None:
             """Listen for set/replace events on the target
             data member.
 
