@@ -1317,7 +1317,10 @@ class LoaderCriteriaOption(CriteriaOption):
             crit = self.where_criteria  # type: ignore
         assert isinstance(crit, ColumnElement)
         return sql_util._deep_annotate(
-            crit, {"for_loader_criteria": self}, detect_subquery_cols=True
+            crit,
+            {"for_loader_criteria": self},
+            detect_subquery_cols=True,
+            ind_cols_on_fromclause=True,
         )
 
     def process_compile_state_replaced_entities(
@@ -1415,6 +1418,8 @@ class Bundle(
     is_bundle = True
 
     _propagate_attrs: _PropagateAttrsType = util.immutabledict()
+
+    proxy_set = util.EMPTY_SET  # type: ignore
 
     exprs: List[_ColumnsClauseElement]
 
