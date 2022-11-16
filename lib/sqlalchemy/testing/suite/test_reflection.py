@@ -2393,7 +2393,12 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         insp = inspect(connection)
 
         expected = [
-            {"name": "t_idx_2", "column_names": ["x"], "unique": False}
+            {
+                "name": "t_idx_2",
+                "column_names": ["x"],
+                "unique": False,
+                "dialect_options": {},
+            }
         ]
 
         def completeIndex(entry):

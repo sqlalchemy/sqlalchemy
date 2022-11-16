@@ -2310,7 +2310,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "create table foo_with_partial_index (x integer, y integer)"
             )
             conn.exec_driver_sql(
-                "create unique index ix_partial on foo_with_partial_index (x) where y > 10"
+                "create unique index ix_partial on "
+                "foo_with_partial_index (x) where y > 10"
             )
 
             inspector = inspect(conn)

@@ -2644,11 +2644,12 @@ class SQLiteDialect(default.DefaultDialect):
         )
         indexes = []
 
-        # regular expression to extract the filter predicate of a partial index.
-        # this could fail to extract the predicate correctly on indexes created like
+        # regular expression to extract the filter predicate of a partial
+        # index. this could fail to extract the predicate correctly on
+        # indexes created like
         #   CREATE INDEX i ON t (col || ') where') WHERE col <> ''
-        # but as this function does not support expression-based indexes this case
-        # does not occur.
+        # but as this function does not support expression-based indexes
+        # this case does not occur.
         partial_pred_re = re.compile(r"\)\s+where\s+(.+)", re.IGNORECASE)
 
         if schema:
