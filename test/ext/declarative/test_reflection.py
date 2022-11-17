@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -7,11 +10,14 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import decl_api as decl
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.decl_base import _DeferredMapperConfig
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -32,6 +38,10 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
 
     def teardown_test(self):
         clear_mappers()
+
+    @testing.fixture
+    def decl_base(self):
+        yield Base
 
 
 class DeferredReflectBase(DeclarativeReflectionBase):
@@ -346,8 +356,8 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
             Column("bar_data", String(30)),
         )
 
-    def test_basic(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+    def test_basic(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -360,8 +370,8 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         DeferredReflection.prepare(testing.db)
         self._roundtrip()
 
-    def test_add_subclass_column(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+    def test_add_subclass_column(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -375,14 +385,61 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         DeferredReflection.prepare(testing.db)
         self._roundtrip()
 
-    def test_add_pk_column(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+    def test_add_subclass_mapped_column(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+            __tablename__ = "foo"
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "foo",
+            }
+
+        class Bar(Foo):
+            __mapper_args__ = {"polymorphic_identity": "bar"}
+            bar_data: Mapped[str]
+
+        DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_subclass_mapped_column_no_existing(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+            __tablename__ = "foo"
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "foo",
+            }
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Can't use use_existing_column with deferred mappers",
+        ):
+
+            class Bar(Foo):
+                __mapper_args__ = {"polymorphic_identity": "bar"}
+                bar_data: Mapped[str] = mapped_column(use_existing_column=True)
+
+    def test_add_pk_column(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
                 "polymorphic_identity": "foo",
             }
             id = Column(Integer, primary_key=True)
+
+        class Bar(Foo):
+            __mapper_args__ = {"polymorphic_identity": "bar"}
+
+        DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_pk_mapped_column(self, decl_base):
+        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+            __tablename__ = "foo"
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "foo",
+            }
+            id: Mapped[int] = mapped_column(primary_key=True)
 
         class Bar(Foo):
             __mapper_args__ = {"polymorphic_identity": "bar"}

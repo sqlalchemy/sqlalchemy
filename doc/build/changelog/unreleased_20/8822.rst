@@ -1,0 +1,19 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 8822
+
+    Added a new parameter :paramref:`_orm.mapped_column.use_existing_column` to
+    accommodate the use case of a single-table inheritance mapping that uses
+    the pattern of more than one subclass indicating the same column to take
+    place on the superclass. This pattern was previously possible by using
+    :func:`_orm.declared_attr` in conjunction with locating the existing column
+    in the ``.__table__`` of the superclass, however is now updated to work
+    with :func:`_orm.mapped_column` as well as with pep-484 typing, in a
+    simple and succinct way.
+
+    .. seealso::
+
+       :ref:`orm_inheritance_column_conflicts`
+
+
+

@@ -84,6 +84,7 @@ if typing.TYPE_CHECKING:
     from .context import ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
+    from .decl_base import _ClassScanMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
     from .path_registry import AbstractEntityRegistry
@@ -157,6 +158,7 @@ class _IntrospectsAnnotations:
 
     def declarative_scan(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],

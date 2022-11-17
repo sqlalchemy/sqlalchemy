@@ -128,6 +128,28 @@ def _declared_mapping_info(
         return None
 
 
+def _is_supercls_for_inherits(cls: Type[Any]) -> bool:
+    """return True if this class will be used as a superclass to set in
+    'inherits'.
+
+    This includes deferred mapper configs that aren't mapped yet, however does
+    not include classes with _sa_decl_prepare_nocascade (e.g.
+    ``AbstractConcreteBase``); these concrete-only classes are not set up as
+    "inherits" until after mappers are configured using
+    mapper._set_concrete_base()
+
+    """
+    if _DeferredMapperConfig.has_cls(cls):
+        return not _get_immediate_cls_attr(
+            cls, "_sa_decl_prepare_nocascade", strict=True
+        )
+    # regular mapping
+    elif _is_mapped_class(cls):
+        return True
+    else:
+        return False
+
+
 def _resolve_for_abstract_or_classical(cls: Type[Any]) -> Optional[Type[Any]]:
     if cls is object:
         return None
@@ -380,11 +402,8 @@ class _ImperativeMapperConfig(_MapperConfig):
                 c = _resolve_for_abstract_or_classical(base_)
                 if c is None:
                     continue
-                if _declared_mapping_info(
-                    c
-                ) is not None and not _get_immediate_cls_attr(
-                    c, "_sa_decl_prepare_nocascade", strict=True
-                ):
+
+                if _is_supercls_for_inherits(c) and c not in inherits_search:
                     inherits_search.append(c)
 
             if inherits_search:
@@ -430,6 +449,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         "allow_unmapped_annotations",
     )
 
+    is_deferred = False
     registry: _RegistryType
     clsdict_view: _ClassDict
     collected_annotations: Dict[str, _CollectedAnnotation]
@@ -532,13 +552,15 @@ class _ClassScanMapperConfig(_MapperConfig):
                 self.classname, self.cls, registry._class_registry
             )
 
+            self._setup_inheriting_mapper(mapper_kw)
+
             self._extract_mappable_attributes()
 
             self._extract_declared_columns()
 
             self._setup_table(table)
 
-            self._setup_inheritance(mapper_kw)
+            self._setup_inheriting_columns(mapper_kw)
 
             self._early_mapping(mapper_kw)
 
@@ -739,13 +761,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             # need to do this all the way up the hierarchy first
             # (see #8190)
 
-            class_mapped = (
-                base is not cls
-                and _declared_mapping_info(base) is not None
-                and not _get_immediate_cls_attr(
-                    base, "_sa_decl_prepare_nocascade", strict=True
-                )
-            )
+            class_mapped = base is not cls and _is_supercls_for_inherits(base)
 
             local_attributes_for_class = self._cls_attr_resolver(base)
 
@@ -1358,6 +1374,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     if mapped_container is not None or annotation is None:
                         try:
                             value.declarative_scan(
+                                self,
                                 self.registry,
                                 cls,
                                 originating_module,
@@ -1558,11 +1575,8 @@ class _ClassScanMapperConfig(_MapperConfig):
         else:
             return manager.registry.metadata
 
-    def _setup_inheritance(self, mapper_kw: _MapperKwArgs) -> None:
-        table = self.local_table
+    def _setup_inheriting_mapper(self, mapper_kw: _MapperKwArgs) -> None:
         cls = self.cls
-        table_args = self.table_args
-        declared_columns = self.declared_columns
 
         inherits = mapper_kw.get("inherits", None)
 
@@ -1574,13 +1588,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                 c = _resolve_for_abstract_or_classical(base_)
                 if c is None:
                     continue
-                if _declared_mapping_info(
-                    c
-                ) is not None and not _get_immediate_cls_attr(
-                    c, "_sa_decl_prepare_nocascade", strict=True
-                ):
-                    if c not in inherits_search:
-                        inherits_search.append(c)
+
+                if _is_supercls_for_inherits(c) and c not in inherits_search:
+                    inherits_search.append(c)
 
             if inherits_search:
                 if len(inherits_search) > 1:
@@ -1593,6 +1603,12 @@ class _ClassScanMapperConfig(_MapperConfig):
             inherits = inherits.class_
 
         self.inherits = inherits
+
+    def _setup_inheriting_columns(self, mapper_kw: _MapperKwArgs) -> None:
+        table = self.local_table
+        cls = self.cls
+        table_args = self.table_args
+        declared_columns = self.declared_columns
 
         if (
             table is None
@@ -1636,9 +1652,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                         if inherited_table.c[col.name] is col:
                             continue
                         raise exc.ArgumentError(
-                            "Column '%s' on class %s conflicts with "
-                            "existing column '%s'"
-                            % (col, cls, inherited_table.c[col.name])
+                            f"Column '{col}' on class {cls.__name__} "
+                            f"conflicts with existing column "
+                            f"'{inherited_table.c[col.name]}'.  If using "
+                            f"Declarative, consider using the "
+                            "use_existing_column parameter of mapped_column() "
+                            "to resolve conflicts."
                         )
                     if col.primary_key:
                         raise exc.ArgumentError(
@@ -1695,14 +1714,15 @@ class _ClassScanMapperConfig(_MapperConfig):
             mapper_args["inherits"] = self.inherits
 
         if self.inherits and not mapper_args.get("concrete", False):
+            # note the superclass is expected to have a Mapper assigned and
+            # not be a deferred config, as this is called within map()
+            inherited_mapper = class_mapper(self.inherits, False)
+            inherited_table = inherited_mapper.local_table
+
             # single or joined inheritance
             # exclude any cols on the inherited table which are
             # not mapped on the parent class, to avoid
             # mapping columns specific to sibling/nephew classes
-            inherited_mapper = _declared_mapping_info(self.inherits)
-            assert isinstance(inherited_mapper, Mapper)
-            inherited_table = inherited_mapper.local_table
-
             if "exclude_properties" not in mapper_args:
                 mapper_args["exclude_properties"] = exclude_properties = {
                     c.key
@@ -1767,6 +1787,8 @@ def _as_dc_declaredattr(
 
 class _DeferredMapperConfig(_ClassScanMapperConfig):
     _cls: weakref.ref[Type[Any]]
+
+    is_deferred = True
 
     _configs: util.OrderedDict[
         weakref.ref[Type[Any]], _DeferredMapperConfig
