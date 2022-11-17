@@ -37,8 +37,10 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
+from sqlalchemy.types import NullType
 
 
 class ReflectionFixtures(object):
@@ -1821,6 +1823,21 @@ class CustomTypeReflectionTest(fixtures.TestBase):
         dialect.ischema_names = dialect.ischema_names.copy()
         dialect.ischema_names["my_custom_type"] = self.CustomType
         self._assert_reflected(dialect)
+
+    def test_no_format_type(self):
+        """test #8748"""
+
+        dialect = postgresql.PGDialect()
+        dialect.ischema_names = dialect.ischema_names.copy()
+        dialect.ischema_names["my_custom_type"] = self.CustomType
+
+        with expect_warnings(
+            r"PostgreSQL format_type\(\) returned NULL for column 'colname'"
+        ):
+            column_info = dialect._get_column_info(
+                "colname", None, None, False, {}, {}, "public", None, "", None
+            )
+            assert isinstance(column_info["type"], NullType)
 
 
 class IntervalReflectionTest(fixtures.TestBase):

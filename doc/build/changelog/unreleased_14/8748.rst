@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug postgresql
+    :tickets: 8748
+
+    Made an adjustment to how the PostgreSQL dialect considers column types
+    when it reflects columns from a table, to accommodate for alternative
+    backends which may return NULL from the PG ``format_type()`` function.
