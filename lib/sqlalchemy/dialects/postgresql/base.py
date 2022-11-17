@@ -3489,12 +3489,19 @@ class PGDialect(default.DefaultDialect):
             generated = row_dict["generated"]
             identity = row_dict["identity_options"]
 
-            # strip (*) from character varying(5), timestamp(5)
-            # with time zone, geometry(POLYGON), etc.
-            attype = attype_pattern.sub("", format_type)
+            if format_type is None:
+                no_format_type = True
+                attype = format_type = "no format_type()"
+                is_array = False
+            else:
+                no_format_type = False
 
-            # strip '[]' from integer[], etc. and check if an array
-            attype, is_array = _handle_array_type(attype)
+                # strip (*) from character varying(5), timestamp(5)
+                # with time zone, geometry(POLYGON), etc.
+                attype = attype_pattern.sub("", format_type)
+
+                # strip '[]' from integer[], etc. and check if an array
+                attype, is_array = _handle_array_type(attype)
 
             # strip quotes from case sensitive enum or domain names
             enum_or_domain_key = tuple(util.quoted_token_parser(attype))
@@ -3589,6 +3596,12 @@ class PGDialect(default.DefaultDialect):
                 coltype = coltype(*args, **kwargs)
                 if is_array:
                     coltype = self.ischema_names["_array"](coltype)
+            elif no_format_type:
+                util.warn(
+                    "PostgreSQL format_type() returned NULL for column '%s'"
+                    % (name,)
+                )
+                coltype = sqltypes.NULLTYPE
             else:
                 util.warn(
                     "Did not recognize type '%s' of column '%s'"

@@ -43,9 +43,11 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import ComparesIndexes
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_false
 from sqlalchemy.testing.assertions import is_true
+from sqlalchemy.types import NullType
 
 
 class ReflectionFixtures:
@@ -2304,6 +2306,35 @@ class CustomTypeReflectionTest(fixtures.TestBase):
         dialect.ischema_names = dialect.ischema_names.copy()
         dialect.ischema_names["my_custom_type"] = self.CustomType
         self._assert_reflected(dialect)
+
+    def test_no_format_type(self):
+        """test #8748"""
+
+        dialect = postgresql.PGDialect()
+        dialect.ischema_names = dialect.ischema_names.copy()
+        dialect.ischema_names["my_custom_type"] = self.CustomType
+
+        with expect_warnings(
+            r"PostgreSQL format_type\(\) returned NULL for column 'colname'"
+        ):
+            row_dict = {
+                "name": "colname",
+                "table_name": "tblname",
+                "format_type": None,
+                "default": None,
+                "not_null": False,
+                "comment": None,
+                "generated": "",
+                "identity_options": None,
+            }
+            column_info = dialect._get_columns_info(
+                [row_dict], {}, {}, "public"
+            )
+            assert ("public", "tblname") in column_info
+            column_info = column_info[("public", "tblname")]
+            assert len(column_info) == 1
+            column_info = column_info[0]
+            assert isinstance(column_info["type"], NullType)
 
 
 class IntervalReflectionTest(fixtures.TestBase):
