@@ -1469,112 +1469,110 @@ from ...util.typing import TypedDict
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
-RESERVED_WORDS = set(
-    [
-        "all",
-        "analyse",
-        "analyze",
-        "and",
-        "any",
-        "array",
-        "as",
-        "asc",
-        "asymmetric",
-        "both",
-        "case",
-        "cast",
-        "check",
-        "collate",
-        "column",
-        "constraint",
-        "create",
-        "current_catalog",
-        "current_date",
-        "current_role",
-        "current_time",
-        "current_timestamp",
-        "current_user",
-        "default",
-        "deferrable",
-        "desc",
-        "distinct",
-        "do",
-        "else",
-        "end",
-        "except",
-        "false",
-        "fetch",
-        "for",
-        "foreign",
-        "from",
-        "grant",
-        "group",
-        "having",
-        "in",
-        "initially",
-        "intersect",
-        "into",
-        "leading",
-        "limit",
-        "localtime",
-        "localtimestamp",
-        "new",
-        "not",
-        "null",
-        "of",
-        "off",
-        "offset",
-        "old",
-        "on",
-        "only",
-        "or",
-        "order",
-        "placing",
-        "primary",
-        "references",
-        "returning",
-        "select",
-        "session_user",
-        "some",
-        "symmetric",
-        "table",
-        "then",
-        "to",
-        "trailing",
-        "true",
-        "union",
-        "unique",
-        "user",
-        "using",
-        "variadic",
-        "when",
-        "where",
-        "window",
-        "with",
-        "authorization",
-        "between",
-        "binary",
-        "cross",
-        "current_schema",
-        "freeze",
-        "full",
-        "ilike",
-        "inner",
-        "is",
-        "isnull",
-        "join",
-        "left",
-        "like",
-        "natural",
-        "notnull",
-        "outer",
-        "over",
-        "overlaps",
-        "right",
-        "similar",
-        "verbose",
-    ]
-)
+RESERVED_WORDS = {
+    "all",
+    "analyse",
+    "analyze",
+    "and",
+    "any",
+    "array",
+    "as",
+    "asc",
+    "asymmetric",
+    "both",
+    "case",
+    "cast",
+    "check",
+    "collate",
+    "column",
+    "constraint",
+    "create",
+    "current_catalog",
+    "current_date",
+    "current_role",
+    "current_time",
+    "current_timestamp",
+    "current_user",
+    "default",
+    "deferrable",
+    "desc",
+    "distinct",
+    "do",
+    "else",
+    "end",
+    "except",
+    "false",
+    "fetch",
+    "for",
+    "foreign",
+    "from",
+    "grant",
+    "group",
+    "having",
+    "in",
+    "initially",
+    "intersect",
+    "into",
+    "leading",
+    "limit",
+    "localtime",
+    "localtimestamp",
+    "new",
+    "not",
+    "null",
+    "of",
+    "off",
+    "offset",
+    "old",
+    "on",
+    "only",
+    "or",
+    "order",
+    "placing",
+    "primary",
+    "references",
+    "returning",
+    "select",
+    "session_user",
+    "some",
+    "symmetric",
+    "table",
+    "then",
+    "to",
+    "trailing",
+    "true",
+    "union",
+    "unique",
+    "user",
+    "using",
+    "variadic",
+    "when",
+    "where",
+    "window",
+    "with",
+    "authorization",
+    "between",
+    "binary",
+    "cross",
+    "current_schema",
+    "freeze",
+    "full",
+    "ilike",
+    "inner",
+    "is",
+    "isnull",
+    "join",
+    "left",
+    "like",
+    "natural",
+    "notnull",
+    "outer",
+    "over",
+    "overlaps",
+    "right",
+    "similar",
+    "verbose",
+}
 
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
@@ -1801,7 +1799,7 @@ class PGCompiler(compiler.SQLCompiler):
         )
 
     def render_literal_value(self, value, type_):
-        value = super(PGCompiler, self).render_literal_value(value, type_)
+        value = super().render_literal_value(value, type_)
 
         if self.dialect._backslash_escapes:
             value = value.replace("\\", "\\\\")
@@ -2108,14 +2106,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     "create_constraint=False on this Enum datatype."
                 )
 
-        text = super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text = super().visit_check_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
 
     def visit_foreign_key_constraint(self, constraint):
-        text = super(PGDDLCompiler, self).visit_foreign_key_constraint(
-            constraint
-        )
+        text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
 
@@ -2353,9 +2349,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 create.element.data_type
             )
 
-        return super(PGDDLCompiler, self).visit_create_sequence(
-            create, prefix=prefix, **kw
-        )
+        return super().visit_create_sequence(create, prefix=prefix, **kw)
 
     def _can_comment_on_constraint(self, ddl_instance):
         constraint = ddl_instance.element
@@ -2478,7 +2472,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_enum(self, type_, **kw):
         if not type_.native_enum or not self.dialect.supports_native_enum:
-            return super(PGTypeCompiler, self).visit_enum(type_, **kw)
+            return super().visit_enum(type_, **kw)
         else:
             return self.visit_ENUM(type_, **kw)
 
@@ -2803,7 +2797,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
 
                 return self._execute_scalar(exc, column.type)
 
-        return super(PGExecutionContext, self).get_insert_default(column)
+        return super().get_insert_default(column)
 
 
 class PGReadOnlyConnectionCharacteristic(
@@ -2945,7 +2939,7 @@ class PGDialect(default.DefaultDialect):
         self._json_serializer = json_serializer
 
     def initialize(self, connection):
-        super(PGDialect, self).initialize(connection)
+        super().initialize(connection)
 
         # https://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)

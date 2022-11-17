@@ -32,7 +32,7 @@ if typing.TYPE_CHECKING:
         dead: bool
         gr_context: Optional[Context]
 
-        def __init__(self, fn: Callable[..., Any], driver: "greenlet"):
+        def __init__(self, fn: Callable[..., Any], driver: greenlet):
             ...
 
         def throw(self, *arg: Any) -> Any:

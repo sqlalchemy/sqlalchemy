@@ -439,7 +439,7 @@ class DeferredLambdaElement(LambdaElement):
         lambda_args: Tuple[Any, ...] = (),
     ):
         self.lambda_args = lambda_args
-        super(DeferredLambdaElement, self).__init__(fn, role, opts)
+        super().__init__(fn, role, opts)
 
     def _invoke_user_fn(self, fn, *arg):
         return fn(*self.lambda_args)
@@ -483,7 +483,7 @@ class DeferredLambdaElement(LambdaElement):
     def _copy_internals(
         self, clone=_clone, deferred_copy_internals=None, **kw
     ):
-        super(DeferredLambdaElement, self)._copy_internals(
+        super()._copy_internals(
             clone=clone,
             deferred_copy_internals=deferred_copy_internals,  # **kw
             opts=kw,

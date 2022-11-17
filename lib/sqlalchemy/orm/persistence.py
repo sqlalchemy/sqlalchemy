@@ -458,12 +458,12 @@ def _collect_update_commands(
         if bulk:
             # keys here are mapped attribute keys, so
             # look at mapper attribute keys for pk
-            params = dict(
-                (propkey_to_col[propkey].key, state_dict[propkey])
+            params = {
+                propkey_to_col[propkey].key: state_dict[propkey]
                 for propkey in set(propkey_to_col)
                 .intersection(state_dict)
                 .difference(mapper._pk_attr_keys_by_table[table])
-            )
+            }
             has_all_defaults = True
         else:
             params = {}
@@ -542,12 +542,12 @@ def _collect_update_commands(
         if bulk:
             # keys here are mapped attribute keys, so
             # look at mapper attribute keys for pk
-            pk_params = dict(
-                (propkey_to_col[propkey]._label, state_dict.get(propkey))
+            pk_params = {
+                propkey_to_col[propkey]._label: state_dict.get(propkey)
                 for propkey in set(propkey_to_col).intersection(
                     mapper._pk_attr_keys_by_table[table]
                 )
-            )
+            }
         else:
             pk_params = {}
             for col in pks:
@@ -1689,7 +1689,7 @@ def _connections_for_states(base_mapper, uowtransaction, states):
 
 def _sort_states(mapper, states):
     pending = set(states)
-    persistent = set(s for s in pending if s.key is not None)
+    persistent = {s for s in pending if s.key is not None}
     pending.difference_update(persistent)
 
     try:

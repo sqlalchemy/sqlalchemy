@@ -87,7 +87,7 @@ if __name__ == "__main__":
     # only "A" is referenced explicitly.  Using "collections",
     # we deal with a dict of key/sets of integers directly.
 
-    session.add_all([A(collections={"1": set([1, 2, 3])})])
+    session.add_all([A(collections={"1": {1, 2, 3}})])
     session.commit()
 
     a1 = session.query(A).first()

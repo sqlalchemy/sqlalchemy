@@ -3035,7 +3035,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
         if not self.clauses:
             return self
         else:
-            return super(BooleanClauseList, self).self_group(against=against)
+            return super().self_group(against=against)
 
 
 and_ = BooleanClauseList.and_
@@ -3082,7 +3082,7 @@ class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
             ]
 
         self.type = sqltypes.TupleType(*[arg.type for arg in init_clauses])
-        super(Tuple, self).__init__(*init_clauses)
+        super().__init__(*init_clauses)
 
     @property
     def _select_iterable(self) -> _SelectIterable:
@@ -3753,8 +3753,8 @@ class BinaryExpression(OperatorExpression[_T]):
     if typing.TYPE_CHECKING:
 
         def __invert__(
-            self: "BinaryExpression[_T]",
-        ) -> "BinaryExpression[_T]":
+            self: BinaryExpression[_T],
+        ) -> BinaryExpression[_T]:
             ...
 
     @util.ro_non_memoized_property
@@ -3772,7 +3772,7 @@ class BinaryExpression(OperatorExpression[_T]):
                 modifiers=self.modifiers,
             )
         else:
-            return super(BinaryExpression, self)._negate()
+            return super()._negate()
 
 
 class Slice(ColumnElement[Any]):
@@ -4617,7 +4617,7 @@ class ColumnClause(
         if self.table is not None:
             return self.table.entity_namespace
         else:
-            return super(ColumnClause, self).entity_namespace
+            return super().entity_namespace
 
     def _clone(self, detect_subquery_cols=False, **kw):
         if (
@@ -4630,7 +4630,7 @@ class ColumnClause(
             new = table.c.corresponding_column(self)
             return new
 
-        return super(ColumnClause, self)._clone(**kw)
+        return super()._clone(**kw)
 
     @HasMemoized_ro_memoized_attribute
     def _from_objects(self) -> List[FromClause]:
@@ -4993,7 +4993,7 @@ class AnnotatedColumnElement(Annotated):
                 self.__dict__.pop(attr)
 
     def _with_annotations(self, values):
-        clone = super(AnnotatedColumnElement, self)._with_annotations(values)
+        clone = super()._with_annotations(values)
         clone.__dict__.pop("comparator", None)
         return clone
 
@@ -5032,7 +5032,7 @@ class _truncated_label(quoted_name):
     def __new__(cls, value: str, quote: Optional[bool] = None) -> Any:
         quote = getattr(value, "quote", quote)
         # return super(_truncated_label, cls).__new__(cls, value, quote, True)
-        return super(_truncated_label, cls).__new__(cls, value, quote)
+        return super().__new__(cls, value, quote)
 
     def __reduce__(self) -> Any:
         return self.__class__, (str(self), self.quote)

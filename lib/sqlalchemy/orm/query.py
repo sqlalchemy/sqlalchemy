@@ -3281,7 +3281,7 @@ class BulkUpdate(BulkUD):
         values: Dict[_DMLColumnArgument, Any],
         update_kwargs: Optional[Dict[Any, Any]],
     ):
-        super(BulkUpdate, self).__init__(query)
+        super().__init__(query)
         self.values = values
         self.update_kwargs = update_kwargs
 

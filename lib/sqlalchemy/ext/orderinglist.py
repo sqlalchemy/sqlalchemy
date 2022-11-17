@@ -143,7 +143,7 @@ def ordering_list(
     count_from: Optional[int] = None,
     ordering_func: Optional[OrderingFunc] = None,
     reorder_on_append: bool = False,
-) -> Callable[[], "OrderingList"]:
+) -> Callable[[], OrderingList]:
     """Prepares an :class:`OrderingList` factory for use in mapper definitions.
 
     Returns an object suitable for use as an argument to a Mapper
@@ -335,29 +335,29 @@ class OrderingList(List[_T]):
             self._set_order_value(entity, should_be)
 
     def append(self, entity):
-        super(OrderingList, self).append(entity)
+        super().append(entity)
         self._order_entity(len(self) - 1, entity, self.reorder_on_append)
 
     def _raw_append(self, entity):
         """Append without any ordering behavior."""
 
-        super(OrderingList, self).append(entity)
+        super().append(entity)
 
     _raw_append = collection.adds(1)(_raw_append)
 
     def insert(self, index, entity):
-        super(OrderingList, self).insert(index, entity)
+        super().insert(index, entity)
         self._reorder()
 
     def remove(self, entity):
-        super(OrderingList, self).remove(entity)
+        super().remove(entity)
 
         adapter = collection_adapter(self)
         if adapter and adapter._referenced_by_owner:
             self._reorder()
 
     def pop(self, index=-1):
-        entity = super(OrderingList, self).pop(index)
+        entity = super().pop(index)
         self._reorder()
         return entity
 
@@ -375,18 +375,18 @@ class OrderingList(List[_T]):
                 self.__setitem__(i, entity[i])
         else:
             self._order_entity(index, entity, True)
-            super(OrderingList, self).__setitem__(index, entity)
+            super().__setitem__(index, entity)
 
     def __delitem__(self, index):
-        super(OrderingList, self).__delitem__(index)
+        super().__delitem__(index)
         self._reorder()
 
     def __setslice__(self, start, end, values):
-        super(OrderingList, self).__setslice__(start, end, values)
+        super().__setslice__(start, end, values)
         self._reorder()
 
     def __delslice__(self, start, end):
-        super(OrderingList, self).__delslice__(start, end)
+        super().__delslice__(start, end)
         self._reorder()
 
     def __reduce__(self):

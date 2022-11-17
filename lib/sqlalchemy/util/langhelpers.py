@@ -1522,7 +1522,7 @@ class classproperty(property):
     fget: Callable[[Any], Any]
 
     def __init__(self, fget: Callable[[Any], Any], *arg: Any, **kw: Any):
-        super(classproperty, self).__init__(fget, *arg, **kw)
+        super().__init__(fget, *arg, **kw)
         self.__doc__ = fget.__doc__
 
     def __get__(self, obj: Any, cls: Optional[type] = None) -> Any:
@@ -1793,7 +1793,7 @@ class _hash_limit_string(str):
         interpolated = (value % args) + (
             " (this warning may be suppressed after %d occurrences)" % num
         )
-        self = super(_hash_limit_string, cls).__new__(cls, interpolated)
+        self = super().__new__(cls, interpolated)
         self._hash = hash("%s_%d" % (value, hash(interpolated) % num))
         return self
 

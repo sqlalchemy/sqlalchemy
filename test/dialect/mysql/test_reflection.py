@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import re
 
 from sqlalchemy import BigInteger
@@ -875,10 +873,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # MySQL converts unique constraints into unique indexes.
         # separately we get both
-        indexes = dict((i["name"], i) for i in insp.get_indexes("mysql_uc"))
-        constraints = set(
+        indexes = {i["name"]: i for i in insp.get_indexes("mysql_uc")}
+        constraints = {
             i["name"] for i in insp.get_unique_constraints("mysql_uc")
-        )
+        }
 
         self.assert_("uc_a" in indexes)
         self.assert_(indexes["uc_a"]["unique"])
@@ -888,8 +886,8 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         # more "official" MySQL construct
         reflected = Table("mysql_uc", MetaData(), autoload_with=testing.db)
 
-        indexes = dict((i.name, i) for i in reflected.indexes)
-        constraints = set(uc.name for uc in reflected.constraints)
+        indexes = {i.name: i for i in reflected.indexes}
+        constraints = {uc.name for uc in reflected.constraints}
 
         self.assert_("uc_a" in indexes)
         self.assert_(indexes["uc_a"].unique)
@@ -1259,10 +1257,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         m.create_all(connection)
 
         eq_(
-            dict(
-                (rec["name"], rec)
+            {
+                rec["name"]: rec
                 for rec in inspect(connection).get_foreign_keys("t2")
-            ),
+            },
             {
                 "cap_t1id_fk": {
                     "name": "cap_t1id_fk",

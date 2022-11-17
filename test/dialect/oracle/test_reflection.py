@@ -1,6 +1,3 @@
-# coding: utf-8
-
-
 from sqlalchemy import CHAR
 from sqlalchemy import Double
 from sqlalchemy import exc
@@ -426,7 +423,7 @@ class SystemTableTablenamesTest(fixtures.TestBase):
             set(insp.get_table_names()).intersection(
                 ["my_table", "foo_table"]
             ),
-            set(["my_table", "foo_table"]),
+            {"my_table", "foo_table"},
         )
 
     def test_reflect_system_table(self):
@@ -469,7 +466,7 @@ class DontReflectIOTTest(fixtures.TestBase):
     def test_reflect_all(self, connection):
         m = MetaData()
         m.reflect(connection)
-        eq_(set(t.name for t in m.tables.values()), set(["admin_docindex"]))
+        eq_({t.name for t in m.tables.values()}, {"admin_docindex"})
 
 
 def all_tables_compression_missing():
@@ -924,12 +921,10 @@ class RoundTripIndexTest(fixtures.TestBase):
 
         # make a dictionary of the reflected objects:
 
-        reflected = dict(
-            [
-                (obj_definition(i), i)
-                for i in reflectedtable.indexes | reflectedtable.constraints
-            ]
-        )
+        reflected = {
+            obj_definition(i): i
+            for i in reflectedtable.indexes | reflectedtable.constraints
+        }
 
         # assert we got primary key constraint and its name, Error
         # if not in dict

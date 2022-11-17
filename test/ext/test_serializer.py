@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from sqlalchemy import desc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func

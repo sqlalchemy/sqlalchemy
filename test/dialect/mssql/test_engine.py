@@ -1,5 +1,3 @@
-# -*- encoding: utf-8
-
 from decimal import Decimal
 import re
 from unittest.mock import Mock

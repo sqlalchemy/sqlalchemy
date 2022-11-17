@@ -1354,7 +1354,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             name_text = self.preparer.quote(column.name)
             clauses.append("%s = %s" % (name_text, value_text))
 
-        non_matching = set(on_duplicate.update) - set(c.key for c in cols)
+        non_matching = set(on_duplicate.update) - {c.key for c in cols}
         if non_matching:
             util.warn(
                 "Additional column names not matching "
@@ -1503,7 +1503,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         return "CAST(%s AS %s)" % (self.process(cast.clause, **kw), type_)
 
     def render_literal_value(self, value, type_):
-        value = super(MySQLCompiler, self).render_literal_value(value, type_)
+        value = super().render_literal_value(value, type_)
         if self.dialect._backslash_escapes:
             value = value.replace("\\", "\\\\")
         return value
@@ -1534,7 +1534,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             )
             return select._distinct.upper() + " "
 
-        return super(MySQLCompiler, self).get_select_precolumns(select, **kw)
+        return super().get_select_precolumns(select, **kw)
 
     def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
         if from_linter:
@@ -1805,11 +1805,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         table_opts = []
 
-        opts = dict(
-            (k[len(self.dialect.name) + 1 :].upper(), v)
+        opts = {
+            k[len(self.dialect.name) + 1 :].upper(): v
             for k, v in table.kwargs.items()
             if k.startswith("%s_" % self.dialect.name)
-        )
+        }
 
         if table.comment is not None:
             opts["COMMENT"] = table.comment
@@ -1963,9 +1963,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_primary_key_constraint(self, constraint):
-        text = super(MySQLDDLCompiler, self).visit_primary_key_constraint(
-            constraint
-        )
+        text = super().visit_primary_key_constraint(constraint)
         using = constraint.dialect_options["mysql"]["using"]
         if using:
             text += " USING %s" % (self.preparer.quote(using))
@@ -2305,7 +2303,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_enum(self, type_, **kw):
         if not type_.native_enum:
-            return super(MySQLTypeCompiler, self).visit_enum(type_)
+            return super().visit_enum(type_)
         else:
             return self._visit_enumerated_values("ENUM", type_, type_.enums)
 
@@ -2351,9 +2349,7 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
         else:
             quote = '"'
 
-        super(MySQLIdentifierPreparer, self).__init__(
-            dialect, initial_quote=quote, escape_quote=quote
-        )
+        super().__init__(dialect, initial_quote=quote, escape_quote=quote)
 
     def _quote_free_identifiers(self, *ids):
         """Unilaterally identifier-quote any number of strings."""

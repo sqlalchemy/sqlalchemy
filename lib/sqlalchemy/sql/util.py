@@ -316,8 +316,7 @@ def visit_binary_product(
             if isinstance(element, ColumnClause):
                 yield element
             for elem in element.get_children():
-                for e in visit(elem):
-                    yield e
+                yield from visit(elem)
 
     list(visit(expr))
     visit = None  # type: ignore  # remove gc cycles
@@ -433,12 +432,10 @@ def expand_column_list_from_order_by(collist, order_by):
     in the collist.
 
     """
-    cols_already_present = set(
-        [
-            col.element if col._order_by_label_element is not None else col
-            for col in collist
-        ]
-    )
+    cols_already_present = {
+        col.element if col._order_by_label_element is not None else col
+        for col in collist
+    }
 
     to_look_for = list(chain(*[unwrap_order_by(o) for o in order_by]))
 
@@ -463,13 +460,10 @@ def clause_is_present(clause, search):
 
 def tables_from_leftmost(clause: FromClause) -> Iterator[FromClause]:
     if isinstance(clause, Join):
-        for t in tables_from_leftmost(clause.left):
-            yield t
-        for t in tables_from_leftmost(clause.right):
-            yield t
+        yield from tables_from_leftmost(clause.left)
+        yield from tables_from_leftmost(clause.right)
     elif isinstance(clause, FromGrouping):
-        for t in tables_from_leftmost(clause.element):
-            yield t
+        yield from tables_from_leftmost(clause.element)
     else:
         yield clause
 
@@ -592,7 +586,7 @@ class _repr_row(_repr_base):
 
     __slots__ = ("row",)
 
-    def __init__(self, row: "Row[Any]", max_chars: int = 300):
+    def __init__(self, row: Row[Any], max_chars: int = 300):
         self.row = row
         self.max_chars = max_chars
 
@@ -775,7 +769,7 @@ class _repr_params(_repr_base):
             )
         return text
 
-    def _repr_param_tuple(self, params: "Sequence[Any]") -> str:
+    def _repr_param_tuple(self, params: Sequence[Any]) -> str:
         trunc = self.trunc
 
         (

@@ -28,7 +28,7 @@ __all__ = ["ShardedSession", "ShardedQuery"]
 
 class ShardedQuery(Query):
     def __init__(self, *args, **kwargs):
-        super(ShardedQuery, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.id_chooser = self.session.id_chooser
         self.query_chooser = self.session.query_chooser
         self.execute_chooser = self.session.execute_chooser
@@ -88,7 +88,7 @@ class ShardedSession(Session):
 
         """
         query_chooser = kwargs.pop("query_chooser", None)
-        super(ShardedSession, self).__init__(query_cls=query_cls, **kwargs)
+        super().__init__(query_cls=query_cls, **kwargs)
 
         event.listen(
             self, "do_orm_execute", execute_and_instances, retval=True
@@ -138,7 +138,7 @@ class ShardedSession(Session):
         """
 
         if identity_token is not None:
-            return super(ShardedSession, self)._identity_lookup(
+            return super()._identity_lookup(
                 mapper,
                 primary_key_identity,
                 identity_token=identity_token,
@@ -149,7 +149,7 @@ class ShardedSession(Session):
             if lazy_loaded_from:
                 q = q._set_lazyload_from(lazy_loaded_from)
             for shard_id in self.id_chooser(q, primary_key_identity):
-                obj = super(ShardedSession, self)._identity_lookup(
+                obj = super()._identity_lookup(
                     mapper,
                     primary_key_identity,
                     identity_token=shard_id,

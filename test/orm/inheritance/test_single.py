@@ -2044,17 +2044,13 @@ class EagerDefaultEvalTest(fixtures.DeclarativeMappedTest):
 class EagerDefaultEvalTestSubDefaults(EagerDefaultEvalTest):
     @classmethod
     def setup_classes(cls):
-        super(EagerDefaultEvalTestSubDefaults, cls).setup_classes(
-            include_sub_defaults=True
-        )
+        super().setup_classes(include_sub_defaults=True)
 
 
 class EagerDefaultEvalTestPolymorphic(EagerDefaultEvalTest):
     @classmethod
     def setup_classes(cls):
-        super(EagerDefaultEvalTestPolymorphic, cls).setup_classes(
-            with_polymorphic="*"
-        )
+        super().setup_classes(with_polymorphic="*")
 
 
 class ColExprTest(AssertsCompiledSQL, fixtures.TestBase):

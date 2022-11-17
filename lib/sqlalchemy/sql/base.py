@@ -291,16 +291,14 @@ def _cloned_intersection(a, b):
 
     """
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return set(
-        elem for elem in a if all_overlap.intersection(elem._cloned_set)
-    )
+    return {elem for elem in a if all_overlap.intersection(elem._cloned_set)}
 
 
 def _cloned_difference(a, b):
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return set(
+    return {
         elem for elem in a if not all_overlap.intersection(elem._cloned_set)
-    )
+    }
 
 
 class _DialectArgView(MutableMapping[str, Any]):

@@ -58,7 +58,7 @@ def _legacy_signature(
 
 
 def _wrap_fn_for_legacy(
-    dispatch_collection: "_ClsLevelDispatch[_ET]",
+    dispatch_collection: _ClsLevelDispatch[_ET],
     fn: _ListenerFnType,
     argspec: FullArgSpec,
 ) -> _ListenerFnType:
@@ -120,7 +120,7 @@ def _indent(text: str, indent: str) -> str:
 
 
 def _standard_listen_example(
-    dispatch_collection: "_ClsLevelDispatch[_ET]",
+    dispatch_collection: _ClsLevelDispatch[_ET],
     sample_target: Any,
     fn: _ListenerFnType,
 ) -> str:
@@ -161,7 +161,7 @@ def _standard_listen_example(
 
 
 def _legacy_listen_examples(
-    dispatch_collection: "_ClsLevelDispatch[_ET]",
+    dispatch_collection: _ClsLevelDispatch[_ET],
     sample_target: str,
     fn: _ListenerFnType,
 ) -> str:
@@ -189,8 +189,8 @@ def _legacy_listen_examples(
 
 
 def _version_signature_changes(
-    parent_dispatch_cls: Type["_HasEventsDispatch[_ET]"],
-    dispatch_collection: "_ClsLevelDispatch[_ET]",
+    parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
+    dispatch_collection: _ClsLevelDispatch[_ET],
 ) -> str:
     since, args, conv = dispatch_collection.legacy_signatures[0]
     return (
@@ -219,8 +219,8 @@ def _version_signature_changes(
 
 
 def _augment_fn_docs(
-    dispatch_collection: "_ClsLevelDispatch[_ET]",
-    parent_dispatch_cls: Type["_HasEventsDispatch[_ET]"],
+    dispatch_collection: _ClsLevelDispatch[_ET],
+    parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
     fn: _ListenerFnType,
 ) -> str:
     header = (

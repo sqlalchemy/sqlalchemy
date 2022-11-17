@@ -143,9 +143,7 @@ def run_with_profile(runsnake=False, dump=False):
     )
     stats = pstats.Stats(filename)
 
-    counts_by_methname = dict(
-        (key[2], stats.stats[key][0]) for key in stats.stats
-    )
+    counts_by_methname = {key[2]: stats.stats[key][0] for key in stats.stats}
 
     print("SQLA Version: %s" % __version__)
     print("Total calls %d" % stats.total_calls)

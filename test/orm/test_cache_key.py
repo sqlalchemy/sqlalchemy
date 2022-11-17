@@ -415,13 +415,13 @@ class CacheKeyTest(fixtures.CacheKeyFixture, _fixtures.FixtureTest):
         """test for issue discovered in #7394"""
 
         @registry.mapped
-        class User2(object):
+        class User2:
             __table__ = self.tables.users
 
             name_syn = synonym("name")
 
         @registry.mapped
-        class Address2(object):
+        class Address2:
             __table__ = self.tables.addresses
 
             name_syn = synonym("email_address")

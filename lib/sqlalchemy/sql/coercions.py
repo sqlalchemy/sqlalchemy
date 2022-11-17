@@ -782,7 +782,7 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
         else:
             advice = None
 
-        return super(ExpressionElementImpl, self)._raise_for_expected(
+        return super()._raise_for_expected(
             element, argname=argname, resolved=resolved, advice=advice, **kw
         )
 
@@ -1096,7 +1096,7 @@ class LabeledColumnExprImpl(ExpressionElementImpl):
         if isinstance(resolved, roles.ExpressionElementRole):
             return resolved.label(None)
         else:
-            new = super(LabeledColumnExprImpl, self)._implicit_coercions(
+            new = super()._implicit_coercions(
                 element, resolved, argname=argname, **kw
             )
             if isinstance(new, roles.ExpressionElementRole):
@@ -1123,7 +1123,7 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
                 f"{', '.join(repr(e) for e in element)})?"
             )
 
-        return super(ColumnsClauseImpl, self)._raise_for_expected(
+        return super()._raise_for_expected(
             element, argname=argname, resolved=resolved, advice=advice, **kw
         )
 
@@ -1370,7 +1370,7 @@ class CompoundElementImpl(_NoTextCoercion, RoleImpl):
                 )
         else:
             advice = None
-        return super(CompoundElementImpl, self)._raise_for_expected(
+        return super()._raise_for_expected(
             element, argname=argname, resolved=resolved, advice=advice, **kw
         )
 

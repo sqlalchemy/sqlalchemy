@@ -388,7 +388,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
             def __init__(self, *args):
                 args = args + (3,)
-                super(MyFunction, self).__init__(*args)
+                super().__init__(*args)
 
         self.assert_compile(
             func.my_func(1, 2), "my_func(:my_func_1, :my_func_2, :my_func_3)"

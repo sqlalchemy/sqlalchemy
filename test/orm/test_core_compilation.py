@@ -1031,7 +1031,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             users,
             properties=util.OrderedDict(
                 [
-                    ("concat", column_property((users.c.id * 2))),
+                    ("concat", column_property(users.c.id * 2)),
                     (
                         "count",
                         column_property(

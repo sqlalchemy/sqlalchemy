@@ -86,7 +86,7 @@ class Node(Base):
         return len(self.path.split(".")) - 1
 
     def __repr__(self):
-        return "Node(id={})".format(self.id)
+        return f"Node(id={self.id})"
 
     def __str__(self):
         root_depth = self.depth

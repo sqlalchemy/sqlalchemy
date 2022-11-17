@@ -45,7 +45,7 @@ class VersionedStartEnd:
         # reduce some verbosity when we make a new object
         kw.setdefault("start", current_time() - datetime.timedelta(days=3))
         kw.setdefault("end", current_time() + datetime.timedelta(days=3))
-        super(VersionedStartEnd, self).__init__(**kw)
+        super().__init__(**kw)
 
     def new_version(self, session):
 

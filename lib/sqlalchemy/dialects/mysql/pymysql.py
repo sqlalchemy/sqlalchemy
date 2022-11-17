@@ -65,14 +65,12 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     def create_connect_args(self, url, _translate_args=None):
         if _translate_args is None:
             _translate_args = dict(username="user")
-        return super(MySQLDialect_pymysql, self).create_connect_args(
+        return super().create_connect_args(
             url, _translate_args=_translate_args
         )
 
     def is_disconnect(self, e, connection, cursor):
-        if super(MySQLDialect_pymysql, self).is_disconnect(
-            e, connection, cursor
-        ):
+        if super().is_disconnect(e, connection, cursor):
             return True
         elif isinstance(e, self.dbapi.Error):
             str_e = str(e).lower()

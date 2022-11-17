@@ -560,7 +560,7 @@ class AsyncAdapt_asyncpg_ss_cursor(AsyncAdapt_asyncpg_cursor):
     __slots__ = ("_rowbuffer",)
 
     def __init__(self, adapt_connection):
-        super(AsyncAdapt_asyncpg_ss_cursor, self).__init__(adapt_connection)
+        super().__init__(adapt_connection)
         self._rowbuffer = None
 
     def close(self):
@@ -863,9 +863,7 @@ class AsyncAdapt_asyncpg_dbapi:
 
     class InvalidCachedStatementError(NotSupportedError):
         def __init__(self, message):
-            super(
-                AsyncAdapt_asyncpg_dbapi.InvalidCachedStatementError, self
-            ).__init__(
+            super().__init__(
                 message + " (SQLAlchemy asyncpg dialect will now invalidate "
                 "all prepared caches in response to this exception)",
             )
@@ -1095,7 +1093,7 @@ class PGDialect_asyncpg(PGDialect):
 
         """
 
-        super_connect = super(PGDialect_asyncpg, self).on_connect()
+        super_connect = super().on_connect()
 
         def connect(conn):
             conn.await_(self.setup_asyncpg_json_codec(conn))

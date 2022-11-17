@@ -35,12 +35,10 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
         if asdecimal is None:
             asdecimal = bool(scale and scale > 0)
 
-        super(NUMBER, self).__init__(
-            precision=precision, scale=scale, asdecimal=asdecimal
-        )
+        super().__init__(precision=precision, scale=scale, asdecimal=asdecimal)
 
     def adapt(self, impltype):
-        ret = super(NUMBER, self).adapt(impltype)
+        ret = super().adapt(impltype)
         # leave a hint for the DBAPI handler
         ret._is_oracle_number = True
         return ret

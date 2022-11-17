@@ -1,4 +1,3 @@
-# coding: utf-8
 from collections import OrderedDict
 import datetime
 import decimal
@@ -990,14 +989,14 @@ class EnumSetTest(
             t.insert(),
             [
                 {"id": 1, "data": set()},
-                {"id": 2, "data": set([""])},
-                {"id": 3, "data": set(["a", ""])},
-                {"id": 4, "data": set(["b"])},
+                {"id": 2, "data": {""}},
+                {"id": 3, "data": {"a", ""}},
+                {"id": 4, "data": {"b"}},
             ],
         )
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
-            [(1, set()), (2, set()), (3, set(["a"])), (4, set(["b"]))],
+            [(1, set()), (2, set()), (3, {"a"}), (4, {"b"})],
         )
 
     def test_bitwise_required_for_empty(self):
@@ -1023,18 +1022,18 @@ class EnumSetTest(
             t.insert(),
             [
                 {"id": 1, "data": set()},
-                {"id": 2, "data": set([""])},
-                {"id": 3, "data": set(["a", ""])},
-                {"id": 4, "data": set(["b"])},
+                {"id": 2, "data": {""}},
+                {"id": 3, "data": {"a", ""}},
+                {"id": 4, "data": {"b"}},
             ],
         )
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
             [
                 (1, set()),
-                (2, set([""])),
-                (3, set(["a", ""])),
-                (4, set(["b"])),
+                (2, {""}),
+                (3, {"a", ""}),
+                (4, {"b"}),
             ],
         )
 
@@ -1052,18 +1051,18 @@ class EnumSetTest(
 
         expected = [
             (
-                set(["a"]),
-                set(["a"]),
-                set(["a"]),
-                set(["'a'"]),
-                set(["a", "b"]),
+                {"a"},
+                {"a"},
+                {"a"},
+                {"'a'"},
+                {"a", "b"},
             ),
             (
-                set(["b"]),
-                set(["b"]),
-                set(["b"]),
-                set(["b"]),
-                set(["a", "b"]),
+                {"b"},
+                {"b"},
+                {"b"},
+                {"b"},
+                {"a", "b"},
             ),
         ]
         res = connection.execute(set_table.select()).fetchall()
@@ -1079,13 +1078,11 @@ class EnumSetTest(
         )
 
         set_table.create(connection)
-        connection.execute(
-            set_table.insert(), {"data": set(["réveillé", "drôle"])}
-        )
+        connection.execute(set_table.insert(), {"data": {"réveillé", "drôle"}})
 
         row = connection.execute(set_table.select()).first()
 
-        eq_(row, (1, set(["réveillé", "drôle"])))
+        eq_(row, (1, {"réveillé", "drôle"}))
 
     def test_int_roundtrip(self, metadata, connection):
         set_table = self._set_fixture_one(metadata)
@@ -1097,11 +1094,11 @@ class EnumSetTest(
         eq_(
             res,
             (
-                set(["a"]),
-                set(["b"]),
-                set(["a", "b"]),
-                set(["'a'", "b"]),
-                set([]),
+                {"a"},
+                {"b"},
+                {"a", "b"},
+                {"'a'", "b"},
+                set(),
             ),
         )
 
@@ -1129,24 +1126,24 @@ class EnumSetTest(
                 connection.execute(table.delete())
 
             roundtrip([None, None, None], [None] * 3)
-            roundtrip(["", "", ""], [set([])] * 3)
-            roundtrip([set(["dq"]), set(["a"]), set(["5"])])
-            roundtrip(["dq", "a", "5"], [set(["dq"]), set(["a"]), set(["5"])])
-            roundtrip([1, 1, 1], [set(["dq"]), set(["a"]), set(["5"])])
-            roundtrip([set(["dq", "sq"]), None, set(["9", "5", "7"])])
+            roundtrip(["", "", ""], [set()] * 3)
+            roundtrip([{"dq"}, {"a"}, {"5"}])
+            roundtrip(["dq", "a", "5"], [{"dq"}, {"a"}, {"5"}])
+            roundtrip([1, 1, 1], [{"dq"}, {"a"}, {"5"}])
+            roundtrip([{"dq", "sq"}, None, {"9", "5", "7"}])
         connection.execute(
             set_table.insert(),
             [
-                {"s3": set(["5"])},
-                {"s3": set(["5", "7"])},
-                {"s3": set(["5", "7", "9"])},
-                {"s3": set(["7", "9"])},
+                {"s3": {"5"}},
+                {"s3": {"5", "7"}},
+                {"s3": {"5", "7", "9"}},
+                {"s3": {"7", "9"}},
             ],
         )
 
         rows = connection.execute(
             select(set_table.c.s3).where(
-                set_table.c.s3.in_([set(["5"]), ["5", "7"]])
+                set_table.c.s3.in_([{"5"}, ["5", "7"]])
             )
         ).fetchall()
 

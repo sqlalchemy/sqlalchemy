@@ -263,8 +263,8 @@ class LikeQueryTest(BakedTest):
 
         # original query still works
         eq_(
-            set([(u.id, u.name) for u in bq(sess).all()]),
-            set([(8, "ed"), (9, "fred")]),
+            {(u.id, u.name) for u in bq(sess).all()},
+            {(8, "ed"), (9, "fred")},
         )
 
     def test_count_with_bindparams(self):

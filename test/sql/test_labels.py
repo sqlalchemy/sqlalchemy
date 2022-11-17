@@ -795,7 +795,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = stmt.compile(dialect=dialect)
         eq_(
             set(compiled._create_result_map()),
-            set(["tablename_columnn_1", "tablename_columnn_2"]),
+            {"tablename_columnn_1", "tablename_columnn_2"},
         )
 
 

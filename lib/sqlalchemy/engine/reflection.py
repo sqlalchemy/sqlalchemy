@@ -568,9 +568,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
             schema_fkeys = self.get_multi_foreign_keys(schname, **kw)
             tnames.extend(schema_fkeys)
             for (_, tname), fkeys in schema_fkeys.items():
-                fknames_for_table[(schname, tname)] = set(
-                    [fk["name"] for fk in fkeys]
-                )
+                fknames_for_table[(schname, tname)] = {
+                    fk["name"] for fk in fkeys
+                }
                 for fkey in fkeys:
                     if (
                         tname != fkey["referred_table"]
@@ -1517,11 +1517,11 @@ class Inspector(inspection.Inspectable["Inspector"]):
         # intended for reflection, e.g. oracle_resolve_synonyms.
         # these are unconditionally passed to related Table
         # objects
-        reflection_options = dict(
-            (k, table.dialect_kwargs.get(k))
+        reflection_options = {
+            k: table.dialect_kwargs.get(k)
             for k in dialect.reflection_options
             if k in table.dialect_kwargs
-        )
+        }
 
         table_key = (schema, table_name)
         if _reflect_info is None or table_key not in _reflect_info.columns:
@@ -1644,8 +1644,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         coltype = col_d["type"]
 
-        col_kw = dict(
-            (k, col_d[k])  # type: ignore[literal-required]
+        col_kw = {
+            k: col_d[k]  # type: ignore[literal-required]
             for k in [
                 "nullable",
                 "autoincrement",
@@ -1655,7 +1655,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 "comment",
             ]
             if k in col_d
-        )
+        }
 
         if "dialect_options" in col_d:
             col_kw.update(col_d["dialect_options"])

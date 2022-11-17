@@ -813,7 +813,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def __init__(self, *args, **kwargs):
         self.__wheres = {}
-        super(OracleCompiler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def visit_mod_binary(self, binary, operator, **kw):
         return "mod(%s, %s)" % (
@@ -852,15 +852,13 @@ class OracleCompiler(compiler.SQLCompiler):
             return ""
 
     def visit_function(self, func, **kw):
-        text = super(OracleCompiler, self).visit_function(func, **kw)
+        text = super().visit_function(func, **kw)
         if kw.get("asfrom", False):
             text = "TABLE (%s)" % func
         return text
 
     def visit_table_valued_column(self, element, **kw):
-        text = super(OracleCompiler, self).visit_table_valued_column(
-            element, **kw
-        )
+        text = super().visit_table_valued_column(element, **kw)
         text = "COLUMN_VALUE " + text
         return text
 
@@ -1331,9 +1329,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         return "".join(table_opts)
 
     def get_identity_options(self, identity_options):
-        text = super(OracleDDLCompiler, self).get_identity_options(
-            identity_options
-        )
+        text = super().get_identity_options(identity_options)
         text = text.replace("NO MINVALUE", "NOMINVALUE")
         text = text.replace("NO MAXVALUE", "NOMAXVALUE")
         text = text.replace("NO CYCLE", "NOCYCLE")
@@ -1386,9 +1382,7 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
     def format_savepoint(self, savepoint):
         name = savepoint.ident.lstrip("_")
-        return super(OracleIdentifierPreparer, self).format_savepoint(
-            savepoint, name
-        )
+        return super().format_savepoint(savepoint, name)
 
 
 class OracleExecutionContext(default.DefaultExecutionContext):
@@ -1489,7 +1483,7 @@ class OracleDialect(default.DefaultDialect):
         ) = enable_offset_fetch
 
     def initialize(self, connection):
-        super(OracleDialect, self).initialize(connection)
+        super().initialize(connection)
 
         # Oracle 8i has RETURNING:
         # https://docs.oracle.com/cd/A87860_01/doc/index.htm

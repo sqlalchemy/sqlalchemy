@@ -1,4 +1,3 @@
-#! coding:utf-8
 from __future__ import annotations
 
 from typing import Tuple
@@ -1609,14 +1608,12 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         stmt = table.insert().values(values)
 
         eq_(
-            dict(
-                [
-                    (k, v.type._type_affinity)
-                    for (k, v) in stmt.compile(
-                        dialect=postgresql.dialect()
-                    ).binds.items()
-                ]
-            ),
+            {
+                k: v.type._type_affinity
+                for (k, v) in stmt.compile(
+                    dialect=postgresql.dialect()
+                ).binds.items()
+            },
             {
                 "foo": Integer,
                 "data_m2": String,
@@ -1757,14 +1754,12 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         stmt = table.insert().values(values)
         eq_(
-            dict(
-                [
-                    (k, v.type._type_affinity)
-                    for (k, v) in stmt.compile(
-                        dialect=postgresql.dialect()
-                    ).binds.items()
-                ]
-            ),
+            {
+                k: v.type._type_affinity
+                for (k, v) in stmt.compile(
+                    dialect=postgresql.dialect()
+                ).binds.items()
+            },
             {
                 "foo": Integer,
                 "data_m2": String,

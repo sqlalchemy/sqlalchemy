@@ -200,9 +200,7 @@ class DefaultDialect(Dialect):
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    colspecs: MutableMapping[
-        Type["TypeEngine[Any]"], Type["TypeEngine[Any]"]
-    ] = {}
+    colspecs: MutableMapping[Type[TypeEngine[Any]], Type[TypeEngine[Any]]] = {}
     default_paramstyle = "named"
 
     supports_default_values = False
@@ -1486,21 +1484,17 @@ class DefaultExecutionContext(ExecutionContext):
             use_server_side = self.execution_options.get(
                 "stream_results", True
             ) and (
-                (
-                    self.compiled
-                    and isinstance(
-                        self.compiled.statement, expression.Selectable
-                    )
-                    or (
-                        (
-                            not self.compiled
-                            or isinstance(
-                                self.compiled.statement, expression.TextClause
-                            )
+                self.compiled
+                and isinstance(self.compiled.statement, expression.Selectable)
+                or (
+                    (
+                        not self.compiled
+                        or isinstance(
+                            self.compiled.statement, expression.TextClause
                         )
-                        and self.unicode_statement
-                        and SERVER_SIDE_CURSOR_RE.match(self.unicode_statement)
                     )
+                    and self.unicode_statement
+                    and SERVER_SIDE_CURSOR_RE.match(self.unicode_statement)
                 )
             )
         else:
@@ -1938,15 +1932,12 @@ class DefaultExecutionContext(ExecutionContext):
                 ]
             )
         else:
-            parameters = dict(
-                (
-                    key,
-                    processors[key](compiled_params[key])  # type: ignore
-                    if key in processors
-                    else compiled_params[key],
-                )
+            parameters = {
+                key: processors[key](compiled_params[key])  # type: ignore
+                if key in processors
+                else compiled_params[key]
                 for key in compiled_params
-            )
+            }
         return self._execute_scalar(
             str(compiled), type_, parameters=parameters
         )

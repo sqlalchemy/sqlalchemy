@@ -372,10 +372,10 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
             [
                 A(
                     id=i,
-                    **dict(
-                        (letter, "%s%d" % (letter, i))
+                    **{
+                        letter: "%s%d" % (letter, i)
                         for letter in ["x", "y", "z", "p", "q", "r"]
-                    ),
+                    },
                 )
                 for i in range(1, 1001)
             ]

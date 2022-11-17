@@ -884,12 +884,12 @@ class AutomapBase:
             cls.metadata.reflect(autoload_with, **opts)
 
         with _CONFIGURE_MUTEX:
-            table_to_map_config = dict(
-                (m.local_table, m)
+            table_to_map_config = {
+                m.local_table: m
                 for m in _DeferredMapperConfig.classes_for_base(
                     cls, sort=False
                 )
-            )
+            }
 
             many_to_many = []
 

@@ -340,9 +340,9 @@ class MySQLTableDefinitionParser:
 
         buffer = []
         for row in columns:
-            (name, col_type, nullable, default, extra) = [
+            (name, col_type, nullable, default, extra) = (
                 row[i] for i in (0, 1, 2, 4, 5)
-            ]
+            )
 
             line = [" "]
             line.append(self.preparer.quote_identifier(name))

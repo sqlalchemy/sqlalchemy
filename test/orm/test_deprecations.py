@@ -875,7 +875,7 @@ class InstrumentationTest(fixtures.ORMTest):
 
             class MyDict(collections.KeyFuncDict):
                 def __init__(self):
-                    super(MyDict, self).__init__(lambda value: "k%d" % value)
+                    super().__init__(lambda value: "k%d" % value)
 
                 @collection.converter
                 def _convert(self, dictlike):

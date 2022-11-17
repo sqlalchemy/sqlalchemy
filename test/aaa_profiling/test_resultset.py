@@ -47,20 +47,20 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
         conn.execute(
             t.insert(),
             [
-                dict(
-                    ("field%d" % fnum, "value%d" % fnum)
+                {
+                    "field%d" % fnum: "value%d" % fnum
                     for fnum in range(NUM_FIELDS)
-                )
+                }
                 for r_num in range(NUM_RECORDS)
             ],
         )
         conn.execute(
             t2.insert(),
             [
-                dict(
-                    ("field%d" % fnum, "value%d" % fnum)
+                {
+                    "field%d" % fnum: "value%d" % fnum
                     for fnum in range(NUM_FIELDS)
-                )
+                }
                 for r_num in range(NUM_RECORDS)
             ],
         )

@@ -243,7 +243,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         self.ops = kw.get("ops", {})
 
     def _set_parent(self, table, **kw):
-        super(ExcludeConstraint, self)._set_parent(table)
+        super()._set_parent(table)
 
         self._render_exprs = [
             (

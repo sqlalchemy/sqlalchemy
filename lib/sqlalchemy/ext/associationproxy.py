@@ -1071,7 +1071,7 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance[_T]):
         if obj is None:
             return self
         else:
-            return super(AmbiguousAssociationProxyInstance, self).get(obj)
+            return super().get(obj)
 
     def __eq__(self, obj: object) -> NoReturn:
         self._ambiguous()

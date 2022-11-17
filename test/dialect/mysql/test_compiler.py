@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from sqlalchemy import BLOB
 from sqlalchemy import BOOLEAN
 from sqlalchemy import Boolean

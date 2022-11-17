@@ -1230,15 +1230,11 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
 
     def soft_close(self, result, dbapi_cursor):
         self._rowbuffer.clear()
-        super(BufferedRowCursorFetchStrategy, self).soft_close(
-            result, dbapi_cursor
-        )
+        super().soft_close(result, dbapi_cursor)
 
     def hard_close(self, result, dbapi_cursor):
         self._rowbuffer.clear()
-        super(BufferedRowCursorFetchStrategy, self).hard_close(
-            result, dbapi_cursor
-        )
+        super().hard_close(result, dbapi_cursor)
 
     def fetchone(self, result, dbapi_cursor, hard_close=False):
         if not self._rowbuffer:
@@ -1307,15 +1303,11 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
 
     def soft_close(self, result, dbapi_cursor):
         self._rowbuffer.clear()
-        super(FullyBufferedCursorFetchStrategy, self).soft_close(
-            result, dbapi_cursor
-        )
+        super().soft_close(result, dbapi_cursor)
 
     def hard_close(self, result, dbapi_cursor):
         self._rowbuffer.clear()
-        super(FullyBufferedCursorFetchStrategy, self).hard_close(
-            result, dbapi_cursor
-        )
+        super().hard_close(result, dbapi_cursor)
 
     def fetchone(self, result, dbapi_cursor, hard_close=False):
         if self._rowbuffer:

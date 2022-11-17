@@ -473,12 +473,12 @@ class ShardTest:
         sess = self._fixture_data()
 
         eq_(
-            set(row.temperature for row in sess.query(Report.temperature)),
+            {row.temperature for row in sess.query(Report.temperature)},
             {80.0, 75.0, 85.0},
         )
 
         temps = sess.query(Report).all()
-        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+        eq_({t.temperature for t in temps}, {80.0, 75.0, 85.0})
 
         if legacy:
             sess.query(Report).filter(Report.temperature >= 80).update(
@@ -495,14 +495,14 @@ class ShardTest:
 
         # test synchronize session
         def go():
-            eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
+            eq_({t.temperature for t in temps}, {86.0, 75.0, 91.0})
 
         self.assert_sql_count(
             sess._ShardedSession__binds["north_america"], go, 0
         )
 
         eq_(
-            set(row.temperature for row in sess.query(Report.temperature)),
+            {row.temperature for row in sess.query(Report.temperature)},
             {86.0, 75.0, 91.0},
         )
 
@@ -514,7 +514,7 @@ class ShardTest:
         sess = self._fixture_data()
 
         temps = sess.query(Report).all()
-        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+        eq_({t.temperature for t in temps}, {80.0, 75.0, 85.0})
 
         if legacy:
             sess.query(Report).filter(Report.temperature >= 80).delete(
@@ -537,7 +537,7 @@ class ShardTest:
         )
 
         eq_(
-            set(row.temperature for row in sess.query(Report.temperature)),
+            {row.temperature for row in sess.query(Report.temperature)},
             {75.0},
         )
 

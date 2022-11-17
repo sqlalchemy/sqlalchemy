@@ -90,7 +90,7 @@ class SQLAlchemyAttribute:
         info: TypeInfo,
         data: JsonDict,
         api: SemanticAnalyzerPluginInterface,
-    ) -> "SQLAlchemyAttribute":
+    ) -> SQLAlchemyAttribute:
         data = data.copy()
         typ = deserialize_and_fixup_type(data.pop("type"), api)
         return cls(typ=typ, info=info, **data)
@@ -238,8 +238,7 @@ def flatten_typechecking(stmts: Iterable[Statement]) -> Iterator[Statement]:
             and isinstance(stmt.expr[0], NameExpr)
             and stmt.expr[0].fullname == "typing.TYPE_CHECKING"
         ):
-            for substmt in stmt.body[0].body:
-                yield substmt
+            yield from stmt.body[0].body
         else:
             yield stmt
 

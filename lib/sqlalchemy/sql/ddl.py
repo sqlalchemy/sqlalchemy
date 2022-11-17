@@ -176,7 +176,7 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     """
 
     _ddl_if: Optional[DDLIf] = None
-    target: Optional["SchemaItem"] = None
+    target: Optional[SchemaItem] = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -1179,12 +1179,10 @@ class SchemaDropper(InvokeDropDDLBase):
 
 
 def sort_tables(
-    tables: Iterable["Table"],
-    skip_fn: Optional[Callable[["ForeignKeyConstraint"], bool]] = None,
-    extra_dependencies: Optional[
-        typing_Sequence[Tuple["Table", "Table"]]
-    ] = None,
-) -> List["Table"]:
+    tables: Iterable[Table],
+    skip_fn: Optional[Callable[[ForeignKeyConstraint], bool]] = None,
+    extra_dependencies: Optional[typing_Sequence[Tuple[Table, Table]]] = None,
+) -> List[Table]:
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.
 

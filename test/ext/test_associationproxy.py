@@ -559,7 +559,7 @@ class CustomDictTest(_CollectionOperations):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        self.assert_(set(p1.children) == set(["d", "e", "f"]))
+        self.assert_(set(p1.children) == {"d", "e", "f"})
 
         del ch
         p1 = self.roundtrip(p1)
@@ -641,9 +641,7 @@ class SetTest(_CollectionOperations):
         self.assert_(len(p1.children) == 2)
         self.assert_(len(p1._children) == 2)
 
-        self.assert_(
-            set([o.name for o in p1._children]) == set(["regular", "proxied"])
-        )
+        self.assert_({o.name for o in p1._children} == {"regular", "proxied"})
 
         ch2 = None
         for o in p1._children:
@@ -655,7 +653,7 @@ class SetTest(_CollectionOperations):
 
         self.assert_(len(p1._children) == 1)
         self.assert_(len(p1.children) == 1)
-        self.assert_(p1._children == set([ch1]))
+        self.assert_(p1._children == {ch1})
 
         p1.children.remove("regular")
 
@@ -676,7 +674,7 @@ class SetTest(_CollectionOperations):
         self.assert_("b" in p1.children)
         self.assert_("d" not in p1.children)
 
-        self.assert_(p1.children == set(["a", "b", "c"]))
+        self.assert_(p1.children == {"a", "b", "c"})
 
         assert_raises(KeyError, p1.children.remove, "d")
 
@@ -695,15 +693,15 @@ class SetTest(_CollectionOperations):
 
         p1.children = ["a", "b", "c"]
         p1 = self.roundtrip(p1)
-        self.assert_(p1.children == set(["a", "b", "c"]))
+        self.assert_(p1.children == {"a", "b", "c"})
 
         p1.children.discard("b")
         p1 = self.roundtrip(p1)
-        self.assert_(p1.children == set(["a", "c"]))
+        self.assert_(p1.children == {"a", "c"})
 
         p1.children.remove("a")
         p1 = self.roundtrip(p1)
-        self.assert_(p1.children == set(["c"]))
+        self.assert_(p1.children == {"c"})
 
         p1._children = set()
         self.assert_(len(p1.children) == 0)
@@ -727,15 +725,15 @@ class SetTest(_CollectionOperations):
 
         p1 = Parent("P1")
         p1.children = ["a", "b", "c"]
-        control = set(["a", "b", "c"])
+        control = {"a", "b", "c"}
 
         for other in (
-            set(["a", "b", "c"]),
-            set(["a", "b", "c", "d"]),
-            set(["a"]),
-            set(["a", "b"]),
-            set(["c", "d"]),
-            set(["e", "f", "g"]),
+            {"a", "b", "c"},
+            {"a", "b", "c", "d"},
+            {"a"},
+            {"a", "b"},
+            {"c", "d"},
+            {"e", "f", "g"},
             set(),
         ):
 
@@ -795,12 +793,12 @@ class SetTest(_CollectionOperations):
         ):
             for base in (["a", "b", "c"], []):
                 for other in (
-                    set(["a", "b", "c"]),
-                    set(["a", "b", "c", "d"]),
-                    set(["a"]),
-                    set(["a", "b"]),
-                    set(["c", "d"]),
-                    set(["e", "f", "g"]),
+                    {"a", "b", "c"},
+                    {"a", "b", "c", "d"},
+                    {"a"},
+                    {"a", "b"},
+                    {"c", "d"},
+                    {"e", "f", "g"},
                     set(),
                 ):
                     p = Parent("p")
@@ -831,12 +829,12 @@ class SetTest(_CollectionOperations):
         for op in ("|=", "-=", "&=", "^="):
             for base in (["a", "b", "c"], []):
                 for other in (
-                    set(["a", "b", "c"]),
-                    set(["a", "b", "c", "d"]),
-                    set(["a"]),
-                    set(["a", "b"]),
-                    set(["c", "d"]),
-                    set(["e", "f", "g"]),
+                    {"a", "b", "c"},
+                    {"a", "b", "c", "d"},
+                    {"a"},
+                    {"a", "b"},
+                    {"c", "d"},
+                    {"e", "f", "g"},
                     frozenset(["e", "f", "g"]),
                     set(),
                 ):
@@ -1408,7 +1406,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         add_child("p1", "c2")
         session.flush()
         p = session.query(Parent).filter_by(name="p1").one()
-        assert set(p.kids) == set(["c1", "c2"]), p.kids
+        assert set(p.kids) == {"c1", "c2"}, p.kids
 
     def test_copy(self):
         self.mapper_registry.map_imperatively(
@@ -1422,7 +1420,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         p_copy = copy.copy(p)
         del p
         gc_collect()
-        assert set(p_copy.kids) == set(["c1", "c2"]), p_copy.kids
+        assert set(p_copy.kids) == {"c1", "c2"}, p_copy.kids
 
     def test_pickle_list(self):
         self.mapper_registry.map_imperatively(
@@ -1452,7 +1450,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         p = Parent("p1")
         p.kids.update(["c1", "c2"])
         r1 = pickle.loads(pickle.dumps(p))
-        assert r1.kids == set(["c1", "c2"])
+        assert r1.kids == {"c1", "c2"}
 
         # can't do this without parent having a cycle
         # r2 = pickle.loads(pickle.dumps(p.kids))

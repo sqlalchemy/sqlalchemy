@@ -921,9 +921,7 @@ from ...types import VARCHAR  # noqa
 
 class _SQliteJson(JSON):
     def result_processor(self, dialect, coltype):
-        default_processor = super(_SQliteJson, self).result_processor(
-            dialect, coltype
-        )
+        default_processor = super().result_processor(dialect, coltype)
 
         def process(value):
             try:
@@ -942,7 +940,7 @@ class _DateTimeMixin:
     _storage_format = None
 
     def __init__(self, storage_format=None, regexp=None, **kw):
-        super(_DateTimeMixin, self).__init__(**kw)
+        super().__init__(**kw)
         if regexp is not None:
             self._reg = re.compile(regexp)
         if storage_format is not None:
@@ -978,7 +976,7 @@ class _DateTimeMixin:
                 kw["storage_format"] = self._storage_format
             if self._reg:
                 kw["regexp"] = self._reg
-        return super(_DateTimeMixin, self).adapt(cls, **kw)
+        return super().adapt(cls, **kw)
 
     def literal_processor(self, dialect):
         bp = self.bind_processor(dialect)
@@ -1037,7 +1035,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     def __init__(self, *args, **kwargs):
         truncate_microseconds = kwargs.pop("truncate_microseconds", False)
-        super(DATETIME, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if truncate_microseconds:
             assert "storage_format" not in kwargs, (
                 "You can specify only "
@@ -1215,7 +1213,7 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
     def __init__(self, *args, **kwargs):
         truncate_microseconds = kwargs.pop("truncate_microseconds", False)
-        super(TIME, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if truncate_microseconds:
             assert "storage_format" not in kwargs, (
                 "You can specify only "
@@ -1337,7 +1335,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
-            return super(SQLiteCompiler, self).visit_cast(cast, **kwargs)
+            return super().visit_cast(cast, **kwargs)
         else:
             return self.process(cast.clause, **kwargs)
 
@@ -1610,9 +1608,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
             ):
                 return None
 
-        text = super(SQLiteDDLCompiler, self).visit_primary_key_constraint(
-            constraint
-        )
+        text = super().visit_primary_key_constraint(constraint)
 
         on_conflict_clause = constraint.dialect_options["sqlite"][
             "on_conflict"
@@ -1628,9 +1624,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_unique_constraint(self, constraint):
-        text = super(SQLiteDDLCompiler, self).visit_unique_constraint(
-            constraint
-        )
+        text = super().visit_unique_constraint(constraint)
 
         on_conflict_clause = constraint.dialect_options["sqlite"][
             "on_conflict"
@@ -1648,9 +1642,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_check_constraint(self, constraint):
-        text = super(SQLiteDDLCompiler, self).visit_check_constraint(
-            constraint
-        )
+        text = super().visit_check_constraint(constraint)
 
         on_conflict_clause = constraint.dialect_options["sqlite"][
             "on_conflict"
@@ -1662,9 +1654,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_column_check_constraint(self, constraint):
-        text = super(SQLiteDDLCompiler, self).visit_column_check_constraint(
-            constraint
-        )
+        text = super().visit_column_check_constraint(constraint)
 
         if constraint.dialect_options["sqlite"]["on_conflict"] is not None:
             raise exc.CompileError(
@@ -1682,9 +1672,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if local_table.schema != remote_table.schema:
             return None
         else:
-            return super(SQLiteDDLCompiler, self).visit_foreign_key_constraint(
-                constraint
-            )
+            return super().visit_foreign_key_constraint(constraint)
 
     def define_constraint_remote_table(self, constraint, table, preparer):
         """Format the remote table clause of a CREATE CONSTRAINT clause."""
@@ -1741,7 +1729,7 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
             not isinstance(type_, _DateTimeMixin)
             or type_.format_is_text_affinity
         ):
-            return super(SQLiteTypeCompiler, self).visit_DATETIME(type_)
+            return super().visit_DATETIME(type_)
         else:
             return "DATETIME_CHAR"
 
@@ -1750,7 +1738,7 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
             not isinstance(type_, _DateTimeMixin)
             or type_.format_is_text_affinity
         ):
-            return super(SQLiteTypeCompiler, self).visit_DATE(type_)
+            return super().visit_DATE(type_)
         else:
             return "DATE_CHAR"
 
@@ -1759,7 +1747,7 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
             not isinstance(type_, _DateTimeMixin)
             or type_.format_is_text_affinity
         ):
-            return super(SQLiteTypeCompiler, self).visit_TIME(type_)
+            return super().visit_TIME(type_)
         else:
             return "TIME_CHAR"
 
@@ -1771,127 +1759,125 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = set(
-        [
-            "add",
-            "after",
-            "all",
-            "alter",
-            "analyze",
-            "and",
-            "as",
-            "asc",
-            "attach",
-            "autoincrement",
-            "before",
-            "begin",
-            "between",
-            "by",
-            "cascade",
-            "case",
-            "cast",
-            "check",
-            "collate",
-            "column",
-            "commit",
-            "conflict",
-            "constraint",
-            "create",
-            "cross",
-            "current_date",
-            "current_time",
-            "current_timestamp",
-            "database",
-            "default",
-            "deferrable",
-            "deferred",
-            "delete",
-            "desc",
-            "detach",
-            "distinct",
-            "drop",
-            "each",
-            "else",
-            "end",
-            "escape",
-            "except",
-            "exclusive",
-            "exists",
-            "explain",
-            "false",
-            "fail",
-            "for",
-            "foreign",
-            "from",
-            "full",
-            "glob",
-            "group",
-            "having",
-            "if",
-            "ignore",
-            "immediate",
-            "in",
-            "index",
-            "indexed",
-            "initially",
-            "inner",
-            "insert",
-            "instead",
-            "intersect",
-            "into",
-            "is",
-            "isnull",
-            "join",
-            "key",
-            "left",
-            "like",
-            "limit",
-            "match",
-            "natural",
-            "not",
-            "notnull",
-            "null",
-            "of",
-            "offset",
-            "on",
-            "or",
-            "order",
-            "outer",
-            "plan",
-            "pragma",
-            "primary",
-            "query",
-            "raise",
-            "references",
-            "reindex",
-            "rename",
-            "replace",
-            "restrict",
-            "right",
-            "rollback",
-            "row",
-            "select",
-            "set",
-            "table",
-            "temp",
-            "temporary",
-            "then",
-            "to",
-            "transaction",
-            "trigger",
-            "true",
-            "union",
-            "unique",
-            "update",
-            "using",
-            "vacuum",
-            "values",
-            "view",
-            "virtual",
-            "when",
-            "where",
-        ]
-    )
+    reserved_words = {
+        "add",
+        "after",
+        "all",
+        "alter",
+        "analyze",
+        "and",
+        "as",
+        "asc",
+        "attach",
+        "autoincrement",
+        "before",
+        "begin",
+        "between",
+        "by",
+        "cascade",
+        "case",
+        "cast",
+        "check",
+        "collate",
+        "column",
+        "commit",
+        "conflict",
+        "constraint",
+        "create",
+        "cross",
+        "current_date",
+        "current_time",
+        "current_timestamp",
+        "database",
+        "default",
+        "deferrable",
+        "deferred",
+        "delete",
+        "desc",
+        "detach",
+        "distinct",
+        "drop",
+        "each",
+        "else",
+        "end",
+        "escape",
+        "except",
+        "exclusive",
+        "exists",
+        "explain",
+        "false",
+        "fail",
+        "for",
+        "foreign",
+        "from",
+        "full",
+        "glob",
+        "group",
+        "having",
+        "if",
+        "ignore",
+        "immediate",
+        "in",
+        "index",
+        "indexed",
+        "initially",
+        "inner",
+        "insert",
+        "instead",
+        "intersect",
+        "into",
+        "is",
+        "isnull",
+        "join",
+        "key",
+        "left",
+        "like",
+        "limit",
+        "match",
+        "natural",
+        "not",
+        "notnull",
+        "null",
+        "of",
+        "offset",
+        "on",
+        "or",
+        "order",
+        "outer",
+        "plan",
+        "pragma",
+        "primary",
+        "query",
+        "raise",
+        "references",
+        "reindex",
+        "rename",
+        "replace",
+        "restrict",
+        "right",
+        "rollback",
+        "row",
+        "select",
+        "set",
+        "table",
+        "temp",
+        "temporary",
+        "then",
+        "to",
+        "transaction",
+        "trigger",
+        "true",
+        "union",
+        "unique",
+        "update",
+        "using",
+        "vacuum",
+        "values",
+        "view",
+        "virtual",
+        "when",
+        "where",
+    }
 
 
 class SQLiteExecutionContext(default.DefaultExecutionContext):
@@ -2454,17 +2440,14 @@ class SQLiteDialect(default.DefaultDialect):
         # the names as well.   SQLite saves the DDL in whatever format
         # it was typed in as, so need to be liberal here.
 
-        keys_by_signature = dict(
-            (
-                fk_sig(
-                    fk["constrained_columns"],
-                    fk["referred_table"],
-                    fk["referred_columns"],
-                ),
-                fk,
-            )
+        keys_by_signature = {
+            fk_sig(
+                fk["constrained_columns"],
+                fk["referred_table"],
+                fk["referred_columns"],
+            ): fk
             for fk in fks.values()
-        )
+        }
 
         table_data = self._get_table_sql(connection, table_name, schema=schema)
 

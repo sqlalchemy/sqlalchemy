@@ -192,19 +192,17 @@ class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
         session.add(Engineer("Karina", "knows how to hack"))
         session.flush()
         session.expunge_all()
-        assert set([repr(x) for x in session.query(Employee)]) == set(
-            [
-                "Engineer Karina knows how to hack",
-                "Manager Sally knows how to manage things",
-            ]
-        )
+        assert {repr(x) for x in session.query(Employee)} == {
+            "Engineer Karina knows how to hack",
+            "Manager Sally knows how to manage things",
+        }
 
-        assert set([repr(x) for x in session.query(Manager)]) == set(
-            ["Manager Sally knows how to manage things"]
-        )
-        assert set([repr(x) for x in session.query(Engineer)]) == set(
-            ["Engineer Karina knows how to hack"]
-        )
+        assert {repr(x) for x in session.query(Manager)} == {
+            "Manager Sally knows how to manage things"
+        }
+        assert {repr(x) for x in session.query(Engineer)} == {
+            "Engineer Karina knows how to hack"
+        }
         manager = session.query(Manager).one()
         session.expire(manager, ["manager_data"])
         eq_(manager.manager_data, "knows how to manage things")
@@ -320,25 +318,21 @@ class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
             repr(session.query(Manager).filter(Manager.name == "Sally").one())
             == "Manager Sally knows how to manage things"
         )
-        assert set([repr(x) for x in session.query(Employee).all()]) == set(
-            [
-                "Engineer Jenn knows how to program",
-                "Manager Sally knows how to manage things",
-                "Hacker Karina 'Badass' knows how to hack",
-            ]
-        )
-        assert set([repr(x) for x in session.query(Manager).all()]) == set(
-            ["Manager Sally knows how to manage things"]
-        )
-        assert set([repr(x) for x in session.query(Engineer).all()]) == set(
-            [
-                "Engineer Jenn knows how to program",
-                "Hacker Karina 'Badass' knows how to hack",
-            ]
-        )
-        assert set([repr(x) for x in session.query(Hacker).all()]) == set(
-            ["Hacker Karina 'Badass' knows how to hack"]
-        )
+        assert {repr(x) for x in session.query(Employee).all()} == {
+            "Engineer Jenn knows how to program",
+            "Manager Sally knows how to manage things",
+            "Hacker Karina 'Badass' knows how to hack",
+        }
+        assert {repr(x) for x in session.query(Manager).all()} == {
+            "Manager Sally knows how to manage things"
+        }
+        assert {repr(x) for x in session.query(Engineer).all()} == {
+            "Engineer Jenn knows how to program",
+            "Hacker Karina 'Badass' knows how to hack",
+        }
+        assert {repr(x) for x in session.query(Hacker).all()} == {
+            "Hacker Karina 'Badass' knows how to hack"
+        }
 
     def test_multi_level_no_base_w_hybrid(self):
         Employee, Engineer, Manager = self.classes(
@@ -503,25 +497,21 @@ class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
             )
             == 3
         )
-        assert set([repr(x) for x in session.query(Employee)]) == set(
-            [
-                "Engineer Jenn knows how to program",
-                "Manager Sally knows how to manage things",
-                "Hacker Karina 'Badass' knows how to hack",
-            ]
-        )
-        assert set([repr(x) for x in session.query(Manager)]) == set(
-            ["Manager Sally knows how to manage things"]
-        )
-        assert set([repr(x) for x in session.query(Engineer)]) == set(
-            [
-                "Engineer Jenn knows how to program",
-                "Hacker Karina 'Badass' knows how to hack",
-            ]
-        )
-        assert set([repr(x) for x in session.query(Hacker)]) == set(
-            ["Hacker Karina 'Badass' knows how to hack"]
-        )
+        assert {repr(x) for x in session.query(Employee)} == {
+            "Engineer Jenn knows how to program",
+            "Manager Sally knows how to manage things",
+            "Hacker Karina 'Badass' knows how to hack",
+        }
+        assert {repr(x) for x in session.query(Manager)} == {
+            "Manager Sally knows how to manage things"
+        }
+        assert {repr(x) for x in session.query(Engineer)} == {
+            "Engineer Jenn knows how to program",
+            "Hacker Karina 'Badass' knows how to hack",
+        }
+        assert {repr(x) for x in session.query(Hacker)} == {
+            "Hacker Karina 'Badass' knows how to hack"
+        }
 
     @testing.fixture
     def two_pjoin_fixture(self):
@@ -851,12 +841,10 @@ class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
 
         def go():
             c2 = session.get(Company, c.id)
-            assert set([repr(x) for x in c2.employees]) == set(
-                [
-                    "Engineer Karina knows how to hack",
-                    "Manager Sally knows how to manage things",
-                ]
-            )
+            assert {repr(x) for x in c2.employees} == {
+                "Engineer Karina knows how to hack",
+                "Manager Sally knows how to manage things",
+            }
 
         self.assert_sql_count(testing.db, go, 2)
         session.expunge_all()
@@ -865,12 +853,10 @@ class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
             c2 = session.get(
                 Company, c.id, options=[joinedload(Company.employees)]
             )
-            assert set([repr(x) for x in c2.employees]) == set(
-                [
-                    "Engineer Karina knows how to hack",
-                    "Manager Sally knows how to manage things",
-                ]
-            )
+            assert {repr(x) for x in c2.employees} == {
+                "Engineer Karina knows how to hack",
+                "Manager Sally knows how to manage things",
+            }
 
         self.assert_sql_count(testing.db, go, 1)
 

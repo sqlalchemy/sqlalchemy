@@ -965,190 +965,188 @@ MS_2008_VERSION = (10,)
 MS_2005_VERSION = (9,)
 MS_2000_VERSION = (8,)
 
-RESERVED_WORDS = set(
-    [
-        "add",
-        "all",
-        "alter",
-        "and",
-        "any",
-        "as",
-        "asc",
-        "authorization",
-        "backup",
-        "begin",
-        "between",
-        "break",
-        "browse",
-        "bulk",
-        "by",
-        "cascade",
-        "case",
-        "check",
-        "checkpoint",
-        "close",
-        "clustered",
-        "coalesce",
-        "collate",
-        "column",
-        "commit",
-        "compute",
-        "constraint",
-        "contains",
-        "containstable",
-        "continue",
-        "convert",
-        "create",
-        "cross",
-        "current",
-        "current_date",
-        "current_time",
-        "current_timestamp",
-        "current_user",
-        "cursor",
-        "database",
-        "dbcc",
-        "deallocate",
-        "declare",
-        "default",
-        "delete",
-        "deny",
-        "desc",
-        "disk",
-        "distinct",
-        "distributed",
-        "double",
-        "drop",
-        "dump",
-        "else",
-        "end",
-        "errlvl",
-        "escape",
-        "except",
-        "exec",
-        "execute",
-        "exists",
-        "exit",
-        "external",
-        "fetch",
-        "file",
-        "fillfactor",
-        "for",
-        "foreign",
-        "freetext",
-        "freetexttable",
-        "from",
-        "full",
-        "function",
-        "goto",
-        "grant",
-        "group",
-        "having",
-        "holdlock",
-        "identity",
-        "identity_insert",
-        "identitycol",
-        "if",
-        "in",
-        "index",
-        "inner",
-        "insert",
-        "intersect",
-        "into",
-        "is",
-        "join",
-        "key",
-        "kill",
-        "left",
-        "like",
-        "lineno",
-        "load",
-        "merge",
-        "national",
-        "nocheck",
-        "nonclustered",
-        "not",
-        "null",
-        "nullif",
-        "of",
-        "off",
-        "offsets",
-        "on",
-        "open",
-        "opendatasource",
-        "openquery",
-        "openrowset",
-        "openxml",
-        "option",
-        "or",
-        "order",
-        "outer",
-        "over",
-        "percent",
-        "pivot",
-        "plan",
-        "precision",
-        "primary",
-        "print",
-        "proc",
-        "procedure",
-        "public",
-        "raiserror",
-        "read",
-        "readtext",
-        "reconfigure",
-        "references",
-        "replication",
-        "restore",
-        "restrict",
-        "return",
-        "revert",
-        "revoke",
-        "right",
-        "rollback",
-        "rowcount",
-        "rowguidcol",
-        "rule",
-        "save",
-        "schema",
-        "securityaudit",
-        "select",
-        "session_user",
-        "set",
-        "setuser",
-        "shutdown",
-        "some",
-        "statistics",
-        "system_user",
-        "table",
-        "tablesample",
-        "textsize",
-        "then",
-        "to",
-        "top",
-        "tran",
-        "transaction",
-        "trigger",
-        "truncate",
-        "tsequal",
-        "union",
-        "unique",
-        "unpivot",
-        "update",
-        "updatetext",
-        "use",
-        "user",
-        "values",
-        "varying",
-        "view",
-        "waitfor",
-        "when",
-        "where",
-        "while",
-        "with",
-        "writetext",
-    ]
-)
+RESERVED_WORDS = {
+    "add",
+    "all",
+    "alter",
+    "and",
+    "any",
+    "as",
+    "asc",
+    "authorization",
+    "backup",
+    "begin",
+    "between",
+    "break",
+    "browse",
+    "bulk",
+    "by",
+    "cascade",
+    "case",
+    "check",
+    "checkpoint",
+    "close",
+    "clustered",
+    "coalesce",
+    "collate",
+    "column",
+    "commit",
+    "compute",
+    "constraint",
+    "contains",
+    "containstable",
+    "continue",
+    "convert",
+    "create",
+    "cross",
+    "current",
+    "current_date",
+    "current_time",
+    "current_timestamp",
+    "current_user",
+    "cursor",
+    "database",
+    "dbcc",
+    "deallocate",
+    "declare",
+    "default",
+    "delete",
+    "deny",
+    "desc",
+    "disk",
+    "distinct",
+    "distributed",
+    "double",
+    "drop",
+    "dump",
+    "else",
+    "end",
+    "errlvl",
+    "escape",
+    "except",
+    "exec",
+    "execute",
+    "exists",
+    "exit",
+    "external",
+    "fetch",
+    "file",
+    "fillfactor",
+    "for",
+    "foreign",
+    "freetext",
+    "freetexttable",
+    "from",
+    "full",
+    "function",
+    "goto",
+    "grant",
+    "group",
+    "having",
+    "holdlock",
+    "identity",
+    "identity_insert",
+    "identitycol",
+    "if",
+    "in",
+    "index",
+    "inner",
+    "insert",
+    "intersect",
+    "into",
+    "is",
+    "join",
+    "key",
+    "kill",
+    "left",
+    "like",
+    "lineno",
+    "load",
+    "merge",
+    "national",
+    "nocheck",
+    "nonclustered",
+    "not",
+    "null",
+    "nullif",
+    "of",
+    "off",
+    "offsets",
+    "on",
+    "open",
+    "opendatasource",
+    "openquery",
+    "openrowset",
+    "openxml",
+    "option",
+    "or",
+    "order",
+    "outer",
+    "over",
+    "percent",
+    "pivot",
+    "plan",
+    "precision",
+    "primary",
+    "print",
+    "proc",
+    "procedure",
+    "public",
+    "raiserror",
+    "read",
+    "readtext",
+    "reconfigure",
+    "references",
+    "replication",
+    "restore",
+    "restrict",
+    "return",
+    "revert",
+    "revoke",
+    "right",
+    "rollback",
+    "rowcount",
+    "rowguidcol",
+    "rule",
+    "save",
+    "schema",
+    "securityaudit",
+    "select",
+    "session_user",
+    "set",
+    "setuser",
+    "shutdown",
+    "some",
+    "statistics",
+    "system_user",
+    "table",
+    "tablesample",
+    "textsize",
+    "then",
+    "to",
+    "top",
+    "tran",
+    "transaction",
+    "trigger",
+    "truncate",
+    "tsequal",
+    "union",
+    "unique",
+    "unpivot",
+    "update",
+    "updatetext",
+    "use",
+    "user",
+    "values",
+    "varying",
+    "view",
+    "waitfor",
+    "when",
+    "where",
+    "while",
+    "with",
+    "writetext",
+}
 
 
 class REAL(sqltypes.REAL):
@@ -1159,7 +1157,7 @@ class REAL(sqltypes.REAL):
         # it is only accepted as the word "REAL" in DDL, the numeric
         # precision value is not allowed to be present
         kw.setdefault("precision", 24)
-        super(REAL, self).__init__(**kw)
+        super().__init__(**kw)
 
 
 class TINYINT(sqltypes.Integer):
@@ -1204,7 +1202,7 @@ class _MSDate(sqltypes.Date):
 class TIME(sqltypes.TIME):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
-        super(TIME, self).__init__()
+        super().__init__()
 
     __zero_date = datetime.date(1900, 1, 1)
 
@@ -1273,7 +1271,7 @@ class DATETIME2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = "DATETIME2"
 
     def __init__(self, precision=None, **kw):
-        super(DATETIME2, self).__init__(**kw)
+        super().__init__(**kw)
         self.precision = precision
 
 
@@ -1281,7 +1279,7 @@ class DATETIMEOFFSET(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = "DATETIMEOFFSET"
 
     def __init__(self, precision=None, **kw):
-        super(DATETIMEOFFSET, self).__init__(**kw)
+        super().__init__(**kw)
         self.precision = precision
 
 
@@ -1339,7 +1337,7 @@ class TIMESTAMP(sqltypes._Binary):
         self.convert_int = convert_int
 
     def result_processor(self, dialect, coltype):
-        super_ = super(TIMESTAMP, self).result_processor(dialect, coltype)
+        super_ = super().result_processor(dialect, coltype)
         if self.convert_int:
 
             def process(value):
@@ -1425,7 +1423,7 @@ class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
             raise ValueError(
                 "length must be None or 'max' when setting filestream"
             )
-        super(VARBINARY, self).__init__(length=length)
+        super().__init__(length=length)
 
 
 class IMAGE(sqltypes.LargeBinary):
@@ -1525,12 +1523,12 @@ class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
 
     @overload
     def __init__(
-        self: "UNIQUEIDENTIFIER[_python_UUID]", as_uuid: Literal[True] = ...
+        self: UNIQUEIDENTIFIER[_python_UUID], as_uuid: Literal[True] = ...
     ):
         ...
 
     @overload
-    def __init__(self: "UNIQUEIDENTIFIER[str]", as_uuid: Literal[False] = ...):
+    def __init__(self: UNIQUEIDENTIFIER[str], as_uuid: Literal[False] = ...):
         ...
 
     def __init__(self, as_uuid: bool = True):
@@ -1972,7 +1970,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             and column.default.optional
         ):
             return None
-        return super(MSExecutionContext, self).get_insert_default(column)
+        return super().get_insert_default(column)
 
 
 class MSSQLCompiler(compiler.SQLCompiler):
@@ -1990,7 +1988,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def __init__(self, *args, **kwargs):
         self.tablealiases = {}
-        super(MSSQLCompiler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _with_legacy_schema_aliasing(fn):
         def decorate(self, *arg, **kw):
@@ -2040,7 +2038,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def get_select_precolumns(self, select, **kw):
         """MS-SQL puts TOP, it's version of LIMIT here"""
 
-        s = super(MSSQLCompiler, self).get_select_precolumns(select, **kw)
+        s = super().get_select_precolumns(select, **kw)
 
         if select._has_row_limiting_clause and self._use_top(select):
             # ODBC drivers and possibly others
@@ -2186,20 +2184,20 @@ class MSSQLCompiler(compiler.SQLCompiler):
     @_with_legacy_schema_aliasing
     def visit_table(self, table, mssql_aliased=False, iscrud=False, **kwargs):
         if mssql_aliased is table or iscrud:
-            return super(MSSQLCompiler, self).visit_table(table, **kwargs)
+            return super().visit_table(table, **kwargs)
 
         # alias schema-qualified tables
         alias = self._schema_aliased_table(table)
         if alias is not None:
             return self.process(alias, mssql_aliased=table, **kwargs)
         else:
-            return super(MSSQLCompiler, self).visit_table(table, **kwargs)
+            return super().visit_table(table, **kwargs)
 
     @_with_legacy_schema_aliasing
     def visit_alias(self, alias, **kw):
         # translate for schema-qualified table aliases
         kw["mssql_aliased"] = alias.element
-        return super(MSSQLCompiler, self).visit_alias(alias, **kw)
+        return super().visit_alias(alias, **kw)
 
     @_with_legacy_schema_aliasing
     def visit_column(self, column, add_to_result_map=None, **kw):
@@ -2220,9 +2218,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
                         column.type,
                     )
 
-                return super(MSSQLCompiler, self).visit_column(converted, **kw)
+                return super().visit_column(converted, **kw)
 
-        return super(MSSQLCompiler, self).visit_column(
+        return super().visit_column(
             column, add_to_result_map=add_to_result_map, **kw
         )
 
@@ -2264,7 +2262,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 ),
                 **kwargs,
             )
-        return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
+        return super().visit_binary(binary, **kwargs)
 
     def returning_clause(
         self, stmt, returning_cols, *, populate_result_map, **kw
@@ -2328,9 +2326,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if isinstance(column, expression.Function):
             return column.label(None)
         else:
-            return super(MSSQLCompiler, self).label_select_column(
-                select, column, asfrom
-            )
+            return super().label_select_column(select, column, asfrom)
 
     def for_update_clause(self, select, **kw):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which
@@ -2517,9 +2513,7 @@ class MSSQLStrictCompiler(MSSQLCompiler):
             # SQL Server wants single quotes around the date string.
             return "'" + str(value) + "'"
         else:
-            return super(MSSQLStrictCompiler, self).render_literal_value(
-                value, type_
-            )
+            return super().render_literal_value(value, type_)
 
 
 class MSDDLCompiler(compiler.DDLCompiler):
@@ -2704,7 +2698,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
             "execute sp_addextendedproperty 'MS_Description', "
-            "{0}, 'schema', {1}, 'table', {2}".format(
+            "{}, 'schema', {}, 'table', {}".format(
                 self.sql_compiler.render_literal_value(
                     create.element.comment, sqltypes.NVARCHAR()
                 ),
@@ -2718,7 +2712,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
             "execute sp_dropextendedproperty 'MS_Description', 'schema', "
-            "{0}, 'table', {1}".format(
+            "{}, 'table', {}".format(
                 self.preparer.quote_schema(schema_name),
                 self.preparer.format_table(drop.element, use_schema=False),
             )
@@ -2729,7 +2723,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
             "execute sp_addextendedproperty 'MS_Description', "
-            "{0}, 'schema', {1}, 'table', {2}, 'column', {3}".format(
+            "{}, 'schema', {}, 'table', {}, 'column', {}".format(
                 self.sql_compiler.render_literal_value(
                     create.element.comment, sqltypes.NVARCHAR()
                 ),
@@ -2746,7 +2740,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
             "execute sp_dropextendedproperty 'MS_Description', 'schema', "
-            "{0}, 'table', {1}, 'column', {2}".format(
+            "{}, 'table', {}, 'column', {}".format(
                 self.preparer.quote_schema(schema_name),
                 self.preparer.format_table(
                     drop.element.table, use_schema=False
@@ -2760,9 +2754,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if create.element.data_type is not None:
             data_type = create.element.data_type
             prefix = " AS %s" % self.type_compiler.process(data_type)
-        return super(MSDDLCompiler, self).visit_create_sequence(
-            create, prefix=prefix, **kw
-        )
+        return super().visit_create_sequence(create, prefix=prefix, **kw)
 
     def visit_identity_column(self, identity, **kw):
         text = " IDENTITY"
@@ -2777,7 +2769,7 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
-        super(MSIdentifierPreparer, self).__init__(
+        super().__init__(
             dialect,
             initial_quote="[",
             final_quote="]",
@@ -3067,7 +3059,7 @@ class MSDialect(default.DefaultDialect):
             )
             self.legacy_schema_aliasing = legacy_schema_aliasing
 
-        super(MSDialect, self).__init__(**opts)
+        super().__init__(**opts)
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
@@ -3075,7 +3067,7 @@ class MSDialect(default.DefaultDialect):
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
         connection.exec_driver_sql("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
-        super(MSDialect, self).do_savepoint(connection, name)
+        super().do_savepoint(connection, name)
 
     def do_release_savepoint(self, connection, name):
         # SQL Server does not support RELEASE SAVEPOINT
@@ -3083,7 +3075,7 @@ class MSDialect(default.DefaultDialect):
 
     def do_rollback(self, dbapi_connection):
         try:
-            super(MSDialect, self).do_rollback(dbapi_connection)
+            super().do_rollback(dbapi_connection)
         except self.dbapi.ProgrammingError as e:
             if self.ignore_no_transaction_on_rollback and re.match(
                 r".*\b111214\b", str(e)
@@ -3097,15 +3089,13 @@ class MSDialect(default.DefaultDialect):
             else:
                 raise
 
-    _isolation_lookup = set(
-        [
-            "SERIALIZABLE",
-            "READ UNCOMMITTED",
-            "READ COMMITTED",
-            "REPEATABLE READ",
-            "SNAPSHOT",
-        ]
-    )
+    _isolation_lookup = {
+        "SERIALIZABLE",
+        "READ UNCOMMITTED",
+        "READ COMMITTED",
+        "REPEATABLE READ",
+        "SNAPSHOT",
+    }
 
     def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
@@ -3134,7 +3124,7 @@ class MSDialect(default.DefaultDialect):
                     "SQL Server version."
                 )
 
-            view_name = "sys.{}".format(row[0])
+            view_name = f"sys.{row[0]}"
 
             cursor.execute(
                 """
@@ -3164,7 +3154,7 @@ class MSDialect(default.DefaultDialect):
             cursor.close()
 
     def initialize(self, connection):
-        super(MSDialect, self).initialize(connection)
+        super().initialize(connection)
         self._setup_version_attributes()
         self._setup_supports_nvarchar_max(connection)
 
@@ -3298,7 +3288,7 @@ class MSDialect(default.DefaultDialect):
                 connection.scalar(
                     # U filters on user tables only.
                     text("SELECT object_id(:table_name, 'U')"),
-                    {"table_name": "tempdb.dbo.[{}]".format(tablename)},
+                    {"table_name": f"tempdb.dbo.[{tablename}]"},
                 )
             )
         else:

@@ -838,12 +838,10 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
         return self
 
     def get_children(self, **kw):
-        for elem in itertools.chain.from_iterable(
+        yield from itertools.chain.from_iterable(
             element._from_objects for element in self._raw_columns
-        ):
-            yield elem
-        for elem in super(FromStatement, self).get_children(**kw):
-            yield elem
+        )
+        yield from super().get_children(**kw)
 
     @property
     def _all_selected_columns(self):
@@ -1245,14 +1243,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             ):
                 ens = element._annotations["entity_namespace"]
                 if not ens.is_mapper and not ens.is_aliased_class:
-                    for elem in _select_iterables([element]):
-                        yield elem
+                    yield from _select_iterables([element])
                 else:
-                    for elem in _select_iterables(ens._all_column_expressions):
-                        yield elem
+                    yield from _select_iterables(ens._all_column_expressions)
             else:
-                for elem in _select_iterables([element]):
-                    yield elem
+                yield from _select_iterables([element])
 
     @classmethod
     def get_columns_clause_froms(cls, statement):

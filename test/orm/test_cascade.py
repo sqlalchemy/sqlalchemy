@@ -137,9 +137,9 @@ class CascadeArgTest(fixtures.MappedTest):
         users, addresses = self.tables.users, self.tables.addresses
 
         rel = relationship(Address)
-        eq_(rel.cascade, set(["save-update", "merge"]))
+        eq_(rel.cascade, {"save-update", "merge"})
         rel.cascade = "save-update, merge, expunge"
-        eq_(rel.cascade, set(["save-update", "merge", "expunge"]))
+        eq_(rel.cascade, {"save-update", "merge", "expunge"})
 
         self.mapper_registry.map_imperatively(
             User, users, properties={"addresses": rel}
@@ -147,7 +147,7 @@ class CascadeArgTest(fixtures.MappedTest):
         am = self.mapper_registry.map_imperatively(Address, addresses)
         configure_mappers()
 
-        eq_(rel.cascade, set(["save-update", "merge", "expunge"]))
+        eq_(rel.cascade, {"save-update", "merge", "expunge"})
 
         assert ("addresses", User) not in am._delete_orphans
         rel.cascade = "all, delete, delete-orphan"
@@ -155,16 +155,14 @@ class CascadeArgTest(fixtures.MappedTest):
 
         eq_(
             rel.cascade,
-            set(
-                [
-                    "delete",
-                    "delete-orphan",
-                    "expunge",
-                    "merge",
-                    "refresh-expire",
-                    "save-update",
-                ]
-            ),
+            {
+                "delete",
+                "delete-orphan",
+                "expunge",
+                "merge",
+                "refresh-expire",
+                "save-update",
+            },
         )
 
     def test_cascade_unicode(self):
@@ -172,7 +170,7 @@ class CascadeArgTest(fixtures.MappedTest):
 
         rel = relationship(Address)
         rel.cascade = "save-update, merge, expunge"
-        eq_(rel.cascade, set(["save-update", "merge", "expunge"]))
+        eq_(rel.cascade, {"save-update", "merge", "expunge"})
 
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
@@ -4176,11 +4174,11 @@ class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
 
         state = inspect(obj)
         it = inspect(Company).cascade_iterator("save-update", state)
-        eq_(set([rec[0] for rec in it]), set([eng, maven_build, lang]))
+        eq_({rec[0] for rec in it}, {eng, maven_build, lang})
 
         state = inspect(eng)
         it = inspect(Employee).cascade_iterator("save-update", state)
-        eq_(set([rec[0] for rec in it]), set([maven_build, lang]))
+        eq_({rec[0] for rec in it}, {maven_build, lang})
 
     def test_delete_orphan_round_trip(self):
         (

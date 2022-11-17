@@ -1,4 +1,3 @@
-# coding: utf-8
 import datetime
 import decimal
 from enum import Enum as _PY_Enum
@@ -2235,8 +2234,8 @@ class ArrayRoundTripTest:
         )
         # hashable
         eq_(
-            set(row[1] for row in r),
-            set([("1", "2", "3"), ("4", "5", "6"), (("4", "5"), ("6", "7"))]),
+            {row[1] for row in r},
+            {("1", "2", "3"), ("4", "5", "6"), (("4", "5"), ("6", "7"))},
         )
 
     def test_array_plus_native_enum_create(self, metadata, connection):
@@ -2261,8 +2260,8 @@ class ArrayRoundTripTest:
 
         t.create(connection)
         eq_(
-            set(e["name"] for e in inspect(connection).get_enums()),
-            set(["my_enum_1", "my_enum_2", "my_enum_3"]),
+            {e["name"] for e in inspect(connection).get_enums()},
+            {"my_enum_1", "my_enum_2", "my_enum_3"},
         )
         t.drop(connection)
         eq_(inspect(connection).get_enums(), [])
@@ -2686,7 +2685,7 @@ class _ArrayOfEnum(TypeDecorator):
         return sa.cast(bindvalue, self)
 
     def result_processor(self, dialect, coltype):
-        super_rp = super(_ArrayOfEnum, self).result_processor(dialect, coltype)
+        super_rp = super().result_processor(dialect, coltype)
 
         def handle_raw_string(value):
             inner = re.match(r"^{(.*)}$", value).group(1)
@@ -5253,7 +5252,7 @@ class JSONBTest(JSONTest):
         ),
     )
     def test_where(self, whereclause_fn, expected):
-        super(JSONBTest, self).test_where(whereclause_fn, expected)
+        super().test_where(whereclause_fn, expected)
 
 
 class JSONBRoundTripTest(JSONRoundTripTest):
@@ -5263,7 +5262,7 @@ class JSONBRoundTripTest(JSONRoundTripTest):
 
     @testing.requires.postgresql_utf8_server_encoding
     def test_unicode_round_trip(self, connection):
-        super(JSONBRoundTripTest, self).test_unicode_round_trip(connection)
+        super().test_unicode_round_trip(connection)
 
     @testing.only_on("postgresql >= 12")
     def test_cast_jsonpath(self, connection):

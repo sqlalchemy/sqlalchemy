@@ -79,7 +79,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             }
 
         assert class_mapper(Person).version_id_col == "a"
-        assert class_mapper(Person).include_properties == set(["id", "a", "b"])
+        assert class_mapper(Person).include_properties == {"id", "a", "b"}
 
     def test_custom_join_condition(self):
         class Foo(Base):

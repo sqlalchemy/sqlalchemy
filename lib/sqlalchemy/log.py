@@ -63,10 +63,10 @@ def _add_default_handler(logger: logging.Logger) -> None:
     logger.addHandler(handler)
 
 
-_logged_classes: Set[Type["Identified"]] = set()
+_logged_classes: Set[Type[Identified]] = set()
 
 
-def _qual_logger_name_for_cls(cls: Type["Identified"]) -> str:
+def _qual_logger_name_for_cls(cls: Type[Identified]) -> str:
     return (
         getattr(cls, "_sqla_logger_namespace", None)
         or cls.__module__ + "." + cls.__name__

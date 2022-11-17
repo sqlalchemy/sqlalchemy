@@ -165,7 +165,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
         return factories
 
     def unregister(self, class_):
-        super(ExtendedInstrumentationRegistry, self).unregister(class_)
+        super().unregister(class_)
         if class_ in self._manager_finders:
             del self._manager_finders[class_]
             del self._state_finders[class_]
@@ -321,7 +321,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             self._adapted.instrument_attribute(self.class_, key, inst)
 
     def post_configure_attribute(self, key):
-        super(_ClassInstrumentationAdapter, self).post_configure_attribute(key)
+        super().post_configure_attribute(key)
         self._adapted.post_configure_attribute(self.class_, key, self[key])
 
     def install_descriptor(self, key, inst):

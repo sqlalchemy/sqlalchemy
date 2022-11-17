@@ -1195,13 +1195,11 @@ class CursorResultTest(fixtures.TablesTest):
         row = result.first()
 
         eq_(
-            set(
-                [
-                    users.c.user_id in row._mapping,
-                    addresses.c.user_id in row._mapping,
-                ]
-            ),
-            set([True]),
+            {
+                users.c.user_id in row._mapping,
+                addresses.c.user_id in row._mapping,
+            },
+            {True},
         )
 
     @testing.combinations(
@@ -3357,7 +3355,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
     def test_handle_error_in_fetch(self, strategy_cls, method_name):
         class cursor:
             def raise_(self):
-                raise IOError("random non-DBAPI error during cursor operation")
+                raise OSError("random non-DBAPI error during cursor operation")
 
             def fetchone(self):
                 self.raise_()
@@ -3390,7 +3388,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
 
     def test_buffered_row_close_error_during_fetchone(self):
         def raise_(**kw):
-            raise IOError("random non-DBAPI error during cursor operation")
+            raise OSError("random non-DBAPI error during cursor operation")
 
         with self._proxy_fixture(_cursor.BufferedRowCursorFetchStrategy):
             with self.engine.connect() as conn:

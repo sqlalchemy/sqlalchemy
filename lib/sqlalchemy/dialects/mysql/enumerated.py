@@ -84,7 +84,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
         if elem == "":
             return elem
         else:
-            return super(ENUM, self)._object_value_for_elem(elem)
+            return super()._object_value_for_elem(elem)
 
     def __repr__(self):
         return util.generic_repr(
@@ -153,15 +153,15 @@ class SET(_StringType):
                 "setting retrieve_as_bitwise=True"
             )
         if self.retrieve_as_bitwise:
-            self._bitmap = dict(
-                (value, 2**idx) for idx, value in enumerate(self.values)
-            )
+            self._bitmap = {
+                value: 2**idx for idx, value in enumerate(self.values)
+            }
             self._bitmap.update(
                 (2**idx, value) for idx, value in enumerate(self.values)
             )
         length = max([len(v) for v in values] + [0])
         kw.setdefault("length", length)
-        super(SET, self).__init__(**kw)
+        super().__init__(**kw)
 
     def column_expression(self, colexpr):
         if self.retrieve_as_bitwise:
@@ -183,7 +183,7 @@ class SET(_StringType):
                     return None
 
         else:
-            super_convert = super(SET, self).result_processor(dialect, coltype)
+            super_convert = super().result_processor(dialect, coltype)
 
             def process(value):
                 if isinstance(value, str):
@@ -201,7 +201,7 @@ class SET(_StringType):
         return process
 
     def bind_processor(self, dialect):
-        super_convert = super(SET, self).bind_processor(dialect)
+        super_convert = super().bind_processor(dialect)
         if self.retrieve_as_bitwise:
 
             def process(value):

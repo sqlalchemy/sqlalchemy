@@ -651,7 +651,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
                 )
 
     def initialize(self, connection):
-        super(PGDialect_psycopg2, self).initialize(connection)
+        super().initialize(connection)
         self._has_native_hstore = (
             self.use_native_hstore
             and self._hstore_oids(connection.connection.dbapi_connection)

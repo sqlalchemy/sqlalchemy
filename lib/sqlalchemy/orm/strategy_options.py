@@ -1872,7 +1872,7 @@ class _AttributeStrategyLoad(_LoadElement):
         ),
     ]
 
-    _of_type: Union["Mapper[Any]", "AliasedInsp[Any]", None]
+    _of_type: Union[Mapper[Any], AliasedInsp[Any], None]
     _path_with_polymorphic_path: Optional[PathRegistry]
 
     is_class_strategy = False

@@ -115,7 +115,7 @@ def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine:
         "is deprecated and will be removed in a future release. ",
     ),
 )
-def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
+def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the :ref:`URL <database_urls>` as the
@@ -806,11 +806,11 @@ def engine_from_config(
 
     """
 
-    options = dict(
-        (key[len(prefix) :], configuration[key])
+    options = {
+        key[len(prefix) :]: configuration[key]
         for key in configuration
         if key.startswith(prefix)
-    )
+    }
     options["_coerce_config"] = True
     options.update(kwargs)
     url = options.pop("url")

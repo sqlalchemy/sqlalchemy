@@ -221,7 +221,7 @@ class JSON(sqltypes.JSON):
          .. versionadded:: 1.1
 
         """
-        super(JSON, self).__init__(none_as_null=none_as_null)
+        super().__init__(none_as_null=none_as_null)
         if astext_type is not None:
             self.astext_type = astext_type
 

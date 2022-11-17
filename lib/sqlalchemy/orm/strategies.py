@@ -157,7 +157,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
     __slots__ = ("columns",)
 
     def __init__(self, parent, strategy_key):
-        super(UninstrumentedColumnLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.columns = self.parent_property.columns
 
     def setup_query(
@@ -197,7 +197,7 @@ class ColumnLoader(LoaderStrategy):
     __slots__ = "columns", "is_composite"
 
     def __init__(self, parent, strategy_key):
-        super(ColumnLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.columns = self.parent_property.columns
         self.is_composite = hasattr(self.parent_property, "composite_class")
 
@@ -285,7 +285,7 @@ class ColumnLoader(LoaderStrategy):
 @properties.ColumnProperty.strategy_for(query_expression=True)
 class ExpressionColumnLoader(ColumnLoader):
     def __init__(self, parent, strategy_key):
-        super(ExpressionColumnLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
 
         # compare to the "default" expression that is mapped in
         # the column.   If it's sql.null, we don't need to render
@@ -381,7 +381,7 @@ class DeferredColumnLoader(LoaderStrategy):
     __slots__ = "columns", "group", "raiseload"
 
     def __init__(self, parent, strategy_key):
-        super(DeferredColumnLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         if hasattr(self.parent_property, "composite_class"):
             raise NotImplementedError(
                 "Deferred loading for composite " "types not implemented yet"
@@ -582,7 +582,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
     __slots__ = "mapper", "target", "uselist", "entity"
 
     def __init__(self, parent, strategy_key):
-        super(AbstractRelationshipLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.mapper = self.parent_property.mapper
         self.entity = self.parent_property.entity
         self.target = self.parent_property.target
@@ -682,7 +682,7 @@ class LazyLoader(
     def __init__(
         self, parent: RelationshipProperty[Any], strategy_key: Tuple[Any, ...]
     ):
-        super(LazyLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self._raise_always = self.strategy_opts["lazy"] == "raise"
         self._raise_on_sql = self.strategy_opts["lazy"] == "raise_on_sql"
 
@@ -1431,7 +1431,7 @@ class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
     def __init__(self, parent, strategy_key):
-        super(SubqueryLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self, mapper):
@@ -1560,7 +1560,7 @@ class SubqueryLoader(PostLoader):
         elif distinct_target_key is None:
             # if target_cols refer to a non-primary key or only
             # part of a composite primary key, set the q as distinct
-            for t in set(c.table for c in target_cols):
+            for t in {c.table for c in target_cols}:
                 if not set(target_cols).issuperset(t.primary_key):
                     q._distinct = True
                     break
@@ -2078,7 +2078,7 @@ class JoinedLoader(AbstractRelationshipLoader):
     __slots__ = "join_depth", "_aliased_class_pool"
 
     def __init__(self, parent, strategy_key):
-        super(JoinedLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
         self._aliased_class_pool = []
 
@@ -2832,7 +2832,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
     _chunksize = 500
 
     def __init__(self, parent, strategy_key):
-        super(SelectInLoader, self).__init__(parent, strategy_key)
+        super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
         is_m2o = self.parent_property.direction is interfaces.MANYTOONE
 

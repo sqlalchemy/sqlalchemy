@@ -236,7 +236,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             baz = _column(String(100), nullable=False, index=True)
 
         @mapper_registry.mapped
-        class MyModel(MyMixin, object):
+        class MyModel(MyMixin):
 
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)
@@ -2264,8 +2264,8 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         eq_(
             asserted,
             {
-                "a": set([A.my_attr.property.columns[0]]),
-                "b": set([B.my_attr.property.columns[0]]),
+                "a": {A.my_attr.property.columns[0]},
+                "b": {B.my_attr.property.columns[0]},
             },
         )
 
@@ -2395,7 +2395,7 @@ class AbstractTest(DeclarativeTestBase):
             __tablename__ = "q"
             id = Column(Integer, primary_key=True)
 
-        eq_(set(Base.metadata.tables), set(["y", "z", "q"]))
+        eq_(set(Base.metadata.tables), {"y", "z", "q"})
 
     def test_middle_abstract_attributes(self):
         # test for [ticket:3219]

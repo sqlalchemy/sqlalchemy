@@ -1261,7 +1261,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         also included in the fixtures above.
 
         """
-        need = set(
+        need = {
             cls
             for cls in class_hierarchy(ClauseElement)
             if issubclass(cls, (ColumnElement, Selectable, LambdaElement))
@@ -1275,7 +1275,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
             and "compiler" not in cls.__module__
             and "crud" not in cls.__module__
             and "dialects" not in cls.__module__  # TODO: dialects?
-        ).difference({ColumnElement, UnaryExpression})
+        }.difference({ColumnElement, UnaryExpression})
 
         for fixture in self.fixtures + self.dont_compare_values_fixtures:
             case_a = fixture()

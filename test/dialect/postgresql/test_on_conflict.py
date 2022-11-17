@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import Integer

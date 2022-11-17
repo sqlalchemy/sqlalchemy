@@ -342,9 +342,7 @@ class _ImperativeMapperConfig(_MapperConfig):
         table: Optional[FromClause],
         mapper_kw: _MapperKwArgs,
     ):
-        super(_ImperativeMapperConfig, self).__init__(
-            registry, cls_, mapper_kw
-        )
+        super().__init__(registry, cls_, mapper_kw)
 
         self.local_table = self.set_cls_attribute("__table__", table)
 
@@ -480,7 +478,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.clsdict_view = (
             util.immutabledict(dict_) if dict_ else util.EMPTY_DICT
         )
-        super(_ClassScanMapperConfig, self).__init__(registry, cls_, mapper_kw)
+        super().__init__(registry, cls_, mapper_kw)
         self.registry = registry
         self.persist_selectable = None
 
@@ -1636,13 +1634,11 @@ class _ClassScanMapperConfig(_MapperConfig):
             inherited_table = inherited_mapper.local_table
 
             if "exclude_properties" not in mapper_args:
-                mapper_args["exclude_properties"] = exclude_properties = set(
-                    [
-                        c.key
-                        for c in inherited_table.c
-                        if c not in inherited_mapper._columntoproperty
-                    ]
-                ).union(inherited_mapper.exclude_properties or ())
+                mapper_args["exclude_properties"] = exclude_properties = {
+                    c.key
+                    for c in inherited_table.c
+                    if c not in inherited_mapper._columntoproperty
+                }.union(inherited_mapper.exclude_properties or ())
                 exclude_properties.difference_update(
                     [c.key for c in self.declared_columns]
                 )
@@ -1758,7 +1754,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
         if not sort:
             return classes_for_base
 
-        all_m_by_cls = dict((m.cls, m) for m in classes_for_base)
+        all_m_by_cls = {m.cls: m for m in classes_for_base}
 
         tuples: List[Tuple[_DeferredMapperConfig, _DeferredMapperConfig]] = []
         for m_cls in all_m_by_cls:
@@ -1771,7 +1767,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
 
     def map(self, mapper_kw: _MapperKwArgs = util.EMPTY_DICT) -> Mapper[Any]:
         self._configs.pop(self._cls, None)
-        return super(_DeferredMapperConfig, self).map(mapper_kw)
+        return super().map(mapper_kw)
 
 
 def _add_attribute(

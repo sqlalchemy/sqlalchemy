@@ -56,7 +56,7 @@ class AutomapTest(fixtures.MappedTest):
         Address = Base.classes.addresses
 
         a1 = Address(email_address="e1")
-        u1 = User(name="u1", addresses_collection=set([a1]))
+        u1 = User(name="u1", addresses_collection={a1})
         assert a1.user is u1
 
     def test_prepare_w_only(self):
@@ -291,7 +291,7 @@ class AutomapTest(fixtures.MappedTest):
             )
 
         Base.prepare(generate_relationship=_gen_relationship)
-        assert set(tuple(c[1]) for c in mock.mock_calls).issuperset(
+        assert {tuple(c[1]) for c in mock.mock_calls}.issuperset(
             [
                 (Base, interfaces.MANYTOONE, "nodes"),
                 (Base, interfaces.MANYTOMANY, "keywords_collection"),

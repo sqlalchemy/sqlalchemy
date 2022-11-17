@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from multiprocessing import get_context
 import re
 from unittest import mock

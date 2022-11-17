@@ -128,7 +128,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
          .. versionadded:: 1.4
 
         """
-        super(TIMESTAMP, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.precision = precision
 
 
@@ -147,7 +147,7 @@ class TIME(sqltypes.TIME):
          .. versionadded:: 1.4
 
         """
-        super(TIME, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.precision = precision
 
 

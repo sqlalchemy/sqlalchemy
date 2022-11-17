@@ -705,15 +705,13 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         Index("idx_winners", events.c.winner)
 
         eq_(
-            set(ix.name for ix in events.indexes),
-            set(
-                [
-                    "ix_events_name",
-                    "ix_events_location",
-                    "sport_announcer",
-                    "idx_winners",
-                ]
-            ),
+            {ix.name for ix in events.indexes},
+            {
+                "ix_events_name",
+                "ix_events_location",
+                "sport_announcer",
+                "idx_winners",
+            },
         )
 
         self.assert_sql_execution(

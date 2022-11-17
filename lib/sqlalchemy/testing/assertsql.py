@@ -269,9 +269,9 @@ class DialectSQL(CompiledSQL):
         return received_stmt == stmt
 
     def _received_statement(self, execute_observed):
-        received_stmt, received_params = super(
-            DialectSQL, self
-        )._received_statement(execute_observed)
+        received_stmt, received_params = super()._received_statement(
+            execute_observed
+        )
 
         # TODO: why do we need this part?
         for real_stmt in execute_observed.statements:
@@ -392,15 +392,15 @@ class EachOf(AssertRule):
         if self.rules and not self.rules[0].is_consumed:
             self.rules[0].no_more_statements()
         elif self.rules:
-            super(EachOf, self).no_more_statements()
+            super().no_more_statements()
 
 
 class Conditional(EachOf):
     def __init__(self, condition, rules, else_rules):
         if condition:
-            super(Conditional, self).__init__(*rules)
+            super().__init__(*rules)
         else:
-            super(Conditional, self).__init__(*else_rules)
+            super().__init__(*else_rules)
 
 
 class Or(AllOf):

@@ -101,7 +101,7 @@ class array(expression.ExpressionClauseList[_T]):
     def __init__(self, clauses, **kw):
 
         type_arg = kw.pop("type_", None)
-        super(array, self).__init__(operators.comma_op, *clauses, **kw)
+        super().__init__(operators.comma_op, *clauses, **kw)
 
         self._type_tuple = [arg.type for arg in self.clauses]
 

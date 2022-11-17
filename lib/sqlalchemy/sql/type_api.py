@@ -1399,7 +1399,7 @@ class Emulated(TypeEngineMixin):
 
 def _is_native_for_emulated(
     typ: Type[Union[TypeEngine[Any], TypeEngineMixin]],
-) -> TypeGuard["Type[NativeForEmulated]"]:
+) -> TypeGuard[Type[NativeForEmulated]]:
     return hasattr(typ, "adapt_emulated_to_native")
 
 
@@ -1673,9 +1673,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             if TYPE_CHECKING:
                 assert isinstance(self.expr.type, TypeDecorator)
             kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
-            return super(TypeDecorator.Comparator, self).operate(
-                op, *other, **kwargs
-            )
+            return super().operate(op, *other, **kwargs)
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
@@ -1683,9 +1681,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             if TYPE_CHECKING:
                 assert isinstance(self.expr.type, TypeDecorator)
             kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
-            return super(TypeDecorator.Comparator, self).reverse_operate(
-                op, other, **kwargs
-            )
+            return super().reverse_operate(op, other, **kwargs)
 
     @property
     def comparator_factory(  # type: ignore  # mypy properties bug

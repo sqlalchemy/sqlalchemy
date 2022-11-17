@@ -72,8 +72,7 @@ def sort(
     """
 
     for set_ in sort_as_subsets(tuples, allitems):
-        for s in set_:
-            yield s
+        yield from set_
 
 
 def find_cycles(

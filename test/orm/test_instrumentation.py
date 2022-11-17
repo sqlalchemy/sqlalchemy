@@ -104,7 +104,7 @@ class InitTest(fixtures.ORMTest):
         class B(A):
             def __init__(self):
                 inits.append((B, "__init__"))
-                super(B, self).__init__()
+                super().__init__()
 
         self.register(B, inits)
 
@@ -128,7 +128,7 @@ class InitTest(fixtures.ORMTest):
         class B(A):
             def __init__(self):
                 inits.append((B, "__init__"))
-                super(B, self).__init__()
+                super().__init__()
 
         A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
@@ -150,7 +150,7 @@ class InitTest(fixtures.ORMTest):
         class B(A):
             def __init__(self):
                 inits.append((B, "__init__"))
-                super(B, self).__init__()
+                super().__init__()
 
         self.register(B, inits)
 
@@ -196,14 +196,14 @@ class InitTest(fixtures.ORMTest):
         class B(A):
             def __init__(self):
                 inits.append((B, "__init__"))
-                super(B, self).__init__()
+                super().__init__()
 
         self.register(B, inits)
 
         class C(B):
             def __init__(self):
                 inits.append((C, "__init__"))
-                super(C, self).__init__()
+                super().__init__()
 
         self.register(C, inits)
 
@@ -239,12 +239,12 @@ class InitTest(fixtures.ORMTest):
         class B(A):
             def __init__(self):
                 inits.append((B, "__init__"))
-                super(B, self).__init__()
+                super().__init__()
 
         class C(B):
             def __init__(self):
                 inits.append((C, "__init__"))
-                super(C, self).__init__()
+                super().__init__()
 
         self.register(C, inits)
 
@@ -283,7 +283,7 @@ class InitTest(fixtures.ORMTest):
         class C(B):
             def __init__(self):
                 inits.append((C, "__init__"))
-                super(C, self).__init__()
+                super().__init__()
 
         self.register(C, inits)
 
@@ -316,7 +316,7 @@ class InitTest(fixtures.ORMTest):
         class C(B):
             def __init__(self):
                 inits.append((C, "__init__"))
-                super(C, self).__init__()
+                super().__init__()
 
         self.register(C, inits)
 
@@ -656,7 +656,7 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
         assert_raises(TypeError, cls, "a", "b", c="c")
 
     def _kw_only_fixture(self):
-        class A(object):
+        class A:
             def __init__(self, a, *, b, c):
                 self.a = a
                 self.b = b
@@ -665,7 +665,7 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
         return self._instrument(A)
 
     def _kw_plus_posn_fixture(self):
-        class A(object):
+        class A:
             def __init__(self, a, *args, b, c):
                 self.a = a
                 self.b = b
@@ -674,7 +674,7 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
         return self._instrument(A)
 
     def _kw_opt_fixture(self):
-        class A(object):
+        class A:
             def __init__(self, a, *, b, c="c"):
                 self.a = a
                 self.b = b

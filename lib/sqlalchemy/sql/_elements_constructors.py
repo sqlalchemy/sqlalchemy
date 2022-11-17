@@ -1127,7 +1127,7 @@ def label(
     name: str,
     element: _ColumnExpressionArgument[_T],
     type_: Optional[_TypeEngineArgument[_T]] = None,
-) -> "Label[_T]":
+) -> Label[_T]:
     """Return a :class:`Label` object for the
     given :class:`_expression.ColumnElement`.
 

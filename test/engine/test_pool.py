@@ -1410,8 +1410,8 @@ class QueuePoolTest(PoolTestBase):
         # two pooled connections unclosed.
 
         eq_(
-            set([c.close.call_count for c in strong_refs]),
-            set([1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0]),
+            {c.close.call_count for c in strong_refs},
+            {1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0},
         )
 
     def test_recycle(self):
@@ -1693,7 +1693,7 @@ class QueuePoolTest(PoolTestBase):
         class TrackQueuePool(pool.QueuePool):
             def __init__(self, *arg, **kw):
                 pools.append(self)
-                super(TrackQueuePool, self).__init__(*arg, **kw)
+                super().__init__(*arg, **kw)
 
         def creator():
             return slow_closing_connection.connect()

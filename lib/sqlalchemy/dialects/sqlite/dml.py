@@ -202,7 +202,7 @@ class OnConflictDoUpdate(OnConflictClause):
         set_=None,
         where=None,
     ):
-        super(OnConflictDoUpdate, self).__init__(
+        super().__init__(
             index_elements=index_elements,
             index_where=index_where,
         )

@@ -227,15 +227,15 @@ def _get_crud_params(
         parameters = {}
     elif stmt_parameter_tuples:
         assert spd is not None
-        parameters = dict(
-            (_column_as_key(key), REQUIRED)
+        parameters = {
+            _column_as_key(key): REQUIRED
             for key in compiler.column_keys
             if key not in spd
-        )
+        }
     else:
-        parameters = dict(
-            (_column_as_key(key), REQUIRED) for key in compiler.column_keys
-        )
+        parameters = {
+            _column_as_key(key): REQUIRED for key in compiler.column_keys
+        }
 
     # create a list of column assignment clauses as tuples
     values: List[_CrudParamElement] = []
@@ -1278,10 +1278,10 @@ def _get_update_multitable_params(
     values,
     kw,
 ):
-    normalized_params = dict(
-        (coercions.expect(roles.DMLColumnRole, c), param)
+    normalized_params = {
+        coercions.expect(roles.DMLColumnRole, c): param
         for c, param in stmt_parameter_tuples
-    )
+    }
 
     include_table = compile_state.include_table_with_column_exprs
 

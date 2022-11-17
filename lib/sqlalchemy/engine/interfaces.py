@@ -757,7 +757,7 @@ class Dialect(EventTarget):
     # create_engine()  -> isolation_level  currently goes here
     _on_connect_isolation_level: Optional[IsolationLevel]
 
-    execution_ctx_cls: Type["ExecutionContext"]
+    execution_ctx_cls: Type[ExecutionContext]
     """a :class:`.ExecutionContext` class used to handle statement execution"""
 
     execute_sequence_format: Union[
@@ -963,7 +963,7 @@ class Dialect(EventTarget):
     """target database, when given a CTE with an INSERT statement, needs
     the CTE to be below the INSERT"""
 
-    colspecs: MutableMapping[Type["TypeEngine[Any]"], Type["TypeEngine[Any]"]]
+    colspecs: MutableMapping[Type[TypeEngine[Any]], Type[TypeEngine[Any]]]
     """A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This
       dictionary is class-level only and is not accessed from the
@@ -1160,12 +1160,12 @@ class Dialect(EventTarget):
 
     _bind_typing_render_casts: bool
 
-    _type_memos: MutableMapping[TypeEngine[Any], "_TypeMemoDict"]
+    _type_memos: MutableMapping[TypeEngine[Any], _TypeMemoDict]
 
     def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
         raise NotImplementedError()
 
-    def create_connect_args(self, url: "URL") -> ConnectArgsType:
+    def create_connect_args(self, url: URL) -> ConnectArgsType:
         """Build DB-API compatible connection arguments.
 
         Given a :class:`.URL` object, returns a tuple
@@ -1217,7 +1217,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     @classmethod
-    def type_descriptor(cls, typeobj: "TypeEngine[_T]") -> "TypeEngine[_T]":
+    def type_descriptor(cls, typeobj: TypeEngine[_T]) -> TypeEngine[_T]:
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
@@ -2155,7 +2155,7 @@ class Dialect(EventTarget):
         self,
         cursor: DBAPICursor,
         statement: str,
-        context: Optional["ExecutionContext"] = None,
+        context: Optional[ExecutionContext] = None,
     ) -> None:
         """Provide an implementation of ``cursor.execute(statement)``.
 
@@ -2210,7 +2210,7 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
-    def on_connect_url(self, url: "URL") -> Optional[Callable[[Any], Any]]:
+    def on_connect_url(self, url: URL) -> Optional[Callable[[Any], Any]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         This method is a new hook that supersedes the
@@ -2556,7 +2556,7 @@ class Dialect(EventTarget):
         """
 
     @classmethod
-    def engine_created(cls, engine: "Engine") -> None:
+    def engine_created(cls, engine: Engine) -> None:
         """A convenience hook called before returning the final
         :class:`_engine.Engine`.
 
