@@ -387,7 +387,7 @@ SQLAlchemy 2.0 has new support for runtime interpretation of :pep:`484` typing a
 on ORM models.   A requirement of these annotations is that they must make use
 of the :class:`_orm.Mapped` generic container.  Annotations which don't use
 :class:`_orm.Mapped` which link to constructs such as :func:`_orm.relationship`
-will raise errors, as they suggest mis-configurations.
+will raise errors in Python, as they suggest mis-configurations.
 
 SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
 explicit annotations that don't use :class:`_orm.Mapped` in their annotations
@@ -423,6 +423,15 @@ don't use :class:`_orm.Mapped` to pass without error,
 the ``__allow_unmapped__`` attribute may be used on the class or any
 subclasses, which will cause the annotations in these cases to be
 ignored completely by the new Declarative system.
+
+.. note:: The ``__allow_unmapped__`` directive applies **only** to the
+   *runtime* behavior of the ORM.  It does not affect the behavior of
+   Mypy, and the above mapping as written still requires that the Mypy
+   plugin be installed.   For fully 2.0 style ORM models that will type
+   correctly under Mypy *without* a plugin, see the section named
+   "Migrating an Existing Mapping" in the "What's New in SQLAlchemy 2.0?"
+   document of the SQLAlchemy 2.0 documentation; this is the SQLAlchemy
+   1.4 documentation.
 
 The example below illustrates the application of ``__allow_unmapped__``
 to the Declarative ``Base`` class, where it will take effect for all classes
