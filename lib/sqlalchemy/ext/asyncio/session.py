@@ -1451,7 +1451,7 @@ class async_sessionmaker(Generic[_AS]):
     def __init__(
         self,
         bind: Optional[_AsyncSessionBind],
-        class_: Type[_AS],  # type: ignore
+        class_: Type[_AS],
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
@@ -1463,7 +1463,7 @@ class async_sessionmaker(Generic[_AS]):
         self,
         bind: Optional[_AsyncSessionBind] = ...,
         *,
-        class_: Type[_AS],  # type: ignore
+        class_: Type[_AS],
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
