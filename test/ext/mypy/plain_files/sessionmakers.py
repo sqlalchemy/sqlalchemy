@@ -99,8 +99,9 @@ def test_8837_sync() -> None:
     # EXPECTED_TYPE: Session
     reveal_type(session)
 
+
 def test_8837_async() -> None:
-    as_= async_sessionmaker()
+    as_ = async_sessionmaker()
 
     # EXPECTED_TYPE: async_sessionmaker[AsyncSession]
     reveal_type(as_)
