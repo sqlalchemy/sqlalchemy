@@ -408,6 +408,8 @@ as-needed, per-attribute basis for those attributes where specific types are
 helpful; non-annotated attributes that use :func:`_orm.mapped_column` will be
 typed as ``Any`` at the instance level.
 
+.. _whatsnew_20_orm_typing_migration:
+
 Migrating an Existing Mapping
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
