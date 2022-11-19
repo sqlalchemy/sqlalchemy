@@ -179,6 +179,7 @@ from .sql.expression import Select as Select
 from .sql.expression import select as select
 from .sql.expression import Selectable as Selectable
 from .sql.expression import SelectBase as SelectBase
+from .sql.expression import SQLColumnExpression as SQLColumnExpression
 from .sql.expression import StatementLambdaElement as StatementLambdaElement
 from .sql.expression import Subquery as Subquery
 from .sql.expression import table as table

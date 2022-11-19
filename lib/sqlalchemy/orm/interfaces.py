@@ -26,6 +26,7 @@ from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Dict
+from typing import Generic
 from typing import Iterator
 from typing import List
 from typing import NamedTuple
@@ -65,6 +66,7 @@ from ..sql import visitors
 from ..sql.base import _NoArg
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
+from ..sql.operators import ColumnOperators
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util.typing import RODescriptorReference
@@ -595,7 +597,7 @@ class MapperProperty(
 
 
 @inspection._self_inspects
-class PropComparator(SQLORMOperations[_T]):
+class PropComparator(SQLORMOperations[_T], Generic[_T], ColumnOperators):
     r"""Defines SQL operations for ORM mapped attributes.
 
     SQLAlchemy allows for operators to
@@ -676,7 +678,6 @@ class PropComparator(SQLORMOperations[_T]):
         :attr:`.TypeEngine.comparator_factory`
 
     """
-
     __slots__ = "prop", "_parententity", "_adapt_to_entity"
 
     __visit_name__ = "orm_prop_comparator"

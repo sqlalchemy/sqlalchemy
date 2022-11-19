@@ -49,6 +49,7 @@ from .base import Mapped as Mapped
 from .base import NotExtension as NotExtension
 from .base import ORMDescriptor as ORMDescriptor
 from .base import PassiveFlag as PassiveFlag
+from .base import SQLORMExpression as SQLORMExpression
 from .base import WriteOnlyMapped as WriteOnlyMapped
 from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext

@@ -1115,6 +1115,26 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
             ...
 
 
+class SQLColumnExpression(
+    SQLCoreOperations[_T], roles.ExpressionElementRole[_T], TypingOnly
+):
+    """A type that may be used to indicate any SQL column element or object
+    that acts in place of one.
+
+    :class:`.SQLColumnExpression` is a base of
+    :class:`.ColumnElement`, as well as within the bases of ORM elements
+    such as :class:`.InstrumentedAttribute`, and may be used in :pep:`484`
+    typing to indicate arguments or return values that should behave
+    as column expressions.
+
+    .. versionadded:: 2.0.0b4
+
+
+    """
+
+    __slots__ = ()
+
+
 _SQO = SQLCoreOperations
 
 SelfColumnElement = TypeVar("SelfColumnElement", bound="ColumnElement[Any]")
@@ -1131,7 +1151,7 @@ class ColumnElement(
     roles.DMLColumnRole,
     roles.DDLConstraintColumnRole,
     roles.DDLExpressionRole,
-    SQLCoreOperations[_T],
+    SQLColumnExpression[_T],
     DQLDMLClauseElement,
 ):
     """Represent a column-oriented SQL expression suitable for usage in the

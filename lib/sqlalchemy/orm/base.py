@@ -31,7 +31,7 @@ from ._typing import insp_is_mapper
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
-from ..sql import roles
+from ..sql.elements import SQLColumnExpression
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
 from ..util.langhelpers import TypingOnly
@@ -52,6 +52,7 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
     from ..sql.elements import ColumnElement
+    from ..sql.operators import OperatorType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -740,9 +741,31 @@ class _MappedAnnotationBase(Generic[_T], TypingOnly):
     __slots__ = ()
 
 
+class SQLORMExpression(
+    SQLORMOperations[_T], SQLColumnExpression[_T], TypingOnly
+):
+    """A type that may be used to indicate any ORM-level attribute or
+    object that acts in place of one, in the context of SQL expression
+    construction.
+
+    :class:`.SQLORMExpression` extends from the Core
+    :class:`.SQLColumnExpression` to add additional SQL methods that are ORM
+    specific, such as :meth:`.PropComparator.of_type`, and is part of the bases
+    for :class:`.InstrumentedAttribute`. It may be used in :pep:`484` typing to
+    indicate arguments or return values that should behave as ORM-level
+    attribute expressions.
+
+    .. versionadded:: 2.0.0b4
+
+
+    """
+
+    __slots__ = ()
+
+
 class Mapped(
+    SQLORMExpression[_T],
     ORMDescriptor[_T],
-    roles.TypedColumnsClauseRole[_T],
     _MappedAnnotationBase[_T],
 ):
     """Represent an ORM mapped attribute on a mapped class.
@@ -829,6 +852,22 @@ class _DeclarativeMapped(Mapped[_T], _MappedAttribute[_T]):
     """
 
     __slots__ = ()
+
+    # MappedSQLExpression, Relationship, Composite etc. dont actually do
+    # SQL expression behavior.  yet there is code that compares them with
+    # __eq__(), __ne__(), etc.   Since #8847 made Mapped even more full
+    # featured including ColumnOperators, we need to have those methods
+    # be no-ops for these objects, so return NotImplemented to fall back
+    # to normal comparison behavior.
+    def operate(self, op: OperatorType, *other: Any, **kwargs: Any) -> Any:
+        return NotImplemented
+
+    __sa_operate__ = operate
+
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> Any:
+        return NotImplemented
 
 
 class DynamicMapped(_MappedAnnotationBase[_T]):
