@@ -124,6 +124,7 @@ class AsyncSession(ReversibleProxy[Session]):
     def __init__(
         self,
         bind: Optional[_AsyncSessionBind] = None,
+        *,
         binds: Optional[Dict[_SessionBindKey, _AsyncSessionBind]] = None,
         sync_session_class: Optional[Type[Session]] = None,
         **kw: Any,
