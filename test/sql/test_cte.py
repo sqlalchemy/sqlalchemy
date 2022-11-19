@@ -2238,7 +2238,8 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ") SELECT cte.outer_cte FROM cte",
         )
 
-    def test_nesting_cte_in_recursive_cte(self):
+    @testing.fixture
+    def nesting_cte_in_recursive_cte(self):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True
         )
@@ -2247,23 +2248,43 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "rec_cte", recursive=True
         )
         rec_part = select(rec_cte.c.outer_cte).where(
-            rec_cte.c.outer_cte == literal(1)
+            rec_cte.c.outer_cte == literal(42)
         )
         rec_cte = rec_cte.union(rec_part)
 
         stmt = select(rec_cte)
+        return stmt
+
+    def test_nesting_cte_in_recursive_cte_positional(
+        self, nesting_cte_in_recursive_cte
+    ):
 
         self.assert_compile(
-            stmt,
+            nesting_cte_in_recursive_cte,
+            "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
+            "(SELECT ? AS inner_cte) "
+            "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
+            "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
+            "WHERE rec_cte.outer_cte = ?) "
+            "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkpositional=(1, 42),
+            dialect="default_qmark",
+        )
+
+    def test_nesting_cte_in_recursive_cte(self, nesting_cte_in_recursive_cte):
+        self.assert_compile(
+            nesting_cte_in_recursive_cte,
             "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
             "(SELECT :param_1 AS inner_cte) "
             "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
             "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
             "WHERE rec_cte.outer_cte = :param_2) "
             "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkparams={"param_1": 1, "param_2": 42},
         )
 
-    def test_nesting_cte_in_recursive_cte_w_add_cte(self):
+    @testing.fixture
+    def nesting_cte_in_recursive_cte_w_add_cte(self):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True
         )
@@ -2272,20 +2293,40 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "rec_cte", recursive=True
         )
         rec_part = select(rec_cte.c.outer_cte).where(
-            rec_cte.c.outer_cte == literal(1)
+            rec_cte.c.outer_cte == literal(42)
         )
         rec_cte = rec_cte.union(rec_part)
 
         stmt = select(rec_cte)
+        return stmt
 
+    def test_nesting_cte_in_recursive_cte_w_add_cte_positional(
+        self, nesting_cte_in_recursive_cte_w_add_cte
+    ):
         self.assert_compile(
-            stmt,
+            nesting_cte_in_recursive_cte_w_add_cte,
+            "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
+            "(SELECT ? AS inner_cte) "
+            "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
+            "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
+            "WHERE rec_cte.outer_cte = ?) "
+            "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkpositional=(1, 42),
+            dialect="default_qmark",
+        )
+
+    def test_nesting_cte_in_recursive_cte_w_add_cte(
+        self, nesting_cte_in_recursive_cte_w_add_cte
+    ):
+        self.assert_compile(
+            nesting_cte_in_recursive_cte_w_add_cte,
             "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
             "(SELECT :param_1 AS inner_cte) "
             "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
             "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
             "WHERE rec_cte.outer_cte = :param_2) "
             "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkparams={"param_1": 1, "param_2": 42},
         )
 
     def test_recursive_nesting_cte_in_cte(self):
@@ -2387,18 +2428,19 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cte.outer_cte FROM cte",
         )
 
-    def test_same_nested_cte_is_not_generated_twice(self):
+    @testing.fixture
+    def same_nested_cte_is_not_generated_twice(self):
         # Same = name and query
         nesting_cte_used_twice = select(literal(1).label("inner_cte_1")).cte(
             "nesting_cte", nesting=True
         )
         select_add_cte = select(
-            (nesting_cte_used_twice.c.inner_cte_1 + 1).label("next_value")
+            (nesting_cte_used_twice.c.inner_cte_1 + 2).label("next_value")
         ).cte("nesting_2", nesting=True)
 
         union_cte = (
             select(
-                (nesting_cte_used_twice.c.inner_cte_1 - 1).label("next_value")
+                (nesting_cte_used_twice.c.inner_cte_1 - 3).label("next_value")
             )
             .union(select(select_add_cte))
             .cte("wrapper", nesting=True)
@@ -2409,9 +2451,36 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             .add_cte(nesting_cte_used_twice)
             .union(select(nesting_cte_used_twice))
         )
+        return stmt
 
+    def test_same_nested_cte_is_not_generated_twice_positional(
+        self, same_nested_cte_is_not_generated_twice
+    ):
         self.assert_compile(
-            stmt,
+            same_nested_cte_is_not_generated_twice,
+            "WITH nesting_cte AS "
+            "(SELECT ? AS inner_cte_1)"
+            ", wrapper AS "
+            "(WITH nesting_2 AS "
+            "(SELECT nesting_cte.inner_cte_1 + ? "
+            "AS next_value "
+            "FROM nesting_cte)"
+            " SELECT nesting_cte.inner_cte_1 - ? "
+            "AS next_value "
+            "FROM nesting_cte UNION SELECT nesting_2.next_value "
+            "AS next_value FROM nesting_2)"
+            " SELECT wrapper.next_value "
+            "FROM wrapper UNION SELECT nesting_cte.inner_cte_1 "
+            "FROM nesting_cte",
+            checkpositional=(1, 2, 3),
+            dialect="default_qmark",
+        )
+
+    def test_same_nested_cte_is_not_generated_twice(
+        self, same_nested_cte_is_not_generated_twice
+    ):
+        self.assert_compile(
+            same_nested_cte_is_not_generated_twice,
             "WITH nesting_cte AS "
             "(SELECT :param_1 AS inner_cte_1)"
             ", wrapper AS "
@@ -2421,11 +2490,16 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM nesting_cte)"
             " SELECT nesting_cte.inner_cte_1 - :inner_cte_1_1 "
             "AS next_value "
-            "FROM nesting_cte UNION SELECT nesting_2.next_value AS next_value "
-            "FROM nesting_2)"
+            "FROM nesting_cte UNION SELECT nesting_2.next_value "
+            "AS next_value FROM nesting_2)"
             " SELECT wrapper.next_value "
             "FROM wrapper UNION SELECT nesting_cte.inner_cte_1 "
             "FROM nesting_cte",
+            checkparams={
+                "param_1": 1,
+                "inner_cte_1_2": 2,
+                "inner_cte_1_1": 3,
+            },
         )
 
     def test_add_cte_dont_nest_in_two_places(self):
@@ -2458,18 +2532,19 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             stmt.compile()
 
-    def test_same_nested_cte_is_not_generated_twice_w_add_cte(self):
+    @testing.fixture
+    def same_nested_cte_is_not_generated_twice_w_add_cte(self):
         # Same = name and query
         nesting_cte_used_twice = select(literal(1).label("inner_cte_1")).cte(
             "nesting_cte"
         )
         select_add_cte = select(
-            (nesting_cte_used_twice.c.inner_cte_1 + 1).label("next_value")
+            (nesting_cte_used_twice.c.inner_cte_1 + 2).label("next_value")
         ).cte("nesting_2")
 
         union_cte = (
             select(
-                (nesting_cte_used_twice.c.inner_cte_1 - 1).label("next_value")
+                (nesting_cte_used_twice.c.inner_cte_1 - 3).label("next_value")
             )
             .add_cte(nesting_cte_used_twice)
             .union(
@@ -2483,31 +2558,60 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             .add_cte(nesting_cte_used_twice, nest_here=True)
             .union(select(nesting_cte_used_twice))
         )
+        return stmt
 
+    def test_same_nested_cte_is_not_generated_twice_w_add_cte_positional(
+        self, same_nested_cte_is_not_generated_twice_w_add_cte
+    ):
         self.assert_compile(
-            stmt,
-            "WITH nesting_cte AS "
-            "(SELECT :param_1 AS inner_cte_1)"
-            ", wrapper AS "
-            "(WITH nesting_2 AS "
-            "(SELECT nesting_cte.inner_cte_1 + :inner_cte_1_2 "
+            same_nested_cte_is_not_generated_twice_w_add_cte,
+            "WITH nesting_cte AS (SELECT ? AS inner_cte_1)"
+            ", wrapper AS (WITH nesting_2 AS "
+            "(SELECT nesting_cte.inner_cte_1 + ? "
+            "AS next_value FROM nesting_cte)"
+            " SELECT nesting_cte.inner_cte_1 - ? "
             "AS next_value "
-            "FROM nesting_cte)"
-            " SELECT nesting_cte.inner_cte_1 - :inner_cte_1_1 "
-            "AS next_value "
-            "FROM nesting_cte UNION SELECT nesting_2.next_value AS next_value "
+            "FROM nesting_cte UNION "
+            "SELECT nesting_2.next_value AS next_value "
             "FROM nesting_2)"
             " SELECT wrapper.next_value "
             "FROM wrapper UNION SELECT nesting_cte.inner_cte_1 "
             "FROM nesting_cte",
+            checkpositional=(1, 2, 3),
+            dialect="default_qmark",
         )
 
-    def test_recursive_nesting_cte_in_recursive_cte(self):
+    def test_same_nested_cte_is_not_generated_twice_w_add_cte(
+        self, same_nested_cte_is_not_generated_twice_w_add_cte
+    ):
+        self.assert_compile(
+            same_nested_cte_is_not_generated_twice_w_add_cte,
+            "WITH nesting_cte AS (SELECT :param_1 AS inner_cte_1)"
+            ", wrapper AS (WITH nesting_2 AS "
+            "(SELECT nesting_cte.inner_cte_1 + :inner_cte_1_2 "
+            "AS next_value FROM nesting_cte)"
+            " SELECT nesting_cte.inner_cte_1 - :inner_cte_1_1 "
+            "AS next_value "
+            "FROM nesting_cte UNION "
+            "SELECT nesting_2.next_value AS next_value "
+            "FROM nesting_2)"
+            " SELECT wrapper.next_value "
+            "FROM wrapper UNION SELECT nesting_cte.inner_cte_1 "
+            "FROM nesting_cte",
+            checkparams={
+                "param_1": 1,
+                "inner_cte_1_2": 2,
+                "inner_cte_1_1": 3,
+            },
+        )
+
+    @testing.fixture
+    def recursive_nesting_cte_in_recursive_cte(self):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True, recursive=True
         )
         nesting_rec_part = select(nesting_cte.c.inner_cte).where(
-            nesting_cte.c.inner_cte == literal(1)
+            nesting_cte.c.inner_cte == literal(2)
         )
         nesting_cte = nesting_cte.union(nesting_rec_part)
 
@@ -2515,14 +2619,37 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "rec_cte", recursive=True
         )
         rec_part = select(rec_cte.c.outer_cte).where(
-            rec_cte.c.outer_cte == literal(1)
+            rec_cte.c.outer_cte == literal(3)
         )
         rec_cte = rec_cte.union(rec_part)
 
         stmt = select(rec_cte)
+        return stmt
+
+    def test_recursive_nesting_cte_in_recursive_cte_positional(
+        self, recursive_nesting_cte_in_recursive_cte
+    ):
 
         self.assert_compile(
-            stmt,
+            recursive_nesting_cte_in_recursive_cte,
+            "WITH RECURSIVE rec_cte(outer_cte) AS ("
+            "WITH RECURSIVE nesting(inner_cte) AS "
+            "(SELECT ? AS inner_cte UNION "
+            "SELECT nesting.inner_cte AS inner_cte FROM nesting "
+            "WHERE nesting.inner_cte = ?) "
+            "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
+            "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
+            "WHERE rec_cte.outer_cte = ?) "
+            "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkpositional=(1, 2, 3),
+            dialect="default_qmark",
+        )
+
+    def test_recursive_nesting_cte_in_recursive_cte(
+        self, recursive_nesting_cte_in_recursive_cte
+    ):
+        self.assert_compile(
+            recursive_nesting_cte_in_recursive_cte,
             "WITH RECURSIVE rec_cte(outer_cte) AS ("
             "WITH RECURSIVE nesting(inner_cte) AS "
             "(SELECT :param_1 AS inner_cte UNION "
@@ -2532,6 +2659,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
             "WHERE rec_cte.outer_cte = :param_3) "
             "SELECT rec_cte.outer_cte FROM rec_cte",
+            checkparams={"param_1": 1, "param_2": 2, "param_3": 3},
         )
 
     def test_select_from_insert_cte_with_nesting(self):
@@ -2686,7 +2814,43 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ") SELECT cte.outer_cte FROM cte",
         )
 
-    def test_recursive_cte_referenced_multiple_times_with_nesting_cte(self):
+    @testing.fixture
+    def cte_in_compound_select(self):
+        upper = select(literal(1).label("z"))
+
+        lower_a_cte = select(literal(2).label("x")).cte("xx", nesting=True)
+        lower_a = select(literal(3).label("y")).add_cte(lower_a_cte)
+        lower_b = select(literal(4).label("w"))
+
+        stmt = upper.union_all(lower_a.union_all(lower_b))
+        return stmt
+
+    def test_cte_in_compound_select_positional(self, cte_in_compound_select):
+        self.assert_compile(
+            cte_in_compound_select,
+            "SELECT ? AS z UNION ALL (WITH xx AS "
+            "(SELECT ? AS x) "
+            "SELECT ? AS y UNION ALL SELECT ? AS w)",
+            checkpositional=(1, 2, 3, 4),
+            dialect="default_qmark",
+        )
+
+    def test_cte_in_compound_select(self, cte_in_compound_select):
+        self.assert_compile(
+            cte_in_compound_select,
+            "SELECT :param_1 AS z UNION ALL (WITH xx AS "
+            "(SELECT :param_2 AS x) "
+            "SELECT :param_3 AS y UNION ALL SELECT :param_4 AS w)",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+            },
+        )
+
+    @testing.fixture
+    def recursive_cte_referenced_multiple_times_with_nesting_cte(self):
         rec_root = select(literal(1).label("the_value")).cte(
             "recursive_cte", recursive=True
         )
@@ -2699,7 +2863,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             exists(
                 select(rec_root_ref.c.the_value)
                 .where(rec_root_ref.c.the_value < 10)
-                .limit(1)
+                .limit(5)
             ).label("val")
         ).cte("should_continue", nesting=True)
 
@@ -2715,13 +2879,43 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         rec_cte = rec_root.union_all(rec_part)
 
         stmt = rec_cte.select()
+        return stmt
 
+    def test_recursive_cte_referenced_multiple_times_with_nesting_cte_pos(
+        self, recursive_cte_referenced_multiple_times_with_nesting_cte
+    ):
         self.assert_compile(
-            stmt,
+            recursive_cte_referenced_multiple_times_with_nesting_cte,
+            "WITH RECURSIVE recursive_cte(the_value) AS ("
+            "SELECT ? AS the_value UNION ALL ("
+            "WITH allow_multiple_ref AS ("
+            "SELECT recursive_cte.the_value AS the_value "
+            "FROM recursive_cte)"
+            ", should_continue AS (SELECT EXISTS ("
+            "SELECT allow_multiple_ref.the_value FROM allow_multiple_ref"
+            " WHERE allow_multiple_ref.the_value < ?"
+            " LIMIT ?) AS val) "
+            "SELECT allow_multiple_ref.the_value * ? AS anon_1"
+            " FROM allow_multiple_ref, should_continue "
+            "WHERE should_continue.val != 1"
+            " UNION ALL SELECT allow_multiple_ref.the_value * ?"
+            " AS anon_2 FROM allow_multiple_ref, should_continue"
+            " WHERE should_continue.val != 1))"
+            " SELECT recursive_cte.the_value FROM recursive_cte",
+            checkpositional=(1, 10, 5, 2, 3),
+            dialect="default_qmark",
+        )
+
+    def test_recursive_cte_referenced_multiple_times_with_nesting_cte(
+        self, recursive_cte_referenced_multiple_times_with_nesting_cte
+    ):
+        self.assert_compile(
+            recursive_cte_referenced_multiple_times_with_nesting_cte,
             "WITH RECURSIVE recursive_cte(the_value) AS ("
             "SELECT :param_1 AS the_value UNION ALL ("
             "WITH allow_multiple_ref AS ("
-            "SELECT recursive_cte.the_value AS the_value FROM recursive_cte)"
+            "SELECT recursive_cte.the_value AS the_value "
+            "FROM recursive_cte)"
             ", should_continue AS (SELECT EXISTS ("
             "SELECT allow_multiple_ref.the_value FROM allow_multiple_ref"
             " WHERE allow_multiple_ref.the_value < :the_value_2"
@@ -2733,6 +2927,13 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             " AS anon_2 FROM allow_multiple_ref, should_continue"
             " WHERE should_continue.val != true))"
             " SELECT recursive_cte.the_value FROM recursive_cte",
+            checkparams={
+                "param_1": 1,
+                "param_2": 5,
+                "the_value_2": 10,
+                "the_value_1": 2,
+                "the_value_3": 3,
+            },
         )
 
     @testing.combinations(True, False)

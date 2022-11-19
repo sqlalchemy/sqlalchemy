@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8827
+
+    Fixed a series of issues regarding positionally rendered bound parameters,
+    such as those used for SQLite, asyncpg, MySQL and others. Some compiled
+    forms would not maintain the order of parameters correctly, such as the
+    PostgreSQL ``regexp_replace()`` function as well as within the "nesting"
+    feature of the :class:`.CTE` construct first introduced in :ticket:`4123`.
