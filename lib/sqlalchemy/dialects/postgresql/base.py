@@ -2386,14 +2386,11 @@ class PGCompiler(compiler.SQLCompiler):
             return self._generate_generic_binary(
                 binary, " %s* " % base_op, **kw
             )
-        flags = self.process(flags, **kw)
-        string = self.process(binary.left, **kw)
-        pattern = self.process(binary.right, **kw)
         return "%s %s CONCAT('(?', %s, ')', %s)" % (
-            string,
+            self.process(binary.left, **kw),
             base_op,
-            flags,
-            pattern,
+            self.process(flags, **kw),
+            self.process(binary.right, **kw),
         )
 
     def visit_regexp_match_op_binary(self, binary, operator, **kw):
@@ -2406,8 +2403,6 @@ class PGCompiler(compiler.SQLCompiler):
         string = self.process(binary.left, **kw)
         pattern = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
-        if flags is not None:
-            flags = self.process(flags, **kw)
         replacement = self.process(binary.modifiers["replacement"], **kw)
         if flags is None:
             return "REGEXP_REPLACE(%s, %s, %s)" % (
@@ -2420,7 +2415,7 @@ class PGCompiler(compiler.SQLCompiler):
                 string,
                 pattern,
                 replacement,
-                flags,
+                self.process(flags, **kw),
             )
 
     def visit_empty_set_expr(self, element_types):
