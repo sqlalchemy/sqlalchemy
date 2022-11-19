@@ -1362,6 +1362,7 @@ class Session(_SessionClassMethods, EventTarget):
     def __init__(
         self,
         bind: Optional[_SessionBind] = None,
+        *,
         autoflush: bool = True,
         future: Literal[True] = True,
         expire_on_commit: bool = True,
