@@ -1439,17 +1439,6 @@ class async_sessionmaker(Generic[_AS]):
     @overload
     def __init__(
         self,
-        bind: Optional[_AsyncSessionBind],
-        class_: Type[_AS],
-        autoflush: bool = ...,
-        expire_on_commit: bool = ...,
-        info: Optional[_InfoType] = ...,
-        **kw: Any,
-    ):
-        ...
-    @overload
-    def __init__(
-        self,
         bind: Optional[_AsyncSessionBind] = ...,
         *,
         class_: Type[_AS],
@@ -1459,6 +1448,7 @@ class async_sessionmaker(Generic[_AS]):
         **kw: Any,
     ):
         ...
+
     @overload
     def __init__(
         self: "async_sessionmaker[AsyncSession]",
@@ -1470,9 +1460,11 @@ class async_sessionmaker(Generic[_AS]):
         **kw: Any,
     ):
         ...
+
     def __init__(
         self,
         bind: Optional[_AsyncSessionBind] = None,
+        *,
         class_: Type[_AS] = AsyncSession,  # type: ignore
         autoflush: bool = True,
         expire_on_commit: bool = True,
