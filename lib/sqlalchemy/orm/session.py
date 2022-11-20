@@ -1362,6 +1362,7 @@ class Session(_SessionClassMethods, EventTarget):
     def __init__(
         self,
         bind: Optional[_SessionBind] = None,
+        *,
         autoflush: bool = True,
         future: Literal[True] = True,
         expire_on_commit: bool = True,
@@ -4621,9 +4622,35 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
 
     class_: Type[_S]
 
+    @overload
+    def __init__(
+        self,
+        bind: Optional[_SessionBind] = ...,
+        *,
+        class_: Type[_S],
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        info: Optional[_InfoType] = ...,
+        **kw: Any,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "sessionmaker[Session]",
+        bind: Optional[_SessionBind] = ...,
+        *,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        info: Optional[_InfoType] = ...,
+        **kw: Any,
+    ):
+        ...
+
     def __init__(
         self,
         bind: Optional[_SessionBind] = None,
+        *,
         class_: Type[_S] = Session,  # type: ignore
         autoflush: bool = True,
         expire_on_commit: bool = True,
