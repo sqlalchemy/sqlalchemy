@@ -437,7 +437,7 @@ class ColumnProperty(
             try:
                 return ce.info  # type: ignore
             except AttributeError:
-                return self.prop.info
+                return self.prop.info  # type: ignore
 
         def _memoized_attr_expressions(self) -> Sequence[NamedColumn[Any]]:
             """The full sequence of columns referenced by this
@@ -686,10 +686,10 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
-        if is_fwd_ref(argument):
+        if is_fwd_ref(argument, check_generic=True):
             assert originating_module is not None
             argument = de_stringify_annotation(
-                cls, argument, originating_module
+                cls, argument, originating_module, include_generic=True
             )
 
         if is_union(argument):

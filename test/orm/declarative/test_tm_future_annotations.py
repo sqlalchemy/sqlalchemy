@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
@@ -13,6 +14,7 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import String
@@ -208,6 +210,62 @@ class MappedColumnTest(_MappedColumnTest):
                 is_false(reverse_col.nullable)
                 is_(optional_col.type, our_type)
                 is_true(optional_col.nullable)
+
+    @testing.combinations(
+        ("not_optional",),
+        ("optional",),
+        ("optional_fwd_ref",),
+        ("union_none",),
+        ("pep604", testing.requires.python310),
+        ("pep604_fwd_ref", testing.requires.python310),
+        argnames="optional_on_json",
+    )
+    @testing.combinations(
+        "include_mc_type", "derive_from_anno", argnames="include_mc_type"
+    )
+    def test_optional_styles_nested_brackets(
+        self, optional_on_json, include_mc_type
+    ):
+        class Base(DeclarativeBase):
+            if testing.requires.python310.enabled:
+                type_annotation_map = {
+                    Dict[str, str]: JSON,
+                    dict[str, str]: JSON,
+                }
+            else:
+                type_annotation_map = {
+                    Dict[str, str]: JSON,
+                }
+
+        if include_mc_type == "include_mc_type":
+            mc = mapped_column(JSON)
+        else:
+            mc = mapped_column()
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+            if optional_on_json == "not_optional":
+                json: Mapped[Dict[str, str]] = mapped_column()  # type: ignore
+            elif optional_on_json == "optional":
+                json: Mapped[Optional[Dict[str, str]]] = mc
+            elif optional_on_json == "optional_fwd_ref":
+                json: Mapped["Optional[Dict[str, str]]"] = mc
+            elif optional_on_json == "union_none":
+                json: Mapped[Union[Dict[str, str], None]] = mc
+            elif optional_on_json == "pep604":
+                json: Mapped[dict[str, str] | None] = mc
+            elif optional_on_json == "pep604_fwd_ref":
+                json: Mapped["dict[str, str] | None"] = mc
+
+        is_(A.__table__.c.json.type._type_affinity, JSON)
+        if optional_on_json == "not_optional":
+            is_false(A.__table__.c.json.nullable)
+        else:
+            is_true(A.__table__.c.json.nullable)
 
     def test_typ_not_in_cls_namespace(self, decl_base):
         """test #8742.
