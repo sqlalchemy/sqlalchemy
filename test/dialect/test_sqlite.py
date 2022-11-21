@@ -4,7 +4,6 @@
 import datetime
 import json
 import os
-from unittest.mock import ANY
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -2338,13 +2337,13 @@ class ConstraintReflectionTest(fixtures.TestBase):
                         "unique": 1,
                         "name": "ix_partial",
                         "column_names": ["x"],
-                        "dialect_options": {"sqlite_where": ANY},
+                        "dialect_options": {"sqlite_where": mock.ANY},
                     },
                     {
                         "unique": 1,
                         "name": "ix_partial2",
                         "column_names": ["x", "y"],
-                        "dialect_options": {"sqlite_where": ANY},
+                        "dialect_options": {"sqlite_where": mock.ANY},
                     },
                 ],
             )
