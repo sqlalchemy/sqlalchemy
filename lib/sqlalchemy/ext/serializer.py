@@ -14,6 +14,11 @@ etc. which are referenced by the structure are not persisted in serialized
 form, but are instead re-associated with the query structure
 when it is deserialized.
 
+.. warning:: The serializer extension uses pickle to serialize and
+   deserialize objects, so the same security consideration mentioned
+   in the `python documentation
+   <https://docs.python.org/3/library/pickle.html>`_ apply.
+
 Usage is nearly the same as that of the standard Python pickle module::
 
     from sqlalchemy.ext.serializer import loads, dumps
