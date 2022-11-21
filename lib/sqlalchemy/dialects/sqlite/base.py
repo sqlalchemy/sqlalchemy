@@ -2684,21 +2684,21 @@ class SQLiteDialect(default.DefaultDialect):
                     "AND type = 'index'" % {"schema": schema_expr}
                 )
                 rs = connection.exec_driver_sql(s, (row[1],))
-                try:
-                    # in theory the code below shouldn't happen because
-                    # we know this is a partial index, so the definition
-                    # sql should be there and match the regex
-                    index_sql = rs.scalar()
-                    predicate = partial_pred_re.search(index_sql).group(1)
-                    indexes[-1]["dialect_options"]["sqlite_where"] = text(
-                        predicate
-                    )
-                except Exception:
+                index_sql = rs.scalar()
+                predicate_match = partial_pred_re.search(index_sql)
+                if predicate_match is None:
+                    # unless the regex is broken this case shouldn't happen
+                    # because we know this is a partial index, so the
+                    # definition sql should match the regex
                     util.warn(
                         "Failed to look up filter predicate of "
                         "partial index %s" % row[1]
                     )
-                    indexes.pop()
+                else:
+                    predicate = predicate_match.group(1)
+                    indexes[-1]["dialect_options"]["sqlite_where"] = text(
+                        predicate
+                    )
 
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):
