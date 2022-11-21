@@ -79,6 +79,8 @@ sections, are listed here.
 .. autoclass:: RelationshipProperty
   :members:
 
+.. autoclass:: SQLORMExpression
+
 .. autoclass:: Synonym
 
 .. autoclass:: SynonymProperty

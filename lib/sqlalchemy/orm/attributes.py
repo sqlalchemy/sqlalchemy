@@ -70,6 +70,7 @@ from .base import PASSIVE_RETURN_NO_VALUE
 from .base import PassiveFlag
 from .base import RELATED_OBJECT_OK  # noqa
 from .base import SQL_OK  # noqa
+from .base import SQLORMExpression
 from .base import state_str
 from .. import event
 from .. import exc
@@ -131,8 +132,8 @@ SelfQueryableAttribute = TypeVar(
 
 @inspection._self_inspects
 class QueryableAttribute(
-    roles.ExpressionElementRole[_T],
     _DeclarativeMapped[_T],
+    SQLORMExpression[_T],
     interfaces.InspectionAttr,
     interfaces.PropComparator[_T],
     roles.JoinTargetRole,

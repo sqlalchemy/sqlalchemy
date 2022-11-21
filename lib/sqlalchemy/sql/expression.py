@@ -95,6 +95,7 @@ from .elements import quoted_name as quoted_name
 from .elements import ReleaseSavepointClause as ReleaseSavepointClause
 from .elements import RollbackToSavepointClause as RollbackToSavepointClause
 from .elements import SavepointClause as SavepointClause
+from .elements import SQLColumnExpression as SQLColumnExpression
 from .elements import TextClause as TextClause
 from .elements import True_ as True_
 from .elements import Tuple as Tuple
