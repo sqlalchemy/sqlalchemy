@@ -19,6 +19,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Uuid
+import sqlalchemy.orm
 from sqlalchemy.orm import attribute_keyed_dict
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import DynamicMapped
@@ -55,6 +56,22 @@ class M3:
 
 
 class MappedColumnTest(_MappedColumnTest):
+    def test_fully_qualified_mapped_name(self, decl_base):
+        """test #8853, regression caused by #8759 ;)"""  # noqa: E501
+
+        class Foo(decl_base):
+            __tablename__ = "foo"
+
+            id: sqlalchemy.orm.Mapped[int] = mapped_column(primary_key=True)
+
+            data: sqlalchemy.orm.Mapped[int] = mapped_column()
+
+            data2: sqlalchemy.orm.Mapped[int]
+
+        self.assert_compile(
+            select(Foo), "SELECT foo.id, foo.data, foo.data2 FROM foo"
+        )
+
     def test_indirect_mapped_name_module_level(self, decl_base):
         """test #8759
 

@@ -141,6 +141,8 @@ def eval_expression(expression: str, module_name: str) -> Any:
 
 
 def eval_name_only(name: str, module_name: str) -> Any:
+    if "." in name:
+        return eval_expression(name, module_name)
 
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
