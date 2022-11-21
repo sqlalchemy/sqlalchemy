@@ -124,6 +124,7 @@ class AsyncSession(ReversibleProxy[Session]):
     def __init__(
         self,
         bind: Optional[_AsyncSessionBind] = None,
+        *,
         binds: Optional[Dict[_SessionBindKey, _AsyncSessionBind]] = None,
         sync_session_class: Optional[Type[Session]] = None,
         **kw: Any,
@@ -1436,9 +1437,35 @@ class async_sessionmaker(Generic[_AS]):
 
     class_: Type[_AS]
 
+    @overload
+    def __init__(
+        self,
+        bind: Optional[_AsyncSessionBind] = ...,
+        *,
+        class_: Type[_AS],
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        info: Optional[_InfoType] = ...,
+        **kw: Any,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: "async_sessionmaker[AsyncSession]",
+        bind: Optional[_AsyncSessionBind] = ...,
+        *,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        info: Optional[_InfoType] = ...,
+        **kw: Any,
+    ):
+        ...
+
     def __init__(
         self,
         bind: Optional[_AsyncSessionBind] = None,
+        *,
         class_: Type[_AS] = AsyncSession,  # type: ignore
         autoflush: bool = True,
         expire_on_commit: bool = True,

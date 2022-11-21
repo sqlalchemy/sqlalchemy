@@ -86,3 +86,27 @@ def main() -> None:
     sess = scoped_fac()
     # EXPECTED_TYPE: MySession
     reveal_type(sess)
+
+
+def test_8837_sync() -> None:
+    sm = sessionmaker()
+
+    # EXPECTED_TYPE: sessionmaker[Session]
+    reveal_type(sm)
+
+    session = sm()
+
+    # EXPECTED_TYPE: Session
+    reveal_type(session)
+
+
+def test_8837_async() -> None:
+    as_ = async_sessionmaker()
+
+    # EXPECTED_TYPE: async_sessionmaker[AsyncSession]
+    reveal_type(as_)
+
+    async_session = as_()
+
+    # EXPECTED_TYPE: AsyncSession
+    reveal_type(async_session)
