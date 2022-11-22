@@ -2097,13 +2097,30 @@ def _cleanup_mapped_str_annotation(
             stack.append(g2)
             break
 
-    # stack: ['Mapped', 'List', 'Address']
-    if not re.match(r"""^["'].*["']$""", stack[-1]):
+    # stacks we want to rewrite, that is, quote the last entry which
+    # we think is a relationship class name:
+    #
+    #   ['Mapped', 'List', 'Address']
+    #   ['Mapped', 'A']
+    #
+    # stacks we dont want to rewrite, which are generally MappedColumn
+    # use cases:
+    #
+    # ['Mapped', "'Optional[Dict[str, str]]'"]
+    # ['Mapped', 'dict[str, str] | None']
+
+    if (
+        # avoid already quoted symbols such as
+        # ['Mapped', "'Optional[Dict[str, str]]'"]
+        not re.match(r"""^["'].*["']$""", stack[-1])
+        # avoid further generics like Dict[] such as
+        # ['Mapped', 'dict[str, str] | None']
+        and not re.match(r".*\[.*\]", stack[-1])
+    ):
         stripchars = "\"' "
         stack[-1] = ", ".join(
             f'"{elem.strip(stripchars)}"' for elem in stack[-1].split(",")
         )
-        # stack: ['Mapped', 'List', '"Address"']
 
         annotation = "[".join(stack) + ("]" * (len(stack) - 1))
 
