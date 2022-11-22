@@ -3046,6 +3046,70 @@ class EagerDefaultsTest(fixtures.MappedTest):
             ),
         )
 
+    @testing.fixture
+    def selectable_fixture(self, decl_base):
+
+        t1, t2 = self.tables("test", "test2")
+
+        stmt = (
+            select(t1.c.id, t1.c.foo, t2.c.id.label("id2"), t2.c.bar)
+            .join_from(t1, t2, t1.c.foo == t2.c.foo)
+            .subquery()
+        )
+
+        class MyClass(decl_base):
+            __table__ = stmt
+
+            __mapper_args__ = {"eager_defaults": True}
+
+        return MyClass
+
+    def test_against_selectable_insert(self, selectable_fixture):
+        """test #8812"""
+        MyClass = selectable_fixture
+
+        s = fixture_session()
+        obj = MyClass(id=1, id2=1, bar=5)
+        s.add(obj)
+
+        with self.sql_execution_asserter() as asserter:
+            s.flush()
+
+        asserter.assert_(
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id) VALUES (:id) "
+                        "RETURNING test.foo",
+                        [{"id": 1}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO test2 (id, bar) VALUES (:id, :bar)",
+                        [{"id": 1, "bar": 5}],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id) VALUES (:id)",
+                        [{"id": 1}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO test2 (id, bar) VALUES (:id, :bar)",
+                        [{"id": 1, "bar": 5}],
+                    ),
+                    CompiledSQL(
+                        "SELECT anon_1.foo AS anon_1_foo FROM "
+                        "(SELECT test.id AS id, test.foo AS foo, "
+                        "test2.id AS id2, test2.bar AS bar FROM test "
+                        "JOIN test2 ON test.foo = test2.foo) AS anon_1 "
+                        "WHERE anon_1.id = :pk_1 AND anon_1.id2 = :pk_2",
+                        [{"pk_1": 1, "pk_2": 1}],
+                    ),
+                ],
+            ),
+        )
+
 
 class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     """test support for custom datatypes that return a non-__bool__ value
