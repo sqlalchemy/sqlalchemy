@@ -506,6 +506,11 @@ asyncio-facing APIs:
   :class:`_asyncio.AsyncSession` class, use the :class:`_orm.Session` class as
   the target.
 
+* To register at the :class:`_orm.sessionmaker` level, combine an explicit
+  :class:`_orm.sessionmaker` with an :class:`_asyncio.async_sessionmaker`
+  using :paramref:`_asyncio.async_sessionmaker.sync_session_class`, and
+  associate events with the :class:`_orm.sessionmaker`.
+
 When working within an event handler that is within an asyncio context, objects
 like the :class:`_engine.Connection` continue to work in their usual
 "synchronous" way without requiring ``await`` or ``async`` usage; when messages
@@ -515,17 +520,24 @@ are passed a DBAPI level connection, such as :meth:`_events.PoolEvents.connect`,
 the object is a :term:`pep-249` compliant "connection" object which will adapt
 sync-style calls into the asyncio driver.
 
+Examples of Event Listeners with Async Engines / Sessions / Sessionmakers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Some examples of sync style event handlers associated with async-facing API
-constructs are illustrated below::
+constructs are illustrated below:
+
+* **Core Events on AsyncEngine**
+
+  In this example, we access the :attr:`_asyncio.AsyncEngine.sync_engine`
+  attribute of :class:`_asyncio.AsyncEngine` as the target for
+  :class:`.ConnectionEvents` and :class:`.PoolEvents`::
 
     import asyncio
 
-    from sqlalchemy import event, text
+    from sqlalchemy import event
+    from sqlalchemy import text
     from sqlalchemy.engine import Engine
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import Session
-
-    ## Core events ##
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine("postgresql+asyncpg://scott:tiger@localhost:5432/test")
 
@@ -553,7 +565,37 @@ constructs are illustrated below::
         print("before execute!")
 
 
-    ## ORM events ##
+    async def go():
+        async with engine.connect() as conn:
+            await conn.execute(text("select 1"))
+        await engine.dispose()
+
+
+    asyncio.run(go())
+
+  Output:
+
+  .. sourcecode:: text
+
+    New DBAPI connection: <AdaptedConnection <asyncpg.connection.Connection object at 0x7f33f9b16960>>
+    execute from event
+    before execute!
+
+
+* **ORM Events on AsyncSession**
+
+  In this example, we access :attr:`_asyncio.AsyncSession.sync_session` as the
+  target for :class:`_orm.SessionEvents`::
+
+    import asyncio
+
+    from sqlalchemy import event
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.orm import Session
+
+    engine = create_async_engine("postgresql+asyncpg://scott:tiger@localhost:5432/test")
 
     session = AsyncSession(engine)
 
@@ -587,16 +629,50 @@ constructs are illustrated below::
 
     asyncio.run(go())
 
-The above example prints something along the lines of:
+  Output:
 
-.. sourcecode:: text
+  .. sourcecode:: text
 
-    New DBAPI connection: <AdaptedConnection <asyncpg.connection.Connection ...>>
-    execute from event
-    before execute!
     before commit!
     execute from event
     after commit!
+
+
+* **ORM Events on async_sessionmaker**
+
+  For this use case, we make a :class:`_orm.sessionmaker` as the event target,
+  then assign it to the :class:`_asyncio.async_sessionmaker` using
+  the :paramref:`_asyncio.async_sessionmaker.sync_session_class` parameter::
+
+    import asyncio
+
+    from sqlalchemy import event
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy.orm import sessionmaker
+
+    sync_maker = sessionmaker()
+    maker = async_sessionmaker(sync_session_class=sync_maker)
+
+
+    @event.listens_for(sync_maker, "before_commit")
+    def before_commit(session):
+        print("before commit")
+
+
+    async def main():
+        async_session = maker()
+
+        await async_session.commit()
+
+
+    asyncio.run(main())
+
+  Output:
+
+  .. sourcecode:: text
+
+    before commit
+
 
 .. topic:: asyncio and events, two opposites
 
