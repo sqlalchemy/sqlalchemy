@@ -4997,7 +4997,7 @@ class Index(
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def __repr__(self) -> str:
-        exprs: _typing_Sequence[Any]
+        exprs: _typing_Sequence[Any]  # noqa: F842
 
         return "Index(%s)" % (
             ", ".join(
