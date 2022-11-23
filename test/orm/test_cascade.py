@@ -4296,7 +4296,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         ({"delete"}, {"delete"}),
         (
             {"all, delete-orphan"},
-            {"delete", "delete-orphan", "merge", "save-update"},
+            {"delete", "delete-orphan", "save-update"},
         ),
         ({"save-update, expunge"}, {"save-update"}),
     )
@@ -4403,7 +4403,10 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         not_in(o1, sess)
         not_in(o2, sess)
 
-    def test_default_merge_cascade(self):
+    @testing.combinations(
+        "persistent", "pending", argnames="collection_status"
+    )
+    def test_default_merge_cascade(self, collection_status):
         User, Order, orders, users = (
             self.classes.User,
             self.classes.Order,
@@ -4435,12 +4438,31 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             Order(id=2, user_id=1, description="someotherorder"),
         )
 
-        u1.orders.append(o1)
-        u1.orders.append(o2)
+        if collection_status == "pending":
+            # technically this is pointless, one should not be appending
+            # to this collection
+            u1.orders.append(o1)
+            u1.orders.append(o2)
+        elif collection_status == "persistent":
+            sess.add(u1)
+            sess.flush()
+            sess.add_all([o1, o2])
+            sess.flush()
+            u1.orders
+        else:
+            assert False
 
         u1 = sess.merge(u1)
 
-        assert not u1.orders
+        # in 1.4, as of #4993 this was asserting that u1.orders would
+        # not be present in the new object.  However, as observed during
+        # #8862, this defeats schemes that seek to restore fully loaded
+        # objects from caches which may even have lazy="raise", but
+        # in any case would want to not emit new SQL on those collections.
+        # so we assert here that u1.orders is in fact present
+        assert "orders" in u1.__dict__
+        assert u1.__dict__["orders"]
+        assert u1.orders
 
     def test_default_cascade(self):
         User, Order, orders, users = (
@@ -4466,7 +4488,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             },
         )
 
-        eq_(umapper.attrs["orders"].cascade, set())
+        eq_(umapper.attrs["orders"].cascade, {"merge"})
 
     def test_write_cascade_disallowed_w_viewonly(self):
 
@@ -4474,7 +4496,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            'Cascade settings "delete, delete-orphan, merge, save-update" '
+            'Cascade settings "delete, delete-orphan, save-update" '
             "apply to persistence operations",
             relationship,
             Order,

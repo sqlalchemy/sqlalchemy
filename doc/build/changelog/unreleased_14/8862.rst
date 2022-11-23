@@ -1,0 +1,24 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8862
+
+    Fixed bug where :meth:`_orm.Session.merge` would fail to preserve the
+    current loaded contents of relationship attributes that were indicated with
+    the :paramref:`_orm.relationship.viewonly` parameter, thus defeating
+    strategies that use :meth:`_orm.Session.merge` to pull fully loaded objects
+    from caches and other similar techniques. In a related change, fixed issue
+    where an object that contains a loaded relationship that was nonetheless
+    configured as ``lazy='raise'`` on the mapping would fail when passed to
+    :meth:`_orm.Session.merge`; checks for "raise" are now suspended within
+    the merge process assuming the :paramref:`_orm.Session.merge.load`
+    parameter remains at its default of ``True``.
+
+    Overall, this is a behavioral adjustment to a change introduced in the 1.4
+    series as of :ticket:`4994`, which took "merge" out of the set of cascades
+    applied by default to "viewonly" relationships. As "viewonly" relationships
+    aren't persisted under any circumstances, allowing their contents to
+    transfer during "merge" does not impact the persistence behavior of the
+    target object. This allows :meth:`_orm.Session.merge` to correctly suit one
+    of its use cases, that of adding objects to a :class:`.Session` that were
+    loaded elsewhere, often for the purposes of restoring from a cache.
+

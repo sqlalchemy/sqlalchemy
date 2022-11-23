@@ -21,6 +21,7 @@ import weakref
 
 from . import attributes
 from .base import _is_mapped_class
+from .base import PASSIVE_MERGE
 from .base import state_str
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -1048,7 +1049,7 @@ class RelationshipProperty(StrategizedProperty):
         if cascade is not False:
             self.cascade = cascade
         elif self.viewonly:
-            self.cascade = "none"
+            self.cascade = "merge"
         else:
             self.cascade = "save-update, merge"
 
@@ -1904,7 +1905,9 @@ class RelationshipProperty(StrategizedProperty):
                 # map for those already present.
                 # also assumes CollectionAttributeImpl behavior of loading
                 # "old" list in any case
-                dest_state.get_impl(self.key).get(dest_state, dest_dict)
+                dest_state.get_impl(self.key).get(
+                    dest_state, dest_dict, passive=PASSIVE_MERGE
+                )
 
             dest_list = []
             for current in instances_iterable:
@@ -1929,7 +1932,11 @@ class RelationshipProperty(StrategizedProperty):
                     coll.append_without_event(c)
             else:
                 dest_state.get_impl(self.key).set(
-                    dest_state, dest_dict, dest_list, _adapt=False
+                    dest_state,
+                    dest_dict,
+                    dest_list,
+                    _adapt=False,
+                    passive=PASSIVE_MERGE,
                 )
         else:
             current = source_dict[self.key]
