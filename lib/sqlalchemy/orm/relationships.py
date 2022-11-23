@@ -1393,7 +1393,9 @@ class RelationshipProperty(
                 # map for those already present.
                 # also assumes CollectionAttributeImpl behavior of loading
                 # "old" list in any case
-                dest_state.get_impl(self.key).get(dest_state, dest_dict)
+                dest_state.get_impl(self.key).get(
+                    dest_state, dest_dict, passive=PassiveFlag.PASSIVE_MERGE
+                )
 
             dest_list = []
             for current in instances_iterable:
@@ -1419,7 +1421,13 @@ class RelationshipProperty(
             else:
                 dest_impl = dest_state.get_impl(self.key)
                 assert is_has_collection_adapter(dest_impl)
-                dest_impl.set(dest_state, dest_dict, dest_list, _adapt=False)
+                dest_impl.set(
+                    dest_state,
+                    dest_dict,
+                    dest_list,
+                    _adapt=False,
+                    passive=PassiveFlag.PASSIVE_MERGE,
+                )
         else:
             current = source_dict[self.key]
             if current is not None:

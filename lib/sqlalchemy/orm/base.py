@@ -171,6 +171,13 @@ class PassiveFlag(FastIntFlag):
     PASSIVE_ONLY_PERSISTENT = PASSIVE_OFF ^ NON_PERSISTENT_OK
     "PASSIVE_OFF ^ NON_PERSISTENT_OK"
 
+    PASSIVE_MERGE = PASSIVE_OFF | NO_RAISE
+    """PASSIVE_OFF | NO_RAISE
+
+    Symbol used specifically for session.merge() and similar cases
+
+    """
+
 
 (
     NO_CHANGE,
@@ -189,6 +196,7 @@ class PassiveFlag(FastIntFlag):
     PASSIVE_NO_FETCH,
     PASSIVE_NO_FETCH_RELATED,
     PASSIVE_ONLY_PERSISTENT,
+    PASSIVE_MERGE,
 ) = PassiveFlag.__members__.values()
 
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
