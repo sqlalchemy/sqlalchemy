@@ -1850,6 +1850,8 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
         names_that_duplicate_index = set()
 
+        eq_(len(uniques), len(reflected))
+
         for orig, refl in zip(uniques, reflected):
             # Different dialects handle duplicate index and constraints
             # differently, so ignore this flag
