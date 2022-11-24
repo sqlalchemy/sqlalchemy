@@ -1430,7 +1430,7 @@ class ColumnCollection(object):
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in col._uncached_proxy_set()
+                            for sc in col._uncached_proxy_list()
                             if sc.shares_lineage(column)
                         ],
                     )
@@ -1438,7 +1438,7 @@ class ColumnCollection(object):
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in c._uncached_proxy_set()
+                            for sc in c._uncached_proxy_list()
                             if sc.shares_lineage(column)
                         ],
                     )
