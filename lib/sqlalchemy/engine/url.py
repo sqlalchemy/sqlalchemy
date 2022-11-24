@@ -42,15 +42,21 @@ class URL(
     """
     Represent the components of a URL used to connect to a database.
 
-    This object is suitable to be passed directly to a
-    :func:`_sa.create_engine` call. The fields of the URL are parsed from a
-    string by the :func:`.make_url` function. The string format of the URL
-    generally follows `RFC-1738 <https://www.ietf.org/rfc/rfc1738.txt>`_, with
-    some exceptions.
+    URLs are typically constructed from a fully formatted URL string, where the
+    :func:`.make_url` function is used internally by the
+    :func:`_sa.create_engine` function in order to parse the URL string into
+    its individual components, which are then used to construct a new
+    :class:`.URL` object. When parsing from a formatted URL string, the parsing
+    format generally follows
+    `RFC-1738 <https://www.ietf.org/rfc/rfc1738.txt>`_, with some exceptions.
 
-    To create a new :class:`_engine.URL` object, use the
-    :func:`_engine.url.make_url` function.  To construct a :class:`_engine.URL`
-    programmatically, use the :meth:`_engine.URL.create` constructor.
+    A :class:`_engine.URL` object may also be produced directly, either by
+    using the :func:`.make_url` function with a fully formed URL string, or
+    by using the :meth:`_engine.URL.create` constructor in order
+    to construct a :class:`_engine.URL` programmatically given individual
+    fields. The resulting :class:`.URL` object may be passed directly to
+    :func:`_sa.create_engine` in place of a string argument, which will bypass
+    the usage of :func:`.make_url` within the engine's creation process.
 
     .. versionchanged:: 1.4
 
