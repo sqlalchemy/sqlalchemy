@@ -827,7 +827,7 @@ class AttachedDBTest(fixtures.TestBase):
         Table(
             "another_created",
             meta,
-            Column("bat", Integer),
+            Column("bat", Integer, unique=True),
             Column("hoho", String),
             schema="test_schema",
         )
@@ -907,6 +907,28 @@ class AttachedDBTest(fixtures.TestBase):
         eq_(
             set(insp.get_table_names("test_schema")),
             {"created", "another_created"},
+        )
+
+    def test_unique_constraints(self):
+        self._fixture()
+        insp = inspect(self.conn)
+        eq_(
+            [
+                d["column_names"]
+                for d in insp.get_unique_constraints(
+                    "created", schema="test_schema"
+                )
+            ],
+            [],
+        )
+        eq_(
+            [
+                d["column_names"]
+                for d in insp.get_unique_constraints(
+                    "another_created", schema="test_schema"
+                )
+            ],
+            [["bat"]],
         )
 
     def test_schema_names(self):

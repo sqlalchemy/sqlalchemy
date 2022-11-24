@@ -2487,7 +2487,7 @@ class SQLiteDialect(default.DefaultDialect):
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):
             pragma_index = self._get_table_pragma(
-                connection, "index_info", idx["name"]
+                connection, "index_info", idx["name"], schema=schema
             )
 
             for row in pragma_index:
