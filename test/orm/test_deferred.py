@@ -6,6 +6,7 @@ from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import union_all
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
@@ -1746,6 +1747,14 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             bs = relationship("B", order_by="B.id")
 
+        class A_default(fixtures.ComparableEntity, Base):
+            __tablename__ = "a_default"
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+            my_expr = query_expression(default_expr=literal(15))
+
         class B(fixtures.ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
@@ -1764,7 +1773,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
     @classmethod
     def insert_data(cls, connection):
-        A, B, C = cls.classes("A", "B", "C")
+        A, A_default, B, C = cls.classes("A", "A_default", "B", "C")
         s = Session(connection)
 
         s.add_all(
@@ -1775,6 +1784,8 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
                 A(id=4, x=2, y=10, bs=[B(id=4, p=19, q=8), B(id=5, p=5, q=5)]),
                 C(id=1, x=1),
                 C(id=2, x=2),
+                A_default(id=1, x=1, y=2),
+                A_default(id=2, x=2, y=3),
             ]
         )
 
@@ -1948,6 +1959,149 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
         )
         q.first()
         eq_(a1.my_expr, 5)
+
+    @testing.combinations("core", "orm", argnames="use_core")
+    @testing.combinations(
+        "from_statement", "aliased", argnames="use_from_statement"
+    )
+    @testing.combinations(
+        "same_name", "different_name", argnames="use_same_labelname"
+    )
+    @testing.combinations(
+        "has_default", "no_default", argnames="attr_has_default"
+    )
+    def test_expr_from_subq_plain(
+        self,
+        use_core,
+        use_from_statement,
+        use_same_labelname,
+        attr_has_default,
+    ):
+        """test #8881"""
+
+        if attr_has_default == "has_default":
+            A = self.classes.A_default
+        else:
+            A = self.classes.A
+
+        s = fixture_session()
+
+        if use_same_labelname == "same_name":
+            labelname = "my_expr"
+        else:
+            labelname = "hi"
+
+        if use_core == "core":
+            stmt = select(A.__table__, literal(12).label(labelname))
+        else:
+            stmt = select(A, literal(12).label(labelname))
+
+        if use_from_statement == "aliased":
+            subq = stmt.subquery()
+            a1 = aliased(A, subq)
+            stmt = select(a1).options(
+                with_expression(a1.my_expr, subq.c[labelname])
+            )
+        else:
+            subq = stmt
+            stmt = (
+                select(A)
+                .options(
+                    with_expression(
+                        A.my_expr, subq.selected_columns[labelname]
+                    )
+                )
+                .from_statement(subq)
+            )
+
+        a_obj = s.scalars(stmt).first()
+
+        if (
+            use_same_labelname == "same_name"
+            and attr_has_default == "has_default"
+            and use_core == "orm"
+        ):
+            eq_(a_obj.my_expr, 15)
+        else:
+            eq_(a_obj.my_expr, 12)
+
+    @testing.combinations("core", "orm", argnames="use_core")
+    @testing.combinations(
+        "from_statement", "aliased", argnames="use_from_statement"
+    )
+    @testing.combinations(
+        "same_name", "different_name", argnames="use_same_labelname"
+    )
+    @testing.combinations(
+        "has_default", "no_default", argnames="attr_has_default"
+    )
+    def test_expr_from_subq_union(
+        self,
+        use_core,
+        use_from_statement,
+        use_same_labelname,
+        attr_has_default,
+    ):
+        """test #8881"""
+
+        if attr_has_default == "has_default":
+            A = self.classes.A_default
+        else:
+            A = self.classes.A
+
+        s = fixture_session()
+
+        if use_same_labelname == "same_name":
+            labelname = "my_expr"
+        else:
+            labelname = "hi"
+
+        if use_core == "core":
+            stmt = union_all(
+                select(A.__table__, literal(12).label(labelname)).where(
+                    A.__table__.c.id == 1
+                ),
+                select(A.__table__, literal(18).label(labelname)).where(
+                    A.__table__.c.id == 2
+                ),
+            )
+
+        else:
+            stmt = union_all(
+                select(A, literal(12).label(labelname)).where(A.id == 1),
+                select(A, literal(18).label(labelname)).where(A.id == 2),
+            )
+
+        if use_from_statement == "aliased":
+            subq = stmt.subquery()
+            a1 = aliased(A, subq)
+            stmt = select(a1).options(
+                with_expression(a1.my_expr, subq.c[labelname])
+            )
+        else:
+            subq = stmt
+            stmt = (
+                select(A)
+                .options(
+                    with_expression(
+                        A.my_expr, subq.selected_columns[labelname]
+                    )
+                )
+                .from_statement(subq)
+            )
+
+        a_objs = s.scalars(stmt).all()
+
+        if (
+            use_same_labelname == "same_name"
+            and attr_has_default == "has_default"
+            and use_core == "orm"
+        ):
+            eq_(a_objs[0].my_expr, 15)
+            eq_(a_objs[1].my_expr, 15)
+        else:
+            eq_(a_objs[0].my_expr, 12)
+            eq_(a_objs[1].my_expr, 18)
 
 
 class RaiseLoadTest(fixtures.DeclarativeMappedTest):

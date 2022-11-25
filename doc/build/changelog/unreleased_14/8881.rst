@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8881
+
+    Fixed issues in :func:`_orm.with_expression` where expressions that were
+    composed of columns within a subquery being SELECTed from, or when using
+    ``.from_statement()``, would not render correct SQL **if** the expression
+    had a label name that matched the attribute which used
+    :func:`_orm.query_expression`, even when :func:`_orm.query_expression` had
+    no default expression. For the moment, if the :func:`_orm.query_expression`
+    **does** have a default expression, that label name is still used for that
+    default, and an additional label with the same name will be ignored.
+    Overall, this case is pretty thorny so further adjustments might be
+    warranted.
