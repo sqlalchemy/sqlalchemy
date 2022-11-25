@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""Define an extension to the :mod:`sqlalchemy.ext.declarative` system
 which automatically generates mapped classes and relationships from a database
@@ -572,6 +571,25 @@ be applied as::
 
 
 """  # noqa
+from __future__ import annotations
+
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+
+from mypy_extensions import NoReturn
+
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.orm.base import RelationshipDirection
+from sqlalchemy.orm.decl_api import DeclarativeMeta
+from sqlalchemy.orm.relationships import Relationship
+from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy.sql.schema import Table
+from sqlalchemy.util._py_collections import immutabledict
 from .. import util
 from ..orm import backref
 from ..orm import declarative_base as _declarative_base
@@ -584,7 +602,9 @@ from ..schema import ForeignKeyConstraint
 from ..sql import and_
 
 
-def classname_for_table(base, tablename, table):
+def classname_for_table(
+    base: DeclarativeMeta, tablename: quoted_name, table: Table
+) -> str:
     """Return the class name that should be used, given the name
     of a table.
 
@@ -617,7 +637,12 @@ def classname_for_table(base, tablename, table):
     return str(tablename)
 
 
-def name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
+def name_for_scalar_relationship(
+    base: DeclarativeMeta,
+    local_cls: DeclarativeMeta,
+    referred_cls: DeclarativeMeta,
+    constraint: ForeignKeyConstraint,
+) -> str:
     """Return the attribute name that should be used to refer from one
     class to another, for a scalar object reference.
 
@@ -643,8 +668,11 @@ def name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
 
 
 def name_for_collection_relationship(
-    base, local_cls, referred_cls, constraint
-):
+    base: DeclarativeMeta,
+    local_cls: DeclarativeMeta,
+    referred_cls: DeclarativeMeta,
+    constraint: ForeignKeyConstraint,
+) -> str:
     """Return the attribute name that should be used to refer from one
     class to another, for a collection reference.
 
@@ -671,8 +699,14 @@ def name_for_collection_relationship(
 
 
 def generate_relationship(
-    base, direction, return_fn, attrname, local_cls, referred_cls, **kw
-):
+    base: DeclarativeMeta,
+    direction: RelationshipDirection,
+    return_fn: Callable,
+    attrname: str,
+    local_cls: DeclarativeMeta,
+    referred_cls: DeclarativeMeta,
+    **kw: Any,
+) -> Union[Tuple[str, Dict[str, Any]], Relationship]:
     r"""Generate a :func:`_orm.relationship` or :func:`.backref`
     on behalf of two
     mapped classes.
@@ -782,17 +816,19 @@ class AutomapBase:
     )
     def prepare(
         cls,
-        autoload_with=None,
-        engine=None,
-        reflect=False,
-        schema=None,
-        classname_for_table=None,
-        collection_class=None,
-        name_for_scalar_relationship=None,
-        name_for_collection_relationship=None,
-        generate_relationship=None,
-        reflection_options=util.EMPTY_DICT,
-    ):
+        autoload_with: Optional[Engine] = None,
+        engine: Optional[Any] = None,
+        reflect: bool = False,
+        schema: Optional[str] = None,
+        classname_for_table: Optional[Callable] = None,
+        collection_class: Optional[Any] = None,
+        name_for_scalar_relationship: Optional[Callable] = None,
+        name_for_collection_relationship: Optional[Callable] = None,
+        generate_relationship: Optional[Callable] = None,
+        reflection_options: Union[
+            Dict[str, Any], immutabledict
+        ] = util.EMPTY_DICT,
+    ) -> None:
         """Extract mapped classes and relationships from the
         :class:`_schema.MetaData` and
         perform mappings.
@@ -961,7 +997,7 @@ class AutomapBase:
     """
 
     @classmethod
-    def _sa_raise_deferred_config(cls):
+    def _sa_raise_deferred_config(cls) -> NoReturn:
         raise orm_exc.UnmappedClassError(
             cls,
             msg="Class %s is a subclass of AutomapBase.  "
@@ -971,7 +1007,9 @@ class AutomapBase:
         )
 
 
-def automap_base(declarative_base=None, **kw):
+def automap_base(
+    declarative_base: Optional[Any] = None, **kw: Any
+) -> DeclarativeMeta:
     r"""Produce a declarative automap base.
 
     This function produces a new base class that is a product of the
@@ -1003,7 +1041,9 @@ def automap_base(declarative_base=None, **kw):
     )
 
 
-def _is_many_to_many(automap_base, table):
+def _is_many_to_many(
+    automap_base: DeclarativeMeta, table: Table
+) -> Tuple[None, None, None]:
     fk_constraints = [
         const
         for const in table.constraints
@@ -1031,14 +1071,17 @@ def _is_many_to_many(automap_base, table):
 
 
 def _relationships_for_fks(
-    automap_base,
-    map_config,
-    table_to_map_config,
-    collection_class,
-    name_for_scalar_relationship,
-    name_for_collection_relationship,
-    generate_relationship,
-):
+    automap_base: DeclarativeMeta,
+    map_config: _DeferredMapperConfig,
+    table_to_map_config: Union[
+        Dict[Optional[Table], _DeferredMapperConfig],
+        Dict[Table, _DeferredMapperConfig],
+    ],
+    collection_class: type,
+    name_for_scalar_relationship: Callable,
+    name_for_collection_relationship: Callable,
+    generate_relationship: Callable,
+) -> None:
     local_table = map_config.local_table
     local_cls = map_config.cls  # derived from a weakref, may be None
 
@@ -1136,17 +1179,20 @@ def _relationships_for_fks(
 
 
 def _m2m_relationship(
-    automap_base,
-    lcl_m2m,
-    rem_m2m,
-    m2m_const,
-    table,
-    table_to_map_config,
-    collection_class,
-    name_for_scalar_relationship,
-    name_for_collection_relationship,
-    generate_relationship,
-):
+    automap_base: DeclarativeMeta,
+    lcl_m2m: Table,
+    rem_m2m: Table,
+    m2m_const: List[ForeignKeyConstraint],
+    table: Table,
+    table_to_map_config: Union[
+        Dict[Optional[Table], _DeferredMapperConfig],
+        Dict[Table, _DeferredMapperConfig],
+    ],
+    collection_class: type,
+    name_for_scalar_relationship: Callable,
+    name_for_collection_relationship: Callable,
+    generate_relationship: Callable,
+) -> None:
 
     map_config = table_to_map_config.get(lcl_m2m, None)
     referred_cfg = table_to_map_config.get(rem_m2m, None)
