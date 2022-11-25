@@ -162,6 +162,12 @@ PASSIVE_ONLY_PERSISTENT = util.symbol(
     canonical=PASSIVE_OFF ^ NON_PERSISTENT_OK,
 )
 
+PASSIVE_MERGE = util.symbol(
+    "PASSIVE_OFF | NO_RAISE",
+    "Symbol used specifically for session.merge() and similar cases",
+    canonical=PASSIVE_OFF | NO_RAISE,
+)
+
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
 DEFAULT_STATE_ATTR = "_sa_instance_state"
 

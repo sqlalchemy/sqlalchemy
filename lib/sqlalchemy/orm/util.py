@@ -70,7 +70,7 @@ class CascadeOptions(frozenset):
     )
     _allowed_cascades = all_cascades
 
-    _viewonly_cascades = ["expunge", "all", "none", "refresh-expire"]
+    _viewonly_cascades = ["expunge", "all", "none", "refresh-expire", "merge"]
 
     __slots__ = (
         "save_update",

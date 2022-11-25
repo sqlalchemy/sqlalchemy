@@ -7,6 +7,7 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import PickleType
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Text
@@ -16,6 +17,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import foreign
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -28,6 +30,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.assertsql import CountStatements
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1395,6 +1398,126 @@ class MergeTest(_fixtures.FixtureTest):
             )
         except sa.exc.InvalidRequestError as e:
             assert "load=False option does not support" in str(e)
+
+    @testing.combinations("viewonly", "normal", argnames="viewonly")
+    @testing.combinations("load", "noload", argnames="load")
+    @testing.combinations("select", "raise", "raise_on_sql", argnames="lazy")
+    @testing.combinations(
+        "merge_persistent", "merge_detached", argnames="merge_persistent"
+    )
+    @testing.combinations("detached", "persistent", argnames="detach_original")
+    @testing.combinations("o2m", "m2o", argnames="direction")
+    def test_relationship_population_maintained(
+        self,
+        viewonly,
+        load,
+        lazy,
+        merge_persistent,
+        direction,
+        detach_original,
+    ):
+        """test #8862"""
+
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address,
+                    viewonly=viewonly == "viewonly",
+                    lazy=lazy,
+                    back_populates="user",
+                )
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User,
+                    viewonly=viewonly == "viewonly",
+                    lazy=lazy,
+                    back_populates="addresses",
+                )
+            },
+        )
+
+        s = fixture_session()
+
+        u1 = User(id=1, name="u1")
+        s.add(u1)
+        s.flush()
+        s.add_all(
+            [Address(user_id=1, email_address="e%d" % i) for i in range(1, 4)]
+        )
+        s.commit()
+
+        if direction == "o2m":
+            cls_to_merge = User
+            obj_to_merge = (
+                s.scalars(select(User).options(joinedload(User.addresses)))
+                .unique()
+                .one()
+            )
+            attrname = "addresses"
+
+        elif direction == "m2o":
+            cls_to_merge = Address
+            obj_to_merge = (
+                s.scalars(
+                    select(Address)
+                    .filter_by(email_address="e1")
+                    .options(joinedload(Address.user))
+                )
+                .unique()
+                .one()
+            )
+            attrname = "user"
+        else:
+            assert False
+
+        assert attrname in obj_to_merge.__dict__
+
+        s2 = Session(testing.db)
+
+        if merge_persistent == "merge_persistent":
+            target_persistent = s2.get(cls_to_merge, obj_to_merge.id)  # noqa
+
+        if detach_original == "detach":
+            s.expunge(obj_to_merge)
+
+        with self.sql_execution_asserter(testing.db) as assert_:
+            merged_object = s2.merge(obj_to_merge, load=load == "load")
+
+        assert_.assert_(
+            CountStatements(
+                0
+                if load == "noload"
+                else 1
+                if merge_persistent == "merge_persistent"
+                else 2
+            )
+        )
+
+        assert attrname in merged_object.__dict__
+
+        with self.sql_execution_asserter(testing.db) as assert_:
+            if direction == "o2m":
+                eq_(
+                    merged_object.addresses,
+                    [
+                        Address(user_id=1, email_address="e%d" % i)
+                        for i in range(1, 4)
+                    ],
+                )
+            elif direction == "m2o":
+                eq_(merged_object.user, User(id=1, name="u1"))
+        assert_.assert_(CountStatements(0))
 
     def test_synonym(self):
         users = self.tables.users

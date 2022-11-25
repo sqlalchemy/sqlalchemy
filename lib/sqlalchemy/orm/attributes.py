@@ -1585,7 +1585,13 @@ class CollectionAttributeImpl(AttributeImpl):
 
         self.dispatch.bulk_replace(state, new_values, evt)
 
-        old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
+        # propagate NO_RAISE in passive through to the get() for the
+        # existing object (ticket #8862)
+        old = self.get(
+            state,
+            dict_,
+            passive=PASSIVE_ONLY_PERSISTENT ^ (passive & NO_RAISE),
+        )
         if old is PASSIVE_NO_RESULT:
             old = self._default_value(state, dict_)
         elif old is orig_iterable:
