@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8880
+
+    Fixed bug in dataclass mapping feature where using plain dataclass fields
+    in a mapping would not create a dataclass with the correct class-level
+    state for those fields, copying the raw ``Field`` object to the class
+    inappropriately after dataclasses itself had replaced the ``Field`` object
+    with the class-level default value.

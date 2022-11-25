@@ -160,6 +160,9 @@ _LazyLoadArgumentType = Literal[
 _RelationshipJoinConditionArgument = Union[
     str, _ColumnExpressionArgument[bool]
 ]
+_RelationshipSecondaryArgument = Union[
+    "FromClause", str, Callable[[], "FromClause"]
+]
 _ORMOrderByArgument = Union[
     Literal[False],
     str,
@@ -269,7 +272,7 @@ class _RelationshipArgs(NamedTuple):
     """
 
     secondary: _RelationshipArg[
-        Optional[Union[FromClause, str]],
+        Optional[_RelationshipSecondaryArgument],
         Optional[FromClause],
     ]
     primaryjoin: _RelationshipArg[
@@ -352,7 +355,7 @@ class RelationshipProperty(
     def __init__(
         self,
         argument: Optional[_RelationshipArgumentType[_T]] = None,
-        secondary: Optional[Union[FromClause, str]] = None,
+        secondary: Optional[_RelationshipSecondaryArgument] = None,
         *,
         uselist: Optional[bool] = None,
         collection_class: Optional[
