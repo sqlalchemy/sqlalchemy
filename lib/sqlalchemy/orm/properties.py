@@ -221,6 +221,9 @@ class ColumnProperty(
         ]
 
     def _memoized_attr__renders_in_subqueries(self) -> bool:
+        if ("query_expression", True) in self.strategy_key:
+            return self.strategy._have_default_expression  # type: ignore
+
         return ("deferred", True) not in self.strategy_key or (
             self not in self.parent._readonly_props  # type: ignore
         )
