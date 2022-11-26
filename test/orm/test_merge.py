@@ -1430,6 +1430,7 @@ class MergeTest(_fixtures.FixtureTest):
                     viewonly=viewonly == "viewonly",
                     lazy=lazy,
                     back_populates="user",
+                    order_by=addresses.c.id,
                 )
             },
         )
