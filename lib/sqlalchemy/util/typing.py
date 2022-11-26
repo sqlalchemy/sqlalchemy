@@ -174,7 +174,7 @@ def eval_expression(expression: str, module_name: str) -> Any:
         annotation = eval(expression, base_globals, None)
     except Exception as err:
         raise NameError(
-            f"Could not de-stringify annotation {expression}"
+            f"Could not de-stringify annotation {expression!r}"
         ) from err
     else:
         return annotation

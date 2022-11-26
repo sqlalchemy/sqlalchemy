@@ -684,7 +684,9 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
-        if is_fwd_ref(argument, check_generic=True):
+        if isinstance(argument, str) or is_fwd_ref(
+            argument, check_generic=True
+        ):
             assert originating_module is not None
             argument = de_stringify_annotation(
                 cls, argument, originating_module, include_generic=True

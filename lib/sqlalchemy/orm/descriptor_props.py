@@ -52,6 +52,8 @@ from .. import util
 from ..sql import expression
 from ..sql import operators
 from ..sql.elements import BindParameter
+from ..util.typing import de_stringify_annotation
+from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import typing_get_args
 
@@ -351,18 +353,23 @@ class CompositeProperty(
             argument = typing_get_args(argument)[0]
 
         if argument and self.composite_class is None:
-            if isinstance(argument, str) or hasattr(
-                argument, "__forward_arg__"
+            if isinstance(argument, str) or is_fwd_ref(
+                argument, check_generic=True
             ):
-                str_arg = (
-                    argument.__forward_arg__
-                    if hasattr(argument, "__forward_arg__")
-                    else str(argument)
+                if originating_module is None:
+                    str_arg = (
+                        argument.__forward_arg__
+                        if hasattr(argument, "__forward_arg__")
+                        else str(argument)
+                    )
+                    raise sa_exc.ArgumentError(
+                        f"Can't use forward ref {argument} for composite "
+                        f"class argument; set up the type as Mapped[{str_arg}]"
+                    )
+                argument = de_stringify_annotation(
+                    cls, argument, originating_module, include_generic=True
                 )
-                raise sa_exc.ArgumentError(
-                    f"Can't use forward ref {argument} for composite "
-                    f"class argument; set up the type as Mapped[{str_arg}]"
-                )
+
             self.composite_class = argument
 
         if is_dataclass(self.composite_class):

@@ -64,6 +64,8 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
+from ..util.typing import de_stringify_annotation
+from ..util.typing import is_fwd_ref
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
 from ..util.typing import typing_get_args
@@ -1120,6 +1122,15 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         if attr_value is None:
             for elem in typing_get_args(extracted_mapped_annotation):
+                if isinstance(elem, str) or is_fwd_ref(
+                    elem, check_generic=True
+                ):
+                    elem = de_stringify_annotation(
+                        self.cls,
+                        elem,
+                        originating_class.__module__,
+                        include_generic=True,
+                    )
                 # look in Annotated[...] for an ORM construct,
                 # such as Annotated[int, mapped_column(primary_key=True)]
                 if isinstance(elem, _IntrospectsAnnotations):
