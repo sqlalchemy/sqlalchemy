@@ -902,21 +902,21 @@ class ColumnElement(
 
     @util.memoized_property
     def proxy_set(self):
-        s = util.column_set([self])
+        s = util.column_set([self._deannotate()])
         for c in self._proxies:
             s.update(c.proxy_set)
         return s
 
-    def _uncached_proxy_set(self):
+    def _uncached_proxy_list(self):
         """An 'uncached' version of proxy set.
 
         This is so that we can read annotations from the list of columns
         without breaking the caching of the above proxy_set.
 
         """
-        s = util.column_set([self])
+        s = [self]
         for c in self._proxies:
-            s.update(c._uncached_proxy_set())
+            s.extend(c._uncached_proxy_list())
         return s
 
     def shares_lineage(self, othercolumn):

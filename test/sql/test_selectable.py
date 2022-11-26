@@ -2975,7 +2975,7 @@ class AnnotationsTest(fixtures.TestBase):
         # proxy_set, as corresponding_column iterates through proxy_set
         # in this way
         d = {}
-        for col in p2._uncached_proxy_set():
+        for col in p2._uncached_proxy_list():
             d.update(col._annotations)
         eq_(d, {"weight": 10})
 
@@ -2991,7 +2991,7 @@ class AnnotationsTest(fixtures.TestBase):
         proxy._proxies = [c1._annotate({"weight": 10})]
 
         d = {}
-        for col in proxy._uncached_proxy_set():
+        for col in proxy._uncached_proxy_list():
             d.update(col._annotations)
         eq_(d, {"weight": 10})
 
