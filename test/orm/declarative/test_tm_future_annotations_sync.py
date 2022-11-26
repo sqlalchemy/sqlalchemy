@@ -190,13 +190,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data = mapped_column()
 
-    @testing.combinations("key", "name", "both", argnames="case")
-    @testing.combinations(True, False, argnames="deferred")
-    @testing.combinations(True, False, argnames="use_add_property")
+    @testing.variation("case", ["key", "name", "both"])
+    @testing.variation("deferred", [True, False])
+    @testing.variation("use_add_property", [True, False])
     def test_separate_name(self, decl_base, case, deferred, use_add_property):
-        if case == "key":
+        if case.key:
             args = {"key": "data_"}
-        elif case == "name":
+        elif case.name:
             args = {"name": "data_"}
         else:
             args = {"name": "data_", "key": "data_"}
