@@ -94,6 +94,81 @@ def combinations_list(arg_iterable, **kw):
     return combinations(*arg_iterable, **kw)
 
 
+class _variation_base(object):
+    __slots__ = ("name", "argname")
+
+    def __init__(self, case, argname, case_names):
+        self.name = case
+        self.argname = argname
+        for casename in case_names:
+            setattr(self, casename, casename == case)
+
+    def __bool__(self):
+        return self.name == self.argname
+
+    def __nonzero__(self):
+        return not self.__bool__()
+
+
+def variation(argname, cases):
+    """a helper around testing.combinations that provides a single namespace
+    that can be used as a switch.
+
+    e.g.::
+
+        @testing.variation("querytyp", ["select", "subquery", "legacy_query"])
+        @testing.variation("lazy", ["select", "raise", "raise_on_sql"])
+        def test_thing(
+            self,
+            querytyp,
+            lazy,
+            decl_base
+        ):
+            class Thing(decl_base):
+                __tablename__ = 'thing'
+
+                # use name directly
+                rel = relationship("Rel", lazy=lazy.name)
+
+            # use as a switch
+            if querytyp.select:
+                stmt = select(Thing)
+            elif querytyp.subquery:
+                stmt = select(Thing).subquery()
+            elif querytyp.legacy_query:
+                stmt = Session.query(Thing)
+            else:
+                assert False
+
+
+    The variable provided is a slots object of boolean variables, as well
+    as the name of the case itself under the attribute ".name"
+
+    """
+
+    case_names = [
+        argname if c is True else "not_" + argname if c is False else c
+        for c in cases
+    ]
+
+    typ = type(
+        argname,
+        (_variation_base,),
+        {
+            "__slots__": tuple(case_names),
+        },
+    )
+
+    return combinations(
+        *[
+            (casename, typ(casename, argname, case_names))
+            for casename in case_names
+        ],
+        id_="ia",
+        argnames=argname
+    )
+
+
 def fixture(*arg, **kw):
     return _fixture_functions.fixture(*arg, **kw)
 

@@ -1399,14 +1399,14 @@ class MergeTest(_fixtures.FixtureTest):
         except sa.exc.InvalidRequestError as e:
             assert "load=False option does not support" in str(e)
 
-    @testing.combinations("viewonly", "normal", argnames="viewonly")
-    @testing.combinations("load", "noload", argnames="load")
-    @testing.combinations("select", "raise", "raise_on_sql", argnames="lazy")
-    @testing.combinations(
-        "merge_persistent", "merge_detached", argnames="merge_persistent"
+    @testing.variation("viewonly", ["viewonly", "normal"])
+    @testing.variation("load", ["load", "noload"])
+    @testing.variation("lazy", ["select", "raise", "raise_on_sql"])
+    @testing.variation(
+        "merge_persistent", ["merge_persistent", "merge_detached"]
     )
-    @testing.combinations("detached", "persistent", argnames="detach_original")
-    @testing.combinations("o2m", "m2o", argnames="direction")
+    @testing.variation("detach_original", ["detach", "persistent"])
+    @testing.variation("direction", ["o2m", "m2o"])
     def test_relationship_population_maintained(
         self,
         viewonly,
@@ -1427,8 +1427,8 @@ class MergeTest(_fixtures.FixtureTest):
             properties={
                 "addresses": relationship(
                     Address,
-                    viewonly=viewonly == "viewonly",
-                    lazy=lazy,
+                    viewonly=viewonly.viewonly,
+                    lazy=lazy.name,
                     back_populates="user",
                     order_by=addresses.c.id,
                 )
@@ -1441,8 +1441,8 @@ class MergeTest(_fixtures.FixtureTest):
             properties={
                 "user": relationship(
                     User,
-                    viewonly=viewonly == "viewonly",
-                    lazy=lazy,
+                    viewonly=viewonly.viewonly,
+                    lazy=lazy.name,
                     back_populates="addresses",
                 )
             },
@@ -1458,7 +1458,7 @@ class MergeTest(_fixtures.FixtureTest):
         )
         s.commit()
 
-        if direction == "o2m":
+        if direction.o2m:
             cls_to_merge = User
             obj_to_merge = (
                 s.scalars(select(User).options(joinedload(User.addresses)))
@@ -1467,7 +1467,7 @@ class MergeTest(_fixtures.FixtureTest):
             )
             attrname = "addresses"
 
-        elif direction == "m2o":
+        elif direction.m2o:
             cls_to_merge = Address
             obj_to_merge = (
                 s.scalars(
@@ -1486,21 +1486,21 @@ class MergeTest(_fixtures.FixtureTest):
 
         s2 = Session(testing.db)
 
-        if merge_persistent == "merge_persistent":
+        if merge_persistent.merge_persistent:
             target_persistent = s2.get(cls_to_merge, obj_to_merge.id)  # noqa
 
-        if detach_original == "detach":
+        if detach_original.detach:
             s.expunge(obj_to_merge)
 
         with self.sql_execution_asserter(testing.db) as assert_:
-            merged_object = s2.merge(obj_to_merge, load=load == "load")
+            merged_object = s2.merge(obj_to_merge, load=load.load)
 
         assert_.assert_(
             CountStatements(
                 0
-                if load == "noload"
+                if load.noload
                 else 1
-                if merge_persistent == "merge_persistent"
+                if merge_persistent.merge_persistent
                 else 2
             )
         )
@@ -1508,7 +1508,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert attrname in merged_object.__dict__
 
         with self.sql_execution_asserter(testing.db) as assert_:
-            if direction == "o2m":
+            if direction.o2m:
                 eq_(
                     merged_object.addresses,
                     [
@@ -1516,7 +1516,7 @@ class MergeTest(_fixtures.FixtureTest):
                         for i in range(1, 4)
                     ],
                 )
-            elif direction == "m2o":
+            elif direction.m2o:
                 eq_(merged_object.user, User(id=1, name="u1"))
         assert_.assert_(CountStatements(0))
 
