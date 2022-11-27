@@ -82,7 +82,7 @@ class Range(Generic[_T]):
             )
 
     def __bool__(self) -> bool:
-        return self.empty
+        return not self.empty
 
     def _contains_value(self, value: _T) -> bool:
         "Check whether this range contains the given `value`."
