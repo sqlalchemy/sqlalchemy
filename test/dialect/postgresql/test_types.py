@@ -4410,6 +4410,10 @@ class _RangeComparisonFixtures(_RangeTests):
             f"{r1} != {r2}: got {r1 != r2}, expected {different}",
         )
 
+    def test_bool(self):
+        is_false(bool(Range(empty=True)))
+        is_true(bool(Range(1, 2)))
+
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
     __requires__ = ("range_types",)
