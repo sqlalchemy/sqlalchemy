@@ -579,27 +579,44 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Type
+from typing import TypeVar
 from typing import Union
 
 from mypy_extensions import NoReturn
 
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.orm.base import RelationshipDirection
-from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.orm.relationships import Relationship
-from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy.sql.schema import Table
-from sqlalchemy.util._py_collections import immutabledict
 from .. import util
+from ..engine.base import Engine
 from ..orm import backref
+from ..orm import BackrefConstructorType
 from ..orm import declarative_base as _declarative_base
 from ..orm import exc as orm_exc
 from ..orm import interfaces
+from ..orm import RelaionshipConstructorType
 from ..orm import relationship
+from ..orm.base import RelationshipDirection
+from ..orm.decl_api import DeclarativeMeta
 from ..orm.decl_base import _DeferredMapperConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
+from ..orm.relationships import _ORMBackrefArgument
+from ..orm.relationships import Relationship
 from ..schema import ForeignKeyConstraint
 from ..sql import and_
+from ..sql.elements import quoted_name
+from ..sql.schema import Table
+from ..util._py_collections import immutabledict
+from ..util.typing import Protocol
+from ..util.typing import TypeGuard
+
+_KT = TypeVar("_KT", bound=Any)
+_VT = TypeVar("_VT", bound=Any)
+
+
+class ClassnameForTableType(Protocol):
+    def __call__(
+        self, base: DeclarativeMeta, tablename: quoted_name, table: Table
+    ) -> str:
+        ...
 
 
 def classname_for_table(
@@ -637,6 +654,17 @@ def classname_for_table(
     return str(tablename)
 
 
+class NameForScalarRelationshipType(Protocol):
+    def __call__(
+        self,
+        base: DeclarativeMeta,
+        local_cls: DeclarativeMeta,
+        referred_cls: DeclarativeMeta,
+        constraint: ForeignKeyConstraint,
+    ) -> str:
+        ...
+
+
 def name_for_scalar_relationship(
     base: DeclarativeMeta,
     local_cls: DeclarativeMeta,
@@ -665,6 +693,17 @@ def name_for_scalar_relationship(
 
     """
     return referred_cls.__name__.lower()
+
+
+class NameForCollectionRelationshipType(Protocol):
+    def __call__(
+        self,
+        base: DeclarativeMeta,
+        local_cls: DeclarativeMeta,
+        referred_cls: DeclarativeMeta,
+        constraint: ForeignKeyConstraint,
+    ) -> str:
+        ...
 
 
 def name_for_collection_relationship(
@@ -698,15 +737,29 @@ def name_for_collection_relationship(
     return referred_cls.__name__.lower() + "_collection"
 
 
+class GenerateRelationshipType(Protocol):
+    def __call__(
+        self,
+        base: DeclarativeMeta,
+        direction: RelationshipDirection,
+        return_fn: BackrefConstructorType | RelaionshipConstructorType,
+        attrname: str,
+        local_cls: DeclarativeMeta,
+        referred_cls: DeclarativeMeta,
+        **kw: Any,
+    ) -> _ORMBackrefArgument | Relationship[Any]:
+        ...
+
+
 def generate_relationship(
     base: DeclarativeMeta,
     direction: RelationshipDirection,
-    return_fn: Callable,
+    return_fn: BackrefConstructorType | RelaionshipConstructorType,
     attrname: str,
     local_cls: DeclarativeMeta,
     referred_cls: DeclarativeMeta,
     **kw: Any,
-) -> Union[Tuple[str, Dict[str, Any]], Relationship]:
+) -> _ORMBackrefArgument | Relationship[Any]:
     r"""Generate a :func:`_orm.relationship` or :func:`.backref`
     on behalf of two
     mapped classes.
@@ -755,9 +808,20 @@ def generate_relationship(
      by the :paramref:`.generate_relationship.return_fn` parameter.
 
     """
-    if return_fn is backref:
+
+    def is_backref(
+        func: Callable[..., Any]
+    ) -> TypeGuard[BackrefConstructorType]:
+        return func is backref
+
+    def is_relationship(
+        func: Callable[..., Any]
+    ) -> TypeGuard[RelaionshipConstructorType]:
+        return func is relationship
+
+    if is_backref(return_fn):
         return return_fn(attrname, **kw)
-    elif return_fn is relationship:
+    elif is_relationship(return_fn):
         return return_fn(referred_cls, **kw)
     else:
         raise TypeError("Unknown relationship function: %s" % return_fn)
@@ -820,13 +884,17 @@ class AutomapBase:
         engine: Optional[Any] = None,
         reflect: bool = False,
         schema: Optional[str] = None,
-        classname_for_table: Optional[Callable] = None,
+        classname_for_table: Optional[ClassnameForTableType] = None,
         collection_class: Optional[Any] = None,
-        name_for_scalar_relationship: Optional[Callable] = None,
-        name_for_collection_relationship: Optional[Callable] = None,
-        generate_relationship: Optional[Callable] = None,
+        name_for_scalar_relationship: Optional[
+            NameForScalarRelationshipType
+        ] = None,
+        name_for_collection_relationship: Optional[
+            NameForCollectionRelationshipType
+        ] = None,
+        generate_relationship: Optional[GenerateRelationshipType] = None,
         reflection_options: Union[
-            Dict[str, Any], immutabledict
+            Dict[_KT, _VT], immutabledict[_KT, _VT]
         ] = util.EMPTY_DICT,
     ) -> None:
         """Extract mapped classes and relationships from the
@@ -1042,8 +1110,10 @@ def automap_base(
 
 
 def _is_many_to_many(
-    automap_base: DeclarativeMeta, table: Table
-) -> Tuple[None, None, None]:
+    automap_base: Type[AutomapBase], table: Table
+) -> Tuple[
+    Optional[Table], Optional[Table], Optional[list[ForeignKeyConstraint]]
+]:
     fk_constraints = [
         const
         for const in table.constraints
@@ -1078,9 +1148,9 @@ def _relationships_for_fks(
         Dict[Table, _DeferredMapperConfig],
     ],
     collection_class: type,
-    name_for_scalar_relationship: Callable,
-    name_for_collection_relationship: Callable,
-    generate_relationship: Callable,
+    name_for_scalar_relationship: NameForScalarRelationshipType,
+    name_for_collection_relationship: NameForCollectionRelationshipType,
+    generate_relationship: GenerateRelationshipType,
 ) -> None:
     local_table = map_config.local_table
     local_cls = map_config.cls  # derived from a weakref, may be None
@@ -1189,9 +1259,9 @@ def _m2m_relationship(
         Dict[Table, _DeferredMapperConfig],
     ],
     collection_class: type,
-    name_for_scalar_relationship: Callable,
-    name_for_collection_relationship: Callable,
-    generate_relationship: Callable,
+    name_for_scalar_relationship: NameForCollectionRelationshipType,
+    name_for_collection_relationship: NameForCollectionRelationshipType,
+    generate_relationship: GenerateRelationshipType,
 ) -> None:
 
     map_config = table_to_map_config.get(lcl_m2m, None)

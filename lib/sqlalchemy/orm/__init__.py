@@ -23,6 +23,9 @@ from . import strategy_options as strategy_options
 from ._orm_constructors import _mapper_fn as mapper
 from ._orm_constructors import aliased as aliased
 from ._orm_constructors import backref as backref
+from ._orm_constructors import (
+    BackrefConstructorType as BackrefConstructorType,
+)
 from ._orm_constructors import clear_mappers as clear_mappers
 from ._orm_constructors import column_property as column_property
 from ._orm_constructors import composite as composite
@@ -34,6 +37,9 @@ from ._orm_constructors import join as join
 from ._orm_constructors import mapped_column as mapped_column
 from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
+from ._orm_constructors import (
+    RelaionshipConstructorType as RelaionshipConstructorType,
+)
 from ._orm_constructors import relationship as relationship
 from ._orm_constructors import synonym as synonym
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
