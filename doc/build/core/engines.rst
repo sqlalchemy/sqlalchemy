@@ -79,7 +79,8 @@ known driver available for that backend.
 Escaping Special Characters such as @ signs in Passwords
 ----------------------------------------------------------
 
-As the URL is like any other URL, **special characters such as those that may
+When constructing a fully formed URL string to pass to
+:func:`_sa.create_engine`, **special characters such as those that may
 be used in the user and password need to be URL encoded to be parsed correctly.**.
 **This includes the @ sign**.
 
@@ -99,11 +100,58 @@ The encoding for the above password can be generated using
   >>> urllib.parse.quote_plus("kx@jj5/g")
   'kx%40jj5%2Fg'
 
+The URL may then be passed as a string to :func:`_sa.create_engine`::
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine("postgresql+pg8000://dbuser:kx%40jj5%2Fg@pghost10/appdb")
+
+As an alternative to escaping special characters in order to create a complete
+URL string, the object passed to :func:`_sa.create_engine` may instead be an
+instance of the :class:`.URL` object, which bypasses the parsing
+phase and can accommodate for unescaped strings directly.  See the next
+section for an example.
+
 .. versionchanged:: 1.4
 
     Support for ``@`` signs in hostnames and database names has been
     fixed.   As a side effect of this fix, ``@`` signs in passwords must be
     escaped.
+
+Creating URLs Programmatically
+-------------------------------
+
+The value passed to :func:`_sa.create_engine` may be an instance of
+:class:`.URL`, instead of a plain string, which bypasses the need for string
+parsing to be used, and therefore does not need an escaped URL string to be
+provided.
+
+The :class:`.URL` object is created using the :meth:`_engine.URL.create()`
+constructor method, passing all fields individually.   Special characters
+such as those within passwords may be passed without any modification::
+
+    from sqlalchemy import URL
+
+    url_object = URL.create(
+        "postgresql+pg8000",
+        username="dbuser",
+        password="kx@jj5/g",  # plain (unescaped) text
+        host="pghost10",
+        database="appdb",
+    )
+
+The constructed :class:`.URL` object may then be passed directly to
+:func:`_sa.create_engine` in place of a string argument::
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine(url_object)
+
+.. seealso::
+
+    :class:`.URL`
+
+    :meth:`.URL.create`
 
 Backend-Specific URLs
 ----------------------
