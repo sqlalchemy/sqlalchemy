@@ -45,7 +45,6 @@ from .. import log
 from .. import util
 from ..sql import coercions
 from ..sql import roles
-from ..sql import sqltypes
 from ..sql.base import _NoArg
 from ..sql.roles import DDLConstraintColumnRole
 from ..sql.schema import Column
@@ -737,10 +736,7 @@ class MappedColumn(
 
             for check_type in checks:
 
-                if registry.type_annotation_map:
-                    new_sqltype = registry.type_annotation_map.get(check_type)
-                if new_sqltype is None:
-                    new_sqltype = sqltypes._type_map_get(check_type)  # type: ignore  # noqa: E501
+                new_sqltype = registry._resolve_type(check_type)
                 if new_sqltype is not None:
                     break
             else:
@@ -749,4 +745,4 @@ class MappedColumn(
                     f"type for Python type: {our_type}"
                 )
 
-            self.column.type = sqltypes.to_instance(new_sqltype)
+            self.column._set_type(new_sqltype)

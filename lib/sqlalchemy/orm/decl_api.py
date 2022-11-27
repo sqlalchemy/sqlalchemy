@@ -14,6 +14,7 @@ import re
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
@@ -23,6 +24,7 @@ from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -62,6 +64,7 @@ from .state import InstanceState
 from .. import exc
 from .. import inspection
 from .. import util
+from ..sql import sqltypes
 from ..sql.base import _NoArg
 from ..sql.elements import SQLCoreOperations
 from ..sql.schema import MetaData
@@ -70,6 +73,7 @@ from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
 from ..util.typing import CallableReference
+from ..util.typing import is_generic
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -80,6 +84,7 @@ if TYPE_CHECKING:
     from .interfaces import MapperProperty
     from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
+    from ..util.typing import GenericProtocol
 
 _T = TypeVar("_T", bound=Any)
 
@@ -1017,6 +1022,37 @@ class registry:
                 )
             }
         )
+
+    def _resolve_type(
+        self, python_type: Union[GenericProtocol[Any], Type[Any]]
+    ) -> Optional[sqltypes.TypeEngine[Any]]:
+
+        search: Tuple[Union[GenericProtocol[Any], Type[Any]], ...]
+
+        if is_generic(python_type):
+            python_type_type: Type[Any] = python_type.__origin__
+            search = (python_type,)
+        else:
+            # don't know why is_generic() TypeGuard[GenericProtocol[Any]]
+            # check above is not sufficient here
+            python_type_type = cast("Type[Any]", python_type)
+            search = python_type_type.__mro__
+
+        for pt in search:
+            sql_type = self.type_annotation_map.get(pt)
+            if sql_type is None:
+                sql_type = sqltypes._type_map_get(pt)  # type: ignore  # noqa: E501
+
+            if sql_type is not None:
+                sql_type_inst = sqltypes.to_instance(sql_type)  # type: ignore
+
+                resolved_sql_type = sql_type_inst._resolve_for_python_type(
+                    python_type_type, pt
+                )
+                if resolved_sql_type is not None:
+                    return resolved_sql_type
+
+        return None
 
     @property
     def mappers(self) -> FrozenSet[Mapper[Any]]:

@@ -59,6 +59,7 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
+from ..util.typing import GenericProtocol
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -1488,6 +1489,28 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         else:
             self.enum_class = None
             return enums, enums
+
+    def _resolve_for_literal(self, value: Any) -> Enum:
+        typ = self._resolve_for_python_type(type(value), type(value))
+        assert typ is not None
+        return typ
+
+    def _resolve_for_python_type(
+        self,
+        python_type: Type[Any],
+        matched_on: Union[GenericProtocol[Any], Type[Any]],
+    ) -> Optional[Enum]:
+        if not issubclass(python_type, enum.Enum):
+            return None
+        return cast(
+            Enum,
+            util.constructor_copy(
+                self,
+                self._generic_type_affinity,
+                python_type,
+                length=NO_ARG if self.length == 0 else self.length,
+            ),
+        )
 
     def _setup_for_values(self, values, objects, kw):
         self.enums = list(values)
@@ -3674,6 +3697,7 @@ _type_map: Dict[Type[Any], TypeEngine[Any]] = {
     type(None): NULLTYPE,
     bytes: LargeBinary(),
     str: _STRING,
+    enum.Enum: Enum(enum.Enum),
 }
 
 

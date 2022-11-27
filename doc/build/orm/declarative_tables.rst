@@ -369,6 +369,106 @@ while still being able to use succinct annotation-only :func:`_orm.mapped_column
 configurations.  There are two more levels of Python-type configurability
 available beyond this, described in the next two sections.
 
+.. _orm_declarative_mapped_column_enums:
+
+Using Python ``Enum`` types in the type map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 2.0.0b4
+
+User-defined Python types which derive from the Python built-in ``enum.Enum``
+class are automatically linked to the SQLAlchemy :class:`.Enum` datatype
+when used in an ORM declarative mapping::
+
+    import enum
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status]
+
+In the above example, the mapped attribute ``SomeClass.status`` will be
+linked to a :class:`.Column` with the datatype of ``Enum(Status)``.
+We can see this for example in the CREATE TABLE output for the PostgreSQL
+database:
+
+.. sourcecode:: sql
+
+  CREATE TYPE status AS ENUM ('PENDING', 'RECEIVED', 'COMPLETED')
+
+  CREATE TABLE some_table (
+    id SERIAL NOT NULL,
+    status status NOT NULL,
+    PRIMARY KEY (id)
+  )
+
+The entry used in :paramref:`_orm.registry.type_annotation_map` links the
+base ``enum.Enum`` Python type to the SQLAlchemy :class:`.Enum` SQL
+type, using a special form which indicates to the :class:`.Enum` datatype
+that it should automatically configure itself against an arbitrary enumerated
+type.   This configuration, which is implicit by default, would be indicated
+explicitly as::
+
+    import enum
+    import sqlalchemy
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {enum.Enum: sqlalchemy.Enum(enum.Enum)}
+
+The resolution logic within Declarative is able to resolve subclasses
+of ``enum.Enum``, in the above example the custom ``Status`` enumeration,
+to match the ``enum.Enum`` entry in the
+:paramref:`_orm.registry.type_annotation_map` dictionary.  The :class:`.Enum`
+SQL type then knows how to produce a configured version of itself with the
+appropriate settings, including default string length.
+
+In order to modify the configuration of the :class:`.enum.Enum` datatype used
+in this mapping, use the above form, indicating additional arguments. For
+example, to use "non native enumerations" on all backends, the
+:paramref:`.Enum.native_enum` parameter may be set to False for all types::
+
+    import enum
+    import sqlalchemy
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {enum.Enum: sqlalchemy.Enum(enum.Enum, native_enum=False)}
+
+To use a specific configuration for a specific ``enum.Enum`` subtype, such
+as setting the string length to 50 when using the example ``Status``
+datatype::
+
+    import enum
+    import sqlalchemy
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
+        }
 
 .. _orm_declarative_mapped_column_type_map_pep593:
 
