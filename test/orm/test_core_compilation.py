@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import or_
@@ -933,10 +934,32 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             properties=util.OrderedDict(
                 [
                     ("value", query_expression()),
+                    (
+                        "value_w_default",
+                        query_expression(default_expr=literal(15)),
+                    ),
                 ]
             ),
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+
+        return User
+
+    @testing.fixture
+    def deferred_fixture(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "name": deferred(users.c.name),
+                "name_upper": column_property(
+                    func.upper(users.c.name), deferred=True
+                ),
+            },
+        )
 
         return User
 
@@ -1080,8 +1103,69 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT users.name || :name_1 AS anon_1, users.id, "
+            "SELECT users.name || :name_1 AS anon_1, :param_1 AS anon_2, "
+            "users.id, "
             "users.name FROM users",
+        )
+
+    def test_exported_columns_query_expression(self, query_expression_fixture):
+        """test behaviors related to #8881"""
+        User = query_expression_fixture
+
+        stmt = select(User)
+
+        eq_(
+            stmt.selected_columns.keys(),
+            ["value_w_default", "id", "name"],
+        )
+
+        stmt = select(User).options(
+            with_expression(User.value, User.name + "foo")
+        )
+
+        # bigger problem.  we still don't include 'value', because we dont
+        # run query options here.  not "correct", but is at least consistent
+        # with deferred
+        eq_(
+            stmt.selected_columns.keys(),
+            ["value_w_default", "id", "name"],
+        )
+
+    def test_exported_columns_colprop(self, column_property_fixture):
+        """test behaviors related to #8881"""
+        User, _ = column_property_fixture
+
+        stmt = select(User)
+
+        # we get all the cols because they are not deferred and have a value
+        eq_(
+            stmt.selected_columns.keys(),
+            ["concat", "count", "id", "name"],
+        )
+
+    def test_exported_columns_deferred(self, deferred_fixture):
+        """test behaviors related to #8881"""
+        User = deferred_fixture
+
+        stmt = select(User)
+
+        # don't include 'name_upper' as it's deferred and readonly.
+        # "name" however is a column on the table, so even though it is
+        # deferred, it gets special treatment (related to #6661)
+        eq_(
+            stmt.selected_columns.keys(),
+            ["name", "id"],
+        )
+
+        stmt = select(User).options(
+            undefer(User.name), undefer(User.name_upper)
+        )
+
+        # undefer doesn't affect the readonly col because we dont look
+        # at options when we do selected_columns
+        eq_(
+            stmt.selected_columns.keys(),
+            ["name", "id"],
         )
 
     def test_with_expr_two(self, query_expression_fixture):
@@ -1096,7 +1180,8 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT anon_1.foo, anon_1.id, anon_1.name FROM "
+            "SELECT anon_1.foo, :param_1 AS anon_2, anon_1.id, "
+            "anon_1.name FROM "
             "(SELECT users.id AS id, users.name AS name, "
             "users.name || :name_1 AS foo FROM users) AS anon_1",
         )
