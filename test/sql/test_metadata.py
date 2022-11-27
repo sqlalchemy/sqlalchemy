@@ -44,7 +44,7 @@ from sqlalchemy.schema import DefaultClause
 from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
-from sqlalchemy.sql.elements import _NONE_NAME
+from sqlalchemy.sql.base import _NONE_NAME
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.sql.schema import RETAIN_SCHEMA
 from sqlalchemy.testing import assert_raises

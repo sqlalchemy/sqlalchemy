@@ -136,6 +136,7 @@ from .selectable import (
 from .selectable import Lateral as Lateral
 from .selectable import ReturnsRows as ReturnsRows
 from .selectable import ScalarSelect as ScalarSelect
+from .selectable import ScalarValues as ScalarValues
 from .selectable import Select as Select
 from .selectable import Selectable as Selectable
 from .selectable import SelectBase as SelectBase

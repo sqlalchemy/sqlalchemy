@@ -37,10 +37,10 @@ from . import elements
 from . import operators
 from . import roles
 from . import type_api
+from .base import _NONE_NAME
 from .base import NO_ARG
 from .base import SchemaEventTarget
 from .cache_key import HasCacheKey
-from .elements import _NONE_NAME
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa

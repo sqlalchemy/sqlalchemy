@@ -58,6 +58,7 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
+from .base import _NoneName
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
@@ -110,6 +111,8 @@ _TAB = TypeVar("_TAB", bound="Table")
 
 
 _CreateDropBind = Union["Engine", "Connection", "MockConnection"]
+
+_ConstraintNameArgument = Optional[Union[str, _NoneName]]
 
 
 class SchemaConst(Enum):
@@ -1927,11 +1930,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             self._proxies = _proxies
         else:
             # otherwise, add DDL-related events
-            if isinstance(self.type, SchemaEventTarget):
-                self.type._set_parent_with_dispatch(self)
-            for impl in self.type._variant_mapping.values():
-                if isinstance(impl, SchemaEventTarget):
-                    impl._set_parent_with_dispatch(self)
+            self._set_type(self.type)
 
         if default is not None:
             if not isinstance(default, (ColumnDefault, Sequence)):
@@ -2022,6 +2021,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     computed: Optional[Computed]
 
     identity: Optional[Identity]
+
+    def _set_type(self, type_: TypeEngine[Any]) -> None:
+        self.type = type_
+        if isinstance(self.type, SchemaEventTarget):
+            self.type._set_parent_with_dispatch(self)
+        for impl in self.type._variant_mapping.values():
+            if isinstance(impl, SchemaEventTarget):
+                impl._set_parent_with_dispatch(self)
 
     @util.memoized_property
     def _gen_static_annotations_cache_key(self) -> bool:  # type: ignore
@@ -2480,7 +2487,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         column: _DDLColumnArgument,
         _constraint: Optional[ForeignKeyConstraint] = None,
         use_alter: bool = False,
-        name: Optional[str] = None,
+        name: _ConstraintNameArgument = None,
         onupdate: Optional[str] = None,
         ondelete: Optional[str] = None,
         deferrable: Optional[bool] = None,
@@ -3744,7 +3751,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
 
     def __init__(
         self,
-        name: Optional[str] = None,
+        name: _ConstraintNameArgument = None,
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
@@ -3987,7 +3994,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     def __init__(
         self,
         *columns: _DDLColumnArgument,
-        name: Optional[str] = None,
+        name: _ConstraintNameArgument = None,
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
@@ -4123,7 +4130,7 @@ class CheckConstraint(ColumnCollectionConstraint):
     def __init__(
         self,
         sqltext: _TextCoercedExpressionArgument[Any],
-        name: Optional[str] = None,
+        name: _ConstraintNameArgument = None,
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         table: Optional[Table] = None,
@@ -4238,7 +4245,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self,
         columns: _typing_Sequence[_DDLColumnArgument],
         refcolumns: _typing_Sequence[_DDLColumnArgument],
-        name: Optional[str] = None,
+        name: _ConstraintNameArgument = None,
         onupdate: Optional[str] = None,
         ondelete: Optional[str] = None,
         deferrable: Optional[bool] = None,

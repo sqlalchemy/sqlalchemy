@@ -1365,7 +1365,7 @@ def _inspect_mc(
         return mapper
 
 
-GenericAlias = type(List[_T])
+GenericAlias = type(List[Any])
 
 
 @inspection._inspects(GenericAlias)

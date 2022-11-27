@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 
 from . import events  # noqa
-from .elements import _NONE_NAME
+from .base import _NONE_NAME
 from .elements import conv as conv
 from .schema import CheckConstraint
 from .schema import Column

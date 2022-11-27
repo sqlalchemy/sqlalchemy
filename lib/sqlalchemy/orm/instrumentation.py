@@ -621,7 +621,7 @@ class InstrumentationFactory(EventTarget):
 
         if factory is None:
             factory = ClassManager
-            manager = factory(class_)
+            manager = ClassManager(class_)
         else:
             assert manager is not None
 

@@ -5112,9 +5112,6 @@ class conv(_truncated_label):
     __slots__ = ()
 
 
-_NONE_NAME = util.symbol("NONE_NAME")
-"""indicate a 'deferred' name that was ultimately the value None."""
-
 # for backwards compatibility in case
 # someone is re-implementing the
 # _truncated_identifier() sequence in a custom

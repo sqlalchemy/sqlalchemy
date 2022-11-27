@@ -103,6 +103,14 @@ class _NoArg(Enum):
 
 NO_ARG = _NoArg.NO_ARG
 
+
+class _NoneName(Enum):
+    NONE_NAME = 0
+    """indicate a 'deferred' name that was ultimately the value None."""
+
+
+_NONE_NAME = _NoneName.NONE_NAME
+
 _T = TypeVar("_T", bound=Any)
 
 _Fn = TypeVar("_Fn", bound=Callable[..., Any])

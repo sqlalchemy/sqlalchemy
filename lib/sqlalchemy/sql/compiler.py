@@ -67,6 +67,7 @@ from . import util as sql_util
 from ._typing import is_column_element
 from ._typing import is_dml
 from .base import _from_objects
+from .base import _NONE_NAME
 from .base import Executable
 from .base import NO_ARG
 from .elements import ClauseElement
@@ -6440,7 +6441,7 @@ class IdentifierPreparer:
     def format_constraint(self, constraint, _alembic_quote=True):
         naming = util.preloaded.sql_naming
 
-        if constraint.name is elements._NONE_NAME:
+        if constraint.name is _NONE_NAME:
             name = naming._constraint_name_for_table(
                 constraint, constraint.table
             )
