@@ -42,6 +42,7 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import JSONPATH
+from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -2395,6 +2396,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT jsonb_path_exists(data.x, CAST(%(param_1)s AS JSONPATH)) "
             "AS jsonb_path_exists_1 FROM data",
+        )
+
+    def test_custom_object_hook(self):
+        # See issue #8884
+        from datetime import date
+
+        usages = table(
+            "usages",
+            column("id", Integer),
+            column("date", Date),
+            column("amount", Integer),
+        )
+        period = Range(date(2022, 1, 1), (2023, 1, 1))
+        stmt = select(func.sum(usages.c.amount)).where(
+            usages.c.date.op("<@")(period)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT sum(usages.amount) AS sum_1 FROM usages "
+            "WHERE usages.date <@ %(date_1)s::DATERANGE",
         )
 
 

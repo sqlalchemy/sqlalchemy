@@ -11,6 +11,7 @@ import dataclasses
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+from decimal import Decimal
 from typing import Any
 from typing import Generic
 from typing import Optional
@@ -83,6 +84,10 @@ class Range(Generic[_T]):
 
     def __bool__(self) -> bool:
         return self.empty
+
+    @property
+    def __sa_type_engine__(self):
+        return AbstractRange()
 
     def _contains_value(self, value: _T) -> bool:
         "Check whether this range contains the given `value`."
@@ -621,6 +626,21 @@ class AbstractRange(sqltypes.TypeEngine):
             )()
         else:
             return super().adapt(impltype)
+
+    def _resolve_for_literal(self, value):
+        spec = value.lower if value.lower is not None else value.upper
+
+        if isinstance(spec, int):
+            return INT8RANGE()
+        elif isinstance(spec, (Decimal, float)):
+            return NUMRANGE()
+        elif isinstance(spec, datetime):
+            return TSRANGE() if not spec.tzinfo else TSTZRANGE()
+        elif isinstance(spec, date):
+            return DATERANGE()
+        else:
+            # empty Range, SQL datatype can't be determined here
+            return sqltypes.NULLTYPE
 
     class comparator_factory(sqltypes.Concatenable.Comparator):
         """Define comparison operations for range types."""
