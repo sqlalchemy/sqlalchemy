@@ -1970,6 +1970,7 @@ def query_expression(
         info=info,
         doc=doc,
     )
+
     prop.strategy_key = (("query_expression", True),)
     return prop
 
