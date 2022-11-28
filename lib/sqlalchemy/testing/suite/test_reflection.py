@@ -1300,8 +1300,14 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         insp = inspect(connection)
 
         expected = [
-            {"name": "t_idx_2", "column_names": ["x"], "unique": False}
+            {
+                "name": "t_idx_2",
+                "column_names": ["x"],
+                "unique": False,
+                "dialect_options": {},
+            }
         ]
+
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
             expected[0]["dialect_options"] = {
@@ -1311,10 +1317,7 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         with expect_warnings(
             "Skipped unsupported reflection of expression-based index t_idx"
         ):
-            eq_(
-                insp.get_indexes("t"),
-                expected,
-            )
+            eq_(insp.get_indexes("t"), expected)
 
     @testing.requires.index_reflects_included_columns
     def test_reflect_covering_index(self, metadata, connection):

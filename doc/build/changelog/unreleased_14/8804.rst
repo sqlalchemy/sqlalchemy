@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 8804
+
+    Added support for reflection of expression-oriented WHERE criteria included
+    in indexes on the SQLite dialect, in a manner similar to that of the
+    PostgreSQL dialect. Pull request courtesy Tobias Pfeiffer.
