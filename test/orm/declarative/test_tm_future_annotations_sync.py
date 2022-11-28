@@ -1118,6 +1118,22 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         assert isinstance(MyClass.__table__.c.data.type, sqltype)
 
+    def test_dont_ignore_unresolvable(self, decl_base):
+        """test #8888"""
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Could not resolve all types within mapped annotation: "
+            r"\".*Mapped\[.*fake.*\]\".  Ensure all types are written "
+            r"correctly and are imported within the module in use.",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped["fake"]  # noqa
+
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"

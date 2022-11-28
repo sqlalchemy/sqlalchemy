@@ -46,6 +46,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1048,27 +1049,46 @@ class DeclarativeMultiBaseTest(
             configure_mappers,
         )
 
-    def test_reserved_identifiers(self):
-        def go1():
-            class User1(Base):
-                __tablename__ = "user1"
-                id = Column(Integer, primary_key=True)
-                metadata = Column(Integer)
+    # currently "registry" is allowed, "metadata" is not.
+    @testing.combinations(
+        ("metadata", True), ("registry", False), argnames="name, expect_raise"
+    )
+    @testing.variation("attrtype", ["column", "relationship"])
+    def test_reserved_identifiers(
+        self, decl_base, name, expect_raise, attrtype
+    ):
 
-        def go2():
-            class User2(Base):
-                __tablename__ = "user2"
-                id = Column(Integer, primary_key=True)
-                metadata = relationship("Address")
+        if attrtype.column:
+            clsdict = {
+                "__tablename__": "user",
+                "id": Column(Integer, primary_key=True),
+                name: Column(Integer),
+            }
+        elif attrtype.relationship:
+            clsdict = {
+                "__tablename__": "user",
+                "id": Column(Integer, primary_key=True),
+                name: relationship("Address"),
+            }
 
-        for go in (go1, go2):
-            assert_raises_message(
+            class Address(decl_base):
+                __tablename__ = "address"
+                id = Column(Integer, primary_key=True)
+                user_id = Column(ForeignKey("user.id"))
+
+        else:
+            assert False
+
+        if expect_raise:
+            with expect_raises_message(
                 exc.InvalidRequestError,
-                "Attribute name 'metadata' is reserved "
-                "for the MetaData instance when using a "
-                "declarative base class.",
-                go,
-            )
+                f"Attribute name '{name}' is reserved "
+                "when using the Declarative API.",
+            ):
+                type("User", (decl_base,), clsdict)
+        else:
+            User = type("User", (decl_base,), clsdict)
+            assert getattr(User, name).property
 
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""
