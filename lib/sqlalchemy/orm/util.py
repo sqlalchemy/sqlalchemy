@@ -2033,6 +2033,12 @@ def _is_mapped_annotation(
             cls, raw_annotation, originating_cls.__module__
         )
     except NameError:
+        # in most cases, at least within our own tests, we can raise
+        # here, which is more accurate as it prevents us from returning
+        # false negatives.  However, in the real world, try to avoid getting
+        # involved with end-user annotations that have nothing to do with us.
+        # see issue #8888 where we bypass using this function in the case
+        # that we want to detect an unresolvable Mapped[] type.
         return False
     else:
         return is_origin_of_cls(annotated, _MappedAnnotationBase)

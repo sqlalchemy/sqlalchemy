@@ -160,6 +160,22 @@ class MappedColumnTest(_MappedColumnTest):
         is_(MyClass.id.expression.type._type_affinity, Integer)
         is_(MyClass.data.expression.type._type_affinity, Uuid)
 
+    def test_dont_ignore_unresolvable(self, decl_base):
+        """test #8888"""
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Could not resolve all types within mapped annotation: "
+            r"\"Mapped\[fake\]\".  Ensure all types are written correctly and "
+            r"are imported within the module in use.",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[fake]  # noqa
+
 
 class MappedOneArg(KeyFuncDict[str, _R]):
     pass

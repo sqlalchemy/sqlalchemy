@@ -1553,6 +1553,10 @@ class registry:
 
 RegistryType = registry
 
+if not TYPE_CHECKING:
+    # allow for runtime type resolution of ``ClassVar[_RegistryType]``
+    _RegistryType = registry  # noqa
+
 
 def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
     """

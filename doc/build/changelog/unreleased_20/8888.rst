@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8888
+
+    Fixed issue where use of an unknown datatype within a :class:`.Mapped`
+    annotation for a column-based attribute would silently fail to map the
+    attribute, rather than reporting an exception; an informative exception
+    message is now raised.
