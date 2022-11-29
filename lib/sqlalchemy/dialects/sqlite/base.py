@@ -2316,6 +2316,8 @@ class SQLiteDialect(default.DefaultDialect):
                 r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\) *'
                 r"((?:ON (?:DELETE|UPDATE) "
                 r"(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)"
+                r"((?:NOT +)?DEFERRABLE)?"
+                r"(?: +INITIALLY +(DEFERRED|IMMEDIATE))?"
             )
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
@@ -2325,7 +2327,9 @@ class SQLiteDialect(default.DefaultDialect):
                     referred_name,
                     referred_columns,
                     onupdatedelete,
-                ) = match.group(1, 2, 3, 4, 5, 6)
+                    deferrable,
+                    initially,
+                ) = match.group(1, 2, 3, 4, 5, 6, 7, 8)
                 constrained_columns = list(
                     self._find_cols_in_sig(constrained_columns)
                 )
@@ -2347,6 +2351,12 @@ class SQLiteDialect(default.DefaultDialect):
                         onupdate = token[6:].strip()
                         if onupdate and onupdate != "NO ACTION":
                             options["onupdate"] = onupdate
+
+                if deferrable:
+                    options["deferrable"] = "NOT" not in deferrable.upper()
+                if initially:
+                    options["initially"] = initially.upper()
+
                 yield (
                     constraint_name,
                     constrained_columns,
