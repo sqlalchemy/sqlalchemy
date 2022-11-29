@@ -81,6 +81,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +================================================+=======================================+
 | Actian Avalanche, Vector, Actian X, and Ingres | sqlalchemy-ingres_                    |
 +------------------------------------------------+---------------------------------------+
+| Amazon Athena                                  | pyathena_                             |
++------------------------------------------------+---------------------------------------+
 | Amazon Redshift (via psycopg2)                 | sqlalchemy-redshift_                  |
 +------------------------------------------------+---------------------------------------+
 | Apache Drill                                   | sqlalchemy-drill_                     |
@@ -157,3 +159,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-turbodbc: https://pypi.org/project/sqlalchemy-turbodbc/
 .. _sqlalchemy-sybase: https://pypi.org/project/sqlalchemy-sybase/
 .. _firebolt-sqlalchemy: https://pypi.org/project/firebolt-sqlalchemy/
+.. _pyathena: https://github.com/laughingman7743/PyAthena/
