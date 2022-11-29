@@ -1879,6 +1879,19 @@ class ConstraintReflectionTest(fixtures.TestBase):
             )
 
             conn.exec_driver_sql(
+                "CREATE TABLE deferrable_test (id INTEGER PRIMARY KEY, "
+                "c1 INTEGER, c2 INTEGER, c3 INTEGER, c4 INTEGER, "
+                "CONSTRAINT fk1 FOREIGN KEY (c1) REFERENCES a1(id) "
+                "DEFERRABLE,"
+                "CONSTRAINT fk2 FOREIGN KEY (c2) REFERENCES a1(id) "
+                "NOT DEFERRABLE,"
+                "CONSTRAINT fk3 FOREIGN KEY (c3) REFERENCES a2(id) "
+                "DEFERRABLE INITIALLY DEFERRED,"
+                "CONSTRAINT fk4 FOREIGN KEY (c4) REFERENCES a2(id) "
+                "NOT DEFERRABLE INITIALLY IMMEDIATE)"
+            )
+
+            conn.exec_driver_sql(
                 "CREATE TABLE cp ("
                 "q INTEGER check (q > 1 AND q < 6),\n"
                 "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
@@ -2244,6 +2257,47 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "name": "fk4",
                     "constrained_columns": ["c4"],
                     "options": {},
+                },
+            ],
+        )
+
+    def test_foreign_key_deferrable_initially(self):
+        inspector = inspect(testing.db)
+        fks = inspector.get_foreign_keys("deferrable_test")
+        eq_(
+            fks,
+            [
+                {
+                    "referred_table": "a1",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "fk1",
+                    "constrained_columns": ["c1"],
+                    "options": {"deferrable": True},
+                },
+                {
+                    "referred_table": "a1",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "fk2",
+                    "constrained_columns": ["c2"],
+                    "options": {"deferrable": False},
+                },
+                {
+                    "referred_table": "a2",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "fk3",
+                    "constrained_columns": ["c3"],
+                    "options": {"deferrable": True, "initially": "DEFERRED"},
+                },
+                {
+                    "referred_table": "a2",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "fk4",
+                    "constrained_columns": ["c4"],
+                    "options": {"deferrable": False, "initially": "IMMEDIATE"},
                 },
             ],
         )
