@@ -2280,6 +2280,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 1,
                     "name": "sqlite_autoindex_o_1",
                     "column_names": ["foo"],
+                    "dialect_options": {},
                 }
             ],
         )
@@ -2295,8 +2296,58 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "unique": 0,
                     "name": "ix_main_l_bar",
                     "column_names": ["bar"],
+                    "dialect_options": {},
                 }
             ],
+        )
+
+    def test_reflect_partial_indexes(self, connection):
+        connection.exec_driver_sql(
+            "create table foo_with_partial_index (x integer, y integer)"
+        )
+        connection.exec_driver_sql(
+            "create unique index ix_partial on "
+            "foo_with_partial_index (x) where y > 10"
+        )
+        connection.exec_driver_sql(
+            "create unique index ix_no_partial on "
+            "foo_with_partial_index (x)"
+        )
+        connection.exec_driver_sql(
+            "create unique index ix_partial2 on "
+            "foo_with_partial_index (x, y) where "
+            "y = 10 or abs(x) < 5"
+        )
+
+        inspector = inspect(connection)
+        indexes = inspector.get_indexes("foo_with_partial_index")
+        eq_(
+            indexes,
+            [
+                {
+                    "unique": 1,
+                    "name": "ix_no_partial",
+                    "column_names": ["x"],
+                    "dialect_options": {},
+                },
+                {
+                    "unique": 1,
+                    "name": "ix_partial",
+                    "column_names": ["x"],
+                    "dialect_options": {"sqlite_where": mock.ANY},
+                },
+                {
+                    "unique": 1,
+                    "name": "ix_partial2",
+                    "column_names": ["x", "y"],
+                    "dialect_options": {"sqlite_where": mock.ANY},
+                },
+            ],
+        )
+        eq_(indexes[1]["dialect_options"]["sqlite_where"].text, "y > 10")
+        eq_(
+            indexes[2]["dialect_options"]["sqlite_where"].text,
+            "y = 10 or abs(x) < 5",
         )
 
     def test_unique_constraint_named(self):

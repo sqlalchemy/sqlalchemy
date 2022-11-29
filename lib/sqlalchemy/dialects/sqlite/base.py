@@ -893,6 +893,7 @@ from .json import JSONPathType
 from ... import exc
 from ... import schema as sa_schema
 from ... import sql
+from ... import text
 from ... import types as sqltypes
 from ... import util
 from ...engine import default
@@ -2626,6 +2627,21 @@ class SQLiteDialect(default.DefaultDialect):
         )
         indexes = []
 
+        # regular expression to extract the filter predicate of a partial
+        # index. this could fail to extract the predicate correctly on
+        # indexes created like
+        #   CREATE INDEX i ON t (col || ') where') WHERE col <> ''
+        # but as this function does not support expression-based indexes
+        # this case does not occur.
+        partial_pred_re = re.compile(r"\)\s+where\s+(.+)", re.IGNORECASE)
+
+        if schema:
+            schema_expr = "%s." % self.identifier_preparer.quote_identifier(
+                schema
+            )
+        else:
+            schema_expr = ""
+
         include_auto_indexes = kw.pop("include_auto_indexes", False)
         for row in pragma_indexes:
             # ignore implicit primary key index.
@@ -2634,7 +2650,38 @@ class SQLiteDialect(default.DefaultDialect):
                 "sqlite_autoindex"
             ):
                 continue
-            indexes.append(dict(name=row[1], column_names=[], unique=row[2]))
+            indexes.append(
+                dict(
+                    name=row[1],
+                    column_names=[],
+                    unique=row[2],
+                    dialect_options={},
+                )
+            )
+
+            # check partial indexes
+            if row[4]:
+                s = (
+                    "SELECT sql FROM %(schema)ssqlite_master "
+                    "WHERE name = ? "
+                    "AND type = 'index'" % {"schema": schema_expr}
+                )
+                rs = connection.exec_driver_sql(s, (row[1],))
+                index_sql = rs.scalar()
+                predicate_match = partial_pred_re.search(index_sql)
+                if predicate_match is None:
+                    # unless the regex is broken this case shouldn't happen
+                    # because we know this is a partial index, so the
+                    # definition sql should match the regex
+                    util.warn(
+                        "Failed to look up filter predicate of "
+                        "partial index %s" % row[1]
+                    )
+                else:
+                    predicate = predicate_match.group(1)
+                    indexes[-1]["dialect_options"]["sqlite_where"] = text(
+                        predicate
+                    )
 
         # loop thru unique indexes to get the column names.
         for idx in list(indexes):
@@ -2652,6 +2699,7 @@ class SQLiteDialect(default.DefaultDialect):
                     break
                 else:
                     idx["column_names"].append(row[2])
+
         indexes.sort(key=lambda d: d["name"] or "~")  # sort None as last
         if indexes:
             return indexes

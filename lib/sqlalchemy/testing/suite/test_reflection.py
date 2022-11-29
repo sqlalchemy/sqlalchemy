@@ -2393,7 +2393,12 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         insp = inspect(connection)
 
         expected = [
-            {"name": "t_idx_2", "column_names": ["x"], "unique": False}
+            {
+                "name": "t_idx_2",
+                "column_names": ["x"],
+                "unique": False,
+                "dialect_options": {},
+            }
         ]
 
         def completeIndex(entry):
@@ -2402,6 +2407,8 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
                 entry["dialect_options"] = {
                     f"{connection.engine.name}_include": []
                 }
+            else:
+                entry.setdefault("dialect_options", {})
 
         completeIndex(expected[0])
 
