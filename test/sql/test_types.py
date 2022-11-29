@@ -3293,6 +3293,43 @@ class ExpressionTest(
             ],
         )
 
+    @testing.variation("secondary_adapt", [True, False])
+    @testing.variation("expression_type", ["literal", "right_side"])
+    def test_value_level_bind_hooks(
+        self, connection, metadata, secondary_adapt, expression_type
+    ):
+        """test new feature added in #8884, allowing custom value objects
+        to indicate the SQL type they should resolve towards.
+
+        """
+
+        class MyFoobarType(types.UserDefinedType):
+            if secondary_adapt:
+
+                def _resolve_for_literal(self, value):
+                    return String(value.length)
+
+        class Widget:
+            def __init__(self, length):
+                self.length = length
+
+            @property
+            def __sa_type_engine__(self):
+                return MyFoobarType()
+
+        if expression_type.literal:
+            expr = literal(Widget(52))
+        elif expression_type.right_side:
+            expr = (column("x", Integer) == Widget(52)).right
+        else:
+            assert False
+
+        if secondary_adapt:
+            is_(expr.type._type_affinity, String)
+            eq_(expr.type.length, 52)
+        else:
+            is_(expr.type._type_affinity, MyFoobarType)
+
     def test_grouped_bind_adapt(self):
         test_table = self.tables.test
 

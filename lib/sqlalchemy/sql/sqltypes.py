@@ -3682,6 +3682,10 @@ _type_map_get = _type_map.get
 
 def _resolve_value_to_type(value: Any) -> TypeEngine[Any]:
     _result_type = _type_map_get(type(value), False)
+
+    if _result_type is False:
+        _result_type = getattr(value, "__sa_type_engine__", False)
+
     if _result_type is False:
         # use inspect() to detect SQLAlchemy built-in
         # objects.
