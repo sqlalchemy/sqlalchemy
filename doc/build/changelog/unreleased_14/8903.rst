@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 8903
+
+    Added support for the SQLite backend to reflect the "DEFERRABLE" and
+    "INITIALLY" keywords which may be present on a foreign key construct. Pull
+    request courtesy Michael Gorven.
