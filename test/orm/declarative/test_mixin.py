@@ -732,7 +732,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = "test"
             id = _column(Integer, primary_key=True)
             type_ = _column(String(50))
-            __mapper__args = {"polymorphic_on": type_}
+            __mapper_args__ = {"polymorphic_on": type_}
 
         class Specific(General):
             __tablename__ = "sub"

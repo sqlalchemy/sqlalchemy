@@ -44,6 +44,7 @@ from .base import InspectionAttr
 from .descriptor_props import CompositeProperty
 from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
+from .interfaces import _DCAttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MappedAttribute
 from .interfaces import _MapsColumns
@@ -1262,6 +1263,8 @@ class _ClassScanMapperConfig(_MapperConfig):
             or self.is_dataclass_prior_to_mapping
         )
 
+        look_for_dataclass_things = bool(self.dataclass_setup_arguments)
+
         for k in list(collected_attributes):
 
             if k in _include_dunders:
@@ -1304,15 +1307,21 @@ class _ClassScanMapperConfig(_MapperConfig):
                     "accidentally placed at the end of the line?" % k
                 )
                 continue
-            elif not isinstance(value, (Column, MapperProperty, _MapsColumns)):
+            elif look_for_dataclass_things and isinstance(
+                value, dataclasses.Field
+            ):
+                # we collected a dataclass Field; dataclasses would have
+                # set up the correct state on the class
+                continue
+            elif not isinstance(value, (Column, _DCAttributeOptions)):
                 # using @declared_attr for some object that
-                # isn't Column/MapperProperty; remove from the clsdict_view
+                # isn't Column/MapperProperty/_DCAttributeOptions; remove
+                # from the clsdict_view
                 # and place the evaluated value onto the class.
-                if not k.startswith("__"):
-                    collected_attributes.pop(k)
-                    self._warn_for_decl_attributes(cls, k, value)
-                    if not late_mapped:
-                        setattr(cls, k, value)
+                collected_attributes.pop(k)
+                self._warn_for_decl_attributes(cls, k, value)
+                if not late_mapped:
+                    setattr(cls, k, value)
                 continue
             # we expect to see the name 'metadata' in some valid cases;
             # however at this point we see it's assigned to something trying
@@ -1372,38 +1381,59 @@ class _ClassScanMapperConfig(_MapperConfig):
                         # by util._extract_mapped_subtype before we got here.
                         assert expect_annotations_wo_mapped
 
-                if (
-                    isinstance(value, (MapperProperty, _MapsColumns))
-                    and value._has_dataclass_arguments
-                    and not self.dataclass_setup_arguments
-                ):
-                    if isinstance(value, MapperProperty):
-                        argnames = [
-                            "init",
-                            "default_factory",
-                            "repr",
-                            "default",
-                        ]
-                    else:
-                        argnames = ["init", "default_factory", "repr"]
+                if isinstance(value, _DCAttributeOptions):
 
-                    args = {
-                        a
-                        for a in argnames
-                        if getattr(
-                            value._attribute_options, f"dataclasses_{a}"
+                    if (
+                        value._has_dataclass_arguments
+                        and not look_for_dataclass_things
+                    ):
+                        if isinstance(value, MapperProperty):
+                            argnames = [
+                                "init",
+                                "default_factory",
+                                "repr",
+                                "default",
+                            ]
+                        else:
+                            argnames = ["init", "default_factory", "repr"]
+
+                        args = {
+                            a
+                            for a in argnames
+                            if getattr(
+                                value._attribute_options, f"dataclasses_{a}"
+                            )
+                            is not _NoArg.NO_ARG
+                        }
+
+                        raise exc.ArgumentError(
+                            f"Attribute '{k}' on class {cls} includes "
+                            f"dataclasses argument(s): "
+                            f"{', '.join(sorted(repr(a) for a in args))} but "
+                            f"class does not specify "
+                            "SQLAlchemy native dataclass configuration."
                         )
-                        is not _NoArg.NO_ARG
-                    }
-                    raise exc.ArgumentError(
-                        f"Attribute '{k}' on class {cls} includes dataclasses "
-                        f"argument(s): "
-                        f"{', '.join(sorted(repr(a) for a in args))} but "
-                        f"class does not specify "
-                        "SQLAlchemy native dataclass configuration."
-                    )
 
-            our_stuff[k] = value
+                    if not isinstance(value, (MapperProperty, _MapsColumns)):
+                        # filter for _DCAttributeOptions objects that aren't
+                        # MapperProperty / mapped_column().  Currently this
+                        # includes AssociationProxy.   pop it from the things
+                        # we're going to map and set it up as a descriptor
+                        # on the class.
+                        collected_attributes.pop(k)
+
+                        # Assoc Prox (or other descriptor object that may
+                        # use _DCAttributeOptions) is usually here, except if
+                        # 1. we're a
+                        # dataclass, dataclasses would have removed the
+                        # attr here or 2. assoc proxy is coming from a
+                        # superclass, we want it to be direct here so it
+                        # tracks state or 3. assoc prox comes from
+                        # declared_attr, uncommon case
+                        setattr(cls, k, value)
+                        continue
+
+            our_stuff[k] = value  # type: ignore
 
     def _extract_declared_columns(self) -> None:
         our_stuff = self.properties

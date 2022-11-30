@@ -29,6 +29,7 @@ from .properties import MappedColumn
 from .properties import MappedSQLExpression
 from .query import AliasOption
 from .relationships import _RelationshipArgumentType
+from .relationships import _RelationshipSecondaryArgument
 from .relationships import Relationship
 from .relationships import RelationshipProperty
 from .session import Session
@@ -736,7 +737,7 @@ def with_loader_criteria(
 
 def relationship(
     argument: Optional[_RelationshipArgumentType[Any]] = None,
-    secondary: Optional[Union[FromClause, str]] = None,
+    secondary: Optional[_RelationshipSecondaryArgument] = None,
     *,
     uselist: Optional[bool] = None,
     collection_class: Optional[

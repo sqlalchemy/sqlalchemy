@@ -230,7 +230,7 @@ class _AttributeOptions(NamedTuple):
         for this attribute.
 
         """
-        if isinstance(elem, (MapperProperty, _MapsColumns)):
+        if isinstance(elem, _DCAttributeOptions):
             dc_field = elem._attribute_options._as_dataclass_field()
 
             return (key, annotation, dc_field)
@@ -260,15 +260,35 @@ _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
 )
 
 
-class _MapsColumns(_MappedAttribute[_T]):
-    """interface for declarative-capable construct that delivers one or more
-    Column objects to the declarative process to be part of a Table.
+class _DCAttributeOptions:
+    """mixin for descriptors or configurational objects that include dataclass
+    field options.
+
+    This includes :class:`.MapperProperty`, :class:`._MapsColumn` within
+    the ORM, but also includes :class:`.AssociationProxy` within ext.
+    Can in theory be used for other descriptors that serve a similar role
+    as association proxy.   (*maybe* hybrids, not sure yet.)
+
     """
 
     __slots__ = ()
 
     _attribute_options: _AttributeOptions
+    """behavioral options for ORM-enabled Python attributes
+
+    .. versionadded:: 2.0
+
+    """
+
     _has_dataclass_arguments: bool
+
+
+class _MapsColumns(_DCAttributeOptions, _MappedAttribute[_T]):
+    """interface for declarative-capable construct that delivers one or more
+    Column objects to the declarative process to be part of a Table.
+    """
+
+    __slots__ = ()
 
     @property
     def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
@@ -296,6 +316,7 @@ class _MapsColumns(_MappedAttribute[_T]):
 @inspection._self_inspects
 class MapperProperty(
     HasCacheKey,
+    _DCAttributeOptions,
     _MappedAttribute[_T],
     InspectionAttrInfo,
     util.MemoizedSlots,
@@ -358,13 +379,6 @@ class MapperProperty(
     doc: Optional[str]
     """optional documentation string"""
 
-    _attribute_options: _AttributeOptions
-    """behavioral options for ORM-enabled Python attributes
-
-    .. versionadded:: 2.0
-
-    """
-
     info: _InfoType
     """Info dictionary associated with the object, allowing user-defined
     data to be associated with this :class:`.InspectionAttr`.
@@ -385,8 +399,6 @@ class MapperProperty(
         :attr:`.SchemaItem.info`
 
     """
-
-    _has_dataclass_arguments: bool
 
     def _memoized_attr_info(self) -> _InfoType:
         """Info dictionary associated with the object, allowing user-defined

@@ -111,34 +111,27 @@ Above, :meth:`~.Mutable.as_mutable` returns an instance of ``JSONEncodedDict``
 attributes which are mapped against this type.  Below we establish a simple
 mapping against the ``my_data`` table::
 
-    from sqlalchemy import mapper
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
 
-    class MyDataClass:
+    class Base(DeclarativeBase):
         pass
-
-    # associates mutation listeners with MyDataClass.data
-    mapper(MyDataClass, my_data)
-
-The ``MyDataClass.data`` member will now be notified of in place changes
-to its value.
-
-There's no difference in usage when using declarative::
-
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
 
     class MyDataClass(Base):
         __tablename__ = 'my_data'
-        id = Column(Integer, primary_key=True)
-        data = Column(MutableDict.as_mutable(JSONEncodedDict))
+        id: Mapped[int] = mapped_column(primary_key=True)
+        data: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONEncodedDict))
+
+The ``MyDataClass.data`` member will now be notified of in place changes
+to its value.
 
 Any in-place changes to the ``MyDataClass.data`` member
 will flag the attribute as "dirty" on the parent object::
 
     >>> from sqlalchemy.orm import Session
 
-    >>> sess = Session()
+    >>> sess = Session(some_engine)
     >>> m1 = MyDataClass(data={'value1':'foo'})
     >>> sess.add(m1)
     >>> sess.commit()
@@ -154,12 +147,19 @@ of ``JSONEncodedDict`` in one step, using
 of ``MutableDict`` in all mappings unconditionally, without
 the need to declare it individually::
 
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
     MutableDict.associate_with(JSONEncodedDict)
+
+    class Base(DeclarativeBase):
+        pass
 
     class MyDataClass(Base):
         __tablename__ = 'my_data'
-        id = Column(Integer, primary_key=True)
-        data = Column(JSONEncodedDict)
+        id: Mapped[int] = mapped_column(primary_key=True)
+        data: Mapped[dict[str, str]] = mapped_column(JSONEncodedDict)
 
 
 Supporting Pickling
@@ -208,15 +208,18 @@ an event when a mutable scalar emits a change event.  This event handler
 is called when the :func:`.attributes.flag_modified` function is called
 from within the mutable extension::
 
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
     from sqlalchemy import event
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     class MyDataClass(Base):
         __tablename__ = 'my_data'
-        id = Column(Integer, primary_key=True)
-        data = Column(MutableDict.as_mutable(JSONEncodedDict))
+        id: Mapped[int] = mapped_column(primary_key=True)
+        data: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONEncodedDict))
 
     @event.listens_for(MyDataClass.data, "modified")
     def modified_json(instance, initiator):
