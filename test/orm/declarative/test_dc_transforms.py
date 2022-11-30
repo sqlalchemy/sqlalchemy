@@ -570,7 +570,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             ),
         )
 
-    @testing.only_if(lambda: compat.py310, "python 3.10 is required")
     def test_compare(self, dc_decl_base: Type[MappedAsDataclass]):
         class A(dc_decl_base):
             __tablename__ = "a"
