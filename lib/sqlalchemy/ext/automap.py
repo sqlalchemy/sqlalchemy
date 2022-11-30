@@ -578,27 +578,24 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import List
+from typing import NoReturn
 from typing import Optional
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from mypy_extensions import NoReturn
-
 from .. import util
 from ..engine.base import Engine
 from ..orm import backref
-from ..orm import BackrefConstructorType
 from ..orm import declarative_base as _declarative_base
 from ..orm import exc as orm_exc
 from ..orm import interfaces
-from ..orm import RelaionshipConstructorType
 from ..orm import relationship
 from ..orm.base import RelationshipDirection
 from ..orm.decl_base import _DeferredMapperConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
-from ..orm.relationships import _ORMBackrefArgument
+from ..orm.relationships import ORMBackrefArgument
 from ..orm.relationships import Relationship
 from ..schema import ForeignKeyConstraint
 from ..sql import and_
@@ -607,7 +604,6 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util._py_collections import immutabledict
 from ..util.typing import Protocol
-from ..util.typing import TypeGuard
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
@@ -745,24 +741,24 @@ class GenerateRelationshipType(Protocol):
         self,
         base: Type[Any],
         direction: RelationshipDirection,
-        return_fn: BackrefConstructorType | RelaionshipConstructorType,
+        return_fn: Callable[..., Union[Relationship[Any], ORMBackrefArgument]],
         attrname: str,
         local_cls: Type[Any],
         referred_cls: Type[Any],
         **kw: Any,
-    ) -> _ORMBackrefArgument | Relationship[Any]:
+    ) -> Union[ORMBackrefArgument, Relationship[Any]]:
         ...
 
 
 def generate_relationship(
     base: Type[Any],
     direction: RelationshipDirection,
-    return_fn: BackrefConstructorType | RelaionshipConstructorType,
+    return_fn: Callable[..., Union[Relationship[Any], ORMBackrefArgument]],
     attrname: str,
     local_cls: Type[Any],
     referred_cls: Type[Any],
     **kw: Any,
-) -> _ORMBackrefArgument | Relationship[Any]:
+) -> Union[ORMBackrefArgument, Relationship[Any]]:
     r"""Generate a :func:`_orm.relationship` or :func:`.backref`
     on behalf of two
     mapped classes.
@@ -812,19 +808,9 @@ def generate_relationship(
 
     """
 
-    def is_backref(
-        func: Callable[..., Any]
-    ) -> TypeGuard[BackrefConstructorType]:
-        return func is backref
-
-    def is_relationship(
-        func: Callable[..., Any]
-    ) -> TypeGuard[RelaionshipConstructorType]:
-        return func is relationship
-
-    if is_backref(return_fn):
+    if return_fn is backref:
         return return_fn(attrname, **kw)
-    elif is_relationship(return_fn):
+    elif return_fn is relationship:
         return return_fn(referred_cls, **kw)
     else:
         raise TypeError("Unknown relationship function: %s" % return_fn)
@@ -1196,7 +1182,7 @@ def _relationships_for_fks(
                 automap_base, referred_cls, local_cls, constraint
             )
 
-            o2m_kws: dict[str, str | bool] = {}
+            o2m_kws: dict[str, Union[str, bool]] = {}
             nullable = False not in {fk.parent.nullable for fk in fks}
             if not nullable:
                 o2m_kws["cascade"] = "all, delete-orphan"
