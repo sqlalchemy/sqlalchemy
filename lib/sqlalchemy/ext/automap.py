@@ -596,7 +596,6 @@ from ..orm import interfaces
 from ..orm import RelaionshipConstructorType
 from ..orm import relationship
 from ..orm.base import RelationshipDirection
-from ..orm.decl_api import DeclarativeBase
 from ..orm.decl_base import _DeferredMapperConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
 from ..orm.relationships import _ORMBackrefArgument
@@ -1093,7 +1092,7 @@ class AutomapBase:
 
 
 def automap_base(
-    declarative_base: Optional[Type[DeclarativeBase]] = None, **kw: Any
+    declarative_base: Optional[Type[Any]] = None, **kw: Any
 ) -> Any:
     r"""Produce a declarative automap base.
 
