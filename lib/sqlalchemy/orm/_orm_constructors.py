@@ -104,6 +104,7 @@ def mapped_column(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     nullable: Optional[
         Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
@@ -263,7 +264,7 @@ def mapped_column(
         autoincrement=autoincrement,
         insert_default=insert_default,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         doc=doc,
         key=key,
@@ -296,6 +297,7 @@ def column_property(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     active_history: bool = False,
     expire_on_flush: bool = True,
@@ -389,7 +391,7 @@ def column_property(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         group=group,
         deferred=deferred,
@@ -415,6 +417,7 @@ def composite(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
@@ -436,6 +439,7 @@ def composite(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
@@ -458,6 +462,7 @@ def composite(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
@@ -533,7 +538,7 @@ def composite(
         _class_or_attr,
         *attrs,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         group=group,
         deferred=deferred,
@@ -756,6 +761,7 @@ def relationship(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Union[_NoArg, _T] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     lazy: _LazyLoadArgumentType = "select",
     passive_deletes: Union[Literal["all"], bool] = False,
@@ -1615,7 +1621,7 @@ def relationship(
         cascade=cascade,
         viewonly=viewonly,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         lazy=lazy,
         passive_deletes=passive_deletes,
@@ -1648,6 +1654,7 @@ def synonym(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Union[_NoArg, _T] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
@@ -1761,7 +1768,7 @@ def synonym(
         descriptor=descriptor,
         comparator_factory=comparator_factory,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         doc=doc,
         info=info,
@@ -1890,6 +1897,7 @@ def deferred(
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     active_history: bool = False,
     expire_on_flush: bool = True,
@@ -1925,7 +1933,7 @@ def deferred(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, kw_only
+            init, repr, default, default_factory, compare, kw_only
         ),
         group=group,
         deferred=True,
@@ -1963,6 +1971,7 @@ def query_expression(
         attribute_options=_AttributeOptions(
             _NoArg.NO_ARG,
             repr,
+            _NoArg.NO_ARG,
             _NoArg.NO_ARG,
             _NoArg.NO_ARG,
             _NoArg.NO_ARG,

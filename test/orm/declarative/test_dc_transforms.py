@@ -571,6 +571,18 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     @testing.only_if(lambda: compat.py310, "python 3.10 is required")
+    def test_compare(self, dc_decl_base: Type[MappedAsDataclass]):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, compare=False)
+            data: Mapped[str]
+
+        a1 = A(id=0, data='foo')
+        a2 = A(id=1, data='foo')
+        eq_(a1, a2)
+
+    @testing.only_if(lambda: compat.py310, "python 3.10 is required")
     def test_kw_only(self, dc_decl_base: Type[MappedAsDataclass]):
         class A(dc_decl_base):
             __tablename__ = "a"
@@ -1200,9 +1212,10 @@ class DataclassArgsTest(fixtures.TestBase):
                 "repr": True,
                 "default": True,
                 "default_factory": list,
+                "compare": True,
                 "kw_only": True,
             }
-            exp = interfaces._AttributeOptions(True, True, True, list, True)
+            exp = interfaces._AttributeOptions(True, True, True, list, True, True)
         else:
             kw = {}
             exp = interfaces._DEFAULT_ATTRIBUTE_OPTIONS
