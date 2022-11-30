@@ -35,6 +35,7 @@ from .operators import ColumnOperators
 from .visitors import Visitable
 from .. import exc
 from .. import util
+from ..util.typing import flatten_generic
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
@@ -55,6 +56,7 @@ if typing.TYPE_CHECKING:
     from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
     from ..engine.interfaces import Dialect
+    from ..util.typing import GenericProtocol
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -712,7 +714,64 @@ class TypeEngine(Visitable, Generic[_T]):
 
         .. versionadded:: 1.4.30 or 2.0
 
+        TODO: this should be part of public API
+
+        .. seealso::
+
+            :meth:`.TypeEngine._resolve_for_python_type`
+
         """
+        return self
+
+    def _resolve_for_python_type(
+        self: SelfTypeEngine,
+        python_type: Type[Any],
+        matched_on: Union[GenericProtocol[Any], Type[Any]],
+    ) -> Optional[SelfTypeEngine]:
+        """given a Python type (e.g. ``int``, ``str``, etc. ) return an
+        instance of this :class:`.TypeEngine` that's appropriate for this type.
+
+        An additional argument ``matched_on`` is passed, which indicates an
+        entry from the ``__mro__`` of the given ``python_type`` that more
+        specifically matches how the caller located this :class:`.TypeEngine`
+        object.   Such as, if a lookup of some kind links the ``int`` Python
+        type to the :class:`.Integer` SQL type, and the original object
+        was some custom subclass of ``int`` such as ``MyInt(int)``, the
+        arguments passed would be ``(MyInt, int)``.
+
+        If the given Python type does not correspond to this
+        :class:`.TypeEngine`, or the Python type is otherwise ambiguous, the
+        method should return None.
+
+        For simple cases, the method checks that the ``python_type``
+        and ``matched_on`` types are the same (i.e. not a subclass), and
+        returns self; for all other cases, it returns ``None``.
+
+        The initial use case here is for the ORM to link user-defined
+        Python standard library ``enum.Enum`` classes to the SQLAlchemy
+        :class:`.Enum` SQL type when constructing ORM Declarative mappings.
+
+        :param python_type: the Python type we want to use
+        :param matched_on: the Python type that led us to choose this
+         particular :class:`.TypeEngine` class, which would be a supertype
+         of ``python_type``.   By default, the request is rejected if
+         ``python_type`` doesn't match ``matched_on`` (None is returned).
+
+        .. versionadded:: 2.0.0b4
+
+        TODO: this should be part of public API
+
+        .. seealso::
+
+            :meth:`.TypeEngine._resolve_for_literal`
+
+        """
+
+        matched_on = flatten_generic(matched_on)
+
+        if python_type is not matched_on:
+            return None
+
         return self
 
     @util.ro_memoized_property

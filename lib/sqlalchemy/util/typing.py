@@ -74,7 +74,7 @@ typing_get_origin = get_origin
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()
 
-_AnnotationScanType = Union[Type[Any], str, ForwardRef]
+_AnnotationScanType = Union[Type[Any], str, ForwardRef, "GenericProtocol[Any]"]
 
 
 class ArgsTypeProcotol(Protocol):
@@ -234,6 +234,15 @@ def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
+
+
+def flatten_generic(
+    type_: Union[GenericProtocol[Any], Type[Any]]
+) -> Type[Any]:
+    if is_generic(type_):
+        return type_.__origin__
+    else:
+        return cast("Type[Any]", type_)
 
 
 def is_fwd_ref(

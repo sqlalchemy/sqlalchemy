@@ -180,9 +180,15 @@ def variation(argname, cases):
 
     """
 
+    cases_plus_limitations = [
+        entry
+        if (isinstance(entry, tuple) and len(entry) == 2)
+        else (entry, None)
+        for entry in cases
+    ]
     case_names = [
         argname if c is True else "not_" + argname if c is False else c
-        for c in cases
+        for c, l in cases_plus_limitations
     ]
 
     typ = type(
@@ -195,8 +201,12 @@ def variation(argname, cases):
 
     return combinations(
         *[
-            (casename, typ(casename, argname, case_names))
-            for casename in case_names
+            (casename, typ(casename, argname, case_names), limitation)
+            if limitation is not None
+            else (casename, typ(casename, argname, case_names))
+            for casename, (case, limitation) in zip(
+                case_names, cases_plus_limitations
+            )
         ],
         id_="ia",
         argnames=argname,
