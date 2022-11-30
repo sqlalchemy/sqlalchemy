@@ -25,6 +25,7 @@ from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
@@ -569,6 +570,17 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 annotations={},
             ),
         )
+
+    def test_compare(self, dc_decl_base: Type[MappedAsDataclass]):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, compare=False)
+            data: Mapped[str]
+
+        a1 = A(id=0, data="foo")
+        a2 = A(id=1, data="foo")
+        eq_(a1, a2)
 
     @testing.only_if(lambda: compat.py310, "python 3.10 is required")
     def test_kw_only(self, dc_decl_base: Type[MappedAsDataclass]):
@@ -1192,30 +1204,36 @@ class DataclassArgsTest(fixtures.TestBase):
 
                 id: Mapped[int] = mapped_column(primary_key=True, init=False)
 
-    @testing.combinations(True, False)
-    def test_attribute_options(self, args):
-        if args:
+    @testing.variation("use_arguments", [True, False])
+    @testing.combinations(
+        mapped_column,
+        lambda **kw: synonym("some_int", **kw),
+        lambda **kw: column_property(Column(Integer), **kw),
+        lambda **kw: deferred(Column(Integer), **kw),
+        lambda **kw: composite("foo", **kw),
+        lambda **kw: relationship("Foo", **kw),
+        lambda **kw: association_proxy("foo", "bar", **kw),
+        argnames="construct",
+    )
+    def test_attribute_options(self, use_arguments, construct):
+        if use_arguments:
             kw = {
-                "init": True,
-                "repr": True,
-                "default": True,
+                "init": False,
+                "repr": False,
+                "default": False,
                 "default_factory": list,
-                "kw_only": True,
+                "compare": True,
+                "kw_only": False,
             }
-            exp = interfaces._AttributeOptions(True, True, True, list, True)
+            exp = interfaces._AttributeOptions(
+                False, False, False, list, True, False
+            )
         else:
             kw = {}
             exp = interfaces._DEFAULT_ATTRIBUTE_OPTIONS
 
-        for prop in [
-            mapped_column(**kw),
-            synonym("some_int", **kw),
-            column_property(Column(Integer), **kw),
-            deferred(Column(Integer), **kw),
-            composite("foo", **kw),
-            relationship("Foo", **kw),
-        ]:
-            eq_(prop._attribute_options, exp)
+        prop = construct(**kw)
+        eq_(prop._attribute_options, exp)
 
 
 class MixinColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):

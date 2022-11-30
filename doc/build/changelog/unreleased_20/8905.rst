@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 8905
+
+    Added :paramref:`_orm.mapped_column.compare` parameter to relevant ORM
+    attribute constructs including :func:`_orm.mapped_column`,
+    :func:`_orm.relationship` etc. to provide for the Python dataclasses
+    ``compare`` parameter on ``field()``, when using the
+    :ref:`orm_declarative_native_dataclasses` feature. Pull request courtesy
+    Simon Schiele.
