@@ -113,6 +113,7 @@ def mapped_column(
     deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
     deferred_group: Optional[str] = None,
     deferred_raiseload: bool = False,
+    use_existing_column: bool = False,
     name: Optional[str] = None,
     type_: Optional[_TypeEngineArgument[Any]] = None,
     autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
@@ -209,6 +210,18 @@ def mapped_column(
 
         :ref:`orm_queryguide_deferred_raiseload`
 
+    :param use_existing_column: if True, will attempt to locate the given
+     column name on an inherited superclass (typically single inheriting
+     superclass), and if present, will not produce a new column, mapping
+     to the superclass column as though it were omitted from this class.
+     This is used for mixins that add new columns to an inherited superclass.
+
+     .. seealso::
+
+        :ref:`orm_inheritance_column_conflicts`
+
+     .. versionadded:: 2.0.0b4
+
     :param default: Passed directly to the
      :paramref:`_schema.Column.default` parameter if the
      :paramref:`_orm.mapped_column.insert_default` parameter is not present.
@@ -283,6 +296,7 @@ def mapped_column(
         primary_key=primary_key,
         server_default=server_default,
         server_onupdate=server_onupdate,
+        use_existing_column=use_existing_column,
         quote=quote,
         comment=comment,
         system=system,

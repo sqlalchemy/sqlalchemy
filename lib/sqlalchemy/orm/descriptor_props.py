@@ -64,6 +64,7 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .attributes import QueryableAttribute
     from .context import ORMCompileState
+    from .decl_base import _ClassScanMapperConfig
     from .mapper import Mapper
     from .properties import ColumnProperty
     from .properties import MappedColumn
@@ -332,6 +333,7 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.properties")
     def declarative_scan(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],

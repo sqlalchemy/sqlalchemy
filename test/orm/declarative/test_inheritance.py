@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -9,7 +10,10 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.decl_api import registry
 from sqlalchemy.testing import assert_raises
@@ -805,11 +809,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             [Person.__table__.c.name, Person.__table__.c.primary_language],
         )
 
-    @testing.skip_if(
-        lambda: testing.against("oracle"),
-        "Test has an empty insert in it at the moment",
-    )
-    def test_columns_single_inheritance_conflict_resolution(self):
+    @testing.variation("decl_type", ["legacy", "use_existing_column"])
+    def test_columns_single_inheritance_conflict_resolution(
+        self, connection, decl_base, decl_type
+    ):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
 
@@ -817,18 +820,25 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         """
 
-        class Person(Base):
+        class Person(decl_base):
             __tablename__ = "person"
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, Identity(), primary_key=True)
 
         class Engineer(Person):
 
             """single table inheritance"""
 
-            @declared_attr
-            def target_id(cls):
-                return cls.__table__.c.get(
-                    "target_id", Column(Integer, ForeignKey("other.id"))
+            if decl_type.legacy:
+
+                @declared_attr
+                def target_id(cls):
+                    return cls.__table__.c.get(
+                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    )
+
+            elif decl_type.use_existing_column:
+                target_id: Mapped[int] = mapped_column(
+                    ForeignKey("other.id"), use_existing_column=True
                 )
 
             @declared_attr
@@ -839,19 +849,26 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
             """single table inheritance"""
 
-            @declared_attr
-            def target_id(cls):
-                return cls.__table__.c.get(
-                    "target_id", Column(Integer, ForeignKey("other.id"))
+            if decl_type.legacy:
+
+                @declared_attr
+                def target_id(cls):
+                    return cls.__table__.c.get(
+                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    )
+
+            elif decl_type.use_existing_column:
+                target_id: Mapped[int] = mapped_column(
+                    ForeignKey("other.id"), use_existing_column=True
                 )
 
             @declared_attr
             def target(cls):
                 return relationship("Other")
 
-        class Other(Base):
+        class Other(decl_base):
             __tablename__ = "other"
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, Identity(), primary_key=True)
 
         is_(
             Engineer.target_id.property.columns[0],
@@ -861,22 +878,25 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Manager.target_id.property.columns[0], Person.__table__.c.target_id
         )
         # do a brief round trip on this
-        Base.metadata.create_all(testing.db)
-        session = fixture_session()
-        o1, o2 = Other(), Other()
-        session.add_all(
-            [Engineer(target=o1), Manager(target=o2), Manager(target=o1)]
-        )
-        session.commit()
-        eq_(session.query(Engineer).first().target, o1)
+        decl_base.metadata.create_all(connection)
+        with Session(connection) as session:
+            o1, o2 = Other(), Other()
+            session.add_all(
+                [Engineer(target=o1), Manager(target=o2), Manager(target=o1)]
+            )
+            session.commit()
+            eq_(session.query(Engineer).first().target, o1)
 
-    def test_columns_single_inheritance_conflict_resolution_pk(self):
+    @testing.variation("decl_type", ["legacy", "use_existing_column"])
+    def test_columns_single_inheritance_conflict_resolution_pk(
+        self, decl_base, decl_type
+    ):
         """Test #2472 in terms of a primary key column.  This is
         #4352.
 
         """
 
-        class Person(Base):
+        class Person(decl_base):
             __tablename__ = "person"
             id = Column(Integer, primary_key=True)
 
@@ -886,20 +906,34 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
             """single table inheritance"""
 
-            @declared_attr
-            def target_id(cls):
-                return cls.__table__.c.get(
-                    "target_id", Column(Integer, primary_key=True)
+            if decl_type.legacy:
+
+                @declared_attr
+                def target_id(cls):
+                    return cls.__table__.c.get(
+                        "target_id", Column(Integer, primary_key=True)
+                    )
+
+            elif decl_type.use_existing_column:
+                target_id: Mapped[int] = mapped_column(
+                    primary_key=True, use_existing_column=True
                 )
 
         class Manager(Person):
 
             """single table inheritance"""
 
-            @declared_attr
-            def target_id(cls):
-                return cls.__table__.c.get(
-                    "target_id", Column(Integer, primary_key=True)
+            if decl_type.legacy:
+
+                @declared_attr
+                def target_id(cls):
+                    return cls.__table__.c.get(
+                        "target_id", Column(Integer, primary_key=True)
+                    )
+
+            elif decl_type.use_existing_column:
+                target_id: Mapped[int] = mapped_column(
+                    primary_key=True, use_existing_column=True
                 )
 
         is_(
@@ -910,20 +944,30 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Manager.target_id.property.columns[0], Person.__table__.c.target_id
         )
 
-    def test_columns_single_inheritance_cascading_resolution_pk(self):
+    @testing.variation("decl_type", ["legacy", "use_existing_column"])
+    def test_columns_single_inheritance_cascading_resolution_pk(
+        self, decl_type
+    ):
         """An additional test for #4352 in terms of the requested use case."""
 
         class TestBase(Base):
             __abstract__ = True
 
-            @declared_attr.cascading
-            def id(cls):
-                col_val = None
-                if TestBase not in cls.__bases__:
-                    col_val = cls.__table__.c.get("id")
-                if col_val is None:
-                    col_val = Column(Integer, primary_key=True)
-                return col_val
+            if decl_type.legacy:
+
+                @declared_attr.cascading
+                def id(cls):  # noqa: A001
+                    col_val = None
+                    if TestBase not in cls.__bases__:
+                        col_val = cls.__table__.c.get("id")
+                    if col_val is None:
+                        col_val = Column(Integer, primary_key=True)
+                    return col_val
+
+            elif decl_type.use_existing_column:
+                id: Mapped[int] = mapped_column(  # noqa: A001
+                    primary_key=True, use_existing_column=True
+                )
 
         class Person(TestBase):
             """single table base class"""

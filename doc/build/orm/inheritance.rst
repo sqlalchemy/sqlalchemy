@@ -325,8 +325,8 @@ their own.
 
 .. _orm_inheritance_column_conflicts:
 
-Resolving Column Conflicts
-+++++++++++++++++++++++++++
+Resolving Column Conflicts with ``use_existing_column``
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Note in the previous section that the ``manager_name`` and ``engineer_info`` columns
 are "moved up" to be applied to ``Employee.__table__``, as a result of their
@@ -366,18 +366,20 @@ will result in an error:
 
 .. sourcecode:: text
 
-    sqlalchemy.exc.ArgumentError: Column 'start_date' on class
-    <class '__main__.Manager'> conflicts with existing
-    column 'employee.start_date'
+
+    sqlalchemy.exc.ArgumentError: Column 'start_date' on class Manager conflicts
+    with existing column 'employee.start_date'.  If using Declarative,
+    consider using the use_existing_column parameter of mapped_column() to
+    resolve conflicts.
 
 The above scenario presents an ambiguity to the Declarative mapping system that
-may be resolved by using
-:class:`.declared_attr` to define the :class:`_schema.Column` conditionally,
-taking care to return the **existing column** via the parent ``__table__``
-if it already exists::
+may be resolved by using the :paramref:`_orm.mapped_column.use_existing_column`
+parameter on :func:`_orm.mapped_column`, which instructs :func:`_orm.mapped_column`
+to look on the inheriting superclass present and use the column that's already
+mapped, if already present, else to map a new column::
+
 
     from sqlalchemy import DateTime
-    from sqlalchemy.orm import declared_attr
 
 
     class Employee(Base):
@@ -397,15 +399,7 @@ if it already exists::
             "polymorphic_identity": "engineer",
         }
 
-        @declared_attr
-        def start_date(cls) -> Mapped[datetime]:
-            "Start date column, if not present already."
-
-            # the DateTime type is required in the mapped_column
-            # at the moment when used inside of a @declared_attr
-            return Employee.__table__.c.get(
-                "start_date", mapped_column(DateTime)  # type: ignore
-            )
+        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
 
 
     class Manager(Employee):
@@ -413,20 +407,25 @@ if it already exists::
             "polymorphic_identity": "manager",
         }
 
-        @declared_attr
-        def start_date(cls) -> Mapped[datetime]:
-            "Start date column, if not present already."
-
-            # the DateTime type is required in the mapped_column
-            # at the moment when used inside of a @declared_attr
-            return Employee.__table__.c.get(
-                "start_date", mapped_column(DateTime)  # type: ignore
-            )
+        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
 
 Above, when ``Manager`` is mapped, the ``start_date`` column is
-already present on the ``Employee`` class; by returning the existing
-:class:`_schema.Column` object, the declarative system recognizes that this
-is the same column to be mapped to the two different subclasses separately.
+already present on the ``Employee`` class, having been provided by the
+``Engineer`` mapping already.   The :paramref:`_orm.mapped_column.use_existing_column`
+parameter indicates to :func:`_orm.mapped_column` that it should look for the
+requested :class:`_schema.Column` on the mapped :class:`.Table` for
+``Employee`` first, and if present, maintain that existing mapping.  If not
+present, :func:`_orm.mapped_column` will map the column normally, adding it
+as one of the columns in the :class:`.Table` referred towards by the
+``Employee`` superclass.
+
+
+.. versionadded:: 2.0.0b4 - Added :paramref:`_orm.mapped_column.use_existing_column`,
+   which provides a 2.0-compatible means of mapping a column on an inheriting
+   subclass conditionally.  The previous approach which combines
+   :class:`.declared_attr` with a lookup on the parent ``.__table__``
+   continues to function as well, but lacks :pep:`484` typing support.
+
 
 A similar concept can be used with mixin classes (see :ref:`orm_mixins_toplevel`)
 to define a particular series of columns and/or other mapped attributes
@@ -445,11 +444,7 @@ from a reusable mixin class::
 
 
     class HasStartDate:
-        @declared_attr
-        def start_date(cls) -> Mapped[datetime]:
-            return cls.__table__.c.get(
-                "start_date", mapped_column(DateTime)  # type: ignore
-            )
+        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
 
 
     class Engineer(HasStartDate, Employee):

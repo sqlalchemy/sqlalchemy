@@ -28,6 +28,7 @@ from typing import TypeVar
 from . import attributes
 from . import strategy_options
 from .base import _DeclarativeMapped
+from .base import class_mapper
 from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import SynonymProperty
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
     from .base import Mapped
+    from .decl_base import _ClassScanMapperConfig
     from .mapper import Mapper
     from .session import Session
     from .state import _InstallLoaderCallableProto
@@ -191,6 +193,7 @@ class ColumnProperty(
 
     def declarative_scan(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -530,6 +533,7 @@ class MappedColumn(
         "deferred_raiseload",
         "_attribute_options",
         "_has_dataclass_arguments",
+        "_use_existing_column",
     )
 
     deferred: bool
@@ -544,6 +548,8 @@ class MappedColumn(
         self._attribute_options = attr_opts = kw.pop(
             "attribute_options", _DEFAULT_ATTRIBUTE_OPTIONS
         )
+
+        self._use_existing_column = kw.pop("use_existing_column", False)
 
         self._has_dataclass_arguments = False
 
@@ -591,6 +597,7 @@ class MappedColumn(
         new._attribute_options = self._attribute_options
         new._has_insert_default = self._has_insert_default
         new._has_dataclass_arguments = self._has_dataclass_arguments
+        new._use_existing_column = self._use_existing_column
         util.set_creation_order(new)
         return new
 
@@ -634,6 +641,7 @@ class MappedColumn(
 
     def declarative_scan(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -644,6 +652,18 @@ class MappedColumn(
         is_dataclass_field: bool,
     ) -> None:
         column = self.column
+
+        if self._use_existing_column and decl_scan.inherits:
+            if decl_scan.is_deferred:
+                raise sa_exc.ArgumentError(
+                    "Can't use use_existing_column with deferred mappers"
+                )
+            supercls_mapper = class_mapper(decl_scan.inherits, False)
+
+            column = self.column = supercls_mapper.local_table.c.get(  # type: ignore # noqa: E501
+                key, column
+            )
+
         if column.key is None:
             column.key = key
         if column.name is None:
