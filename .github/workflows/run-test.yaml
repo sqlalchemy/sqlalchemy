@@ -49,19 +49,13 @@ jobs:
           # autocommit tests fail on the ci for some reason
           # - python-version: "pypy-3.9"
           #   pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
-          # add aiosqlite on linux
+          # add aiosqlite on linux, for py3.10 only;
+          # wait for https://github.com/python/cpython/issues/99205 to be
+          # fixed for py311
           - os: "ubuntu-latest"
-
-          # disable aiosqlite until python 3.11.1 is released;
-          # 3.11.0 has a thread memory leak
-          # https://github.com/python/cpython/issues/99205
-          # which is suspected of crashing the py 3.11 action
-            python-version:
-              - "3.7"
-              - "3.8"
-              - "3.9"
-              - "3.10"
+            python-version: "3.10"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+
 
         exclude:
           # linux and osx do not have x86 python
