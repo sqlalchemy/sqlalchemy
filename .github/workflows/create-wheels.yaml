@@ -15,7 +15,7 @@ jobs:
   # two jobs are defined make-wheel-win-osx and make-wheel-linux.
   # they do the the same steps, but linux wheels need to be build to target manylinux
   make-wheel-win-osx:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: wheel-win-osx-${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -123,7 +123,7 @@ jobs:
           twine upload --skip-existing dist/*
 
   make-wheel-linux:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: wheel-linux-${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -302,7 +302,7 @@ jobs:
           twine upload --skip-existing dist/*manylinux*
 
   make-wheel-linux-arm64:
-    name: ${{ matrix.python-version }}-arm64-${{ matrix.os }}
+    name: wheel-linux-arm64-${{ matrix.python-version }}-arm64-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
