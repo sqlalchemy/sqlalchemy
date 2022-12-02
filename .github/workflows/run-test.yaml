@@ -67,13 +67,24 @@ jobs:
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
+          - os: "macos-latest"
+            architecture: x86
           # ubuntu-latest does not have: py27, py36
           - os: "ubuntu-latest"
             python-version: "2.7"
           - os: "ubuntu-latest"
             python-version: "3.6"
-          - os: "macos-latest"
-            architecture: x86
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: "3.7"
+          - os: "ubuntu-20.04"
+            python-version: "3.8"
+          - os: "ubuntu-20.04"
+            python-version: "3.9"
+          - os: "ubuntu-20.04"
+            python-version: "3.10"
+          - os: "ubuntu-20.04"
+            python-version: "3.11.0-rc - 3.11"
           # pypy does not have cext
           # - python-version: "pypy-3.9"
           #   build-type: "cext"
@@ -122,8 +133,20 @@ jobs:
           - "cext"
           - "nocext"
         exclude:
+          # ubuntu-latest does not have: py27, py36
           - os: "ubuntu-latest"
             python-version: cp36-cp36m
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: cp37-cp37m
+          - os: "ubuntu-20.04"
+            python-version: cp38-cp38m
+          - os: "ubuntu-20.04"
+            python-version: cp39-cp39m
+          - os: "ubuntu-20.04"
+            python-version: cp310-cp310m
+          - os: "ubuntu-20.04"
+            python-version: cp311-cp311m
 
       fail-fast: false
 
@@ -165,8 +188,20 @@ jobs:
           - "3.10"
           - "3.11.0-rc - 3.11"
         exclude:
+          # ubuntu-latest does not have: py27, py36
           - os: "ubuntu-latest"
             python-version: "3.6"
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: "3.7"
+          - os: "ubuntu-20.04"
+            python-version: "3.8"
+          - os: "ubuntu-20.04"
+            python-version: "3.9"
+          - os: "ubuntu-20.04"
+            python-version: "3.10"
+          - os: "ubuntu-20.04"
+            python-version: "3.11.0-rc - 3.11"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
