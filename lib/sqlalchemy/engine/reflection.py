@@ -766,7 +766,126 @@ class Inspector(inspection.Inspectable["Inspector"]):
             return self.dialect.get_view_names(
                 conn, schema, info_cache=self.info_cache, **kw
             )
+            
+            
+    def get_projection(self, projection_name, schema=None, **kw):
+        """Return information about columns in `projections`.
 
+        Given a string `table_name` and an optional string `schema`, return
+        column information as a list of dicts with these keys:
+
+        * ``name`` - the column's name
+
+        * ``type`` - the type of this column; an instance of
+          :class:`~sqlalchemy.types.TypeEngine`
+
+        * ``nullable`` - boolean flag if the column is NULL or NOT NULL
+
+        * ``default`` - the column's server default value - this is returned
+          as a string SQL expression.
+
+        * ``autoincrement`` - indicates that the column is auto incremented -
+          this is returned as a boolean or 'auto'
+
+        * ``comment`` - (optional) the comment on the column. Only some
+          dialects return this key
+
+        * ``computed`` - (optional) when present it indicates that this column
+          is computed by the database. Only some dialects return this key.
+          Returned as a dict with the keys:
+
+          * ``sqltext`` - the expression used to generate this column returned
+            as a string SQL expression
+
+          * ``persisted`` - (optional) boolean that indicates if the column is
+            stored in the table
+
+          .. versionadded:: 1.3.16 - added support for computed reflection.
+
+        * ``dialect_options`` - (optional) a dict with dialect specific options
+
+
+        :param table_name: string name of the table.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :param schema: string schema name; if omitted, uses the default schema
+         of the database connection.  For special quoting,
+         use :class:`.quoted_name`.
+
+        :return: list of dictionaries, each representing the definition of
+         a database column.
+
+        """
+
+        col_defs = self.dialect.get_projection(
+            self.bind, projection_name, schema, info_cache=self.info_cache, **kw
+        )
+        for col_def in col_defs:
+            # make this easy and only return instances for coltype
+            coltype = col_def["type"]
+            if not isinstance(coltype, TypeEngine):
+                col_def["type"] = coltype()
+        return col_defs
+            
+    def get_projection_names(self, schema=None):
+        """Return all projection names in `schema`.
+        :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+        """
+        
+        return self.dialect.get_projection_names(
+            self.bind, schema, info_cache=self.info_cache
+        )
+        
+    def get_models_names(self, schema=None):
+        """Return all Ml models in `schema`.
+
+        :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
+        """
+
+        return self.dialect.get_models_names(
+            self.bind, schema, info_cache=self.info_cache
+        )
+        
+    def get_Oauth_names(self,schema=None):
+        """Return all Oauth  user names .
+
+        :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
+        """
+
+        return self.dialect.get_Oauth_names(
+            self.bind,schema, info_cache=self.info_cache
+        )
+
+
+    def _get_extra_tags(self, table, schema=None):
+        """Return owner name for table as a Tag .
+
+        :param schema: Optional.
+        :param: table: Name of the table
+
+        """
+        return self.dialect._get_extra_tags(
+            self.bind, table, schema
+        )
+    
+    def _get_properties_keys(self,db_name: str, schema: str, level: str) -> dict:
+        """ will return all properties as key : value 
+            which should come under the given schema on the given level 
+            eg. schema or database level
+
+        Args:
+            db_name (str): _description_
+            schema (str): Name of the schema to return
+        """
+        return self.dialect._get_properties_keys(
+            self.bind, db_name, schema, level
+        )
+    
     def get_materialized_view_names(
         self, schema: Optional[str] = None, **kw: Any
     ) -> List[str]:
