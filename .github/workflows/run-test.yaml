@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   run-test:
+    # any changes to this job should be duplicated in `run-test-legacy`
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -31,8 +32,6 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "2.7"
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
@@ -53,7 +52,7 @@ jobs:
           # - python-version: "pypy-3.9"
           #   pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           # add aiosqlite on linux
-          - os: "ubuntu-latest"
+          - os: "ubuntu-20.04"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
@@ -62,7 +61,76 @@ jobs:
             python-version: "2.7"
             build-type: "cext"
           # linux and osx do not have x86 python
-          - os: "ubuntu-latest"
+          - os: "ubuntu-20.04"
+            architecture: x86
+          - os: "macos-latest"
+            architecture: x86
+          # pypy does not have cext
+          # - python-version: "pypy-3.9"
+          #   build-type: "cext"
+          # - os: "windows-latest"
+          #   python-version: "pypy-3.9"
+          #   architecture: x86
+
+      fail-fast: false
+
+    # steps to run in each job. Some are github actions, others run shell commands
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade tox setuptools
+          pip list
+
+      - name: Run tests
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+
+  run-test-legacy:
+    # this is identical to `run-test`, but pins ubuntu to 20.04
+    # ubuntu-20.04 is necessary to run: py27, py36
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # run this job using this matrix, excluding some combinations below.
+      matrix:
+        os:
+          - "ubuntu-20.04"
+          - "windows-latest"
+          - "macos-latest"
+        python-version:
+          - "2.7"
+          - "3.6"
+        build-type:
+          - "cext"
+          - "nocext"
+        architecture:
+          - x64
+          - x86
+
+        include:
+          # autocommit tests fail on the ci for some reason
+          # - python-version: "pypy-3.9"
+          #   pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
+          # add aiosqlite on linux
+          - os: "ubuntu-20.04"
+            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+
+        exclude:
+          # c-extensions fail to build on windows for python 2.7
+          - os: "windows-latest"
+            python-version: "2.7"
+            build-type: "cext"
+          # linux and osx do not have x86 python
+          - os: "ubuntu-20.04"
             architecture: x86
           - os: "macos-latest"
             architecture: x86
@@ -96,12 +164,12 @@ jobs:
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
 
   run-test-arm64:
+    # any changes to this job should be duplicated in `run-test-arm64`
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version:
-          - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
@@ -134,7 +202,44 @@ jobs:
             tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
             "
 
+  run-test-arm64-legacy:
+    # this is identical to `run-test-arm64-legacy`, but pins ubuntu to 20.04
+    # ubuntu-20.04 is necessary to run: py27, py36
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-20.04
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version:
+          - cp36-cp36m
+        build-type:
+          - "cext"
+          - "nocext"
+
+      fail-fast: false
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up emulation
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Run tests
+        uses: docker://quay.io/pypa/manylinux2014_aarch64
+        with:
+          args: |
+            bash -c "
+            export PATH=/opt/python/${{ matrix.python-version }}/bin:$PATH &&
+            python --version &&
+            python -m pip install --upgrade pip &&
+            pip install --upgrade tox setuptools &&
+            pip list &&
+            tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+            "
+
   run-mypy:
+    # any changes to this job should be duplicated in `run-mypy-legacy`
     name: mypy-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -143,12 +248,45 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11.0-rc - 3.11"
+      fail-fast: false
+
+    # steps to run in each job. Some are github actions, others run shell commands
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade tox setuptools
+          pip list
+
+      - name: Run tests
+        run: tox -e mypy ${{ matrix.pytest-args }}
+
+  run-mypy-legacy:
+    # this is identical to `run-mypy`, but pins ubuntu to 20.04
+    # ubuntu-20.04 is necessary to run: py27, py36
+    name: mypy-${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # run this job using this matrix, excluding some combinations below.
+      matrix:
+        os:
+          - "ubuntu-20.04"
+        python-version:
+          - "3.6"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands

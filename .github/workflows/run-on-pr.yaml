@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   run-test-amd64:
+    # any changes to this job should be duplicated in `run-mypy-legacy`
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -25,8 +26,47 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "2.7"
           - "3.10"
+        build-type:
+          - "cext"
+          - "nocext"
+        architecture:
+          - x64
+      # abort all jobs as soon as one fails
+      fail-fast: true
+
+    # steps to run in each job. Some are github actions, others run shell commands
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade tox setuptools
+          pip list
+
+      - name: Run tests
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+
+  run-test-amd64-legacy:
+    # this is identical to `run-test-amd64`, but pins ubuntu to 20.04
+    # ubuntu-20.04 is necessary to run: py27, py36
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # run this job using this matrix, excluding some combinations below.
+      matrix:
+        os:
+          - "ubuntu-20.04"
+        python-version:
+          - "2.7"
         build-type:
           - "cext"
           - "nocext"
