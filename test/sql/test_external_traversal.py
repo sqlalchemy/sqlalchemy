@@ -193,7 +193,8 @@ class TraversalTest(
         ("name with~~tildes~~",),
         argnames="name",
     )
-    def test_bindparam_key_proc_for_copies(self, meth, name):
+    @testing.combinations(True, False, argnames="positional")
+    def test_bindparam_key_proc_for_copies(self, meth, name, positional):
         r"""test :ticket:`6249`.
 
         Revised for :ticket:`8056`.
@@ -225,13 +226,25 @@ class TraversalTest(
 
         token = re.sub(r"[%\(\) \$\[\]]", "_", name)
 
-        self.assert_compile(
-            expr,
-            '"%(name)s" IN (:%(token)s_1_1, '
-            ":%(token)s_1_2, :%(token)s_1_3)" % {"name": name, "token": token},
-            render_postcompile=True,
-            dialect="default",
-        )
+        if positional:
+            self.assert_compile(
+                expr,
+                '"%(name)s" IN (?, ?, ?)' % {"name": name},
+                checkpositional=(1, 2, 3),
+                render_postcompile=True,
+                dialect="default_qmark",
+            )
+        else:
+            tokens = ["%s_1_%s" % (token, i) for i in range(1, 4)]
+            self.assert_compile(
+                expr,
+                '"%(name)s" IN (:%(token)s_1_1, '
+                ":%(token)s_1_2, :%(token)s_1_3)"
+                % {"name": name, "token": token},
+                checkparams=dict(zip(tokens, [1, 2, 3])),
+                render_postcompile=True,
+                dialect="default",
+            )
 
     def test_expanding_in_bindparam_safe_to_clone(self):
         expr = column("x").in_([1, 2, 3])

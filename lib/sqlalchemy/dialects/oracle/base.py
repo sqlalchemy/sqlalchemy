@@ -941,7 +941,7 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_function(self, func, **kw):
         text = super(OracleCompiler, self).visit_function(func, **kw)
         if kw.get("asfrom", False):
-            text = "TABLE (%s)" % func
+            text = "TABLE (%s)" % text
         return text
 
     def visit_table_valued_column(self, element, **kw):
@@ -1270,20 +1270,18 @@ class OracleCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
-    def _get_regexp_args(self, binary, kw):
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
         string = self.process(binary.left, **kw)
         pattern = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
-        if flags is not None:
-            flags = self.process(flags, **kw)
-        return string, pattern, flags
-
-    def visit_regexp_match_op_binary(self, binary, operator, **kw):
-        string, pattern, flags = self._get_regexp_args(binary, kw)
         if flags is None:
             return "REGEXP_LIKE(%s, %s)" % (string, pattern)
         else:
-            return "REGEXP_LIKE(%s, %s, %s)" % (string, pattern, flags)
+            return "REGEXP_LIKE(%s, %s, %s)" % (
+                string,
+                pattern,
+                self.process(flags, **kw),
+            )
 
     def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
         return "NOT %s" % self.visit_regexp_match_op_binary(
@@ -1291,8 +1289,10 @@ class OracleCompiler(compiler.SQLCompiler):
         )
 
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
-        string, pattern, flags = self._get_regexp_args(binary, kw)
+        string = self.process(binary.left, **kw)
+        pattern = self.process(binary.right, **kw)
         replacement = self.process(binary.modifiers["replacement"], **kw)
+        flags = binary.modifiers["flags"]
         if flags is None:
             return "REGEXP_REPLACE(%s, %s, %s)" % (
                 string,
@@ -1304,7 +1304,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 string,
                 pattern,
                 replacement,
-                flags,
+                self.process(flags, **kw),
             )
 
 

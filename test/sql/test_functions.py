@@ -777,6 +777,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "OVER (PARTITION BY mytable.description RANGE BETWEEN :param_1 "
             "FOLLOWING AND :param_2 FOLLOWING) "
             "AS anon_1 FROM mytable",
+            checkparams={"name_1": "foo", "param_1": 1, "param_2": 5},
+        )
+
+    def test_funcfilter_windowing_range_positional(self):
+        self.assert_compile(
+            select(
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(range_=(1, 5), partition_by=["description"])
+            ),
+            "SELECT rank() FILTER (WHERE mytable.name > ?) "
+            "OVER (PARTITION BY mytable.description RANGE BETWEEN ? "
+            "FOLLOWING AND ? FOLLOWING) "
+            "AS anon_1 FROM mytable",
+            checkpositional=("foo", 1, 5),
+            dialect="default_qmark",
         )
 
     def test_funcfilter_windowing_rows(self):
