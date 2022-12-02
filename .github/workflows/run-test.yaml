@@ -67,6 +67,8 @@ jobs:
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
+          - os: "ubuntu-20.04"
+            architecture: x86
           - os: "macos-latest"
             architecture: x86
           # ubuntu-latest does not have: py27, py36
