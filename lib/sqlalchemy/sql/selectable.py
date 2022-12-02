@@ -2052,9 +2052,7 @@ class CTE(
         else:
             self.element._generate_fromclause_column_proxies(self)
 
-    def alias(
-        self, name: Optional[str] = None, flat: bool = False
-    ) -> NamedFromClause:
+    def alias(self, name: Optional[str] = None, flat: bool = False) -> CTE:
         """Return an :class:`_expression.Alias` of this
         :class:`_expression.CTE`.
 
@@ -2078,7 +2076,7 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def union(self, *other):
+    def union(self, *other: _SelectStatementForCompoundArgument) -> CTE:
         r"""Return a new :class:`_expression.CTE` with a SQL ``UNION``
         of the original CTE against the given selectables provided
         as positional arguments.
@@ -2107,7 +2105,7 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def union_all(self, *other):
+    def union_all(self, *other: _SelectStatementForCompoundArgument) -> CTE:
         r"""Return a new :class:`_expression.CTE` with a SQL ``UNION ALL``
         of the original CTE against the given selectables provided
         as positional arguments.
