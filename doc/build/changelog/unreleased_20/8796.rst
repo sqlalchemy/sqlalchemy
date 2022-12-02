@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, performance
+    :tags: bug, orm, performance
     :tickets: 8796
 
     Additional performance enhancements within ORM-enabled SQL statements,

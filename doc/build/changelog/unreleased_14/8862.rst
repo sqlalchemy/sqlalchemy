@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 8862
+    :versions: 2.0.0b4
 
     Fixed bug where :meth:`_orm.Session.merge` would fail to preserve the
     current loaded contents of relationship attributes that were indicated with
