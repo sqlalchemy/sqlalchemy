@@ -472,13 +472,13 @@ from ...sql import expression
 from ...util import compat
 
 
-_ORACLE_BIND_TRANSLATE_RE = re.compile(r"[%\(\):\[\]\.\/\?]")
+_ORACLE_BIND_TRANSLATE_RE = re.compile(r"[%\(\):\[\]\.\/\? ]")
 
 # Oracle bind names can't start with digits or underscores.
 # currently we rely upon Oracle-specific quoting of bind names in most cases.
 # however for expanding params, the escape chars are used.
 # see #8708
-_ORACLE_BIND_TRANSLATE_CHARS = dict(zip("%():[]./?", "PAZCCCCCCC"))
+_ORACLE_BIND_TRANSLATE_CHARS = dict(zip("%():[]./? ", "PAZCCCCCCCC"))
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -740,11 +740,11 @@ class OracleCompiler_cx_oracle(OracleCompiler):
                     lambda m: _ORACLE_BIND_TRANSLATE_CHARS[m.group(0)],
                     name,
                 )
-                if new_name[0].isdigit():
+                if new_name[0].isdigit() or new_name[0] == "_":
                     new_name = "D" + new_name
                 kw["escaped_from"] = name
                 name = new_name
-            elif name[0].isdigit():
+            elif name[0].isdigit() or name[0] == "_":
                 new_name = "D" + name
                 kw["escaped_from"] = name
                 name = new_name

@@ -317,7 +317,7 @@ class FutureWeCanSetDefaultSchemaWEventsTest(
 class DifficultParametersTest(fixtures.TestBase):
     __backend__ = True
 
-    @testing.combinations(
+    tough_parameters = testing.combinations(
         ("boring",),
         ("per cent",),
         ("per % cent",),
@@ -328,14 +328,26 @@ class DifficultParametersTest(fixtures.TestBase):
         ("_starts_with_underscore",),
         ("dot.s",),
         ("more :: %colons%",),
+        ("_name",),
+        ("___name",),
+        ("[BracketsAndCase]",),
+        ("42numbers",),
+        ("percent%signs",),
+        ("has spaces",),
         ("/slashes/",),
         ("more/slashes",),
         ("q?marks",),
         ("1param",),
         ("1col:on",),
-        argnames="name",
+        argnames="paramname",
     )
-    def test_round_trip(self, name, connection, metadata):
+
+    @tough_parameters
+    def test_round_trip_same_named_column(
+        self, paramname, connection, metadata
+    ):
+        name = paramname
+
         t = Table(
             "t",
             metadata,
@@ -368,3 +380,51 @@ class DifficultParametersTest(fixtures.TestBase):
         )
 
         row = connection.execute(stmt).first()
+
+    @testing.fixture
+    def multirow_fixture(self, metadata, connection):
+        mytable = Table(
+            "mytable",
+            metadata,
+            Column("myid", Integer),
+            Column("name", String(50)),
+            Column("desc", String(50)),
+        )
+
+        mytable.create(connection)
+
+        connection.execute(
+            mytable.insert(),
+            [
+                {"myid": 1, "name": "a", "desc": "a_desc"},
+                {"myid": 2, "name": "b", "desc": "b_desc"},
+                {"myid": 3, "name": "c", "desc": "c_desc"},
+                {"myid": 4, "name": "d", "desc": "d_desc"},
+            ],
+        )
+        yield mytable
+
+    @tough_parameters
+    def test_standalone_bindparam_escape(
+        self, paramname, connection, multirow_fixture
+    ):
+        tbl1 = multirow_fixture
+        stmt = select(tbl1.c.myid).where(
+            tbl1.c.name == bindparam(paramname, value="x")
+        )
+        res = connection.scalar(stmt, {paramname: "c"})
+        eq_(res, 3)
+
+    @tough_parameters
+    def test_standalone_bindparam_escape_expanding(
+        self, paramname, connection, multirow_fixture
+    ):
+        tbl1 = multirow_fixture
+        stmt = (
+            select(tbl1.c.myid)
+            .where(tbl1.c.name.in_(bindparam(paramname, value=["a", "b"])))
+            .order_by(tbl1.c.myid)
+        )
+
+        res = connection.scalars(stmt, {paramname: ["d", "a"]}).all()
+        eq_(res, [1, 4])
