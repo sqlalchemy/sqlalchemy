@@ -160,6 +160,9 @@ jobs:
     strategy:
       # run this job using this matrix, excluding some combinations below.
       matrix:
+        os:
+          - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           - "3.6"
           - "3.7"
@@ -168,7 +171,6 @@ jobs:
           - "3.10"
           - "3.11.0-rc - 3.11"
         include:
-          - os: "ubuntu-latest"
           - os: "ubuntu-20.04"
             python-version:
               - "3.6"
