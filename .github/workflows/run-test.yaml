@@ -21,13 +21,14 @@ permissions:
 
 jobs:
   run-test:
-    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: test-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
           - "ubuntu-latest"
+          - "ubuntu-20.04"
           - "windows-latest"
           - "macos-latest"
         python-version:
@@ -55,6 +56,8 @@ jobs:
           # add aiosqlite on linux
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+          - os: "ubuntu-20.04"
+            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
           # c-extensions fail to build on windows for python 2.7
@@ -64,8 +67,26 @@ jobs:
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
+          - os: "ubuntu-20.04"
+            architecture: x86
           - os: "macos-latest"
             architecture: x86
+          # ubuntu-latest does not have: py27, py36
+          - os: "ubuntu-latest"
+            python-version: "2.7"
+          - os: "ubuntu-latest"
+            python-version: "3.6"
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: "3.7"
+          - os: "ubuntu-20.04"
+            python-version: "3.8"
+          - os: "ubuntu-20.04"
+            python-version: "3.9"
+          - os: "ubuntu-20.04"
+            python-version: "3.10"
+          - os: "ubuntu-20.04"
+            python-version: "3.11.0-rc - 3.11"
           # pypy does not have cext
           # - python-version: "pypy-3.9"
           #   build-type: "cext"
@@ -96,10 +117,13 @@ jobs:
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
 
   run-test-arm64:
-    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
-    runs-on: ubuntu-latest
+    name: arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os:
+          - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           - cp36-cp36m
           - cp37-cp37m
@@ -110,6 +134,21 @@ jobs:
         build-type:
           - "cext"
           - "nocext"
+        exclude:
+          # ubuntu-latest does not have: py27, py36
+          - os: "ubuntu-latest"
+            python-version: cp36-cp36m
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: cp37-cp37m
+          - os: "ubuntu-20.04"
+            python-version: cp38-cp38m
+          - os: "ubuntu-20.04"
+            python-version: cp39-cp39m
+          - os: "ubuntu-20.04"
+            python-version: cp310-cp310m
+          - os: "ubuntu-20.04"
+            python-version: cp311-cp311m
 
       fail-fast: false
 
@@ -135,13 +174,14 @@ jobs:
             "
 
   run-mypy:
-    name: mypy-${{ matrix.python-version }}
+    name: mypy-${{ matrix.python-version }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
           - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           - "3.6"
           - "3.7"
@@ -149,6 +189,21 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11.0-rc - 3.11"
+        exclude:
+          # ubuntu-latest does not have: py27, py36
+          - os: "ubuntu-latest"
+            python-version: "3.6"
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: "3.7"
+          - os: "ubuntu-20.04"
+            python-version: "3.8"
+          - os: "ubuntu-20.04"
+            python-version: "3.9"
+          - os: "ubuntu-20.04"
+            python-version: "3.10"
+          - os: "ubuntu-20.04"
+            python-version: "3.11.0-rc - 3.11"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
@@ -172,10 +227,9 @@ jobs:
         run: tox -e mypy ${{ matrix.pytest-args }}
 
   run-pep8:
-    name: pep8-${{ matrix.python-version }}
+    name: pep8-${{ matrix.python-version }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
           - "ubuntu-latest"

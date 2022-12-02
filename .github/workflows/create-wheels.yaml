@@ -15,7 +15,7 @@ jobs:
   # two jobs are defined make-wheel-win-osx and make-wheel-linux.
   # they do the the same steps, but linux wheels need to be build to target manylinux
   make-wheel-win-osx:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: wheel-win-osx-${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -123,12 +123,13 @@ jobs:
           twine upload --skip-existing dist/*
 
   make-wheel-linux:
-    name: ${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: wheel-linux-${{ matrix.python-version }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os:
           - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
           - cp27-cp27m
@@ -147,6 +148,26 @@ jobs:
             extra-requires: "mock"
           - python-version: "cp27-cp27mu"
             extra-requires: "mock"
+
+        exclude:
+          # ubuntu-latest does not have: py27, py36
+          - os: "ubuntu-latest"
+            python-version: cp27-cp27m
+          - os: "ubuntu-latest"
+            python-version: cp27-cp27mu
+          - os: "ubuntu-latest"
+            python-version: cp36-cp36m
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: cp37-cp37m
+          - os: "ubuntu-20.04"
+            python-version: cp38-cp38
+          - os: "ubuntu-20.04"
+            python-version: cp39-cp39
+          - os: "ubuntu-20.04"
+            python-version: cp310-cp310
+          - os: "ubuntu-20.04"
+            python-version: cp311-cp311
 
       fail-fast: false
 
@@ -281,12 +302,13 @@ jobs:
           twine upload --skip-existing dist/*manylinux*
 
   make-wheel-linux-arm64:
-    name: ${{ matrix.python-version }}-arm64-${{ matrix.os }}
+    name: wheel-linux-arm64-${{ matrix.python-version }}-arm64-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os:
           - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
           - cp36-cp36m
@@ -295,6 +317,21 @@ jobs:
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+        exclude:
+          # ubuntu-latest does not have: py27, py36
+          - os: "ubuntu-latest"
+            python-version: cp36-cp36m
+          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          - os: "ubuntu-20.04"
+            python-version: cp37-cp37m
+          - os: "ubuntu-20.04"
+            python-version: cp38-cp38
+          - os: "ubuntu-20.04"
+            python-version: cp39-cp39
+          - os: "ubuntu-20.04"
+            python-version: cp310-cp310
+          - os: "ubuntu-20.04"
+            python-version: cp311-cp311
 
       fail-fast: false
 
