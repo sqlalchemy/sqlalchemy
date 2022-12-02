@@ -27,7 +27,6 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
           - "windows-latest"
           - "macos-latest"
         python-version:
@@ -55,6 +54,11 @@ jobs:
           # add aiosqlite on linux
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+          - os: "ubuntu-20.04"
+            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+            python-version:
+              - "2.7"
+              - "3.6"
 
         exclude:
           # c-extensions fail to build on windows for python 2.7
@@ -97,7 +101,7 @@ jobs:
 
   run-test-arm64:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         python-version:
@@ -110,6 +114,11 @@ jobs:
         build-type:
           - "cext"
           - "nocext"
+        include:
+          - os: "ubuntu-latest"
+          - os: "ubuntu-20.04"
+            python-version:
+              - cp36-cp36m
 
       fail-fast: false
 
@@ -140,8 +149,6 @@ jobs:
     strategy:
       # run this job using this matrix, excluding some combinations below.
       matrix:
-        os:
-          - "ubuntu-latest"
         python-version:
           - "3.6"
           - "3.7"
@@ -149,6 +156,11 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11.0-rc - 3.11"
+        include:
+          - os: "ubuntu-latest"
+          - os: "ubuntu-20.04"
+            python-version:
+              - "3.6"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
