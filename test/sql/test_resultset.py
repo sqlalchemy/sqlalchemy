@@ -107,7 +107,7 @@ class CursorResultTest(fixtures.TablesTest):
             Column("y", String(50)),
         )
 
-    @testing.requires.insert_returning
+    @testing.requires.insert_executemany_returning
     def test_splice_horizontally(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses

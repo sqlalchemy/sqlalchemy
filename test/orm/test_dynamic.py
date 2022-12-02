@@ -1791,14 +1791,33 @@ class WriteOnlyBulkTest(
                         "INSERT INTO users (name) VALUES (:name)",
                         [{"name": "x"}],
                     ),
-                    CompiledSQL(
-                        "INSERT INTO addresses (user_id, email_address) "
-                        "VALUES (:user_id, :email_address) "
-                        "RETURNING addresses.id",
+                    Conditional(
+                        testing.requires.insert_executemany_returning.enabled,
                         [
-                            {"user_id": uid, "email_address": "e1"},
-                            {"user_id": uid, "email_address": "e2"},
-                            {"user_id": uid, "email_address": "e3"},
+                            CompiledSQL(
+                                "INSERT INTO addresses "
+                                "(user_id, email_address) "
+                                "VALUES (:user_id, :email_address) "
+                                "RETURNING addresses.id",
+                                [
+                                    {"user_id": uid, "email_address": "e1"},
+                                    {"user_id": uid, "email_address": "e2"},
+                                    {"user_id": uid, "email_address": "e3"},
+                                ],
+                            )
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO addresses "
+                                "(user_id, email_address) "
+                                "VALUES (:user_id, :email_address)",
+                                param,
+                            )
+                            for param in [
+                                {"user_id": uid, "email_address": "e1"},
+                                {"user_id": uid, "email_address": "e2"},
+                                {"user_id": uid, "email_address": "e3"},
+                            ]
                         ],
                     ),
                 ],
@@ -1863,14 +1882,33 @@ class WriteOnlyBulkTest(
                         "INSERT INTO users (name) VALUES (:name)",
                         [{"name": "x"}],
                     ),
-                    CompiledSQL(
-                        "INSERT INTO addresses (user_id, email_address) "
-                        "VALUES (:user_id, :email_address) "
-                        "RETURNING addresses.id",
+                    Conditional(
+                        testing.requires.insert_executemany_returning.enabled,
                         [
-                            {"user_id": uid, "email_address": "e1"},
-                            {"user_id": uid, "email_address": "e2"},
-                            {"user_id": uid, "email_address": "e3"},
+                            CompiledSQL(
+                                "INSERT INTO addresses "
+                                "(user_id, email_address) "
+                                "VALUES (:user_id, :email_address) "
+                                "RETURNING addresses.id",
+                                [
+                                    {"user_id": uid, "email_address": "e1"},
+                                    {"user_id": uid, "email_address": "e2"},
+                                    {"user_id": uid, "email_address": "e3"},
+                                ],
+                            )
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO addresses "
+                                "(user_id, email_address) "
+                                "VALUES (:user_id, :email_address)",
+                                param,
+                            )
+                            for param in [
+                                {"user_id": uid, "email_address": "e1"},
+                                {"user_id": uid, "email_address": "e2"},
+                                {"user_id": uid, "email_address": "e3"},
+                            ]
                         ],
                     ),
                 ],

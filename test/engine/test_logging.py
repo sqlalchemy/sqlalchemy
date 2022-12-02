@@ -28,7 +28,7 @@ def exec_sql(engine, sql, *args, **kwargs):
 
 
 class LogParamsTest(fixtures.TestBase):
-    __only_on__ = "sqlite"
+    __only_on__ = "sqlite+pysqlite"
     __requires__ = ("ad_hoc_engines",)
 
     def setup_test(self):
@@ -704,7 +704,7 @@ class LoggingNameTest(fixtures.TestBase):
 
 
 class TransactionContextLoggingTest(fixtures.TestBase):
-    __only_on__ = "sqlite"
+    __only_on__ = "sqlite+pysqlite"
 
     @testing.fixture()
     def plain_assert_buf(self, plain_logging_engine):

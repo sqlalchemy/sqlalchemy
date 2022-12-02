@@ -907,7 +907,8 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-    def test_update_bound_ordering(self):
+    @testing.variation("paramstyle", ["qmark", "format", "numeric"])
+    def test_update_bound_ordering(self, paramstyle):
         """test that bound parameters between the UPDATE and FROM clauses
         order correctly in different SQL compilation scenarios.
 
@@ -921,30 +922,47 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             .values(name="foo")
         )
 
-        dialect = default.StrCompileDialect()
-        dialect.positional = True
-        self.assert_compile(
-            upd,
-            "UPDATE mytable SET name=:name FROM (SELECT "
-            "myothertable.otherid AS otherid, "
-            "myothertable.othername AS othername "
-            "FROM myothertable "
-            "WHERE myothertable.otherid = :otherid_1) AS anon_1 "
-            "WHERE mytable.name = anon_1.othername",
-            checkpositional=("foo", 5),
-            dialect=dialect,
-        )
+        if paramstyle.qmark:
 
-        self.assert_compile(
-            upd,
-            "UPDATE mytable, (SELECT myothertable.otherid AS otherid, "
-            "myothertable.othername AS othername "
-            "FROM myothertable "
-            "WHERE myothertable.otherid = %s) AS anon_1 SET mytable.name=%s "
-            "WHERE mytable.name = anon_1.othername",
-            checkpositional=(5, "foo"),
-            dialect=mysql.dialect(),
-        )
+            dialect = default.StrCompileDialect(paramstyle="qmark")
+            self.assert_compile(
+                upd,
+                "UPDATE mytable SET name=? FROM (SELECT "
+                "myothertable.otherid AS otherid, "
+                "myothertable.othername AS othername "
+                "FROM myothertable "
+                "WHERE myothertable.otherid = ?) AS anon_1 "
+                "WHERE mytable.name = anon_1.othername",
+                checkpositional=("foo", 5),
+                dialect=dialect,
+            )
+        elif paramstyle.format:
+            self.assert_compile(
+                upd,
+                "UPDATE mytable, (SELECT myothertable.otherid AS otherid, "
+                "myothertable.othername AS othername "
+                "FROM myothertable "
+                "WHERE myothertable.otherid = %s) AS anon_1 "
+                "SET mytable.name=%s "
+                "WHERE mytable.name = anon_1.othername",
+                checkpositional=(5, "foo"),
+                dialect=mysql.dialect(),
+            )
+        elif paramstyle.numeric:
+            dialect = default.StrCompileDialect(paramstyle="numeric")
+            self.assert_compile(
+                upd,
+                "UPDATE mytable SET name=:1 FROM (SELECT "
+                "myothertable.otherid AS otherid, "
+                "myothertable.othername AS othername "
+                "FROM myothertable "
+                "WHERE myothertable.otherid = :2) AS anon_1 "
+                "WHERE mytable.name = anon_1.othername",
+                checkpositional=("foo", 5),
+                dialect=dialect,
+            )
+        else:
+            paramstyle.fail()
 
 
 class UpdateFromCompileTest(

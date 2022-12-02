@@ -79,6 +79,7 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import CompilerColumnElement
+from sqlalchemy.sql.elements import Grouping
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
@@ -4915,88 +4916,259 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 dialect="default",
             )
 
-    @standalone_escape
-    @testing.variation("use_assert_compile", [True, False])
     @testing.variation("use_positional", [True, False])
-    def test_standalone_bindparam_escape_expanding(
-        self, paramname, expected, use_assert_compile, use_positional
+    def test_standalone_bindparam_escape_collision(self, use_positional):
+        """this case is currently not supported
+
+        it's kinda bad since positional takes the unescaped param
+        while non positional takes the escaped one.
+        """
+        stmt = select(table1.c.myid).where(
+            table1.c.name == bindparam("[brackets]", value="x"),
+            table1.c.description == bindparam("_brackets_", value="y"),
+        )
+
+        if use_positional:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable WHERE mytable.name = ? "
+                "AND mytable.description = ?",
+                params={"[brackets]": "a", "_brackets_": "b"},
+                checkpositional=("a", "a"),
+                dialect="sqlite",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable WHERE mytable.name = "
+                ":_brackets_ AND mytable.description = :_brackets_",
+                params={"[brackets]": "a", "_brackets_": "b"},
+                checkparams={"_brackets_": "b"},
+                dialect="default",
+            )
+
+    paramstyle = testing.variation("paramstyle", ["named", "qmark", "numeric"])
+
+    @standalone_escape
+    @paramstyle
+    def test_standalone_bindparam_escape_expanding_compile(
+        self, paramname, expected, paramstyle
     ):
         stmt = select(table1.c.myid).where(
             table1.c.name.in_(bindparam(paramname, value=["a", "b"]))
         )
 
-        if use_assert_compile:
-            if use_positional:
-                self.assert_compile(
-                    stmt,
-                    "SELECT mytable.myid FROM mytable "
-                    "WHERE mytable.name IN (?, ?)",
-                    params={paramname: ["y", "z"]},
-                    # NOTE: this is what render_postcompile will do right now
-                    # if you run construct_params().  render_postcompile mode
-                    # is not actually used by the execution internals, it's for
-                    # user-facing compilation code.  So this is likely a
-                    # current limitation of construct_params() which is not
-                    # doing the full blown postcompile; just assert that's
-                    # what it does for now.  it likely should be corrected
-                    # to make more sense.
-                    checkpositional=(["y", "z"], ["y", "z"]),
-                    dialect="sqlite",
-                    render_postcompile=True,
-                )
-            else:
-                self.assert_compile(
-                    stmt,
-                    "SELECT mytable.myid FROM mytable WHERE mytable.name IN "
-                    "(:%s_1, :%s_2)" % (expected, expected),
-                    params={paramname: ["y", "z"]},
-                    # NOTE: this is what render_postcompile will do right now
-                    # if you run construct_params().  render_postcompile mode
-                    # is not actually used by the execution internals, it's for
-                    # user-facing compilation code.  So this is likely a
-                    # current limitation of construct_params() which is not
-                    # doing the full blown postcompile; just assert that's
-                    # what it does for now.  it likely should be corrected
-                    # to make more sense.
-                    checkparams={
-                        "%s_1" % expected: ["y", "z"],
-                        "%s_2" % expected: ["y", "z"],
-                    },
-                    dialect="default",
-                    render_postcompile=True,
-                )
+        # NOTE: below the rendered params are just what
+        # render_postcompile will do right now
+        # if you run construct_params().  render_postcompile mode
+        # is not actually used by the execution internals, it's for
+        # user-facing compilation code.  So this is likely a
+        # current limitation of construct_params() which is not
+        # doing the full blown postcompile; just assert that's
+        # what it does for now.  it likely should be corrected
+        # to make more sense.
+        if paramstyle.qmark:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable "
+                "WHERE mytable.name IN (?, ?)",
+                params={paramname: ["y", "z"]},
+                checkpositional=(["y", "z"], ["y", "z"]),
+                dialect="sqlite",
+                render_postcompile=True,
+            )
+        elif paramstyle.numeric:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable "
+                "WHERE mytable.name IN (:1, :2)",
+                params={paramname: ["y", "z"]},
+                checkpositional=(["y", "z"], ["y", "z"]),
+                dialect=sqlite.dialect(paramstyle="numeric"),
+                render_postcompile=True,
+            )
+        elif paramstyle.named:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable WHERE mytable.name IN "
+                "(:%s_1, :%s_2)" % (expected, expected),
+                params={paramname: ["y", "z"]},
+                checkparams={
+                    "%s_1" % expected: ["y", "z"],
+                    "%s_2" % expected: ["y", "z"],
+                },
+                dialect="default",
+                render_postcompile=True,
+            )
         else:
-            # this is what DefaultDialect actually does.
-            # this should be matched to DefaultDialect._init_compiled()
-            if use_positional:
-                compiled = stmt.compile(
-                    dialect=default.DefaultDialect(paramstyle="qmark")
-                )
-            else:
-                compiled = stmt.compile(dialect=default.DefaultDialect())
+            paramstyle.fail()
 
-            checkparams = compiled.construct_params(
-                {paramname: ["y", "z"]}, escape_names=False
-            )
+    @standalone_escape
+    @paramstyle
+    def test_standalone_bindparam_escape_expanding(
+        self, paramname, expected, paramstyle
+    ):
+        stmt = select(table1.c.myid).where(
+            table1.c.name.in_(bindparam(paramname, value=["a", "b"]))
+        )
+        # this is what DefaultDialect actually does.
+        # this should be matched to DefaultDialect._init_compiled()
+        if paramstyle.qmark:
+            dialect = default.DefaultDialect(paramstyle="qmark")
+        elif paramstyle.numeric:
+            dialect = default.DefaultDialect(paramstyle="numeric")
+        else:
+            dialect = default.DefaultDialect()
 
-            # nothing actually happened.  if the compiler had
-            # render_postcompile set, the
-            # above weird param thing happens
-            eq_(checkparams, {paramname: ["y", "z"]})
+        compiled = stmt.compile(dialect=dialect)
+        checkparams = compiled.construct_params(
+            {paramname: ["y", "z"]}, escape_names=False
+        )
 
-            expanded_state = compiled._process_parameters_for_postcompile(
-                checkparams
-            )
+        # nothing actually happened.  if the compiler had
+        # render_postcompile set, the
+        # above weird param thing happens
+        eq_(checkparams, {paramname: ["y", "z"]})
+
+        expanded_state = compiled._process_parameters_for_postcompile(
+            checkparams
+        )
+        eq_(
+            expanded_state.additional_parameters,
+            {f"{expected}_1": "y", f"{expected}_2": "z"},
+        )
+
+        if paramstyle.qmark or paramstyle.numeric:
             eq_(
-                expanded_state.additional_parameters,
-                {f"{expected}_1": "y", f"{expected}_2": "z"},
+                expanded_state.positiontup,
+                [f"{expected}_1", f"{expected}_2"],
             )
 
-            if use_positional:
-                eq_(
-                    expanded_state.positiontup,
-                    [f"{expected}_1", f"{expected}_2"],
+    @paramstyle
+    def test_expanding_in_repeated(self, paramstyle):
+        stmt = (
+            select(table1)
+            .where(
+                table1.c.name.in_(
+                    bindparam("uname", value=["h", "e"], expanding=True)
                 )
+                | table1.c.name.in_(
+                    bindparam("uname2", value=["y"], expanding=True)
+                )
+            )
+            .where(table1.c.myid == 8)
+        )
+        stmt = stmt.union(
+            select(table1)
+            .where(
+                table1.c.name.in_(
+                    bindparam("uname", value=["h", "e"], expanding=True)
+                )
+                | table1.c.name.in_(
+                    bindparam("uname2", value=["y"], expanding=True)
+                )
+            )
+            .where(table1.c.myid == 9)
+        ).order_by("myid")
+
+        # NOTE: below the rendered params are just what
+        # render_postcompile will do right now
+        # if you run construct_params().  render_postcompile mode
+        # is not actually used by the execution internals, it's for
+        # user-facing compilation code.  So this is likely a
+        # current limitation of construct_params() which is not
+        # doing the full blown postcompile; just assert that's
+        # what it does for now.  it likely should be corrected
+        # to make more sense.
+
+        if paramstyle.qmark:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (?, ?) OR "
+                "mytable.name IN (?)) "
+                "AND mytable.myid = ? "
+                "UNION SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (?, ?) OR "
+                "mytable.name IN (?)) "
+                "AND mytable.myid = ? ORDER BY myid",
+                params={"uname": ["y", "z"], "uname2": ["a"]},
+                checkpositional=(
+                    ["y", "z"],
+                    ["y", "z"],
+                    ["a"],
+                    8,
+                    ["y", "z"],
+                    ["y", "z"],
+                    ["a"],
+                    9,
+                ),
+                dialect="sqlite",
+                render_postcompile=True,
+            )
+        elif paramstyle.numeric:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (:3, :4) OR "
+                "mytable.name IN (:5)) "
+                "AND mytable.myid = :1 "
+                "UNION SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (:3, :4) OR "
+                "mytable.name IN (:5)) "
+                "AND mytable.myid = :2 ORDER BY myid",
+                params={"uname": ["y", "z"], "uname2": ["a"]},
+                checkpositional=(8, 9, ["y", "z"], ["y", "z"], ["a"]),
+                dialect=sqlite.dialect(paramstyle="numeric"),
+                render_postcompile=True,
+            )
+        elif paramstyle.named:
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (:uname_1, :uname_2) OR "
+                "mytable.name IN (:uname2_1)) "
+                "AND mytable.myid = :myid_1 "
+                "UNION SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable "
+                "WHERE (mytable.name IN (:uname_1, :uname_2) OR "
+                "mytable.name IN (:uname2_1)) "
+                "AND mytable.myid = :myid_2 ORDER BY myid",
+                params={"uname": ["y", "z"], "uname2": ["a"]},
+                checkparams={
+                    "uname": ["y", "z"],
+                    "uname2": ["a"],
+                    "uname_1": ["y", "z"],
+                    "uname_2": ["y", "z"],
+                    "uname2_1": ["a"],
+                    "myid_1": 8,
+                    "myid_2": 9,
+                },
+                dialect="default",
+                render_postcompile=True,
+            )
+        else:
+            paramstyle.fail()
+
+    def test_numeric_dollar_bindparam(self):
+        stmt = table1.select().where(
+            table1.c.name == "a", table1.c.myid.in_([1, 2])
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable "
+            "WHERE mytable.name = $1 "
+            "AND mytable.myid IN ($2, $3)",
+            checkpositional=("a", 1, 2),
+            dialect=default.DefaultDialect(paramstyle="numeric_dollar"),
+            render_postcompile=True,
+        )
 
 
 class UnsupportedTest(fixtures.TestBase):
@@ -5096,6 +5268,28 @@ class StringifySpecialTest(fixtures.TestBase):
             "INSERT INTO mytable (myid) VALUES (:myid_m0), (:myid_m1)",
         )
 
+    def test_multirow_insert_positional(self):
+        stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
+        eq_ignore_whitespace(
+            stmt.compile(dialect=sqlite.dialect()).string,
+            "INSERT INTO mytable (myid) VALUES (?), (?)",
+        )
+
+    def test_multirow_insert_numeric(self):
+        stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
+        eq_ignore_whitespace(
+            stmt.compile(dialect=sqlite.dialect(paramstyle="numeric")).string,
+            "INSERT INTO mytable (myid) VALUES (:1), (:2)",
+        )
+
+    def test_insert_noparams_numeric(self):
+        ii = table1.insert().returning(table1.c.myid)
+        eq_ignore_whitespace(
+            ii.compile(dialect=sqlite.dialect(paramstyle="numeric")).string,
+            "INSERT INTO mytable (myid, name, description) VALUES "
+            "(:1, :2, :3) RETURNING myid",
+        )
+
     def test_cte(self):
         # stringify of these was supported anyway by defaultdialect.
         stmt = select(table1.c.myid).cte()
@@ -5152,6 +5346,42 @@ class StringifySpecialTest(fixtures.TestBase):
             str(stmt),
             "SELECT CAST(mytable.myid AS MyType()) AS myid FROM mytable",
         )
+
+    def test_dialect_sub_compile(self):
+        class Widget(ClauseElement):
+            __visit_name__ = "widget"
+            stringify_dialect = "sqlite"
+
+        def visit_widget(self, element, **kw):
+            return "widget"
+
+        with mock.patch(
+            "sqlalchemy.dialects.sqlite.base.SQLiteCompiler.visit_widget",
+            visit_widget,
+            create=True,
+        ):
+            eq_(str(Grouping(Widget())), "(widget)")
+
+    def test_dialect_sub_compile_w_binds(self):
+        """test sub-compile into a new compiler where
+        state != CompilerState.COMPILING, but we have to render a bindparam
+        string.  has to render the correct template.
+
+        """
+
+        class Widget(ClauseElement):
+            __visit_name__ = "widget"
+            stringify_dialect = "sqlite"
+
+        def visit_widget(self, element, **kw):
+            return f"widget {self.process(bindparam('q'), **kw)}"
+
+        with mock.patch(
+            "sqlalchemy.dialects.sqlite.base.SQLiteCompiler.visit_widget",
+            visit_widget,
+            create=True,
+        ):
+            eq_(str(Grouping(Widget())), "(widget ?)")
 
     def test_within_group(self):
         # stringify of these was supported anyway by defaultdialect.

@@ -189,7 +189,7 @@ def variation(argname, cases):
             elif querytyp.legacy_query:
                 stmt = Session.query(Thing)
             else:
-                assert False
+                querytyp.fail()
 
 
     The variable provided is a slots object of boolean variables, as well

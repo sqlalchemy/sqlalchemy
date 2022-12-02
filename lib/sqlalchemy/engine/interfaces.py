@@ -255,7 +255,9 @@ SchemaTranslateMapType = Mapping[Optional[str], Optional[str]]
 
 _ImmutableExecuteOptions = immutabledict[str, Any]
 
-_ParamStyle = Literal["qmark", "numeric", "named", "format", "pyformat"]
+_ParamStyle = Literal[
+    "qmark", "numeric", "named", "format", "pyformat", "numeric_dollar"
+]
 
 _GenericSetInputSizesType = List[Tuple[str, Any, "TypeEngine[Any]"]]
 
