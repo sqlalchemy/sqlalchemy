@@ -27,6 +27,8 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
+          - "ubuntu-latest"
+          - "ubuntu-20.04"
           - "windows-latest"
           - "macos-latest"
         python-version:
@@ -68,6 +70,9 @@ jobs:
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
+            python-version:
+              - "2.7"
+              - "3.6"
           - os: "macos-latest"
             architecture: x86
           # pypy does not have cext
@@ -104,6 +109,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os:
+          - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           - cp36-cp36m
           - cp37-cp37m
@@ -115,8 +123,11 @@ jobs:
           - "cext"
           - "nocext"
         include:
-          - os: "ubuntu-latest"
           - os: "ubuntu-20.04"
+            python-version:
+              - cp36-cp36m
+        exclude:
+          - os: "ubuntu-latest"
             python-version:
               - cp36-cp36m
 
@@ -149,6 +160,9 @@ jobs:
     strategy:
       # run this job using this matrix, excluding some combinations below.
       matrix:
+        os:
+          - "ubuntu-latest"
+          - "ubuntu-20.04"
         python-version:
           - "3.6"
           - "3.7"
@@ -157,8 +171,11 @@ jobs:
           - "3.10"
           - "3.11.0-rc - 3.11"
         include:
-          - os: "ubuntu-latest"
           - os: "ubuntu-20.04"
+            python-version:
+              - "3.6"
+        exclude:
+          - os: "ubuntu-latest"
             python-version:
               - "3.6"
       fail-fast: false
