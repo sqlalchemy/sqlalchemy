@@ -428,6 +428,7 @@ ALL_EXC = [
     (
         [
             sa_exceptions.ArgumentError,
+            sa_exceptions.DuplicateColumnError,
             sa_exceptions.NoSuchModuleError,
             sa_exceptions.NoForeignKeysError,
             sa_exceptions.AmbiguousForeignKeysError,

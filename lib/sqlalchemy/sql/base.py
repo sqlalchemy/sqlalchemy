@@ -1969,7 +1969,11 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         # delete higher index
         del self._index[len(self._collection)]
 
-    def replace(self, column: _NAMEDCOL) -> None:
+    def replace(
+        self,
+        column: _NAMEDCOL,
+        extra_remove: Optional[Iterable[_NAMEDCOL]] = None,
+    ) -> None:
         """add the given column to this collection, removing unaliased
         versions of this column  as well as existing columns with the
         same key.
@@ -1986,7 +1990,10 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 
         """
 
-        remove_col = set()
+        if extra_remove:
+            remove_col = set(extra_remove)
+        else:
+            remove_col = set()
         # remove up to two columns based on matches of name as well as key
         if column.name in self._index and column.key != column.name:
             other = self._index[column.name][1]
