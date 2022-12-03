@@ -80,6 +80,7 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
@@ -3494,7 +3495,7 @@ class UnaryExpression(ColumnElement[_T]):
 
     @classmethod
     def _create_desc(
-        cls, column: _ColumnExpressionArgument[_T]
+        cls, column: _ColumnExpressionOrStrLabelArgument[_T]
     ) -> UnaryExpression[_T]:
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
@@ -3505,7 +3506,7 @@ class UnaryExpression(ColumnElement[_T]):
     @classmethod
     def _create_asc(
         cls,
-        column: _ColumnExpressionArgument[_T],
+        column: _ColumnExpressionOrStrLabelArgument[_T],
     ) -> UnaryExpression[_T]:
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),

@@ -106,6 +106,7 @@ _T = TypeVar("_T", bound=Any)
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
     from ._typing import _MAYBE_ENTITY
@@ -4146,9 +4147,10 @@ class GenerativeSelect(SelectBase, Generative):
     def order_by(
         self: SelfGenerativeSelect,
         __first: Union[
-            Literal[None, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+            Literal[None, _NoArg.NO_ARG],
+            _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
-        *clauses: _ColumnExpressionArgument[Any],
+        *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> SelfGenerativeSelect:
         r"""Return a new selectable with the given list of ORDER BY
         criteria applied.
@@ -4190,9 +4192,10 @@ class GenerativeSelect(SelectBase, Generative):
     def group_by(
         self: SelfGenerativeSelect,
         __first: Union[
-            Literal[None, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+            Literal[None, _NoArg.NO_ARG],
+            _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
-        *clauses: _ColumnExpressionArgument[Any],
+        *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> SelfGenerativeSelect:
         r"""Return a new selectable with the given list of GROUP BY
         criterion applied.
