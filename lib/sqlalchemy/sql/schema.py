@@ -872,6 +872,7 @@ class Table(
             allow_replacements=extend_existing
             or keep_existing
             or autoload_with,
+            all_names={},
         )
 
     def _autoload(
@@ -936,9 +937,13 @@ class Table(
         schema = kwargs.pop("schema", None)
         _extend_on = kwargs.pop("_extend_on", None)
         _reflect_info = kwargs.pop("_reflect_info", None)
+
         # these arguments are only used with _init()
-        kwargs.pop("extend_existing", False)
-        kwargs.pop("keep_existing", False)
+        extend_existing = kwargs.pop("extend_existing", False)
+        keep_existing = kwargs.pop("keep_existing", False)
+
+        assert extend_existing
+        assert not keep_existing
 
         if schema and schema != self.schema:
             raise exc.ArgumentError(
@@ -987,8 +992,9 @@ class Table(
                 _reflect_info=_reflect_info,
             )
 
+        all_names = {c.name: c for c in self.c}
         self._extra_kwargs(**kwargs)
-        self._init_items(*args)
+        self._init_items(*args, allow_replacements=True, all_names=all_names)
 
     def _extra_kwargs(self, **kwargs: Any) -> None:
         self._validate_dialect_kwargs(kwargs)
@@ -1070,9 +1076,18 @@ class Table(
             .. versionadded:: 1.4.0
         """
 
-        column._set_parent_with_dispatch(
-            self, allow_replacements=replace_existing
-        )
+        try:
+            column._set_parent_with_dispatch(
+                self,
+                allow_replacements=replace_existing,
+                all_names={c.name: c for c in self.c},
+            )
+        except exc.DuplicateColumnError as de:
+            raise exc.DuplicateColumnError(
+                f"{de.args[0]} Specify replace_existing=True to "
+                "Table.append_column() to replace an "
+                "existing column."
+            ) from de
 
     def append_constraint(self, constraint: Union[Index, Constraint]) -> None:
         """Append a :class:`_schema.Constraint` to this
@@ -2099,10 +2114,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             + ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg]
         )
 
-    def _set_parent(
+    def _set_parent(  # type: ignore[override]
         self,
         parent: SchemaEventTarget,
-        allow_replacements: bool = True,
+        *,
+        all_names: Dict[str, Column[Any]],
+        allow_replacements: bool,
         **kw: Any,
     ) -> None:
         table = parent
@@ -2125,19 +2142,32 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 % (self.key, existing.description)
             )
 
+        extra_remove = None
+        existing_col = None
+        conflicts_on = ""
+
         if self.key in table._columns:
-            col = table._columns[self.key]
-            if col is not self:
+            existing_col = table._columns[self.key]
+            if self.key == self.name:
+                conflicts_on = "name"
+            else:
+                conflicts_on = "key"
+        elif self.name in all_names:
+            existing_col = all_names[self.name]
+            extra_remove = {existing_col}
+            conflicts_on = "name"
+
+        if existing_col is not None:
+            if existing_col is not self:
                 if not allow_replacements:
-                    util.warn_deprecated(
-                        "A column with name '%s' is already present "
-                        "in table '%s'. Please use method "
-                        ":meth:`_schema.Table.append_column` with the "
-                        "parameter ``replace_existing=True`` to replace an "
-                        "existing column." % (self.key, table.name),
-                        "1.4",
+                    raise exc.DuplicateColumnError(
+                        f"A column with {conflicts_on} "
+                        f"""'{
+                            self.key if conflicts_on == 'key' else self.name
+                        }' """
+                        f"is already present in table '{table.name}'."
                     )
-                for fk in col.foreign_keys:
+                for fk in existing_col.foreign_keys:
                     table.foreign_keys.remove(fk)
                     if fk.constraint in table.constraints:
                         # this might have been removed
@@ -2145,8 +2175,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                         # and more than one col being replaced
                         table.constraints.remove(fk.constraint)
 
-        table._columns.replace(self)
-
+        if extra_remove and existing_col is not None and self.key == self.name:
+            util.warn(
+                f'Column with user-specified key "{existing_col.key}" is '
+                "being replaced with "
+                f'plain named column "{self.name}", '
+                f'key "{existing_col.key}" is being removed.  If this is a '
+                "reflection operation, specify autoload_replace=False to "
+                "prevent this replacement."
+            )
+        table._columns.replace(self, extra_remove=extra_remove)
+        all_names[self.name] = self
         self.table = table
 
         if self.primary_key:

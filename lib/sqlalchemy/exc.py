@@ -125,6 +125,15 @@ class ArgumentError(SQLAlchemyError):
     """
 
 
+class DuplicateColumnError(ArgumentError):
+    """a Column is being added to a Table that would replace another
+    Column, without appropriate parameters to allow this in place.
+
+    .. versionadded:: 2.0.0b4
+
+    """
+
+
 class ObjectNotExecutableError(ArgumentError):
     """Raised when an object is passed to .execute() that can't be
     executed as SQL.

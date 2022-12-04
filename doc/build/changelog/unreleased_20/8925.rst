@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 8925
+
+    Stricter rules are in place for appending of :class:`.Column` objects to
+    :class:`.Table` objects, both moving some previous deprecation warnings to
+    exceptions, and preventing some previous scenarios that would cause
+    duplicate columns to appear in tables, when
+    :paramref:`.Table.extend_existing` were set to ``True``, for both
+    programmatic :class:`.Table` construction as well as during reflection
+    operations.
+
+    See :ref:`change_8925` for a rundown of these changes.
+
+    .. seealso::
+
+        :ref:`change_8925`
