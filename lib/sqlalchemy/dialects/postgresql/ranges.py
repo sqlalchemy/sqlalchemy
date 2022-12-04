@@ -86,6 +86,40 @@ class Range(Generic[_T]):
         return not self.empty
 
     @property
+    def isempty(self):
+        "Compability accessor to this range emptiness."
+
+        return self.empty
+
+    @property
+    def lower_inc(self):
+        "Check whether the lower bound is inclusive or not."
+
+        return self.bounds[0] == "["
+
+    @property
+    def lower_inf(self):
+        """Check whether this range is not empty and its lower bound is
+        infinite or not.
+        """
+
+        return not self.empty and self.lower is None
+
+    @property
+    def upper_inc(self):
+        "Check whether the upper bound is inclusive or not."
+
+        return self.bounds[1] == "]"
+
+    @property
+    def upper_inf(self):
+        """Check whether this range is not empty and its upper bound is
+        infinite or not.
+        """
+
+        return not self.empty and self.upper is None
+
+    @property
     def __sa_type_engine__(self):
         return AbstractRange()
 

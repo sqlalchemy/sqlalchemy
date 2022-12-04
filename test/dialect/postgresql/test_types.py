@@ -3996,6 +3996,24 @@ class _RangeComparisonFixtures(_RangeTests):
 
         is_false(range_.contains(values["rh"]))
 
+    def test_compatibility_accessors(self):
+        range_ = self._data_obj()
+
+        is_true(range_.lower_inc)
+        is_false(range_.upper_inc)
+        is_false(Range(lower=range_.lower, bounds="()").lower_inc)
+        is_true(Range(upper=range_.upper, bounds="(]").upper_inc)
+
+        is_false(range_.lower_inf)
+        is_false(range_.upper_inf)
+        is_false(Range(empty=True).lower_inf)
+        is_false(Range(empty=True).upper_inf)
+        is_true(Range().lower_inf)
+        is_true(Range().upper_inf)
+
+        is_false(range_.isempty)
+        is_true(Range(empty=True).isempty)
+
     def test_contains_value(
         self, connection, bounds_obj_combinations, value_combinations
     ):
