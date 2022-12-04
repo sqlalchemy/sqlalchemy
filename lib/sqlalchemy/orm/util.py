@@ -107,6 +107,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import _ColumnsClauseElement
     from ..sql.selectable import Alias
     from ..sql.selectable import Select
+    from ..sql.selectable import Selectable
     from ..sql.selectable import Subquery
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
@@ -456,10 +457,12 @@ class ORMAdapter(sql_util.ColumnAdapter):
         adapt_required: bool = False,
         allow_label_resolve: bool = True,
         anonymize_labels: bool = False,
+        selectable: Optional[Selectable] = None,
     ):
 
         self.mapper = entity.mapper
-        selectable = entity.selectable
+        if selectable is None:
+            selectable = entity.selectable
         if insp_is_aliased_class(entity):
             self.is_aliased_class = True
             self.aliased_insp = entity
@@ -478,6 +481,10 @@ class ORMAdapter(sql_util.ColumnAdapter):
         )
 
     def _include_fn(self, elem):
+        # TODO: we still have cases where we should return False here
+        # yet we are not able to reliably detect without false positives.
+        # see issue #8168
+
         entity = elem._annotations.get("parentmapper", None)
 
         return not entity or entity.isa(self.mapper) or self.mapper.isa(entity)

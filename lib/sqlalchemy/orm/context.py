@@ -520,13 +520,16 @@ class ORMCompileState(AbstractORMCompileState):
             for mp in ext_info.mapper.iterate_to_root():
                 self._mapper_loads_polymorphically_with(
                     mp,
-                    sql_util.ColumnAdapter(selectable, mp._equivalent_columns),
+                    ORMAdapter(
+                        mp, mp._equivalent_columns, selectable=selectable
+                    ),
                 )
 
     def _mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers or [mapper]:
             self._polymorphic_adapters[m2] = adapter
-            for m in m2.iterate_to_root():  # TODO: redundant ?
+
+            for m in m2.iterate_to_root():
                 self._polymorphic_adapters[m.local_table] = adapter
 
     @classmethod
@@ -1672,13 +1675,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                             ) from err
 
                 left = onclause._parententity
-
-                alias = self._polymorphic_adapters.get(left, None)
-
-                # could be None or could be ColumnAdapter also
-                if isinstance(alias, ORMAdapter) and alias.mapper.isa(left):
-                    left = alias.aliased_class
-                    onclause = getattr(left, onclause.key)
 
                 prop = onclause.property
                 if not isinstance(onclause, attributes.QueryableAttribute):

@@ -1139,7 +1139,6 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if isinstance(col, FromClause) and not isinstance(
             col, functions.FunctionElement
         ):
-
             if self.selectable.is_derived_from(col):
                 if self.adapt_from_selectables:
                     for adp in self.adapt_from_selectables:
