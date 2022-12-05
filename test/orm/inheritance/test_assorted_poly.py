@@ -30,7 +30,6 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import skip_test
 from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
@@ -2411,7 +2410,7 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
     def mapping(self, decl_base):
         Base = decl_base
 
-        def go(scenario, use_poly):
+        def go(scenario, use_poly, use_poly_on_retailer):
             class Customer(Base):
                 __tablename__ = "customer"
                 id = Column(Integer, primary_key=True)
@@ -2469,7 +2468,12 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
                     .scalar_subquery()
                 )
 
-                __mapper_args__ = {"polymorphic_identity": "retailer"}
+                __mapper_args__ = {
+                    "polymorphic_identity": "retailer",
+                    "polymorphic_load": "inline"
+                    if use_poly_on_retailer
+                    else None,
+                }
 
             return Customer, Store, Retailer
 
@@ -2477,8 +2481,13 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
 
     @testing.variation("scenario", ["mapped_cls", "table", "table_alias"])
     @testing.variation("use_poly", [True, False])
-    def test_select_attr_only(self, scenario, use_poly, mapping):
-        Customer, Store, Retailer = mapping(scenario, use_poly)
+    @testing.variation("use_poly_on_retailer", [True, False])
+    def test_select_attr_only(
+        self, scenario, use_poly, use_poly_on_retailer, mapping
+    ):
+        Customer, Store, Retailer = mapping(
+            scenario, use_poly, use_poly_on_retailer
+        )
 
         if scenario.mapped_cls:
             self.assert_compile(
@@ -2509,13 +2518,15 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
 
     @testing.variation("scenario", ["mapped_cls", "table", "table_alias"])
     @testing.variation("use_poly", [True, False])
-    def test_select_cls(self, scenario, mapping, use_poly):
-        Customer, Store, Retailer = mapping(scenario, use_poly)
+    @testing.variation("use_poly_on_retailer", [True, False])
+    def test_select_cls(
+        self, scenario, mapping, use_poly, use_poly_on_retailer
+    ):
+        Customer, Store, Retailer = mapping(
+            scenario, use_poly, use_poly_on_retailer
+        )
 
         if scenario.mapped_cls:
-            # breaks for use_poly, but this is not totally unexpected
-            if use_poly:
-                skip_test("Case not working yet")
             self.assert_compile(
                 select(Retailer),
                 "SELECT (SELECT count(store.id) AS count_1 FROM customer "
@@ -2525,10 +2536,6 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
                 "FROM customer JOIN retailer ON customer.id = retailer.id",
             )
         elif scenario.table:
-            # TODO: breaks for use_poly, and this should not happen.
-            # selecting from the Table should be honoring that
-            if use_poly:
-                skip_test("Case not working yet")
             self.assert_compile(
                 select(Retailer),
                 "SELECT (SELECT count(store.id) AS count_1 FROM store "

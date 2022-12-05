@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8168
+
+    Improved a fix first made in version 1.4 for :ticket:`8456` which scaled
+    back the usage of internal "polymorphic adapters", that are used to render
+    ORM queries when the :paramref:`_orm.Mapper.with_polymorphic` parameter is
+    used. These adapters, which are very complex and error prone, are now used
+    only in those cases where an explicit user-supplied subquery is used for
+    :paramref:`_orm.Mapper.with_polymorphic`, which includes only the use case
+    of concrete inheritance mappings that use the
+    :func:`_orm.polymorphic_union` helper, as well as the legacy use case of
+    using an aliased subquery for joined inheritance mappings, which is not
+    needed in modern use.
+
+    For the most common case of joined inheritance mappings that use the
+    built-in polymorphic loading scheme, which includes those which make use of
+    the :paramref:`_orm.Mapper.polymorphic_load` parameter set to ``inline``,
+    polymorphic adapters are now no longer used. This has both a positive
+    performance impact on the construction of queries as well as a
+    substantial simplification of the internal query rendering process.
+
+    The specific issue targeted was to allow a :func:`_orm.column_property`
+    to refer to joined-inheritance classes within a scalar subquery, which now
+    works as intuitively as is feasible.
+
+

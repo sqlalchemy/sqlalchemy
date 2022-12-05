@@ -103,6 +103,7 @@ if TYPE_CHECKING:
     from .properties import ColumnProperty
     from .relationships import RelationshipProperty
     from .state import InstanceState
+    from .util import ORMAdapter
     from ..engine import Row
     from ..engine import RowMapping
     from ..sql._typing import _ColumnExpressionArgument
@@ -112,7 +113,6 @@ if TYPE_CHECKING:
     from ..sql.elements import ColumnElement
     from ..sql.schema import Column
     from ..sql.selectable import FromClause
-    from ..sql.util import ColumnAdapter
     from ..util import OrderedSet
 
 
@@ -2441,6 +2441,20 @@ class Mapper(
             return None
 
     @HasMemoized.memoized_attribute
+    def _has_aliased_polymorphic_fromclause(self):
+        """return True if with_polymorphic[1] is an aliased fromclause,
+        like a subquery.
+
+        As of #8168, polymorphic adaption with ORMAdapter is used only
+        if this is present.
+
+        """
+        return self.with_polymorphic and isinstance(
+            self.with_polymorphic[1],
+            expression.AliasedReturnsRows,
+        )
+
+    @HasMemoized.memoized_attribute
     def _should_select_with_poly_adapter(self):
         """determine if _MapperEntity or _ORMColumnEntity will need to use
         polymorphic adaption when setting up a SELECT as well as fetching
@@ -2456,6 +2470,10 @@ class Mapper(
         # polymorphic selectable, *or* if the base mapper has either of those,
         # we turn on the adaption thing.  if not, we do *no* adaption.
         #
+        # (UPDATE for #8168: the above comment was not accurate, as we were
+        # still saying "do polymorphic" if we were using an auto-generated
+        # flattened JOIN for with_polymorphic.)
+        #
         # this splits the behavior among the "regular" joined inheritance
         # and single inheritance mappers, vs. the "weird / difficult"
         # concrete and joined inh mappings that use a with_polymorphic of
@@ -2467,11 +2485,21 @@ class Mapper(
         # these tests actually adapt the polymorphic selectable (like, the
         # UNION or the SELECT subquery with JOIN in it) to be just the simple
         # subclass table.   Hence even if we are a "plain" inheriting mapper
-        # but our base has a wpoly on it, we turn on adaption.
+        # but our base has a wpoly on it, we turn on adaption.  This is a
+        # legacy case we should probably disable.
+        #
+        #
+        # UPDATE: simplified way more as of #8168.   polymorphic adaption
+        # is turned off even if with_polymorphic is set, as long as there
+        # is no user-defined aliased selectable / subquery configured.
+        # this scales back the use of polymorphic adaption in practice
+        # to basically no cases except for concrete inheritance with a
+        # polymorphic base class.
+        #
         return (
-            self.with_polymorphic
+            self._has_aliased_polymorphic_fromclause
             or self._requires_row_aliasing
-            or self.base_mapper.with_polymorphic
+            or (self.base_mapper._has_aliased_polymorphic_fromclause)
             or self.base_mapper._requires_row_aliasing
         )
 
@@ -2743,10 +2771,14 @@ class Mapper(
         ]
 
     @HasMemoized.memoized_attribute
-    def _polymorphic_adapter(self) -> Optional[sql_util.ColumnAdapter]:
-        if self.with_polymorphic:
-            return sql_util.ColumnAdapter(
-                self.selectable, equivalents=self._equivalent_columns
+    def _polymorphic_adapter(self) -> Optional[orm_util.ORMAdapter]:
+        if self._has_aliased_polymorphic_fromclause:
+            return orm_util.ORMAdapter(
+                orm_util._TraceAdaptRole.MAPPER_POLYMORPHIC_ADAPTER,
+                self,
+                selectable=self.selectable,
+                equivalents=self._equivalent_columns,
+                limit_on_entity=False,
             )
         else:
             return None
@@ -3213,7 +3245,7 @@ class Mapper(
         self,
         row: Optional[Union[Row[Any], RowMapping]],
         identity_token: Optional[Any] = None,
-        adapter: Optional[ColumnAdapter] = None,
+        adapter: Optional[ORMAdapter] = None,
     ) -> _IdentityKeyType[_O]:
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
