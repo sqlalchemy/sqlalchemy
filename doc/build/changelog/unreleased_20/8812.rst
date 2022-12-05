@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 8812
-
-    Fixed regression where flushing a mapped class that's mapped against a
-    subquery, such as a direct mapping or some forms of concrete table
-    inheritance, would fail if the :paramref:`_orm.Mapper.eager_defaults`
-    parameter were used.
