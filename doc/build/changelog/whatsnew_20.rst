@@ -753,7 +753,7 @@ The new ORM Declarative features introduced above at
 :ref:`whatsnew_20_orm_declarative_typing` introduced the
 new :func:`_orm.mapped_column` construct and illustrated type-centric
 mapping with optional use of :pep:`593` ``Annotated``.  We can take
-the mapping one step further by integrating with with Python
+the mapping one step further by integrating this with Python
 dataclasses_.   This new feature is made possible via :pep:`681` which
 allows for type checkers to recognize classes that are dataclass compatible,
 or are fully dataclasses, but were declared through alternate APIs.
