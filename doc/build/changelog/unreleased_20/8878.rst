@@ -1,5 +1,5 @@
 .. change::
-    :tags: usecase, ext
+    :tags: usecase, orm extensions
     :tickets: 8878
 
     Added support for the :func:`.association_proxy` extension function to

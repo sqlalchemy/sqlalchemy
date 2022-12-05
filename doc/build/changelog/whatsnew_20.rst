@@ -753,7 +753,7 @@ The new ORM Declarative features introduced above at
 :ref:`whatsnew_20_orm_declarative_typing` introduced the
 new :func:`_orm.mapped_column` construct and illustrated type-centric
 mapping with optional use of :pep:`593` ``Annotated``.  We can take
-the mapping one step further by integrating with with Python
+the mapping one step further by integrating this with Python
 dataclasses_.   This new feature is made possible via :pep:`681` which
 allows for type checkers to recognize classes that are dataclass compatible,
 or are fully dataclasses, but were declared through alternate APIs.
@@ -1618,6 +1618,48 @@ as ``False``::
 
 :ticket:`8567`
 
+.. _change_8925:
+
+Stricter rules for replacement of Columns in Table objects with same-names, keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Stricter rules are in place for appending of :class:`.Column` objects to
+:class:`.Table` objects, both moving some previous deprecation warnings to
+exceptions, and preventing some previous scenarios that would cause
+duplicate columns to appear in tables, when
+:paramref:`.Table.extend_existing` were set to ``True``, for both
+programmatic :class:`.Table` construction as well as during reflection
+operations.
+
+* Under no circumstances should a :class:`.Table` object ever have two or more
+  :class:`.Column` objects with the same name, regardless of what .key they
+  have.  An edge case where this was still possible was identified and fixed.
+
+* Adding a :class:`.Column` to a :class:`.Table` that has the same name or
+  key as an existing :class:`.Column` will always raise
+  :class:`.DuplicateColumnError` (a new subclass of :class:`.ArgumentError` in
+  2.0.0b4) unless additional parameters are present;
+  :paramref:`.Table.append_column.replace_existing` for
+  :meth:`.Table.append_column`, and :paramref:`.Table.extend_existing` for
+  construction of a same-named :class:`.Table` as an existing one, with or
+  without reflection being used. Previously, there was a deprecation warning in
+  place for this scenario.
+
+* A warning is now emitted if a :class:`.Table` is created, that does
+  include :paramref:`.Table.extend_existing`, where an incoming
+  :class:`.Column` that has no separate :attr:`.Column.key` would fully
+  replace an existing :class:`.Column` that does have a key, which suggests
+  the operation is not what the user intended.  This can happen particularly
+  during a secondary reflection step, such as ``metadata.reflect(extend_existing=True)``.
+  The warning suggests that the :paramref:`.Table.autoload_replace` parameter
+  be set to ``False`` to prevent this. Previously, in 1.4 and earlier, the
+  incoming column would be added **in addition** to the existing column.
+  This was a bug and is a behavioral change in 2.0 (as of 2.0.0b4), as the
+  previous key will **no longer be present** in the column collection
+  when this occurs.
+
+
+:ticket:`8925`
 
 .. _change_7211:
 

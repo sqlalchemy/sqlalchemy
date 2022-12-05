@@ -2916,6 +2916,8 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     @testing.combinations("control", "excluded", "dict")
+    @testing.skip_if("+pysqlite_numeric")
+    @testing.skip_if("+pysqlite_dollar")
     def test_set_excluded(self, scenario):
         """test #8014, sending all of .excluded to set"""
 

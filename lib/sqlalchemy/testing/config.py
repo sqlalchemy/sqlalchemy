@@ -14,11 +14,13 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Iterable
+from typing import NoReturn
 from typing import Optional
 from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
+from .util import fail
 from .. import util
 
 requirements = None
@@ -128,20 +130,35 @@ def combinations_list(
     return combinations(*arg_iterable, **kw)
 
 
-class _variation_base:
-    __slots__ = ("name", "argname")
+class Variation:
+    __slots__ = ("_name", "_argname")
 
     def __init__(self, case, argname, case_names):
-        self.name = case
-        self.argname = argname
+        self._name = case
+        self._argname = argname
         for casename in case_names:
             setattr(self, casename, casename == case)
 
+    if typing.TYPE_CHECKING:
+
+        def __getattr__(self, key: str) -> bool:
+            ...
+
+    @property
+    def name(self):
+        return self._name
+
     def __bool__(self):
-        return self.name == self.argname
+        return self._name == self._argname
 
     def __nonzero__(self):
         return not self.__bool__()
+
+    def __str__(self):
+        return f"{self._argname}={self._name!r}"
+
+    def fail(self) -> NoReturn:
+        fail(f"Unknown {self}")
 
 
 def variation(argname, cases):
@@ -172,7 +189,7 @@ def variation(argname, cases):
             elif querytyp.legacy_query:
                 stmt = Session.query(Thing)
             else:
-                assert False
+                querytyp.fail()
 
 
     The variable provided is a slots object of boolean variables, as well
@@ -193,7 +210,7 @@ def variation(argname, cases):
 
     typ = type(
         argname,
-        (_variation_base,),
+        (Variation,),
         {
             "__slots__": tuple(case_names),
         },

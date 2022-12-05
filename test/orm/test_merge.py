@@ -1458,7 +1458,7 @@ class MergeTest(_fixtures.FixtureTest):
             )
             attrname = "user"
         else:
-            assert False
+            direction.fail()
 
         assert attrname in obj_to_merge.__dict__
 

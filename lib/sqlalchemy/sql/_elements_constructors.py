@@ -49,6 +49,7 @@ from ..util.typing import Literal
 if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .selectable import FromClause
@@ -226,7 +227,9 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
     return CollectionAggregate._create_any(expr)
 
 
-def asc(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+def asc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> UnaryExpression[_T]:
     """Produce an ascending ``ORDER BY`` clause element.
 
     e.g.::
@@ -935,7 +938,9 @@ def column(
     return ColumnClause(text, type_, is_literal, _selectable)
 
 
-def desc(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+def desc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> UnaryExpression[_T]:
     """Produce a descending ``ORDER BY`` clause element.
 
     e.g.::

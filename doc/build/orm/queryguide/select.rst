@@ -1001,6 +1001,10 @@ which belonged to "sandy":
 Relationship Instance Comparison Operators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. comment
+
+    >>> session.expunge_all()
+
 The :func:`_orm.relationship`-bound attribute also offers a few SQL construction
 implementations that are geared towards filtering a :func:`_orm.relationship`-bound
 attribute in terms of a specific instance of a related object, which can unpack

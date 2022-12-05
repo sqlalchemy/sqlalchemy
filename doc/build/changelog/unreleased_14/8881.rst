@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 8881
+    :versions: 2.0.0b4
 
     Fixed issues in :func:`_orm.with_expression` where expressions that were
     composed of columns within a subquery being SELECTed from, or when using

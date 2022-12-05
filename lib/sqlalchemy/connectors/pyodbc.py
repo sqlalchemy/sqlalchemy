@@ -209,7 +209,10 @@ class PyODBCConnector(Connector):
         # omit the setinputsizes calls for .executemany() with
         # fast_executemany=True
 
-        if context.executemany and self.fast_executemany:
+        if (
+            context.execute_style is interfaces.ExecuteStyle.EXECUTEMANY
+            and self.fast_executemany
+        ):
             return
 
         cursor.setinputsizes(

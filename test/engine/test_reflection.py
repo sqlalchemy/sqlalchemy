@@ -257,7 +257,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         )
         assert "nonexistent" not in meta.tables
 
-    def test_extend_existing(self, connection, metadata):
+    @testing.variation("use_metadata_reflect", [True, False])
+    def test_extend_existing(self, connection, metadata, use_metadata_reflect):
         meta = metadata
 
         Table(
@@ -276,6 +277,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         old_q = Column("q", Integer)
         t2 = Table("t", m2, old_z, old_q)
         eq_(list(t2.primary_key.columns), [t2.c.z])
+
         t2 = Table(
             "t",
             m2,
@@ -283,6 +285,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             extend_existing=True,
             autoload_with=connection,
         )
+        if use_metadata_reflect:
+            m2.reflect(connection, extend_existing=True)
         eq_(set(t2.columns.keys()), {"x", "y", "z", "q", "id"})
 
         # this has been the actual behavior, the cols are added together,
@@ -290,7 +294,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         eq_(list(t2.primary_key.columns), [t2.c.z, t2.c.id])
 
         assert t2.c.z is not old_z
-        assert t2.c.y is old_y
+        if not use_metadata_reflect:
+            assert t2.c.y is old_y
         assert t2.c.z.type._type_affinity is Integer
         assert t2.c.q is old_q
 
@@ -302,6 +307,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             extend_existing=False,
             autoload_with=connection,
         )
+        if use_metadata_reflect:
+            m3.reflect(connection, extend_existing=False)
         eq_(set(t3.columns.keys()), {"z"})
 
         m4 = MetaData()
@@ -318,12 +325,96 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_replace=False,
             autoload_with=connection,
         )
+        if use_metadata_reflect:
+            m4.reflect(
+                connection, extend_existing=True, autoload_replace=False
+            )
         eq_(set(t4.columns.keys()), {"x", "y", "z", "q", "id"})
         eq_(list(t4.primary_key.columns), [t4.c.z, t4.c.id])
         assert t4.c.z is old_z
         assert t4.c.y is old_y
         assert t4.c.z.type._type_affinity is String
         assert t4.c.q is old_q
+
+    @testing.variation(
+        "extend_type",
+        [
+            "autoload",
+            "metadata_reflect",
+            "metadata_reflect_no_replace",
+            "plain_table",
+        ],
+    )
+    def test_extend_existing_never_dupe_column(
+        self, connection, metadata, extend_type
+    ):
+        """test #8925"""
+        meta = metadata
+
+        Table(
+            "t",
+            meta,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+        meta.create_all(connection)
+
+        m2 = MetaData()
+        if extend_type.metadata_reflect:
+            t2 = Table(
+                "t",
+                m2,
+                Column("id", Integer, primary_key=True),
+                Column("x", Integer, key="x2"),
+            )
+            with expect_warnings(
+                'Column with user-specified key "x2" is being replaced '
+                'with plain named column "x", key "x2" is being removed.'
+            ):
+                m2.reflect(connection, extend_existing=True)
+            eq_(set(t2.columns.keys()), {"x", "y", "id"})
+        elif extend_type.metadata_reflect_no_replace:
+            t2 = Table(
+                "t",
+                m2,
+                Column("id", Integer, primary_key=True),
+                Column("x", Integer, key="x2"),
+            )
+            m2.reflect(
+                connection, extend_existing=True, autoload_replace=False
+            )
+            eq_(set(t2.columns.keys()), {"x2", "y", "id"})
+        elif extend_type.autoload:
+            t2 = Table(
+                "t",
+                m2,
+                Column("id", Integer, primary_key=True),
+                Column("x", Integer, key="x2"),
+                autoload_with=connection,
+                extend_existing=True,
+            )
+            eq_(set(t2.columns.keys()), {"x2", "y", "id"})
+        elif extend_type.plain_table:
+            Table(
+                "t",
+                m2,
+                Column("id", Integer, primary_key=True),
+                Column("x", Integer, key="x2"),
+            )
+            with expect_warnings(
+                'Column with user-specified key "x2" is being replaced with '
+                'plain named column "x", key "x2" is being removed.'
+            ):
+                t2 = Table(
+                    "t",
+                    m2,
+                    Column("id", Integer, primary_key=True),
+                    Column("x", Integer),
+                    Column("y", Integer),
+                    extend_existing=True,
+                )
+            eq_(set(t2.columns.keys()), {"x", "y", "id"})
 
     def test_extend_existing_reflect_all_dont_dupe_index(
         self, connection, metadata

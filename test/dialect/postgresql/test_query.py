@@ -990,19 +990,19 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
                 "matchtable.title @@ plainto_tsquery(%(title_1)s)",
             )
 
-    @testing.requires.format_paramstyle
+    @testing.only_if("+asyncpg")
     def test_expression_positional(self, connection):
         matchtable = self.tables.matchtable
 
         if self._strs_render_bind_casts(connection):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ plainto_tsquery(%s::VARCHAR(200))",
+                "matchtable.title @@ plainto_tsquery($1::VARCHAR(200))",
             )
         else:
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ plainto_tsquery(%s)",
+                "matchtable.title @@ plainto_tsquery($1)",
             )
 
     def test_simple_match(self, connection):

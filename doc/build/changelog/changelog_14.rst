@@ -24,6 +24,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, sql
         :tickets: 8790
+        :versions: 2.0.0b4
 
         Fixed critical memory issue identified in cache key generation, where for
         very large and complex ORM statements that make use of lots of ORM aliases
@@ -35,6 +36,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, postgresql, mssql
         :tickets: 8770
+        :versions: 2.0.0b4
 
         For the PostgreSQL and SQL Server dialects only, adjusted the compiler so
         that when rendering column expressions in the RETURNING clause, the "non
@@ -59,6 +61,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, tests
         :tickets: 8793
+        :versions: 2.0.0b4
 
         Fixed issue where the ``--disable-asyncio`` parameter to the test suite
         would fail to not actually run greenlet tests and would also not prevent
@@ -83,6 +86,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8738
+        :versions: 2.0.0b3
 
         Fixed issue in joined eager loading where an assertion fail would occur
         with a particular combination of outer/inner joined eager loads, when
@@ -93,6 +97,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, oracle
         :tickets: 8708
+        :versions: 2.0.0b3
 
         Fixed issue where bound parameter names, including those automatically
         derived from similarly-named database columns, which contained characters
@@ -108,6 +113,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8721
+        :versions: 2.0.0b3
 
         Fixed bug involving :class:`.Select` constructs, where combinations of
         :meth:`.Select.select_from` with :meth:`.Select.join`, as well as when
@@ -123,6 +129,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, mssql
         :tickets: 8714
+        :versions: 2.0.0b3
 
         Fixed issue with :meth:`.Inspector.has_table`, which when used against a
         temporary table with the SQL Server dialect would fail on some Azure
@@ -132,6 +139,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8711
+        :versions: 2.0.0b3
 
         An informative exception is now raised when the
         :func:`_orm.with_loader_criteria` option is used as a loader option added
@@ -143,6 +151,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, oracle
         :tickets: 8744
+        :versions: 2.0.0b3
 
         Fixed issue where the ``nls_session_parameters`` view queried on first
         connect in order to get the default decimal point character may not be
@@ -155,6 +164,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8753
+        :versions: 2.0.0b3
 
         Improved "dictionary mode" for :meth:`_orm.Session.get` so that synonym
         names which refer to primary key attribute names may be indicated in the
@@ -163,6 +173,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, engine, regression
         :tickets: 8717
+        :versions: 2.0.0b3
 
         Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be be
         called in all cases when a :class:`_engine.Connection` were closed and was
@@ -188,6 +199,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8704
+        :versions: 2.0.0b3
 
         Fixed issue where "selectin_polymorphic" loading for inheritance mappers
         would not function correctly if the :paramref:`_orm.Mapper.polymorphic_on`
@@ -197,6 +209,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8710
+        :versions: 2.0.0b3
 
         Fixed issue where the underlying DBAPI cursor would not be closed when
         using the :class:`_orm.Query` object as an iterator, if a user-defined exception
@@ -229,6 +242,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, mssql, reflection
         :tickets: 8700
+        :versions: 2.0.0b3
 
         Fixed issue with :meth:`.Inspector.has_table`, which when used against a
         view with the SQL Server dialect would erroneously return ``False``, due to
@@ -240,6 +254,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, sql
         :tickets: 8724
+        :versions: 2.0.0b3
 
         Fixed issue which prevented the :func:`_sql.literal_column` construct from
         working properly within the context of a :class:`.Select` construct as well

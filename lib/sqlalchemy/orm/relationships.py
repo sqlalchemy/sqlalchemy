@@ -171,7 +171,7 @@ _ORMOrderByArgument = Union[
     Callable[[], Iterable[ColumnElement[Any]]],
     Iterable[Union[str, _ColumnExpressionArgument[Any]]],
 ]
-_ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
+ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
 
 _ORMColCollectionElement = Union[
     ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole
@@ -366,7 +366,7 @@ class RelationshipProperty(
         secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
         back_populates: Optional[str] = None,
         order_by: _ORMOrderByArgument = False,
-        backref: Optional[_ORMBackrefArgument] = None,
+        backref: Optional[ORMBackrefArgument] = None,
         overlaps: Optional[str] = None,
         post_update: bool = False,
         cascade: str = "save-update, merge",

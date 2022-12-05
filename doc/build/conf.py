@@ -67,6 +67,7 @@ changelog_sections = [
     "orm declarative",
     "orm querying",
     "orm configuration",
+    "orm extensions",
     "examples",
     "engine",
     "sql",

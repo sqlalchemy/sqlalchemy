@@ -46,6 +46,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -936,12 +937,11 @@ class DeclarativeMultiBaseTest(
                 id = Column(Integer, primary_key=True)
 
     def test_column_named_twice(self):
-        with assertions.expect_deprecated(
-            "A column with name 'x' is already present in table 'foo'"
-        ), expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple times, "
-            "only one will be used: x, y",
-        ):
+        with expect_warnings(
+            "On class 'Foo', Column object 'x' named directly multiple "
+            "times, only one will be used: x, y. Consider using "
+            "orm.synonym instead"
+        ), expect_raises(exc.DuplicateColumnError):
 
             class Foo(Base):
                 __tablename__ = "foo"
@@ -951,12 +951,11 @@ class DeclarativeMultiBaseTest(
                 y = Column("x", Integer)
 
     def test_column_repeated_under_prop(self):
-        with assertions.expect_deprecated(
-            "A column with name 'x' is already present in table 'foo'"
-        ), expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple times, "
-            "only one will be used: x, y, z",
-        ):
+        with expect_warnings(
+            "On class 'Foo', Column object 'x' named directly multiple "
+            "times, only one will be used: x, y, z. Consider using "
+            "orm.synonym instead"
+        ), expect_raises(exc.DuplicateColumnError):
 
             class Foo(Base):
                 __tablename__ = "foo"

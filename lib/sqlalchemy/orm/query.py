@@ -111,6 +111,7 @@ if TYPE_CHECKING:
     from ..engine.result import FrozenResult
     from ..engine.result import ScalarResult
     from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _ColumnExpressionOrStrLabelArgument
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _DMLColumnArgument
     from ..sql._typing import _JoinTargetArgument
@@ -1952,9 +1953,10 @@ class Query(
     def order_by(
         self: SelfQuery,
         __first: Union[
-            Literal[None, False, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+            Literal[None, False, _NoArg.NO_ARG],
+            _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
-        *clauses: _ColumnExpressionArgument[Any],
+        *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> SelfQuery:
         """Apply one or more ORDER BY criteria to the query and return
         the newly resulting :class:`_query.Query`.
@@ -2000,9 +2002,10 @@ class Query(
     def group_by(
         self: SelfQuery,
         __first: Union[
-            Literal[None, False, _NoArg.NO_ARG], _ColumnExpressionArgument[Any]
+            Literal[None, False, _NoArg.NO_ARG],
+            _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
-        *clauses: _ColumnExpressionArgument[Any],
+        *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> SelfQuery:
         """Apply one or more GROUP BY criterion to the query and return
         the newly resulting :class:`_query.Query`.

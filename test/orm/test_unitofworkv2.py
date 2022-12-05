@@ -3077,7 +3077,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
         asserter.assert_(
             Conditional(
-                testing.db.dialect.insert_executemany_returning,
+                testing.db.dialect.insert_returning,
                 [
                     CompiledSQL(
                         "INSERT INTO test (id) VALUES (:id) "

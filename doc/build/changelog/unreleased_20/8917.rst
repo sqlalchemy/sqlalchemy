@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 8917
+
+    Fixed regression caused by the combination of :ticket:`8177`, re-enable
+    setinputsizes for SQL server unless fast_executemany + DBAPI executemany is
+    used for a statement, along with :ticket:`6047`, implement
+    "insertmanyvalues", which bypasses DBAPI executemany in place of a custom
+    DBAPI execute for INSERT statements. setinputsizes would incorrectly not be
+    used for a multiple parameter-set INSERT statement that used
+    "insertmanyvalues" if fast_executemany were turned on, as the check would
+    incorrectly assume this is a DBAPI executemany call.  The "regression"
+    would then be that the "insertmanyvalues" statement format is apparently
+    slightly more sensitive to multiple rows that don't use the same types
+    for each row, so in such a case setinputsizes is especially needed.
+
+    The fix repairs the fast_executemany check so that it only disables
+    setinputsizes if true DBAPI executemany is to be used.
