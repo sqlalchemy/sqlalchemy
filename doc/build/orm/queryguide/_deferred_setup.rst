@@ -100,5 +100,6 @@ This page illustrates the mappings and fixture data used by the
     ... )
     >>> session.commit()
     BEGIN ... COMMIT
+    >>> session.close()
     >>> conn.begin()
     BEGIN ...
