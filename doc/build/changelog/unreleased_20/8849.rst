@@ -2,13 +2,21 @@
     :tags: bug, sql
     :tickets: 8849
 
-    Reworked how numeric paramstyle behavers, in particular, fixed insertmany
-    behaviour that prior to this was non functional; added support for repeated
-    parameter without duplicating them like in other positional dialects;
-    introduced new numeric paramstyle called ``numeric_dollar`` that can be
-    used to render statements that use the PostgreSQL placeholder style (
-    i.e. ``$1, $2, $3``).
-    This change requires that the dialect supports out of order placehoders,
-    that may be used used in the statements, in particular when using
-    insert-many values with statement that have parameters in the returning
-    clause.
+    The approach to the ``numeric`` pep-249 paramstyle has been rewritten, and
+    is now fully supported, including by features such as "expanding IN" and
+    "insertmanyvalues". Parameter names may also be repeated in the source SQL
+    construct which will be correctly represented within the numeric format
+    using a single parameter. Introduced an additional numeric paramstyle
+    called ``numeric_dollar``, which is specifically what's used by the asyncpg
+    dialect; the paramstyle is equivalent to ``numeric`` except numeric
+    indicators are indicated by a dollar-sign rather than a colon. The asyncpg
+    dialect now uses ``numeric_dollar`` paramstyle directly, rather than
+    compiling to ``format`` style first.
+
+    The ``numeric`` and ``numeric_dollar`` paramstyles assume that the target
+    backend is capable of receiving the numeric parameters in any order,
+    and will match the given parameter values to the statement based on
+    matching their position (1-based) to the numeric indicator.  This is the
+    normal behavior of "numeric" paramstyles, although it was observed that
+    the SQLite DBAPI implements a not-used "numeric" style that does not honor
+    parameter ordering.

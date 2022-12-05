@@ -1,5 +1,5 @@
 .. change::
-    :tags: asyncpg
+    :tags: change, postgresql, asyncpg
     :tickets: 8926
 
     Changed the paramstyle used by asyncpg from ``format`` to
