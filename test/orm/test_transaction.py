@@ -1345,43 +1345,6 @@ class AutoExpireTest(_LocalFixture):
         assert u1 in s
         assert u1 not in s.deleted
 
-    @testing.requires.predictable_gc
-    def test_gced_delete_on_rollback(self):
-        User, users = self.classes.User, self.tables.users
-
-        s = fixture_session()
-        u1 = User(name="ed")
-        s.add(u1)
-        s.commit()
-
-        s.delete(u1)
-        u1_state = attributes.instance_state(u1)
-        assert u1_state in s.identity_map.all_states()
-        assert u1_state in s._deleted
-        s.flush()
-        assert u1_state not in s.identity_map.all_states()
-        assert u1_state not in s._deleted
-        del u1
-        gc_collect()
-        assert u1_state.obj() is None
-
-        s.rollback()
-        # new in 1.1, not in identity map if the object was
-        # gc'ed and we restore snapshot; we've changed update_impl
-        # to just skip this object
-        assert u1_state not in s.identity_map.all_states()
-
-        # in any version, the state is replaced by the query
-        # because the identity map would switch it
-        u1 = s.query(User).filter_by(name="ed").one()
-        assert u1_state not in s.identity_map.all_states()
-
-        eq_(s.scalar(select(func.count("*")).select_from(users)), 1)
-        s.delete(u1)
-        s.flush()
-        eq_(s.scalar(select(func.count("*")).select_from(users)), 0)
-        s.commit()
-
     def test_trans_deleted_cleared_on_rollback(self):
         User = self.classes.User
         s = fixture_session()

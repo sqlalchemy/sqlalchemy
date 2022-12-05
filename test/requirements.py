@@ -409,6 +409,7 @@ class DefaultRequirements(SuiteRequirements):
             [
                 no_support("oracle", "Oracle XE usually can't handle these"),
                 no_support("mssql+pyodbc", "MS ODBC drivers struggle"),
+                no_support("+aiosqlite", "very unreliable driver"),
                 self._running_on_windows(),
             ]
         )

@@ -17,6 +17,7 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.engine import result
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
@@ -1755,3 +1756,57 @@ class CycleTest(_fixtures.FixtureTest):
             s.close()
 
         go()
+
+
+class MiscMemoryIntensiveTests(fixtures.TestBase):
+    __tags__ = ("memory_intensive",)
+
+    @testing.fixture
+    def user_fixture(self, decl_base):
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        decl_base.metadata.create_all(testing.db)
+        yield User
+
+    @testing.requires.predictable_gc
+    def test_gced_delete_on_rollback(self, user_fixture):
+        User = user_fixture
+
+        s = fixture_session()
+        u1 = User(name="ed")
+        s.add(u1)
+        s.commit()
+
+        s.delete(u1)
+        u1_state = attributes.instance_state(u1)
+        assert u1_state in s.identity_map.all_states()
+        assert u1_state in s._deleted
+        s.flush()
+        assert u1_state not in s.identity_map.all_states()
+        assert u1_state not in s._deleted
+        del u1
+        gc_collect()
+        gc_collect()
+        gc_collect()
+        assert u1_state.obj() is None
+
+        s.rollback()
+        # new in 1.1, not in identity map if the object was
+        # gc'ed and we restore snapshot; we've changed update_impl
+        # to just skip this object
+        assert u1_state not in s.identity_map.all_states()
+
+        # in any version, the state is replaced by the query
+        # because the identity map would switch it
+        u1 = s.query(User).filter_by(name="ed").one()
+        assert u1_state not in s.identity_map.all_states()
+
+        eq_(s.scalar(select(func.count("*")).select_from(User.__table__)), 1)
+        s.delete(u1)
+        s.flush()
+        eq_(s.scalar(select(func.count("*")).select_from(User.__table__)), 0)
+        s.commit()
