@@ -85,8 +85,8 @@ _CrudParamElement = Tuple[
 ]
 _CrudParamElementStr = Tuple[
     "KeyedColumnElement[Any]",
-    str,
-    str,
+    str,  # column name
+    str,  # placeholder
     Iterable[str],
 ]
 _CrudParamElementSQLExpr = Tuple[

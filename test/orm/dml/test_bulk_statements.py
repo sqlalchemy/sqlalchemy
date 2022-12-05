@@ -958,7 +958,7 @@ class BulkDMLReturningJoinedInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
 
-    __requires__ = ("insert_returning",)
+    __requires__ = ("insert_returning", "insert_executemany_returning")
     __backend__ = True
 
     @classmethod
@@ -1044,7 +1044,7 @@ class BulkDMLReturningJoinedInhTest(
 class BulkDMLReturningSingleInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
-    __requires__ = ("insert_returning",)
+    __requires__ = ("insert_returning", "insert_executemany_returning")
     __backend__ = True
 
     @classmethod
@@ -1075,7 +1075,7 @@ class BulkDMLReturningSingleInhTest(
 class BulkDMLReturningConcreteInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
-    __requires__ = ("insert_returning",)
+    __requires__ = ("insert_returning", "insert_executemany_returning")
     __backend__ = True
 
     @classmethod

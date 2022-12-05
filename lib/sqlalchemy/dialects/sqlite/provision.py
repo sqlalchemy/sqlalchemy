@@ -18,7 +18,13 @@ from ...testing.provision import upsert
 
 
 # TODO: I can't get this to build dynamically with pytest-xdist procs
-_drivernames = {"pysqlite", "aiosqlite", "pysqlcipher"}
+_drivernames = {
+    "pysqlite",
+    "aiosqlite",
+    "pysqlcipher",
+    "pysqlite_numeric",
+    "pysqlite_dollar",
+}
 
 
 @generate_driver_url.for_db("sqlite")

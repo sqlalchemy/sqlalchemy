@@ -438,9 +438,6 @@ class AsyncAdapt_asyncpg_cursor:
     def _handle_exception(self, error):
         self._adapt_connection._handle_exception(error)
 
-    def _parameter_placeholders(self, params):
-        return tuple(f"${idx:d}" for idx, _ in enumerate(params, 1))
-
     async def _prepare_and_execute(self, operation, parameters):
         adapt_connection = self._adapt_connection
 
@@ -449,11 +446,7 @@ class AsyncAdapt_asyncpg_cursor:
             if not adapt_connection._started:
                 await adapt_connection._start_transaction()
 
-            if parameters is not None:
-                operation = operation % self._parameter_placeholders(
-                    parameters
-                )
-            else:
+            if parameters is None:
                 parameters = ()
 
             try:
@@ -505,10 +498,6 @@ class AsyncAdapt_asyncpg_cursor:
 
             if not adapt_connection._started:
                 await adapt_connection._start_transaction()
-
-            operation = operation % self._parameter_placeholders(
-                seq_of_parameters[0]
-            )
 
             try:
                 return await self._connection.executemany(
@@ -808,7 +797,7 @@ class AsyncAdaptFallback_asyncpg_connection(AsyncAdapt_asyncpg_connection):
 class AsyncAdapt_asyncpg_dbapi:
     def __init__(self, asyncpg):
         self.asyncpg = asyncpg
-        self.paramstyle = "format"
+        self.paramstyle = "numeric_dollar"
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
@@ -900,7 +889,7 @@ class PGDialect_asyncpg(PGDialect):
     render_bind_cast = True
     has_terminate = True
 
-    default_paramstyle = "format"
+    default_paramstyle = "numeric_dollar"
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_asyncpg
     statement_compiler = PGCompiler_asyncpg

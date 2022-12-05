@@ -993,20 +993,20 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             'WITH regional_sales AS (SELECT orders."order" '
-            'AS "order", :1 AS anon_2 FROM orders) SELECT '
-            'regional_sales."order", :2 AS anon_1 FROM regional_sales',
-            checkpositional=("x", "y"),
+            'AS "order", :2 AS anon_2 FROM orders) SELECT '
+            'regional_sales."order", :1 AS anon_1 FROM regional_sales',
+            checkpositional=("y", "x"),
             dialect=dialect,
         )
 
         self.assert_compile(
             s.union(s),
             'WITH regional_sales AS (SELECT orders."order" '
-            'AS "order", :1 AS anon_2 FROM orders) SELECT '
-            'regional_sales."order", :2 AS anon_1 FROM regional_sales '
-            'UNION SELECT regional_sales."order", :3 AS anon_1 '
+            'AS "order", :2 AS anon_2 FROM orders) SELECT '
+            'regional_sales."order", :1 AS anon_1 FROM regional_sales '
+            'UNION SELECT regional_sales."order", :1 AS anon_1 '
             "FROM regional_sales",
-            checkpositional=("x", "y", "y"),
+            checkpositional=("y", "x"),
             dialect=dialect,
         )
 
@@ -1057,8 +1057,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s3,
             'WITH regional_sales_1 AS (SELECT orders."order" AS "order" '
-            'FROM orders WHERE orders."order" = :1), regional_sales_2 AS '
-            '(SELECT orders."order" = :2 AS anon_1, '
+            'FROM orders WHERE orders."order" = :2), regional_sales_2 AS '
+            '(SELECT orders."order" = :1 AS anon_1, '
             'anon_2."order" AS "order", '
             'orders."order" AS order_1, '
             'regional_sales_1."order" AS order_2 FROM orders, '
@@ -1067,7 +1067,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'WHERE orders."order" = :3) SELECT regional_sales_2.anon_1, '
             'regional_sales_2."order", regional_sales_2.order_1, '
             "regional_sales_2.order_2 FROM regional_sales_2",
-            checkpositional=("x", "y", "z"),
+            checkpositional=("y", "x", "z"),
             dialect=dialect,
         )
 

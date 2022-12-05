@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8849
+
+    Reworked how numeric paramstyle behavers, in particular, fixed insertmany
+    behaviour that prior to this was non functional; added support for repeated
+    parameter without duplicating them like in other positional dialects;
+    introduced new numeric paramstyle called ``numeric_dollar`` that can be
+    used to render statements that use the PostgreSQL placeholder style (
+    i.e. ``$1, $2, $3``).
+    This change requires that the dialect supports out of order placehoders,
+    that may be used used in the statements, in particular when using
+    insert-many values with statement that have parameters in the returning
+    clause.

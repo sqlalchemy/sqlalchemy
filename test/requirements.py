@@ -232,7 +232,6 @@ class DefaultRequirements(SuiteRequirements):
                 "mariadb+pymysql",
                 "mariadb+cymysql",
                 "mariadb+mysqlconnector",
-                "postgresql+asyncpg",
                 "postgresql+pg8000",
             ]
         )
@@ -386,6 +385,14 @@ class DefaultRequirements(SuiteRequirements):
                 ),
             ]
         )
+
+    @property
+    def predictable_gc(self):
+        """target platform must remove all cycles unconditionally when
+        gc.collect() is called, as well as clean out unreferenced subclasses.
+
+        """
+        return self.cpython + skip_if("+aiosqlite")
 
     @property
     def memory_process_intensive(self):
@@ -969,6 +976,8 @@ class DefaultRequirements(SuiteRequirements):
             "mariadb",
             "sqlite+aiosqlite",
             "sqlite+pysqlite",
+            "sqlite+pysqlite_numeric",
+            "sqlite+pysqlite_dollar",
             "sqlite+pysqlcipher",
             "mssql",
         )

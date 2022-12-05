@@ -371,6 +371,22 @@ def _setup_options(opt, file_config):
     options = opt
 
 
+@pre
+def _register_sqlite_numeric_dialect(opt, file_config):
+    from sqlalchemy.dialects import registry
+
+    registry.register(
+        "sqlite.pysqlite_numeric",
+        "sqlalchemy.dialects.sqlite.pysqlite",
+        "_SQLiteDialect_pysqlite_numeric",
+    )
+    registry.register(
+        "sqlite.pysqlite_dollar",
+        "sqlalchemy.dialects.sqlite.pysqlite",
+        "_SQLiteDialect_pysqlite_dollar",
+    )
+
+
 @post
 def __ensure_cext(opt, file_config):
     if os.environ.get("REQUIRE_SQLALCHEMY_CEXT", "0") == "1":

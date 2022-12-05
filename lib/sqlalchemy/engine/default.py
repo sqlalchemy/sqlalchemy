@@ -320,7 +320,12 @@ class DefaultDialect(Dialect):
             self.paramstyle = self.dbapi.paramstyle
         else:
             self.paramstyle = self.default_paramstyle
-        self.positional = self.paramstyle in ("qmark", "format", "numeric")
+        self.positional = self.paramstyle in (
+            "qmark",
+            "format",
+            "numeric",
+            "numeric_dollar",
+        )
         self.identifier_preparer = self.preparer(self)
         self._on_connect_isolation_level = isolation_level
 

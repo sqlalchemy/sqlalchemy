@@ -3322,7 +3322,7 @@ class ExpressionTest(
         elif expression_type.right_side:
             expr = (column("x", Integer) == Widget(52)).right
         else:
-            assert False
+            expression_type.fail()
 
         if secondary_adapt:
             is_(expr.type._type_affinity, String)
