@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   run-test:
-    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    name: test-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -95,7 +95,7 @@ jobs:
         continue-on-error: ${{ matrix.python-version == 'pypy-3.9' }}
 
   run-test-arm64:
-    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
+    name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
