@@ -57,10 +57,10 @@ if TYPE_CHECKING:
     from .mapper import Mapper
     from .query import Query
     from .relationships import _LazyLoadArgumentType
-    from .relationships import _ORMBackrefArgument
     from .relationships import _ORMColCollectionArgument
     from .relationships import _ORMOrderByArgument
     from .relationships import _RelationshipJoinConditionArgument
+    from .relationships import ORMBackrefArgument
     from .session import _SessionBind
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _FromClauseArgument
@@ -781,7 +781,7 @@ def relationship(
     secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
     back_populates: Optional[str] = None,
     order_by: _ORMOrderByArgument = False,
-    backref: Optional[_ORMBackrefArgument] = None,
+    backref: Optional[ORMBackrefArgument] = None,
     overlaps: Optional[str] = None,
     post_update: bool = False,
     cascade: str = "save-update, merge",
@@ -1898,7 +1898,7 @@ def dynamic_loader(
     return relationship(argument, **kw)
 
 
-def backref(name: str, **kwargs: Any) -> _ORMBackrefArgument:
+def backref(name: str, **kwargs: Any) -> ORMBackrefArgument:
     """When using the :paramref:`_orm.relationship.backref` parameter,
     provides specific parameters to be used when the new
     :func:`_orm.relationship` is generated.
