@@ -412,7 +412,7 @@ illustrated by the code example below::
         # suppose the database has been restarted.
         c.execute(text("SELECT * FROM table"))
         c.close()
-    except exc.DBAPIError, e:
+    except exc.DBAPIError as e:
         # an exception is raised, Connection is invalidated.
         if e.connection_invalidated:
             print("Connection was invalidated!")
