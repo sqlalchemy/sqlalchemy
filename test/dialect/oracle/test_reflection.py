@@ -622,7 +622,7 @@ class ViewReflectionTest(fixtures.TestBase):
         insp = inspect(connection)
         eq_(insp.get_table_names(), ["tbl"])
         eq_(insp.get_view_names(), ["tbl_plain_v"])
-        eq_(insp.get_materialized_view_names(), ["tbl_v", "tbl_v2"])
+        eq_(sorted(insp.get_materialized_view_names()), ["tbl_v", "tbl_v2"])
         eq_(
             insp.get_view_names(schema=testing.config.test_schema),
             ["schema_view"],
