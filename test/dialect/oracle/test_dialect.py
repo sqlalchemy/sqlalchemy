@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import itertools
 import re
 
 from sqlalchemy import bindparam
@@ -1058,7 +1059,7 @@ class TableValuedTest(fixtures.TestBase):
         connection.exec_driver_sql(
             r"""
 CREATE OR REPLACE FUNCTION scalar_strings (
-   count_in IN INTEGER)
+   count_in IN INTEGER, string_in IN VARCHAR2)
    RETURN strings_t
    AUTHID DEFINER
 IS
@@ -1068,7 +1069,7 @@ BEGIN
 
    FOR indx IN 1 .. count_in
    LOOP
-      l_strings (indx) := 'some string';
+      l_strings (indx) := string_in;
    END LOOP;
 
    RETURN l_strings;
@@ -1118,7 +1119,8 @@ END;
     def test_scalar_strings_control(self, scalar_strings, connection):
         result = (
             connection.exec_driver_sql(
-                "SELECT COLUMN_VALUE my_string FROM TABLE (scalar_strings (5))"
+                "SELECT COLUMN_VALUE my_string FROM TABLE "
+                "(scalar_strings (5, 'some string'))"
             )
             .scalars()
             .all()
@@ -1129,7 +1131,7 @@ END;
         result = (
             connection.exec_driver_sql(
                 "SELECT COLUMN_VALUE anon_1 "
-                "FROM TABLE (scalar_strings (5)) anon_1"
+                "FROM TABLE (scalar_strings (5, 'some string')) anon_1"
             )
             .scalars()
             .all()
@@ -1137,7 +1139,7 @@ END;
         eq_(result, ["some string"] * 5)
 
     def test_scalar_strings(self, scalar_strings, connection):
-        fn = func.scalar_strings(5)
+        fn = func.scalar_strings(5, "some string")
         result = connection.execute(select(fn.column_valued())).scalars().all()
         eq_(result, ["some string"] * 5)
 
@@ -1151,6 +1153,15 @@ END;
         fn = func.three_pairs().table_valued("string1", "string2")
         result = connection.execute(select(fn.c.string1, fn.c.string2)).all()
         eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])
+
+    def test_two_independent_tables(self, scalar_strings, connection):
+        fn1 = func.scalar_strings(5, "string one").column_valued()
+        fn2 = func.scalar_strings(3, "string two").column_valued()
+        result = connection.execute(select(fn1, fn2).where(fn1 != fn2)).all()
+        eq_(
+            result,
+            list(itertools.product(["string one"] * 5, ["string two"] * 3)),
+        )
 
 
 class OptimizedFetchLimitOffsetTest(test_select.FetchLimitOffsetTest):

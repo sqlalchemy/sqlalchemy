@@ -2,8 +2,11 @@
     :tags: bug, sql
     :tickets: 8827
 
-    Fixed a series of issues regarding positionally rendered bound parameters,
-    such as those used for SQLite, asyncpg, MySQL and others. Some compiled
-    forms would not maintain the order of parameters correctly, such as the
-    PostgreSQL ``regexp_replace()`` function as well as within the "nesting"
-    feature of the :class:`.CTE` construct first introduced in :ticket:`4123`.
+    Fixed a series of issues regarding the position and sometimes the identity
+    of rendered bound parameters, such as those used for SQLite, asyncpg,
+    MySQL, Oracle and others. Some compiled forms would not maintain the order
+    of parameters correctly, such as the PostgreSQL ``regexp_replace()``
+    function, the "nesting" feature of the :class:`.CTE` construct first
+    introduced in :ticket:`4123`, and selectable tables formed by using the
+    :meth:`.FunctionElement.column_valued` method with Oracle.
+

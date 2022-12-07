@@ -14,6 +14,7 @@ from sqlalchemy.testing import requires
 
 class DocTest(fixtures.TestBase):
     __requires__ = ("python3",)
+    __only_on__ = "sqlite+pysqlite"
 
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")

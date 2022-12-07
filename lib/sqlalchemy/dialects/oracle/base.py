@@ -948,7 +948,7 @@ class OracleCompiler(compiler.SQLCompiler):
         text = super(OracleCompiler, self).visit_table_valued_column(
             element, **kw
         )
-        text = "COLUMN_VALUE " + text
+        text = text + ".COLUMN_VALUE"
         return text
 
     def default_from(self):
