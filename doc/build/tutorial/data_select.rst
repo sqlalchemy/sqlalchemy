@@ -1753,7 +1753,7 @@ it is usable for custom SQL functions::
     >>> from sqlalchemy.dialects import oracle
     >>> stmt = select(func.scalar_strings(5).column_valued("s"))
     >>> print(stmt.compile(dialect=oracle.dialect()))
-    SELECT COLUMN_VALUE s
+    SELECT s.COLUMN_VALUE
     FROM TABLE (scalar_strings(:scalar_strings_1)) s
 
 
