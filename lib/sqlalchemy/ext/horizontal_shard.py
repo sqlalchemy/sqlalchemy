@@ -31,8 +31,10 @@ from .. import event
 from .. import exc
 from .. import inspect
 from .. import util
+from ..orm import PassiveFlag
 from ..orm.query import Query
 from ..orm.session import Session
+from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ..engine.base import Connection
@@ -41,7 +43,6 @@ if TYPE_CHECKING:
     from ..engine.result import IteratorResult
     from ..engine.result import Result
     from ..orm import LoaderCallableStatus
-    from ..orm import PassiveFlag
     from ..orm._typing import _O
     from ..orm.bulk_persistence import BulkUDCompileState
     from ..orm.context import QueryContext
@@ -53,7 +54,6 @@ if TYPE_CHECKING:
     from ..orm.state import InstanceState
     from ..sql._typing import _TP
     from ..sql.elements import ClauseElement
-    from ..util.typing import Protocol
 
 
 __all__ = ["ShardedSession", "ShardedQuery"]
