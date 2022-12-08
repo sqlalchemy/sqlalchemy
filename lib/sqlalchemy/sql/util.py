@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from collections import deque
+import copy
 from itertools import chain
 import typing
 from typing import AbstractSet
@@ -1064,6 +1065,16 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
     """
 
+    __slots__ = (
+        "__traverse_options__",
+        "selectable",
+        "include_fn",
+        "exclude_fn",
+        "equivalents",
+        "adapt_on_names",
+        "adapt_from_selectables",
+    )
+
     def __init__(
         self,
         selectable: Selectable,
@@ -1136,10 +1147,14 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
         # TODO: cython candidate
 
+        if self.include_fn and not self.include_fn(col):  # type: ignore
+            return None
+        elif self.exclude_fn and self.exclude_fn(col):  # type: ignore
+            return None
+
         if isinstance(col, FromClause) and not isinstance(
             col, functions.FunctionElement
         ):
-
             if self.selectable.is_derived_from(col):
                 if self.adapt_from_selectables:
                     for adp in self.adapt_from_selectables:
@@ -1174,6 +1189,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
             # however the logic to check this moved here as of #7154 so that
             # it is made specific to SQL rewriting and not all column
             # correspondence
+
             return None
 
         if "adapt_column" in col._annotations:
@@ -1192,14 +1208,9 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if TYPE_CHECKING:
             assert isinstance(col, KeyedColumnElement)
 
-        if self.include_fn and not self.include_fn(col):
-            return None
-        elif self.exclude_fn and self.exclude_fn(col):
-            return None
-        else:
-            return self._corresponding_column(  # type: ignore
-                col, require_embedded=True
-            )
+        return self._corresponding_column(  # type: ignore
+            col, require_embedded=True
+        )
 
 
 class _ColumnLookup(Protocol):
@@ -1254,6 +1265,14 @@ class ColumnAdapter(ClauseAdapter):
 
     """
 
+    __slots__ = (
+        "columns",
+        "adapt_required",
+        "allow_label_resolve",
+        "_wrap",
+        "__weakref__",
+    )
+
     columns: _ColumnLookup
 
     def __init__(
@@ -1268,8 +1287,7 @@ class ColumnAdapter(ClauseAdapter):
         anonymize_labels: bool = False,
         adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
     ):
-        ClauseAdapter.__init__(
-            self,
+        super().__init__(
             selectable,
             equivalents,
             include_fn=include_fn,
@@ -1302,8 +1320,7 @@ class ColumnAdapter(ClauseAdapter):
             return self.columns[key]
 
     def wrap(self, adapter):
-        ac = self.__class__.__new__(self.__class__)
-        ac.__dict__.update(self.__dict__)
+        ac = copy.copy(self)
         ac._wrap = adapter
         ac.columns = util.WeakPopulateDict(ac._locate_col)  # type: ignore
         if ac.include_fn or ac.exclude_fn:
@@ -1391,15 +1408,6 @@ class ColumnAdapter(ClauseAdapter):
             c._allow_label_resolve = self.allow_label_resolve
 
         return c
-
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d["columns"]
-        return d
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self.columns = util.WeakPopulateDict(self._locate_col)  # type: ignore
 
 
 def _offset_or_limit_clause(

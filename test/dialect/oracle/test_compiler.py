@@ -1796,8 +1796,19 @@ class TableValuedFunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         stmt = select(fn.alias().column)
         self.assert_compile(
             stmt,
-            "SELECT COLUMN_VALUE anon_1 "
+            "SELECT anon_1.COLUMN_VALUE "
             "FROM TABLE (scalar_strings(:scalar_strings_1)) anon_1",
+        )
+
+    def test_scalar_alias_multi_columns(self):
+        fn1 = func.scalar_strings(5)
+        fn2 = func.scalar_strings(3)
+        stmt = select(fn1.alias().column, fn2.alias().column)
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.COLUMN_VALUE, anon_2.COLUMN_VALUE FROM TABLE "
+            "(scalar_strings(:scalar_strings_1)) anon_1, "
+            "TABLE (scalar_strings(:scalar_strings_2)) anon_2",
         )
 
     def test_column_valued(self):
@@ -1805,8 +1816,19 @@ class TableValuedFunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         stmt = select(fn.column_valued())
         self.assert_compile(
             stmt,
-            "SELECT COLUMN_VALUE anon_1 "
+            "SELECT anon_1.COLUMN_VALUE "
             "FROM TABLE (scalar_strings(:scalar_strings_1)) anon_1",
+        )
+
+    def test_multi_column_valued(self):
+        fn1 = func.scalar_strings(5)
+        fn2 = func.scalar_strings(3)
+        stmt = select(fn1.column_valued(), fn2.column_valued().label("x"))
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.COLUMN_VALUE, anon_2.COLUMN_VALUE AS x FROM "
+            "TABLE (scalar_strings(:scalar_strings_1)) anon_1, "
+            "TABLE (scalar_strings(:scalar_strings_2)) anon_2",
         )
 
     def test_table_valued(self):

@@ -2399,3 +2399,158 @@ class CorrelateExceptWPolyAdaptTest(
             "LEFT OUTER JOIN s2 ON s1.id = s2.id "
             "JOIN c ON c.id = s1.common_id WHERE c.id = :id_1",
         )
+
+
+class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
+    """tests for #8168 which was fixed by #8456"""
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def mapping(self, decl_base):
+        Base = decl_base
+
+        def go(scenario, use_poly, use_poly_on_retailer):
+            class Customer(Base):
+                __tablename__ = "customer"
+                id = Column(Integer, primary_key=True)
+                type = Column(String(20))
+
+                __mapper_args__ = {
+                    "polymorphic_on": "type",
+                    "polymorphic_identity": "customer",
+                }
+
+            class Store(Customer):
+                __tablename__ = "store"
+                id = Column(
+                    Integer, ForeignKey("customer.id"), primary_key=True
+                )
+                retailer_id = Column(Integer, ForeignKey("retailer.id"))
+                retailer = relationship(
+                    "Retailer",
+                    back_populates="stores",
+                    foreign_keys=[retailer_id],
+                )
+
+                __mapper_args__ = {
+                    "polymorphic_identity": "store",
+                    "polymorphic_load": "inline" if use_poly else None,
+                }
+
+            class Retailer(Customer):
+                __tablename__ = "retailer"
+                id = Column(
+                    Integer, ForeignKey("customer.id"), primary_key=True
+                )
+                stores = relationship(
+                    "Store",
+                    back_populates="retailer",
+                    foreign_keys=[Store.retailer_id],
+                )
+
+                if scenario.mapped_cls:
+                    store_tgt = corr_except = Store
+
+                elif scenario.table:
+                    corr_except = Store.__table__
+                    store_tgt = Store.__table__.c
+                elif scenario.table_alias:
+                    corr_except = Store.__table__.alias()
+                    store_tgt = corr_except.c
+                else:
+                    scenario.fail()
+
+                store_count = column_property(
+                    select(func.count(store_tgt.id))
+                    .where(store_tgt.retailer_id == id)
+                    .correlate_except(corr_except)
+                    .scalar_subquery()
+                )
+
+                __mapper_args__ = {
+                    "polymorphic_identity": "retailer",
+                    "polymorphic_load": "inline"
+                    if use_poly_on_retailer
+                    else None,
+                }
+
+            return Customer, Store, Retailer
+
+        yield go
+
+    @testing.variation("scenario", ["mapped_cls", "table", "table_alias"])
+    @testing.variation("use_poly", [True, False])
+    @testing.variation("use_poly_on_retailer", [True, False])
+    def test_select_attr_only(
+        self, scenario, use_poly, use_poly_on_retailer, mapping
+    ):
+        Customer, Store, Retailer = mapping(
+            scenario, use_poly, use_poly_on_retailer
+        )
+
+        if scenario.mapped_cls:
+            self.assert_compile(
+                select(Retailer.store_count).select_from(Retailer),
+                "SELECT (SELECT count(store.id) AS count_1 "
+                "FROM customer JOIN store ON customer.id = store.id "
+                "WHERE store.retailer_id = retailer.id) AS anon_1 "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        elif scenario.table:
+            self.assert_compile(
+                select(Retailer.store_count).select_from(Retailer),
+                "SELECT (SELECT count(store.id) AS count_1 "
+                "FROM store "
+                "WHERE store.retailer_id = retailer.id) AS anon_1 "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        elif scenario.table_alias:
+            self.assert_compile(
+                select(Retailer.store_count).select_from(Retailer),
+                "SELECT (SELECT count(store_1.id) AS count_1 FROM store "
+                "AS store_1 "
+                "WHERE store_1.retailer_id = retailer.id) AS anon_1 "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        else:
+            scenario.fail()
+
+    @testing.variation("scenario", ["mapped_cls", "table", "table_alias"])
+    @testing.variation("use_poly", [True, False])
+    @testing.variation("use_poly_on_retailer", [True, False])
+    def test_select_cls(
+        self, scenario, mapping, use_poly, use_poly_on_retailer
+    ):
+        Customer, Store, Retailer = mapping(
+            scenario, use_poly, use_poly_on_retailer
+        )
+
+        if scenario.mapped_cls:
+            self.assert_compile(
+                select(Retailer),
+                "SELECT (SELECT count(store.id) AS count_1 FROM customer "
+                "JOIN store ON customer.id = store.id "
+                "WHERE store.retailer_id = retailer.id) AS anon_1, "
+                "retailer.id, customer.id AS id_1, customer.type "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        elif scenario.table:
+            self.assert_compile(
+                select(Retailer),
+                "SELECT (SELECT count(store.id) AS count_1 FROM store "
+                "WHERE store.retailer_id = retailer.id) AS anon_1, "
+                "retailer.id, customer.id AS id_1, customer.type "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        elif scenario.table_alias:
+            self.assert_compile(
+                select(Retailer),
+                "SELECT (SELECT count(store_1.id) AS count_1 "
+                "FROM store AS store_1 WHERE store_1.retailer_id = "
+                "retailer.id) AS anon_1, retailer.id, customer.id AS id_1, "
+                "customer.type "
+                "FROM customer JOIN retailer ON customer.id = retailer.id",
+            )
+        else:
+            scenario.fail()

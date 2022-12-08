@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 8853
-
-    Fixed regression in 2.0.0b3 caused by :ticket:`8759` where indicating the
-    :class:`.Mapped` name using a qualified name such as
-    ``sqlalchemy.orm.Mapped`` would fail to be recognized by Declarative as
-    indicating the :class:`.Mapped` construct.

@@ -8,9 +8,11 @@
 
 from __future__ import annotations
 
+import enum
 import re
 import types
 import typing
+from typing import AbstractSet
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -107,6 +109,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import _ColumnsClauseElement
     from ..sql.selectable import Alias
     from ..sql.selectable import Select
+    from ..sql.selectable import Selectable
     from ..sql.selectable import Subquery
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
@@ -440,26 +443,124 @@ def identity_key(
         raise sa_exc.ArgumentError("class or instance is required")
 
 
+class _TraceAdaptRole(enum.Enum):
+    """Enumeration of all the use cases for ORMAdapter.
+
+    ORMAdapter remains one of the most complicated aspects of the ORM, as it is
+    used for in-place adaption of column expressions to be applied to a SELECT,
+    replacing :class:`.Table` and other objects that are mapped to classes with
+    aliases of those tables in the case of joined eager loading, or in the case
+    of polymorphic loading as used with concrete mappings or other custom "with
+    polymorphic" parameters, with whole user-defined subqueries. The
+    enumerations provide an overview of all the use cases used by ORMAdapter, a
+    layer of formality as to the introduction of new ORMAdapter use cases (of
+    which none are anticipated), as well as a means to trace the origins of a
+    particular ORMAdapter within runtime debugging.
+
+    SQLAlchemy 2.0 has greatly scaled back ORM features which relied heavily on
+    open-ended statement adaption, including the ``Query.with_polymorphic()``
+    method and the ``Query.select_from_entity()`` methods, favoring
+    user-explicit aliasing schemes using the ``aliased()`` and
+    ``with_polymorphic()`` standalone constructs; these still use adaption,
+    however the adaption is applied in a narrower scope.
+
+    """
+
+    # aliased() use that is used to adapt individual attributes at query
+    # construction time
+    ALIASED_INSP = enum.auto()
+
+    # joinedload cases; typically adapt an ON clause of a relationship
+    # join
+    JOINEDLOAD_USER_DEFINED_ALIAS = enum.auto()
+    JOINEDLOAD_PATH_WITH_POLYMORPHIC = enum.auto()
+    JOINEDLOAD_MEMOIZED_ADAPTER = enum.auto()
+
+    # polymorphic cases - these are complex ones that replace FROM
+    # clauses, replacing tables with subqueries
+    MAPPER_POLYMORPHIC_ADAPTER = enum.auto()
+    WITH_POLYMORPHIC_ADAPTER = enum.auto()
+    WITH_POLYMORPHIC_ADAPTER_RIGHT_JOIN = enum.auto()
+    DEPRECATED_JOIN_ADAPT_RIGHT_SIDE = enum.auto()
+
+    # the from_statement() case, used only to adapt individual attributes
+    # from a given statement to local ORM attributes at result fetching
+    # time.  assigned to ORMCompileState._from_obj_alias
+    ADAPT_FROM_STATEMENT = enum.auto()
+
+    # the joinedload for queries that have LIMIT/OFFSET/DISTINCT case;
+    # the query is placed inside of a subquery with the LIMIT/OFFSET/etc.,
+    # joinedloads are then placed on the outside.
+    # assigned to ORMCompileState.compound_eager_adapter
+    COMPOUND_EAGER_STATEMENT = enum.auto()
+
+    # the legacy Query._set_select_from() case.
+    # this is needed for Query's set operations (i.e. UNION, etc. )
+    # as well as "legacy from_self()", which while removed from 2.0 as
+    # public API, is used for the Query.count() method.  this one
+    # still does full statement traversal
+    # assigned to ORMCompileState._from_obj_alias
+    LEGACY_SELECT_FROM_ALIAS = enum.auto()
+
+
+class ORMStatementAdapter(sql_util.ColumnAdapter):
+    """ColumnAdapter which includes a role attribute."""
+
+    __slots__ = ("role",)
+
+    def __init__(
+        self,
+        role: _TraceAdaptRole,
+        selectable: Selectable,
+        *,
+        equivalents: Optional[_EquivalentColumnMap] = None,
+        adapt_required: bool = False,
+        allow_label_resolve: bool = True,
+        anonymize_labels: bool = False,
+        adapt_on_names: bool = False,
+        adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
+    ):
+        self.role = role
+        super().__init__(
+            selectable,
+            equivalents=equivalents,
+            adapt_required=adapt_required,
+            allow_label_resolve=allow_label_resolve,
+            anonymize_labels=anonymize_labels,
+            adapt_on_names=adapt_on_names,
+            adapt_from_selectables=adapt_from_selectables,
+        )
+
+
 class ORMAdapter(sql_util.ColumnAdapter):
     """ColumnAdapter subclass which excludes adaptation of entities from
     non-matching mappers.
 
     """
 
+    __slots__ = ("role", "mapper", "is_aliased_class", "aliased_insp")
+
     is_aliased_class: bool
     aliased_insp: Optional[AliasedInsp[Any]]
 
     def __init__(
         self,
+        role: _TraceAdaptRole,
         entity: _InternalEntityType[Any],
+        *,
         equivalents: Optional[_EquivalentColumnMap] = None,
         adapt_required: bool = False,
         allow_label_resolve: bool = True,
         anonymize_labels: bool = False,
+        selectable: Optional[Selectable] = None,
+        limit_on_entity: bool = True,
+        adapt_on_names: bool = False,
+        adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
     ):
-
+        self.role = role
         self.mapper = entity.mapper
-        selectable = entity.selectable
+        if selectable is None:
+            selectable = entity.selectable
         if insp_is_aliased_class(entity):
             self.is_aliased_class = True
             self.aliased_insp = entity
@@ -467,14 +568,15 @@ class ORMAdapter(sql_util.ColumnAdapter):
             self.is_aliased_class = False
             self.aliased_insp = None
 
-        sql_util.ColumnAdapter.__init__(
-            self,
+        super().__init__(
             selectable,
             equivalents,
             adapt_required=adapt_required,
             allow_label_resolve=allow_label_resolve,
             anonymize_labels=anonymize_labels,
-            include_fn=self._include_fn,
+            include_fn=self._include_fn if limit_on_entity else None,
+            adapt_on_names=adapt_on_names,
+            adapt_from_selectables=adapt_from_selectables,
         )
 
     def _include_fn(self, elem):
@@ -767,7 +869,7 @@ class AliasedInsp(
 
     mapper: Mapper[_O]
     selectable: FromClause
-    _adapter: sql_util.ColumnAdapter
+    _adapter: ORMAdapter
     with_polymorphic_mappers: Sequence[Mapper[Any]]
     _with_polymorphic_entities: Sequence[AliasedInsp[Any]]
 
@@ -833,8 +935,10 @@ class AliasedInsp(
             self._is_with_polymorphic = False
             self.with_polymorphic_mappers = [mapper]
 
-        self._adapter = sql_util.ColumnAdapter(
-            selectable,
+        self._adapter = ORMAdapter(
+            _TraceAdaptRole.ALIASED_INSP,
+            mapper,
+            selectable=selectable,
             equivalents=mapper._equivalent_columns,
             adapt_on_names=adapt_on_names,
             anonymize_labels=True,
@@ -846,6 +950,7 @@ class AliasedInsp(
                 for m in self.with_polymorphic_mappers
                 if not adapt_on_names
             },
+            limit_on_entity=False,
         )
 
         if nest_adapters:

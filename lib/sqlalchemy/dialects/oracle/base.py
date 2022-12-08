@@ -859,7 +859,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_table_valued_column(self, element, **kw):
         text = super().visit_table_valued_column(element, **kw)
-        text = "COLUMN_VALUE " + text
+        text = text + ".COLUMN_VALUE"
         return text
 
     def default_from(self):

@@ -1,8 +1,0 @@
-.. change::
-    :tags: asyncpg
-    :tickets: 8926
-
-    Changed the paramstyle used by asyncpg from ``format`` to
-    ``numeric_dollar``. This has two main benefits since it does not require
-    additional processing of the statement and allows for duplicate parameters
-    to be present in the statements.

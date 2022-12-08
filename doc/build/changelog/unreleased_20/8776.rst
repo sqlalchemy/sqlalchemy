@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 8776
-
-    Fixed issue where passing a callbale function returning an iterable
-    of column elements to :paramref:`_orm.relationship.order_by` was
-    flagged as an error in type checkers.
