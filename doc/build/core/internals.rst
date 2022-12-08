@@ -43,6 +43,9 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.engine.ExecutionContext
     :members:
 
+.. autoclass:: sqlalchemy.sql.compiler.ExpandedState
+    :members:
+
 
 .. autoclass:: sqlalchemy.sql.compiler.GenericTypeCompiler
     :members:

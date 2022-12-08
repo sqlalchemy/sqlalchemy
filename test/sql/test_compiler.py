@@ -8,8 +8,11 @@ styling and coherent test organization.
 
 """
 
+from __future__ import annotations
+
 import datetime
 import decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import alias
 from sqlalchemy import and_
@@ -93,11 +96,17 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.types import UserDefinedType
+
+
+if TYPE_CHECKING:
+    from sqlalchemy import Select
+
 
 table1 = table(
     "mytable",
@@ -4458,7 +4467,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "WHERE t.x = '10') AS anon_1 UNION SELECT "
             "(SELECT 1 FROM t WHERE t.x = '10') AS anon_1) AS anon_2",
         )
-        eq_(compiled.construct_params(), {"param_1": "10"})
+        eq_(compiled.construct_params(_no_postcompile=True), {"param_1": "10"})
 
     def test_construct_params_repeated_postcompile_params_two(self):
         """test for :ticket:`6202` two - same param name used twice
@@ -4491,7 +4500,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "FROM t WHERE t.x = '10') AS anon_1 UNION SELECT "
             "(SELECT 1 FROM t WHERE t.x = '10') AS anon_3) AS anon_2",
         )
-        eq_(compiled.construct_params(), {"param_1": "10"})
+        eq_(compiled.construct_params(_no_postcompile=True), {"param_1": "10"})
 
     def test_construct_params_positional_plain_repeated(self):
         t = table("t", column("x"))
@@ -4515,7 +4524,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "UNION SELECT (SELECT 1 FROM t WHERE t.x = %s AND t.x = '12') "
             "AS anon_1) AS anon_2",
         )
-        eq_(compiled.construct_params(), {"param_1": "10", "param_2": "12"})
+        eq_(
+            compiled.construct_params(_no_postcompile=True),
+            {"param_1": "10", "param_2": "12"},
+        )
         eq_(compiled.positiontup, ["param_1", "param_1"])
 
     def test_tuple_clauselist_in(self):
@@ -4958,22 +4970,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             table1.c.name.in_(bindparam(paramname, value=["a", "b"]))
         )
 
-        # NOTE: below the rendered params are just what
-        # render_postcompile will do right now
-        # if you run construct_params().  render_postcompile mode
-        # is not actually used by the execution internals, it's for
-        # user-facing compilation code.  So this is likely a
-        # current limitation of construct_params() which is not
-        # doing the full blown postcompile; just assert that's
-        # what it does for now.  it likely should be corrected
-        # to make more sense.
         if paramstyle.qmark:
             self.assert_compile(
                 stmt,
                 "SELECT mytable.myid FROM mytable "
                 "WHERE mytable.name IN (?, ?)",
-                params={paramname: ["y", "z"]},
-                checkpositional=(["y", "z"], ["y", "z"]),
+                params={paramname: ["y", "z", "q"]},
+                checkpositional=("y", "z", "q"),
                 dialect="sqlite",
                 render_postcompile=True,
             )
@@ -4982,8 +4985,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 stmt,
                 "SELECT mytable.myid FROM mytable "
                 "WHERE mytable.name IN (:1, :2)",
-                params={paramname: ["y", "z"]},
-                checkpositional=(["y", "z"], ["y", "z"]),
+                params={paramname: ["y", "z", "q"]},
+                checkpositional=("y", "z", "q"),
                 dialect=sqlite.dialect(paramstyle="numeric"),
                 render_postcompile=True,
             )
@@ -4994,8 +4997,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 "(:%s_1, :%s_2)" % (expected, expected),
                 params={paramname: ["y", "z"]},
                 checkparams={
-                    "%s_1" % expected: ["y", "z"],
-                    "%s_2" % expected: ["y", "z"],
+                    "%s_1" % expected: "y",
+                    "%s_2" % expected: "z",
                 },
                 dialect="default",
                 render_postcompile=True,
@@ -5071,16 +5074,6 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             .where(table1.c.myid == 9)
         ).order_by("myid")
 
-        # NOTE: below the rendered params are just what
-        # render_postcompile will do right now
-        # if you run construct_params().  render_postcompile mode
-        # is not actually used by the execution internals, it's for
-        # user-facing compilation code.  So this is likely a
-        # current limitation of construct_params() which is not
-        # doing the full blown postcompile; just assert that's
-        # what it does for now.  it likely should be corrected
-        # to make more sense.
-
         if paramstyle.qmark:
             self.assert_compile(
                 stmt,
@@ -5095,16 +5088,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 "mytable.name IN (?)) "
                 "AND mytable.myid = ? ORDER BY myid",
                 params={"uname": ["y", "z"], "uname2": ["a"]},
-                checkpositional=(
-                    ["y", "z"],
-                    ["y", "z"],
-                    ["a"],
-                    8,
-                    ["y", "z"],
-                    ["y", "z"],
-                    ["a"],
-                    9,
-                ),
+                checkpositional=("y", "z", "a", 8, "y", "z", "a", 9),
                 dialect="sqlite",
                 render_postcompile=True,
             )
@@ -5122,7 +5106,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 "mytable.name IN (:5)) "
                 "AND mytable.myid = :2 ORDER BY myid",
                 params={"uname": ["y", "z"], "uname2": ["a"]},
-                checkpositional=(8, 9, ["y", "z"], ["y", "z"], ["a"]),
+                checkpositional=(8, 9, "y", "z", "a"),
                 dialect=sqlite.dialect(paramstyle="numeric"),
                 render_postcompile=True,
             )
@@ -5141,13 +5125,11 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 "AND mytable.myid = :myid_2 ORDER BY myid",
                 params={"uname": ["y", "z"], "uname2": ["a"]},
                 checkparams={
-                    "uname": ["y", "z"],
-                    "uname2": ["a"],
-                    "uname_1": ["y", "z"],
-                    "uname_2": ["y", "z"],
-                    "uname2_1": ["a"],
                     "myid_1": 8,
                     "myid_2": 9,
+                    "uname_1": "y",
+                    "uname_2": "z",
+                    "uname2_1": "a",
                 },
                 dialect="default",
                 render_postcompile=True,
@@ -5168,6 +5150,369 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             checkpositional=("a", 1, 2),
             dialect=default.DefaultDialect(paramstyle="numeric_dollar"),
             render_postcompile=True,
+        )
+
+
+class CompileUXTest(fixtures.TestBase):
+    """tests focused on calling stmt.compile() directly, user cases"""
+
+    @testing.fixture
+    def render_postcompile_fixture(self):
+        return (
+            select(func.count(1))
+            .where(column("q") == "x")
+            .where(column("z").in_([1, 2, 3]))
+            .where(column("z_tuple").in_([(1, "a"), (2, "b"), (3, "c")]))
+            .where(
+                column("y").op("foobar")(
+                    bindparam(
+                        "key", value=[("1", "2"), ("3", "4")], expanding=True
+                    )
+                )
+            )
+        )
+
+    def test_render_postcompile_default_stmt(self, render_postcompile_fixture):
+        stmt = render_postcompile_fixture
+
+        compiled = stmt.compile(compile_kwargs={"render_postcompile": True})
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT count(:count_2) AS count_1 WHERE q = :q_1 AND z "
+            "IN (:z_1_1, :z_1_2, :z_1_3) AND z_tuple IN "
+            "((:z_tuple_1_1_1, :z_tuple_1_1_2), "
+            "(:z_tuple_1_2_1, :z_tuple_1_2_2), "
+            "(:z_tuple_1_3_1, :z_tuple_1_3_2)) "
+            "AND (y foobar ((:key_1_1, :key_1_2), (:key_2_1, :key_2_2)))",
+        )
+
+    def test_render_postcompile_named_parameters(
+        self, render_postcompile_fixture
+    ):
+        stmt = render_postcompile_fixture
+
+        compiled = stmt.compile(compile_kwargs={"render_postcompile": True})
+        is_none(compiled.positiontup)
+        eq_(
+            compiled.construct_params(),
+            {
+                "count_2": 1,
+                "q_1": "x",
+                "z_1_1": 1,
+                "z_1_2": 2,
+                "z_1_3": 3,
+                "z_tuple_1_1_1": 1,
+                "z_tuple_1_1_2": "a",
+                "z_tuple_1_2_1": 2,
+                "z_tuple_1_2_2": "b",
+                "z_tuple_1_3_1": 3,
+                "z_tuple_1_3_2": "c",
+                "key_1_1": "1",
+                "key_1_2": "2",
+                "key_2_1": "3",
+                "key_2_2": "4",
+            },
+        )
+
+    def test_render_postcompile_no_new_params(
+        self, render_postcompile_fixture
+    ):
+        stmt = render_postcompile_fixture
+
+        compiled = stmt.compile(compile_kwargs={"render_postcompile": True})
+        params = {"q_1": "g"}
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "can't construct new parameters when render_postcompile is used; "
+            "the statement is hard-linked to the original parameters.",
+        ):
+            compiled.construct_params(params)
+
+    @testing.variation("render_postcompile", [True, False])
+    def test_new_expanded_state_no_params(
+        self, render_postcompile_fixture: Select, render_postcompile
+    ):
+        stmt = render_postcompile_fixture
+
+        compiled = stmt.compile(
+            compile_kwargs={"render_postcompile": render_postcompile}
+        )
+        is_none(compiled.positiontup)
+
+        es = compiled.construct_expanded_state()
+
+        is_none(compiled.positiontup)
+
+        eq_ignore_whitespace(
+            es.statement,
+            "SELECT count(:count_2) AS count_1 WHERE q = :q_1 AND z "
+            "IN (:z_1_1, :z_1_2, :z_1_3) AND z_tuple IN "
+            "((:z_tuple_1_1_1, :z_tuple_1_1_2), "
+            "(:z_tuple_1_2_1, :z_tuple_1_2_2), "
+            "(:z_tuple_1_3_1, :z_tuple_1_3_2)) "
+            "AND (y foobar ((:key_1_1, :key_1_2), (:key_2_1, :key_2_2)))",
+        )
+
+        eq_(
+            es.parameters,
+            {
+                "count_2": 1,
+                "q_1": "x",
+                "z_1_1": 1,
+                "z_1_2": 2,
+                "z_1_3": 3,
+                "z_tuple_1_1_1": 1,
+                "z_tuple_1_1_2": "a",
+                "z_tuple_1_2_1": 2,
+                "z_tuple_1_2_2": "b",
+                "z_tuple_1_3_1": 3,
+                "z_tuple_1_3_2": "c",
+                "key_1_1": "1",
+                "key_1_2": "2",
+                "key_2_1": "3",
+                "key_2_2": "4",
+            },
+        )
+
+    @testing.variation("render_postcompile", [True, False])
+    @testing.variation("positional", [True, False])
+    def test_accessor_no_params(self, render_postcompile, positional):
+        stmt = select(column("q"))
+
+        positional_dialect = default.DefaultDialect(
+            paramstyle="qmark" if positional else "pyformat"
+        )
+        compiled = stmt.compile(
+            dialect=positional_dialect,
+            compile_kwargs={"render_postcompile": render_postcompile},
+        )
+        if positional:
+            eq_(compiled.positiontup, [])
+        else:
+            is_none(compiled.positiontup)
+        eq_(compiled.params, {})
+        eq_(compiled.construct_params(), {})
+
+        es = compiled.construct_expanded_state()
+        if positional:
+            eq_(es.positiontup, [])
+            eq_(es.positional_parameters, ())
+        else:
+            is_none(es.positiontup)
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "statement does not use a positional paramstyle",
+            ):
+                es.positional_parameters
+        eq_(es.parameters, {})
+
+        eq_ignore_whitespace(
+            es.statement,
+            "SELECT q",
+        )
+
+    @testing.variation("render_postcompile", [True, False])
+    def test_new_expanded_state_new_params(
+        self, render_postcompile_fixture: Select, render_postcompile
+    ):
+        stmt = render_postcompile_fixture
+
+        compiled = stmt.compile(
+            compile_kwargs={"render_postcompile": render_postcompile}
+        )
+        is_none(compiled.positiontup)
+
+        es = compiled.construct_expanded_state(
+            {
+                "z_tuple_1": [("q", "z", "p"), ("g", "h", "i")],
+                "key": ["a", "b"],
+            }
+        )
+        is_none(compiled.positiontup)
+
+        eq_ignore_whitespace(
+            es.statement,
+            "SELECT count(:count_2) AS count_1 WHERE q = :q_1 AND z IN "
+            "(:z_1_1, :z_1_2, :z_1_3) AND z_tuple IN "
+            "((:z_tuple_1_1_1, :z_tuple_1_1_2, :z_tuple_1_1_3), "
+            "(:z_tuple_1_2_1, :z_tuple_1_2_2, :z_tuple_1_2_3)) AND "
+            "(y foobar (:key_1, :key_2))",
+        )
+
+        eq_(
+            es.parameters,
+            {
+                "count_2": 1,
+                "q_1": "x",
+                "z_1_1": 1,
+                "z_1_2": 2,
+                "z_1_3": 3,
+                "z_tuple_1_1_1": "q",
+                "z_tuple_1_1_2": "z",
+                "z_tuple_1_1_3": "p",
+                "z_tuple_1_2_1": "g",
+                "z_tuple_1_2_2": "h",
+                "z_tuple_1_2_3": "i",
+                "key_1": "a",
+                "key_2": "b",
+            },
+        )
+
+    @testing.variation("render_postcompile", [True, False])
+    @testing.variation("paramstyle", ["qmark", "numeric"])
+    def test_new_expanded_state_new_positional_params(
+        self,
+        render_postcompile_fixture: Select,
+        render_postcompile,
+        paramstyle,
+    ):
+        stmt = render_postcompile_fixture
+        positional_dialect = default.DefaultDialect(paramstyle=paramstyle.name)
+
+        compiled = stmt.compile(
+            dialect=positional_dialect,
+            compile_kwargs={"render_postcompile": render_postcompile},
+        )
+
+        if render_postcompile:
+            eq_(
+                compiled.positiontup,
+                [
+                    "count_2",
+                    "q_1",
+                    "z_1_1",
+                    "z_1_2",
+                    "z_1_3",
+                    "z_tuple_1_1_1",
+                    "z_tuple_1_1_2",
+                    "z_tuple_1_2_1",
+                    "z_tuple_1_2_2",
+                    "z_tuple_1_3_1",
+                    "z_tuple_1_3_2",
+                    "key_1_1",
+                    "key_1_2",
+                    "key_2_1",
+                    "key_2_2",
+                ],
+            )
+        else:
+            eq_(
+                compiled.positiontup,
+                ["count_2", "q_1", "z_1", "z_tuple_1", "key"],
+            )
+        es = compiled.construct_expanded_state(
+            {
+                "z_tuple_1": [("q", "z", "p"), ("g", "h", "i")],
+                "key": ["a", "b"],
+            }
+        )
+        if paramstyle.qmark:
+            eq_ignore_whitespace(
+                es.statement,
+                "SELECT count(?) AS count_1 WHERE q = ? "
+                "AND z IN (?, ?, ?) AND "
+                "z_tuple IN ((?, ?, ?), (?, ?, ?)) AND (y foobar (?, ?))",
+            )
+        elif paramstyle.numeric:
+            eq_ignore_whitespace(
+                es.statement,
+                "SELECT count(:1) AS count_1 WHERE q = :2 AND z IN "
+                "(:3, :4, :5) AND z_tuple "
+                "IN ((:6, :7, :8), (:9, :10, :11)) AND (y foobar (:12, :13))",
+            )
+        else:
+            paramstyle.fail()
+
+        eq_(
+            es.parameters,
+            {
+                "count_2": 1,
+                "q_1": "x",
+                "z_1_1": 1,
+                "z_1_2": 2,
+                "z_1_3": 3,
+                "z_tuple_1_1_1": "q",
+                "z_tuple_1_1_2": "z",
+                "z_tuple_1_1_3": "p",
+                "z_tuple_1_2_1": "g",
+                "z_tuple_1_2_2": "h",
+                "z_tuple_1_2_3": "i",
+                "key_1": "a",
+                "key_2": "b",
+            },
+        )
+        eq_(
+            es.positiontup,
+            [
+                "count_2",
+                "q_1",
+                "z_1_1",
+                "z_1_2",
+                "z_1_3",
+                "z_tuple_1_1_1",
+                "z_tuple_1_1_2",
+                "z_tuple_1_1_3",
+                "z_tuple_1_2_1",
+                "z_tuple_1_2_2",
+                "z_tuple_1_2_3",
+                "key_1",
+                "key_2",
+            ],
+        )
+        eq_(
+            es.positional_parameters,
+            (1, "x", 1, 2, 3, "q", "z", "p", "g", "h", "i", "a", "b"),
+        )
+
+    def test_render_postcompile_positional_parameters(
+        self, render_postcompile_fixture
+    ):
+        stmt = render_postcompile_fixture
+
+        positional_dialect = default.DefaultDialect(paramstyle="qmark")
+        compiled = stmt.compile(
+            dialect=positional_dialect,
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_(
+            compiled.construct_params(),
+            {
+                "count_2": 1,
+                "q_1": "x",
+                "z_1_1": 1,
+                "z_1_2": 2,
+                "z_1_3": 3,
+                "z_tuple_1_1_1": 1,
+                "z_tuple_1_1_2": "a",
+                "z_tuple_1_2_1": 2,
+                "z_tuple_1_2_2": "b",
+                "z_tuple_1_3_1": 3,
+                "z_tuple_1_3_2": "c",
+                "key_1_1": "1",
+                "key_1_2": "2",
+                "key_2_1": "3",
+                "key_2_2": "4",
+            },
+        )
+        eq_(
+            compiled.positiontup,
+            [
+                "count_2",
+                "q_1",
+                "z_1_1",
+                "z_1_2",
+                "z_1_3",
+                "z_tuple_1_1_1",
+                "z_tuple_1_1_2",
+                "z_tuple_1_2_1",
+                "z_tuple_1_2_2",
+                "z_tuple_1_3_1",
+                "z_tuple_1_3_2",
+                "key_1_1",
+                "key_1_2",
+                "key_2_1",
+                "key_2_2",
+            ],
         )
 
 

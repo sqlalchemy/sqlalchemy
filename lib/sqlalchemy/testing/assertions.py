@@ -636,10 +636,30 @@ class AssertsCompiledSQL:
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
         if checkparams is not None:
-            eq_(c.construct_params(params), checkparams)
+            if render_postcompile:
+                expanded_state = c.construct_expanded_state(
+                    params, escape_names=False
+                )
+                eq_(expanded_state.parameters, checkparams)
+            else:
+                eq_(c.construct_params(params), checkparams)
         if checkpositional is not None:
-            p = c.construct_params(params, escape_names=False)
-            eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
+            if render_postcompile:
+                expanded_state = c.construct_expanded_state(
+                    params, escape_names=False
+                )
+                eq_(
+                    tuple(
+                        [
+                            expanded_state.parameters[x]
+                            for x in expanded_state.positiontup
+                        ]
+                    ),
+                    checkpositional,
+                )
+            else:
+                p = c.construct_params(params, escape_names=False)
+                eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
         if check_prefetch is not None:
             eq_(c.prefetch, check_prefetch)
         if check_literal_execute is not None:

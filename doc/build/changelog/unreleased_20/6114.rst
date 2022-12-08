@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6114
+
+    The :meth:`.SQLCompiler.construct_params` method, as well as the
+    :attr:`.SQLCompiler.params` accessor, will now return the
+    exact parameters that correspond to a compiled statement that used
+    the ``render_postcompile`` parameter to compile.   Previously,
+    the method returned a parameter structure that by itself didn't correspond
+    to either the original parameters or the expanded ones.
+
+    Passing a new dictionary of parameters to
+    :meth:`.SQLCompiler.construct_params` for a :class:`.SQLCompiler` that was
+    constructed with ``render_postcompile`` is now disallowed; instead, to make
+    a new SQL string and parameter set for an alternate set of parameters, a
+    new method :meth:`.SQLCompiler.construct_expanded_state` is added which
+    will produce a new expanded form for the given parameter set, using the
+    :class:`.ExpandedState` container which includes a new SQL statement
+    and new parameter dictionary, as well as a positional parameter tuple.
+
