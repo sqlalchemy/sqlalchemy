@@ -152,7 +152,7 @@ _PKIdentityArgument = Union[Any, Tuple[Any, ...]]
 _BindArguments = Dict[str, Any]
 
 _EntityBindKey = Union[Type[_O], "Mapper[_O]"]
-_SessionBindKey = Union[Type[Any], "Mapper[Any]", "Table"]
+_SessionBindKey = Union[Type[Any], "Mapper[Any]", "Table", str]
 _SessionBind = Union["Engine", "Connection"]
 
 
@@ -2374,6 +2374,7 @@ class Session(_SessionClassMethods, EventTarget):
     def get_bind(
         self,
         mapper: Optional[_EntityBindKey[_O]] = None,
+        *,
         clause: Optional[ClauseElement] = None,
         bind: Optional[_SessionBind] = None,
         _sa_skip_events: Optional[bool] = None,

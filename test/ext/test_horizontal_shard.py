@@ -498,7 +498,7 @@ class ShardTest:
             eq_({t.temperature for t in temps}, {86.0, 75.0, 91.0})
 
         self.assert_sql_count(
-            sess._ShardedSession__binds["north_america"], go, 0
+            sess._ShardedSession__shards["north_america"], go, 0
         )
 
         eq_(
@@ -533,7 +533,7 @@ class ShardTest:
                 assert inspect(t).deleted is (t.temperature >= 80)
 
         self.assert_sql_count(
-            sess._ShardedSession__binds["north_america"], go, 0
+            sess._ShardedSession__shards["north_america"], go, 0
         )
 
         eq_(
