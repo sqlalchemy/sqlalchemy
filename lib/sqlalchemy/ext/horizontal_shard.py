@@ -23,6 +23,7 @@ from typing import Iterable
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -30,27 +31,29 @@ from .. import event
 from .. import exc
 from .. import inspect
 from .. import util
-from ..engine.base import Connection
-from ..engine.base import Engine
-from ..engine.base import OptionEngine
-from ..engine.result import IteratorResult
-from ..engine.result import Result
-from ..orm import LoaderCallableStatus
-from ..orm import PassiveFlag
-from ..orm._typing import _O
-from ..orm.bulk_persistence import BulkUDCompileState
-from ..orm.context import QueryContext
-from ..orm.mapper import Mapper
 from ..orm.query import Query
-from ..orm.session import _EntityBindKey
-from ..orm.session import _SessionBind
-from ..orm.session import _SessionBindKey
-from ..orm.session import ORMExecuteState
 from ..orm.session import Session
-from ..orm.state import InstanceState
-from ..sql._typing import _TP
-from ..sql.elements import ClauseElement
-from ..util.typing import Protocol
+
+if TYPE_CHECKING:
+    from ..engine.base import Connection
+    from ..engine.base import Engine
+    from ..engine.base import OptionEngine
+    from ..engine.result import IteratorResult
+    from ..engine.result import Result
+    from ..orm import LoaderCallableStatus
+    from ..orm import PassiveFlag
+    from ..orm._typing import _O
+    from ..orm.bulk_persistence import BulkUDCompileState
+    from ..orm.context import QueryContext
+    from ..orm.mapper import Mapper
+    from ..orm.session import _EntityBindKey
+    from ..orm.session import _SessionBind
+    from ..orm.session import _SessionBindKey
+    from ..orm.session import ORMExecuteState
+    from ..orm.state import InstanceState
+    from ..sql._typing import _TP
+    from ..sql.elements import ClauseElement
+    from ..util.typing import Protocol
 
 
 __all__ = ["ShardedSession", "ShardedQuery"]
