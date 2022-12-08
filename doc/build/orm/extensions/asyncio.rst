@@ -857,12 +857,15 @@ cursor.
 
 .. autoclass:: AsyncResult
    :members:
+   :inherited-members:
 
 .. autoclass:: AsyncScalarResult
    :members:
+   :inherited-members:
 
 .. autoclass:: AsyncMappingResult
    :members:
+   :inherited-members:
 
 ORM Session API Documentation
 -----------------------------

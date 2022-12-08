@@ -38,5 +38,7 @@ test/test_schema.db
 /querytest.db
 /.pytest_cache
 /db_idents.txt
+.DS_Store
+.vs
 # items that only belong in the 2.0 branch
 /lib/sqlalchemy/cyextension

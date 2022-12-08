@@ -9,9 +9,9 @@ import operator
 
 from . import exc as async_exc
 from ...engine.result import _NO_ROW
+from ...engine.result import _WithKeys
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
-from ...engine.result import MergedResult
 from ...sql.base import _generative
 from ...util.concurrency import greenlet_spawn
 
@@ -23,7 +23,7 @@ class AsyncCommon(FilterResult):
         await greenlet_spawn(self._real_result.close)
 
 
-class AsyncResult(AsyncCommon):
+class AsyncResult(_WithKeys, AsyncCommon):
     """An asyncio wrapper around a :class:`_result.Result` object.
 
     The :class:`_asyncio.AsyncResult` only applies to statement executions that
@@ -57,13 +57,6 @@ class AsyncResult(AsyncCommon):
                 "_row_getter", real_result.__dict__["_row_getter"]
             )
 
-    def keys(self):
-        """Return the :meth:`_engine.Result.keys` collection from the
-        underlying :class:`_engine.Result`.
-
-        """
-        return self._metadata.keys
-
     @_generative
     def unique(self, strategy=None):
         """Apply unique filtering to the objects returned by this
@@ -71,7 +64,6 @@ class AsyncResult(AsyncCommon):
 
         Refer to :meth:`_engine.Result.unique` in the synchronous
         SQLAlchemy API for a complete behavioral description.
-
 
         """
         self._unique_filter_state = (set(), strategy)
@@ -81,7 +73,6 @@ class AsyncResult(AsyncCommon):
 
         Refer to :meth:`_engine.Result.columns` in the synchronous
         SQLAlchemy API for a complete behavioral description.
-
 
         """
         return self._column_slices(col_expressions)
@@ -97,9 +88,8 @@ class AsyncResult(AsyncCommon):
                 async for partition in result.partitions(100):
                     print("list of rows: %s" % partition)
 
-        .. seealso::
-
-            :meth:`_engine.Result.partitions`
+        Refer to :meth:`_engine.Result.partitions` in the synchronous
+        SQLAlchemy API for a complete behavioral description.
 
         """
 
@@ -121,11 +111,11 @@ class AsyncResult(AsyncCommon):
         SQLAlchemy 1.x.x.
 
         To fetch the first row of a result only, use the
-        :meth:`_engine.Result.first` method.  To iterate through all
-        rows, iterate the :class:`_engine.Result` object directly.
+        :meth:`_asyncio.AsyncResult.first` method.  To iterate through all
+        rows, iterate the :class:`_asyncio.AsyncResult` object directly.
 
-        :return: a :class:`.Row` object if no filters are applied, or None
-         if no rows remain.
+        :return: a :class:`_engine.Row` object if no filters are applied,
+         or ``None`` if no rows remain.
 
         """
         row = await greenlet_spawn(self._onerow_getter, self)
@@ -145,7 +135,7 @@ class AsyncResult(AsyncCommon):
         To fetch rows in groups, use the
         :meth:`._asyncio.AsyncResult.partitions` method.
 
-        :return: a list of :class:`.Row` objects.
+        :return: a list of :class:`_engine.Row` objects.
 
         .. seealso::
 
@@ -161,7 +151,7 @@ class AsyncResult(AsyncCommon):
         Closes the result set after invocation.   Subsequent invocations
         will return an empty list.
 
-        :return: a list of :class:`.Row` objects.
+        :return: a list of :class:`_engine.Row` objects.
 
         """
 
@@ -178,17 +168,30 @@ class AsyncResult(AsyncCommon):
             return row
 
     async def first(self):
-        """Fetch the first row or None if no row is present.
+        """Fetch the first row or ``None`` if no row is present.
 
         Closes the result set and discards remaining rows.
 
-        .. note::  This method returns one **row**, e.g. tuple, by default. To
-           return exactly one single scalar value, that is, the first column of
-           the first row, use the :meth:`_asyncio.AsyncResult.scalar` method,
+        .. note::  This method returns one **row**, e.g. tuple, by default.
+           To return exactly one single scalar value, that is, the first
+           column of the first row, use the
+           :meth:`_asyncio.AsyncResult.scalar` method,
            or combine :meth:`_asyncio.AsyncResult.scalars` and
            :meth:`_asyncio.AsyncResult.first`.
 
-        :return: a :class:`.Row` object, or None
+           Additionally, in contrast to the behavior of the legacy  ORM
+           :meth:`_orm.Query.first` method, **no limit is applied** to the
+           SQL query which was invoked to produce this
+           :class:`_asyncio.AsyncResult`;
+           for a DBAPI driver that buffers results in memory before yielding
+           rows, all rows will be sent to the Python process and all but
+           the first row will be discarded.
+
+           .. seealso::
+
+                :ref:`migration_20_unify_select`
+
+        :return: a :class:`_engine.Row` object, or None
          if no rows remain.
 
         .. seealso::
@@ -209,7 +212,8 @@ class AsyncResult(AsyncCommon):
 
         .. versionadded:: 1.4
 
-        :return: The first :class:`.Row` or None if no row is available.
+        :return: The first :class:`_engine.Row` or ``None`` if no row
+         is available.
 
         :raises: :class:`.MultipleResultsFound`
 
@@ -238,7 +242,7 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, True, True)
 
     async def scalar_one_or_none(self):
-        """Return exactly one or no scalar result.
+        """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
         then :meth:`_asyncio.AsyncResult.one_or_none`.
@@ -268,7 +272,7 @@ class AsyncResult(AsyncCommon):
 
         .. versionadded:: 1.4
 
-        :return: The first :class:`.Row`.
+        :return: The first :class:`_engine.Row`.
 
         :raises: :class:`.MultipleResultsFound`, :class:`.NoResultFound`
 
@@ -286,7 +290,7 @@ class AsyncResult(AsyncCommon):
     async def scalar(self):
         """Fetch the first column of the first row, and close the result set.
 
-        Returns None if there are no rows to fetch.
+        Returns ``None`` if there are no rows to fetch.
 
         No validation is performed to test if additional rows remain.
 
@@ -294,7 +298,7 @@ class AsyncResult(AsyncCommon):
         e.g. the :meth:`_engine.CursorResult.close`
         method will have been called.
 
-        :return: a Python scalar value , or None if no rows remain.
+        :return: a Python scalar value, or ``None`` if no rows remain.
 
         """
         return await greenlet_spawn(self._only_one_row, False, False, True)
@@ -322,22 +326,6 @@ class AsyncResult(AsyncCommon):
 
         return await greenlet_spawn(FrozenResult, self)
 
-    def merge(self, *others):
-        """Merge this :class:`_asyncio.AsyncResult` with other compatible
-        result objects.
-
-        The object returned is an instance of :class:`_engine.MergedResult`,
-        which will be composed of iterators from the given result
-        objects.
-
-        The new result will use the metadata from this result object.
-        The subsequent result objects must be against an identical
-        set of result / cursor metadata, otherwise the behavior is
-        undefined.
-
-        """
-        return MergedResult(self._metadata, (self,) + others)
-
     def scalars(self, index=0):
         """Return an :class:`_asyncio.AsyncScalarResult` filtering object which
         will return single elements rather than :class:`_row.Row` objects.
@@ -359,10 +347,8 @@ class AsyncResult(AsyncCommon):
         :class:`_asyncio.AsyncMappingResult`.
 
         When this filter is applied, fetching rows will return
-        :class:`.RowMapping` objects instead of :class:`.Row` objects.
-
-        Refer to :meth:`_result.Result.mappings` in the synchronous
-        SQLAlchemy API for a complete behavioral description.
+        :class:`_engine.RowMapping` objects instead of :class:`_engine.Row`
+        objects.
 
         :return: a new :class:`_asyncio.AsyncMappingResult` filtering object
          referring to the underlying :class:`_result.Result` object.
@@ -414,7 +400,7 @@ class AsyncScalarResult(AsyncCommon):
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_asyncio.AsyncResult.partitions` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
@@ -437,7 +423,7 @@ class AsyncScalarResult(AsyncCommon):
         """Fetch many objects.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchmany` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
@@ -447,7 +433,7 @@ class AsyncScalarResult(AsyncCommon):
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_asyncio.AsyncResult.all` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
@@ -464,10 +450,10 @@ class AsyncScalarResult(AsyncCommon):
             return row
 
     async def first(self):
-        """Fetch the first object or None if no object is present.
+        """Fetch the first object or ``None`` if no object is present.
 
         Equivalent to :meth:`_asyncio.AsyncResult.first` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
@@ -477,7 +463,7 @@ class AsyncScalarResult(AsyncCommon):
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one_or_none` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
@@ -487,14 +473,14 @@ class AsyncScalarResult(AsyncCommon):
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one` except that
-        scalar values, rather than :class:`_result.Row` objects,
+        scalar values, rather than :class:`_engine.Row` objects,
         are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
 
-class AsyncMappingResult(AsyncCommon):
+class AsyncMappingResult(_WithKeys, AsyncCommon):
     """A wrapper for a :class:`_asyncio.AsyncResult` that returns dictionary
     values rather than :class:`_engine.Row` values.
 
@@ -519,21 +505,6 @@ class AsyncMappingResult(AsyncCommon):
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
 
-    def keys(self):
-        """Return an iterable view which yields the string keys that would
-        be represented by each :class:`.Row`.
-
-        The view also can be tested for key containment using the Python
-        ``in`` operator, which will test both for the string keys represented
-        in the view, as well as for alternate keys such as column objects.
-
-        .. versionchanged:: 1.4 a key view object is returned rather than a
-           plain list.
-
-
-        """
-        return self._metadata.keys
-
     def unique(self, strategy=None):
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncMappingResult`.
@@ -552,8 +523,8 @@ class AsyncMappingResult(AsyncCommon):
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_asyncio.AsyncResult.partitions` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
 
@@ -575,8 +546,8 @@ class AsyncMappingResult(AsyncCommon):
         """Fetch one object.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchone` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
 
@@ -590,8 +561,8 @@ class AsyncMappingResult(AsyncCommon):
         """Fetch many objects.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchmany` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
 
@@ -601,8 +572,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_asyncio.AsyncResult.all` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
 
@@ -619,12 +590,11 @@ class AsyncMappingResult(AsyncCommon):
             return row
 
     async def first(self):
-        """Fetch the first object or None if no object is present.
+        """Fetch the first object or ``None`` if no object is present.
 
         Equivalent to :meth:`_asyncio.AsyncResult.first` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
-
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, False, False, False)
@@ -633,8 +603,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one_or_none` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, True, False, False)
@@ -643,8 +613,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
+        objects, are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, True, True, False)
