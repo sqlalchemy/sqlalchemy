@@ -656,7 +656,7 @@ class _TraverseTransformCallableType(Protocol[_ET]):
 _ExtT = TypeVar("_ExtT", bound="ExternalTraversal")
 
 
-class ExternalTraversal:
+class ExternalTraversal(util.MemoizedSlots):
     """Base class for visitor objects which can traverse externally using
     the :func:`.visitors.traverse` function.
 
@@ -664,6 +664,8 @@ class ExternalTraversal:
     preferred.
 
     """
+
+    __slots__ = ("_visitor_dict", "_next")
 
     __traverse_options__: Dict[str, Any] = {}
     _next: Optional[ExternalTraversal]
@@ -698,8 +700,9 @@ class ExternalTraversal:
 
         return traverse(obj, self.__traverse_options__, self._visitor_dict)
 
-    @util.memoized_property
-    def _visitor_dict(self) -> Dict[str, _TraverseCallableType[Any]]:
+    def _memoized_attr__visitor_dict(
+        self,
+    ) -> Dict[str, _TraverseCallableType[Any]]:
         visitors = {}
 
         for name in dir(self):
@@ -737,6 +740,8 @@ class CloningExternalTraversal(ExternalTraversal):
 
     """
 
+    __slots__ = ()
+
     def copy_and_process(
         self, list_: List[ExternallyTraversible]
     ) -> List[ExternallyTraversible]:
@@ -772,6 +777,8 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
     usually preferred.
 
     """
+
+    __slots__ = ()
 
     def replace(
         self, elem: ExternallyTraversible

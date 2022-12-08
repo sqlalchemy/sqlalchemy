@@ -2229,8 +2229,12 @@ class JoinedLoader(AbstractRelationshipLoader):
         if alias is not None:
             if isinstance(alias, str):
                 alias = prop.target.alias(alias)
-            adapter = sql_util.ColumnAdapter(
-                alias, equivalents=prop.mapper._equivalent_columns
+            adapter = orm_util.ORMAdapter(
+                orm_util._TraceAdaptRole.JOINEDLOAD_USER_DEFINED_ALIAS,
+                prop.mapper,
+                selectable=alias,
+                equivalents=prop.mapper._equivalent_columns,
+                limit_on_entity=False,
             )
         else:
             if path.contains(
@@ -2240,6 +2244,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                     compile_state.attributes, "path_with_polymorphic"
                 )
                 adapter = orm_util.ORMAdapter(
+                    orm_util._TraceAdaptRole.JOINEDLOAD_PATH_WITH_POLYMORPHIC,
                     with_poly_entity,
                     equivalents=prop.mapper._equivalent_columns,
                 )
@@ -2335,9 +2340,11 @@ class JoinedLoader(AbstractRelationshipLoader):
             to_adapt = self._gen_pooled_aliased_class(compile_state)
 
         to_adapt_insp = inspect(to_adapt)
+
         clauses = to_adapt_insp._memo(
             ("joinedloader_ormadapter", self),
             orm_util.ORMAdapter,
+            orm_util._TraceAdaptRole.JOINEDLOAD_MEMOIZED_ADAPTER,
             to_adapt_insp,
             equivalents=self.mapper._equivalent_columns,
             adapt_required=True,

@@ -31,9 +31,11 @@ from .interfaces import ORMColumnsClauseRole
 from .path_registry import PathRegistry
 from .util import _entity_corresponds_to
 from .util import _ORMJoin
+from .util import _TraceAdaptRole
 from .util import AliasedClass
 from .util import Bundle
 from .util import ORMAdapter
+from .util import ORMStatementAdapter
 from .. import exc as sa_exc
 from .. import future
 from .. import inspect
@@ -509,7 +511,15 @@ class ORMCompileState(AbstractORMCompileState):
 
     def _create_with_polymorphic_adapter(self, ext_info, selectable):
         """given MapperEntity or ORMColumnEntity, setup polymorphic loading
-        if appropriate
+        if called for by the Mapper.
+
+        As of #8168 in 2.0.0b5, polymorphic adapters, which greatly increase
+        the complexity of the query creation process, are not used at all
+        except in the quasi-legacy cases of with_polymorphic referring to an
+        alias and/or subquery. This would apply to concrete polymorphic
+        loading, and joined inheritance where a subquery is
+        passed to with_polymorphic (which is completely unnecessary in modern
+        use).
 
         """
         if (
@@ -521,7 +531,10 @@ class ORMCompileState(AbstractORMCompileState):
                 self._mapper_loads_polymorphically_with(
                     mp,
                     ORMAdapter(
-                        mp, mp._equivalent_columns, selectable=selectable
+                        _TraceAdaptRole.WITH_POLYMORPHIC_ADAPTER,
+                        mp,
+                        equivalents=mp._equivalent_columns,
+                        selectable=selectable,
                     ),
                 )
 
@@ -727,8 +740,11 @@ class ORMFromStatementCompileState(ORMCompileState):
                 )
                 == "orm"
             )
-            self._from_obj_alias = sql.util.ColumnAdapter(
-                self.statement, adapt_on_names=not statement_is_orm
+
+            self._from_obj_alias = ORMStatementAdapter(
+                _TraceAdaptRole.ADAPT_FROM_STATEMENT,
+                self.statement,
+                adapt_on_names=not statement_is_orm,
             )
 
         return self
@@ -1068,6 +1084,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self._join_entities = ()
 
         if self.compile_options._set_base_alias:
+            # legacy Query only
             self._set_select_from_alias()
 
         for memoized_entities in query._memoized_select_entities:
@@ -1285,6 +1302,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         return stmt
 
     def _set_select_from_alias(self):
+        """used only for legacy Query cases"""
 
         query = self.select_statement  # query
 
@@ -1297,6 +1315,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self._from_obj_alias = adapter
 
     def _get_select_from_alias_from_obj(self, from_obj):
+        """used only for legacy Query cases"""
+
         info = from_obj
 
         if "parententity" in info._annotations:
@@ -1313,7 +1333,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         elif isinstance(info.selectable, sql.selectable.AliasedReturnsRows):
             equivs = self._all_equivs()
-            return sql_util.ColumnAdapter(info, equivs)
+            assert info is info.selectable
+            return ORMStatementAdapter(
+                _TraceAdaptRole.LEGACY_SELECT_FROM_ALIAS,
+                info.selectable,
+                equivalents=equivs,
+            )
         else:
             return None
 
@@ -1417,7 +1442,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         equivs = self._all_equivs()
 
-        self.compound_eager_adapter = sql_util.ColumnAdapter(inner, equivs)
+        self.compound_eager_adapter = ORMStatementAdapter(
+            _TraceAdaptRole.COMPOUND_EAGER_STATEMENT, inner, equivalents=equivs
+        )
 
         statement = future.select(
             *([inner] + self.secondary_columns)  # use_labels=self.labels
@@ -2128,10 +2155,14 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             )
 
         if need_adapter:
+            # if need_adapter is True, we are in a deprecated case and
+            # a warning has been emitted.
             assert right_mapper
 
             adapter = ORMAdapter(
-                inspect(right), equivalents=right_mapper._equivalent_columns
+                _TraceAdaptRole.DEPRECATED_JOIN_ADAPT_RIGHT_SIDE,
+                inspect(right),
+                equivalents=right_mapper._equivalent_columns,
             )
 
             # if an alias() on the right side was generated,
@@ -2142,11 +2173,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         elif (
             not r_info.is_clause_element
             and not right_is_aliased
-            and right_mapper.with_polymorphic
-            and isinstance(
-                right_mapper._with_polymorphic_selectable,
-                expression.AliasedReturnsRows,
-            )
+            and right_mapper._has_aliased_polymorphic_fromclause
         ):
             # for the case where the target mapper has a with_polymorphic
             # set up, ensure an adapter is set up for criteria that works
@@ -2159,9 +2186,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # and similar
             self._mapper_loads_polymorphically_with(
                 right_mapper,
-                sql_util.ColumnAdapter(
-                    right_mapper.selectable,
-                    right_mapper._equivalent_columns,
+                ORMAdapter(
+                    _TraceAdaptRole.WITH_POLYMORPHIC_ADAPTER_RIGHT_JOIN,
+                    right_mapper,
+                    selectable=right_mapper.selectable,
+                    equivalents=right_mapper._equivalent_columns,
                 ),
             )
         # if the onclause is a ClauseElement, adapt it with any
