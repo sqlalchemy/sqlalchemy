@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 8963
+
+    Fixed issue where :meth:`_engine.Result.freeze` method would not work for
+    textual SQL using either :func:`_sql.text` or
+    :meth:`_engine.Connection.exec_driver_sql`.
+

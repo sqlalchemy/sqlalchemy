@@ -241,7 +241,7 @@ class SimpleResultMetaData(ResultMetaData):
         if extra:
             recs_names = [
                 (
-                    (name,) + extras,
+                    (name,) + (extras if extras else ()),
                     (index, name, extras),
                 )
                 for index, (name, extras) in enumerate(zip(self._keys, extra))
