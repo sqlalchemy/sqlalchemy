@@ -56,6 +56,7 @@ from .config import requirements as requires
 from .config import skip_test
 from .config import Variation
 from .config import variation
+from .config import variation_fixture
 from .exclusions import _is_excluded
 from .exclusions import _server_version
 from .exclusions import against as _against

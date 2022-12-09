@@ -1001,6 +1001,11 @@ get all drivers to this state:
   possible, usually with VALUES() - :ticket:`6047`
 * Emit a warning when RETURNING w/ executemany is used for non-supporting
   backend (currently no RETURNING backend has this limitation) - :ticket:`7907`
+* The ORM :paramref:`_orm.Mapper.eager_defaults` parameter now defaults to a
+  a new setting ``"auto"``, which will enable "eager defaults" automatically
+  for INSERT statements, when the backend in use supports RETURNING with
+  "insertmanyvalues".  See :ref:`orm_server_defaults` for documentation.
+
 
 .. seealso::
 

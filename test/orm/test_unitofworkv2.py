@@ -34,6 +34,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import variation_fixture
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
@@ -2077,7 +2078,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         class T(fixtures.ComparableEntity):
             pass
 
-        self.mapper_registry.map_imperatively(T, t)
+        mp = self.mapper_registry.map_imperatively(T, t)
         sess = fixture_session()
         sess.add_all(
             [
@@ -2095,6 +2096,17 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             ]
         )
 
+        eager_defaults = mp._prefer_eager_defaults(
+            testing.db.dialect, mp.local_table
+        )
+
+        if eager_defaults:
+            tdef_col = ", t.def_"
+            tdef_returning = " RETURNING t.def_"
+        else:
+            tdef_col = ""
+            tdef_returning = ""
+
         self.assert_sql_execution(
             testing.db,
             sess.flush,
@@ -2102,7 +2114,8 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 testing.db.dialect.insert_executemany_returning,
                 [
                     CompiledSQL(
-                        "INSERT INTO t (data) VALUES (:data) RETURNING t.id",
+                        f"INSERT INTO t (data) VALUES (:data) "
+                        f"RETURNING t.id{tdef_col}",
                         [{"data": "t1"}, {"data": "t2"}],
                     ),
                 ],
@@ -2116,7 +2129,8 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                f"INSERT INTO t (id, data) "
+                f"VALUES (:id, :data){tdef_returning}",
                 [
                     {"data": "t3", "id": 3},
                     {"data": "t4", "id": 4},
@@ -2124,11 +2138,13 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                "INSERT INTO t (id, data) VALUES (:id, lower(:lower_1))",
+                f"INSERT INTO t (id, data) "
+                f"VALUES (:id, lower(:lower_1)){tdef_returning}",
                 {"lower_1": "t6", "id": 6},
             ),
             CompiledSQL(
-                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                f"INSERT INTO t (id, data) "
+                f"VALUES (:id, :data){tdef_returning}",
                 [{"data": "t7", "id": 7}, {"data": "t8", "id": 8}],
             ),
             CompiledSQL(
@@ -2139,7 +2155,8 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                f"INSERT INTO t (id, data) "
+                f"VALUES (:id, :data){tdef_returning}",
                 {"data": "t11", "id": 11},
             ),
         )
@@ -2385,30 +2402,30 @@ class EagerDefaultsTest(fixtures.MappedTest):
         class Thing4(cls.Basic):
             pass
 
-    @classmethod
-    def setup_mappers(cls):
-        Thing = cls.classes.Thing
+    def setup_mappers(self):
+        eager_defaults = True
+        Thing = self.classes.Thing
 
-        cls.mapper_registry.map_imperatively(
-            Thing, cls.tables.test, eager_defaults=True
+        self.mapper_registry.map_imperatively(
+            Thing, self.tables.test, eager_defaults=eager_defaults
         )
 
-        Thing2 = cls.classes.Thing2
+        Thing2 = self.classes.Thing2
 
-        cls.mapper_registry.map_imperatively(
-            Thing2, cls.tables.test2, eager_defaults=True
+        self.mapper_registry.map_imperatively(
+            Thing2, self.tables.test2, eager_defaults=eager_defaults
         )
 
-        Thing3 = cls.classes.Thing3
+        Thing3 = self.classes.Thing3
 
-        cls.mapper_registry.map_imperatively(
-            Thing3, cls.tables.test3, eager_defaults=True
+        self.mapper_registry.map_imperatively(
+            Thing3, self.tables.test3, eager_defaults=eager_defaults
         )
 
-        Thing4 = cls.classes.Thing4
+        Thing4 = self.classes.Thing4
 
-        cls.mapper_registry.map_imperatively(
-            Thing4, cls.tables.test4, eager_defaults=True
+        self.mapper_registry.map_imperatively(
+            Thing4, self.tables.test4, eager_defaults=eager_defaults
         )
 
     def test_server_insert_defaults_present(self):
@@ -3108,6 +3125,218 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     ),
                 ],
             ),
+        )
+
+
+class EagerDefaultsSettingTest(
+    testing.AssertsExecutionResults, fixtures.TestBase
+):
+    __backend__ = True
+
+    @variation_fixture("eager_defaults", ["unspecified", "auto", True, False])
+    def eager_defaults_variations(self, request):
+        yield request.param
+
+    @variation_fixture("implicit_returning", [True, False])
+    def implicit_returning_variations(self, request):
+        yield request.param
+
+    @testing.fixture
+    def define_tables(
+        self, metadata, connection, implicit_returning_variations
+    ):
+        implicit_returning = bool(implicit_returning_variations)
+
+        t = Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "foo",
+                Integer,
+                server_default="3",
+            ),
+            Column("bar", Integer, server_onupdate=FetchedValue()),
+            implicit_returning=implicit_returning,
+        )
+        metadata.create_all(connection)
+        return t
+
+    @testing.fixture
+    def setup_mappers(
+        self, define_tables, eager_defaults_variations, registry
+    ):
+        class Thing:
+            pass
+
+        if eager_defaults_variations.unspecified:
+            registry.map_imperatively(Thing, define_tables)
+        else:
+            eager_defaults = (
+                "auto"
+                if eager_defaults_variations.auto
+                else bool(eager_defaults_variations)
+            )
+            registry.map_imperatively(
+                Thing, define_tables, eager_defaults=eager_defaults
+            )
+        return Thing
+
+    def test_eager_default_setting_inserts(
+        self,
+        setup_mappers,
+        eager_defaults_variations,
+        implicit_returning_variations,
+        connection,
+    ):
+        Thing = setup_mappers
+        s = Session(connection)
+
+        t1, t2 = (Thing(id=1, bar=6), Thing(id=2, bar=6))
+
+        s.add_all([t1, t2])
+
+        expected_eager_defaults = eager_defaults_variations.eager_defaults or (
+            (
+                eager_defaults_variations.auto
+                or eager_defaults_variations.unspecified
+            )
+            and connection.dialect.insert_executemany_returning
+            and bool(implicit_returning_variations)
+        )
+        expect_returning = (
+            expected_eager_defaults
+            and connection.dialect.insert_returning
+            and bool(implicit_returning_variations)
+        )
+
+        with self.sql_execution_asserter(connection) as asserter:
+            s.flush()
+
+        asserter.assert_(
+            Conditional(
+                expect_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id, bar) VALUES (:id, :bar) "
+                        "RETURNING test.foo",
+                        [
+                            {"id": 1, "bar": 6},
+                            {"id": 2, "bar": 6},
+                        ],
+                    )
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id, bar) VALUES (:id, :bar)",
+                        [
+                            {"id": 1, "bar": 6},
+                            {"id": 2, "bar": 6},
+                        ],
+                    ),
+                    Conditional(
+                        expected_eager_defaults and not expect_returning,
+                        [
+                            CompiledSQL(
+                                "SELECT test.foo AS test_foo "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 1}],
+                            ),
+                            CompiledSQL(
+                                "SELECT test.foo AS test_foo "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 2}],
+                            ),
+                        ],
+                        [],
+                    ),
+                ],
+            )
+        )
+
+    def test_eager_default_setting_updates(
+        self,
+        setup_mappers,
+        eager_defaults_variations,
+        implicit_returning_variations,
+        connection,
+    ):
+        Thing = setup_mappers
+        s = Session(connection)
+
+        t1, t2 = (Thing(id=1, foo=5), Thing(id=2, foo=5))
+
+        s.add_all([t1, t2])
+        s.flush()
+
+        expected_eager_defaults = eager_defaults_variations.eager_defaults
+        expect_returning = (
+            expected_eager_defaults
+            and connection.dialect.update_returning
+            and bool(implicit_returning_variations)
+        )
+
+        t1.foo = 7
+        t2.foo = 12
+
+        with self.sql_execution_asserter(connection) as asserter:
+            s.flush()
+
+        asserter.assert_(
+            Conditional(
+                expect_returning,
+                [
+                    CompiledSQL(
+                        "UPDATE test SET foo=:foo WHERE test.id = :test_id "
+                        "RETURNING test.bar",
+                        [
+                            {"test_id": 1, "foo": 7},
+                        ],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test SET foo=:foo WHERE test.id = :test_id "
+                        "RETURNING test.bar",
+                        [
+                            {"test_id": 2, "foo": 12},
+                        ],
+                    ),
+                ],
+                [
+                    Conditional(
+                        expected_eager_defaults and not expect_returning,
+                        [
+                            CompiledSQL(
+                                "UPDATE test SET foo=:foo "
+                                "WHERE test.id = :test_id",
+                                [
+                                    {"test_id": 1, "foo": 7},
+                                    {"test_id": 2, "foo": 12},
+                                ],
+                            ),
+                            CompiledSQL(
+                                "SELECT test.bar AS test_bar "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 1}],
+                            ),
+                            CompiledSQL(
+                                "SELECT test.bar AS test_bar "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 2}],
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "UPDATE test SET foo=:foo "
+                                "WHERE test.id = :test_id",
+                                [
+                                    {"test_id": 1, "foo": 7},
+                                    {"test_id": 2, "foo": 12},
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            )
         )
 
 
