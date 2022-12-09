@@ -2304,7 +2304,7 @@ Connection / Engine API
     :inherited-members:
 
 
-Result Set  API
+Result Set API
 ---------------
 
 .. autoclass:: ChunkedIteratorResult
@@ -2345,3 +2345,4 @@ Result Set  API
 .. autoclass:: RowMapping
     :members:
 
+.. autoclass:: TupleResult
