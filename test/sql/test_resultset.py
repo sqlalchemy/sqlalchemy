@@ -105,6 +105,52 @@ class CursorResultTest(fixtures.TablesTest):
             Column("y", String(50)),
         )
 
+    @testing.variation(
+        "type_", ["text", "driversql", "core", "textstar", "driverstar"]
+    )
+    def test_freeze(self, type_, connection):
+        """test #8963"""
+
+        users = self.tables.users
+        connection.execute(
+            users.insert(),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
+        )
+
+        if type_.core:
+            stmt = select(users).order_by(users.c.user_id)
+        else:
+            if "star" in type_.name:
+                stmt = "select * from users order by user_id"
+            else:
+                stmt = "select user_id, user_name from users order by user_id"
+
+            if "text" in type_.name:
+                stmt = text(stmt)
+
+        if "driver" in type_.name:
+            result = connection.exec_driver_sql(stmt)
+        else:
+            result = connection.execute(stmt)
+
+        frozen = result.freeze()
+
+        unfrozen = frozen()
+        eq_(unfrozen.keys(), ["user_id", "user_name"])
+        eq_(unfrozen.all(), [(1, "john"), (2, "jack")])
+
+        unfrozen = frozen()
+        eq_(
+            unfrozen.mappings().all(),
+            [
+                {"user_id": 1, "user_name": "john"},
+                {"user_id": 2, "user_name": "jack"},
+            ],
+        )
+
     def test_row_iteration(self, connection):
         users = self.tables.users
 
