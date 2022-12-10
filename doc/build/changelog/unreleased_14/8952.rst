@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 8952
-    :versions: 2.0.0b5
-
-    Removed non-functional ``merge()`` method from
-    :class:`_asyncio.AsyncResult`.  This method has never worked and was
-    included with :class:`_asyncio.AsyncResult` in error.

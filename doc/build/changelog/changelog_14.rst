@@ -15,7 +15,139 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.45
-    :include_notes_from: unreleased_14
+    :released: December 10, 2022
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8862
+
+        Fixed bug where :meth:`_orm.Session.merge` would fail to preserve the
+        current loaded contents of relationship attributes that were indicated with
+        the :paramref:`_orm.relationship.viewonly` parameter, thus defeating
+        strategies that use :meth:`_orm.Session.merge` to pull fully loaded objects
+        from caches and other similar techniques. In a related change, fixed issue
+        where an object that contains a loaded relationship that was nonetheless
+        configured as ``lazy='raise'`` on the mapping would fail when passed to
+        :meth:`_orm.Session.merge`; checks for "raise" are now suspended within
+        the merge process assuming the :paramref:`_orm.Session.merge.load`
+        parameter remains at its default of ``True``.
+
+        Overall, this is a behavioral adjustment to a change introduced in the 1.4
+        series as of :ticket:`4994`, which took "merge" out of the set of cascades
+        applied by default to "viewonly" relationships. As "viewonly" relationships
+        aren't persisted under any circumstances, allowing their contents to
+        transfer during "merge" does not impact the persistence behavior of the
+        target object. This allows :meth:`_orm.Session.merge` to correctly suit one
+        of its use cases, that of adding objects to a :class:`.Session` that were
+        loaded elsewhere, often for the purposes of restoring from a cache.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8881
+
+        Fixed issues in :func:`_orm.with_expression` where expressions that were
+        composed of columns that were referenced from the enclosing SELECT would
+        not render correct SQL in some contexts, in the case where the expression
+        had a label name that matched the attribute which used
+        :func:`_orm.query_expression`, even when :func:`_orm.query_expression` had
+        no default expression. For the moment, if the :func:`_orm.query_expression`
+        does have a default expression, that label name is still used for that
+        default, and an additional label with the same name will continue to be
+        ignored. Overall, this case is pretty thorny so further adjustments might
+        be warranted.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 8866
+
+        Backported a fix for SQLite reflection of unique constraints in attached
+        schemas, released in 2.0 as a small part of :ticket:`4379`. Previously,
+        unique constraints in attached schemas would be ignored by SQLite
+        reflection. Pull request courtesy Michael Gorven.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 8952
+        :versions: 2.0.0b5
+
+        Removed non-functional ``merge()`` method from
+        :class:`_asyncio.AsyncResult`.  This method has never worked and was
+        included with :class:`_asyncio.AsyncResult` in error.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 8708
+        :versions: 2.0.0b4
+
+        Continued fixes for Oracle fix :ticket:`8708` released in 1.4.43 where
+        bound parameter names that start with underscores, which are disallowed by
+        Oracle, were still not being properly escaped in all circumstances.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 8748
+
+        Made an adjustment to how the PostgreSQL dialect considers column types
+        when it reflects columns from a table, to accommodate for alternative
+        backends which may return NULL from the PG ``format_type()`` function.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 8903
+
+        Added support for the SQLite backend to reflect the "DEFERRABLE" and
+        "INITIALLY" keywords which may be present on a foreign key construct. Pull
+        request courtesy Michael Gorven.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 8800
+
+        An informative re-raise is now thrown in the case where any "literal
+        bindparam" render operation fails, indicating the value itself and
+        the datatype in use, to assist in debugging when literal params
+        are being rendered in a statement.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 8804
+
+        Added support for reflection of expression-oriented WHERE criteria included
+        in indexes on the SQLite dialect, in a manner similar to that of the
+        PostgreSQL dialect. Pull request courtesy Tobias Pfeiffer.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8827
+
+        Fixed a series of issues regarding the position and sometimes the identity
+        of rendered bound parameters, such as those used for SQLite, asyncpg,
+        MySQL, Oracle and others. Some compiled forms would not maintain the order
+        of parameters correctly, such as the PostgreSQL ``regexp_replace()``
+        function, the "nesting" feature of the :class:`.CTE` construct first
+        introduced in :ticket:`4123`, and selectable tables formed by using the
+        :meth:`.FunctionElement.column_valued` method with Oracle.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 8945
+        :versions: 2.0.0b5
+
+        Fixed issue in Oracle compiler where the syntax for
+        :meth:`.FunctionElement.column_valued` was incorrect, rendering the name
+        ``COLUMN_VALUE`` without qualifying the source table correctly.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8963
+
+        Fixed issue where :meth:`_engine.Result.freeze` method would not work for
+        textual SQL using either :func:`_sql.text` or
+        :meth:`_engine.Connection.exec_driver_sql`.
+
 
 .. changelog::
     :version: 1.4.44

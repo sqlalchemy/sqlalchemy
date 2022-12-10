@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 8945
-    :versions: 2.0.0b5
-
-    Fixed issue in Oracle compiler where the syntax for
-    :meth:`.FunctionElement.column_valued` was incorrect, rendering the name
-    ``COLUMN_VALUE`` without qualifying the source table correctly.

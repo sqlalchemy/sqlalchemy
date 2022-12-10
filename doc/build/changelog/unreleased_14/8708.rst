@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 8708
-    :versions: 2.0.0b4
-
-    Continued fixes for Oracle fix :ticket:`8708` released in 1.4.43 where
-    bound parameter names that start with underscores, which are disallowed by
-    Oracle, were still not being properly escaped in all circumstances.
-
