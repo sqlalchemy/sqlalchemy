@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 8952
-    :versions: 2.0.0b5
-
-    Removed non-functional method ``merge`` from :class:`_asyncio.AsyncResult`.
-    This method was non-functional and non-tested since the first introduction
-    of asyncio in SQLAlchemy.

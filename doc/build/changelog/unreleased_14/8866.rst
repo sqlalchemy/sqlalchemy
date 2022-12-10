@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 8866
-
-    Backported a fix for SQLite reflection of unique constraints in attached
-    schemas, released in 2.0 as a small part of :ticket:`4379`. Previously,
-    unique constraints in attached schemas would be ignored by SQLite
-    reflection. Pull request courtesy Michael Gorven.
