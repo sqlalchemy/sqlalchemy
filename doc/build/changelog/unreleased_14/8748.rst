@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug postgresql
+    :tags: bug, postgresql
     :tickets: 8748
 
     Made an adjustment to how the PostgreSQL dialect considers column types
