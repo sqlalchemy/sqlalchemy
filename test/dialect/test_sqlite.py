@@ -2392,6 +2392,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
             ],
         )
 
+    @testing.requires.sqlite_partial_indexes
     def test_reflect_partial_indexes(self, connection):
         connection.exec_driver_sql(
             "create table foo_with_partial_index (x integer, y integer)"

@@ -2518,7 +2518,7 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
             # check partial indexes
-            if row[4]:
+            if len(row) >= 5 and row[4]:
                 s = (
                     "SELECT sql FROM %(schema)ssqlite_master "
                     "WHERE name = ? "

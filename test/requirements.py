@@ -1128,6 +1128,30 @@ class DefaultRequirements(SuiteRequirements):
     def sqlite_memory(self):
         return only_on(self._sqlite_memory_db)
 
+    def _sqlite_partial_idx(self, config):
+        if not against(config, "sqlite"):
+            return False
+        else:
+            with config.db.connect() as conn:
+                connection = conn.connection
+                cursor = connection.cursor()
+                try:
+                    cursor.execute("SELECT * FROM pragma_index_info('idx52')")
+                except:
+                    return False
+                else:
+                    return (
+                        cursor.description is not None
+                        and len(cursor.description) >= 3
+                    )
+                finally:
+                    cursor.close()
+
+    @property
+    def sqlite_partial_indexes(self):
+
+        return only_on(self._sqlite_partial_idx)
+
     @property
     def reflects_json_type(self):
         return only_on(
