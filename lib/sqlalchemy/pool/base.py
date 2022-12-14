@@ -380,10 +380,12 @@ class Pool(log.Identified, event.EventTarget):
                 self._dialect.do_terminate(connection)
             else:
                 self._dialect.do_close(connection)
-        except Exception:
+        except BaseException as e:
             self.logger.error(
                 "Exception closing connection %r", connection, exc_info=True
             )
+            if not isinstance(e, Exception):
+                raise
 
     def _create_connection(self) -> ConnectionPoolEntry:
         """Called by subclasses to create a new ConnectionRecord."""
@@ -714,9 +716,11 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
         try:
             dbapi_connection = rec.get_connection()
-        except Exception as err:
+        except BaseException as err:
             with util.safe_reraise():
                 rec._checkin_failed(err, _fairy_was_created=False)
+
+            # not reached, for code linters only
             raise
 
         echo = pool._should_log_debug()
@@ -738,7 +742,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         return fairy
 
     def _checkin_failed(
-        self, err: Exception, _fairy_was_created: bool = True
+        self, err: BaseException, _fairy_was_created: bool = True
     ) -> None:
         self.invalidate(e=err)
         self.checkin(
@@ -893,7 +897,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
             self.dbapi_connection = connection = pool._invoke_creator(self)
             pool.logger.debug("Created new connection %r", connection)
             self.fresh = True
-        except Exception as e:
+        except BaseException as e:
             with util.safe_reraise():
                 pool.logger.debug("Error on connect(): %s", e)
         else:
@@ -1271,6 +1275,7 @@ class _ConnectionFairy(PoolProxiedConnection):
         # here.
 
         attempts = 2
+
         while attempts > 0:
             connection_is_fresh = fairy._connection_record.fresh
             fairy._connection_record.fresh = False
@@ -1323,7 +1328,7 @@ class _ConnectionFairy(PoolProxiedConnection):
                     fairy.dbapi_connection = (
                         fairy._connection_record.get_connection()
                     )
-                except Exception as err:
+                except BaseException as err:
                     with util.safe_reraise():
                         fairy._connection_record._checkin_failed(
                             err,
@@ -1341,6 +1346,21 @@ class _ConnectionFairy(PoolProxiedConnection):
                     raise
 
                 attempts -= 1
+            except BaseException as be_outer:
+                with util.safe_reraise():
+                    rec = fairy._connection_record
+                    if rec is not None:
+                        rec._checkin_failed(
+                            be_outer,
+                            _fairy_was_created=True,
+                        )
+
+                    # prevent _ConnectionFairy from being carried
+                    # in the stack trace, see above
+                    del fairy
+
+                # never called, this is for code linters
+                raise
 
         pool.logger.info("Reconnection attempts exhausted on checkout")
         fairy.invalidate()
