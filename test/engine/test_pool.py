@@ -858,18 +858,34 @@ class PoolEventsTest(PoolTestBase):
         p2.connect()
         eq_(canary, ["listen_one", "listen_two", "listen_one", "listen_three"])
 
-    def test_connect_event_fails_invalidates(self):
+    @testing.variation("exc_type", ["plain", "base_exception"])
+    def test_connect_event_fails_invalidates(self, exc_type):
         fail = False
+
+        if exc_type.plain:
+
+            class RegularThing(Exception):
+                pass
+
+            exc_cls = RegularThing
+        elif exc_type.base_exception:
+
+            class TimeoutThing(BaseException):
+                pass
+
+            exc_cls = TimeoutThing
+        else:
+            exc_type.fail()
 
         def listen_one(conn, rec):
             if fail:
-                raise Exception("it failed")
+                raise exc_cls("it failed")
 
         def listen_two(conn, rec):
             rec.info["important_flag"] = True
 
         p1 = pool.QueuePool(
-            creator=MockDBAPI().connect, pool_size=1, max_overflow=0
+            creator=MockDBAPI().connect, pool_size=1, max_overflow=0, timeout=5
         )
         event.listen(p1, "connect", listen_one)
         event.listen(p1, "connect", listen_two)
@@ -880,7 +896,9 @@ class PoolEventsTest(PoolTestBase):
         conn.close()
 
         fail = True
-        assert_raises(Exception, p1.connect)
+
+        # if the failed checkin is not reverted, the pool is blocked
+        assert_raises(exc_cls, p1.connect)
 
         fail = False
 
@@ -1506,7 +1524,7 @@ class QueuePoolTest(PoolTestBase):
 
         return patch.object(pool, "_finalize_fairy", assert_no_wr_callback)
 
-    def _assert_cleanup_on_pooled_reconnect(self, dbapi, p):
+    def _assert_cleanup_on_pooled_reconnect(self, dbapi, p, exc_cls=Exception):
         # p is QueuePool with size=1, max_overflow=2,
         # and one connection in the pool that will need to
         # reconnect when next used (either due to recycle or invalidate)
@@ -1515,7 +1533,7 @@ class QueuePoolTest(PoolTestBase):
             eq_(p.checkedout(), 0)
             eq_(p._overflow, 0)
             dbapi.shutdown(True)
-            assert_raises_context_ok(Exception, p.connect)
+            assert_raises_context_ok(exc_cls, p.connect)
             eq_(p._overflow, 0)
 
             eq_(p.checkedout(), 0)  # and not 1
@@ -1633,18 +1651,38 @@ class QueuePoolTest(PoolTestBase):
         c = p.connect()
         c.close()
 
-    def test_error_on_pooled_reconnect_cleanup_wcheckout_event(self):
+    @testing.variation("exc_type", ["plain", "base_exception"])
+    def test_error_on_pooled_reconnect_cleanup_wcheckout_event(self, exc_type):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=2)
 
         c1 = p.connect()
         c1.close()
 
-        @event.listens_for(p, "checkout")
-        def handle_checkout_event(dbapi_con, con_record, con_proxy):
-            if dbapi.is_shutdown:
-                raise tsa.exc.DisconnectionError()
+        if exc_type.plain:
 
-        self._assert_cleanup_on_pooled_reconnect(dbapi, p)
+            @event.listens_for(p, "checkout")
+            def handle_checkout_event(dbapi_con, con_record, con_proxy):
+                if dbapi.is_shutdown:
+                    raise tsa.exc.DisconnectionError()
+
+        elif exc_type.base_exception:
+
+            class TimeoutThing(BaseException):
+                pass
+
+            @event.listens_for(p, "checkout")
+            def handle_checkout_event(dbapi_con, con_record, con_proxy):
+                if dbapi.is_shutdown:
+                    raise TimeoutThing()
+
+        else:
+            exc_type.fail()
+
+        self._assert_cleanup_on_pooled_reconnect(
+            dbapi,
+            p,
+            exc_cls=TimeoutThing if exc_type.base_exception else Exception,
+        )
 
     @testing.combinations((True, testing.requires.python3), (False,))
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
