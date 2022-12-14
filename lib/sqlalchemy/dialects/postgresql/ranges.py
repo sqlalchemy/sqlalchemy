@@ -146,7 +146,7 @@ class Range(Generic[_T]):
         return AbstractRange()
 
     def _contains_value(self, value: _T) -> bool:
-        """return True if this range contains the given value."""
+        """Return True if this range contains the given value."""
 
         if self.empty:
             return False
@@ -681,7 +681,7 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
         cls: Type[Union[TypeEngine[Any], TypeEngineMixin]],
         **kw: Any,
     ) -> TypeEngine[Any]:
-        """dynamically adapt a range type to an abstract impl.
+        """Dynamically adapt a range type to an abstract impl.
 
         For example ``INT4RANGE().adapt(_Psycopg2NumericRange)`` should
         produce a type that will have ``_Psycopg2NumericRange`` behaviors
@@ -808,7 +808,7 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
 
 
 class AbstractRangeImpl(AbstractRange[Range[_T]]):
-    """marker for AbstractRange that will apply a subclass-specific
+    """Marker for AbstractRange that will apply a subclass-specific
     adaptation"""
 
 
@@ -821,7 +821,7 @@ class AbstractMultiRange(AbstractRange[Range[_T]]):
 class AbstractMultiRangeImpl(
     AbstractRangeImpl[Range[_T]], AbstractMultiRange[Range[_T]]
 ):
-    """marker for AbstractRange that will apply a subclass-specific
+    """Marker for AbstractRange that will apply a subclass-specific
     adaptation"""
 
 
