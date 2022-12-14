@@ -65,7 +65,7 @@ _HM = TypeVar("_HM", bound="hybridmethod[Any]")
 if compat.py310:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return inspect.get_annotations(obj)
+        return inspect.get_annotations(obj)  # type: ignore
 
 else:
 

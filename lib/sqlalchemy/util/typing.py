@@ -61,7 +61,7 @@ Self = TypeVar("Self", bound=Any)
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,
     # I've been wanting it since py27
-    from types import NoneType as NoneType
+    from types import NoneType as NoneType  # type: ignore[attr-defined]
 else:
     NoneType = type(None)  # type: ignore
 
