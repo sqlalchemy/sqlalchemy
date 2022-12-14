@@ -70,6 +70,7 @@ from ._psycopg_common import _PGExecutionContext_common_psycopg
 from .base import INTERVAL
 from .base import PGCompiler
 from .base import PGIdentifierPreparer
+from .base import REGCONFIG
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
@@ -87,6 +88,10 @@ logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
 
 class _PGString(sqltypes.String):
+    render_bind_cast = True
+
+
+class _PGREGCONFIG(REGCONFIG):
     render_bind_cast = True
 
 
@@ -270,6 +275,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         _PGDialect_common_psycopg.colspecs,
         {
             sqltypes.String: _PGString,
+            REGCONFIG: _PGREGCONFIG,
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,

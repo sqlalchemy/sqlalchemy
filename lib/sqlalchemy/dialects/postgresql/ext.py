@@ -8,8 +8,11 @@
 from __future__ import annotations
 
 from itertools import zip_longest
+from typing import Any
 from typing import TYPE_CHECKING
+from typing import TypeVar
 
+from . import types
 from .array import ARRAY
 from ...sql import coercions
 from ...sql import elements
@@ -18,7 +21,10 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import schema
 from ...sql.schema import ColumnCollectionConstraint
+from ...sql.sqltypes import TEXT
 from ...sql.visitors import InternalTraversal
+
+_T = TypeVar("_T", bound=Any)
 
 if TYPE_CHECKING:
     from ...sql.visitors import _TraverseInternalsType
@@ -287,3 +293,205 @@ def array_agg(*arg, **kw):
     """
     kw["_default_array_type"] = ARRAY
     return functions.func.array_agg(*arg, **kw)
+
+
+class _regconfig_fn(functions.GenericFunction[_T]):
+    inherit_cache = True
+
+    def __init__(self, *args, **kwargs):
+        args = list(args)
+        if len(args) > 1:
+
+            initial_arg = coercions.expect(
+                roles.ExpressionElementRole,
+                args.pop(0),
+                name=getattr(self, "name", None),
+                apply_propagate_attrs=self,
+                type_=types.REGCONFIG,
+            )
+            initial_arg = [initial_arg]
+        else:
+            initial_arg = []
+
+        addtl_args = [
+            coercions.expect(
+                roles.ExpressionElementRole,
+                c,
+                name=getattr(self, "name", None),
+                apply_propagate_attrs=self,
+            )
+            for c in args
+        ]
+        super().__init__(*(initial_arg + addtl_args), **kwargs)
+
+
+class to_tsvector(_regconfig_fn):
+    """The PostgreSQL ``to_tsvector`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_postgresql.TSVECTOR`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.to_tsvector` will be used automatically when invoking
+    ``sqlalchemy.func.to_tsvector()``, ensuring the correct argument and return
+    type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = types.TSVECTOR
+
+
+class to_tsquery(_regconfig_fn):
+    """The PostgreSQL ``to_tsquery`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_postgresql.TSQUERY`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.to_tsquery` will be used automatically when invoking
+    ``sqlalchemy.func.to_tsquery()``, ensuring the correct argument and return
+    type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = types.TSQUERY
+
+
+class plainto_tsquery(_regconfig_fn):
+    """The PostgreSQL ``plainto_tsquery`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_postgresql.TSQUERY`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.plainto_tsquery` will be used automatically when
+    invoking ``sqlalchemy.func.plainto_tsquery()``, ensuring the correct
+    argument and return type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = types.TSQUERY
+
+
+class phraseto_tsquery(_regconfig_fn):
+    """The PostgreSQL ``phraseto_tsquery`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_postgresql.TSQUERY`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.phraseto_tsquery` will be used automatically when
+    invoking ``sqlalchemy.func.phraseto_tsquery()``, ensuring the correct
+    argument and return type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = types.TSQUERY
+
+
+class websearch_to_tsquery(_regconfig_fn):
+    """The PostgreSQL ``websearch_to_tsquery`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_postgresql.TSQUERY`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.websearch_to_tsquery` will be used automatically when
+    invoking ``sqlalchemy.func.websearch_to_tsquery()``, ensuring the correct
+    argument and return type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = types.TSQUERY
+
+
+class ts_headline(_regconfig_fn):
+    """The PostgreSQL ``ts_headline`` SQL function.
+
+    This function applies automatic casting of the REGCONFIG argument
+    to use the :class:`_postgresql.REGCONFIG` datatype automatically,
+    and applies a return type of :class:`_types.TEXT`.
+
+    Assuming the PostgreSQL dialect has been imported, either by invoking
+    ``from sqlalchemy.dialects import postgresql``, or by creating a PostgreSQL
+    engine using ``create_engine("postgresql...")``,
+    :class:`_postgresql.ts_headline` will be used automatically when invoking
+    ``sqlalchemy.func.ts_headline()``, ensuring the correct argument and return
+    type handlers are used at compile and execution time.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    inherit_cache = True
+    type = TEXT
+
+    def __init__(self, *args, **kwargs):
+        args = list(args)
+
+        # parse types according to
+        # https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-HEADLINE
+        if len(args) < 2:
+            # invalid args; don't do anything
+            has_regconfig = False
+        elif (
+            isinstance(args[1], elements.ColumnElement)
+            and args[1].type._type_affinity is types.TSQUERY
+        ):
+            # tsquery is second argument, no regconfig argument
+            has_regconfig = False
+        else:
+            has_regconfig = True
+
+        if has_regconfig:
+            initial_arg = coercions.expect(
+                roles.ExpressionElementRole,
+                args.pop(0),
+                apply_propagate_attrs=self,
+                name=getattr(self, "name", None),
+                type_=types.REGCONFIG,
+            )
+            initial_arg = [initial_arg]
+        else:
+            initial_arg = []
+
+        addtl_args = [
+            coercions.expect(
+                roles.ExpressionElementRole,
+                c,
+                name=getattr(self, "name", None),
+                apply_propagate_attrs=self,
+            )
+            for c in args
+        ]
+        super().__init__(*(initial_arg + addtl_args), **kwargs)

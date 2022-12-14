@@ -142,6 +142,7 @@ from .base import PGDialect
 from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import REGCLASS
+from .base import REGCONFIG
 from ... import exc
 from ... import pool
 from ... import util
@@ -157,6 +158,10 @@ if TYPE_CHECKING:
 
 
 class AsyncpgString(sqltypes.String):
+    render_bind_cast = True
+
+
+class AsyncpgREGCONFIG(REGCONFIG):
     render_bind_cast = True
 
 
@@ -899,6 +904,7 @@ class PGDialect_asyncpg(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.String: AsyncpgString,
+            REGCONFIG: AsyncpgREGCONFIG,
             sqltypes.Time: AsyncpgTime,
             sqltypes.Date: AsyncpgDate,
             sqltypes.DateTime: AsyncpgDateTime,
