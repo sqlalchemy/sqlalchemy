@@ -1,5 +1,6 @@
 import logging
 import logging.handlers
+import re
 
 import sqlalchemy as sa
 from sqlalchemy import column
@@ -14,6 +15,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -22,6 +24,7 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import dynamic_loader
 from sqlalchemy.orm import Load
@@ -39,6 +42,7 @@ from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -665,6 +669,116 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 pass
 
         assert m._is_userland_descriptor("foo", MyClass.foo)
+
+    @testing.variation(
+        "attr_type",
+        ["method", "descriptor", "assocprox", "plain", "relationship"],
+    )
+    def test_backref_replacing_descriptor_warning(self, attr_type):
+        """test #4629"""
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+
+        class MyClass(User):
+            if attr_type.method:
+
+                def addresses(self):
+                    pass
+
+            elif attr_type.descriptor:
+
+                @property
+                def addresses(self):
+                    pass
+
+            elif attr_type.assocprox:
+                addresses = association_proxy("addresses", "email")
+            elif attr_type.plain:
+                addresses = "addresses"
+            elif attr_type.relationship:
+                addresses = relationship(Address)
+            else:
+                attr_type.fail()
+
+        self.mapper(MyClass, users)
+
+        self.mapper(
+            Address,
+            addresses,
+            properties={"user": relationship(MyClass, backref="addresses")},
+        )
+
+        attr_repr = re.sub(r"[\(\)]", ".", repr(MyClass.__dict__["addresses"]))
+        with expect_warnings(
+            rf"User-placed attribute {attr_repr} on "
+            r"Mapper\[MyClass\(users\)\] being replaced with new property "
+            '"MyClass.addresses"; the old attribute will be discarded'
+        ):
+            configure_mappers()
+
+    @testing.variation(
+        "attr_type",
+        ["assocprox", "relationship"],
+    )
+    @testing.variation("as_mixin", [True, False])
+    def test_backref_replacing_descriptor_warning_declarative(
+        self, attr_type, as_mixin
+    ):
+        """test #4629"""
+        users = self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+
+        Base = self.mapper_registry.generate_base()
+
+        if as_mixin:
+
+            class MyMixin:
+                if attr_type.assocprox:
+
+                    @declared_attr
+                    def addresses(cls):
+                        return association_proxy("addresses", "email")
+
+                elif attr_type.relationship:
+
+                    @declared_attr
+                    def addresses(cls):
+                        return relationship(Address)
+
+                else:
+                    attr_type.fail()
+
+            class MyClass(MyMixin, Base):
+                __table__ = users
+
+        else:
+
+            class MyClass(Base):
+                __table__ = users
+
+                if attr_type.assocprox:
+                    addresses = association_proxy("addresses", "email")
+                elif attr_type.relationship:
+                    addresses = relationship(Address)
+                else:
+                    attr_type.fail()
+
+        self.mapper(
+            Address,
+            addresses,
+            properties={"user": relationship(MyClass, backref="addresses")},
+        )
+
+        if attr_type.relationship:
+            with expect_raises_message(
+                sa.exc.ArgumentError, "Error creating backref"
+            ):
+                configure_mappers()
+        elif attr_type.assocprox:
+            with expect_warnings("User-placed attribute"):
+                configure_mappers()
+        else:
+            attr_type.fail()
 
     def test_configure_on_get_props_1(self):
         User, users = self.classes.User, self.tables.users
