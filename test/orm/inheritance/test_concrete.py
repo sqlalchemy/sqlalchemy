@@ -1013,6 +1013,12 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         assert sess.query(B).filter(B.bname == "b1").one() is b1
 
     def test_overlapping_backref_relationship(self):
+        """test #3630.
+
+        was revisited in #4629 (not fixed until 2.0.0b5 despite the old
+        issue number)
+
+        """
         A, B, b_table, a_table, Dest, dest_table = (
             self.classes.A,
             self.classes.B,
