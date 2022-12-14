@@ -1679,6 +1679,13 @@ class MACADDR(sqltypes.TypeEngine):
 PGMacAddr = MACADDR
 
 
+class MACADDR8(sqltypes.TypeEngine):
+    __visit_name__ = "MACADDR8"
+
+
+PGMacAddr8 = MACADDR8
+
+
 class MONEY(sqltypes.TypeEngine):
 
     r"""Provide the PostgreSQL MONEY type.
@@ -2232,6 +2239,7 @@ colspecs = {
     sqltypes.JSON: _json.JSON,
 }
 
+
 ischema_names = {
     "_array": _array.ARRAY,
     "hstore": _hstore.HSTORE,
@@ -2260,6 +2268,7 @@ ischema_names = {
     "bit": BIT,
     "bit varying": BIT,
     "macaddr": MACADDR,
+    "macaddr8": MACADDR8,
     "money": MONEY,
     "oid": OID,
     "regclass": REGCLASS,
@@ -3006,6 +3015,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
+
+    def visit_MACADDR8(self, type_, **kw):
+        return "MACADDR8"
 
     def visit_MONEY(self, type_, **kw):
         return "MONEY"

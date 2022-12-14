@@ -2719,6 +2719,7 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             Column("bitstring", postgresql.BIT(4)),
             Column("addr", postgresql.INET),
             Column("addr2", postgresql.MACADDR),
+            Column("addr4", postgresql.MACADDR8),
             Column("price", postgresql.MONEY),
             Column("addr3", postgresql.CIDR),
             Column("doubleprec", postgresql.DOUBLE_PRECISION),

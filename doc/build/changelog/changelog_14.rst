@@ -719,7 +719,7 @@ This document details individual issue-level changes made throughout
         :tickets: 8196
 
         Fixed a crash of the mypy plugin when using a lambda as a Column
-        default. Pull request curtesy of tchapi.
+        default. Pull request courtesy of tchapi.
 
 
     .. change::

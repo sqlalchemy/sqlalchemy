@@ -30,6 +30,7 @@ from .base import INET
 from .base import INTEGER
 from .base import INTERVAL
 from .base import MACADDR
+from .base import MACADDR8
 from .base import MONEY
 from .base import NUMERIC
 from .base import OID
@@ -80,6 +81,7 @@ __all__ = (
     "UUID",
     "BIT",
     "MACADDR",
+    "MACADDR8",
     "MONEY",
     "OID",
     "REGCLASS",
