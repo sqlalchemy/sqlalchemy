@@ -289,6 +289,9 @@ class Range(Generic[_T]):
         bounds inclusivity, returning ``True`` if they are equal.
         """
 
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
         if self.empty and other.empty:
             return True
         elif self.empty != other.empty:
