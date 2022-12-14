@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 8393
+
+    Added the PostgreSQL type ``MACADDR8``.
+    Pull request courtesy of Asim Farooq.

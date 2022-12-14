@@ -323,6 +323,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         JSON,
         JSONB,
         MACADDR,
+        MACADDR8,
         MONEY,
         NUMERIC,
         OID,
@@ -411,6 +412,8 @@ construction arguments, are as follows:
 .. autoclass:: JSONPATH
 
 .. autoclass:: MACADDR
+
+.. autoclass:: MACADDR8
 
 .. autoclass:: MONEY
 

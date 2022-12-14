@@ -69,6 +69,7 @@ from .types import CIDR
 from .types import INET
 from .types import INTERVAL
 from .types import MACADDR
+from .types import MACADDR8
 from .types import MONEY
 from .types import OID
 from .types import REGCLASS
@@ -99,6 +100,7 @@ __all__ = (
     "UUID",
     "BIT",
     "MACADDR",
+    "MACADDR8",
     "MONEY",
     "OID",
     "REGCLASS",
