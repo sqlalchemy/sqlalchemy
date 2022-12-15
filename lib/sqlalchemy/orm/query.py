@@ -309,6 +309,10 @@ class Query(
 
         .. versionadded:: 2.0
 
+        .. seealso::
+
+            :meth:`.Result.tuples` - v2 equivalent method.
+
         """
         return self.only_return_tuples(True)  # type: ignore
 
@@ -608,6 +612,10 @@ class Query(
 
         Eager JOIN generation within the query is disabled.
 
+        .. seealso::
+
+            :meth:`_sql.Select.subquery` - v2 comparable method.
+
         :param name: string name to be assigned as the alias;
             this is passed through to :meth:`_expression.FromClause.alias`.
             If ``None``, a name will be deterministically generated
@@ -694,7 +702,7 @@ class Query(
 
         .. seealso::
 
-            :meth:`_expression.HasCTE.cte`
+            :meth:`_sql.Select.cte` - v2 equivalent method.
 
         """
         return (
@@ -708,7 +716,9 @@ class Query(
         :class:`_query.Query`, converted
         to a scalar subquery with a label of the given name.
 
-        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.label`.
+        .. seealso::
+
+            :meth:`_sql.Select.label` - v2 comparable method.
 
         """
 
@@ -773,6 +783,10 @@ class Query(
         .. versionchanged:: 1.4 The :meth:`_query.Query.scalar_subquery`
            method replaces the :meth:`_query.Query.as_scalar` method.
 
+        .. seealso::
+
+            :meth:`_sql.Select.scalar_subquery` - v2 comparable method.
+
         """
 
         return (
@@ -828,6 +842,8 @@ class Query(
             level will type results as ``Tuple``.
 
             :meth:`_query.Query.is_single_entity`
+
+            :meth:`_engine.Result.tuples` - v2 comparable method.
 
         """
         self.load_options += dict(_only_return_tuples=value)
@@ -902,6 +918,10 @@ class Query(
 
         .. versionadded:: 1.4
 
+        .. seealso::
+
+            :meth:`_sql.Select.get_label_style` - v2 equivalent method.
+
         """
         return self._label_style
 
@@ -933,6 +953,11 @@ class Query(
                 )
 
         .. versionadded:: 1.4
+
+
+        .. seealso::
+
+            :meth:`_sql.Select.set_label_style` - v2 equivalent method.
 
         """  # noqa
         if self._label_style is not style:
@@ -970,6 +995,10 @@ class Query(
 
         This returned value is a SQL expression construct, or ``None`` if no
         criterion has been established.
+
+        .. seealso::
+
+            :attr:`_sql.Select.whereclause` - v2 equivalent property.
 
         """
         return BooleanClauseList._construct_for_whereclause(
@@ -1165,6 +1194,10 @@ class Query(
         a subquery as returned by :meth:`_query.Query.subquery` is
         embedded in another :func:`_expression.select` construct.
 
+        .. seealso::
+
+            :meth:`_sql.Select.correlate` - v2 equivalent method.
+
         """
 
         self._auto_correlate = False
@@ -1297,7 +1330,12 @@ class Query(
         alias: Optional[Union[Alias, Subquery]] = None,
     ) -> Query[Any]:
         """add a mapped entity to the list of result columns
-        to be returned."""
+        to be returned.
+
+        .. seealso::
+
+            :meth:`_sql.Select.add_columns` - v2 comparable method.
+        """
 
         if alias is not None:
             # TODO: deprecate
@@ -1551,6 +1589,9 @@ class Query(
             q = q.join((subq, subq.c.email < Address.email)).\
                         limit(1)
 
+        .. seealso::
+
+            :meth:`_sql.Select.with_only_columns` - v2 comparable method.
         """
         if __kw:
             raise _no_kw()
@@ -1567,7 +1608,12 @@ class Query(
         self, *column: _ColumnExpressionArgument[Any]
     ) -> Query[Any]:
         """Add one or more column expressions to the list
-        of result columns to be returned."""
+        of result columns to be returned.
+
+        .. seealso::
+
+            :meth:`_sql.Select.add_columns` - v2 comparable method.
+        """
 
         self._raw_columns = list(self._raw_columns)
 
@@ -1655,6 +1701,9 @@ class Query(
         .. seealso::
 
             :meth:`_query.Query.execution_options`
+
+            :meth:`_sql.Select.get_execution_options` - v2 comparable method.
+
         """
         return self._execution_options
 
@@ -1723,6 +1772,8 @@ class Query(
             :ref:`engine_stream_results`
 
             :meth:`_query.Query.get_execution_options`
+
+            :meth:`_sql.Select.execution_options` - v2 equivalent method.
 
         """
         self._execution_options = self._execution_options.union(kwargs)
@@ -1824,6 +1875,10 @@ class Query(
 
         .. versionadded:: 1.4
 
+        .. seealso::
+
+            :meth:`_sql.Select.where` - v2 equivalent method.
+
         """
         return self.filter(*criterion)
 
@@ -1854,6 +1909,8 @@ class Query(
         .. seealso::
 
             :meth:`_query.Query.filter_by` - filter on keyword expressions.
+
+            :meth:`_sql.Select.where` - v2 equivalent method.
 
         """
         for crit in list(criterion):
@@ -1940,6 +1997,8 @@ class Query(
 
             :meth:`_query.Query.filter` - filter on SQL expressions.
 
+            :meth:`_sql.Select.filter_by` - v2 comparable method.
+
         """
         from_entity = self._filter_by_zero()
 
@@ -1981,6 +2040,8 @@ class Query(
             :ref:`tutorial_order_by` - in the :ref:`unified_tutorial`
 
             :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
+
+            :meth:`_sql.Select.order_by` - v2 equivalent method.
 
         """
 
@@ -2024,6 +2085,8 @@ class Query(
 
             :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
+            :meth:`_sql.Select.group_by` - v2 equivalent method.
+
         """
 
         for assertion in (self._no_statement_condition, self._no_limit_offset):
@@ -2057,6 +2120,10 @@ class Query(
                         join(User.addresses).\
                         group_by(User.id).\
                         having(func.count(Address.id) > 2)
+
+        .. seealso::
+
+            :meth:`_sql.Select.having` - v2 equivalent method.
 
         """
 
@@ -2107,6 +2174,10 @@ class Query(
         :class:`_query.Query` object will not render ORDER BY within
         its SELECT statement.
 
+        .. seealso::
+
+            :meth:`_sql.Select.union` - v2 equivalent method.
+
         """
         return self._set_op(expression.union, *q)
 
@@ -2115,6 +2186,10 @@ class Query(
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
         that method for usage examples.
+
+        .. seealso::
+
+            :meth:`_sql.Select.union_all` - v2 equivalent method.
 
         """
         return self._set_op(expression.union_all, *q)
@@ -2125,6 +2200,10 @@ class Query(
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
         that method for usage examples.
 
+        .. seealso::
+
+            :meth:`_sql.Select.intersect` - v2 equivalent method.
+
         """
         return self._set_op(expression.intersect, *q)
 
@@ -2133,6 +2212,10 @@ class Query(
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
         that method for usage examples.
+
+        .. seealso::
+
+            :meth:`_sql.Select.intersect_all` - v2 equivalent method.
 
         """
         return self._set_op(expression.intersect_all, *q)
@@ -2143,6 +2226,10 @@ class Query(
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
         that method for usage examples.
 
+        .. seealso::
+
+            :meth:`_sql.Select.except_` - v2 equivalent method.
+
         """
         return self._set_op(expression.except_, *q)
 
@@ -2151,6 +2238,10 @@ class Query(
 
         Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`. See
         that method for usage examples.
+
+        .. seealso::
+
+            :meth:`_sql.Select.except_all` - v2 equivalent method.
 
         """
         return self._set_op(expression.except_all, *q)
@@ -2334,6 +2425,10 @@ class Query(
                 JOIN address ON user.id=address.user_id
                 WHERE user.name = :name_1
 
+        .. seealso::
+
+            :meth:`_sql.Select.join` - v2 equivalent method.
+
         :param \*props: Incoming arguments for :meth:`_query.Query.join`,
          the props collection in modern use should be considered to be a  one
          or two argument form, either as a single "target" entity or ORM
@@ -2389,6 +2484,10 @@ class Query(
         and apply generatively, returning the newly resulting ``Query``.
 
         Usage is the same as the ``join()`` method.
+
+        .. seealso::
+
+            :meth:`_sql.Select.outerjoin` - v2 equivalent method.
 
         """
         return self.join(target, onclause=onclause, isouter=True, full=full)
@@ -2456,6 +2555,8 @@ class Query(
 
             :meth:`.Query.select_entity_from`
 
+            :meth:`_sql.Select.select_from` - v2 equivalent method.
+
         """
 
         self._set_select_from(from_obj, False)
@@ -2502,6 +2603,8 @@ class Query(
 
            :meth:`_query.Query.offset`
 
+           :meth:`_sql.Select.slice` - v2 equivalent method.
+
         """
 
         self._limit_clause, self._offset_clause = sql_util._make_slice(
@@ -2517,6 +2620,10 @@ class Query(
         """Apply a ``LIMIT`` to the query and return the newly resulting
         ``Query``.
 
+        .. seealso::
+
+            :meth:`_sql.Select.limit` - v2 equivalent method.
+
         """
         self._limit_clause = sql_util._offset_or_limit_clause(limit)
         return self
@@ -2529,6 +2636,9 @@ class Query(
         """Apply an ``OFFSET`` to the query and return the newly resulting
         ``Query``.
 
+        .. seealso::
+
+            :meth:`_sql.Select.offset` - v2 equivalent method.
         """
         self._offset_clause = sql_util._offset_or_limit_clause(offset)
         return self
@@ -2557,6 +2667,10 @@ class Query(
             .. deprecated:: 2.0  This logic is deprecated and will be removed
                in SQLAlchemy 2.0.     See :ref:`migration_20_query_distinct`
                for a description of this use case in 2.0.
+
+        .. seealso::
+
+            :meth:`_sql.Select.distinct` - v2 equivalent method.
 
         :param \*expr: optional column expressions.  When present,
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
@@ -2590,6 +2704,12 @@ class Query(
             .. seealso::
 
                 :ref:`faq_query_deduplicating`
+
+        .. seealso::
+
+            :meth:`_engine.Result.all` - v2 comparable method.
+
+            :meth:`_engine.Result.scalars` - v2 comparable method.
         """
         return self._iter().all()  # type: ignore
 
@@ -2608,6 +2728,10 @@ class Query(
         of columns
         appropriate to the entity class represented by this
         :class:`_query.Query`.
+
+        .. seealso::
+
+            :meth:`_sql.Select.from_statement` - v2 comparable method.
 
         """
         statement = coercions.expect(
@@ -2634,6 +2758,10 @@ class Query(
             :meth:`_query.Query.one`
 
             :meth:`_query.Query.one_or_none`
+
+            :meth:`_engine.Result.first` - v2 comparable method.
+
+            :meth:`_engine.Result.scalars` - v2 comparable method.
 
         """
         # replicates limit(1) behavior
@@ -2665,6 +2793,10 @@ class Query(
 
             :meth:`_query.Query.one`
 
+            :meth:`_engine.Result.one_or_none` - v2 comparable method.
+
+            :meth:`_engine.Result.scalar_one_or_none` - v2 comparable method.
+
         """
         return self._iter().one_or_none()  # type: ignore
 
@@ -2684,6 +2816,10 @@ class Query(
             :meth:`_query.Query.first`
 
             :meth:`_query.Query.one_or_none`
+
+            :meth:`_engine.Result.one` - v2 comparable method.
+
+            :meth:`_engine.Result.scalar_one` - v2 comparable method.
 
         """
         return self._iter().one()  # type: ignore
@@ -2705,6 +2841,10 @@ class Query(
           20
 
         This results in an execution of the underlying query.
+
+        .. seealso::
+
+            :meth:`_engine.Result.scalar` - v2 comparable method.
 
         """
         # TODO: not sure why we can't use result.scalar() here
@@ -2931,6 +3071,10 @@ class Query(
 
             session.query(literal(True)).filter(q.exists()).scalar()
 
+        .. seealso::
+
+            :meth:`_sql.Select.exists` - v2 comparable method.
+
         """
 
         # .add_columns() for the case that we are a query().select_from(X),
@@ -3004,6 +3148,10 @@ class Query(
 
             # count distinct "name" values
             session.query(func.count(distinct(User.name)))
+
+        .. seealso::
+
+            :ref:`migration_20_query_usage`
 
         """
         col = sql.func.count(sql.literal_column("*"))
@@ -3125,7 +3273,6 @@ class Query(
         .. seealso::
 
             :ref:`orm_expression_update_delete`
-
 
         """
 
