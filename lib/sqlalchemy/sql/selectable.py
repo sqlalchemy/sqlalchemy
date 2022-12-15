@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# TODO_DELETE_mypy: allow-untyped-defs, allow-untyped-calls
 
 """The :class:`_expression.FromClause` class of SQL expression elements,
 representing
@@ -1317,7 +1316,9 @@ class Join(roles.DMLTableRole, FromClause):
         self.right._refresh_for_new_column(column)
 
     def _match_primaries(
-        self, left: FromClause, right: FromClause
+        self,
+        left: Union[Table, Join, Subquery],
+        right: Union[Table, Join],
     ) -> ColumnElement[bool]:
         if isinstance(left, Join):
             left_right = left.right
@@ -1328,8 +1329,8 @@ class Join(roles.DMLTableRole, FromClause):
     @classmethod
     def _join_condition(
         cls,
-        a: FromClause,
-        b: FromClause,
+        a: Union[Table, Join, Subquery],
+        b: Union[Table, Join],
         *,
         a_subset: Optional[FromClause] = None,
         consider_as_foreign_keys: Optional[
@@ -1518,7 +1519,11 @@ class Join(roles.DMLTableRole, FromClause):
         return Select(self.left, self.right).select_from(self)
 
     @util.preload_module("sqlalchemy.sql.util")
-    def _anonymous_fromclause(self, name=None, flat=False):
+    def _anonymous_fromclause(
+        self,
+        name: Optional[str] = None,
+        flat: bool = False,
+    ):  # WIP -> ??? NamedFromClause: # Union[Join, Subquery]:
         sqlutil = util.preloaded.sql_util
         if flat:
             if name is not None:
@@ -1646,11 +1651,11 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         return name
 
     @util.ro_non_memoized_property
-    def implicit_returning(self):
+    def implicit_returning(self):  # type: ignore
         return self.element.implicit_returning  # type: ignore
 
     @property
-    def original(self):
+    def original(self) -> ReturnsRows:
         """Legacy for dialects that are referring to Alias.original."""
         return self.element
 
