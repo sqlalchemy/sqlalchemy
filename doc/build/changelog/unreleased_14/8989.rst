@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, types
+    :tickets: 8989
+    :versions: 2.0.0b5
+
+    Fixed bug where SQL compilation would fail (assertion fail in 2.0, NoneType
+    error in 1.4) when using an expression whose type included
+    :meth:`_types.TypeEngine.bind_expression`, in the context of an "expanding"
+    (i.e. "IN") parameter in conjunction with the ``literal_binds`` compiler
+    parameter.
