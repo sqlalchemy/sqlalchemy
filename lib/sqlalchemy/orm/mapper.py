@@ -1658,7 +1658,7 @@ class Mapper(
                         )
                         continue
 
-                self._configure_property(key, possible_col_prop, False)
+                self._configure_property(key, possible_col_prop, init=False)
 
         # step 2: pull properties from the inherited mapper.  reconcile
         # columns with those which are explicit above.  for properties that
@@ -1698,7 +1698,7 @@ class Mapper(
                 # it now in the order in which it corresponds to the
                 # Table / selectable
                 key, prop = explicit_col_props_by_column[column]
-                self._configure_property(key, prop, False)
+                self._configure_property(key, prop, init=False)
                 continue
 
             elif column in self._columntoproperty:
@@ -1962,8 +1962,10 @@ class Mapper(
         self,
         key: str,
         prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
+        *,
         init: bool = True,
         setparent: bool = True,
+        warn_for_existing: bool = False,
     ) -> MapperProperty[Any]:
         descriptor_props = util.preloaded.orm_descriptor_props
         self._log(
@@ -2072,6 +2074,20 @@ class Mapper(
             )
             oldprop = self._props[key]
             self._path_registry.pop(oldprop, None)
+
+        if (
+            warn_for_existing
+            and self.class_.__dict__.get(key, None) is not None
+            and not isinstance(
+                self._props.get(key, None),
+                (descriptor_props.ConcreteInheritedProperty,),
+            )
+        ):
+            util.warn(
+                "User-placed attribute %r on %s being replaced with "
+                'new property "%s"; the old attribute will be discarded'
+                % (self.class_.__dict__[key], self, prop)
+            )
 
         self._props[key] = prop
 

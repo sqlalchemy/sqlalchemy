@@ -11,7 +11,7 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
 
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
-   **Updated June 27, 2022**
+   **Updated December 2022**
 
    For SQLAlchemy 2.0, the Mypy plugin continues to work at the level at which
    it reached in the SQLAlchemy 1.4 release.  However, SQLAlchemy 2.0,
@@ -20,12 +20,13 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
    for ORM Declarative models that removes the need for the Mypy plugin and
    delivers much more consistent behavior with generally superior capabilities.
    Note that this new capability is **not
-   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0, which is not released
-   yet as of June 27, 2022**.
+   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0, which is out with beta
+   releases as of December 2022**.
 
    The SQLAlchemy Mypy plugin, while it has technically never left the "alpha"
-   stage, should **now be considered as legacy, even though it is still
-   necessary for full Mypy support when using SQLAlchemy 1.4**.
+   stage, should **now be considered as deprecated in SQLAlchemy 2.0, even
+   though it is still necessary for full Mypy support when using
+   SQLAlchemy 1.4**.
 
    The Mypy plugin itself does not solve the issue of supplying correct typing
    with other typing tools such as Pylance/Pyright, Pytype, Pycharm, etc, which
@@ -52,7 +53,7 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
    :ref:`whatsnew_20_orm_declarative_typing` for background on how this
    migration may proceed.
 
-   Code that is running exclusively on **not-released-yet** SQLAlchemy version
+   Code that is running exclusively on SQLAlchemy version
    2.0 and has fully migrated to the new declarative constructs will enjoy full
    compliance with pep-484 as well as working correctly within IDEs and other
    typing tools, without the need for plugins.

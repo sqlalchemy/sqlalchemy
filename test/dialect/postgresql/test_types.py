@@ -3996,6 +3996,10 @@ class _RangeComparisonFixtures(_RangeTests):
 
         is_false(range_.contains(values["rh"]))
 
+        is_true(range_ == range_)
+        is_false(range_ != range_)
+        is_false(range_ == None)
+
     def test_compatibility_accessors(self):
         range_ = self._data_obj()
 

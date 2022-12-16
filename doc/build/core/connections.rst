@@ -956,6 +956,7 @@ As an example, we will examine the logging produced by the following program::
     from sqlalchemy import create_engine
     from sqlalchemy import ForeignKey
     from sqlalchemy import Integer
+    from sqlalchemy import select
     from sqlalchemy import String
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship
@@ -987,7 +988,7 @@ As an example, we will examine the logging produced by the following program::
     s.add_all([A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])])
     s.commit()
 
-    for a_rec in s.query(A):
+    for a_rec in s.scalars(select(A)):
         print(a_rec.bs)
 
 When run, each SQL statement that's logged will include a bracketed
