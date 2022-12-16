@@ -1423,12 +1423,12 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_empty_set_op_expr(self, type_, expand_op):
+    def visit_empty_set_op_expr(self, type_, expand_op, **kw):
         # slightly old SQLite versions don't seem to be able to handle
         # the empty set impl
         return self.visit_empty_set_expr(type_)
 
-    def visit_empty_set_expr(self, element_types):
+    def visit_empty_set_expr(self, element_types, **kw):
         return "SELECT %s FROM (SELECT %s) WHERE 1!=1" % (
             ", ".join("1" for type_ in element_types or [INTEGER()]),
             ", ".join("1" for type_ in element_types or [INTEGER()]),
@@ -1595,7 +1595,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return colspec
 
-    def visit_primary_key_constraint(self, constraint):
+    def visit_primary_key_constraint(self, constraint, **kw):
         # for columns with sqlite_autoincrement=True,
         # the PRIMARY KEY constraint can only be inline
         # with the column itself.
@@ -1624,7 +1624,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_unique_constraint(self, constraint):
+    def visit_unique_constraint(self, constraint, **kw):
         text = super().visit_unique_constraint(constraint)
 
         on_conflict_clause = constraint.dialect_options["sqlite"][
@@ -1642,7 +1642,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_check_constraint(self, constraint):
+    def visit_check_constraint(self, constraint, **kw):
         text = super().visit_check_constraint(constraint)
 
         on_conflict_clause = constraint.dialect_options["sqlite"][
@@ -1654,7 +1654,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_column_check_constraint(self, constraint):
+    def visit_column_check_constraint(self, constraint, **kw):
         text = super().visit_column_check_constraint(constraint)
 
         if constraint.dialect_options["sqlite"]["on_conflict"] is not None:
@@ -1665,7 +1665,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_foreign_key_constraint(self, constraint):
+    def visit_foreign_key_constraint(self, constraint, **kw):
 
         local_table = constraint.elements[0].parent.table
         remote_table = constraint.elements[0].column.table
@@ -1681,7 +1681,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return preparer.format_table(table, use_schema=False)
 
     def visit_create_index(
-        self, create, include_schema=False, include_table_schema=True
+        self, create, include_schema=False, include_table_schema=True, **kw
     ):
         index = create.element
         self._verify_index_table(index)

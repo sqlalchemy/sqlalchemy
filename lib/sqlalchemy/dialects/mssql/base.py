@@ -2236,12 +2236,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
         field = self.extract_map.get(extract.field, extract.field)
         return "DATEPART(%s, %s)" % (field, self.process(extract.expr, **kw))
 
-    def visit_savepoint(self, savepoint_stmt):
+    def visit_savepoint(self, savepoint_stmt, **kw):
         return "SAVE TRANSACTION %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
 
-    def visit_rollback_to_savepoint(self, savepoint_stmt):
+    def visit_rollback_to_savepoint(self, savepoint_stmt, **kw):
         return "ROLLBACK TRANSACTION %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
@@ -2392,7 +2392,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             for t in [from_table] + extra_froms
         )
 
-    def visit_empty_set_expr(self, type_):
+    def visit_empty_set_expr(self, type_, **kw):
         return "SELECT 1 WHERE 1!=1"
 
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
@@ -2580,7 +2580,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return colspec
 
-    def visit_create_index(self, create, include_schema=False):
+    def visit_create_index(self, create, include_schema=False, **kw):
         index = create.element
         self._verify_index_table(index)
         preparer = self.preparer
@@ -2632,13 +2632,13 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_drop_index(self, drop):
+    def visit_drop_index(self, drop, **kw):
         return "\nDROP INDEX %s ON %s" % (
             self._prepared_index_name(drop.element, include_schema=False),
             self.preparer.format_table(drop.element.table),
         )
 
-    def visit_primary_key_constraint(self, constraint):
+    def visit_primary_key_constraint(self, constraint, **kw):
         if len(constraint) == 0:
             return ""
         text = ""
@@ -2661,7 +2661,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         text += self.define_constraint_deferrability(constraint)
         return text
 
-    def visit_unique_constraint(self, constraint):
+    def visit_unique_constraint(self, constraint, **kw):
         if len(constraint) == 0:
             return ""
         text = ""
@@ -2684,7 +2684,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         text += self.define_constraint_deferrability(constraint)
         return text
 
-    def visit_computed_column(self, generated):
+    def visit_computed_column(self, generated, **kw):
         text = "AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
         )
@@ -2693,7 +2693,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += " PERSISTED"
         return text
 
-    def visit_set_table_comment(self, create):
+    def visit_set_table_comment(self, create, **kw):
         schema = self.preparer.schema_for_object(create.element)
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
@@ -2707,7 +2707,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             )
         )
 
-    def visit_drop_table_comment(self, drop):
+    def visit_drop_table_comment(self, drop, **kw):
         schema = self.preparer.schema_for_object(drop.element)
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
@@ -2718,7 +2718,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             )
         )
 
-    def visit_set_column_comment(self, create):
+    def visit_set_column_comment(self, create, **kw):
         schema = self.preparer.schema_for_object(create.element.table)
         schema_name = schema if schema else self.dialect.default_schema_name
         return (
@@ -2735,7 +2735,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             )
         )
 
-    def visit_drop_column_comment(self, drop):
+    def visit_drop_column_comment(self, drop, **kw):
         schema = self.preparer.schema_for_object(drop.element.table)
         schema_name = schema if schema else self.dialect.default_schema_name
         return (

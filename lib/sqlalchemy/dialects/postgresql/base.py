@@ -1836,7 +1836,7 @@ class PGCompiler(compiler.SQLCompiler):
                 self.process(flags, **kw),
             )
 
-    def visit_empty_set_expr(self, element_types):
+    def visit_empty_set_expr(self, element_types, **kw):
         # cast the empty set to the type we are comparing against.  if
         # we are comparing against the null type, pick an arbitrary
         # datatype for the empty set
@@ -2144,7 +2144,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         not_valid = constraint.dialect_options["postgresql"]["not_valid"]
         return " NOT VALID" if not_valid else ""
 
-    def visit_check_constraint(self, constraint):
+    def visit_check_constraint(self, constraint, **kw):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
             if (
@@ -2162,12 +2162,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self._define_constraint_validity(constraint)
         return text
 
-    def visit_foreign_key_constraint(self, constraint):
+    def visit_foreign_key_constraint(self, constraint, **kw):
         text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
 
-    def visit_create_enum_type(self, create):
+    def visit_create_enum_type(self, create, **kw):
         type_ = create.element
 
         return "CREATE TYPE %s AS ENUM (%s)" % (
@@ -2178,12 +2178,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
-    def visit_drop_enum_type(self, drop):
+    def visit_drop_enum_type(self, drop, **kw):
         type_ = drop.element
 
         return "DROP TYPE %s" % (self.preparer.format_type(type_))
 
-    def visit_create_domain_type(self, create):
+    def visit_create_domain_type(self, create, **kw):
         domain: DOMAIN = create.element
 
         options = []
@@ -2211,11 +2211,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
             f"{' '.join(options)}"
         )
 
-    def visit_drop_domain_type(self, drop):
+    def visit_drop_domain_type(self, drop, **kw):
         domain = drop.element
         return f"DROP DOMAIN {self.preparer.format_type(domain)}"
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, **kw):
         preparer = self.preparer
         index = create.element
         self._verify_index_table(index)
@@ -2303,7 +2303,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_drop_index(self, drop):
+    def visit_drop_index(self, drop, **kw):
         index = drop.element
 
         text = "\nDROP INDEX "
@@ -2382,7 +2382,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return "".join(table_opts)
 
-    def visit_computed_column(self, generated):
+    def visit_computed_column(self, generated, **kw):
         if generated.persisted is False:
             raise exc.CompileError(
                 "PostrgreSQL computed columns do not support 'virtual' "
