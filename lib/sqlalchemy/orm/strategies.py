@@ -32,6 +32,7 @@ from . import util as orm_util
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
+from .base import ATTR_WAS_SET
 from .base import LoaderCallableStatus
 from .base import PASSIVE_OFF
 from .base import PassiveFlag
@@ -1422,7 +1423,10 @@ class ImmediateLoader(PostLoader):
                     alternate_effective_path=alternate_effective_path,
                     execution_options=execution_options,
                 )
-                state.get_impl(key).set_committed_value(state, dict_, value)
+                if value is not ATTR_WAS_SET:
+                    state.get_impl(key).set_committed_value(
+                        state, dict_, value
+                    )
 
 
 @log.class_logger

@@ -1188,15 +1188,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         if not self.primary_columns:
             if self.compile_options._only_load_props:
-                raise sa_exc.InvalidRequestError(
-                    "No column-based properties specified for "
-                    "refresh operation. Use session.expire() "
-                    "to reload collections and related items."
-                )
-            else:
-                raise sa_exc.InvalidRequestError(
-                    "Query contains no columns with which to SELECT from."
-                )
+                assert False, "no columns were included in _only_load_props"
+
+            raise sa_exc.InvalidRequestError(
+                "Query contains no columns with which to SELECT from."
+            )
 
         if not self.from_clauses:
             self.from_clauses = list(self._fallback_from_clauses)
