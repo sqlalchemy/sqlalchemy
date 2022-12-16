@@ -3074,8 +3074,14 @@ class OptimizedLoadTest(fixtures.MappedTest):
         eq_(s1test.comp, Comp("ham", "cheese"))
         eq_(s2test.comp, Comp("bacon", "eggs"))
 
-    def test_load_expired_on_pending(self):
+    @testing.variation("eager_defaults", [True, False])
+    def test_load_expired_on_pending(self, eager_defaults):
         base, sub = self.tables.base, self.tables.sub
+
+        expected_eager_defaults = bool(eager_defaults)
+        expect_returning = (
+            expected_eager_defaults and testing.db.dialect.insert_returning
+        )
 
         class Base(fixtures.BasicEntity):
             pass
@@ -3084,7 +3090,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
 
         self.mapper_registry.map_imperatively(
-            Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
+            Base,
+            base,
+            polymorphic_on=base.c.type,
+            polymorphic_identity="base",
+            eager_defaults=bool(eager_defaults),
         )
         self.mapper_registry.map_imperatively(
             Sub, sub, inherits=Base, polymorphic_identity="sub"
@@ -3095,13 +3105,30 @@ class OptimizedLoadTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            CompiledSQL(
-                "INSERT INTO base (data, type) VALUES (:data, :type)",
-                [{"data": "s1", "type": "sub"}],
-            ),
-            CompiledSQL(
-                "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
-                lambda ctx: {"id": s1.id, "sub": None},
+            Conditional(
+                expect_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO base (data, type) VALUES (:data, :type) "
+                        "RETURNING base.id, base.counter",
+                        [{"data": "s1", "type": "sub"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO sub (id, sub) VALUES (:id, :sub) "
+                        "RETURNING sub.subcounter, sub.subcounter2",
+                        lambda ctx: {"id": s1.id, "sub": None},
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO base (data, type) VALUES (:data, :type)",
+                        [{"data": "s1", "type": "sub"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
+                        lambda ctx: {"id": s1.id, "sub": None},
+                    ),
+                ],
             ),
         )
 
@@ -3111,12 +3138,19 @@ class OptimizedLoadTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             go,
-            CompiledSQL(
-                "SELECT base.counter AS base_counter, "
-                "sub.subcounter AS sub_subcounter, "
-                "sub.subcounter2 AS sub_subcounter2 FROM base JOIN sub "
-                "ON base.id = sub.id WHERE base.id = :pk_1",
-                lambda ctx: {"pk_1": s1.id},
+            Conditional(
+                expect_returning,
+                [],
+                [
+                    CompiledSQL(
+                        "SELECT base.counter AS base_counter, "
+                        "sub.subcounter AS sub_subcounter, "
+                        "sub.subcounter2 AS sub_subcounter2 "
+                        "FROM base JOIN sub "
+                        "ON base.id = sub.id WHERE base.id = :pk_1",
+                        lambda ctx: {"pk_1": s1.id},
+                    ),
+                ],
             ),
         )
 

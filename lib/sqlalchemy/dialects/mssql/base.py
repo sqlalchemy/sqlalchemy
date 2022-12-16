@@ -232,6 +232,7 @@ integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
         )
         name = Column(String)
 
+.. _mssql_insert_behavior:
 
 INSERT behavior
 ^^^^^^^^^^^^^^^^

@@ -1826,7 +1826,9 @@ class LifecycleTest(fixtures.MappedTest):
     def setup_mappers(cls):
         cls.mapper_registry.map_imperatively(cls.classes.Data, cls.tables.data)
         cls.mapper_registry.map_imperatively(
-            cls.classes.DataFetched, cls.tables.data_fetched
+            cls.classes.DataFetched,
+            cls.tables.data_fetched,
+            eager_defaults=False,
         )
         cls.mapper_registry.map_imperatively(
             cls.classes.DataDefer,
@@ -1886,7 +1888,6 @@ class LifecycleTest(fixtures.MappedTest):
         def go():
             eq_(d1.data, None)
 
-        # this one is marked as "fetch" so we emit SQL
         self.assert_sql_count(testing.db, go, 1)
 
     def test_cols_missing_in_load(self):
