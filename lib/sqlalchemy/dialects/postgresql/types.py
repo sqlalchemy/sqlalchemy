@@ -6,7 +6,6 @@
 # mypy: ignore-errors
 
 import datetime as dt
-from typing import Any
 
 from ...sql import sqltypes
 
@@ -100,6 +99,28 @@ class OID(sqltypes.TypeEngine[int]):
     """
 
     __visit_name__ = "OID"
+
+
+class REGCONFIG(sqltypes.TypeEngine[str]):
+
+    """Provide the PostgreSQL REGCONFIG type.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    __visit_name__ = "REGCONFIG"
+
+
+class TSQUERY(sqltypes.TypeEngine[str]):
+
+    """Provide the PostgreSQL TSQUERY type.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    __visit_name__ = "TSQUERY"
 
 
 class REGCLASS(sqltypes.TypeEngine[str]):
@@ -207,7 +228,7 @@ class BIT(sqltypes.TypeEngine[int]):
 PGBit = BIT
 
 
-class TSVECTOR(sqltypes.TypeEngine[Any]):
+class TSVECTOR(sqltypes.TypeEngine[str]):
 
     """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.

@@ -827,6 +827,8 @@ For example, the query::
 
 would generate:
 
+.. sourcecode:: sql
+
     SELECT to_tsquery('cat') @> to_tsquery('cat & rat')
 
 
@@ -839,6 +841,20 @@ The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 produces a statement equivalent to::
 
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
+
+The ``func`` namespace is augmented by the PostgreSQL dialect to set up
+correct argument and return types for most full text search functions.
+These functions are used automatically by the :attr:`_sql.func` namespace
+assuming the ``sqlalchemy.dialects.postgresql`` package has been imported,
+or :func:`_sa.create_engine` has been invoked using a ``postgresql``
+dialect.  These functions are documented at:
+
+* :class:`_postgresql.to_tsvector`
+* :class:`_postgresql.to_tsquery`
+* :class:`_postgresql.plainto_tsquery`
+* :class:`_postgresql.phraseto_tsquery`
+* :class:`_postgresql.websearch_to_tsquery`
+* :class:`_postgresql.ts_headline`
 
 Specifying the "regconfig" with ``match()`` or custom operators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1402,6 +1418,7 @@ from . import hstore as _hstore
 from . import json as _json
 from . import pg_catalog
 from . import ranges as _ranges
+from .ext import _regconfig_fn
 from .ext import aggregate_order_by
 from .named_types import CreateDomainType as CreateDomainType  # noqa: F401
 from .named_types import CreateEnumType as CreateEnumType  # noqa: F401
@@ -1428,6 +1445,7 @@ from .types import PGInterval as PGInterval  # noqa: F401
 from .types import PGMacAddr as PGMacAddr  # noqa: F401
 from .types import PGUuid as PGUuid
 from .types import REGCLASS as REGCLASS
+from .types import REGCONFIG as REGCONFIG  # noqa: F401
 from .types import TIME as TIME
 from .types import TIMESTAMP as TIMESTAMP
 from .types import TSVECTOR as TSVECTOR
@@ -1636,6 +1654,45 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
+    def visit_to_tsvector_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_to_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_plainto_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_phraseto_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_websearch_to_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_ts_headline_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def _assert_pg_ts_ext(self, element, **kw):
+        if not isinstance(element, _regconfig_fn):
+            # other options here include trying to rewrite the function
+            # with the correct types.  however, that means we have to
+            # "un-SQL-ize" the first argument, which can't work in a
+            # generalized way. Also, parent compiler class has already added
+            # the incorrect return type to the result map.   So let's just
+            # make sure the function we want is used up front.
+
+            raise exc.CompileError(
+                f'Can\'t compile "{element.name}()" full text search '
+                f"function construct that does not originate from the "
+                f'"sqlalchemy.dialects.postgresql" package.  '
+                f'Please ensure "import sqlalchemy.dialects.postgresql" is '
+                f"called before constructing "
+                f'"sqlalchemy.func.{element.name}()" to ensure registration '
+                f"of the correct argument and return types."
+            )
+
+        return f"{element.name}{self.function_argspec(element, **kw)}"
+
     def render_bind_cast(self, type_, dbapi_type, sqltext):
         return f"""{sqltext}::{
                 self.dialect.type_compiler_instance.process(
@@ -2381,6 +2438,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TSVECTOR(self, type_, **kw):
         return "TSVECTOR"
 
+    def visit_TSQUERY(self, type_, **kw):
+        return "TSQUERY"
+
     def visit_INET(self, type_, **kw):
         return "INET"
 
@@ -2395,6 +2455,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_OID(self, type_, **kw):
         return "OID"
+
+    def visit_REGCONFIG(self, type_, **kw):
+        return "REGCONFIG"
 
     def visit_REGCLASS(self, type_, **kw):
         return "REGCLASS"

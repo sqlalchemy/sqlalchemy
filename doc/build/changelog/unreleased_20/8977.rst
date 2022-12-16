@@ -1,0 +1,19 @@
+.. change::
+    :tags: postgresql, bug
+    :tickets: 8977
+    :versions: 2.0.0b5
+
+    Added support for explicit use of PG full text functions with asyncpg and
+    psycopg (SQLAlchemy 2.0 only), with regards to the ``REGCONFIG`` type cast
+    for the first argument, which previously would be incorrectly cast to a
+    VARCHAR, causing failures on these dialects that rely upon explicit type
+    casts. This includes support for :class:`_postgresql.to_tsvector`,
+    :class:`_postgresql.to_tsquery`, :class:`_postgresql.plainto_tsquery`,
+    :class:`_postgresql.phraseto_tsquery`,
+    :class:`_postgresql.websearch_to_tsquery`,
+    :class:`_postgresql.ts_headline`, each of which will determine based on
+    number of arguments passed if the first string argument should be
+    interpreted as a PostgreSQL "REGCONFIG" value; if so, the argument is typed
+    using a newly added type object :class:`_postgresql.REGCONFIG` which is
+    then explicitly cast in the SQL expression.
+

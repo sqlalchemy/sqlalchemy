@@ -339,6 +339,9 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         DATERANGE,
         TSRANGE,
         TSTZRANGE,
+        REGCONFIG,
+        REGCLASS,
+        TSQUERY,
         TSVECTOR,
     )
 
@@ -356,18 +359,10 @@ construction arguments, are as follows:
 
 .. autoclass:: sqlalchemy.dialects.postgresql.AbstractMultiRange
 
-.. autoclass:: aggregate_order_by
-
-.. autoclass:: array
 
 .. autoclass:: ARRAY
     :members: __init__, Comparator
 
-.. autofunction:: array_agg
-
-.. autofunction:: Any
-
-.. autofunction:: All
 
 .. autoclass:: BIT
 
@@ -390,10 +385,6 @@ construction arguments, are as follows:
 
 
 .. autoclass:: HSTORE
-    :members:
-
-
-.. autoclass:: hstore
     :members:
 
 
@@ -420,6 +411,9 @@ construction arguments, are as follows:
     :members: __init__
     :noindex:
 
+
+.. autoclass:: REGCONFIG
+
 .. autoclass:: REGCLASS
 
 .. autoclass:: TIMESTAMP
@@ -427,6 +421,8 @@ construction arguments, are as follows:
 
 .. autoclass:: TIME
     :members: __init__
+
+.. autoclass:: TSQUERY
 
 .. autoclass:: TSVECTOR
 
@@ -471,6 +467,33 @@ construction arguments, are as follows:
 .. autoclass:: TSTZMULTIRANGE
 
 
+PostgreSQL SQL Elements and Functions
+--------------------------------------
+
+.. autoclass:: aggregate_order_by
+
+.. autoclass:: array
+
+.. autofunction:: array_agg
+
+.. autofunction:: Any
+
+.. autofunction:: All
+
+.. autoclass:: hstore
+    :members:
+
+.. autoclass:: to_tsvector
+
+.. autoclass:: to_tsquery
+
+.. autoclass:: plainto_tsquery
+
+.. autoclass:: phraseto_tsquery
+
+.. autoclass:: websearch_to_tsquery
+
+.. autoclass:: ts_headline
 
 PostgreSQL Constraint Types
 ---------------------------

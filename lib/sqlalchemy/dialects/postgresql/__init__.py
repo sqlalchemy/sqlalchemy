@@ -37,6 +37,12 @@ from .dml import insert
 from .ext import aggregate_order_by
 from .ext import array_agg
 from .ext import ExcludeConstraint
+from .ext import phraseto_tsquery
+from .ext import plainto_tsquery
+from .ext import to_tsquery
+from .ext import to_tsvector
+from .ext import ts_headline
+from .ext import websearch_to_tsquery
 from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
@@ -72,8 +78,10 @@ from .types import MACADDR
 from .types import MONEY
 from .types import OID
 from .types import REGCLASS
+from .types import REGCONFIG
 from .types import TIME
 from .types import TIMESTAMP
+from .types import TSQUERY
 from .types import TSVECTOR
 
 # Alias psycopg also as psycopg_async
@@ -102,6 +110,9 @@ __all__ = (
     "MONEY",
     "OID",
     "REGCLASS",
+    "REGCONFIG",
+    "TSQUERY",
+    "TSVECTOR",
     "DOUBLE_PRECISION",
     "TIMESTAMP",
     "TIME",
