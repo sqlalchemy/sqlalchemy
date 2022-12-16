@@ -5152,6 +5152,45 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             render_postcompile=True,
         )
 
+    def test_bind_escape_extensibility(self):
+        """test #8994, extensibility of the bind escape character lookup.
+
+        The main test for actual known characters passing through for bound
+        params is in
+        sqlalchemy.testing.suite.test_dialect.DifficultParametersTest.
+
+        """
+        dialect = default.DefaultDialect()
+
+        class Compiler(compiler.StrSQLCompiler):
+            bindname_escape_characters = {
+                "%": "P",
+                # chars that need regex escaping
+                "(": "A",
+                ")": "Z",
+                "*": "S",
+                "+": "L",
+                # completely random "normie" character
+                "8": "E",
+                ":": "C",
+                # left bracket is not escaped, right bracket is
+                "]": "_",
+                " ": "_",
+            }
+
+        dialect.statement_compiler = Compiler
+
+        self.assert_compile(
+            select(
+                bindparam("number8ight"),
+                bindparam("plus+sign"),
+                bindparam("par(en)s and [brackets]"),
+            ),
+            "SELECT :numberEight AS anon_1, :plusLsign AS anon_2, "
+            ":parAenZs_and_[brackets_ AS anon_3",
+            dialect=dialect,
+        )
+
 
 class CompileUXTest(fixtures.TestBase):
     """tests focused on calling stmt.compile() directly, user cases"""

@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 8994
+
+    To accommodate for third party dialects with different character escaping
+    needs regarding bound parameters, the system by which SQLAlchemy "escapes"
+    (i.e., replaces with another character in its place) special characters in
+    bound parameter names has been made extensible for third party dialects,
+    using the :attr:`.SQLCompiler.bindname_escape_chars` dictionary which can
+    be overridden at the class declaration level on any :class:`.SQLCompiler`
+    subclass. As part of this change, also added the dot ``"."`` as a default
+    "escaped" character.
+
