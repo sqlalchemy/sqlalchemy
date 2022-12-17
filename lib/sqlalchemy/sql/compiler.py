@@ -731,7 +731,7 @@ class Compiled:
         else:
             raise exc.ObjectNotExecutableError(self.statement)
 
-    def visit_unsupported_compilation(self, element, err):
+    def visit_unsupported_compilation(self, element, err, **kw):
         raise exc.UnsupportedCompilationError(self, type(element)) from err
 
     @property
@@ -2909,7 +2909,7 @@ class SQLCompiler(Compiled):
             binary, OPERATORS[operator], **kw
         )
 
-    def visit_empty_set_op_expr(self, type_, expand_op):
+    def visit_empty_set_op_expr(self, type_, expand_op, **kw):
         if expand_op is operators.not_in_op:
             if len(type_) > 1:
                 return "(%s)) OR (1 = 1" % (
@@ -2927,7 +2927,7 @@ class SQLCompiler(Compiled):
         else:
             return self.visit_empty_set_expr(type_)
 
-    def visit_empty_set_expr(self, element_types):
+    def visit_empty_set_expr(self, element_types, **kw):
         raise NotImplementedError(
             "Dialect '%s' does not support empty set expression."
             % self.dialect.name
@@ -5687,15 +5687,15 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def visit_savepoint(self, savepoint_stmt):
+    def visit_savepoint(self, savepoint_stmt, **kw):
         return "SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
 
-    def visit_rollback_to_savepoint(self, savepoint_stmt):
+    def visit_rollback_to_savepoint(self, savepoint_stmt, **kw):
         return "ROLLBACK TO SAVEPOINT %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
 
-    def visit_release_savepoint(self, savepoint_stmt):
+    def visit_release_savepoint(self, savepoint_stmt, **kw):
         return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
@@ -5783,7 +5783,7 @@ class StrSQLCompiler(SQLCompiler):
             for t in extra_froms
         )
 
-    def visit_empty_set_expr(self, type_):
+    def visit_empty_set_expr(self, type_, **kw):
         return "SELECT 1 WHERE 1!=1"
 
     def get_from_hint_text(self, table, text):
