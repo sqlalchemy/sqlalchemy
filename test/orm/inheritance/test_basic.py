@@ -1902,6 +1902,41 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
             )
         )
 
+    def test_refresh_column(self):
+        """refresh currently does not use the mapper "optimized get".
+
+        This could be added later by generalizing the code in
+        loading.py->load_scalar_attributes() to be used by session.refresh().
+
+        For #8703, where we are revisiting some of this logic for 2.0.0,
+        not doing this yet as enough is changing in 2.0 already.
+
+        """
+        A, B = self.classes("A", "B")
+        sess = fixture_session()
+        b1 = B(data="x")
+        sess.add(b1)
+        sess.flush()
+        pk = b1.id
+        sess.expire(b1, ["data"])
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            sess.refresh(b1, ["data"])
+
+        asserter.assert_(
+            CompiledSQL(
+                # full statement that has a JOIN in it.  Note that
+                # a.id is not included in the SELECT list
+                "SELECT b.data FROM a JOIN b ON a.id = b.id "
+                "WHERE a.id = :pk_1",
+                [{"pk_1": pk}]
+                # if we used load_scalar_attributes(), it would look like
+                # this
+                # "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
+                # [{"param_1": b_id}],
+            )
+        )
+
     def test_load_from_unloaded_subclass(self):
         A, B = self.classes("A", "B")
         sess = fixture_session()

@@ -2817,6 +2817,14 @@ class Session(_SessionClassMethods, EventTarget):
 
         self._expire_state(state, attribute_names)
 
+        # this autoflush previously used to occur as a secondary effect
+        # of the load_on_ident below.   Meaning we'd organize the SELECT
+        # based on current DB pks, then flush, then if pks changed in that
+        # flush, crash.  this was unticketed but discovered as part of
+        # #8703.  So here, autoflush up front, dont autoflush inside
+        # load_on_ident.
+        self._autoflush()
+
         if with_for_update == {}:
             raise sa_exc.ArgumentError(
                 "with_for_update should be the boolean value "
@@ -2835,6 +2843,11 @@ class Session(_SessionClassMethods, EventTarget):
                 refresh_state=state,
                 with_for_update=with_for_update,
                 only_load_props=attribute_names,
+                require_pk_cols=True,
+                # technically unnecessary as we just did autoflush
+                # above, however removes the additional unnecessary
+                # call to _autoflush()
+                no_autoflush=True,
             )
             is None
         ):
