@@ -28,6 +28,7 @@ from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import Select
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import provision
@@ -109,7 +110,15 @@ class ShardTest:
             else:
                 return shard_chooser(mapper, instance.location)
 
-        def id_chooser(query, ident):
+        def identity_chooser(
+            mapper,
+            primary_key,
+            *,
+            lazy_loaded_from,
+            execution_options,
+            bind_arguments,
+            **kw,
+        ):
             return ["north_america", "asia", "europe", "south_america"]
 
         def execute_chooser(orm_context):
@@ -144,7 +153,7 @@ class ShardTest:
                 "south_america": db4,
             },
             shard_chooser=shard_chooser,
-            id_chooser=id_chooser,
+            identity_chooser=identity_chooser,
             execute_chooser=execute_chooser,
         )
 
@@ -189,7 +198,7 @@ class ShardTest:
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
         quito.reports.append(Report(85))
-        sess = sharded_session(future=True)
+        sess = sharded_session()
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
             sess.add(c)
         sess.flush()
@@ -589,6 +598,68 @@ class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
         )
 
 
+class LegacyAPIShardTest(DistinctEngineShardTest):
+    @classmethod
+    def setup_session(cls):
+        global sharded_session
+        shard_lookup = {
+            "North America": "north_america",
+            "Asia": "asia",
+            "Europe": "europe",
+            "South America": "south_america",
+        }
+
+        def shard_chooser(mapper, instance, clause=None):
+            if isinstance(instance, WeatherLocation):
+                return shard_lookup[instance.continent]
+            else:
+                return shard_chooser(mapper, instance.location)
+
+        def id_chooser(query, primary_key):
+            return ["north_america", "asia", "europe", "south_america"]
+
+        def query_chooser(query):
+            ids = []
+
+            class FindContinent(sql.ClauseVisitor):
+                def visit_binary(self, binary):
+                    if binary.left.shares_lineage(
+                        weather_locations.c.continent
+                    ):
+                        if binary.operator == operators.eq:
+                            ids.append(shard_lookup[binary.right.value])
+                        elif binary.operator == operators.in_op:
+                            for value in binary.right.value:
+                                ids.append(shard_lookup[value])
+
+            if isinstance(query, Select) and query.whereclause is not None:
+                FindContinent().traverse(query.whereclause)
+            if len(ids) == 0:
+                return ["north_america", "asia", "europe", "south_america"]
+            else:
+                return ids
+
+        sm = sessionmaker(class_=ShardedSession, autoflush=True)
+        sm.configure(
+            shards={
+                "north_america": db1,
+                "asia": db2,
+                "europe": db3,
+                "south_america": db4,
+            },
+            shard_chooser=shard_chooser,
+            id_chooser=id_chooser,
+            query_chooser=query_chooser,
+        )
+
+        def sharded_session():
+            with expect_deprecated(
+                "The ``id_chooser`` parameter is deprecated",
+                "The ``query_chooser`` parameter is deprecated",
+            ):
+                return sm()
+
+
 class AttachedFileShardTest(ShardTest, fixtures.MappedTest):
     """Use modern schema conventions along with SQLite ATTACH."""
 
@@ -723,7 +794,7 @@ class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
         session = ShardedSession(
             shards={"test": testing.db},
             shard_chooser=lambda *args: "test",
-            id_chooser=lambda *args: None,
+            identity_chooser=lambda *args: None,
             execute_chooser=lambda *args: ["test"],
         )
 
@@ -764,7 +835,7 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         return ShardedSession(
             shards={"main": testing.db},
             shard_chooser=lambda *args: "main",
-            id_chooser=lambda *args: ["fake", "main"],
+            identity_chooser=lambda *args: ["fake", "main"],
             execute_chooser=lambda *args: ["fake", "main"],
             **kw,
         )
@@ -843,15 +914,23 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
             else:
                 assert False
 
-        def id_chooser(query, ident):
-            assert query.lazy_loaded_from
-            if isinstance(query.lazy_loaded_from.obj(), Book):
-                token = shard_for_book(query.lazy_loaded_from.obj())
-                assert query.lazy_loaded_from.identity_token == token
+        def identity_chooser(
+            mapper,
+            primary_key,
+            *,
+            lazy_loaded_from,
+            execution_options,
+            bind_arguments,
+            **kw,
+        ):
+            assert lazy_loaded_from
+            if isinstance(lazy_loaded_from.obj(), Book):
+                token = shard_for_book(lazy_loaded_from.obj())
+                assert lazy_loaded_from.identity_token == token
 
-            return [query.lazy_loaded_from.identity_token]
+            return [lazy_loaded_from.identity_token]
 
-        def no_query_chooser(orm_context):
+        def execute_chooser(orm_context):
             if (
                 orm_context.statement.column_descriptions[0]["type"] is Book
                 and lazy_load_book
@@ -878,8 +957,8 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
         session = ShardedSession(
             shards={"test": db1, "test2": db2},
             shard_chooser=shard_chooser,
-            id_chooser=id_chooser,
-            execute_chooser=no_query_chooser,
+            identity_chooser=identity_chooser,
+            execute_chooser=execute_chooser,
         )
 
         return session

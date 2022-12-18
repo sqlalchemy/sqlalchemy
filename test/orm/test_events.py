@@ -1,6 +1,7 @@
 from unittest.mock import ANY
 from unittest.mock import call
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import sqlalchemy as sa
 from sqlalchemy import bindparam
@@ -375,7 +376,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             result.context.execution_options,
             {
                 "four": True,
-                "future_result": True,
                 "one": True,
                 "three": True,
                 "two": True,
@@ -741,7 +741,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             {
                 "statement_two": True,
                 "statement_four": True,
-                "future_result": True,
                 "one": True,
                 "two": True,
                 "three": True,
@@ -750,6 +749,42 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 "added_evt": True,
             },
         )
+
+    @testing.variation("session_start", [True, False])
+    @testing.variation("dest_autoflush", [True, False])
+    @testing.variation("stmt_type", ["select", "bulk", "dml"])
+    def test_autoflush_change(self, session_start, dest_autoflush, stmt_type):
+        User = self.classes.User
+
+        sess = fixture_session(autoflush=session_start)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def do_orm_execute(ctx):
+            ctx.update_execution_options(autoflush=dest_autoflush)
+
+        with patch.object(sess, "_autoflush") as m1:
+            if stmt_type.select:
+                sess.execute(select(User))
+            elif stmt_type.bulk:
+                sess.execute(
+                    insert(User),
+                    [
+                        {"id": 1, "name": "n1"},
+                        {"id": 2, "name": "n2"},
+                        {"id": 3, "name": "n3"},
+                    ],
+                )
+            elif stmt_type.dml:
+                sess.execute(
+                    update(User).where(User.id == 2).values(name="nn")
+                )
+            else:
+                stmt_type.fail()
+
+        if dest_autoflush:
+            eq_(m1.mock_calls, [call()])
+        else:
+            eq_(m1.mock_calls, [])
 
 
 class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):

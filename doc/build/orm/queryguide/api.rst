@@ -280,6 +280,138 @@ will have the same result as that of the ``yield_per`` execution option.
 
     :ref:`engine_stream_results`
 
+.. _queryguide_identity_token:
+
+Identity Token
+^^^^^^^^^^^^^^
+
+.. doctest-disable:
+
+.. deepalchemy::   This option is an advanced-use feature mostly intended
+   to be used with the :ref:`horizontal_sharding_toplevel` extension. For
+   typical cases of loading objects with identical primary keys from different
+   "shards" or partitions, consider using individual :class:`_orm.Session`
+   objects per shard first.
+
+
+The "identity token" is an arbitrary value that can be associated within
+the :term:`identity key` of newly loaded objects.   This element exists
+first and foremost to support extensions which perform per-row "sharding",
+where objects may be loaded from any number of replicas of a particular
+database table that nonetheless have overlapping primary key values.
+The primary consumer of "identity token" is the
+:ref:`horizontal_sharding_toplevel` extension, which supplies a general
+framework for persisting objects among multiple "shards" of a particular
+database table.
+
+The ``identity_token`` execution option may be used on a per-query basis
+to directly affect this token.   Using it directly, one can populate a
+:class:`_orm.Session` with multiple instances of an object that have the
+same primary key and source table, but different "identities".
+
+One such example is to populate a :class:`_orm.Session` with objects that
+come from same-named tables in different schemas, using the
+:ref:`schema_translating` feature which can affect the choice of schema
+within the scope of queries.  Given a mapping as:
+
+.. sourcecode:: python
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class MyTable(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+
+The default "schema" name for the class above is ``None``, meaning, no
+schema qualification will be written into SQL statements.  However,
+if we make use of :paramref:`_engine.Connection.execution_options.schema_translate_map`,
+mapping ``None`` to an alternate schema, we can place instances of
+``MyTable`` into two different schemas:
+
+.. sourcecode:: python
+
+    engine = create_engine(
+        "postgresql+psycopg://scott:tiger@localhost/test",
+    )
+
+    with Session(
+        engine.execution_options(schema_translate_map={None: "test_schema"})
+    ) as sess:
+        sess.add(MyTable(name="this is schema one"))
+        sess.commit()
+
+    with Session(
+        engine.execution_options(schema_translate_map={None: "test_schema_2"})
+    ) as sess:
+        sess.add(MyTable(name="this is schema two"))
+        sess.commit()
+
+The above two blocks create a :class:`_orm.Session` object linked to a different
+schema translate map each time, and an instance of ``MyTable`` is persisted
+into both ``test_schema.my_table`` as well as ``test_schema_2.my_table``.
+
+The :class:`_orm.Session` objects above are independent.  If we wanted to
+persist both objects in one transaction, we would need to use the
+:ref:`horizontal_sharding_toplevel` extension to do this.
+
+However, we can illustrate querying for these objects in one session as follows:
+
+.. sourcecode:: python
+
+    with Session(engine) as sess:
+        obj1 = sess.scalar(
+            select(MyTable)
+            .where(MyTable.id == 1)
+            .execution_options(
+                schema_translate_map={None: "test_schema"},
+                identity_token="test_schema",
+            )
+        )
+        obj2 = sess.scalar(
+            select(MyTable)
+            .where(MyTable.id == 1)
+            .execution_options(
+                schema_translate_map={None: "test_schema_2"},
+                identity_token="test_schema_2",
+            )
+        )
+
+Both ``obj1`` and ``obj2`` are distinct from each other.  However, they both
+refer to primary key id 1 for the ``MyTable`` class, yet are distinct.
+This is how the ``identity_token`` comes into play, which we can see in the
+inspection of each object, where we look at :attr:`_orm.InstanceState.key`
+to view the two distinct identity tokens::
+
+    >>> from sqlalchemy import inspect
+    >>> inspect(obj1).key
+    (<class '__main__.MyTable'>, (1,), 'test_schema')
+    >>> inspect(obj2).key
+    (<class '__main__.MyTable'>, (1,), 'test_schema_2')
+
+
+The above logic takes place automatically when using the
+:ref:`horizontal_sharding_toplevel` extension.
+
+.. versionadded:: 2.0.0b5 - added the ``identity_token`` ORM level execution
+   option.
+
+.. seealso::
+
+    :ref:`examples_sharding` - in the :ref:`examples_toplevel` section.
+    See the script ``separate_schema_translates.py`` for a demonstration of
+    the above use case using the full sharding API.
+
+
+.. doctest-enable:
 
 .. _queryguide_inspection:
 

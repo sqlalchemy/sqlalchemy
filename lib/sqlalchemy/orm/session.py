@@ -267,6 +267,7 @@ class ORMExecuteState(util.MemoizedSlots):
         "execution_options",
         "local_execution_options",
         "bind_arguments",
+        "identity_token",
         "_compile_state_cls",
         "_starting_event_idx",
         "_events_todo",
@@ -579,9 +580,8 @@ class ORMExecuteState(util.MemoizedSlots):
     def _is_crud(self) -> bool:
         return isinstance(self.statement, (dml.Update, dml.Delete))
 
-    def update_execution_options(self, **opts: _ExecuteOptions) -> None:
+    def update_execution_options(self, **opts: Any) -> None:
         """Update the local execution options with new values."""
-        # TODO: no coverage
         self.local_execution_options = self.local_execution_options.union(opts)
 
     def _orm_compile_options(
@@ -1912,26 +1912,9 @@ class Session(_SessionClassMethods, EventTarget):
                 )
         else:
             compile_state_cls = None
+            bind_arguments.setdefault("clause", statement)
 
         execution_options = util.coerce_to_immutabledict(execution_options)
-
-        if compile_state_cls is not None:
-            (
-                statement,
-                execution_options,
-            ) = compile_state_cls.orm_pre_session_exec(
-                self,
-                statement,
-                params,
-                execution_options,
-                bind_arguments,
-                _parent_execute_state is not None,
-            )
-        else:
-            bind_arguments.setdefault("clause", statement)
-            execution_options = execution_options.union(
-                {"future_result": True}
-            )
 
         if _parent_execute_state:
             events_todo = _parent_execute_state._remaining_events()
@@ -1941,6 +1924,25 @@ class Session(_SessionClassMethods, EventTarget):
                 events_todo = list(events_todo) + [_add_event]
 
         if events_todo:
+            if compile_state_cls is not None:
+                # for event handlers, do the orm_pre_session_exec
+                # pass ahead of the event handlers, so that things like
+                # .load_options, .update_delete_options etc. are populated.
+                # is_pre_event=True allows the hook to hold off on things
+                # it doesn't want to do twice, including autoflush as well
+                # as "pre fetch" for DML, etc.
+                (
+                    statement,
+                    execution_options,
+                ) = compile_state_cls.orm_pre_session_exec(
+                    self,
+                    statement,
+                    params,
+                    execution_options,
+                    bind_arguments,
+                    True,
+                )
+
             orm_exec_state = ORMExecuteState(
                 self,
                 statement,
@@ -1961,6 +1963,24 @@ class Session(_SessionClassMethods, EventTarget):
 
             statement = orm_exec_state.statement
             execution_options = orm_exec_state.local_execution_options
+
+        if compile_state_cls is not None:
+            # now run orm_pre_session_exec() "for real".   if there were
+            # event hooks, this will re-run the steps that interpret
+            # new execution_options into load_options / update_delete_options,
+            # which we assume the event hook might have updated.
+            # autoflush will also be invoked in this step if enabled.
+            (
+                statement,
+                execution_options,
+            ) = compile_state_cls.orm_pre_session_exec(
+                self,
+                statement,
+                params,
+                execution_options,
+                bind_arguments,
+                False,
+            )
 
         bind = self.get_bind(**bind_arguments)
 
@@ -2379,6 +2399,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind: Optional[_SessionBind] = None,
         _sa_skip_events: Optional[bool] = None,
         _sa_skip_for_implicit_returning: bool = False,
+        **kw: Any,
     ) -> Union[Engine, Connection]:
         """Return a "bind" to which this :class:`.Session` is bound.
 
@@ -2653,6 +2674,8 @@ class Session(_SessionClassMethods, EventTarget):
         identity_token: Any = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
         lazy_loaded_from: Optional[InstanceState[Any]] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
     ) -> Union[Optional[_O], LoaderCallableStatus]:
         """Locate an object in the identity map.
 
@@ -3262,6 +3285,7 @@ class Session(_SessionClassMethods, EventTarget):
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
     ) -> Optional[_O]:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
@@ -3355,6 +3379,13 @@ class Session(_SessionClassMethods, EventTarget):
             :ref:`orm_queryguide_execution_options` - ORM-specific execution
             options
 
+        :param bind_arguments: dictionary of additional arguments to determine
+         the bind.  May include "mapper", "bind", or other custom arguments.
+         Contents of this dictionary are passed to the
+         :meth:`.Session.get_bind` method.
+
+         .. versionadded: 2.0.0b5
+
         :return: The object instance, or ``None``.
 
         """
@@ -3367,6 +3398,7 @@ class Session(_SessionClassMethods, EventTarget):
             with_for_update=with_for_update,
             identity_token=identity_token,
             execution_options=execution_options,
+            bind_arguments=bind_arguments,
         )
 
     def _get_impl(
@@ -3379,7 +3411,8 @@ class Session(_SessionClassMethods, EventTarget):
         populate_existing: bool = False,
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
-        execution_options: Optional[OrmExecuteOptionsParameter] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
     ) -> Optional[_O]:
 
         # convert composite types to individual args
@@ -3453,7 +3486,11 @@ class Session(_SessionClassMethods, EventTarget):
         ):
 
             instance = self._identity_lookup(
-                mapper, primary_key_identity, identity_token=identity_token
+                mapper,
+                primary_key_identity,
+                identity_token=identity_token,
+                execution_options=execution_options,
+                bind_arguments=bind_arguments,
             )
 
             if instance is not None:
@@ -3484,13 +3521,14 @@ class Session(_SessionClassMethods, EventTarget):
 
         if options:
             statement = statement.options(*options)
-        if execution_options:
-            statement = statement.execution_options(**execution_options)
         return db_load_fn(
             self,
             statement,
             primary_key_identity,
             load_options=load_options,
+            identity_token=identity_token,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
         )
 
     def merge(
