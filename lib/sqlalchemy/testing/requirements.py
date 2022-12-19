@@ -153,6 +153,17 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def unusual_column_name_characters(self):
+        """target database allows column names that have unusual characters
+        in them, such as dots, spaces, slashes, or percent signs.
+
+        The column names are as always in such a case quoted, however the
+        DB still needs to support those characters in the name somehow.
+
+        """
+        return exclusions.open()
+
+    @property
     def subqueries(self):
         """Target database must support subqueries."""
 
