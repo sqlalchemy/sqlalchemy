@@ -447,6 +447,7 @@ class DifficultParametersTest(fixtures.TestBase):
     )
 
     @tough_parameters
+    @config.requirements.unusual_column_name_characters
     def test_round_trip_same_named_column(
         self, paramname, connection, metadata
     ):
