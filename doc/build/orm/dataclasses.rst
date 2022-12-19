@@ -381,7 +381,95 @@ of :paramref:`_orm.relationship.default_factory` or
 :paramref:`_orm.relationship.default` is what determines if the parameter is
 to be required or optional when rendered into the ``__init__()`` method.
 
+.. _orm_declarative_native_dataclasses_non_mapped_fields:
 
+Using Non-Mapped Dataclass Fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using Declarative dataclasses, non-mapped fields may be used on the
+class as well, which will be part of the dataclass construction process but
+will not be mapped.   Any field that does not use :class:`.Mapped` will
+be ignored by the mapping process.   In the example below, the fields
+``ctrl_one`` and ``ctrl_two`` will be part of the instance-level state
+of the object, but will not be persisted by the ORM::
+
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    reg = registry()
+
+
+    @reg.mapped_as_dataclass
+    class Data:
+        __tablename__ = "data"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        status: Mapped[str]
+
+        ctrl_one: Optional[str] = None
+        ctrl_two: Optional[str] = None
+
+Instance of ``Data`` above can be created as::
+
+    d1 = Data(status="s1", ctrl_one="ctrl1", ctrl_two="ctrl2")
+
+A more real world example might be to make use of the Dataclasses
+``InitVar`` feature in conjunction with the ``__post_init__()`` feature to
+receive init-only fields that can be used to compose persisted data.
+In the example below, the ``User``
+class is declared using ``id``, ``name`` and ``password_hash`` as mapped features,
+but makes use of init-only ``password`` and ``repeat_password`` fields to
+represent the user creation process (note: to run this example, replace
+the function ``your_crypt_function_here()`` with a third party crypt
+function, such as `bcrypt <https://pypi.org/project/bcrypt/>`_ or
+`argon2-cffi <https://pypi.org/project/argon2-cffi/>`_)::
+
+    from dataclasses import InitVar
+    from typing import Optional
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    reg = registry()
+
+
+    @reg.mapped_as_dataclass
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+        password: InitVar[str]
+        repeat_password: InitVar[str]
+
+        password_hash: Mapped[str] = mapped_column(init=False, nullable=False)
+
+        def __post_init__(self, password: str, repeat_password: str):
+            if password != repeat_password:
+                raise ValueError("passwords do not match")
+
+            self.password_hash = your_crypt_function_here(password)
+
+The above object is created with parameters ``password`` and
+``repeat_password``, which are consumed up front so that the ``password_hash``
+variable may be generated::
+
+    >>> u1 = User(name="some_user", password="xyz", repeat_password="xyz")
+    >>> u1.password_hash
+    '$6$9ppc... (example crypted string....)'
+
+.. versionchanged:: 2.0.0b5  When using :meth:`_orm.registry.mapped_as_dataclass`
+   or :class:`.MappedAsDataclass`, fields that do not include the
+   :class:`.Mapped` annotation may be included, which will be treated as part
+   of the resulting dataclass but not be mapped, without the need to
+   also indicate the ``__allow_unmapped__`` class attribute.  Previous 2.0
+   beta releases would require this attribute to be explicitly present,
+   even though the purpose of this attribute was only to allow legacy
+   ORM typed mappings to continue to function.
 
 .. _orm_declarative_dataclasses:
 
