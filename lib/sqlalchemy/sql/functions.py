@@ -255,7 +255,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return new_func.alias(name=name, joins_implicitly=joins_implicitly)
 
-    def column_valued(self, name=None):
+    def column_valued(self, name=None, joins_implicitly=False):
         """Return this :class:`_functions.FunctionElement` as a column expression that
         selects from itself as a FROM clause.
 
@@ -271,6 +271,16 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
             gs = func.generate_series(1, 5, -1).alias().column
 
+        :param name: optional name to assign to the alias name that's generated.
+         If omitted, a unique anonymizing name is used.
+
+        :param joins_implicitly: when True, the "table" portion of the column
+         valued function may be a member of the FROM clause without any
+         explicit JOIN to other tables in the SQL query, and no "cartesian
+         product" warning will be generated. May be useful for SQL functions
+         such as ``func.json_array_elements()``.
+
+         .. versionadded:: 1.4.46
 
         .. seealso::
 
@@ -282,7 +292,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         """  # noqa: 501
 
-        return self.alias(name=name).column
+        return self.alias(name=name, joins_implicitly=joins_implicitly).column
 
     @property
     def columns(self):
