@@ -77,7 +77,6 @@ from .base import HasMemoized
 from .base import Immutable
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
-from .elements import BinaryExpression
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import ClauseElement
@@ -132,6 +131,7 @@ if TYPE_CHECKING:
     from .dml import Delete
     from .dml import Insert
     from .dml import Update
+    from .elements import BinaryExpression
     from .elements import KeyedColumnElement
     from .elements import Label
     from .elements import NamedColumn
