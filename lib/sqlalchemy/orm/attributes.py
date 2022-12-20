@@ -62,7 +62,7 @@ from .base import opt_manager_of_class as opt_manager_of_class
 from .base import PASSIVE_CLASS_MISMATCH  # noqa
 from .base import PASSIVE_NO_FETCH
 from .base import PASSIVE_NO_FETCH_RELATED  # noqa
-from .base import PASSIVE_NO_INITIALIZE
+from .base import PASSIVE_NO_INITIALIZE as PASSIVE_NO_INITIALIZE
 from .base import PASSIVE_NO_RESULT
 from .base import PASSIVE_OFF
 from .base import PASSIVE_ONLY_PERSISTENT

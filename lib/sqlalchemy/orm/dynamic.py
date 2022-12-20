@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from .util import AliasedClass
     from .writeonly import WriteOnlyCollection
     from ..event import _Dispatch
+    from ..sql.elements import ColumnElement
     from ..util.langhelpers import symbol
 
 
@@ -129,6 +130,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     query_class = None
     autoflush: Callable[[_T, bool], AppenderQuery[_T]]
+    _order_by_clauses: Tuple[ColumnElement[Any], ...]
 
     def __init__(
         self, attr: DynamicAttributeImpl, state: InstanceState[_T]
@@ -173,7 +175,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
                 result.SimpleResultMetaData([self.attr.class_.__name__]),
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
-                    attributes.PASSIVE_NO_INITIALIZE,  # type: ignore
+                    attributes.PASSIVE_NO_INITIALIZE,
                 ).added_items,
                 _source_supports_scalars=True,
             ).scalars()
@@ -190,7 +192,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
         if sess is None:
             return self.attr._get_collection_history(
                 attributes.instance_state(self.instance),
-                attributes.PASSIVE_NO_INITIALIZE,  # type: ignore[attr-defined]
+                attributes.PASSIVE_NO_INITIALIZE,
             ).indexed(index)
         else:
             return self._generate(sess).__getitem__(index)
@@ -201,7 +203,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
             return len(
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
-                    attributes.PASSIVE_NO_INITIALIZE,  # type: ignore
+                    attributes.PASSIVE_NO_INITIALIZE,
                 ).added_items
             )
         else:
@@ -232,7 +234,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
         query._where_criteria = self._where_criteria
         query._from_obj = self._from_obj
-        query._order_by_clauses = self._order_by_clauses  # type: ignore
+        query._order_by_clauses = self._order_by_clauses
 
         return query
 
