@@ -642,20 +642,21 @@ is a test suite that allows ORM code to work freely with a :class:`.Session`,
 including the ability to call :meth:`.Session.commit`, where afterwards the
 entire database interaction is rolled back.
 
-.. versionchanged:: 1.4  This section introduces a new version of the
-   "join into an external transaction" recipe that will work equally well
-   for both :term:`2.0 style` and :term:`1.x style` engines and sessions.
-   The recipe here from previous versions such as 1.3 will also continue to
-   work for 1.x engines and sessions.
-
+.. versionchanged:: 2.0 The "join into an external transaction" recipe is
+   newly improved again in 2.0; event handlers to "reset" the nested
+   transaction are no longer required.
 
 The recipe works by establishing a :class:`_engine.Connection` within a
-transaction and optionally a SAVEPOINT, then passing it to a :class:`_orm.Session` as the
-"bind".   The :class:`_orm.Session` detects that the given :class:`_engine.Connection`
-is already in a transaction and will not run COMMIT on it if the transaction
-is in fact an outermost transaction.   Then when the test tears down, the
-transaction is rolled back so that any data changes throughout the test
-are reverted::
+transaction and optionally a SAVEPOINT, then passing it to a
+:class:`_orm.Session` as the "bind"; the
+:paramref:`_orm.Session.join_transaction_mode` parameter is passed with the
+setting ``"create_savepoint"``, which indicates that new SAVEPOINTs should be
+created in order to implement BEGIN/COMMIT/ROLLBACK for the
+:class:`_orm.Session`, which will leave the external transaction in the same
+state in which it was passed.
+
+When the test tears down, the external transaction is rolled back so that any
+data changes throughout the test are reverted::
 
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import create_engine
@@ -675,23 +676,11 @@ are reverted::
             # begin a non-ORM transaction
             self.trans = self.connection.begin()
 
-            # bind an individual Session to the connection
-            self.session = Session(bind=self.connection)
-
-            ###    optional     ###
-
-            # if the database supports SAVEPOINT (SQLite needs special
-            # config for this to work), starting a savepoint
-            # will allow tests to also use rollback within tests
-
-            self.nested = self.connection.begin_nested()
-
-            @event.listens_for(self.session, "after_transaction_end")
-            def end_savepoint(session, transaction):
-                if not self.nested.is_active:
-                    self.nested = self.connection.begin_nested()
-
-            ### ^^^ optional ^^^ ###
+            # bind an individual Session to the connection, selecting
+            # "create_savepoint" join_transaction_mode
+            self.session = Session(
+                bind=self.connection, join_transaction_mode="create_savepoint"
+            )
 
         def test_something(self):
             # use the session in tests.
@@ -700,8 +689,6 @@ are reverted::
             self.session.commit()
 
         def test_something_with_rollbacks(self):
-            # if the SAVEPOINT steps are taken, then a test can also
-            # use session.rollback() and continue working with the database
 
             self.session.add(Bar())
             self.session.flush()

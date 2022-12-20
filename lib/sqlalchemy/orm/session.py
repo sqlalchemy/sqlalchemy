@@ -155,6 +155,13 @@ _EntityBindKey = Union[Type[_O], "Mapper[_O]"]
 _SessionBindKey = Union[Type[Any], "Mapper[Any]", "Table", str]
 _SessionBind = Union["Engine", "Connection"]
 
+JoinTransactionMode = Literal[
+    "conditional_savepoint",
+    "rollback_only",
+    "control_fully",
+    "create_savepoint",
+]
+
 
 class _ConnectionCallableProto(Protocol):
     """a callable that returns a :class:`.Connection` given an instance.
@@ -1097,17 +1104,36 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
             transaction: Transaction
             if self.session.twophase and self._parent is None:
+                # TODO: shouldn't we only be here if not
+                # conn.in_transaction() ?
+                # if twophase is set and conn.in_transaction(), validate
+                # that it is in fact twophase.
                 transaction = conn.begin_twophase()
             elif self.nested:
                 transaction = conn.begin_nested()
             elif conn.in_transaction():
-                # if given a future connection already in a transaction, don't
-                # commit that transaction unless it is a savepoint
-                if conn.in_nested_transaction():
-                    transaction = conn._get_required_nested_transaction()
+                join_transaction_mode = self.session.join_transaction_mode
+
+                if join_transaction_mode == "conditional_savepoint":
+                    if conn.in_nested_transaction():
+                        join_transaction_mode = "create_savepoint"
+                    else:
+                        join_transaction_mode = "rollback_only"
+
+                if join_transaction_mode in (
+                    "control_fully",
+                    "rollback_only",
+                ):
+                    if conn.in_nested_transaction():
+                        transaction = conn._get_required_nested_transaction()
+                    else:
+                        transaction = conn._get_required_transaction()
+                    if join_transaction_mode == "rollback_only":
+                        should_commit = False
+                elif join_transaction_mode == "create_savepoint":
+                    transaction = conn.begin_nested()
                 else:
-                    transaction = conn._get_required_transaction()
-                    should_commit = False
+                    assert False, join_transaction_mode
             else:
                 transaction = conn.begin()
         except:
@@ -1274,6 +1300,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
         _StateChangeStates.ANY, SessionTransactionState.CLOSED
     )
     def close(self, invalidate: bool = False) -> None:
+
         if self.nested:
             self.session._nested_transaction = (
                 self._previous_nested_transaction
@@ -1281,16 +1308,15 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
         self.session._transaction = self._parent
 
-        if self._parent is None:
-            for connection, transaction, should_commit, autoclose in set(
-                self._connections.values()
-            ):
-                if invalidate:
-                    connection.invalidate()
-                if should_commit and transaction.is_active:
-                    transaction.close()
-                if autoclose:
-                    connection.close()
+        for connection, transaction, should_commit, autoclose in set(
+            self._connections.values()
+        ):
+            if invalidate and self._parent is None:
+                connection.invalidate()
+            if should_commit and transaction.is_active:
+                transaction.close()
+            if autoclose and self._parent is None:
+                connection.close()
 
         self._state = SessionTransactionState.CLOSED
         sess = self.session
@@ -1357,6 +1383,7 @@ class Session(_SessionClassMethods, EventTarget):
     expire_on_commit: bool
     enable_baked_queries: bool
     twophase: bool
+    join_transaction_mode: JoinTransactionMode
     _query_cls: Type[Query[Any]]
 
     def __init__(
@@ -1373,6 +1400,7 @@ class Session(_SessionClassMethods, EventTarget):
         info: Optional[_InfoType] = None,
         query_cls: Optional[Type[Query[Any]]] = None,
         autocommit: Literal[False] = False,
+        join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
     ):
         r"""Construct a new Session.
 
@@ -1502,6 +1530,85 @@ class Session(_SessionClassMethods, EventTarget):
         :param autocommit: the "autocommit" keyword is present for backwards
             compatibility but must remain at its default value of ``False``.
 
+        :param join_transaction_mode: Describes the transactional behavior to
+          take when a given bind is a :class:`_engine.Connection` that
+          has already begun a transaction outside the scope of this
+          :class:`_orm.Session`; in other words the
+          :meth:`_engine.Connection.in_transaction()` method returns True.
+
+          The following behaviors only take effect when the :class:`_orm.Session`
+          **actually makes use of the connection given**; that is, a method
+          such as :meth:`_orm.Session.execute`, :meth:`_orm.Session.connection`,
+          etc. are actually invoked:
+
+          * ``"conditional_savepoint"`` - this is the default.  if the given
+            :class:`_engine.Connection` is begun within a transaction but
+            does not have a SAVEPOINT, then ``"rollback_only"`` is used.
+            If the :class:`_engine.Connection` is additionally within
+            a SAVEPOINT, in other words
+            :meth:`_engine.Connection.in_nested_transaction()` method returns
+            True, then ``"create_savepoint"`` is used.
+
+            ``"conditional_savepoint"`` behavior attempts to make use of
+            savepoints in order to keep the state of the existing transaction
+            unchanged, but only if there is already a savepoint in progress;
+            otherwise, it is not assumed that the backend in use has adequate
+            support for SAVEPOINT, as availability of this feature varies.
+            ``"conditional_savepoint"`` also seeks to establish approximate
+            backwards compatibility with previous :class:`_orm.Session`
+            behavior, for applications that are not setting a specific mode. It
+            is recommended that one of the explicit settings be used.
+
+          * ``"create_savepoint"`` - the :class:`_orm.Session` will use
+            :meth:`_engine.Connection.begin_nested()` in all cases to create
+            its own transaction.  This transaction by its nature rides
+            "on top" of any existing transaction that's opened on the given
+            :class:`_engine.Connection`; if the underlying database and
+            the driver in use has full, non-broken support for SAVEPOINT, the
+            external transaction will remain unaffected throughout the
+            lifespan of the :class:`_orm.Session`.
+
+            The ``"create_savepoint"`` mode is the most useful for integrating
+            a :class:`_orm.Session` into a test suite where an externally
+            initiated transaction should remain unaffected; however, it relies
+            on proper SAVEPOINT support from the underlying driver and
+            database.
+
+            .. tip:: When using SQLite, the SQLite driver included through
+               Python 3.11 does not handle SAVEPOINTs correctly in all cases
+               without workarounds. See the section
+               :ref:`pysqlite_serializable` for details on current workarounds.
+
+          * ``"control_fully"`` - the :class:`_orm.Session` will take
+            control of the given transaction as its own;
+            :meth:`_orm.Session.commit` will call ``.commit()`` on the
+            transaction, :meth:`_orm.Session.rollback` will call
+            ``.rollback()`` on the transaction, :meth:`_orm.Session.close` will
+            call ``.rollback`` on the transaction.
+
+            .. tip:: This mode of use is equivalent to how SQLAlchemy 1.4 would
+               handle a :class:`_engine.Connection` given with an existing
+               SAVEPOINT (i.e. :meth:`_engine.Connection.begin_nested`); the
+               :class:`_orm.Session` would take full control of the existing
+               SAVEPOINT.
+
+          * ``"rollback_only"`` - the :class:`_orm.Session` will take control
+            of the given transaction for ``.rollback()`` calls only;
+            ``.commit()`` calls will not be propagated to the given
+            transaction.  ``.close()`` calls will have no effect on the
+            given transaction.
+
+            .. tip:: This mode of use is equivalent to how SQLAlchemy 1.4 would
+               handle a :class:`_engine.Connection` given with an existing
+               regular database transaction (i.e.
+               :meth:`_engine.Connection.begin`); the :class:`_orm.Session`
+               would propagate :meth:`_orm.Session.rollback` calls to the
+               underlying transaction, but not :meth:`_orm.Session.commit` or
+               :meth:`_orm.Session.close` calls.
+
+          .. versionadded:: 2.0.0b5
+
+
         """  # noqa
 
         # considering allowing the "autocommit" keyword to still be accepted
@@ -1533,6 +1640,16 @@ class Session(_SessionClassMethods, EventTarget):
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
+        if (
+            join_transaction_mode
+            and join_transaction_mode
+            not in JoinTransactionMode.__args__  # type: ignore
+        ):
+            raise sa_exc.ArgumentError(
+                f"invalid selection for join_transaction_mode: "
+                f'"{join_transaction_mode}"'
+            )
+        self.join_transaction_mode = join_transaction_mode
 
         self.twophase = twophase
         self._query_cls = query_cls if query_cls else query.Query

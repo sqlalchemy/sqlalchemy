@@ -1632,6 +1632,112 @@ not otherwise part of the major 1.4->2.0 migration path; changes here are
 not expected to have significant effects on backwards compatibility.
 
 
+.. _change_9015:
+
+New transaction join modes for ``Session``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The behavior of "joining an external transaction into a Session" has been
+revised and improved, allowing explicit control over how the
+:class:`_orm.Session` will accommodate an incoming :class:`_engine.Connection`
+that already has a transaction and possibly a savepoint already established.
+The new parameter :paramref:`_orm.Session.join_transaction_mode` includes a
+series of option values which can accommodate the existing transaction in
+several ways, most importantly allowing a :class:`_orm.Session` to operate in a
+fully transactional style using savepoints exclusively, while leaving the
+externally initiated transaction non-committed and active under all
+circumstances, allowing test suites to rollback all changes that take place
+within tests.
+
+The primary improvement this allows is that the recipe documented at
+:ref:`session_external_transaction`, which also changed from SQLAlchemy 1.3
+to 1.4, is now simplified to no longer require explicit use of an event
+handler or any mention of an explicit savepoint; by using
+``join_transaction_mode="create_savepoint"``, the :class:`_orm.Session` will
+never affect the state of an incoming transaction, and will instead create a
+savepoint (i.e. "nested transaction") as its root transaction.
+
+The following illustrates part of the example given at
+:ref:`session_external_transaction`; see that section for a full example::
+
+    class SomeTest(TestCase):
+        def setUp(self):
+            # connect to the database
+            self.connection = engine.connect()
+
+            # begin a non-ORM transaction
+            self.trans = self.connection.begin()
+
+            # bind an individual Session to the connection, selecting
+            # "create_savepoint" join_transaction_mode
+            self.session = Session(
+                bind=self.connection, join_transaction_mode="create_savepoint"
+            )
+
+        def tearDown(self):
+            self.session.close()
+
+            # rollback non-ORM transaction
+            self.trans.rollback()
+
+            # return connection to the Engine
+            self.connection.close()
+
+The default mode selected for :paramref:`_orm.Session.join_transaction_mode`
+is ``"conditional_savepoint"``, which uses ``"create_savepoint"`` behavior
+if the given :class:`_engine.Connection` is itself already on a savepoint.
+If the given :class:`_engine.Connection` is in a transaction but not a
+savepoint, the :class:`_orm.Session` will propagate "rollback" calls
+but not "commit" calls, but will not begin a new savepoint on its own.  This
+behavior is chosen by default for its maximum compatibility with
+older SQLAlchemy versions as well as that it does not start a new SAVEPOINT
+unless the given driver is already making use of SAVEPOINT, as support
+for SAVEPOINT varies not only with specific backend and driver but also
+configurationally.
+
+The following illustrates a case that worked in SQLAlchemy 1.3, stopped working
+in SQLAlchemy 1.4, and is now restored in SQLAlchemy 2.0::
+
+    engine = create_engine("...")
+
+    # setup outer connection with a transaction and a SAVEPOINT
+    conn = engine.connect()
+    trans = conn.begin()
+    nested = conn.begin_nested()
+
+    # bind a Session to that connection and operate upon it, including
+    # a commit
+    session = Session(conn)
+    session.connection()
+    session.commit()
+    session.close()
+
+    # assert both SAVEPOINT and transaction remain active
+    assert nested.is_active
+    nested.rollback()
+    trans.rollback()
+
+Where above, a :class:`_orm.Session` is joined to a :class:`_engine.Connection`
+that has a savepoint started on it; the state of these two units remains
+unchanged after the :class:`_orm.Session` has worked with the transaction. In
+SQLAlchemy 1.3, the above case worked because the :class:`_orm.Session` would
+begin a "subtransaction" upon the :class:`_engine.Connection`, which would
+allow the outer savepoint / transaction to remain unaffected for simple cases
+as above. Since subtransactions were deprecated in 1.4 and are now removed in
+2.0, this behavior was no longer available. The new default behavior improves
+upon the behavior of "subtransactions" by using a real, second SAVEPOINT
+instead, so that even calls to :meth:`_orm.Session.rollback` prevent the
+:class:`_orm.Session` from "breaking out" into the externally initiated
+SAVEPOINT or transaction.
+
+New code that is joining a transaction-started :class:`_engine.Connection` into
+a :class:`_orm.Session` should however select a
+:paramref:`_orm.Session.join_transaction_mode` explicitly, so that the desired
+behavior is explicitly defined.
+
+:ticket:`9015`
+
+
 .. _Cython: https://cython.org/
 
 .. _change_8567:

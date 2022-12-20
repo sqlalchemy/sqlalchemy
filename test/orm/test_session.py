@@ -2057,6 +2057,13 @@ class SessionInterface(fixtures.MappedTest):
             watchdog.symmetric_difference(self._class_methods),
         )
 
+    def test_join_transaction_mode(self):
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            'invalid selection for join_transaction_mode: "bogus"',
+        ):
+            Session(join_transaction_mode="bogus")
+
     def test_unmapped_instance(self):
         class Unmapped:
             pass

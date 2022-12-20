@@ -1,0 +1,27 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 9015
+
+    The behavior of "joining an external transaction into a Session" has been
+    revised and improved, allowing explicit control over how the
+    :class:`_orm.Session` will accommodate an incoming
+    :class:`_engine.Connection` that already has a transaction and possibly a
+    savepoint already established. The new parameter
+    :paramref:`_orm.Session.join_transaction_mode` includes a series of option
+    values which can accommodate the existing transaction in several ways, most
+    importantly allowing a :class:`_orm.Session` to operate in a fully
+    transactional style using savepoints exclusively, while leaving the
+    externally initiated transaction non-committed and active under all
+    circumstances, allowing test suites to rollback all changes that take place
+    within tests.
+
+    Additionally, revised the :meth:`_orm.Session.close` method to fully close
+    out savepoints that may still be present, which also allows the
+    "external transaction" recipe to proceed without warnings if the
+    :class:`_orm.Session` did not explicitly end its own SAVEPOINT
+    transactions.
+
+    .. seealso::
+
+        :ref:`change_9015`
+

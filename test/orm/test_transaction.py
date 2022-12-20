@@ -1,4 +1,9 @@
+from __future__ import annotations
+
 import contextlib
+import random
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
 from sqlalchemy import event
@@ -32,9 +37,14 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.config import Variation
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
+
+if TYPE_CHECKING:
+    from sqlalchemy import NestedTransaction
+    from sqlalchemy import Transaction
 
 
 class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
@@ -97,6 +107,142 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         trans.commit()
         assert len(sess.query(User).all()) == 1
+
+    @testing.variation(
+        "join_transaction_mode",
+        [
+            "none",
+            "conditional_savepoint",
+            "create_savepoint",
+            "control_fully",
+            "rollback_only",
+        ],
+    )
+    @testing.variation("operation", ["commit", "close", "rollback", "nothing"])
+    @testing.variation("external_state", ["none", "transaction", "savepoint"])
+    def test_join_transaction_modes(
+        self,
+        connection_no_trans,
+        join_transaction_mode,
+        operation,
+        external_state: testing.Variation,
+    ):
+        """test new join_transaction modes added in #9015"""
+
+        connection = connection_no_trans
+
+        t1: Optional[Transaction]
+        s1: Optional[NestedTransaction]
+
+        if external_state.none:
+            t1 = s1 = None
+        elif external_state.transaction:
+            t1 = connection.begin()
+            s1 = None
+        elif external_state.savepoint:
+            t1 = connection.begin()
+            s1 = connection.begin_nested()
+        else:
+            external_state.fail()
+
+        if join_transaction_mode.none:
+            sess = Session(connection)
+        else:
+            sess = Session(
+                connection, join_transaction_mode=join_transaction_mode.name
+            )
+
+        sess.connection()
+
+        if operation.close:
+            sess.close()
+        elif operation.commit:
+            sess.commit()
+        elif operation.rollback:
+            sess.rollback()
+        elif operation.nothing:
+            pass
+        else:
+            operation.fail()
+
+        if external_state.none:
+            if operation.nothing:
+                assert connection.in_transaction()
+            else:
+                assert not connection.in_transaction()
+
+        elif external_state.transaction:
+
+            assert t1 is not None
+
+            if (
+                join_transaction_mode.none
+                or join_transaction_mode.conditional_savepoint
+                or join_transaction_mode.rollback_only
+            ):
+                if operation.rollback:
+                    assert t1._deactivated_from_connection
+                    assert not t1.is_active
+                else:
+                    assert not t1._deactivated_from_connection
+                    assert t1.is_active
+            elif join_transaction_mode.create_savepoint:
+                assert not t1._deactivated_from_connection
+                assert t1.is_active
+            elif join_transaction_mode.control_fully:
+                if operation.nothing:
+                    assert not t1._deactivated_from_connection
+                    assert t1.is_active
+                else:
+                    assert t1._deactivated_from_connection
+                    assert not t1.is_active
+            else:
+                join_transaction_mode.fail()
+
+            if t1.is_active:
+                t1.rollback()
+        elif external_state.savepoint:
+            assert s1 is not None
+            assert t1 is not None
+
+            assert not t1._deactivated_from_connection
+            assert t1.is_active
+
+            if join_transaction_mode.rollback_only:
+                if operation.rollback:
+                    assert s1._deactivated_from_connection
+                    assert not s1.is_active
+                else:
+                    assert not s1._deactivated_from_connection
+                    assert s1.is_active
+            elif join_transaction_mode.control_fully:
+                if operation.nothing:
+                    assert not s1._deactivated_from_connection
+                    assert s1.is_active
+                else:
+                    assert s1._deactivated_from_connection
+                    assert not s1.is_active
+            else:
+                if operation.nothing:
+                    # session is still open in the sub-savepoint,
+                    # so we are not activated on connection
+                    assert s1._deactivated_from_connection
+
+                    # but we are still an active savepoint
+                    assert s1.is_active
+
+                    # close session, then we're good
+                    sess.close()
+
+                assert not s1._deactivated_from_connection
+                assert s1.is_active
+
+            if s1.is_active:
+                s1.rollback()
+            if t1.is_active:
+                t1.rollback()
+        else:
+            external_state.fail()
 
     def test_subtransaction_on_external_commit(self, connection_no_trans):
         users, User = self.tables.users, self.classes.User
@@ -2351,11 +2497,68 @@ class JoinIntoAnExternalTransactionFixture:
         eq_(result, count)
 
 
-class NewStyleJoinIntoAnExternalTransactionTest(
-    JoinIntoAnExternalTransactionFixture, fixtures.MappedTest
+class CtxManagerJoinIntoAnExternalTransactionFixture(
+    JoinIntoAnExternalTransactionFixture
 ):
-    """A new recipe for "join into an external transaction" that works
-    for both legacy and future engines/sessions
+    @testing.requires.compat_savepoints
+    def test_something_with_context_managers(self):
+        A = self.A
+
+        a1 = A()
+
+        with self.session.begin():
+            self.session.add(a1)
+            self.session.flush()
+
+            self._assert_count(1)
+            self.session.rollback()
+
+        self._assert_count(0)
+
+        a1 = A()
+        with self.session.begin():
+            self.session.add(a1)
+
+        self._assert_count(1)
+
+        a2 = A()
+
+        with self.session.begin():
+            self.session.add(a2)
+            self.session.flush()
+            self._assert_count(2)
+
+            self.session.rollback()
+        self._assert_count(1)
+
+    @testing.requires.compat_savepoints
+    def test_super_abusive_nesting(self):
+        session = self.session
+
+        for i in range(random.randint(5, 30)):
+            choice = random.randint(1, 3)
+            if choice == 1:
+                if session.in_transaction():
+                    session.begin_nested()
+                else:
+                    session.begin()
+            elif choice == 2:
+                session.rollback()
+            elif choice == 3:
+                session.commit()
+
+            session.connection()
+
+        # remaining nested / etc. are cleanly cleared out
+        session.close()
+
+
+class NewStyleJoinIntoAnExternalTransactionTest(
+    CtxManagerJoinIntoAnExternalTransactionFixture, fixtures.MappedTest
+):
+    """test the 1.4 join to an external transaction fixture.
+
+    In 1.4, this works for both legacy and future engines/sessions
 
     """
 
@@ -2390,42 +2593,75 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         if self.trans.is_active:
             self.trans.rollback()
 
-    @testing.requires.compat_savepoints
-    def test_something_with_context_managers(self):
-        A = self.A
 
-        a1 = A()
+@testing.combinations(
+    *Variation.generate_cases(
+        "join_mode",
+        [
+            "create_savepoint",
+            "conditional_w_savepoint",
+            "create_savepoint_w_savepoint",
+        ],
+    ),
+    argnames="join_mode",
+    id_="s",
+)
+class ReallyNewJoinIntoAnExternalTransactionTest(
+    CtxManagerJoinIntoAnExternalTransactionFixture, fixtures.MappedTest
+):
+    """2.0 only recipe for "join into an external transaction" that works
+    without event handlers
 
-        with self.session.begin():
-            self.session.add(a1)
-            self.session.flush()
+    """
 
-            self._assert_count(1)
-            self.session.rollback()
+    def setup_session(self):
+        self.trans = self.connection.begin()
 
-        self._assert_count(0)
+        if (
+            self.join_mode.conditional_w_savepoint
+            or self.join_mode.create_savepoint_w_savepoint
+        ):
+            self.nested = self.connection.begin_nested()
 
-        a1 = A()
-        with self.session.begin():
-            self.session.add(a1)
+        class A:
+            pass
 
-        self._assert_count(1)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(A, self.table)
+        self.A = A
 
-        a2 = A()
+        self.session = Session(
+            self.connection,
+            join_transaction_mode="create_savepoint"
+            if (
+                self.join_mode.create_savepoint
+                or self.join_mode.create_savepoint_w_savepoint
+            )
+            else "conditional_savepoint",
+        )
 
-        with self.session.begin():
-            self.session.add(a2)
-            self.session.flush()
-            self._assert_count(2)
+    def teardown_session(self):
+        self.session.close()
 
-            self.session.rollback()
-        self._assert_count(1)
+        if (
+            self.join_mode.conditional_w_savepoint
+            or self.join_mode.create_savepoint_w_savepoint
+        ):
+            assert not self.nested._deactivated_from_connection
+            assert self.nested.is_active
+            self.nested.rollback()
+
+        assert not self.trans._deactivated_from_connection
+        assert self.trans.is_active
+        self.trans.rollback()
 
 
 class LegacyJoinIntoAnExternalTransactionTest(
     JoinIntoAnExternalTransactionFixture,
     fixtures.MappedTest,
 ):
+    """test the 1.3 join to an external transaction fixture"""
+
     def setup_session(self):
         # begin a non-ORM transaction
         self.trans = self.connection.begin()
