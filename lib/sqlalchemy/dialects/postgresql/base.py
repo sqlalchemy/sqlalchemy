@@ -1436,6 +1436,7 @@ from .types import CIDR as CIDR
 from .types import INET as INET
 from .types import INTERVAL as INTERVAL
 from .types import MACADDR as MACADDR
+from .types import MACADDR8 as MACADDR8
 from .types import MONEY as MONEY
 from .types import OID as OID
 from .types import PGBit as PGBit  # noqa: F401
@@ -1443,6 +1444,7 @@ from .types import PGCidr as PGCidr  # noqa: F401
 from .types import PGInet as PGInet  # noqa: F401
 from .types import PGInterval as PGInterval  # noqa: F401
 from .types import PGMacAddr as PGMacAddr  # noqa: F401
+from .types import PGMacAddr8 as PGMacAddr8  # noqa: F401
 from .types import PGUuid as PGUuid
 from .types import REGCLASS as REGCLASS
 from .types import REGCONFIG as REGCONFIG  # noqa: F401
@@ -1601,6 +1603,7 @@ colspecs = {
     UUID: PGUuid,
 }
 
+
 ischema_names = {
     "_array": _array.ARRAY,
     "hstore": _hstore.HSTORE,
@@ -1635,6 +1638,7 @@ ischema_names = {
     "bit": BIT,
     "bit varying": BIT,
     "macaddr": MACADDR,
+    "macaddr8": MACADDR8,
     "money": MONEY,
     "oid": OID,
     "regclass": REGCLASS,
@@ -2449,6 +2453,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
+
+    def visit_MACADDR8(self, type_, **kw):
+        return "MACADDR8"
 
     def visit_MONEY(self, type_, **kw):
         return "MONEY"
