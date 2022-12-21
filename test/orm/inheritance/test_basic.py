@@ -2747,6 +2747,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
 class OptimizedLoadTest(fixtures.MappedTest):
     """tests for the "optimized load" routine."""
 
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -2902,9 +2904,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class A(Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             a = Column(String(20), nullable=False)
-            type_ = Column(String(20))
+            type_ = Column("type", String(20))
             __mapper_args__ = {
                 "polymorphic_on": type_,
                 "polymorphic_identity": "a",
@@ -2941,7 +2945,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             eq_(d.c, "z")
         asserter.assert_(
             CompiledSQL(
-                "SELECT a.id AS a_id, a.a AS a_a, a.type_ AS a_type_ FROM a",
+                "SELECT a.id AS a_id, a.a AS a_a, a.type AS a_type FROM a",
                 [],
             ),
             Or(
@@ -3158,10 +3162,26 @@ class OptimizedLoadTest(fixtures.MappedTest):
                     CompiledSQL(
                         "INSERT INTO base (data, type) VALUES (:data, :type)",
                         [{"data": "s1", "type": "sub"}],
+                        enable_returning=False,
                     ),
                     CompiledSQL(
                         "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
                         lambda ctx: {"id": s1.id, "sub": None},
+                        enable_returning=False,
+                    ),
+                    Conditional(
+                        bool(eager_defaults),
+                        [
+                            CompiledSQL(
+                                "SELECT base.counter AS base_counter, "
+                                "sub.subcounter AS sub_subcounter, "
+                                "sub.subcounter2 AS sub_subcounter2 "
+                                "FROM base JOIN sub ON base.id = sub.id "
+                                "WHERE base.id = :pk_1",
+                                lambda ctx: {"pk_1": s1.id},
+                            )
+                        ],
+                        [],
                     ),
                 ],
             ),
@@ -3174,18 +3194,17 @@ class OptimizedLoadTest(fixtures.MappedTest):
             testing.db,
             go,
             Conditional(
-                expect_returning,
-                [],
+                not eager_defaults and not expect_returning,
                 [
                     CompiledSQL(
                         "SELECT base.counter AS base_counter, "
-                        "sub.subcounter AS sub_subcounter, "
-                        "sub.subcounter2 AS sub_subcounter2 "
-                        "FROM base JOIN sub "
-                        "ON base.id = sub.id WHERE base.id = :pk_1",
+                        "sub.subcounter AS sub_subcounter, sub.subcounter2 "
+                        "AS sub_subcounter2 FROM base "
+                        "JOIN sub ON base.id = sub.id WHERE base.id = :pk_1",
                         lambda ctx: {"pk_1": s1.id},
-                    ),
+                    )
                 ],
+                [],
             ),
         )
 
