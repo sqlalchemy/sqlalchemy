@@ -691,7 +691,7 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
         and also render as ``INT4RANGE`` in SQL and DDL.
 
         """
-        if issubclass(cls, AbstractRangeImpl):
+        if issubclass(cls, AbstractRangeImpl) and cls is not self.__class__:
             # two ways to do this are:  1. create a new type on the fly
             # or 2. have AbstractRangeImpl(visit_name) constructor and a
             # visit_abstract_range_impl() method in the PG compiler.

@@ -4486,6 +4486,25 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         cols = insp.get_columns("data_table")
         assert isinstance(cols[0]["type"], self._col_type)
 
+    def test_type_decorator_round_trip(self, connection, metadata):
+        """test #9020"""
+
+        class MyRange(TypeDecorator):
+            cache_ok = True
+            impl = self._col_type
+
+        table = Table(
+            "typedec_table",
+            metadata,
+            Column("range", MyRange, primary_key=True),
+        )
+        table.create(connection)
+        connection.execute(table.insert(), {"range": self._data_obj()})
+        data = connection.execute(
+            select(table.c.range).where(table.c.range == self._data_obj())
+        ).fetchall()
+        eq_(data, [(self._data_obj(),)])
+
     def test_textual_round_trip_w_dialect_type(self, connection):
         """test #8690"""
         data_table = self.tables.data_table
