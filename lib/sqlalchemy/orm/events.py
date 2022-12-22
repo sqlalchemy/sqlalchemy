@@ -35,6 +35,7 @@ from .. import event
 from .. import exc
 from .. import util
 from ..event import EventTarget
+from ..event.registry import _ET
 from ..util.compat import inspect_getfullargspec
 
 if TYPE_CHECKING:
@@ -45,7 +46,6 @@ if TYPE_CHECKING:
     from ._typing import _O
     from ._typing import _T
     from .instrumentation import ClassManager
-    from ..event.registry import _ET
     from ..event.registry import _EventKey
     from ..orm.decl_api import DeclarativeAttributeIntercept
     from ..orm.decl_api import DeclarativeMeta
