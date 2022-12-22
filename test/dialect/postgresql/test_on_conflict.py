@@ -675,6 +675,45 @@ class OnConflictTest(fixtures.TablesTest):
             [(1, "name1", "mail2@gmail.com", "unique_name")],
         )
 
+    def test_on_conflict_do_update_constraint_can_be_index(self, connection):
+        """test #9023"""
+
+        users = self.tables.users_xtra
+
+        connection.execute(
+            insert(users),
+            dict(
+                id=1,
+                name="name1",
+                login_email="mail1@gmail.com",
+                lets_index_this="unique_name",
+            ),
+        )
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            constraint=self.unique_partial_index,
+            set_=dict(
+                name=i.excluded.name, login_email=i.excluded.login_email
+            ),
+        )
+
+        connection.execute(
+            i,
+            [
+                dict(
+                    name="name1",
+                    login_email="mail2@gmail.com",
+                    lets_index_this="unique_name",
+                )
+            ],
+        )
+
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            [(1, "name1", "mail2@gmail.com", "unique_name")],
+        )
+
     def test_on_conflict_do_update_no_row_actually_affected(self, connection):
         users = self.tables.users_xtra
 

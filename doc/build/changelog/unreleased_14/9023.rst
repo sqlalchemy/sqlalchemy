@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9023
+
+    Fixed bug where the PostgreSQL
+    :paramref:`_postgresql.OnConflictClause.constraint` parameter would accept
+    an :class:`.Index` object, however would not expand this index out into its
+    individual index expressions, instead rendering its name in an ON CONFLICT
+    ON CONSTRAINT clause, which is not accepted by PostgreSQL; the "constraint
+    name" form only accepts unique or exclude constraint names. The parameter
+    continues to accept the index but now expands it out into its component
+    expressions for the render.
