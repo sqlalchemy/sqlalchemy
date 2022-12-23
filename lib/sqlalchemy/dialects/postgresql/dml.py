@@ -213,7 +213,7 @@ class OnConflictClause(ClauseElement):
         if constraint is not None:
             if not isinstance(constraint, str) and isinstance(
                 constraint,
-                (schema.Index, schema.Constraint, ext.ExcludeConstraint),
+                (schema.Constraint, ext.ExcludeConstraint),
             ):
                 constraint = getattr(constraint, "name") or constraint
 
