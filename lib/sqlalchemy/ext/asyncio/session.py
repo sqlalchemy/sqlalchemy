@@ -1404,21 +1404,34 @@ class async_sessionmaker(Generic[_AS]):
     e.g.::
 
         from sqlalchemy.ext.asyncio import create_async_engine
+        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy.ext.asyncio import async_sessionmaker
 
-        async def main():
+        async def run_some_sql(async_session: async_sessionmaker[AsyncSession]) -> None:
+            async with async_session() as session:
+                session.add(SomeObject(data="object"))
+                session.add(SomeOtherObject(name="other object"))
+                await session.commit()
+
+        async def main() -> None:
             # an AsyncEngine, which the AsyncSession will use for connection
             # resources
             engine = create_async_engine('postgresql+asyncpg://scott:tiger@localhost/')
 
-            AsyncSession = async_sessionmaker(engine)
+            # create a reusable factory for new AsyncSession instances
+            async_session = async_sessionmaker(engine)
 
-            async with async_session() as session:
-                session.add(some_object)
-                session.add(some_other_object)
-                await session.commit()
+            await run_some_sql(async_session)
 
-    .. versionadded:: 2.0  :class:`.asyncio_sessionmaker` provides a
+            await engine.dispose()
+
+    The :class:`.async_sessionmaker` is useful so that different parts
+    of a program can create new :class:`.AsyncSession` objects with a
+    fixed configuration established up front.  Note that :class:`.AsyncSession`
+    objects may also be instantiated directly when not using
+    :class:`.async_sessionmaker`.
+
+    .. versionadded:: 2.0  :class:`.async_sessionmaker` provides a
        :class:`.sessionmaker` class that's dedicated to the
        :class:`.AsyncSession` object, including pep-484 typing support.
 
