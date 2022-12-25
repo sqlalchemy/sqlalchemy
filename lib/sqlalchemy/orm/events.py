@@ -22,45 +22,46 @@ from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 import weakref
 
-from sqlalchemy.orm.unitofwork import UOWTransaction
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
-from ._typing import _InstanceDict
-from .attributes import Event
 from .attributes import QueryableAttribute
 from .base import _mapper_or_none
-from .base import EventConstants
 from .base import NO_KEY
+from .instrumentation import ClassManager
+from .instrumentation import InstrumentationFactory
 from .query import Query
 from .scoping import scoped_session
-from .session import ORMExecuteState
 from .session import Session
 from .session import sessionmaker
-from .session import SessionTransaction
 from .. import event
 from .. import exc
 from .. import util
-from ..engine import Connection
 from ..event import EventTarget
-from ..event.base import _Dispatch
-from ..event.base import _HasEventsDispatch
 from ..event.registry import _ET
-from ..orm.collections import CollectionAdapter
-from ..orm.context import QueryContext
 from ..util.compat import inspect_getfullargspec
 
 if TYPE_CHECKING:
-    from typing import Union
     from weakref import ReferenceType
 
+    from ._typing import _InstanceDict
     from ._typing import _InternalEntityType
     from ._typing import _O
     from ._typing import _T
-    from .instrumentation import ClassManager
+    from .attributes import Event
+    from .base import EventConstants
+    from .session import ORMExecuteState
+    from .session import SessionTransaction
+    from .unitofwork import UOWTransaction
+    from ..engine import Connection
+    from ..event.base import _Dispatch
+    from ..event.base import _HasEventsDispatch
     from ..event.registry import _EventKey
+    from ..orm.collections import CollectionAdapter
+    from ..orm.context import QueryContext
     from ..orm.decl_api import DeclarativeAttributeIntercept
     from ..orm.decl_api import DeclarativeMeta
     from ..orm.mapper import Mapper
@@ -70,9 +71,7 @@ _KT = TypeVar("_KT", bound=Any)
 _ET2 = TypeVar("_ET2", bound=EventTarget)
 
 
-class InstrumentationEvents(
-    event.Events[instrumentation.InstrumentationFactory]
-):
+class InstrumentationEvents(event.Events[InstrumentationFactory]):
     """Events related to class instrumentation events.
 
     The listeners here support being established against
@@ -95,20 +94,20 @@ class InstrumentationEvents(
     """
 
     _target_class_doc = "SomeBaseClass"
-    _dispatch_target = instrumentation.InstrumentationFactory
+    _dispatch_target = InstrumentationFactory
 
     @classmethod
     def _accept_with(
         cls,
         target: Union[
-            instrumentation.InstrumentationFactory,
-            Type[instrumentation.InstrumentationFactory],
+            InstrumentationFactory,
+            Type[InstrumentationFactory],
         ],
         identifier: str,
     ) -> Optional[
         Union[
-            instrumentation.InstrumentationFactory,
-            Type[instrumentation.InstrumentationFactory],
+            InstrumentationFactory,
+            Type[InstrumentationFactory],
         ]
     ]:
         if isinstance(target, type):
@@ -199,7 +198,7 @@ class _InstrumentationEventsHold:
     dispatch = event.dispatcher(InstrumentationEvents)
 
 
-class InstanceEvents(event.Events[instrumentation.ClassManager[Any]]):
+class InstanceEvents(event.Events[ClassManager[Any]]):
     """Define events specific to object lifecycle.
 
     e.g.::
@@ -249,7 +248,7 @@ class InstanceEvents(event.Events[instrumentation.ClassManager[Any]]):
 
     _target_class_doc = "SomeClass"
 
-    _dispatch_target = instrumentation.ClassManager
+    _dispatch_target = ClassManager
 
     @classmethod
     def _new_classmanager_instance(
@@ -264,19 +263,14 @@ class InstanceEvents(event.Events[instrumentation.ClassManager[Any]]):
     def _accept_with(
         cls,
         target: Union[
-            instrumentation.ClassManager[Any],
-            Type[instrumentation.ClassManager[Any]],
+            ClassManager[Any],
+            Type[ClassManager[Any]],
         ],
         identifier: str,
-    ) -> Optional[
-        Union[
-            instrumentation.ClassManager[Any],
-            Type[instrumentation.ClassManager[Any]],
-        ]
-    ]:
+    ) -> Optional[Union[ClassManager[Any], Type[ClassManager[Any]]]]:
         orm = util.preloaded.orm
 
-        if isinstance(target, instrumentation.ClassManager):
+        if isinstance(target, ClassManager):
             return target
         elif isinstance(target, mapperlib.Mapper):
             return target.class_manager
@@ -287,10 +281,10 @@ class InstanceEvents(event.Events[instrumentation.ClassManager[Any]]):
                 "event target, use the 'sqlalchemy.orm.Mapper' class.",
                 "2.0",
             )
-            return instrumentation.ClassManager
+            return ClassManager
         elif isinstance(target, type):
             if issubclass(target, mapperlib.Mapper):
-                return instrumentation.ClassManager
+                return ClassManager
             else:
                 manager = instrumentation.opt_manager_of_class(target)
                 if manager:
@@ -302,7 +296,7 @@ class InstanceEvents(event.Events[instrumentation.ClassManager[Any]]):
     @classmethod
     def _listen(
         cls,
-        event_key: _EventKey[instrumentation.ClassManager[Any]],
+        event_key: _EventKey[ClassManager[Any]],
         raw: bool = False,
         propagate: bool = False,
         restore_load_context: bool = False,
