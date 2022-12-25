@@ -445,15 +445,6 @@ from ...sql._typing import is_sql_compiler
 _CX_ORACLE_MAGIC_LOB_SIZE = 131072
 
 
-_ORACLE_BIND_TRANSLATE_RE = re.compile(r"[%\(\):\[\]\.\/\? ]")
-
-# Oracle bind names can't start with digits or underscores.
-# currently we rely upon Oracle-specific quoting of bind names in most cases.
-# however for expanding params, the escape chars are used.
-# see #8708
-_ORACLE_BIND_TRANSLATE_CHARS = dict(zip("%():[]./? ", "PAZCCCCCCCC"))
-
-
 class _OracleInteger(sqltypes.Integer):
     def get_dbapi_type(self, dbapi):
         # see https://github.com/oracle/python-cx_Oracle/issues/
@@ -694,6 +685,26 @@ class OracleCompiler_cx_oracle(OracleCompiler):
 
     _oracle_returning = False
 
+    # Oracle bind names can't start with digits or underscores.
+    # currently we rely upon Oracle-specific quoting of bind names in most
+    # cases.  however for expanding params, the escape chars are used.
+    # see #8708
+    bindname_escape_characters = util.immutabledict(
+        {
+            "%": "P",
+            "(": "A",
+            ")": "Z",
+            ":": "C",
+            ".": "C",
+            "[": "C",
+            "]": "C",
+            " ": "C",
+            "\\": "C",
+            "/": "C",
+            "?": "C",
+        }
+    )
+
     def bindparam_string(self, name, **kw):
         quote = getattr(name, "quote", None)
         if (
@@ -721,12 +732,12 @@ class OracleCompiler_cx_oracle(OracleCompiler):
         escaped_from = kw.get("escaped_from", None)
         if not escaped_from:
 
-            if _ORACLE_BIND_TRANSLATE_RE.search(name):
+            if self._bind_translate_re.search(name):
                 # not quite the translate use case as we want to
                 # also get a quick boolean if we even found
                 # unusual characters in the name
-                new_name = _ORACLE_BIND_TRANSLATE_RE.sub(
-                    lambda m: _ORACLE_BIND_TRANSLATE_CHARS[m.group(0)],
+                new_name = self._bind_translate_re.sub(
+                    lambda m: self._bind_translate_chars[m.group(0)],
                     name,
                 )
                 if new_name[0].isdigit() or new_name[0] == "_":

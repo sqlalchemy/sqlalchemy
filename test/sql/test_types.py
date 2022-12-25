@@ -85,6 +85,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
 from sqlalchemy.testing.assertions import expect_raises_message
@@ -120,6 +121,15 @@ def _types_for_mod(mod):
 
 
 def _all_types(omit_special_types=False):
+    yield from (
+        typ
+        for typ, _ in _all_types_w_their_dialect(
+            omit_special_types=omit_special_types
+        )
+    )
+
+
+def _all_types_w_their_dialect(omit_special_types=False):
     seen = set()
     for typ in _types_for_mod(types):
         if omit_special_types and (
@@ -129,6 +139,7 @@ def _all_types(omit_special_types=False):
                 type_api.TypeEngineMixin,
                 types.Variant,
                 types.TypeDecorator,
+                types.PickleType,
             )
             or type_api.TypeEngineMixin in typ.__bases__
         ):
@@ -137,13 +148,13 @@ def _all_types(omit_special_types=False):
         if typ in seen:
             continue
         seen.add(typ)
-        yield typ
+        yield typ, default.DefaultDialect
     for dialect in _all_dialect_modules():
         for typ in _types_for_mod(dialect):
             if typ in seen:
                 continue
             seen.add(typ)
-            yield typ
+            yield typ, dialect.dialect
 
 
 def _get_instance(type_):
@@ -349,6 +360,40 @@ class AdaptTest(fixtures.TestBase):
         t1 = String(length=50)
         t2 = t1.adapt(Text)
         eq_(t2.length, 50)
+
+    @testing.combinations(
+        *[
+            (t, d)
+            for t, d in _all_types_w_their_dialect(omit_special_types=True)
+        ]
+    )
+    def test_every_possible_type_can_be_decorated(self, typ, dialect_cls):
+        """test for #9020
+
+        Apparently the adapt() method is called with the same class as given
+        in the case of :class:`.TypeDecorator`, at least with the
+        PostgreSQL RANGE types, which is not usually expected.
+
+        """
+        my_type = type("MyType", (TypeDecorator,), {"impl": typ})
+
+        if issubclass(typ, ARRAY):
+            inst = my_type(Integer)
+        elif issubclass(typ, pg.ENUM):
+            inst = my_type(name="my_enum")
+        elif issubclass(typ, pg.DOMAIN):
+            inst = my_type(name="my_domain", data_type=Integer)
+        else:
+            inst = my_type()
+        impl = inst._unwrapped_dialect_impl(dialect_cls())
+
+        if dialect_cls is default.DefaultDialect:
+            is_true(isinstance(impl, typ))
+
+        if impl._type_affinity is Interval:
+            is_true(issubclass(typ, sqltypes._AbstractInterval))
+        else:
+            is_true(issubclass(typ, impl._type_affinity))
 
 
 class TypeAffinityTest(fixtures.TestBase):

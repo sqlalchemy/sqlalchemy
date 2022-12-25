@@ -827,6 +827,8 @@ For example, the query::
 
 would generate:
 
+.. sourcecode:: sql
+
     SELECT to_tsquery('cat') @> to_tsquery('cat & rat')
 
 
@@ -839,6 +841,20 @@ The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 produces a statement equivalent to::
 
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
+
+The ``func`` namespace is augmented by the PostgreSQL dialect to set up
+correct argument and return types for most full text search functions.
+These functions are used automatically by the :attr:`_sql.func` namespace
+assuming the ``sqlalchemy.dialects.postgresql`` package has been imported,
+or :func:`_sa.create_engine` has been invoked using a ``postgresql``
+dialect.  These functions are documented at:
+
+* :class:`_postgresql.to_tsvector`
+* :class:`_postgresql.to_tsquery`
+* :class:`_postgresql.plainto_tsquery`
+* :class:`_postgresql.phraseto_tsquery`
+* :class:`_postgresql.websearch_to_tsquery`
+* :class:`_postgresql.ts_headline`
 
 Specifying the "regconfig" with ``match()`` or custom operators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1402,6 +1418,7 @@ from . import hstore as _hstore
 from . import json as _json
 from . import pg_catalog
 from . import ranges as _ranges
+from .ext import _regconfig_fn
 from .ext import aggregate_order_by
 from .named_types import CreateDomainType as CreateDomainType  # noqa: F401
 from .named_types import CreateEnumType as CreateEnumType  # noqa: F401
@@ -1419,6 +1436,7 @@ from .types import CIDR as CIDR
 from .types import INET as INET
 from .types import INTERVAL as INTERVAL
 from .types import MACADDR as MACADDR
+from .types import MACADDR8 as MACADDR8
 from .types import MONEY as MONEY
 from .types import OID as OID
 from .types import PGBit as PGBit  # noqa: F401
@@ -1426,8 +1444,10 @@ from .types import PGCidr as PGCidr  # noqa: F401
 from .types import PGInet as PGInet  # noqa: F401
 from .types import PGInterval as PGInterval  # noqa: F401
 from .types import PGMacAddr as PGMacAddr  # noqa: F401
+from .types import PGMacAddr8 as PGMacAddr8  # noqa: F401
 from .types import PGUuid as PGUuid
 from .types import REGCLASS as REGCLASS
+from .types import REGCONFIG as REGCONFIG  # noqa: F401
 from .types import TIME as TIME
 from .types import TIMESTAMP as TIMESTAMP
 from .types import TSVECTOR as TSVECTOR
@@ -1583,6 +1603,7 @@ colspecs = {
     UUID: PGUuid,
 }
 
+
 ischema_names = {
     "_array": _array.ARRAY,
     "hstore": _hstore.HSTORE,
@@ -1617,6 +1638,7 @@ ischema_names = {
     "bit": BIT,
     "bit varying": BIT,
     "macaddr": MACADDR,
+    "macaddr8": MACADDR8,
     "money": MONEY,
     "oid": OID,
     "regclass": REGCLASS,
@@ -1636,6 +1658,45 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
+    def visit_to_tsvector_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_to_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_plainto_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_phraseto_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_websearch_to_tsquery_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def visit_ts_headline_func(self, element, **kw):
+        return self._assert_pg_ts_ext(element, **kw)
+
+    def _assert_pg_ts_ext(self, element, **kw):
+        if not isinstance(element, _regconfig_fn):
+            # other options here include trying to rewrite the function
+            # with the correct types.  however, that means we have to
+            # "un-SQL-ize" the first argument, which can't work in a
+            # generalized way. Also, parent compiler class has already added
+            # the incorrect return type to the result map.   So let's just
+            # make sure the function we want is used up front.
+
+            raise exc.CompileError(
+                f'Can\'t compile "{element.name}()" full text search '
+                f"function construct that does not originate from the "
+                f'"sqlalchemy.dialects.postgresql" package.  '
+                f'Please ensure "import sqlalchemy.dialects.postgresql" is '
+                f"called before constructing "
+                f'"sqlalchemy.func.{element.name}()" to ensure registration '
+                f"of the correct argument and return types."
+            )
+
+        return f"{element.name}{self.function_argspec(element, **kw)}"
+
     def render_bind_cast(self, type_, dbapi_type, sqltext):
         return f"""{sqltext}::{
                 self.dialect.type_compiler_instance.process(
@@ -1779,7 +1840,7 @@ class PGCompiler(compiler.SQLCompiler):
                 self.process(flags, **kw),
             )
 
-    def visit_empty_set_expr(self, element_types):
+    def visit_empty_set_expr(self, element_types, **kw):
         # cast the empty set to the type we are comparing against.  if
         # we are comparing against the null type, pick an arbitrary
         # datatype for the empty set
@@ -2087,7 +2148,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         not_valid = constraint.dialect_options["postgresql"]["not_valid"]
         return " NOT VALID" if not_valid else ""
 
-    def visit_check_constraint(self, constraint):
+    def visit_check_constraint(self, constraint, **kw):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
             if (
@@ -2105,12 +2166,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self._define_constraint_validity(constraint)
         return text
 
-    def visit_foreign_key_constraint(self, constraint):
+    def visit_foreign_key_constraint(self, constraint, **kw):
         text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
 
-    def visit_create_enum_type(self, create):
+    def visit_create_enum_type(self, create, **kw):
         type_ = create.element
 
         return "CREATE TYPE %s AS ENUM (%s)" % (
@@ -2121,12 +2182,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
-    def visit_drop_enum_type(self, drop):
+    def visit_drop_enum_type(self, drop, **kw):
         type_ = drop.element
 
         return "DROP TYPE %s" % (self.preparer.format_type(type_))
 
-    def visit_create_domain_type(self, create):
+    def visit_create_domain_type(self, create, **kw):
         domain: DOMAIN = create.element
 
         options = []
@@ -2154,11 +2215,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
             f"{' '.join(options)}"
         )
 
-    def visit_drop_domain_type(self, drop):
+    def visit_drop_domain_type(self, drop, **kw):
         domain = drop.element
         return f"DROP DOMAIN {self.preparer.format_type(domain)}"
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, **kw):
         preparer = self.preparer
         index = create.element
         self._verify_index_table(index)
@@ -2246,7 +2307,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_drop_index(self, drop):
+    def visit_drop_index(self, drop, **kw):
         index = drop.element
 
         text = "\nDROP INDEX "
@@ -2325,7 +2386,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return "".join(table_opts)
 
-    def visit_computed_column(self, generated):
+    def visit_computed_column(self, generated, **kw):
         if generated.persisted is False:
             raise exc.CompileError(
                 "PostrgreSQL computed columns do not support 'virtual' "
@@ -2381,6 +2442,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TSVECTOR(self, type_, **kw):
         return "TSVECTOR"
 
+    def visit_TSQUERY(self, type_, **kw):
+        return "TSQUERY"
+
     def visit_INET(self, type_, **kw):
         return "INET"
 
@@ -2390,11 +2454,17 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
 
+    def visit_MACADDR8(self, type_, **kw):
+        return "MACADDR8"
+
     def visit_MONEY(self, type_, **kw):
         return "MONEY"
 
     def visit_OID(self, type_, **kw):
         return "OID"
+
+    def visit_REGCONFIG(self, type_, **kw):
+        return "REGCONFIG"
 
     def visit_REGCLASS(self, type_, **kw):
         return "REGCLASS"

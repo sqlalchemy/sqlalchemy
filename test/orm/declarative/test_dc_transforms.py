@@ -1,4 +1,5 @@
 import dataclasses
+from dataclasses import InitVar
 import inspect as pyinspect
 from itertools import product
 from typing import Any
@@ -50,7 +51,6 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.util import compat
-from .test_typed_mapping import expect_annotation_syntax_error
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -368,28 +368,11 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(e1.engineer_name, "en")
         eq_(e1.primary_language, "pl")
 
-    def test_no_fields_wo_mapped_or_dc(
-        self, dc_decl_base: Type[MappedAsDataclass]
-    ):
-        """since I made this mistake in my own mapping video, lets have it
-        raise an error"""
-
-        with expect_annotation_syntax_error("A.data"):
-
-            class A(dc_decl_base):
-                __tablename__ = "a"
-
-                id: Mapped[int] = mapped_column(primary_key=True, init=False)
-                data: str
-                ctrl_one: str = dataclasses.field()
-                some_field: int = dataclasses.field(default=5)
-
-    def test_allow_unmapped_fields_wo_mapped_or_dc(
+    def test_non_mapped_fields_wo_mapped_or_dc(
         self, dc_decl_base: Type[MappedAsDataclass]
     ):
         class A(dc_decl_base):
             __tablename__ = "a"
-            __allow_unmapped__ = True
 
             id: Mapped[int] = mapped_column(primary_key=True, init=False)
             data: str
@@ -407,12 +390,11 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             },
         )
 
-    def test_allow_unmapped_fields_wo_mapped_or_dc_w_inherits(
+    def test_non_mapped_fields_wo_mapped_or_dc_w_inherits(
         self, dc_decl_base: Type[MappedAsDataclass]
     ):
         class A(dc_decl_base):
             __tablename__ = "a"
-            __allow_unmapped__ = True
 
             id: Mapped[int] = mapped_column(primary_key=True, init=False)
             data: str
@@ -437,6 +419,34 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 "some_field": 5,
                 "b_data": "x",
             },
+        )
+
+    def test_init_var(self, dc_decl_base: Type[MappedAsDataclass]):
+        class User(dc_decl_base):
+            __tablename__ = "user_account"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            name: Mapped[str]
+
+            password: InitVar[str]
+            repeat_password: InitVar[str]
+
+            password_hash: Mapped[str] = mapped_column(
+                init=False, nullable=False
+            )
+
+            def __post_init__(self, password: str, repeat_password: str):
+                if password != repeat_password:
+                    raise ValueError("passwords do not match")
+
+                self.password_hash = f"some hash... {password}"
+
+        u1 = User(name="u1", password="p1", repeat_password="p1")
+        eq_(u1.password_hash, "some hash... p1")
+        self.assert_compile(
+            select(User),
+            "SELECT user_account.id, user_account.name, "
+            "user_account.password_hash FROM user_account",
         )
 
     def test_integrated_dc(self, dc_decl_base: Type[MappedAsDataclass]):

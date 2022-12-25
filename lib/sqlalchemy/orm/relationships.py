@@ -2108,7 +2108,9 @@ class RelationshipProperty(
                 back_populates=self.key,
                 **kwargs,
             )
-            mapper._configure_property(backref_key, relationship)
+            mapper._configure_property(
+                backref_key, relationship, warn_for_existing=True
+            )
 
         if self.back_populates:
             self._add_reverse_property(self.back_populates)

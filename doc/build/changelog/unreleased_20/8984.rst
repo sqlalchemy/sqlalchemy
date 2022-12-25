@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 8984
+
+    The :meth:`_postgresql.Range.__eq___` will now return ``NotImplemented``
+    when comparing with an instance of a different class, instead of raising
+    an :exc:`AttributeError` exception.

@@ -264,10 +264,9 @@ generated automatically by the database are  simple integer columns, which are
 implemented by the database as either a so-called "autoincrement" column, or
 from a sequence associated with the column.   Every database dialect within
 SQLAlchemy Core supports a method of retrieving these primary key values which
-is often native to the Python DBAPI, and in general this process is automatic,
-with the exception of a database like Oracle that requires us to specify a
-:class:`.Sequence` explicitly.   There is more documentation regarding this
-at :paramref:`_schema.Column.autoincrement`.
+is often native to the Python DBAPI, and in general this process is automatic.
+There is more documentation regarding this at
+:paramref:`_schema.Column.autoincrement`.
 
 For server-generating columns that are not primary key columns or that are not
 simple autoincrementing integer columns, the ORM requires that these columns
@@ -284,22 +283,29 @@ Case 1: non primary key, RETURNING or equivalent is supported
 -------------------------------------------------------------
 
 In this case, columns should be marked as :class:`.FetchedValue` or with an
-explicit :paramref:`_schema.Column.server_default`.   The
-:paramref:`_orm.Mapper.eager_defaults` parameter
-may be used to indicate that these
-columns should be fetched immediately upon INSERT and sometimes UPDATE::
+explicit :paramref:`_schema.Column.server_default`.   The ORM will
+automatically add these columns to the RETURNING clause when performing
+INSERT statements, assuming the
+:paramref:`_orm.Mapper.eager_defaults` parameter is set to ``True``, or
+if left at its default setting of ``"auto"``, for dialects that support
+both RETURNING as well as :ref:`insertmanyvalues <engine_insertmanyvalues>`::
 
 
     class MyModel(Base):
         __tablename__ = "my_table"
 
         id = mapped_column(Integer, primary_key=True)
+
+        # server-side SQL date function generates a new timestamp
         timestamp = mapped_column(DateTime(), server_default=func.now())
 
-        # assume a database trigger populates a value into this column
-        # during INSERT
+        # some other server-side function not named here, such as a trigger,
+        # populates a value into this column during INSERT
         special_identifier = mapped_column(String(50), server_default=FetchedValue())
 
+        # set eager defaults to True.  This is usually optional, as if the
+        # backend supports RETURNING + insertmanyvalues, eager defaults
+        # will take place regardless on INSERT
         __mapper_args__ = {"eager_defaults": True}
 
 Above, an INSERT statement that does not specify explicit values for
@@ -312,12 +318,76 @@ above table will look like:
 
    INSERT INTO my_table DEFAULT VALUES RETURNING my_table.id, my_table.timestamp, my_table.special_identifier
 
+.. versionchanged:: 2.0.0b5 The :paramref:`_orm.Mapper.eager_defaults` parameter now defaults
+   to a new setting ``"auto"``, which will automatically make use of RETURNING
+   to fetch server-generated default values on INSERT if the backing database
+   supports both RETURNING as well as :ref:`insertmanyvalues <engine_insertmanyvalues>`.
 
-Case 2: non primary key, RETURNING or equivalent is not supported or not needed
+.. note:: The ``"auto"`` value for :paramref:`_orm.Mapper.eager_defaults` only
+   applies to INSERT statements.  UPDATE statements will not use RETURNING,
+   even if available, unless :paramref:`_orm.Mapper.eager_defaults` is set to
+   ``True``.  This is because there is no equivalent "insertmanyvalues" feature
+   for UPDATE, so UPDATE RETURNING will require that UPDATE statements are
+   emitted individually for each row being UPDATEd.
+
+Case 2: Table includes trigger-generated values which are not compatible with RETURNING
+----------------------------------------------------------------------------------------
+
+The ``"auto"`` setting of :paramref:`_orm.Mapper.eager_defaults` means that
+a backend that supports RETURNING will usually make use of RETURNING with
+INSERT statements in order to retreive newly generated default values.
+However there are limitations of server-generated values that are generated
+using triggers, such that RETURNING can't be used:
+
+* SQL Server does not allow RETURNING to be used in an INSERT statement
+  to retrieve a trigger-generated value; the statement will fail.
+
+* SQLite has limitations in combining the use of RETURNING with triggers, such
+  that the RETURNING clause will not have the INSERTed value available
+
+* Other backends may have limitations with RETURNING in conjunction with
+  triggers, or other kinds of server-generated values.
+
+To disable the use of RETURNING for such values, including not just for
+server generated default values but also to ensure that the ORM will never
+use RETURNING with a particular table, specify
+:paramref:`_schema.Table.implicit_returning`
+as ``False`` for the mapped :class:`.Table`.  Using a Declarative mapping
+this looks like::
+
+    class MyModel(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        data: Mapped[str] = mapped_column(String(50))
+
+        # assume a database trigger populates a value into this column
+        # during INSERT
+        special_identifier = mapped_column(String(50), server_default=FetchedValue())
+
+        # disable all use of RETURNING for the table
+        __table_args__ = {"implicit_returning": False}
+
+On SQL Server with the pyodbc driver, an INSERT for the above table will
+not use RETURNING and will use the SQL Server ``scope_identity()`` function
+to retreive the newly generated primary key value:
+
+.. sourcecode:: sql
+
+    INSERT INTO my_table (data) VALUES (?); select scope_identity()
+
+.. seealso::
+
+    :ref:`mssql_insert_behavior` - background on the SQL Server dialect's
+    methods of fetching newly generated primary key values
+
+Case 3: non primary key, RETURNING or equivalent is not supported or not needed
 --------------------------------------------------------------------------------
 
-This case is the same as case 1 above, except we don't specify
-:paramref:`.orm.mapper.eager_defaults`::
+This case is the same as case 1 above, except we typically don't want to
+use :paramref:`.orm.Mapper.eager_defaults`, as its current implementation
+in the absence of RETURNING support is to emit a SELECT-per-row, which
+is not performant.  Therefore the parameter is omitted in the mapping below::
 
     class MyModel(Base):
         __tablename__ = "my_table"
@@ -329,18 +399,21 @@ This case is the same as case 1 above, except we don't specify
         # during INSERT
         special_identifier = mapped_column(String(50), server_default=FetchedValue())
 
-After a record with the above mapping is INSERTed, the "timestamp" and
-"special_identifier" columns will remain empty, and will be fetched via
-a second SELECT statement when they are first accessed after the flush, e.g.
-they are marked as "expired".
+After a record with the above mapping is INSERTed on a backend that does not
+include RETURNING or "insertmanyvalues" support, the "timestamp" and
+"special_identifier" columns will remain empty, and will be fetched via a
+second SELECT statement when they are first accessed after the flush, e.g. they
+are marked as "expired".
 
-If the :paramref:`.orm.mapper.eager_defaults` is still used, and the backend
-database does not support RETURNING or an equivalent, the ORM will emit this
-SELECT statement immediately following the INSERT statement.   This is often
-undesirable as it adds additional SELECT statements to the flush process that
-may not be needed.  Using the above mapping with the
-:paramref:`.orm.mapper.eager_defaults` flag set to True against MySQL results
-in SQL like this upon flush (minus the comment, which is for clarification only):
+If the :paramref:`.orm.Mapper.eager_defaults` is explicitly provided with a
+value of ``True``, and the backend database does not support RETURNING or an
+equivalent, the ORM will emit a SELECT statement immediately following the
+INSERT statement in order to fetch newly generated values; the ORM does not
+currently have the ability to SELECT many newly inserted rows in batch if
+RETURNING was not available. This is usually undesirable as it adds additional
+SELECT statements to the flush process that may not be needed. Using the above
+mapping with the :paramref:`.orm.Mapper.eager_defaults` flag set to True
+against MySQL (not MariaDB) results in SQL like this upon flush:
 
 .. sourcecode:: sql
 
@@ -350,71 +423,102 @@ in SQL like this upon flush (minus the comment, which is for clarification only)
     SELECT my_table.timestamp AS my_table_timestamp, my_table.special_identifier AS my_table_special_identifier
     FROM my_table WHERE my_table.id = %s
 
-Case 3: primary key, RETURNING or equivalent is supported
+A future release of SQLAlchemy may seek to improve the efficiency of
+eager defaults in the abcense of RETURNING to batch many rows within a
+single SELECT statement.
+
+Case 4: primary key, RETURNING or equivalent is supported
 ----------------------------------------------------------
 
 A primary key column with a server-generated value must be fetched immediately
 upon INSERT; the ORM can only access rows for which it has a primary key value,
-so if the primary key is generated by the server, the ORM needs a way for the
-database to give us that new value immediately upon INSERT.
+so if the primary key is generated by the server, the ORM needs a way
+to retrieve that new value immediately upon INSERT.
 
-As mentioned above, for integer "autoincrement" columns as well as
+As mentioned above, for integer "autoincrement" columns, as well as
+columns marked with :class:`.Identity` and special constructs such as
 PostgreSQL SERIAL, these types are handled automatically by the Core; databases
 include functions for fetching the "last inserted id" where RETURNING
 is not supported, and where RETURNING is supported SQLAlchemy will use that.
 
-However, for non-integer values, as well as for integer values that must be
-explicitly linked to a sequence or other triggered routine,  the server default
-generation must be marked in the table metadata.
-
-For an explicit sequence as we use with Oracle, this just means we are using
-the :class:`.Sequence` construct::
+For example, using Oracle with a column marked as :class:`.Identity`,
+RETURNING is used automatically to fetch the new primary key value::
 
     class MyOracleModel(Base):
         __tablename__ = "my_table"
 
-        id = mapped_column(Integer, Sequence("my_sequence", start=1), primary_key=True)
-        data = mapped_column(String(50))
+        id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+        data: Mapped[str] = mapped_column(String(50))
 
 The INSERT for a model as above on Oracle looks like:
 
 .. sourcecode:: sql
 
-    INSERT INTO my_table (id, data) VALUES (my_sequence.nextval, :data) RETURNING my_table.id INTO :ret_0
+    INSERT INTO my_table (data) VALUES (:data) RETURNING my_table.id INTO :ret_0
 
-Where above, SQLAlchemy renders ``my_sequence.nextval`` for the primary key column
-and also uses RETURNING to get the new value back immediately.
+SQLAlchemy renders an INSERT for the "data" field, but only includes "id" in
+the RETURNING clause, so that server-side generation for "id" will take
+place and the new value will be returned immediately.
 
-For datatypes that generate values automatically, or columns that are populated
-by a trigger, we use :class:`.FetchedValue`.  Below is a model that uses a
-SQL Server TIMESTAMP column as the primary key, which generates values automatically::
+For non-integer values generated by server side functions or triggers, as well
+as for integer values that come from constructs outside the table itself,
+including explicit sequences and triggers, the server default generation must
+be marked in the table metadata. Using Oracle as the example again, we can
+illustrate a similar table as above naming an explicit sequence using the
+:class:`.Sequence` construct::
 
-    class MyModel(Base):
+    class MyOracleModel(Base):
         __tablename__ = "my_table"
 
-        timestamp = mapped_column(
+        id: Mapped[int] = mapped_column(Sequence("my_oracle_seq"), primary_key=True)
+        data: Mapped[str] = mapped_column(String(50))
+
+An INSERT for this version of the model on Oracle would look like:
+
+.. sourcecode:: sql
+
+    INSERT INTO my_table (id, data) VALUES (my_oracle_seq.nextval, :data) RETURNING my_table.id INTO :ret_0
+
+Where above, SQLAlchemy renders ``my_sequence.nextval`` for the primary key
+column so that it is used for new primary key generation, and also uses
+RETURNING to get the new value back immediately.
+
+If the source of data is not represented by a simple SQL function or
+:class:`.Sequence`, such as when using triggers or database-specific datatypes
+that produce new values, the presence of a value-generating default may be
+indicated by using :class:`.FetchedValue` within the column definition. Below
+is a model that uses a SQL Server TIMESTAMP column as the primary key; on SQL
+Server, this datatype generates new values automatically, so this is indicated
+in the table metadata by indicating :class:`.FetchedValue` for the
+:paramref:`.Column.server_default` parameter::
+
+    class MySQLServerModel(Base):
+        __tablename__ = "my_table"
+
+        timestamp: Mapped[datetime.datetime] = mapped_column(
             TIMESTAMP(), server_default=FetchedValue(), primary_key=True
         )
+        data: Mapped[str] = mapped_column(String(50))
 
 An INSERT for the above table on SQL Server looks like:
 
 .. sourcecode:: sql
 
-    INSERT INTO my_table OUTPUT inserted.timestamp DEFAULT VALUES
+    INSERT INTO my_table (data) OUTPUT inserted.timestamp VALUES (?)
 
-Case 4: primary key, RETURNING or equivalent is not supported
+Case 5: primary key, RETURNING or equivalent is not supported
 --------------------------------------------------------------
 
-In this area we are generating rows for a database such as SQLite or MySQL
+In this area we are generating rows for a database such as MySQL
 where some means of generating a default is occurring on the server, but is
 outside of the database's usual autoincrement routine. In this case, we have to
 make sure SQLAlchemy can "pre-execute" the default, which means it has to be an
 explicit SQL expression.
 
 .. note::  This section will illustrate multiple recipes involving
-   datetime values for MySQL and SQLite, since the datetime datatypes on these
-   two  backends have additional idiosyncratic requirements that are useful to
-   illustrate.  Keep in mind however that SQLite and MySQL require an explicit
+   datetime values for MySQL, since the datetime datatypes on this
+   backend has additional idiosyncratic requirements that are useful to
+   illustrate.  Keep in mind however that MySQL requires an explicit
    "pre-executed" default generator for *any* auto-generated datatype used as
    the primary key other than the usual single-column autoincrementing integer
    value.
@@ -471,38 +575,6 @@ INSERT looks like:
     INSERT INTO my_table (timestamp) VALUES (%s)
     (b'2018-08-09 13:08:46',)
 
-SQLite with DateTime primary key
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For SQLite, new timestamps can be generated using the SQL function
-``datetime('now', 'localtime')`` (or specify ``'utc'`` for UTC),
-however making things more complicated is that this returns a string
-value, which is then incompatible with SQLAlchemy's :class:`.DateTime`
-datatype (even though the datatype converts the information back into a
-string for the SQLite backend, it must be passed through as a Python datetime).
-We therefore must also specify that we'd like to coerce the return value to
-:class:`.DateTime` when it is returned from the function, which we achieve
-by passing this as the ``type_`` parameter::
-
-    class MyModel(Base):
-        __tablename__ = "my_table"
-
-        timestamp = mapped_column(
-            DateTime,
-            default=func.datetime("now", "localtime", type_=DateTime),
-            primary_key=True,
-        )
-
-The above mapping upon INSERT will look like:
-
-.. sourcecode:: sql
-
-    SELECT datetime(?, ?) AS datetime_1
-    ('now', 'localtime')
-    INSERT INTO my_table (timestamp) VALUES (?)
-    ('2018-10-02 13:37:33.000000',)
-
-
 .. seealso::
 
     :ref:`metadata_defaults_toplevel`
@@ -521,8 +593,8 @@ are set up using the :paramref:`_schema.Column.default` and
 
 These SQL expressions currently are subject to the same limitations within the
 ORM as occurs for true server-side defaults; they won't be eagerly fetched with
-RETURNING when using :paramref:`_orm.Mapper.eager_defaults` unless the
-:class:`.FetchedValue` directive is associated with the
+RETURNING when :paramref:`_orm.Mapper.eager_defaults` is set to ``"auto"`` or
+``True`` unless the :class:`.FetchedValue` directive is associated with the
 :class:`_schema.Column`, even though these expressions are not DDL server
 defaults and are actively rendered by SQLAlchemy itself. This limitation may be
 addressed in future SQLAlchemy releases.

@@ -230,7 +230,7 @@ class Mapper(
         passive_updates: bool = True,
         passive_deletes: bool = False,
         confirm_deleted_rows: bool = True,
-        eager_defaults: bool = False,
+        eager_defaults: Literal[True, False, "auto"] = "auto",
         legacy_is_orphan: bool = False,
         _compiled_cache_size: int = 100,
     ):
@@ -336,14 +336,30 @@ class Mapper(
           value of server-generated default values after an INSERT or UPDATE,
           rather than leaving them as expired to be fetched on next access.
           This can be used for event schemes where the server-generated values
-          are needed immediately before the flush completes.   By default,
-          this scheme will emit an individual ``SELECT`` statement per row
-          inserted or updated, which note can add significant performance
-          overhead.  However, if the
-          target database supports :term:`RETURNING`, the default values will
-          be returned inline with the INSERT or UPDATE statement, which can
-          greatly enhance performance for an application that needs frequent
-          access to just-generated server defaults.
+          are needed immediately before the flush completes.
+
+          The fetch of values occurs either by using ``RETURNING`` inline
+          with the ``INSERT`` or ``UPDATE`` statement, or by adding an
+          additional ``SELECT`` statement subsequent to the ``INSERT`` or
+          ``UPDATE``, if the backend does not support ``RETURNING``.
+
+          The use of ``RETURNING`` is extremely performant in particular for
+          ``INSERT`` statements where SQLAlchemy can take advantage of
+          :ref:`insertmanyvalues <engine_insertmanyvalues>`, whereas the use of
+          an additional ``SELECT`` is relatively poor performing, adding
+          additional SQL round trips which would be unnecessary if these new
+          attributes are not to be accessed in any case.
+
+          For this reason, :paramref:`.Mapper.eager_defaults` defaults to the
+          string value ``"auto"``, which indicates that server defaults for
+          INSERT should be fetched using ``RETURNING`` if the backing database
+          supports it and if the dialect in use supports "insertmanyreturning"
+          for an INSERT statement. If the backing database does not support
+          ``RETURNING`` or "insertmanyreturning" is not available, server
+          defaults will not be fetched.
+
+          .. versionchanged:: 2.0.0b5 added the "auto" option for
+             :paramref:`.Mapper.eager_defaults`
 
           .. seealso::
 
@@ -351,6 +367,12 @@ class Mapper(
 
           .. versionchanged:: 0.9.0 The ``eager_defaults`` option can now
              make use of :term:`RETURNING` for backends which support it.
+
+          .. versionchanged:: 2.0.0  RETURNING now works with multiple rows
+             INSERTed at once using the
+             :ref:`insertmanyvalues <engine_insertmanyvalues>` feature, which
+             among other things allows the :paramref:`.Mapper.eager_defaults`
+             feature to be very performant on supporting backends.
 
         :param exclude_properties: A list or set of string column names to
           be excluded from mapping.
@@ -817,6 +839,18 @@ class Mapper(
             self.registry._flag_new_mapper(self)
             self._log("constructed")
             self._expire_memoizations()
+
+    def _prefer_eager_defaults(self, dialect, table):
+        if self.eager_defaults == "auto":
+            if not table.implicit_returning:
+                return False
+
+            return (
+                table in self._server_default_col_keys
+                and dialect.insert_executemany_returning
+            )
+        else:
+            return self.eager_defaults
 
     def _gen_cache_key(self, anon_map, bindparams):
         return (self,)
@@ -1658,7 +1692,7 @@ class Mapper(
                         )
                         continue
 
-                self._configure_property(key, possible_col_prop, False)
+                self._configure_property(key, possible_col_prop, init=False)
 
         # step 2: pull properties from the inherited mapper.  reconcile
         # columns with those which are explicit above.  for properties that
@@ -1698,7 +1732,7 @@ class Mapper(
                 # it now in the order in which it corresponds to the
                 # Table / selectable
                 key, prop = explicit_col_props_by_column[column]
-                self._configure_property(key, prop, False)
+                self._configure_property(key, prop, init=False)
                 continue
 
             elif column in self._columntoproperty:
@@ -1962,8 +1996,10 @@ class Mapper(
         self,
         key: str,
         prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
+        *,
         init: bool = True,
         setparent: bool = True,
+        warn_for_existing: bool = False,
     ) -> MapperProperty[Any]:
         descriptor_props = util.preloaded.orm_descriptor_props
         self._log(
@@ -2072,6 +2108,20 @@ class Mapper(
             )
             oldprop = self._props[key]
             self._path_registry.pop(oldprop, None)
+
+        if (
+            warn_for_existing
+            and self.class_.__dict__.get(key, None) is not None
+            and not isinstance(
+                self._props.get(key, None),
+                (descriptor_props.ConcreteInheritedProperty,),
+            )
+        ):
+            util.warn(
+                "User-placed attribute %r on %s being replaced with "
+                'new property "%s"; the old attribute will be discarded'
+                % (self.class_.__dict__[key], self, prop)
+            )
 
         self._props[key] = prop
 

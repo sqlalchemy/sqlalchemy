@@ -165,16 +165,16 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         assert start is p3
         assert froms == {p1}
 
-    @testing.combinations(
-        "render_derived", "alias", None, argnames="additional_transformation"
+    @testing.variation("additional_transformation", ["alias", "none"])
+    @testing.variation("joins_implicitly", [True, False])
+    @testing.variation(
+        "type_", ["table_valued", "table_valued_derived", "column_valued"]
     )
-    @testing.combinations(True, False, argnames="joins_implicitly")
-    def test_table_valued(
-        self,
-        joins_implicitly,
-        additional_transformation,
+    def test_fn_valued(
+        self, joins_implicitly, additional_transformation, type_
     ):
-        """test #7845"""
+        """test #7845, #9009"""
+
         my_table = table(
             "tbl",
             column("id", Integer),
@@ -183,25 +183,45 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
 
         sub_dict = my_table.c.data["d"]
 
-        tv = func.json_each(sub_dict)
+        if type_.table_valued or type_.table_valued_derived:
+            tv = func.json_each(sub_dict)
 
-        tv = tv.table_valued("key", joins_implicitly=joins_implicitly)
+            tv = tv.table_valued("key", joins_implicitly=joins_implicitly)
 
-        if additional_transformation == "render_derived":
-            tv = tv.render_derived(name="tv", with_types=True)
-        elif additional_transformation == "alias":
-            tv = tv.alias()
+            if type_.table_valued_derived:
+                tv = tv.render_derived(name="tv", with_types=True)
 
-        has_key = tv.c.key == "f"
-        stmt = select(my_table.c.id).where(has_key)
+            if additional_transformation.alias:
+                tv = tv.alias()
+
+            has_key = tv.c.key == "f"
+            stmt = select(my_table.c.id).where(has_key)
+        elif type_.column_valued:
+            tv = func.json_array_elements(sub_dict)
+
+            if additional_transformation.alias:
+                tv = tv.alias(joins_implicitly=joins_implicitly).column
+            else:
+                tv = tv.column_valued("key", joins_implicitly=joins_implicitly)
+
+            stmt = select(my_table.c.id, tv)
+        else:
+            type_.fail()
+
         froms, start = find_unmatching_froms(stmt, my_table)
 
         if joins_implicitly:
             is_(start, None)
             is_(froms, None)
-        else:
+        elif type_.column_valued:
+            assert start == my_table
+            assert froms == {tv.scalar_alias}
+
+        elif type_.table_valued or type_.table_valued_derived:
             assert start == my_table
             assert froms == {tv}
+        else:
+            type_.fail()
 
     def test_count_non_eq_comparison_operators(self):
         query = select(self.a).where(self.a.c.col_a > self.b.c.col_b)

@@ -40,12 +40,12 @@ from .context import FromStatement
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
-from .. import future
 from .. import util
 from ..engine import result_tuple
 from ..engine.result import ChunkedIteratorResult
 from ..engine.result import FrozenResult
 from ..engine.result import SimpleResultMetaData
+from ..sql import select
 from ..sql import util as sql_util
 from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -468,6 +468,7 @@ def load_on_ident(
     no_autoflush: bool = False,
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
+    require_pk_cols: bool = False,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -488,6 +489,7 @@ def load_on_ident(
         no_autoflush=no_autoflush,
         bind_arguments=bind_arguments,
         execution_options=execution_options,
+        require_pk_cols=require_pk_cols,
     )
 
 
@@ -504,6 +506,7 @@ def load_on_pk_identity(
     no_autoflush: bool = False,
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
+    require_pk_cols: bool = False,
 ):
 
     """Load the given primary key identity from the database."""
@@ -572,6 +575,71 @@ def load_on_pk_identity(
     else:
         version_check = False
 
+    if require_pk_cols and only_load_props:
+        if not refresh_state:
+            raise sa_exc.ArgumentError(
+                "refresh_state is required when require_pk_cols is present"
+            )
+
+        refresh_state_prokeys = refresh_state.mapper._primary_key_propkeys
+        has_changes = {
+            key
+            for key in refresh_state_prokeys.difference(only_load_props)
+            if refresh_state.attrs[key].history.has_changes()
+        }
+        if has_changes:
+            # raise if pending pk changes are present.
+            # technically, this could be limited to the case where we have
+            # relationships in the only_load_props collection to be refreshed
+            # also (and only ones that have a secondary eager loader, at that).
+            # however, the error is in place across the board so that behavior
+            # here is easier to predict.   The use case it prevents is one
+            # of mutating PK attrs, leaving them unflushed,
+            # calling session.refresh(), and expecting those attrs to remain
+            # still unflushed.   It seems likely someone doing all those
+            # things would be better off having the PK attributes flushed
+            # to the database before tinkering like that (session.refresh() is
+            # tinkering).
+            raise sa_exc.InvalidRequestError(
+                f"Please flush pending primary key changes on "
+                "attributes "
+                f"{has_changes} for mapper {refresh_state.mapper} before "
+                "proceeding with a refresh"
+            )
+
+        # overall, the ORM has no internal flow right now for "dont load the
+        # primary row of an object at all, but fire off
+        # selectinload/subqueryload/immediateload for some relationships".
+        # It would probably be a pretty big effort to add such a flow.  So
+        # here, the case for #8703 is introduced; user asks to refresh some
+        # relationship attributes only which are
+        # selectinload/subqueryload/immediateload/ etc. (not joinedload).
+        # ORM complains there's no columns in the primary row to load.
+        # So here, we just add the PK cols if that
+        # case is detected, so that there is a SELECT emitted for the primary
+        # row.
+        #
+        # Let's just state right up front, for this one little case,
+        # the ORM here is adding a whole extra SELECT just to satisfy
+        # limitations in the internal flow.  This is really not a thing
+        # SQLAlchemy finds itself doing like, ever, obviously, we are
+        # constantly working to *remove* SELECTs we don't need.   We
+        # rationalize this for now based on 1. session.refresh() is not
+        # commonly used 2. session.refresh() with only relationship attrs is
+        # even less commonly used 3. the SELECT in question is very low
+        # latency.
+        #
+        # to add the flow to not include the SELECT, the quickest way
+        # might be to just manufacture a single-row result set to send off to
+        # instances(), but we'd have to weave that into context.py and all
+        # that.  For 2.0.0, we have enough big changes to navigate for now.
+        #
+        mp = refresh_state.mapper._props
+        for p in only_load_props:
+            if mp[p]._is_relationship:
+                only_load_props = refresh_state_prokeys.union(only_load_props)
+                break
+
     if refresh_state and refresh_state.load_options:
         compile_options += {"_current_path": refresh_state.load_path.parent}
         q = q.options(*refresh_state.load_options)
@@ -584,6 +652,7 @@ def load_on_pk_identity(
         refresh_state=refresh_state,
         identity_token=identity_token,
     )
+
     q._compile_options = new_compile_options
     q._order_by = None
 
@@ -1456,10 +1525,6 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
             "attribute refresh operation cannot proceed" % (state_str(state))
         )
 
-    has_key = bool(state.key)
-
-    result = False
-
     no_autoflush = bool(passive & attributes.NO_AUTOFLUSH)
 
     # in the case of inheritance, particularly concrete and abstract
@@ -1472,16 +1537,17 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
         attribute_names = attribute_names.intersection(mapper.attrs.keys())
 
     if mapper.inherits and not mapper.concrete:
+        # load based on committed attributes in the object, formed into
+        # a truncated SELECT that only includes relevant tables.  does not
+        # currently use state.key
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
-
-            from .query import FromStatement
 
             # undefer() isn't needed here because statement has the
             # columns needed already, this implicitly undefers that column
             stmt = FromStatement(mapper, statement)
 
-            result = load_on_ident(
+            return load_on_ident(
                 session,
                 stmt,
                 None,
@@ -1490,46 +1556,46 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
                 no_autoflush=no_autoflush,
             )
 
-    if result is False:
-        if has_key:
-            identity_key = state.key
-        else:
-            # this codepath is rare - only valid when inside a flush, and the
-            # object is becoming persistent but hasn't yet been assigned
-            # an identity_key.
-            # check here to ensure we have the attrs we need.
-            pk_attrs = [
-                mapper._columntoproperty[col].key for col in mapper.primary_key
-            ]
-            if state.expired_attributes.intersection(pk_attrs):
-                raise sa_exc.InvalidRequestError(
-                    "Instance %s cannot be refreshed - it's not "
-                    " persistent and does not "
-                    "contain a full primary key." % state_str(state)
-                )
-            identity_key = mapper._identity_key_from_state(state)
+    # normal load, use state.key as the identity to SELECT
+    has_key = bool(state.key)
 
-        if (
-            _none_set.issubset(identity_key) and not mapper.allow_partial_pks
-        ) or _none_set.issuperset(identity_key):
-            util.warn_limited(
-                "Instance %s to be refreshed doesn't "
-                "contain a full primary key - can't be refreshed "
-                "(and shouldn't be expired, either).",
-                state_str(state),
+    if has_key:
+        identity_key = state.key
+    else:
+        # this codepath is rare - only valid when inside a flush, and the
+        # object is becoming persistent but hasn't yet been assigned
+        # an identity_key.
+        # check here to ensure we have the attrs we need.
+        pk_attrs = [
+            mapper._columntoproperty[col].key for col in mapper.primary_key
+        ]
+        if state.expired_attributes.intersection(pk_attrs):
+            raise sa_exc.InvalidRequestError(
+                "Instance %s cannot be refreshed - it's not "
+                " persistent and does not "
+                "contain a full primary key." % state_str(state)
             )
-            return
+        identity_key = mapper._identity_key_from_state(state)
 
-        result = load_on_ident(
-            session,
-            future.select(mapper).set_label_style(
-                LABEL_STYLE_TABLENAME_PLUS_COL
-            ),
-            identity_key,
-            refresh_state=state,
-            only_load_props=attribute_names,
-            no_autoflush=no_autoflush,
+    if (
+        _none_set.issubset(identity_key) and not mapper.allow_partial_pks
+    ) or _none_set.issuperset(identity_key):
+        util.warn_limited(
+            "Instance %s to be refreshed doesn't "
+            "contain a full primary key - can't be refreshed "
+            "(and shouldn't be expired, either).",
+            state_str(state),
         )
+        return
+
+    result = load_on_ident(
+        session,
+        select(mapper).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+        identity_key,
+        refresh_state=state,
+        only_load_props=attribute_names,
+        no_autoflush=no_autoflush,
+    )
 
     # if instance is pending, a refresh operation
     # may not complete (even if PK attributes are assigned)

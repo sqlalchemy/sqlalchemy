@@ -1,0 +1,13 @@
+.. change::
+    :tags: orm, feature
+    :tickets: 8889
+
+    Added a new default value for the :paramref:`.Mapper.eager_defaults`
+    parameter "auto", which will automatically fetch table default values
+    during a unit of work flush, if the dialect supports RETURNING for the
+    INSERT being run, as well as
+    :ref:`insertmanyvalues <engine_insertmanyvalues>` available. Eager fetches
+    for server-side UPDATE defaults, which are very uncommon, continue to only
+    take place if :paramref:`.Mapper.eager_defaults` is set to ``True``, as
+    there is no batch-RETURNING form for UPDATE statements.
+

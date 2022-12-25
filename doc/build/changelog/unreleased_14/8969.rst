@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 8969
+    :versions: 2.0.0b5
+
+    Fixed regression caused by new support for reflection of partial indexes on
+    SQLite added in 1.4.45 for :ticket:`8804`, where the ``index_list`` pragma
+    command in very old versions of SQLite (possibly prior to 3.8.9) does not
+    return the current expected number of columns, leading to exceptions raised
+    when reflecting tables and indexes.

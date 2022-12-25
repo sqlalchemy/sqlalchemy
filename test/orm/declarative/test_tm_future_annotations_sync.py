@@ -402,7 +402,8 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         with expect_raises_message(
             sa_exc.ArgumentError,
-            "Could not locate SQLAlchemy Core type for Python type: .*MyClass",
+            "Could not locate SQLAlchemy Core type for Python type "
+            ".*MyClass.* inside the 'data' attribute Mapped annotation",
         ):
 
             class User(decl_base):
@@ -410,6 +411,21 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped[MyClass] = mapped_column()
+
+    def test_construct_lhs_sqlalchemy_type(self, decl_base):
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "The type provided inside the 'data' attribute Mapped "
+            "annotation is the SQLAlchemy type .*BigInteger.*. Expected "
+            "a Python type instead",
+        ):
+
+            class User(decl_base):
+                __tablename__ = "users"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[BigInteger] = mapped_column()
 
     def test_construct_rhs_type_override_lhs(self, decl_base):
         class Element(decl_base):

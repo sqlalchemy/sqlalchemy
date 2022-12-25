@@ -1135,7 +1135,8 @@ class DefaultTest(fixtures.MappedTest):
         class Secondary(cls.Comparable):
             pass
 
-    def test_insert(self):
+    @testing.variation("eager_defaults", ["auto", True, False])
+    def test_insert(self, eager_defaults):
         althohoval, hohoval, default_t, Hoho = (
             self.other.althohoval,
             self.other.hohoval,
@@ -1143,7 +1144,13 @@ class DefaultTest(fixtures.MappedTest):
             self.classes.Hoho,
         )
 
-        self.mapper_registry.map_imperatively(Hoho, default_t)
+        mp = self.mapper_registry.map_imperatively(
+            Hoho,
+            default_t,
+            eager_defaults="auto"
+            if eager_defaults.auto
+            else bool(eager_defaults),
+        )
 
         h1 = Hoho(hoho=althohoval)
         h2 = Hoho(counter=12)
@@ -1162,12 +1169,18 @@ class DefaultTest(fixtures.MappedTest):
             # test deferred load of attributes, one select per instance
             self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
 
-        self.sql_count_(3, go)
+        if mp._prefer_eager_defaults(testing.db.dialect, default_t):
+            self.sql_count_(0, go)
+        else:
+            self.sql_count_(3, go)
 
         def go():
             self.assert_(h1.counter == h4.counter == h5.counter == 7)
 
-        self.sql_count_(1, go)
+        if mp._prefer_eager_defaults(testing.db.dialect, default_t):
+            self.sql_count_(0, go)
+        else:
+            self.sql_count_(1, go)
 
         def go():
             self.assert_(h3.counter == h2.counter == 12)

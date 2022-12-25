@@ -1001,6 +1001,11 @@ get all drivers to this state:
   possible, usually with VALUES() - :ticket:`6047`
 * Emit a warning when RETURNING w/ executemany is used for non-supporting
   backend (currently no RETURNING backend has this limitation) - :ticket:`7907`
+* The ORM :paramref:`_orm.Mapper.eager_defaults` parameter now defaults to a
+  a new setting ``"auto"``, which will enable "eager defaults" automatically
+  for INSERT statements, when the backend in use supports RETURNING with
+  "insertmanyvalues".  See :ref:`orm_server_defaults` for documentation.
+
 
 .. seealso::
 
@@ -1541,6 +1546,53 @@ backend::
 
 :ticket:`7631`
 
+.. _change_5052:
+
+DATE, TIME, DATETIME datatypes now support literal rendering on all backends
+-----------------------------------------------------------------------------
+
+Literal rendering is now implemented for date and time types for backend
+specific compilation, including PostgreSQL and Oracle::
+
+    >>> import datetime
+
+    >>> from sqlalchemy import DATETIME
+    >>> from sqlalchemy import literal
+    >>> from sqlalchemy.dialects import oracle
+    >>> from sqlalchemy.dialects import postgresql
+
+    >>> date_literal = literal(datetime.datetime.now(), DATETIME)
+
+    >>> print(
+    ...     date_literal.compile(
+    ...         dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+    ...     )
+    ... )
+    '2022-12-17 11:02:13.575789'
+
+    >>> print(
+    ...     date_literal.compile(
+    ...         dialect=oracle.dialect(), compile_kwargs={"literal_binds": True}
+    ...     )
+    ... )
+    TO_TIMESTAMP('2022-12-17 11:02:13.575789', 'YYYY-MM-DD HH24:MI:SS.FF')
+
+Previously, such literal rendering only worked when stringifying statements
+without any dialect given; when attempting to render with a dialect-specific
+type, a ``NotImplementedError`` would be raised, up until
+SQLAlchemy 1.4.45 where this became a :class:`.CompileError` (part of
+:ticket:`8800`).
+
+The default rendering is modified ISO-8601 rendering (i.e. ISO-8601 with the T
+converted to a space) when using ``literal_binds`` with the SQL compilers
+provided by the PostgreSQL, MySQL, MariaDB, MSSQL, Oracle dialects. For Oracle,
+the ISO format is wrapped inside of an appropriate TO_DATE() function call.
+The rendering for SQLite is unchanged as this dialect always included string
+rendering for date values.
+
+
+
+:ticket:`5052`
 
 .. _change_8710:
 
