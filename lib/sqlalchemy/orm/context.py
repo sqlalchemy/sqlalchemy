@@ -135,7 +135,7 @@ class QueryContext:
         _version_check = False
         _invoke_all_eagers = True
         _autoflush = True
-        _refresh_identity_token = None
+        _identity_token = None
         _yield_per = None
         _refresh_state = None
         _lazy_loaded_from = None
@@ -194,14 +194,14 @@ class QueryContext:
         self.version_check = load_options._version_check
         self.refresh_state = load_options._refresh_state
         self.yield_per = load_options._yield_per
-        self.identity_token = load_options._refresh_identity_token
+        self.identity_token = load_options._identity_token
 
     def _get_top_level_context(self) -> QueryContext:
         return self.top_level_context or self
 
 
 _orm_load_exec_options = util.immutabledict(
-    {"_result_disable_adapt_to_context": True, "future_result": True}
+    {"_result_disable_adapt_to_context": True}
 )
 
 
@@ -235,7 +235,7 @@ class AbstractORMCompileState(CompileState):
         params,
         execution_options,
         bind_arguments,
-        is_reentrant_invoke,
+        is_pre_event,
     ):
         raise NotImplementedError()
 
@@ -384,11 +384,11 @@ class ORMCompileState(AbstractORMCompileState):
         params,
         execution_options,
         bind_arguments,
-        is_reentrant_invoke,
+        is_pre_event,
     ):
-        if is_reentrant_invoke:
-            return statement, execution_options
 
+        # consume result-level load_options.  These may have been set up
+        # in an ORMExecuteState hook
         (
             load_options,
             execution_options,
@@ -398,26 +398,24 @@ class ORMCompileState(AbstractORMCompileState):
                 "populate_existing",
                 "autoflush",
                 "yield_per",
+                "identity_token",
                 "sa_top_level_orm_context",
             },
             execution_options,
             statement._execution_options,
         )
+
         # default execution options for ORM results:
         # 1. _result_disable_adapt_to_context=True
         #    this will disable the ResultSetMetadata._adapt_to_context()
         #    step which we don't need, as we have result processors cached
         #    against the original SELECT statement before caching.
-        # 2. future_result=True.  The ORM should **never** resolve columns
-        #    in a result set based on names, only on Column objects that
-        #    are correctly adapted to the context.   W the legacy result
-        #    it will still attempt name-based resolution and also emit a
-        #    warning.
         if not execution_options:
             execution_options = _orm_load_exec_options
         else:
             execution_options = execution_options.union(_orm_load_exec_options)
 
+        # would have been placed here by legacy Query only
         if load_options._yield_per:
             execution_options = execution_options.union(
                 {"yield_per": load_options._yield_per}
@@ -457,7 +455,7 @@ class ORMCompileState(AbstractORMCompileState):
             if plugin_subject:
                 bind_arguments["mapper"] = plugin_subject.mapper
 
-        if load_options._autoflush:
+        if not is_pre_event and load_options._autoflush:
             session._autoflush()
 
         return statement, execution_options
@@ -483,6 +481,7 @@ class ORMCompileState(AbstractORMCompileState):
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
         )
+
         if compile_state.compile_options._is_star:
             return result
 
@@ -3119,6 +3118,6 @@ class _IdentityTokenEntity(_ORMColumnEntity):
 
     def row_processor(self, context, result):
         def getter(row):
-            return context.load_options._refresh_identity_token
+            return context.load_options._identity_token
 
         return getter, self._label_name, self._extra_entities

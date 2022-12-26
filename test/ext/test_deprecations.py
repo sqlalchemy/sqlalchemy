@@ -1,3 +1,5 @@
+from sqlalchemy import Column
+from sqlalchemy import Integer
 from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.ext.horizontal_shard import ShardedSession
@@ -68,7 +70,7 @@ class HorizontalShardTest(fixtures.TestBase):
         m1 = mock.Mock()
 
         with testing.expect_deprecated(
-            "The ``query_choser`` parameter is deprecated; please use"
+            "The ``query_chooser`` parameter is deprecated; please use"
         ):
             s = ShardedSession(
                 shard_chooser=m1.shard_chooser,
@@ -80,3 +82,30 @@ class HorizontalShardTest(fixtures.TestBase):
         s.execute_chooser(m2)
 
         eq_(m1.mock_calls, [mock.call.query_chooser(m2.statement)])
+
+    def test_id_chooser(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+        m1 = mock.Mock()
+
+        with testing.expect_deprecated(
+            "The ``id_chooser`` parameter is deprecated; please use"
+        ):
+            s = ShardedSession(
+                shard_chooser=m1.shard_chooser,
+                id_chooser=m1.id_chooser,
+                execute_chooser=m1.execute_chooser,
+            )
+
+        m2 = mock.Mock()
+        s.identity_chooser(
+            A.__mapper__,
+            m2.primary_key,
+            lazy_loaded_from=m2.lazy_loaded_from,
+            execution_options=m2.execution_options,
+            bind_arguments=m2.bind_arguments,
+        )
+
+        eq_(m1.mock_calls, [mock.call.id_chooser(mock.ANY, m2.primary_key)])

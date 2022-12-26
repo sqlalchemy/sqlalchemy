@@ -130,21 +130,20 @@ def shard_chooser(mapper, instance, clause=None):
         return shard_chooser(mapper, instance.location)
 
 
-def id_chooser(query, ident):
-    """id chooser.
+def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
+    """identity chooser.
 
-    given a primary key identity and a legacy :class:`_orm.Query`,
-    return which shard we should look at.
+    given a primary key identity, return which shard we should look at.
 
     in this case, we only want to support this for lazy-loaded items;
     any primary query should have shard id set up front.
 
     """
-    if query.lazy_loaded_from:
+    if lazy_loaded_from:
         # if we are in a lazy load, we can look at the parent object
         # and limit our search to that same shard, assuming that's how we've
         # set things up.
-        return [query.lazy_loaded_from.identity_token]
+        return [lazy_loaded_from.identity_token]
     else:
         raise NotImplementedError()
 
@@ -169,7 +168,7 @@ def execute_chooser(context):
 # configure shard chooser
 Session.configure(
     shard_chooser=shard_chooser,
-    id_chooser=id_chooser,
+    identity_chooser=identity_chooser,
     execute_chooser=execute_chooser,
 )
 

@@ -701,7 +701,7 @@ def _set_get_options(
     if only_load_props:
         compile_options["_only_load_props"] = frozenset(only_load_props)
     if identity_token:
-        load_options["_refresh_identity_token"] = identity_token
+        load_options["_identity_token"] = identity_token
 
     if load_options:
         load_opt += load_options
