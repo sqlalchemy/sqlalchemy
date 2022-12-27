@@ -1515,8 +1515,7 @@ class SessionEvents(event.Events[Session]):
 
     _dispatch_target = Session
 
-    @staticmethod
-    def _lifecycle_event(
+    def _lifecycle_event(  # type: ignore [misc]
         fn: Callable[[SessionEvents, Session, Any], None]
     ) -> Callable[[SessionEvents, Session, Any], None]:
         _sessionevents_lifecycle_event_names.add(fn.__name__)
