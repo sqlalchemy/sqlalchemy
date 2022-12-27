@@ -1122,7 +1122,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                         name = self.__name__
                         break
             else:
-                name = attributes.NO_KEY
+                name = attributes._UNKNOWN_ATTR_KEY  # type: ignore[assignment]
 
             return proxy_attr(
                 owner,
