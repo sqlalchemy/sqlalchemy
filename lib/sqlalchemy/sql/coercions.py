@@ -355,7 +355,12 @@ def expect(
 
     if not isinstance(
         element,
-        (elements.CompilerElement, schema.SchemaItem, schema.FetchedValue),
+        (
+            elements.CompilerElement,
+            schema.SchemaItem,
+            schema.FetchedValue,
+            lambdas.PyWrapper,
+        ),
     ):
         resolved = None
 
@@ -404,6 +409,8 @@ def expect(
                     )
             else:
                 resolved = element
+    elif isinstance(element, lambdas.PyWrapper):
+        resolved = element._sa__py_wrapper_literal(**kw)
     else:
         resolved = element
 

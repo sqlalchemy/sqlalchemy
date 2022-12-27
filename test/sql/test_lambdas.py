@@ -31,6 +31,7 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.types import ARRAY
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Integer
+from sqlalchemy.types import JSON
 from sqlalchemy.types import String
 
 
@@ -1511,6 +1512,107 @@ class LambdaElementTest(
         expr = coercions.expect(roles.WhereHavingRole, mylambda)
         self.assert_compile(
             expr, "users.name || :x_1", checkparams={"x_1": "bar"}
+        )
+
+    def test_rhs_type_detection_from_left(self):
+        """test #9029"""
+        tt = table("tt", column("q", JSON))
+
+        x = {"foo": "bar"}
+
+        def mylambda():
+            return tt.c.q + x
+
+        expr = coercions.expect(roles.WhereHavingRole, mylambda)
+        is_(expr._resolved.right.type._type_affinity, JSON)
+
+    def test_rhs_type_detection_standalone(self):
+        """test related to #9029, as type coercion rule was changed"""
+
+        x = 5
+
+        def mylambda():
+            return x
+
+        expr = coercions.expect(roles.OrderByRole, mylambda)
+        is_(expr._resolved.type._type_affinity, Integer)
+
+        x = "now im a string"
+
+        # stays as int b.c. _resolved is cached
+        is_(expr._resolved.type._type_affinity, Integer)
+
+        # make a new one!  now it will be string
+        expr = coercions.expect(roles.OrderByRole, mylambda)
+        is_(expr._resolved.type._type_affinity, String)
+
+    @testing.only_on("sqlite")
+    @testing.variation("stmt_type", ["lambda_stmt", "lambda_crit"])
+    @testing.variation("callable_type", ["none", "closure", "parameter"])
+    def test_9029_integration(
+        self, metadata, connection, stmt_type, callable_type
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", JSON),
+        )
+
+        t.create(connection)
+
+        connection.execute(
+            t.insert(),
+            {
+                "id": 12,
+                "data": {"key": "value", "key2": {"subkey": [1, 2, 3]}},
+            },
+        )
+
+        d = {"key": "value", "key2": {"subkey": [1, 2, 3]}}
+
+        if callable_type.none:
+            if stmt_type.lambda_stmt:
+                stmt = lambda_stmt(lambda: select(t).filter(t.c.data == d))
+            elif stmt_type.lambda_crit:
+                stmt = select(t).filter(lambda: t.c.data == d)
+            else:
+                stmt_type.fail()
+
+            to_run = stmt
+
+        elif callable_type.closure:
+
+            def go():
+                if stmt_type.lambda_stmt:
+                    stmt = lambda_stmt(lambda: select(t).filter(t.c.data == d))
+                elif stmt_type.lambda_crit:
+                    stmt = select(t).filter(lambda: t.c.data == d)
+                else:
+                    stmt_type.fail()
+                return stmt
+
+            to_run = go()
+
+        elif callable_type.parameter:
+
+            def go(data):
+                if stmt_type.lambda_stmt:
+                    stmt = lambda_stmt(
+                        lambda: select(t).filter(t.c.data == data)
+                    )
+                elif stmt_type.lambda_crit:
+                    stmt = select(t).filter(lambda: t.c.data == data)
+                else:
+                    stmt_type.fail()
+
+                return stmt
+
+            to_run = go(d)
+
+        eq_(
+            connection.execute(to_run).first(),
+            (12, {"key": "value", "key2": {"subkey": [1, 2, 3]}}),
         )
 
     def test_execute_constructed_uncached(self, user_address_fixture):
