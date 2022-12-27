@@ -44,9 +44,9 @@ key "ssl", which may be specified using the
         "mysql+mysqldb://scott:tiger@192.168.0.134/test",
         connect_args={
             "ssl": {
-                "ssl_ca": "/home/gord/client-ssl/ca.pem",
-                "ssl_cert": "/home/gord/client-ssl/client-cert.pem",
-                "ssl_key": "/home/gord/client-ssl/client-key.pem"
+                "ca": "/home/gord/client-ssl/ca.pem",
+                "cert": "/home/gord/client-ssl/client-cert.pem",
+                "key": "/home/gord/client-ssl/client-key.pem"
             }
         }
     )
