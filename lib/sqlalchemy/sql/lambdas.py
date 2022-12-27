@@ -18,7 +18,6 @@ from . import elements
 from . import roles
 from . import schema
 from . import traversals
-from . import type_api
 from . import visitors
 from .base import _clone
 from .base import Options
@@ -1215,11 +1214,11 @@ class PyWrapper(ColumnOperators):
             return value
 
     def operate(self, op, *other, **kwargs):
-        elem = object.__getattribute__(self, "__clause_element__")()
+        elem = object.__getattribute__(self, "_py_wrapper_literal")()
         return op(elem, *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
-        elem = object.__getattribute__(self, "__clause_element__")()
+        elem = object.__getattribute__(self, "_py_wrapper_literal")()
         return op(other, elem, **kwargs)
 
     def _extract_bound_parameters(self, starting_point, result_list):
@@ -1232,16 +1231,19 @@ class PyWrapper(ColumnOperators):
             element = getter(starting_point)
             pywrapper._sa__extract_bound_parameters(element, result_list)
 
-    def __clause_element__(self):
+    def _py_wrapper_literal(self, expr=None, operator=None, **kw):
         param = object.__getattribute__(self, "_param")
         to_evaluate = object.__getattribute__(self, "_to_evaluate")
         if param is None:
             name = object.__getattribute__(self, "_name")
             self._param = param = elements.BindParameter(
-                name, required=False, unique=True
+                name,
+                required=False,
+                unique=True,
+                _compared_to_operator=operator,
+                _compared_to_type=expr.type if expr is not None else None,
             )
             self._has_param = True
-            param.type = type_api._resolve_value_to_type(to_evaluate)
         return param._with_value(to_evaluate, maintain_key=True)
 
     def __bool__(self):
@@ -1259,6 +1261,7 @@ class PyWrapper(ColumnOperators):
             "__clause_element__",
             "operate",
             "reverse_operate",
+            "_py_wrapper_literal",
             "__class__",
             "__dict__",
         ):
