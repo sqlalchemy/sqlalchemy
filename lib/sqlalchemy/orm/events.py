@@ -33,6 +33,8 @@ from .base import _mapper_or_none
 from .base import NO_KEY
 from .instrumentation import ClassManager
 from .instrumentation import InstrumentationFactory
+from .query import BulkDelete
+from .query import BulkUpdate
 from .query import Query
 from .scoping import scoped_session
 from .session import Session
@@ -1868,7 +1870,7 @@ class SessionEvents(event.Events[Session]):
         self,
         session: Session,
         flush_context: UOWTransaction,
-        instances: Optional[Sequence[Any]],
+        instances: Optional[Sequence[_O]],
     ) -> None:
         """Execute before flush process has started.
 
@@ -3080,7 +3082,7 @@ class QueryEvents(event.Events[Query[Any]]):
         """
 
     def before_compile_update(
-        self, query: Query[Any], update_context: _O
+        self, query: Query[Any], update_context: BulkUpdate
     ) -> None:
         """Allow modifications to the :class:`_query.Query` object within
         :meth:`_query.Query.update`.
@@ -3132,7 +3134,7 @@ class QueryEvents(event.Events[Query[Any]]):
         """
 
     def before_compile_delete(
-        self, query: Query[Any], delete_context: _O
+        self, query: Query[Any], delete_context: BulkDelete
     ) -> None:
         """Allow modifications to the :class:`_query.Query` object within
         :meth:`_query.Query.delete`.
