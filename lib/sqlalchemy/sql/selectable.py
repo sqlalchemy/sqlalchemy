@@ -1330,8 +1330,8 @@ class Join(roles.DMLTableRole, FromClause):
     @classmethod
     def _join_condition(
         cls,
-        a: Union[Table, Join, Subquery],
-        b: Union[Table, Join],
+        a: FromClause,
+        b: FromClause,
         *,
         a_subset: Optional[FromClause] = None,
         consider_as_foreign_keys: Optional[
@@ -1469,8 +1469,8 @@ class Join(roles.DMLTableRole, FromClause):
     @classmethod
     def _joincond_trim_constraints(
         cls,
-        a: Union[Table, Join, Subquery],
-        b: Union[Table, Join],
+        a: FromClause,
+        b: FromClause,
         constraints: Dict[Any, Any],
         consider_as_foreign_keys: Optional[Any],
     ) -> None:
@@ -2057,7 +2057,7 @@ class CTE(
         recursive: bool = False,
         nesting: bool = False,
         _cte_alias: Optional[CTE] = None,
-        _restates: Optional[Any] = None,
+        _restates: Optional[CTE] = None,
         _prefixes: Optional[Tuple[()]] = None,
         _suffixes: Optional[Tuple[()]] = None,
     ) -> None:
@@ -2161,7 +2161,7 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def _get_reference_cte(self) -> Optional[Any]:
+    def _get_reference_cte(self) -> CTE:
         """
         A recursive CTE is updated to attach the recursive part.
         Updated CTEs should still refer to the original CTE.
