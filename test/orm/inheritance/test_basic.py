@@ -1902,6 +1902,41 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
             )
         )
 
+    def test_refresh_column(self):
+        """refresh currently does not use the mapper "optimized get".
+
+        This could be added later by generalizing the code in
+        loading.py->load_scalar_attributes() to be used by session.refresh().
+
+        For #8703, where we are revisiting some of this logic for 2.0.0,
+        not doing this yet as enough is changing in 2.0 already.
+
+        """
+        A, B = self.classes("A", "B")
+        sess = fixture_session()
+        b1 = B(data="x")
+        sess.add(b1)
+        sess.flush()
+        pk = b1.id
+        sess.expire(b1, ["data"])
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            sess.refresh(b1, ["data"])
+
+        asserter.assert_(
+            CompiledSQL(
+                # full statement that has a JOIN in it.  Note that
+                # a.id is not included in the SELECT list
+                "SELECT b.data FROM a JOIN b ON a.id = b.id "
+                "WHERE a.id = :pk_1",
+                [{"pk_1": pk}]
+                # if we used load_scalar_attributes(), it would look like
+                # this
+                # "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
+                # [{"param_1": b_id}],
+            )
+        )
+
     def test_load_from_unloaded_subclass(self):
         A, B = self.classes("A", "B")
         sess = fixture_session()
@@ -2712,6 +2747,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
 class OptimizedLoadTest(fixtures.MappedTest):
     """tests for the "optimized load" routine."""
 
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -2867,9 +2904,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class A(Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             a = Column(String(20), nullable=False)
-            type_ = Column(String(20))
+            type_ = Column("type", String(20))
             __mapper_args__ = {
                 "polymorphic_on": type_,
                 "polymorphic_identity": "a",
@@ -2906,7 +2945,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             eq_(d.c, "z")
         asserter.assert_(
             CompiledSQL(
-                "SELECT a.id AS a_id, a.a AS a_a, a.type_ AS a_type_ FROM a",
+                "SELECT a.id AS a_id, a.a AS a_a, a.type AS a_type FROM a",
                 [],
             ),
             Or(
@@ -3074,8 +3113,14 @@ class OptimizedLoadTest(fixtures.MappedTest):
         eq_(s1test.comp, Comp("ham", "cheese"))
         eq_(s2test.comp, Comp("bacon", "eggs"))
 
-    def test_load_expired_on_pending(self):
+    @testing.variation("eager_defaults", [True, False])
+    def test_load_expired_on_pending(self, eager_defaults):
         base, sub = self.tables.base, self.tables.sub
+
+        expected_eager_defaults = bool(eager_defaults)
+        expect_returning = (
+            expected_eager_defaults and testing.db.dialect.insert_returning
+        )
 
         class Base(fixtures.BasicEntity):
             pass
@@ -3084,7 +3129,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
             pass
 
         self.mapper_registry.map_imperatively(
-            Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
+            Base,
+            base,
+            polymorphic_on=base.c.type,
+            polymorphic_identity="base",
+            eager_defaults=bool(eager_defaults),
         )
         self.mapper_registry.map_imperatively(
             Sub, sub, inherits=Base, polymorphic_identity="sub"
@@ -3095,13 +3144,46 @@ class OptimizedLoadTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            CompiledSQL(
-                "INSERT INTO base (data, type) VALUES (:data, :type)",
-                [{"data": "s1", "type": "sub"}],
-            ),
-            CompiledSQL(
-                "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
-                lambda ctx: {"id": s1.id, "sub": None},
+            Conditional(
+                expect_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO base (data, type) VALUES (:data, :type) "
+                        "RETURNING base.id, base.counter",
+                        [{"data": "s1", "type": "sub"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO sub (id, sub) VALUES (:id, :sub) "
+                        "RETURNING sub.subcounter, sub.subcounter2",
+                        lambda ctx: {"id": s1.id, "sub": None},
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO base (data, type) VALUES (:data, :type)",
+                        [{"data": "s1", "type": "sub"}],
+                        enable_returning=False,
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
+                        lambda ctx: {"id": s1.id, "sub": None},
+                        enable_returning=False,
+                    ),
+                    Conditional(
+                        bool(eager_defaults),
+                        [
+                            CompiledSQL(
+                                "SELECT base.counter AS base_counter, "
+                                "sub.subcounter AS sub_subcounter, "
+                                "sub.subcounter2 AS sub_subcounter2 "
+                                "FROM base JOIN sub ON base.id = sub.id "
+                                "WHERE base.id = :pk_1",
+                                lambda ctx: {"pk_1": s1.id},
+                            )
+                        ],
+                        [],
+                    ),
+                ],
             ),
         )
 
@@ -3111,12 +3193,18 @@ class OptimizedLoadTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             go,
-            CompiledSQL(
-                "SELECT base.counter AS base_counter, "
-                "sub.subcounter AS sub_subcounter, "
-                "sub.subcounter2 AS sub_subcounter2 FROM base JOIN sub "
-                "ON base.id = sub.id WHERE base.id = :pk_1",
-                lambda ctx: {"pk_1": s1.id},
+            Conditional(
+                not eager_defaults and not expect_returning,
+                [
+                    CompiledSQL(
+                        "SELECT base.counter AS base_counter, "
+                        "sub.subcounter AS sub_subcounter, sub.subcounter2 "
+                        "AS sub_subcounter2 FROM base "
+                        "JOIN sub ON base.id = sub.id WHERE base.id = :pk_1",
+                        lambda ctx: {"pk_1": s1.id},
+                    )
+                ],
+                [],
             ),
         )
 

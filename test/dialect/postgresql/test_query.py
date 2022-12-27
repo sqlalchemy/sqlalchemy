@@ -28,6 +28,7 @@ from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.sql.expression import type_coerce
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1003,6 +1004,110 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
                 "matchtable.title @@ plainto_tsquery($1)",
+            )
+
+    @testing.combinations(
+        (func.to_tsvector,),
+        (func.to_tsquery,),
+        (func.plainto_tsquery,),
+        (func.phraseto_tsquery,),
+        (func.websearch_to_tsquery,),
+        argnames="to_ts_func",
+    )
+    @testing.variation("use_regconfig", [True, False, "literal"])
+    def test_to_regconfig_fns(self, connection, to_ts_func, use_regconfig):
+        """test #8977"""
+
+        matchtable = self.tables.matchtable
+
+        fn_name = to_ts_func().name
+
+        if use_regconfig.literal:
+            regconfig = literal("english", REGCONFIG)
+        elif use_regconfig:
+            regconfig = "english"
+        else:
+            regconfig = None
+
+        if regconfig is None:
+            if fn_name == "to_tsvector":
+                fn = to_ts_func(matchtable.c.title).match("python")
+            else:
+                fn = func.to_tsvector(matchtable.c.title).op("@@")(
+                    to_ts_func("python")
+                )
+        else:
+            if fn_name == "to_tsvector":
+                fn = to_ts_func(regconfig, matchtable.c.title).match("python")
+            else:
+                fn = func.to_tsvector(matchtable.c.title).op("@@")(
+                    to_ts_func(regconfig, "python")
+                )
+
+        stmt = matchtable.select().where(fn).order_by(matchtable.c.id)
+        results = connection.execute(stmt).fetchall()
+        eq_([2, 5], [r.id for r in results])
+
+    @testing.variation("use_regconfig", [True, False, "literal"])
+    @testing.variation("include_options", [True, False])
+    def test_ts_headline(self, connection, use_regconfig, include_options):
+        """test #8977"""
+        if use_regconfig.literal:
+            regconfig = literal("english", REGCONFIG)
+        elif use_regconfig:
+            regconfig = "english"
+        else:
+            regconfig = None
+
+        text = (
+            "The most common type of search is to find all documents "
+            "containing given query terms and return them in order of "
+            "their similarity to the query."
+        )
+        tsquery = func.to_tsquery("english", "query & similarity")
+
+        if regconfig is None:
+            if include_options:
+                fn = func.ts_headline(
+                    text,
+                    tsquery,
+                    "MaxFragments=10, MaxWords=7, MinWords=3, "
+                    "StartSel=<<, StopSel=>>",
+                )
+            else:
+                fn = func.ts_headline(
+                    text,
+                    tsquery,
+                )
+        else:
+            if include_options:
+                fn = func.ts_headline(
+                    regconfig,
+                    text,
+                    tsquery,
+                    "MaxFragments=10, MaxWords=7, MinWords=3, "
+                    "StartSel=<<, StopSel=>>",
+                )
+            else:
+                fn = func.ts_headline(
+                    regconfig,
+                    text,
+                    tsquery,
+                )
+
+        stmt = select(fn)
+
+        if include_options:
+            eq_(
+                connection.scalar(stmt),
+                "documents containing given <<query>> terms and return ... "
+                "their <<similarity>> to the <<query>>",
+            )
+        else:
+            eq_(
+                connection.scalar(stmt),
+                "containing given <b>query</b> terms and return them in "
+                "order of their <b>similarity</b> to the <b>query</b>.",
             )
 
     def test_simple_match(self, connection):

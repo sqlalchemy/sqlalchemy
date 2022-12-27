@@ -1189,7 +1189,7 @@ class OracleCompiler(compiler.SQLCompiler):
     def limit_clause(self, select, **kw):
         return ""
 
-    def visit_empty_set_expr(self, type_):
+    def visit_empty_set_expr(self, type_, **kw):
         return "SELECT 1 FROM DUAL WHERE 1!=1"
 
     def for_update_clause(self, select, **kw):
@@ -1279,12 +1279,12 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_drop_table_comment(self, drop):
+    def visit_drop_table_comment(self, drop, **kw):
         return "COMMENT ON TABLE %s IS ''" % self.preparer.format_table(
             drop.element
         )
 
-    def visit_create_index(self, create):
+    def visit_create_index(self, create, **kw):
         index = create.element
         self._verify_index_table(index)
         preparer = self.preparer
@@ -1336,7 +1336,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         text = text.replace("NO ORDER", "NOORDER")
         return text
 
-    def visit_computed_column(self, generated):
+    def visit_computed_column(self, generated, **kw):
         text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
         )

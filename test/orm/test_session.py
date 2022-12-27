@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import inspect as _py_inspect
 import pickle
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import delete
@@ -47,6 +50,9 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util.compat import inspect_getfullargspec
 from test.orm import _fixtures
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import ORMExecuteState
 
 
 class ExecutionTest(_fixtures.FixtureTest):
@@ -563,7 +569,10 @@ class SessionUtilTest(_fixtures.FixtureTest):
             u1,
         )
 
-    def test_get_execution_option(self):
+    @testing.variation(
+        "arg", ["execution_options", "identity_token", "bind_arguments"]
+    )
+    def test_get_arguments(self, arg: testing.Variation) -> None:
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
@@ -571,12 +580,28 @@ class SessionUtilTest(_fixtures.FixtureTest):
         called = False
 
         @event.listens_for(sess, "do_orm_execute")
-        def check(ctx):
+        def check(ctx: ORMExecuteState) -> None:
             nonlocal called
             called = True
-            eq_(ctx.execution_options["foo"], "bar")
 
-        sess.get(User, 42, execution_options={"foo": "bar"})
+            if arg.execution_options:
+                eq_(ctx.execution_options["foo"], "bar")
+            elif arg.bind_arguments:
+                eq_(ctx.bind_arguments["foo"], "bar")
+            elif arg.identity_token:
+                eq_(ctx.load_options._identity_token, "foobar")
+            else:
+                arg.fail()
+
+        if arg.execution_options:
+            sess.get(User, 42, execution_options={"foo": "bar"})
+        elif arg.bind_arguments:
+            sess.get(User, 42, bind_arguments={"foo": "bar"})
+        elif arg.identity_token:
+            sess.get(User, 42, identity_token="foobar")
+        else:
+            arg.fail()
+
         sess.close()
 
         is_true(called)

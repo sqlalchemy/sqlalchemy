@@ -381,7 +381,9 @@ def _collect_insert_commands(
             # compare to pk_keys_by_table
             has_all_pks = mapper._pk_keys_by_table[table].issubset(params)
 
-            if mapper.base_mapper.eager_defaults:
+            if mapper.base_mapper._prefer_eager_defaults(
+                connection.dialect, table
+            ):
                 has_all_defaults = mapper._server_default_col_keys[
                     table
                 ].issubset(params)
@@ -491,7 +493,7 @@ def _collect_update_commands(
                 ):
                     params[col.key] = value
 
-            if mapper.base_mapper.eager_defaults:
+            if mapper.base_mapper.eager_defaults is True:
                 has_all_defaults = (
                     mapper._server_onupdate_default_col_keys[table]
                 ).issubset(params)
@@ -787,7 +789,12 @@ def _emit_update_statements(
         if (
             bookkeeping
             and not has_all_defaults
-            and mapper.base_mapper.eager_defaults
+            and mapper.base_mapper.eager_defaults is True
+            # change as of #8889 - if RETURNING is not going to be used anyway,
+            # (applies to MySQL, MariaDB which lack UPDATE RETURNING) ensure
+            # we can do an executemany UPDATE which is more efficient
+            and table.implicit_returning
+            and connection.dialect.update_returning
         ):
             statement = statement.return_defaults(
                 *mapper._server_onupdate_default_cols[table]
@@ -808,7 +815,11 @@ def _emit_update_statements(
             assert_singlerow
             and connection.dialect.supports_sane_multi_rowcount
         )
-        allow_multirow = has_all_defaults and not needs_version_id
+
+        # change as of #8889 - if RETURNING is not going to be used anyway,
+        # (applies to MySQL, MariaDB which lack UPDATE RETURNING) ensure
+        # we can do an executemany UPDATE which is more efficient
+        allow_executemany = not return_defaults and not needs_version_id
 
         if hasvalue:
             for (
@@ -842,7 +853,7 @@ def _emit_update_statements(
                 rows += c.rowcount
                 check_rowcount = assert_singlerow
         else:
-            if not allow_multirow:
+            if not allow_executemany:
                 check_rowcount = assert_singlerow
                 for (
                     state,
@@ -991,7 +1002,9 @@ def _emit_insert_statements(
                 not bookkeeping
                 or (
                     has_all_defaults
-                    or not base_mapper.eager_defaults
+                    or not base_mapper._prefer_eager_defaults(
+                        connection.dialect, table
+                    )
                     or not table.implicit_returning
                     or not connection.dialect.insert_returning
                 )
@@ -1067,7 +1080,9 @@ def _emit_insert_statements(
             else:
                 do_executemany = False
 
-            if not has_all_defaults and base_mapper.eager_defaults:
+            if not has_all_defaults and base_mapper._prefer_eager_defaults(
+                connection.dialect, table
+            ):
                 statement = statement.return_defaults(
                     *mapper._server_default_cols[table]
                 )
@@ -1282,9 +1297,9 @@ def _emit_post_update_statements(
             assert_singlerow
             and connection.dialect.supports_sane_multi_rowcount
         )
-        allow_multirow = not needs_version_id or assert_multirow
+        allow_executemany = not needs_version_id or assert_multirow
 
-        if not allow_multirow:
+        if not allow_executemany:
             check_rowcount = assert_singlerow
             for state, state_dict, mapper_rec, connection, params in records:
 
@@ -1475,7 +1490,9 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
         # it isn't expired.
         toload_now = []
 
-        if base_mapper.eager_defaults:
+        # this is specifically to emit a second SELECT for eager_defaults,
+        # so only if it's set to True, not "auto"
+        if base_mapper.eager_defaults is True:
             toload_now.extend(
                 state._unloaded_non_object.intersection(
                     mapper._server_default_plus_onupdate_propkeys

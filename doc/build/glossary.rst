@@ -488,6 +488,19 @@ Glossary
         primary key identity within the database, as well as their unique
         identity within a :class:`_orm.Session` :term:`identity map`.
 
+        In SQLAlchemy, you can view the identity key for an ORM object
+        using the :func:`_sa.inspect` API to return the :class:`_orm.InstanceState`
+        tracking object, then looking at the :attr:`_orm.InstanceState.key`
+        attribute::
+
+            >>> from sqlalchemy import inspect
+            >>> inspect(some_object).key
+            (<class '__main__.MyTable'>, (1,), None)
+
+        .. seealso::
+
+           :term:`identity map`
+
     identity map
         A mapping between Python objects and their database identities.
         The identity map is a collection that's associated with an
@@ -504,6 +517,9 @@ Glossary
         .. seealso::
 
             `Identity Map (via Martin Fowler) <https://martinfowler.com/eaaCatalog/identityMap.html>`_
+
+            :ref:`session_get` - how to look up an object in the identity map
+            by primary key
 
     lazy initialization
         A tactic of delaying some initialization action, such as creating objects,

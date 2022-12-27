@@ -5507,6 +5507,7 @@ class YieldTest(_fixtures.FixtureTest):
         @event.listens_for(sess, "do_orm_execute")
         def check(ctx):
             eq_(ctx.load_options._yield_per, 15)
+            return
             eq_(
                 {
                     k: v
@@ -5516,7 +5517,6 @@ class YieldTest(_fixtures.FixtureTest):
                 {
                     "yield_per": 15,
                     "foo": "bar",
-                    "future_result": True,
                 },
             )
 
@@ -5535,6 +5535,7 @@ class YieldTest(_fixtures.FixtureTest):
         @event.listens_for(sess, "do_orm_execute")
         def check(ctx):
             eq_(ctx.load_options._yield_per, 15)
+
             eq_(
                 {
                     k: v
@@ -5543,7 +5544,6 @@ class YieldTest(_fixtures.FixtureTest):
                 },
                 {
                     "yield_per": 15,
-                    "future_result": True,
                 },
             )
 
@@ -5553,8 +5553,8 @@ class YieldTest(_fixtures.FixtureTest):
         assert isinstance(
             result.raw.cursor_strategy, _cursor.BufferedRowCursorFetchStrategy
         )
+        eq_(result._yield_per, 15)
         eq_(result.raw.cursor_strategy._max_row_buffer, 15)
-
         eq_(len(result.all()), 4)
 
     def test_no_joinedload_opt(self):
@@ -7515,23 +7515,80 @@ class ExecutionOptionsTest(QueryTest):
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
 
-    def test_option_transfer_future(self):
+    @testing.variation("source", ["statement", "do_orm_exec"])
+    def test_execution_options_to_load_options(self, source):
         User = self.classes.User
-        stmt = select(User).execution_options(
-            populate_existing=True, autoflush=False, yield_per=10
-        )
+
+        stmt = select(User)
+
+        if source.statement:
+            stmt = stmt.execution_options(
+                populate_existing=True,
+                autoflush=False,
+                yield_per=10,
+                identity_token="some_token",
+            )
         s = fixture_session()
 
         m1 = mock.Mock()
 
-        event.listen(s, "do_orm_execute", m1)
+        def do_orm_execute(ctx):
+            m1(ctx)
+            if source.do_orm_exec:
+                ctx.update_execution_options(
+                    autoflush=False,
+                    populate_existing=True,
+                    yield_per=10,
+                    identity_token="some_token",
+                )
 
-        s.execute(stmt)
+        event.listen(s, "do_orm_execute", do_orm_execute)
 
+        from sqlalchemy.orm import loading
+
+        with mock.patch.object(loading, "instances") as m2:
+            s.execute(stmt)
+
+        if source.do_orm_exec:
+            # in do_orm_exec version, load options are empty, our new
+            # execution options have not yet been transferred.
+            eq_(
+                m1.mock_calls[0][1][0].load_options,
+                QueryContext.default_load_options,
+            )
+        elif source.statement:
+            # in statement version, the incoming exc options have been
+            # transferred, because the fact that do_orm_exec is used
+            # means the options were set up up front for the benefit
+            # of the do_orm_exec hook itself.
+            eq_(
+                m1.mock_calls[0][1][0].load_options,
+                QueryContext.default_load_options(
+                    _autoflush=False,
+                    _populate_existing=True,
+                    _yield_per=10,
+                    _identity_token="some_token",
+                ),
+            )
+
+        # py37 mock does not have .args
+        call_args = m2.mock_calls[0][1]
+
+        cursor = call_args[0]
+        cursor.all()
+
+        # the orm_pre_session_exec() method
+        # was called unconditionally after the event handler
+        # in both cases (i.e. a second time) so options were transferred
+        # even if we set them up in the do_orm_exec hook only.
+        query_context = call_args[1]
         eq_(
-            m1.mock_calls[0][1][0].load_options,
+            query_context.load_options,
             QueryContext.default_load_options(
-                _autoflush=False, _populate_existing=True, _yield_per=10
+                _autoflush=False,
+                _populate_existing=True,
+                _yield_per=10,
+                _identity_token="some_token",
             ),
         )
 

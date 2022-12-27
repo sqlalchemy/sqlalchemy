@@ -782,7 +782,7 @@
         also gains the same capability using native cx_Oracle or OracleDB features.
 
     .. change::
-        :tags: bug, pool
+        :tags: bug, engine
         :tickets: 8523
 
         The :class:`_pool.QueuePool` now ignores ``max_overflow`` when
@@ -1295,7 +1295,7 @@
         that of psycopg2 or most MySQL dialects.
 
     .. change::
-        :tags: feature, types
+        :tags: feature, sql
         :tickets: 7212
 
         Added new backend-agnostic :class:`_types.Uuid` datatype generalized from
@@ -1567,7 +1567,7 @@
         accompany the existing ``def visit_concat_op_binary()`` method.
 
     .. change::
-        :tags: feature, types
+        :tags: feature, sql
         :tickets: 5465
 
         Added :class:`.Double`, :class:`.DOUBLE`, :class:`.DOUBLE_PRECISION`
@@ -1674,7 +1674,7 @@
             :ref:`change_7086`
 
     .. change::
-        :tags: usecase, datatypes
+        :tags: usecase, sql
         :tickets: 5052
 
         Added modified ISO-8601 rendering (i.e. ISO-8601 with the T converted to a
@@ -1683,6 +1683,10 @@
         format is wrapped inside of an appropriate TO_DATE() function call.
         Previously this rendering was not implemented for dialect-specific
         compilation.
+
+        .. seealso::
+
+            :ref:`change_5052`
 
     .. change::
         :tags: removed, engine
@@ -2018,7 +2022,7 @@
         cx_Oracle 7 is now the minimum version for cx_Oracle.
 
     .. change::
-        :tags: bug, types
+        :tags: bug, sql
         :tickets: 7551
 
         Python string values for which a SQL type is determined from the type of

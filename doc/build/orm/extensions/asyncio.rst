@@ -73,17 +73,24 @@ to deliver a streaming server-side :class:`_asyncio.AsyncResult`::
 
     import asyncio
 
+    from sqlalchemy import Column
+    from sqlalchemy import MetaData
+    from sqlalchemy import select
+    from sqlalchemy import String
+    from sqlalchemy import Table
     from sqlalchemy.ext.asyncio import create_async_engine
 
+    meta = MetaData()
+    t1 = Table("t1", meta, Column("name", String(50), primary_key=True))
 
-    async def async_main():
+
+    async def async_main() -> None:
         engine = create_async_engine(
             "postgresql+asyncpg://scott:tiger@localhost/test",
             echo=True,
         )
 
         async with engine.begin() as conn:
-            await conn.run_sync(meta.drop_all)
             await conn.run_sync(meta.create_all)
 
             await conn.execute(
@@ -144,17 +151,19 @@ involving ORM relationships and column attributes; the next
 section :ref:`asyncio_orm_avoid_lazyloads` details this.   The example below
 illustrates a complete example including mapper and session configuration::
 
-    import asyncio
+    from __future__ import annotations
 
-    from sqlalchemy import DateTime
+    import asyncio
+    import datetime
+
     from sqlalchemy import ForeignKey
     from sqlalchemy import func
-    from sqlalchemy import Integer
     from sqlalchemy import select
-    from sqlalchemy import String
     from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import relationship
     from sqlalchemy.orm import selectinload
@@ -167,37 +176,20 @@ illustrates a complete example including mapper and session configuration::
     class A(Base):
         __tablename__ = "a"
 
-        id = mapped_column(Integer, primary_key=True)
-        data = mapped_column(String)
-        create_date = mapped_column(DateTime, server_default=func.now())
-        bs = relationship("B")
-
-        # required in order to access columns with server defaults
-        # or SQL expression defaults, subsequent to a flush, without
-        # triggering an expired load
-        __mapper_args__ = {"eager_defaults": True}
+        id: Mapped[int] = mapped_column(primary_key=True)
+        data: Mapped[str]
+        create_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
+        bs: Mapped[list[B]] = relationship()
 
 
     class B(Base):
         __tablename__ = "b"
-        id = mapped_column(Integer, primary_key=True)
-        a_id = mapped_column(ForeignKey("a.id"))
-        data = mapped_column(String)
+        id: Mapped[int] = mapped_column(primary_key=True)
+        a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+        data: Mapped[str]
 
 
-    async def async_main():
-        engine = create_async_engine(
-            "postgresql+asyncpg://scott:tiger@localhost/test",
-            echo=True,
-        )
-
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-
-        # expire_on_commit=False will prevent attributes from being expired
-        # after commit.
-        async_session = async_sessionmaker(engine, expire_on_commit=False)
+    async def insert_objects(async_session: async_sessionmaker[AsyncSession]) -> None:
 
         async with async_session() as session:
             async with session.begin():
@@ -209,6 +201,12 @@ illustrates a complete example including mapper and session configuration::
                     ]
                 )
 
+
+    async def select_and_update_objects(
+        async_session: async_sessionmaker[AsyncSession],
+    ) -> None:
+
+        async with async_session() as session:
             stmt = select(A).options(selectinload(A.bs))
 
             result = await session.execute(stmt)
@@ -219,9 +217,9 @@ illustrates a complete example including mapper and session configuration::
                 for b1 in a1.bs:
                     print(b1)
 
-            result = await session.execute(select(A).order_by(A.id))
+            result = await session.execute(select(A).order_by(A.id).limit(1))
 
-            a1 = result.scalars().first()
+            a1 = result.scalars().one()
 
             a1.data = "new data"
 
@@ -231,6 +229,23 @@ illustrates a complete example including mapper and session configuration::
             # expire_on_commit=False allows
             print(a1.data)
 
+
+    async def async_main() -> None:
+        engine = create_async_engine(
+            "postgresql+asyncpg://scott:tiger@localhost/test",
+            echo=True,
+        )
+
+        # async_sessionmaker: a factory for new AsyncSession objects.
+        # expire_on_commit - don't expire objects after transaction commit
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        await insert_objects(async_session)
+        await select_and_update_objects(async_session)
+
         # for AsyncEngine created in function scope, close and
         # clean-up pooled connections
         await engine.dispose()
@@ -239,11 +254,14 @@ illustrates a complete example including mapper and session configuration::
     asyncio.run(async_main())
 
 In the example above, the :class:`_asyncio.AsyncSession` is instantiated using
-the optional :class:`_asyncio.async_sessionmaker` helper, and associated with an
-:class:`_asyncio.AsyncEngine` against particular database URL. It is
-then used in a Python asynchronous context manager (i.e. ``async with:``
-statement) so that it is automatically closed at the end of the block; this is
-equivalent to calling the :meth:`_asyncio.AsyncSession.close` method.
+the optional :class:`_asyncio.async_sessionmaker` helper, which provides
+a factory for new :class:`_asyncio.AsyncSession` objects with a fixed set
+of parameters, which here includes associating it with
+an :class:`_asyncio.AsyncEngine` against particular database URL. It is then
+passed to other methods where it may be used in a Python asynchronous context
+manager (i.e. ``async with:`` statement) so that it is automatically closed at
+the end of the block; this is equivalent to calling the
+:meth:`_asyncio.AsyncSession.close` method.
 
 
 .. _asyncio_orm_avoid_lazyloads:

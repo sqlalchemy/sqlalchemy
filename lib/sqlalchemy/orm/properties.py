@@ -50,6 +50,7 @@ from ..sql.base import _NoArg
 from ..sql.roles import DDLConstraintColumnRole
 from ..sql.schema import Column
 from ..sql.schema import SchemaConst
+from ..sql.type_api import TypeEngine
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import de_stringify_annotation
 from ..util.typing import de_stringify_union_elements
@@ -678,7 +679,10 @@ class MappedColumn(
                 return
 
         self._init_column_for_annotation(
-            cls, registry, extracted_mapped_annotation, originating_module
+            cls,
+            registry,
+            extracted_mapped_annotation,
+            originating_module,
         )
 
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -760,9 +764,20 @@ class MappedColumn(
                 if new_sqltype is not None:
                     break
             else:
-                raise sa_exc.ArgumentError(
-                    f"Could not locate SQLAlchemy Core "
-                    f"type for Python type: {our_type}"
-                )
+                if isinstance(our_type, TypeEngine) or (
+                    isinstance(our_type, type)
+                    and issubclass(our_type, TypeEngine)
+                ):
+                    raise sa_exc.ArgumentError(
+                        f"The type provided inside the {self.column.key!r} "
+                        "attribute Mapped annotation is the SQLAlchemy type "
+                        f"{our_type}. Expected a Python type instead"
+                    )
+                else:
+                    raise sa_exc.ArgumentError(
+                        "Could not locate SQLAlchemy Core type for Python "
+                        f"type {our_type} inside the {self.column.key!r} "
+                        "attribute Mapped annotation"
+                    )
 
             self.column._set_type(new_sqltype)

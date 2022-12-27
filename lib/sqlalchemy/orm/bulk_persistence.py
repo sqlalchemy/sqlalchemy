@@ -555,7 +555,7 @@ class BulkUDCompileState(ORMDMLState):
         _resolved_values = EMPTY_DICT
         _eval_condition = None
         _matched_rows = None
-        _refresh_identity_token = None
+        _identity_token = None
 
     @classmethod
     def can_use_returning(
@@ -577,10 +577,8 @@ class BulkUDCompileState(ORMDMLState):
         params,
         execution_options,
         bind_arguments,
-        is_reentrant_invoke,
+        is_pre_event,
     ):
-        if is_reentrant_invoke:
-            return statement, execution_options
 
         (
             update_options,
@@ -590,6 +588,7 @@ class BulkUDCompileState(ORMDMLState):
             {
                 "synchronize_session",
                 "autoflush",
+                "identity_token",
                 "is_delete_using",
                 "is_update_from",
                 "dml_strategy",
@@ -637,55 +636,56 @@ class BulkUDCompileState(ORMDMLState):
                     "for 'bulk' ORM updates (i.e. multiple parameter sets)"
                 )
 
-        if update_options._autoflush:
-            session._autoflush()
+        if not is_pre_event:
+            if update_options._autoflush:
+                session._autoflush()
 
-        if update_options._dml_strategy == "orm":
+            if update_options._dml_strategy == "orm":
 
-            if update_options._synchronize_session == "auto":
-                update_options = cls._do_pre_synchronize_auto(
-                    session,
-                    statement,
-                    params,
-                    execution_options,
-                    bind_arguments,
-                    update_options,
-                )
-            elif update_options._synchronize_session == "evaluate":
-                update_options = cls._do_pre_synchronize_evaluate(
-                    session,
-                    statement,
-                    params,
-                    execution_options,
-                    bind_arguments,
-                    update_options,
-                )
-            elif update_options._synchronize_session == "fetch":
-                update_options = cls._do_pre_synchronize_fetch(
-                    session,
-                    statement,
-                    params,
-                    execution_options,
-                    bind_arguments,
-                    update_options,
-                )
-        elif update_options._dml_strategy == "bulk":
-            if update_options._synchronize_session == "auto":
-                update_options += {"_synchronize_session": "evaluate"}
+                if update_options._synchronize_session == "auto":
+                    update_options = cls._do_pre_synchronize_auto(
+                        session,
+                        statement,
+                        params,
+                        execution_options,
+                        bind_arguments,
+                        update_options,
+                    )
+                elif update_options._synchronize_session == "evaluate":
+                    update_options = cls._do_pre_synchronize_evaluate(
+                        session,
+                        statement,
+                        params,
+                        execution_options,
+                        bind_arguments,
+                        update_options,
+                    )
+                elif update_options._synchronize_session == "fetch":
+                    update_options = cls._do_pre_synchronize_fetch(
+                        session,
+                        statement,
+                        params,
+                        execution_options,
+                        bind_arguments,
+                        update_options,
+                    )
+            elif update_options._dml_strategy == "bulk":
+                if update_options._synchronize_session == "auto":
+                    update_options += {"_synchronize_session": "evaluate"}
 
-        # indicators from the "pre exec" step that are then
-        # added to the DML statement, which will also be part of the cache
-        # key.  The compile level create_for_statement() method will then
-        # consume these at compiler time.
-        statement = statement._annotate(
-            {
-                "synchronize_session": update_options._synchronize_session,
-                "is_delete_using": update_options._is_delete_using,
-                "is_update_from": update_options._is_update_from,
-                "dml_strategy": update_options._dml_strategy,
-                "can_use_returning": update_options._can_use_returning,
-            }
-        )
+            # indicators from the "pre exec" step that are then
+            # added to the DML statement, which will also be part of the cache
+            # key.  The compile level create_for_statement() method will then
+            # consume these at compiler time.
+            statement = statement._annotate(
+                {
+                    "synchronize_session": update_options._synchronize_session,
+                    "is_delete_using": update_options._is_delete_using,
+                    "is_update_from": update_options._is_update_from,
+                    "dml_strategy": update_options._dml_strategy,
+                    "can_use_returning": update_options._can_use_returning,
+                }
+            )
 
         return (
             statement,
@@ -836,7 +836,7 @@ class BulkUDCompileState(ORMDMLState):
             if state.mapper.isa(mapper) and not state.expired
         ]
 
-        identity_token = update_options._refresh_identity_token
+        identity_token = update_options._identity_token
         if identity_token is not None:
             raw_data = [
                 (obj, state, dict_)
@@ -1091,7 +1091,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         params,
         execution_options,
         bind_arguments,
-        is_reentrant_invoke,
+        is_pre_event,
     ):
 
         (
@@ -1143,7 +1143,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
                     context._orm_load_exec_options
                 )
 
-        if insert_options._autoflush:
+        if not is_pre_event and insert_options._autoflush:
             session._autoflush()
 
         statement = statement._annotate(
@@ -1577,7 +1577,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         for param in params:
             identity_key = mapper.identity_key_from_primary_key(
                 (param[key] for key in pk_keys),
-                update_options._refresh_identity_token,
+                update_options._identity_token,
             )
             state = identity_map.fast_get_state(identity_key)
             if not state:
@@ -1635,7 +1635,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             )
 
             matched_rows = [
-                tuple(row) + (update_options._refresh_identity_token,)
+                tuple(row) + (update_options._identity_token,)
                 for row in pk_rows
             ]
         else:
@@ -1651,8 +1651,8 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
                 for primary_key, identity_token in [
                     (row[0:-1], row[-1]) for row in matched_rows
                 ]
-                if update_options._refresh_identity_token is None
-                or identity_token == update_options._refresh_identity_token
+                if update_options._identity_token is None
+                or identity_token == update_options._identity_token
             ]
             if identity_key in session.identity_map
         ]
@@ -1912,7 +1912,7 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
             )
 
             matched_rows = [
-                tuple(row) + (update_options._refresh_identity_token,)
+                tuple(row) + (update_options._identity_token,)
                 for row in pk_rows
             ]
         else:

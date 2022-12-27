@@ -37,6 +37,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
 from typing import Iterable
@@ -46,6 +47,7 @@ from typing import MutableMapping
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
+from typing import Pattern
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -237,9 +239,6 @@ BIND_TEMPLATES = {
     "named": ":%(name)s",
 }
 
-
-_BIND_TRANSLATE_RE = re.compile(r"[%\(\):\[\] ]")
-_BIND_TRANSLATE_CHARS = dict(zip("%():[] ", "PAZC___"))
 
 OPERATORS = {
     # binary
@@ -714,6 +713,14 @@ class Compiled:
 
         self._gen_time = perf_counter()
 
+    def __init_subclass__(cls) -> None:
+        cls._init_compiler_cls()
+        return super().__init_subclass__()
+
+    @classmethod
+    def _init_compiler_cls(cls):
+        pass
+
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
     ):
@@ -724,7 +731,7 @@ class Compiled:
         else:
             raise exc.ObjectNotExecutableError(self.statement)
 
-    def visit_unsupported_compilation(self, element, err):
+    def visit_unsupported_compilation(self, element, err, **kw):
         raise exc.UnsupportedCompilationError(self, type(element)) from err
 
     @property
@@ -865,6 +872,52 @@ class SQLCompiler(Compiled):
     """
 
     extract_map = EXTRACT_MAP
+
+    bindname_escape_characters: ClassVar[
+        Mapping[str, str]
+    ] = util.immutabledict(
+        {
+            "%": "P",
+            "(": "A",
+            ")": "Z",
+            ":": "C",
+            ".": "_",
+            "[": "_",
+            "]": "_",
+            " ": "_",
+        }
+    )
+    """A mapping (e.g. dict or similar) containing a lookup of
+    characters keyed to replacement characters which will be applied to all
+    'bind names' used in SQL statements as a form of 'escaping'; the given
+    characters are replaced entirely with the 'replacement' character when
+    rendered in the SQL statement, and a similar translation is performed
+    on the incoming names used in parameter dictionaries passed to methods
+    like :meth:`_engine.Connection.execute`.
+
+    This allows bound parameter names used in :func:`_sql.bindparam` and
+    other constructs to have any arbitrary characters present without any
+    concern for characters that aren't allowed at all on the target database.
+
+    Third party dialects can establish their own dictionary here to replace the
+    default mapping, which will ensure that the particular characters in the
+    mapping will never appear in a bound parameter name.
+
+    The dictionary is evaluated at **class creation time**, so cannot be
+    modified at runtime; it must be present on the class when the class
+    is first declared.
+
+    Note that for dialects that have additional bound parameter rules such
+    as additional restrictions on leading characters, the
+    :meth:`_sql.SQLCompiler.bindparam_string` method may need to be augmented.
+    See the cx_Oracle compiler for an example of this.
+
+    .. versionadded:: 2.0.0b5
+
+    """
+
+    _bind_translate_re: ClassVar[Pattern[str]]
+    _bind_translate_chars: ClassVar[Mapping[str, str]]
 
     is_sql = True
 
@@ -1107,6 +1160,16 @@ class SQLCompiler(Compiled):
     _positional_pattern = re.compile(
         f"{_pyformat_pattern.pattern}|{_post_compile_pattern.pattern}"
     )
+
+    @classmethod
+    def _init_compiler_cls(cls):
+        cls._init_bind_translate()
+
+    @classmethod
+    def _init_bind_translate(cls):
+        reg = re.escape("".join(cls.bindname_escape_characters))
+        cls._bind_translate_re = re.compile(f"[{reg}]")
+        cls._bind_translate_chars = cls.bindname_escape_characters
 
     def __init__(
         self,
@@ -2846,7 +2909,7 @@ class SQLCompiler(Compiled):
             binary, OPERATORS[operator], **kw
         )
 
-    def visit_empty_set_op_expr(self, type_, expand_op):
+    def visit_empty_set_op_expr(self, type_, expand_op, **kw):
         if expand_op is operators.not_in_op:
             if len(type_) > 1:
                 return "(%s)) OR (1 = 1" % (
@@ -2864,19 +2927,23 @@ class SQLCompiler(Compiled):
         else:
             return self.visit_empty_set_expr(type_)
 
-    def visit_empty_set_expr(self, element_types):
+    def visit_empty_set_expr(self, element_types, **kw):
         raise NotImplementedError(
             "Dialect '%s' does not support empty set expression."
             % self.dialect.name
         )
 
     def _literal_execute_expanding_parameter_literal_binds(
-        self, parameter, values
+        self, parameter, values, bind_expression_template=None
     ):
 
         typ_dialect_impl = parameter.type._unwrapped_dialect_impl(self.dialect)
 
         if not values:
+            # empty IN expression.  note we don't need to use
+            # bind_expression_template here because there are no
+            # expressions to render.
+
             if typ_dialect_impl._is_tuple_type:
                 replacement_expression = (
                     "VALUES " if self.dialect.tuple_in_values else ""
@@ -2895,6 +2962,12 @@ class SQLCompiler(Compiled):
             and not isinstance(values[0], (str, bytes))
         ):
 
+            if typ_dialect_impl._has_bind_expression:
+                raise NotImplementedError(
+                    "bind_expression() on TupleType not supported with "
+                    "literal_binds"
+                )
+
             replacement_expression = (
                 "VALUES " if self.dialect.tuple_in_values else ""
             ) + ", ".join(
@@ -2910,10 +2983,29 @@ class SQLCompiler(Compiled):
                 for i, tuple_element in enumerate(values)
             )
         else:
-            replacement_expression = ", ".join(
-                self.render_literal_value(value, parameter.type)
-                for value in values
-            )
+            if bind_expression_template:
+                post_compile_pattern = self._post_compile_pattern
+                m = post_compile_pattern.search(bind_expression_template)
+                assert m and m.group(
+                    2
+                ), "unexpected format for expanding parameter"
+
+                tok = m.group(2).split("~~")
+                be_left, be_right = tok[1], tok[3]
+                replacement_expression = ", ".join(
+                    "%s%s%s"
+                    % (
+                        be_left,
+                        self.render_literal_value(value, parameter.type),
+                        be_right,
+                    )
+                    for value in values
+                )
+            else:
+                replacement_expression = ", ".join(
+                    self.render_literal_value(value, parameter.type)
+                    for value in values
+                )
 
         return (), replacement_expression
 
@@ -3293,7 +3385,7 @@ class SQLCompiler(Compiled):
                     bind_expression,
                     skip_bind_expression=True,
                     within_columns_clause=within_columns_clause,
-                    literal_binds=literal_binds,
+                    literal_binds=literal_binds and not bindparam.expanding,
                     literal_execute=literal_execute,
                     render_postcompile=render_postcompile,
                     accumulate_bind_names=accumulate_bind_names,
@@ -3302,6 +3394,7 @@ class SQLCompiler(Compiled):
                 if bindparam.expanding:
                     # for postcompile w/ expanding, move the "wrapped" part
                     # of this into the inside
+
                     m = re.match(
                         r"^(.*)\(__\[POSTCOMPILE_(\S+?)\]\)(.*)$", wrapped
                     )
@@ -3311,6 +3404,16 @@ class SQLCompiler(Compiled):
                         m.group(1),
                         m.group(3),
                     )
+
+                    if literal_binds:
+                        ret = self.render_literal_bindparam(
+                            bindparam,
+                            within_columns_clause=True,
+                            bind_expression_template=wrapped,
+                            **kwargs,
+                        )
+                        return "(%s)" % ret
+
                 return wrapped
 
         if not literal_binds:
@@ -3436,7 +3539,11 @@ class SQLCompiler(Compiled):
         raise NotImplementedError()
 
     def render_literal_bindparam(
-        self, bindparam, render_literal_value=NO_ARG, **kw
+        self,
+        bindparam,
+        render_literal_value=NO_ARG,
+        bind_expression_template=None,
+        **kw,
     ):
         if render_literal_value is not NO_ARG:
             value = render_literal_value
@@ -3455,7 +3562,11 @@ class SQLCompiler(Compiled):
 
         if bindparam.expanding:
             leep = self._literal_execute_expanding_parameter_literal_binds
-            to_update, replacement_expr = leep(bindparam, value)
+            to_update, replacement_expr = leep(
+                bindparam,
+                value,
+                bind_expression_template=bind_expression_template,
+            )
             return replacement_expr
         else:
             return self.render_literal_value(value, bindparam.type)
@@ -3543,12 +3654,12 @@ class SQLCompiler(Compiled):
 
         if not escaped_from:
 
-            if _BIND_TRANSLATE_RE.search(name):
+            if self._bind_translate_re.search(name):
                 # not quite the translate use case as we want to
                 # also get a quick boolean if we even found
                 # unusual characters in the name
-                new_name = _BIND_TRANSLATE_RE.sub(
-                    lambda m: _BIND_TRANSLATE_CHARS[m.group(0)],
+                new_name = self._bind_translate_re.sub(
+                    lambda m: self._bind_translate_chars[m.group(0)],
                     name,
                 )
                 escaped_from = name
@@ -5576,15 +5687,15 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def visit_savepoint(self, savepoint_stmt):
+    def visit_savepoint(self, savepoint_stmt, **kw):
         return "SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
 
-    def visit_rollback_to_savepoint(self, savepoint_stmt):
+    def visit_rollback_to_savepoint(self, savepoint_stmt, **kw):
         return "ROLLBACK TO SAVEPOINT %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
 
-    def visit_release_savepoint(self, savepoint_stmt):
+    def visit_release_savepoint(self, savepoint_stmt, **kw):
         return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(
             savepoint_stmt
         )
@@ -5672,7 +5783,7 @@ class StrSQLCompiler(SQLCompiler):
             for t in extra_froms
         )
 
-    def visit_empty_set_expr(self, type_):
+    def visit_empty_set_expr(self, type_, **kw):
         return "SELECT 1 WHERE 1!=1"
 
     def get_from_hint_text(self, table, text):

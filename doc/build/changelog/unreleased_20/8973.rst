@@ -1,0 +1,16 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 8973
+
+    Removed the requirement that the ``__allow_unmapped__`` attribute be used
+    on Declarative Dataclass Mapped class when non-``Mapped[]`` annotations are
+    detected; previously, an error message that was intended to support legacy
+    ORM typed mappings would be raised, which additionally did not mention
+    correct patterns to use with Dataclasses specifically. This error message
+    is now no longer raised if :meth:`_orm.registry.mapped_as_dataclass` or
+    :class:`_orm.MappedAsDataclass` is used.
+
+    .. seealso::
+
+        :ref:`orm_declarative_native_dataclasses_non_mapped_fields`
+

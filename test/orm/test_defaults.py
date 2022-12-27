@@ -17,6 +17,7 @@ from sqlalchemy.testing.schema import Table
 
 class TriggerDefaultsTest(fixtures.MappedTest):
     __requires__ = ("row_triggers",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -39,6 +40,7 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                 sa.schema.FetchedValue(),
                 sa.schema.FetchedValue(for_update=True),
             ),
+            implicit_returning=False,
         )
 
         dialect_name = testing.db.dialect.name
@@ -382,12 +384,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
             asserter.assert_(
                 CompiledSQL(
                     "UPDATE test SET foo=:foo WHERE test.id = :test_id",
-                    [{"foo": 5, "test_id": 1}],
-                    enable_returning=False,
-                ),
-                CompiledSQL(
-                    "UPDATE test SET foo=:foo WHERE test.id = :test_id",
-                    [{"foo": 6, "test_id": 2}],
+                    [{"foo": 5, "test_id": 1}, {"foo": 6, "test_id": 2}],
                     enable_returning=False,
                 ),
                 CompiledSQL(

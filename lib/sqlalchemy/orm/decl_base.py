@@ -516,7 +516,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         self.allow_unmapped_annotations = getattr(
             self.cls, "__allow_unmapped__", False
-        )
+        ) or bool(self.dataclass_setup_arguments)
 
         self.is_dataclass_prior_to_mapping = cld = dataclasses.is_dataclass(
             cls_
