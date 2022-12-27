@@ -358,7 +358,7 @@ class Mapper(
           ``RETURNING`` or "insertmanyreturning" is not available, server
           defaults will not be fetched.
 
-          .. versionchanged:: 2.0.0b5 added the "auto" option for
+          .. versionchanged:: 2.0.0rc1 added the "auto" option for
              :paramref:`.Mapper.eager_defaults`
 
           .. seealso::

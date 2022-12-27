@@ -73,7 +73,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, asyncio
         :tickets: 8952
-        :versions: 2.0.0b5
+        :versions: 2.0.0rc1
 
         Removed non-functional ``merge()`` method from
         :class:`_asyncio.AsyncResult`.  This method has never worked and was
@@ -138,7 +138,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, oracle
         :tickets: 8945
-        :versions: 2.0.0b5
+        :versions: 2.0.0rc1
 
         Fixed issue in Oracle compiler where the syntax for
         :meth:`.FunctionElement.column_valued` was incorrect, rendering the name

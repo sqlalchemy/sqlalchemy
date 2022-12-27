@@ -339,7 +339,7 @@ class to_tsvector(_regconfig_fn):
     ``sqlalchemy.func.to_tsvector()``, ensuring the correct argument and return
     type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -361,7 +361,7 @@ class to_tsquery(_regconfig_fn):
     ``sqlalchemy.func.to_tsquery()``, ensuring the correct argument and return
     type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -383,7 +383,7 @@ class plainto_tsquery(_regconfig_fn):
     invoking ``sqlalchemy.func.plainto_tsquery()``, ensuring the correct
     argument and return type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -405,7 +405,7 @@ class phraseto_tsquery(_regconfig_fn):
     invoking ``sqlalchemy.func.phraseto_tsquery()``, ensuring the correct
     argument and return type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -427,7 +427,7 @@ class websearch_to_tsquery(_regconfig_fn):
     invoking ``sqlalchemy.func.websearch_to_tsquery()``, ensuring the correct
     argument and return type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -449,7 +449,7 @@ class ts_headline(_regconfig_fn):
     ``sqlalchemy.func.ts_headline()``, ensuring the correct argument and return
     type handlers are used at compile and execution time.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 

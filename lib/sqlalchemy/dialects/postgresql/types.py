@@ -112,7 +112,7 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
 
     """Provide the PostgreSQL REGCONFIG type.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -123,7 +123,7 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
     """Provide the PostgreSQL TSQUERY type.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 

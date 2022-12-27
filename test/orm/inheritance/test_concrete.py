@@ -1015,7 +1015,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
     def test_overlapping_backref_relationship(self):
         """test #3630.
 
-        was revisited in #4629 (not fixed until 2.0.0b5 despite the old
+        was revisited in #4629 (not fixed until 2.0.0rc1 despite the old
         issue number)
 
         """

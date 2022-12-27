@@ -912,7 +912,7 @@ class SQLCompiler(Compiled):
     :meth:`_sql.SQLCompiler.bindparam_string` method may need to be augmented.
     See the cx_Oracle compiler for an example of this.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -1061,7 +1061,7 @@ class SQLCompiler(Compiled):
     the "expanded" SQL is assigned here, and then used by the ``.params``
     accessor and ``.construct_params()`` methods for their return values.
 
-    .. versionadded:: 2.0.0b5
+    .. versionadded:: 2.0.0rc1
 
     """
 
@@ -1624,7 +1624,7 @@ class SQLCompiler(Compiled):
         this method will provide for both the finalized SQL string as well
         as the parameters that would be used for a particular parameter set.
 
-        .. versionadded:: 2.0.0b5
+        .. versionadded:: 2.0.0rc1
 
         """
         parameters = self.construct_params(

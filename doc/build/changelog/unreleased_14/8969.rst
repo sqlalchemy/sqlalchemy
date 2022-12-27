@@ -1,7 +1,7 @@
 .. change::
     :tags: bug, sqlite
     :tickets: 8969
-    :versions: 2.0.0b5
+    :versions: 2.0.0rc1
 
     Fixed regression caused by new support for reflection of partial indexes on
     SQLite added in 1.4.45 for :ticket:`8804`, where the ``index_list`` pragma
