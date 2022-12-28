@@ -48,9 +48,12 @@ new ORM declarative system that unifies classical and declarative mapping,
 support for Python dataclasses, and asyncio support for Core and ORM.
 
 The steps to achieve 2.0 migration are in the following subsections; overall,
-the general strategy is that once an application runs on 1.4 with all
-warning flags turned on and does not emit any 2.0-deprecation warnings, it is
-now cross-compatible with SQLAlchemy 2.0.
+the general strategy is that once an application runs on 1.4 with all warning
+flags turned on and does not emit any 2.0-deprecation warnings, it is now
+**mostly** cross-compatible with SQLAlchemy 2.0. **Please note there may be
+additional API and behavioral changes that may behave differently when running
+against SQLAlchemy 2.0; always test code against an actual SQLAlchemy 2.0
+release as the final step in migrating**.
 
 
 First Prerequisite, step one - A Working 1.3 Application
@@ -466,6 +469,18 @@ that descend from ``Base``::
 .. versionchanged:: 2.0.0beta3 - improved the ``__allow_unmapped__``
    attribute support to allow for 1.4-style explicit annotated relationships
    that don't use :class:`_orm.Mapped` to remain usable.
+
+
+.. _migration_20_step_seven:
+
+Migration to 2.0 Step Seven - Test against a SQLAlchemy 2.0 Release
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As mentioned previously, SQLAlchemy 2.0 has additional API and behavioral
+changes that are intended to be backwards compatible, however may introduce
+some incompatibilities nonetheless.  Therefore after the overall porting
+process is complete, the final step is to test against the most recent release
+of SQLAlchemy 2.0 to correct for any remaining issues that might be present.
 
 
 2.0 Migration - Core Connection / Transaction
