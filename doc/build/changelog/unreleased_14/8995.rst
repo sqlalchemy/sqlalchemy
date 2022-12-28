@@ -1,6 +1,7 @@
 .. change::
-    :tags: bug, installation
+    :tags: bug, general
     :tickets: 8995
+    :versions: 2.0.0rc1
 
     Fixed regression where the base compat module was calling upon
     ``platform.architecture()`` in order to detect some system properties,

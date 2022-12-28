@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, tests
     :tickets: 9002
+    :versions: 2.0.0rc1
 
     Added new exclusion rule for third party dialects called
     ``unusual_column_name_characters``, which can be "closed" for third party

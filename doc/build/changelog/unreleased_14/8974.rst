@@ -1,6 +1,7 @@
 .. change::
-    :tags: bug, pool
+    :tags: bug, engine
     :tickets: 8974
+    :versions: 2.0.0rc1
 
     Fixed a long-standing race condition in the connection pool which could
     occur under eventlet/gevent monkeypatching schemes in conjunction with the
