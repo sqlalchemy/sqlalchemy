@@ -318,7 +318,7 @@ above table will look like:
 
    INSERT INTO my_table DEFAULT VALUES RETURNING my_table.id, my_table.timestamp, my_table.special_identifier
 
-.. versionchanged:: 2.0.0b5 The :paramref:`_orm.Mapper.eager_defaults` parameter now defaults
+.. versionchanged:: 2.0.0rc1 The :paramref:`_orm.Mapper.eager_defaults` parameter now defaults
    to a new setting ``"auto"``, which will automatically make use of RETURNING
    to fetch server-generated default values on INSERT if the backing database
    supports both RETURNING as well as :ref:`insertmanyvalues <engine_insertmanyvalues>`.

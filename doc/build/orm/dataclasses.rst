@@ -462,7 +462,7 @@ variable may be generated::
     >>> u1.password_hash
     '$6$9ppc... (example crypted string....)'
 
-.. versionchanged:: 2.0.0b5  When using :meth:`_orm.registry.mapped_as_dataclass`
+.. versionchanged:: 2.0.0rc1  When using :meth:`_orm.registry.mapped_as_dataclass`
    or :class:`.MappedAsDataclass`, fields that do not include the
    :class:`.Mapped` annotation may be included, which will be treated as part
    of the resulting dataclass but not be mapped, without the need to

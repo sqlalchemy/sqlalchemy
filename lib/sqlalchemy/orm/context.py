@@ -512,7 +512,7 @@ class ORMCompileState(AbstractORMCompileState):
         """given MapperEntity or ORMColumnEntity, setup polymorphic loading
         if called for by the Mapper.
 
-        As of #8168 in 2.0.0b5, polymorphic adapters, which greatly increase
+        As of #8168 in 2.0.0rc1, polymorphic adapters, which greatly increase
         the complexity of the query creation process, are not used at all
         except in the quasi-legacy cases of with_polymorphic referring to an
         alias and/or subquery. This would apply to concrete polymorphic

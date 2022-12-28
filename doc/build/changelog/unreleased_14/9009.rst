@@ -1,7 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 9009
-    :versions: 2.0.0b5
+    :versions: 2.0.0rc1
 
     Added parameter
     :paramref:`.FunctionElement.column_valued.joins_implicitly`, which is

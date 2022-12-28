@@ -401,7 +401,7 @@ to view the two distinct identity tokens::
 The above logic takes place automatically when using the
 :ref:`horizontal_sharding_toplevel` extension.
 
-.. versionadded:: 2.0.0b5 - added the ``identity_token`` ORM level execution
+.. versionadded:: 2.0.0rc1 - added the ``identity_token`` ORM level execution
    option.
 
 .. seealso::

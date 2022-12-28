@@ -1606,7 +1606,7 @@ class Session(_SessionClassMethods, EventTarget):
                underlying transaction, but not :meth:`_orm.Session.commit` or
                :meth:`_orm.Session.close` calls.
 
-          .. versionadded:: 2.0.0b5
+          .. versionadded:: 2.0.0rc1
 
 
         """  # noqa
@@ -3501,7 +3501,7 @@ class Session(_SessionClassMethods, EventTarget):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-         .. versionadded: 2.0.0b5
+         .. versionadded: 2.0.0rc1
 
         :return: The object instance, or ``None``.
 
