@@ -928,12 +928,12 @@ class Insert(ValuesBase):
             ("_multi_values", InternalTraversal.dp_dml_multi_values),
             ("select", InternalTraversal.dp_clauseelement),
             ("_post_values_clause", InternalTraversal.dp_clauseelement),
-            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_return_defaults", InternalTraversal.dp_boolean),
             (
                 "_return_defaults_columns",
-                InternalTraversal.dp_clauseelement_list,
+                InternalTraversal.dp_clauseelement_tuple,
             ),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
@@ -1208,16 +1208,16 @@ class Update(DMLWhereBase, ValuesBase):
     _traverse_internals = (
         [
             ("table", InternalTraversal.dp_clauseelement),
-            ("_where_criteria", InternalTraversal.dp_clauseelement_list),
+            ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_inline", InternalTraversal.dp_boolean),
             ("_ordered_values", InternalTraversal.dp_dml_ordered_values),
             ("_values", InternalTraversal.dp_dml_values),
-            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_return_defaults", InternalTraversal.dp_boolean),
             (
                 "_return_defaults_columns",
-                InternalTraversal.dp_clauseelement_list,
+                InternalTraversal.dp_clauseelement_tuple,
             ),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
@@ -1436,8 +1436,8 @@ class Delete(DMLWhereBase, UpdateBase):
     _traverse_internals = (
         [
             ("table", InternalTraversal.dp_clauseelement),
-            ("_where_criteria", InternalTraversal.dp_clauseelement_list),
-            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
+            ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
         ]
         + HasPrefixes._has_prefixes_traverse_internals

@@ -701,7 +701,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([15, 27, 19, 27])),
         )
 
-    def test_update_future_lambda(self):
+    @testing.variation("values_first", [True, False])
+    def test_update_future_lambda(self, values_first):
         User, users = self.classes.User, self.tables.users
 
         sess = Session(testing.db, future=True)
@@ -710,14 +711,22 @@ class UpdateDeleteTest(fixtures.MappedTest):
             sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
-        sess.execute(
-            lambda_stmt(
+        new_value = 10
+
+        if values_first:
+            stmt = lambda_stmt(lambda: update(User))
+            stmt += lambda s: s.values({"age": User.age - new_value})
+            stmt += lambda s: s.where(User.age > 29).execution_options(
+                synchronize_session="evaluate"
+            )
+        else:
+            stmt = lambda_stmt(
                 lambda: update(User)
                 .where(User.age > 29)
-                .values({"age": User.age - 10})
+                .values({"age": User.age - new_value})
                 .execution_options(synchronize_session="evaluate")
-            ),
-        )
+            )
+        sess.execute(stmt)
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(
@@ -725,14 +734,21 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
-        sess.execute(
-            lambda_stmt(
+        if values_first:
+            stmt = lambda_stmt(lambda: update(User))
+            stmt += lambda s: s.values({"age": User.age - new_value})
+            stmt += lambda s: s.where(User.age > 29).execution_options(
+                synchronize_session="evaluate"
+            )
+        else:
+            stmt = lambda_stmt(
                 lambda: update(User)
                 .where(User.age > 29)
                 .values({User.age: User.age - 10})
                 .execution_options(synchronize_session="evaluate")
             )
-        )
+
+        sess.execute(stmt)
         eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
         eq_(
             sess.query(User.age).order_by(User.id).all(),

@@ -2693,7 +2693,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     """Tests the generative capability of Insert, Update"""
 
-    __dialect__ = "default"
+    __dialect__ = "default_enhanced"
 
     # fixme: consolidate converage from elsewhere here and expand
 
@@ -2935,3 +2935,41 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE construct does not support multiple parameter sets.",
             stmt.compile,
         )
+
+    @testing.variation("stmt_type", ["update", "delete"])
+    def test_whereclause_returning_adapted(self, stmt_type):
+        """test #9033"""
+
+        if stmt_type.update:
+            stmt = (
+                t1.update()
+                .where(t1.c.col1 == 10)
+                .values(col1=15)
+                .returning(t1.c.col1)
+            )
+        elif stmt_type.delete:
+            stmt = t1.delete().where(t1.c.col1 == 10).returning(t1.c.col1)
+        else:
+            stmt_type.fail()
+
+        stmt = visitors.replacement_traverse(stmt, {}, lambda elem: None)
+
+        assert isinstance(stmt._where_criteria, tuple)
+        assert isinstance(stmt._returning, tuple)
+
+        stmt = stmt.where(t1.c.col2 == 5).returning(t1.c.col2)
+
+        if stmt_type.update:
+            self.assert_compile(
+                stmt,
+                "UPDATE table1 SET col1=:col1 WHERE table1.col1 = :col1_1 "
+                "AND table1.col2 = :col2_1 RETURNING table1.col1, table1.col2",
+            )
+        elif stmt_type.delete:
+            self.assert_compile(
+                stmt,
+                "DELETE FROM table1 WHERE table1.col1 = :col1_1 "
+                "AND table1.col2 = :col2_1 RETURNING table1.col1, table1.col2",
+            )
+        else:
+            stmt_type.fail()
