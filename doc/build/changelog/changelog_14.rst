@@ -24,6 +24,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8862
+        :versions: 2.0.0rc1
 
         Fixed bug where :meth:`_orm.Session.merge` would fail to preserve the
         current loaded contents of relationship attributes that were indicated with
@@ -49,6 +50,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, orm
         :tickets: 8881
+        :versions: 2.0.0rc1
 
         Fixed issues in :func:`_orm.with_expression` where expressions that were
         composed of columns that were referenced from the enclosing SELECT would
@@ -92,6 +94,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, postgresql
         :tickets: 8748
+        :versions: 2.0.0rc1
 
         Made an adjustment to how the PostgreSQL dialect considers column types
         when it reflects columns from a table, to accommodate for alternative
@@ -100,6 +103,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: usecase, sqlite
         :tickets: 8903
+        :versions: 2.0.0rc1
 
         Added support for the SQLite backend to reflect the "DEFERRABLE" and
         "INITIALLY" keywords which may be present on a foreign key construct. Pull
@@ -108,6 +112,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: usecase, sql
         :tickets: 8800
+        :versions: 2.0.0rc1
 
         An informative re-raise is now thrown in the case where any "literal
         bindparam" render operation fails, indicating the value itself and
@@ -117,6 +122,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: usecase, sqlite
         :tickets: 8804
+        :versions: 2.0.0rc1
 
         Added support for reflection of expression-oriented WHERE criteria included
         in indexes on the SQLite dialect, in a manner similar to that of the
@@ -125,6 +131,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, sql
         :tickets: 8827
+        :versions: 2.0.0rc1
 
         Fixed a series of issues regarding the position and sometimes the identity
         of rendered bound parameters, such as those used for SQLite, asyncpg,
@@ -147,6 +154,7 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: bug, engine
         :tickets: 8963
+        :versions: 2.0.0rc1
 
         Fixed issue where :meth:`_engine.Result.freeze` method would not work for
         textual SQL using either :func:`_sql.text` or

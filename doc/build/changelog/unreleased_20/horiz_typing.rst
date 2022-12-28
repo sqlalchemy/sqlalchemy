@@ -1,6 +1,9 @@
 .. change::
     :tags: bug, typing
-    :tickets: 6810
+    :tickets: 6810, 9025
 
-    The horizontal sharding extension is now pep-484 typed. Thanks to Gleb
-    Kisenkov for their efforts on this.
+    pep-484 typing has been completed for the
+    ``sqlalchemy.ext.horizontal_shard`` extension as well as the
+    ``sqlalchemy.orm.events`` module. Thanks to Gleb Kisenkov for their
+    efforts.
+

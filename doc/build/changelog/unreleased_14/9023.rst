@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, postgresql
     :tickets: 9023
+    :versions: 2.0.0rc1
 
     Fixed bug where the PostgreSQL
     :paramref:`_postgresql.OnConflictClause.constraint` parameter would accept
