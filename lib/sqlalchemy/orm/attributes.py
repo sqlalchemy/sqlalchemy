@@ -55,6 +55,7 @@ from .base import Mapped as Mapped  # noqa
 from .base import NEVER_SET  # noqa
 from .base import NO_AUTOFLUSH
 from .base import NO_CHANGE  # noqa
+from .base import NO_KEY
 from .base import NO_RAISE
 from .base import NO_VALUE
 from .base import NON_PERSISTENT_OK  # noqa
@@ -115,19 +116,15 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-class NoKey(str):
-    pass
-
-
 _AllPendingType = Sequence[
     Tuple[Optional["InstanceState[Any]"], Optional[object]]
 ]
 
-NO_KEY = NoKey("no name")
-
 SelfQueryableAttribute = TypeVar(
     "SelfQueryableAttribute", bound="QueryableAttribute[Any]"
 )
+
+_UNKNOWN_ATTR_KEY = object()
 
 
 @inspection._self_inspects
@@ -327,7 +324,12 @@ class QueryableAttribute(
     def _memoized_attr_expression(self) -> ColumnElement[_T]:
         annotations: _AnnotationDict
 
-        if self.key is NO_KEY:
+        # applies only to Proxy() as used by hybrid.
+        # currently is an exception to typing rather than feeding through
+        # non-string keys.
+        # ideally Proxy() would have a separate set of methods to deal
+        # with this case.
+        if self.key is _UNKNOWN_ATTR_KEY:  # type: ignore[comparison-overlap]
             annotations = {"entity_namespace": self._entity_namespace}
         else:
             annotations = {
