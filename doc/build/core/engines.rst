@@ -130,7 +130,7 @@ The :class:`.URL` object is created using the :meth:`_engine.URL.create()`
 constructor method, passing all fields individually.   Special characters
 such as those within passwords may be passed without any modification::
 
-    from sqlalchemy import URL
+    from sqlalchemy.engine import URL
 
     url_object = URL.create(
         "postgresql+pg8000",
