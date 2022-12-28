@@ -10,7 +10,298 @@
 
 .. changelog::
     :version: 2.0.0rc1
-    :include_notes_from: unreleased_20
+    :released: December 28, 2022
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 6810, 9025
+
+        pep-484 typing has been completed for the
+        ``sqlalchemy.ext.horizontal_shard`` extension as well as the
+        ``sqlalchemy.orm.events`` module. Thanks to Gleb Kisenkov for their
+        efforts.
+
+
+    .. change::
+        :tags: postgresql, bug
+        :tickets: 8977
+        :versions: 2.0.0rc1
+
+        Added support for explicit use of PG full text functions with asyncpg and
+        psycopg (SQLAlchemy 2.0 only), with regards to the ``REGCONFIG`` type cast
+        for the first argument, which previously would be incorrectly cast to a
+        VARCHAR, causing failures on these dialects that rely upon explicit type
+        casts. This includes support for :class:`_postgresql.to_tsvector`,
+        :class:`_postgresql.to_tsquery`, :class:`_postgresql.plainto_tsquery`,
+        :class:`_postgresql.phraseto_tsquery`,
+        :class:`_postgresql.websearch_to_tsquery`,
+        :class:`_postgresql.ts_headline`, each of which will determine based on
+        number of arguments passed if the first string argument should be
+        interpreted as a PostgreSQL "REGCONFIG" value; if so, the argument is typed
+        using a newly added type object :class:`_postgresql.REGCONFIG` which is
+        then explicitly cast in the SQL expression.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4629
+
+        A warning is emitted if a backref name used in :func:`_orm.relationship`
+        names an attribute on the target class which already has a method or
+        attribute assigned to that name, as the backref declaration will replace
+        that attribute.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9020
+
+        Fixed regression where newly revised PostgreSQL range types such as
+        :class:`_postgresql.INT4RANGE` could not be set up as the impl of a
+        :class:`.TypeDecorator` custom type, instead raising a ``TypeError``.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 7837
+
+        Adjustments to the :class:`_orm.Session` in terms of extensibility,
+        as well as updates to the :class:`.ShardedSession` extension:
+
+        * :meth:`_orm.Session.get` now accepts
+          :paramref:`_orm.Session.get.bind_arguments`, which in particular may be
+          useful when using the horizontal sharding extension.
+
+        * :meth:`_orm.Session.get_bind` accepts arbitrary kw arguments, which
+          assists in developing code that uses a :class:`_orm.Session` class which
+          overrides this method with additional arguments.
+
+        * Added a new ORM execution option ``identity_token`` which may be used
+          to directly affect the "identity token" that will be associated with
+          newly loaded ORM objects.  This token is how sharding approaches
+          (namely the :class:`.ShardedSession`, but can be used in other cases
+          as well) separate object identities across different "shards".
+
+          .. seealso::
+
+              :ref:`queryguide_identity_token`
+
+        * The :meth:`_orm.SessionEvents.do_orm_execute` event hook may now be used
+          to affect all ORM-related options, including ``autoflush``,
+          ``populate_existing``, and ``yield_per``; these options are re-consumed
+          subsequent to event hooks being invoked before they are acted upon.
+          Previously, options like ``autoflush`` would have been already evaluated
+          at this point. The new ``identity_token`` option is also supported in
+          this mode and is now used by the horizontal sharding extension.
+
+
+        * The :class:`.ShardedSession` class replaces the
+          :paramref:`.ShardedSession.id_chooser` hook with a new hook
+          :paramref:`.ShardedSession.identity_chooser`, which no longer relies upon
+          the legacy :class:`_orm.Query` object.
+          :paramref:`.ShardedSession.id_chooser` is still accepted in place of
+          :paramref:`.ShardedSession.identity_chooser` with a deprecation warning.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9015
+
+        The behavior of "joining an external transaction into a Session" has been
+        revised and improved, allowing explicit control over how the
+        :class:`_orm.Session` will accommodate an incoming
+        :class:`_engine.Connection` that already has a transaction and possibly a
+        savepoint already established. The new parameter
+        :paramref:`_orm.Session.join_transaction_mode` includes a series of option
+        values which can accommodate the existing transaction in several ways, most
+        importantly allowing a :class:`_orm.Session` to operate in a fully
+        transactional style using savepoints exclusively, while leaving the
+        externally initiated transaction non-committed and active under all
+        circumstances, allowing test suites to rollback all changes that take place
+        within tests.
+
+        Additionally, revised the :meth:`_orm.Session.close` method to fully close
+        out savepoints that may still be present, which also allows the
+        "external transaction" recipe to proceed without warnings if the
+        :class:`_orm.Session` did not explicitly end its own SAVEPOINT
+        transactions.
+
+        .. seealso::
+
+            :ref:`change_9015`
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8988
+
+        Added test support to ensure that all compiler ``visit_xyz()`` methods
+        across all :class:`.Compiler` implementations in SQLAlchemy accept a
+        ``**kw`` parameter, so that all compilers accept additional keyword
+        arguments under all circumstances.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 8984
+
+        The :meth:`_postgresql.Range.__eq___` will now return ``NotImplemented``
+        when comparing with an instance of a different class, instead of raising
+        an :exc:`AttributeError` exception.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6114
+
+        The :meth:`.SQLCompiler.construct_params` method, as well as the
+        :attr:`.SQLCompiler.params` accessor, will now return the
+        exact parameters that correspond to a compiled statement that used
+        the ``render_postcompile`` parameter to compile.   Previously,
+        the method returned a parameter structure that by itself didn't correspond
+        to either the original parameters or the expanded ones.
+
+        Passing a new dictionary of parameters to
+        :meth:`.SQLCompiler.construct_params` for a :class:`.SQLCompiler` that was
+        constructed with ``render_postcompile`` is now disallowed; instead, to make
+        a new SQL string and parameter set for an alternate set of parameters, a
+        new method :meth:`.SQLCompiler.construct_expanded_state` is added which
+        will produce a new expanded form for the given parameter set, using the
+        :class:`.ExpandedState` container which includes a new SQL statement
+        and new parameter dictionary, as well as a positional parameter tuple.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8703, 8997, 8996
+
+        A series of changes and improvements regarding
+        :meth:`_orm.Session.refresh`. The overall change is that primary key
+        attributes for an object are now included in a refresh operation
+        unconditionally when relationship-bound attributes are to be refreshed,
+        even if not expired and even if not specified in the refresh.
+
+        * Improved :meth:`_orm.Session.refresh` so that if autoflush is enabled
+          (as is the default for :class:`_orm.Session`), the autoflush takes place
+          at an earlier part of the refresh process so that pending primary key
+          changes are applied without errors being raised.  Previously, this
+          autoflush took place too late in the process and the SELECT statement
+          would not use the correct key to locate the row and an
+          :class:`.InvalidRequestError` would be raised.
+
+        * When the above condition is present, that is, unflushed primary key
+          changes are present on the object, but autoflush is not enabled,
+          the refresh() method now explicitly disallows the operation to proceed,
+          and an informative :class:`.InvalidRequestError` is raised asking that
+          the pending primary key changes be flushed first.  Previously,
+          this use case was simply broken and :class:`.InvalidRequestError`
+          would be raised anyway. This restriction is so that it's safe for the
+          primary key attributes to be refreshed, as is necessary for the case of
+          being able to refresh the object with relationship-bound secondary
+          eagerloaders also being emitted. This rule applies in all cases to keep
+          API behavior consistent regardless of whether or not the PK cols are
+          actually needed in the refresh, as it is unusual to be refreshing
+          some attributes on an object while keeping other attributes "pending"
+          in any case.
+
+        * The :meth:`_orm.Session.refresh` method has been enhanced such that
+          attributes which are :func:`_orm.relationship`-bound and linked to an
+          eager loader, either at mapping time or via last-used loader options,
+          will be refreshed in all cases even when a list of attributes is passed
+          that does not include any columns on the parent row. This builds upon the
+          feature first implemented for non-column attributes as part of
+          :ticket:`1763` fixed in 1.4 allowing eagerly-loaded relationship-bound
+          attributes to participate in the :meth:`_orm.Session.refresh` operation.
+          If the refresh operation does not indicate any columns on the parent row
+          to be refreshed, the primary key columns will nonetheless be included
+          in the refresh operation, which allows the load to proceed into the
+          secondary relationship loaders indicated as it does normally.
+          Previously an :class:`.InvalidRequestError` error would be raised
+          for this condition (:ticket:`8703`)
+
+        * Fixed issue where an unnecessary additional SELECT would be emitted in
+          the case where :meth:`_orm.Session.refresh` were called with a
+          combination of expired attributes, as well as an eager loader such as
+          :func:`_orm.selectinload` that emits a "secondary" query, if the primary
+          key attributes were also in an expired state.  As the primary key
+          attributes are now included in the refresh automatically, there is no
+          additional load for these attributes when a relationship loader
+          goes to select for them (:ticket:`8997`)
+
+        * Fixed regression caused by :ticket:`8126` released in 2.0.0b1 where the
+          :meth:`_orm.Session.refresh` method would fail with an
+          ``AttributeError``, if passed both an expired column name as well as the
+          name of a relationship-bound attribute that was linked to a "secondary"
+          eagerloader such as the :func:`_orm.selectinload` eager loader
+          (:ticket:`8996`)
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8994
+
+        To accommodate for third party dialects with different character escaping
+        needs regarding bound parameters, the system by which SQLAlchemy "escapes"
+        (i.e., replaces with another character in its place) special characters in
+        bound parameter names has been made extensible for third party dialects,
+        using the :attr:`.SQLCompiler.bindname_escape_chars` dictionary which can
+        be overridden at the class declaration level on any :class:`.SQLCompiler`
+        subclass. As part of this change, also added the dot ``"."`` as a default
+        "escaped" character.
+
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 8889
+
+        Added a new default value for the :paramref:`.Mapper.eager_defaults`
+        parameter "auto", which will automatically fetch table default values
+        during a unit of work flush, if the dialect supports RETURNING for the
+        INSERT being run, as well as
+        :ref:`insertmanyvalues <engine_insertmanyvalues>` available. Eager fetches
+        for server-side UPDATE defaults, which are very uncommon, continue to only
+        take place if :paramref:`.Mapper.eager_defaults` is set to ``True``, as
+        there is no batch-RETURNING form for UPDATE statements.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 8973
+
+        Removed the requirement that the ``__allow_unmapped__`` attribute be used
+        on Declarative Dataclass Mapped class when non-``Mapped[]`` annotations are
+        detected; previously, an error message that was intended to support legacy
+        ORM typed mappings would be raised, which additionally did not mention
+        correct patterns to use with Dataclasses specifically. This error message
+        is now no longer raised if :meth:`_orm.registry.mapped_as_dataclass` or
+        :class:`_orm.MappedAsDataclass` is used.
+
+        .. seealso::
+
+            :ref:`orm_declarative_native_dataclasses_non_mapped_fields`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8168
+
+        Improved a fix first made in version 1.4 for :ticket:`8456` which scaled
+        back the usage of internal "polymorphic adapters", that are used to render
+        ORM queries when the :paramref:`_orm.Mapper.with_polymorphic` parameter is
+        used. These adapters, which are very complex and error prone, are now used
+        only in those cases where an explicit user-supplied subquery is used for
+        :paramref:`_orm.Mapper.with_polymorphic`, which includes only the use case
+        of concrete inheritance mappings that use the
+        :func:`_orm.polymorphic_union` helper, as well as the legacy use case of
+        using an aliased subquery for joined inheritance mappings, which is not
+        needed in modern use.
+
+        For the most common case of joined inheritance mappings that use the
+        built-in polymorphic loading scheme, which includes those which make use of
+        the :paramref:`_orm.Mapper.polymorphic_load` parameter set to ``inline``,
+        polymorphic adapters are now no longer used. This has both a positive
+        performance impact on the construction of queries as well as a
+        substantial simplification of the internal query rendering process.
+
+        The specific issue targeted was to allow a :func:`_orm.column_property`
+        to refer to joined-inheritance classes within a scalar subquery, which now
+        works as intuitively as is feasible.
+
+
 
 .. changelog::
     :version: 2.0.0b4

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 9020
-
-    Fixed regression where newly revised PostgreSQL range types such as
-    :class:`_postgresql.INT4RANGE` could not be set up as the impl of a
-    :class:`.TypeDecorator` custom type, instead raising a ``TypeError``.

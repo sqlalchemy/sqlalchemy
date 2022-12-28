@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4629
-
-    A warning is emitted if a backref name used in :func:`_orm.relationship`
-    names an attribute on the target class which already has a method or
-    attribute assigned to that name, as the backref declaration will replace
-    that attribute.

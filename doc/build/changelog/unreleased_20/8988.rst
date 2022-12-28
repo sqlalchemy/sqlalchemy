@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 8988
-
-    Added test support to ensure that all compiler ``visit_xyz()`` methods
-    across all :class:`.Compiler` implementations in SQLAlchemy accept a
-    ``**kw`` parameter, so that all compilers accept additional keyword
-    arguments under all circumstances.
