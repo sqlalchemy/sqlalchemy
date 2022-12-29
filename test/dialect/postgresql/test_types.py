@@ -5683,6 +5683,18 @@ class JSONBTest(JSONTest):
             lambda self: self.jsoncol.contained_by({"foo": "1", "bar": None}),
             "test_table.test_column <@ %(test_column_1)s",
         ),
+        (
+            lambda self: self.jsoncol.delete_path(["a", "b"]),
+            "test_table.test_column #- %(test_column_1)s",
+        ),
+        (
+            lambda self: self.jsoncol.path_exists("$.k1"),
+            "test_table.test_column @? %(test_column_1)s",
+        ),
+        (
+            lambda self: self.jsoncol.path_match("$.k1[0] > 2"),
+            "test_table.test_column @@ %(test_column_1)s",
+        ),
     )
     def test_where(self, whereclause_fn, expected):
         super().test_where(whereclause_fn, expected)

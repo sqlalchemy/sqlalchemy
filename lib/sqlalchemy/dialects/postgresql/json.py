@@ -65,6 +65,27 @@ CONTAINED_BY = operators.custom_op(
     eager_grouping=True,
 )
 
+DELETE_PATH = operators.custom_op(
+    "#-",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
+PATH_EXISTS = operators.custom_op(
+    "@?",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
+PATH_MATCH = operators.custom_op(
+    "@@",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
 
 class JSONPathType(sqltypes.JSON.JSONPathType):
     def _processor(self, dialect, super_proc):
@@ -279,7 +300,10 @@ class JSONB(JSON):
     It also adds additional operators specific to JSONB, including
     :meth:`.JSONB.Comparator.has_key`, :meth:`.JSONB.Comparator.has_all`,
     :meth:`.JSONB.Comparator.has_any`, :meth:`.JSONB.Comparator.contains`,
-    and :meth:`.JSONB.Comparator.contained_by`.
+    :meth:`.JSONB.Comparator.contained_by`,
+    :meth:`.JSONB.Comparator.delete_path`,
+    :meth:`.JSONB.Comparator.path_exists` and
+    :meth:`.JSONB.Comparator.path_match`.
 
     Like the :class:`_types.JSON` type, the :class:`_postgresql.JSONB`
     type does not detect
@@ -338,6 +362,30 @@ class JSONB(JSON):
             """
             return self.operate(
                 CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
+
+        def delete_path(self, array):
+            """JSONB expression. Deletes field or array element specified in
+            the argument array.
+            """
+            return self.operate(DELETE_PATH, array, result_type=JSONB)
+
+        def path_exists(self, other):
+            """Boolean expression. Test for presence of item given by the
+            argument JSONPath expression.
+            """
+            return self.operate(
+                PATH_EXISTS, other, result_type=sqltypes.Boolean
+            )
+
+        def path_match(self, other):
+            """Boolean expression. Test if JSONPath predicate given by the
+            argument JSONPath expression matches.
+
+            Only the first item of the result is taken into account.
+            """
+            return self.operate(
+                PATH_MATCH, other, result_type=sqltypes.Boolean
             )
 
     comparator_factory = Comparator
