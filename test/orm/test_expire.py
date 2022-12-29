@@ -967,7 +967,16 @@ class ExpireTest(_fixtures.FixtureTest):
         [True, False],
     )
     @testing.variation(
-        "expire_first", [True, False, "not_pk", "not_pk_plus_pending"]
+        "expire_first",
+        [
+            True,
+            False,
+            "not_pk",
+            (
+                "not_pk_plus_pending",
+                testing.requires.updateable_autoincrement_pks,
+            ),
+        ],
     )
     @testing.variation("include_column", [True, False, "no_attrs"])
     @testing.variation("autoflush", [True, False])
@@ -1111,6 +1120,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.variation("expire_first", [True, False])
     @testing.variation("autoflush", [True, False])
     @testing.variation("ensure_name_cleared", [True, False])
+    @testing.requires.updateable_autoincrement_pks
     def test_no_pending_pks_on_refresh(
         self, expire_first, autoflush, ensure_name_cleared
     ):
