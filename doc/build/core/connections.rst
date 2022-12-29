@@ -1584,7 +1584,7 @@ Quick Guidelines for Lambdas
 
 Above all, the emphasis within the lambda SQL system is ensuring that there
 is never a mismatch between the cache key generated for a lambda and the
-SQL string it will produce.   The :class:`_sql.LamdaElement` and related
+SQL string it will produce.   The :class:`_sql.LambdaElement` and related
 objects will run and analyze the given lambda in order to calculate how
 it should be cached on each run, trying to detect any potential problems.
 Basic guidelines include:
