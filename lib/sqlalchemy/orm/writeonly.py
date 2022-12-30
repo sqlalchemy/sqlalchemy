@@ -50,7 +50,6 @@ from ..sql import update
 from ..sql.dml import Delete
 from ..sql.dml import Insert
 from ..sql.dml import Update
-from ..util import symbol
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -341,7 +340,7 @@ class WriteOnlyAttributeImpl(
         c = self._get_collection_history(state, passive)
         return [(attributes.instance_state(x), x) for x in c.all_items]
 
-    def _get_collection_history(self, state: InstanceState[_T], passive: PassiveFlag):
+    def _get_collection_history(self, state, passive):
         if self.key in state.committed_state:
             c = state.committed_state[self.key]
         else:
@@ -445,7 +444,7 @@ class AbstractCollectionWriter(Generic[_T]):
     if not TYPE_CHECKING:
         __slots__ = ()
 
-    def __init__(self, attr: WriteOnlyAttributeImpl, state: InstanceState[_T]) -> None:
+    def __init__(self, attr, state):
 
         self.instance = instance = state.obj()
         self.attr = attr

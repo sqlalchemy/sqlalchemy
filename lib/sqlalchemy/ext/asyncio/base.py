@@ -178,7 +178,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
         if not is_ctxmanager:
             await self.gen.aclose()
 
-        return start_value  # type: ignore[no-any-return]
+        return start_value
 
     async def __aexit__(
         self, typ: Any, value: Any, traceback: Any

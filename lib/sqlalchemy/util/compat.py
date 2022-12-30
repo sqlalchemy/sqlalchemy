@@ -114,7 +114,7 @@ else:
 
 
 if py310:
-    anext_ = anext  # type: ignore[name-defined]
+    anext_ = anext
 else:
 
     _NOT_PROVIDED = object()
