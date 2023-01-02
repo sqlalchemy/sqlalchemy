@@ -96,6 +96,7 @@ if typing.TYPE_CHECKING:
     from .annotation import AnnotatedBooleanClauseList
     from .annotation import AnnotatedClauseList
     from .annotation import AnnotatedLabel
+    from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
     from .cache_key import CacheKey
     from .compiler import Compiled
@@ -482,7 +483,7 @@ class ClauseElement(
         return s
 
     @property
-    def entity_namespace(self) -> NoReturn:
+    def entity_namespace(self) -> Union[_EntityNamespace, NoReturn]:
         raise AttributeError(
             "This SQL expression has no entity namespace "
             "with which to filter from."
@@ -1879,7 +1880,7 @@ class WrapsColumnExpression(ColumnElement[_T]):
             return self._dedupe_anon_tq_label_idx(idx)
 
     @property
-    def _proxy_key(self) -> Optional[str]:
+    def _proxy_key(self) -> Optional[str]:  # type: ignore [override]
         wce = self.wrapped_column_expression
 
         if not wce._is_text_clause:
@@ -2174,7 +2175,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         d["value"] = v
         return d
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         if state.get("unique", False):
             state["key"] = _anonymous_label.safe_construct(
                 id(self), state.get("_orig_key", "param"), sanitize_key=True
@@ -2765,7 +2766,7 @@ class ClauseList(
             [elem._select_iterable for elem in self.clauses]
         )
 
-    def append(self, clause):
+    def append(self, clause: Any) -> None:
         if self.group_contents:
             self.clauses.append(
                 coercions.expect(self._text_converter_role, clause).self_group(
@@ -2782,8 +2783,8 @@ class ClauseList(
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(
-        self, against: Callable = None
-    ) -> Union[AnnotatedClauseList, Grouping]:
+        self, against: OperatorType
+    ) -> Union[AnnotatedClauseList, Grouping[ClauseList]]:
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2968,7 +2969,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     __visit_name__ = "expression_clauselist"
     inherit_cache = True
 
-    def __init__(self, *arg, **kw) -> None:
+    def __init__(self, *arg: Any, **kw: Any) -> NoReturn:
         raise NotImplementedError(
             "BooleanClauseList has a private constructor"
         )
@@ -3222,11 +3223,11 @@ class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
 
     def _bind_param(
         self,
-        operator: Callable,
+        operator: OperatorType,
         obj: List[Tuple[int, str]],
-        type_: Optional[Any] = None,
+        type_: Optional[TypeEngine[_T]] = None,
         expanding: bool = False,
-    ) -> BindParameter:
+    ) -> Union[BindParameter[_T], Tuple]:
         if expanding:
             return BindParameter(
                 None,
@@ -3407,7 +3408,9 @@ class Cast(WrapsColumnExpression[_T]):
     @property
     def wrapped_column_expression(
         self,
-    ) -> Union[BindParameter, ColumnClause, Column]:
+    ) -> Union[
+        BindParameter[Any], ColumnClause[Any], ColumnElement[Any], Column[Any]
+    ]:
         return self.clause
 
 
@@ -4802,7 +4805,7 @@ class ColumnClause(
         return []
 
     @property
-    def entity_namespace(self):
+    def entity_namespace(self) -> Union[_EntityNamespace, NoReturn]:
         if self.table is not None:
             return self.table.entity_namespace
         else:
@@ -4810,7 +4813,7 @@ class ColumnClause(
 
     def _clone(
         self, detect_subquery_cols: bool = False, **kw: Any
-    ) -> Union[ColumnClause, Column]:
+    ) -> Union[ColumnClause[_T], Column[_T]]:
         if (
             detect_subquery_cols
             and self.table is not None
@@ -5016,7 +5019,7 @@ class CollationClause(ColumnElement[str]):
 class _IdentifiedClause(Executable, ClauseElement):
     __visit_name__ = "identified"
 
-    def __init__(self, ident):
+    def __init__(self, ident: Any) -> None:
         self.ident = ident
 
 
@@ -5184,7 +5187,7 @@ class AnnotatedColumnElement(Annotated):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
 
-    def _with_annotations(self, values: immutabledict) -> Any:
+    def _with_annotations(self, values: immutabledict[str, Any]) -> Any:
         clone = super()._with_annotations(values)
         clone.__dict__.pop("comparator", None)
         return clone
