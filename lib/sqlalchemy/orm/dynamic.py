@@ -138,7 +138,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
         Query.__init__(
             self, attr.target_mapper, None  # type: ignore[arg-type]
         )
-        super().__init__(attr, state)
+        super().__init__(attr, state)  # type: ignore
 
     @property
     def session(self) -> Optional[Session]:
@@ -175,7 +175,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
                 result.SimpleResultMetaData([self.attr.class_.__name__]),
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
-                    attributes.PASSIVE_NO_INITIALIZE,
+                    attributes.PASSIVE_NO_INITIALIZE,  # type: ignore
                 ).added_items,
                 _source_supports_scalars=True,
             ).scalars()
@@ -192,7 +192,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
         if sess is None:
             return self.attr._get_collection_history(
                 attributes.instance_state(self.instance),
-                attributes.PASSIVE_NO_INITIALIZE,
+                attributes.PASSIVE_NO_INITIALIZE,  # type: ignore
             ).indexed(index)
         else:
             return self._generate(sess).__getitem__(index)
@@ -203,7 +203,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
             return len(
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
-                    attributes.PASSIVE_NO_INITIALIZE,
+                    attributes.PASSIVE_NO_INITIALIZE,  # type: ignore
                 ).added_items
             )
         else:
