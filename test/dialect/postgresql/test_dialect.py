@@ -1140,6 +1140,11 @@ $$ LANGUAGE plpgsql;
                 TransactionStatus.INTRANS,
             )
 
+    def test_select_rowcount(self):
+        conn = testing.db.connect()
+        cursor = conn.exec_driver_sql("SELECT 1")
+        eq_(cursor.rowcount, 1)
+
 
 class Psycopg3Test(fixtures.TestBase):
     __only_on__ = ("postgresql+psycopg",)
