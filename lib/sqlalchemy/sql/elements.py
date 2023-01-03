@@ -84,7 +84,6 @@ if typing.TYPE_CHECKING:
 
     from mypy_extensions import NoReturn
 
-    from sqlalchemy.util._py_collections import immutabledict
     from ._py_util import cache_anon_map
     from ._py_util import prefix_anon_map
     from ._typing import _ColumnExpressionArgument
@@ -96,8 +95,10 @@ if typing.TYPE_CHECKING:
     from .annotation import AnnotatedBooleanClauseList
     from .annotation import AnnotatedClauseList
     from .annotation import AnnotatedLabel
+    from .annotation import SupportsAnnotations
     from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
+    from .cache_key import CacheConst
     from .cache_key import CacheKey
     from .compiler import Compiled
     from .compiler import SQLCompiler
@@ -114,7 +115,7 @@ if typing.TYPE_CHECKING:
     from .selectable import TextualSelect
     from .selectable import Select
     from .sqltypes import ARRAY
-    from .sqltypes import Integer
+    from .sqltypes import Boolean
     from .sqltypes import NullType
     from .sqltypes import String
     from .sqltypes import TupleType
@@ -135,9 +136,9 @@ _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
 
 _T = TypeVar("_T", bound="Any")
+_O = TypeVar("_O", bound="object")
 _OPT = TypeVar("_OPT", bound="Any")
 _NT = TypeVar("_NT", bound="_NUMERIC")
-
 _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
@@ -1570,7 +1571,9 @@ class ColumnElement(
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
-    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[_T]]]:
         """Return True if the given column element compares to this one
         when targeting within a result row."""
 
@@ -2127,13 +2130,20 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     def _gen_cache_key(
         self,
         anon_map: cache_anon_map,
-        bindparams: Union[List[AnnotatedBindParameter], List[BindParameter]],
-    ) -> typing_Tuple[
-        str,
-        type,
-        Union[Tuple[type, Tuple[str, int]], Tuple[type]],
-        Union[_truncated_label, quoted_name, str],
-        bool,
+        bindparams: Union[
+            List[AnnotatedBindParameter], List[BindParameter[_T]]
+        ],
+    ) -> Optional[
+        Union[
+            typing_Tuple[str, Type[BindParameter[_T]]],
+            typing_Tuple[
+                str,
+                Type[BindParameter[_T]],
+                Union[CacheConst, typing_Tuple[Any, ...]],
+                str,
+                bool,
+            ],
+        ]
     ]:
         _gen_cache_ok = self.__class__.__dict__.get("inherit_cache", False)
 
@@ -2284,7 +2294,7 @@ class TextClause(
     def _is_star(self) -> bool:
         return self.text == "*"
 
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self._bindparams: Dict[str, BindParameter[Any]] = {}
 
         def repl(m: Match[Any]) -> str:
@@ -2590,7 +2600,9 @@ class TextClause(
             return self
 
 
-class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
+class Null(  # type: ignore [misc]
+    SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]
+):
     """Represent the NULL keyword in a SQL statement.
 
     :class:`.Null` is accessed as a constant via the
@@ -2604,7 +2616,7 @@ class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
     _singleton: Null
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> NullType:
         return type_api.NULLTYPE
 
     @classmethod
@@ -2617,7 +2629,7 @@ class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
 Null._create_singleton()
 
 
-class False_(
+class False_(  # type: ignore [misc]
     SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]
 ):
     """Represent the ``false`` keyword, or equivalent, in a SQL statement.
@@ -2632,7 +2644,7 @@ class False_(
     _singleton: False_
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> Boolean:
         return type_api.BOOLEANTYPE
 
     def _negate(self) -> True_:
@@ -2646,7 +2658,9 @@ class False_(
 False_._create_singleton()
 
 
-class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
+class True_(  # type: ignore [misc]
+    SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]
+):
     """Represent the ``true`` keyword, or equivalent, in a SQL statement.
 
     :class:`.True_` is accessed as a constant via the
@@ -2660,7 +2674,7 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
     _singleton: True_
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> Boolean:
         return type_api.BOOLEANTYPE
 
     def _negate(self) -> False_:
@@ -2716,7 +2730,7 @@ class ClauseList(
         group: bool = True,
         group_contents: bool = True,
         _literal_as_text_role: Type[roles.SQLRole] = roles.WhereHavingRole,
-    ):
+    ) -> None:
         self.operator = operator
         self.group = group
         self.group_contents = group_contents
@@ -2807,7 +2821,9 @@ class OperatorExpression(ColumnElement[_T]):
     def is_comparison(self) -> bool:
         return operators.is_comparison(self.operator)
 
-    def self_group(self, against: Optional[Callable[..., Any]] = None) -> Any:
+    def self_group(
+        self, against: OperatorType
+    ) -> Union[Grouping[OperatorExpression[_T]], OperatorExpression[_T]]:
         if (
             self.group
             and operators.is_precedent(self.operator, against)
@@ -3163,7 +3179,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
         return (self,)
 
     def self_group(
-        self, against: Optional[Callable[..., Any]] = None
+        self, against: Optional[OperatorType] = None
     ) -> Union[AnnotatedBooleanClauseList, BooleanClauseList, Grouping]:
         if not self.clauses:
             return self
@@ -3175,7 +3191,9 @@ and_ = BooleanClauseList.and_
 or_ = BooleanClauseList.or_
 
 
-class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
+class Tuple(  # type: ignore [misc]
+    ClauseList, ColumnElement[typing_Tuple[Any, ...]]
+):
     """Represent a SQL tuple."""
 
     __visit_name__ = "tuple"
@@ -3472,7 +3490,9 @@ class TypeCoerce(WrapsColumnExpression[_T]):
     def wrapped_column_expression(self) -> ColumnElement[Any]:
         return self.clause
 
-    def self_group(self, against: Optional[OperatorType] = None) -> TypeCoerce:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> TypeCoerce[_T]:
         grouped = self.clause.self_group(against=against)
         if grouped is not self.clause:
             return TypeCoerce(grouped, self.type)
@@ -3757,11 +3777,13 @@ class CollectionAggregate(UnaryExpression[_T]):
         )
 
 
-class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
+class AsBoolean(  # type: ignore [misc]
+    WrapsColumnExpression[bool], UnaryExpression[bool]
+):
     inherit_cache = True
 
     def __init__(
-        self, element: Any, operator: Callable, negate: Callable
+        self, element: Any, operator: OperatorType, negate: OperatorType
     ) -> None:
         self.element = element
         self.type = type_api.BOOLEANTYPE
@@ -3778,7 +3800,7 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
     def self_group(self, against: Optional[OperatorType] = None) -> AsBoolean:
         return self
 
-    def _negate(self):
+    def _negate(self) -> Union[AsBoolean, False_, True_]:
         if isinstance(self.element, (True_, False_)):
             return self.element._negate()
         else:
@@ -4003,14 +4025,16 @@ class GroupedElement(DQLDMLClauseElement):
 
     element: ClauseElement
 
-    def self_group(self, against: Union[Callable] = None) -> Grouping:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> GroupedElement:
         return self
 
     def _ungroup(self) -> Select:
         return self.element._ungroup()
 
 
-class Grouping(GroupedElement, ColumnElement[_T]):
+class Grouping(GroupedElement, ColumnElement[_T]):  # type: ignore [misc]
     """Represent a grouping within a column expression"""
 
     _traverse_internals: _TraverseInternalsType = [
@@ -4034,11 +4058,11 @@ class Grouping(GroupedElement, ColumnElement[_T]):
 
     def _with_binary_element_type(
         self, type_: Union[String, TupleType]
-    ) -> Grouping:
+    ) -> Grouping[_T]:
         return self.__class__(self.element._with_binary_element_type(type_))
 
     @util.memoized_property
-    def _is_implicitly_boolean(self):
+    def _is_implicitly_boolean(self) -> bool:
         return self.element._is_implicitly_boolean
 
     @util.non_memoized_property
@@ -4058,13 +4082,13 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def __getattr__(self, attr: str) -> Union[Callable]:
+    def __getattr__(self, attr: str) -> Any:
         return getattr(self.element, attr)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {"element": self.element, "type": self.type}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self.element = state["element"]
         self.type = state["type"]
 
@@ -4430,7 +4454,7 @@ class NamedColumn(KeyedColumnElement[_T]):
     name: str
     key: str
 
-    def _compare_name_for_result(self, other):
+    def _compare_name_for_result(self, other: NamedColumn[_T]) -> bool:
         return (hasattr(other, "name") and self.name == other.name) or (
             hasattr(other, "_label") and self._label == other._label
         )
@@ -4527,7 +4551,9 @@ class NamedColumn(KeyedColumnElement[_T]):
         return c.key, c
 
 
-class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
+class Label(  # type: ignore [misc]
+    roles.LabeledColumnExprRole[_T], NamedColumn[_T]
+):
     """Represents a column label (AS).
 
     Represent a label, as typically applied to any column-level
@@ -4590,7 +4616,11 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
 
         self._proxies = [element]
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[
+        Type[Any], typing_Tuple[str, ColumnElement[_T], TypeEngine[_T]]
+    ]:
         return self.__class__, (self.name, self._element, self.type)
 
     @HasMemoized.memoized_attribute
@@ -4615,7 +4645,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         )
 
     @util.memoized_property
-    def _is_implicitly_boolean(self):
+    def _is_implicitly_boolean(self) -> bool:
         return self.element._is_implicitly_boolean
 
     @HasMemoized.memoized_attribute
@@ -4631,16 +4661,16 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         return self._element.self_group(against=operators.as_)
 
     def self_group(
-        self, against: Union[Callable, None] = None
-    ) -> Union[AnnotatedLabel, Label]:
+        self, against: Optional[OperatorType] = None
+    ) -> Union[AnnotatedLabel, Label[_T]]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
     def _negate(self):
         return self._apply_to_inner(self._element._negate)
 
     def _apply_to_inner(
-        self, fn: Callable, *arg: Any, **kw: Any
-    ) -> Union[AnnotatedLabel, Label]:
+        self, fn: Callable[..., Any], *arg: Any, **kw: Any
+    ) -> Union[AnnotatedLabel, Label[_T]]:
         sub_element = fn(*arg, **kw)
         if sub_element is not self._element:
             return Label(self.name, sub_element, type_=self.type)
@@ -4652,7 +4682,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         return self.element.primary_key
 
     @property
-    def foreign_keys(self) -> Set:
+    def foreign_keys(self) -> AbstractSet[ForeignKey]:
         return self.element.foreign_keys
 
     def _copy_internals(
@@ -4715,7 +4745,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         return self.key, e
 
 
-class ColumnClause(
+class ColumnClause(  # type: ignore [misc]
     roles.DDLReferredColumnRole,
     roles.LabeledColumnExprRole[_T],
     roles.StrAsPlainColumnRole,
@@ -4798,7 +4828,9 @@ class ColumnClause(
 
         self.is_literal = is_literal
 
-    def get_children(self, *, column_tables: bool = False, **kw: Any) -> List:
+    def get_children(
+        self, *, column_tables: bool = False, **kw: Any
+    ) -> List[Any]:
         # override base get_children() to not return the Table
         # or selectable that is parent to this column.  Traversals
         # expect the columns of tables and subqueries to be leaf nodes.
@@ -4842,7 +4874,9 @@ class ColumnClause(
     def _ddl_label(self) -> _truncated_label:
         return self._gen_tq_label(self.name, dedupe_on_key=False)
 
-    def _compare_name_for_result(self, other):
+    def _compare_name_for_result(
+        self, other: ColumnClause[_T]
+    ) -> Union[bool, FrozenSet[ColumnElement[_T]]]:
         if (
             self.is_literal
             or self.table is None
@@ -5123,7 +5157,9 @@ class quoted_name(util.MemoizedSlots, str):
         self.quote = quote
         return self
 
-    def __reduce__(self) -> Tuple[type, Tuple[str, None]]:
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[Type[quoted_name], typing_Tuple[str, Optional[bool]]]:
         return quoted_name, (str(self), self.quote)
 
     def _memoized_method_lower(self) -> str:
@@ -5132,7 +5168,7 @@ class quoted_name(util.MemoizedSlots, str):
         else:
             return str(self).lower()
 
-    def _memoized_method_upper(self):
+    def _memoized_method_upper(self) -> Union[quoted_name, str]:
         if self.quote:
             return self
         else:
@@ -5147,7 +5183,7 @@ def _find_columns(clause: ClauseElement) -> Set[ColumnClause[Any]]:
     return cols
 
 
-def _type_from_args(args: Any) -> Union[Integer, NullType, String]:
+def _type_from_args(args: Iterable[Any]) -> Union[Any, NullType]:
     for a in args:
         if not a.type._isnull:
             return a.type
@@ -5155,7 +5191,11 @@ def _type_from_args(args: Any) -> Union[Integer, NullType, String]:
         return type_api.NULLTYPE
 
 
-def _corresponding_column_or_error(fromclause, column, require_embedded=False):
+def _corresponding_column_or_error(
+    fromclause: FromClause,
+    column: KeyedColumnElement[_T],
+    require_embedded: bool = False,
+) -> Optional[KeyedColumnElement[_T]]:
     c = fromclause.corresponding_column(
         column, require_embedded=require_embedded
     )
@@ -5171,9 +5211,7 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
 class AnnotatedColumnElement(Annotated):
     _Annotated__element: ColumnElement[Any]
 
-    def __init__(
-        self, element: Any, values: Union[Dict[str, Any], immutabledict]
-    ) -> None:
+    def __init__(self, element: Any, values: Mapping[str, Any]) -> None:
         Annotated.__init__(self, element, values)
         for attr in (
             "comparator",
@@ -5187,23 +5225,25 @@ class AnnotatedColumnElement(Annotated):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
 
-    def _with_annotations(self, values: immutabledict[str, Any]) -> Any:
+    def _with_annotations(
+        self, values: Mapping[str, Any]
+    ) -> SupportsAnnotations:
         clone = super()._with_annotations(values)
         clone.__dict__.pop("comparator", None)
         return clone
 
     @util.memoized_property
-    def name(self):
+    def name(self) -> Any:
         """pull 'name' from parent, if not present"""
         return self._Annotated__element.name
 
     @util.memoized_property
-    def table(self) -> NoReturn:
+    def table(self) -> Any:
         """pull 'table' from parent, if not present"""
         return self._Annotated__element.table
 
     @util.memoized_property
-    def key(self):
+    def key(self) -> Union[str, None]:
         """pull 'key' from parent, if not present"""
         return self._Annotated__element.key
 
