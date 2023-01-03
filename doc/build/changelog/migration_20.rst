@@ -1,8 +1,8 @@
 .. _migration_20_toplevel:
 
-=============================
+===========================
 Migrating to SQLAlchemy 2.0
-=============================
+===========================
 
 .. admonition:: About this document
 
@@ -30,7 +30,7 @@ Migrating to SQLAlchemy 2.0
 
 
 Overview
-========
+--------
 
 The SQLAlchemy 2.0 transition presents itself in the SQLAlchemy 1.4 release as
 a series of steps that allow an application of any size or complexity to be
@@ -57,7 +57,7 @@ release as the final step in migrating**.
 
 
 First Prerequisite, step one - A Working 1.3 Application
----------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first step is getting an existing application onto 1.4, in the case of
 a typical non trivial application, is to ensure it runs on SQLAlchemy 1.3 with
@@ -73,7 +73,7 @@ warnings; these are warnings emitted for the :class:`_exc.SADeprecationWarning`
 class.
 
 First Prerequisite, step two - A Working 1.4 Application
---------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once the application is good to go on SQLAlchemy 1.3, the next step is to get
 it running on SQLAlchemy 1.4.  In the vast majority of cases, applications
@@ -121,7 +121,7 @@ For the full overview of SQLAlchemy 1.4 changes, see the
 :doc:`/changelog/migration_14` document.
 
 Migration to 2.0 Step One - Python 3 only (Python 3.7 minimum for 2.0 compatibility)
-------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 2.0 was first inspired by the fact that Python 2's EOL was in 2020.
 SQLAlchemy is taking a longer period of time than other major projects to drop
@@ -134,7 +134,7 @@ application can remain running on Python 2.7 or on at least Python 3.6. Version
 .. _migration_20_deprecations_mode:
 
 Migration to 2.0 Step Two - Turn on RemovedIn20Warnings
--------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 1.4 features a conditional deprecation warning system inspired
 by the Python "-3" flag that would indicate legacy patterns in a running
@@ -238,7 +238,7 @@ on is then ready to run in SQLAlchemy 2.0.
 
 
 Migration to 2.0 Step Three - Resolve all RemovedIn20Warnings
---------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Code can be developed iteratively to resolve these warnings.  Within
 the SQLAlchemy project itself, the approach taken is as follows:
@@ -284,7 +284,7 @@ the SQLAlchemy project itself, the approach taken is as follows:
 4. Once no more warnings are emitted, the filter can be removed.
 
 Migration to 2.0 Step Four - Use the ``future`` flag on Engine
---------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`_engine.Engine` object features an updated
 transaction-level API in version 2.0.  In 1.4, this new API is available
@@ -322,7 +322,7 @@ The new engine is described at :class:`_future.Engine` which delivers a new
         conn.commit()  # commit as you go
 
 Migration to 2.0 Step Five - Use the ``future`` flag on Session
----------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :class:`_orm.Session` object also features an updated transaction/connection
 level API in version 2.0.  This API is available in 1.4 using the
@@ -384,7 +384,7 @@ major API modifications.
 .. _migration_20_step_six:
 
 Migration to 2.0 Step Six - Add ``__allow_unmapped__`` to explicitly typed ORM models
---------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 2.0 has new support for runtime interpretation of :pep:`484` typing annotations
 on ORM models.   A requirement of these annotations is that they must make use
@@ -474,7 +474,7 @@ that descend from ``Base``::
 .. _migration_20_step_seven:
 
 Migration to 2.0 Step Seven - Test against a SQLAlchemy 2.0 Release
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As mentioned previously, SQLAlchemy 2.0 has additional API and behavioral
 changes that are intended to be backwards compatible, however may introduce
@@ -484,13 +484,13 @@ of SQLAlchemy 2.0 to correct for any remaining issues that might be present.
 
 
 2.0 Migration - Core Connection / Transaction
-=============================================
+---------------------------------------------
 
 
 .. _migration_20_autocommit:
 
 Library-level (but not driver level) "Autocommit" removed from both Core and ORM
---------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -639,7 +639,7 @@ is turned on.
 .. _migration_20_implicit_execution:
 
 "Implicit" and "Connectionless" execution, "bound metadata" removed
---------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -829,7 +829,7 @@ in the case that the operation is a write operation::
           result = conn.execute(stmt)
 
 execute() method more strict, execution options are more prominent
--------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -904,7 +904,7 @@ given.
 .. _migration_20_result_rows:
 
 Result rows act like named tuples
----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -975,12 +975,12 @@ or attribute::
 
 
 2.0 Migration - Core Usage
-=============================
+--------------------------
 
 .. _migration_20_5284:
 
 select() no longer accepts varied constructor arguments, columns are passed positionally
------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **synopsis**
 
@@ -1065,7 +1065,7 @@ Examples of "structural" vs. "data" elements are as follows::
     :ref:`error_c9ae`
 
 insert/update/delete DML no longer accept keyword constructor arguments
------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1118,10 +1118,10 @@ manner as that of the :func:`_sql.select` construct.
 
 
 2.0 Migration - ORM Configuration
-=============================================
+---------------------------------
 
 Declarative becomes a first class API
--------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1162,7 +1162,7 @@ at :ref:`change_5508`.
 
 
 The original "mapper()" function now a core element of Declarative, renamed
-----------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1241,7 +1241,7 @@ declarative decorator and classical mapping forms.
   Declarative, classical mapping, dataclasses, attrs, etc.
 
 2.0 Migration - ORM Usage
-=============================================
+-------------------------
 
 The biggest visible change in SQLAlchemy 2.0 is the use of
 :meth:`_orm.Session.execute` in conjunction with :func:`_sql.select` to run ORM
@@ -1464,7 +1464,7 @@ following the table, and may include additional notes not summarized here.
 .. _migration_20_unify_select:
 
 ORM Query Unified with Core Select
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1623,7 +1623,7 @@ the majority of this ORM logic is also cached.
 .. _migration_20_get_to_session:
 
 ORM Query - get() method moves to Session
-------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1659,7 +1659,7 @@ with writing a SQL query.
 .. _migration_20_orm_query_join_strings:
 
 ORM Query  - Joining / loading on relationships uses attributes, not strings
-----------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1713,7 +1713,7 @@ more potentially compatible with IDEs and pep-484 integrations.
 
 
 ORM Query - Chaining using lists of attributes, rather than individual calls, removed
--------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1751,7 +1751,7 @@ interface of methods such as :meth:`_sql.Select.join`.
 .. _migration_20_query_join_options:
 
 ORM Query - join(..., aliased=True), from_joinpoint removed
------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1806,7 +1806,7 @@ construct itself didn't exist early on.
 .. _migration_20_query_distinct:
 
 Using DISTINCT with additional columns, but only select the entity
--------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1862,7 +1862,7 @@ without inconvenience.
 .. _migration_20_query_from_self:
 
 Selecting from the query itself as a subquery, e.g. "from_self()"
--------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -1966,7 +1966,7 @@ The above query will disambiguate the ``.id`` column of ``User`` and
 :ticket:`5221`
 
 Selecting entities from alternative selectables; Query.select_entity_from()
----------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -2018,7 +2018,7 @@ of view as well as how the internals of the SQLAlchemy ORM must handle it.
 .. _joinedload_not_uniqued:
 
 ORM Rows not uniquified by default
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -2079,7 +2079,7 @@ and should be preferred.
 .. _migration_20_dynamic_loaders:
 
 Making use of "dynamic" relationship loads without using Query
----------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -2137,7 +2137,7 @@ uses the ``.statement`` attribute, such as
 .. _migration_20_session_autocommit:
 
 Autocommit mode removed from Session; autobegin support added
--------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -2188,7 +2188,7 @@ as well as to allow the use of "subtransactions", which are also removed in
 .. _migration_20_session_subtransaction:
 
 Session "subtransaction" behavior removed
-------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Synopsis**
 
@@ -2270,10 +2270,10 @@ operations are performed with a single begin/commit pair.
 
 
 2.0 Migration - ORM Extension and Recipe Changes
-================================================
+------------------------------------------------
 
 Dogpile cache recipe and Horizontal Sharding uses new Session API
-------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As the :class:`_orm.Query` object becomes legacy, these two recipes
 which previously relied upon subclassing of the :class:`_orm.Query`
@@ -2284,7 +2284,7 @@ an example.
 
 
 Baked Query Extension Superseded by built-in caching
------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The baked query extension is superseded by the built in caching system and
 is no longer used by the ORM internals.
@@ -2294,7 +2294,7 @@ See :ref:`sql_caching` for full background on the new caching system.
 
 
 Asyncio Support
-=====================
+---------------
 
 SQLAlchemy 1.4 includes asyncio support for both Core and ORM.
 The new API exclusively makes use of the "future" patterns noted above.
