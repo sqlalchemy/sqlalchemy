@@ -10,6 +10,7 @@ functionality."""
 
 import os
 import re
+import sys
 
 from . import compat
 from .langhelpers import _hash_limit_string
@@ -22,8 +23,19 @@ from .. import exc
 
 SQLALCHEMY_WARN_20 = False
 
+SILENCE_UBER_WARNING = False
+
 if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
     SQLALCHEMY_WARN_20 = True
+
+if compat.py2k:
+    SILENCE_UBER_WARNING = True
+elif os.getenv("SQLALCHEMY_SILENCE_UBER_WARNING", "false").lower() in (
+    "true",
+    "yes",
+    "1",
+):
+    SILENCE_UBER_WARNING = True
 
 
 def _warn_with_version(msg, version, type_, stacklevel, code=None):
@@ -31,11 +43,65 @@ def _warn_with_version(msg, version, type_, stacklevel, code=None):
         issubclass(type_, exc.Base20DeprecationWarning)
         and not SQLALCHEMY_WARN_20
     ):
+        if not SILENCE_UBER_WARNING:
+            _emit_uber_warning(type_, stacklevel)
+
         return
 
     warn = type_(msg, code=code)
     warn.deprecated_since = version
 
+    _warnings_warn(warn, stacklevel=stacklevel + 1)
+
+
+def _emit_uber_warning(type_, stacklevel):
+    global SILENCE_UBER_WARNING
+
+    if SILENCE_UBER_WARNING:
+        return
+
+    SILENCE_UBER_WARNING = True
+
+    file_ = sys.stderr
+
+    # source: https://github.com/pytest-dev/pytest/blob/326ae0cd88f5e954c8effc2b0c986832e9caff11/src/_pytest/_io/terminalwriter.py#L35-L37  # noqa: E501
+    use_color = (
+        hasattr(file_, "isatty")
+        and file_.isatty()
+        and os.environ.get("TERM") != "dumb"
+    )
+
+    msg = (
+        "%(red)sDeprecated API features detected! "
+        "These feature(s) are not compatible with SQLAlchemy 2.0. "
+        "%(green)sTo prevent incompatible upgrades prior to updating "
+        "applications, ensure requirements files are "
+        'pinned to "sqlalchemy<2.0". '
+        "%(cyan)sSet environment variable SQLALCHEMY_WARN_20=1 to show all "
+        "deprecation warnings.  Set environment variable "
+        "SQLALCHEMY_SILENCE_UBER_WARNING=1 to silence this message.%(nocolor)s"
+    )
+
+    if use_color:
+        msg = msg % {
+            "red": "\x1b[31m",
+            "cyan": "\x1b[36m",
+            "green": "\x1b[32m",
+            "magenta": "\x1b[35m",
+            "nocolor": "\x1b[0m",
+        }
+    else:
+        msg = msg % {
+            "red": "",
+            "cyan": "",
+            "green": "",
+            "magenta": "",
+            "nocolor": "",
+        }
+
+    # note this is a exc.Base20DeprecationWarning subclass, which
+    # will implicitly add the link to the SQLAlchemy 2.0 page in the message
+    warn = type_(msg)
     _warnings_warn(warn, stacklevel=stacklevel + 1)
 
 

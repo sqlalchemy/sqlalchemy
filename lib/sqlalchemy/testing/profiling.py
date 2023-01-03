@@ -252,6 +252,8 @@ def function_call_count(variance=0.05, times=1, warmup=0):
         with mock.patch.object(
             deprecations, "SQLALCHEMY_WARN_20", False
         ), mock.patch.object(
+            deprecations, "SILENCE_UBER_WARNING", True
+        ), mock.patch.object(
             row.LegacyRow, "_default_key_style", row.KEY_OBJECTS_NO_WARN
         ):
             for warm in range(warmup):
