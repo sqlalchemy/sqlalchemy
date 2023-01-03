@@ -388,6 +388,7 @@ we've made here is local to an ongoing transaction, which won't become
 permanent if we don't commit it.  As rolling the transaction back is actually
 more interesting at the moment, we will do that in the next section.
 
+.. _tutorial_orm_bulk:
 
 
 Bulk / Multi Row INSERT, upsert, UPDATE and DELETE

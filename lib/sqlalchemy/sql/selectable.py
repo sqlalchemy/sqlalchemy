@@ -130,7 +130,6 @@ if TYPE_CHECKING:
     from .cache_key import _CacheKeyTraversalType
     from .compiler import SQLCompiler
     from .dml import Delete
-    from .dml import Insert
     from .dml import Update
     from .elements import KeyedColumnElement
     from .elements import Label
@@ -3000,8 +2999,8 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         c.table = self
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def insert(self) -> Insert:
-        """Generate an :func:`_expression.insert` construct against this
+    def insert(self) -> util.preloaded.sql_dml.Insert:
+        """Generate an :class:`_sql.Insert` construct against this
         :class:`_expression.TableClause`.
 
         E.g.::

@@ -26,6 +26,9 @@ Core-oriented style as well as an ORM-oriented style.
 
     As with other sections, Core users can skip the ORM sections, but ORM users
     would best be familiar with these objects from both perspectives.
+    The :class:`.Table` object discussed here is declared in a more indirect
+    (and also fully Python-typed) way when using the ORM, however there is still
+    a :class:`.Table` object within the ORM's configuration.
 
 
 .. rst-class:: core-header
@@ -35,9 +38,10 @@ Core-oriented style as well as an ORM-oriented style.
 Setting up MetaData with Table objects
 ---------------------------------------
 
-When we work with a relational database, the basic structure that we create and
-query from is known as a **table**.   In SQLAlchemy, the "table" is represented
-by a Python object similarly named :class:`_schema.Table`.
+When we work with a relational database, the basic data-holding structure
+in the database which we query from is known a **table**.
+In SQLAlchemy, the database "table" may be represented
+directly by a Python object similarly named :class:`_schema.Table`.
 
 To start using the SQLAlchemy Expression Language,
 we will want to have :class:`_schema.Table` objects constructed that represent
@@ -45,7 +49,8 @@ all of the database tables we are interested in working with.   Each
 :class:`_schema.Table` may be **declared**, meaning we explicitly spell out
 in source code what the table looks like, or may be **reflected**, which means
 we generate the object based on what's already present in a particular database.
-The two approaches can also be blended in many ways.
+The two approaches can also be blended in many ways, and also interact with
+ORM-centric styles of table declaration.
 
 Whether we will declare or reflect our tables, we start out with a collection
 that will be where we place our tables known as the :class:`_schema.MetaData`
@@ -177,8 +182,8 @@ In the next section we will emit the completed DDL for the ``user`` and
 Emitting DDL to the Database
 ----------------------------
 
-We've constructed a fairly elaborate object hierarchy to represent
-two database tables, starting at the root :class:`_schema.MetaData`
+We've constructed a an object structure that represents
+two database tables in a database, starting at the root :class:`_schema.MetaData`
 object, then into two :class:`_schema.Table` objects, each of which hold
 onto a collection of :class:`_schema.Column` and :class:`_schema.Constraint`
 objects.   This object structure will be at the center of most operations

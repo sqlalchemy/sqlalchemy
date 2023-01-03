@@ -11,22 +11,27 @@
 
 .. _tutorial_core_insert:
 
-Inserting Rows with Core
--------------------------
+Inserting Rows with ``Insert()`` Constructs
+-------------------------------------------
 
-When using Core, a SQL INSERT statement is generated using the
-:func:`_sql.insert` function - this function generates a new instance of
-:class:`_sql.Insert` which represents an INSERT statement in SQL, that adds
-new data into a table.
+When using Core as well as within some ORM use cases, a SQL INSERT statement is
+generated directly using the :func:`_sql.insert` function - this function
+generates a new instance of :class:`_sql.Insert` which represents an INSERT
+statement in SQL, that adds new data into a table.
 
 .. container:: orm-header
 
-    **ORM Readers** - The way that rows are INSERTed into the database from an ORM
-    perspective makes use of object-centric APIs on the :class:`_orm.Session` object known as the
-    :term:`unit of work` process,
-    and is fairly different from the Core-only approach described here.
-    The more ORM-focused sections later starting at :ref:`tutorial_inserting_orm`
-    subsequent to the Expression Language sections introduce this.
+    **ORM Readers** -
+
+    The ORM's means of generating INSERT statements is described in
+    one of two ways; the most common is by using
+    the :term:`unit of work` process which automates the generation of
+    INSERT statements from object state, and is introduced
+    at :ref:`tutorial_inserting_orm`.  The other is by using
+    the :class:`_sql.Insert` construct directly
+    in a manner very similar to that described in this section; this use
+    is introduced at :ref:`tutorial_orm_bulk`.
+
 
 The insert() SQL Expression Construct
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -249,21 +254,13 @@ as in the example below that builds upon the example stated in
 
     The RETURNING feature is also supported by UPDATE and DELETE statements,
     which will be introduced later in this tutorial.
-    The RETURNING feature is generally [1]_ only
-    supported for statement executions that use a single set of bound
-    parameters; that is, it won't work with the "executemany" form introduced
-    at :ref:`tutorial_multiple_parameters`.    Additionally, some dialects
-    such as the Oracle dialect only allow RETURNING to return a single row
-    overall, meaning it won't work with "INSERT..FROM SELECT" nor will it
-    work with multiple row :class:`_sql.Update` or :class:`_sql.Delete`
-    forms.
 
-    .. [1] There is internal support for the
-       :mod:`_postgresql.psycopg2` dialect to INSERT many rows at once
-       and also support RETURNING, which is leveraged by the SQLAlchemy
-       ORM.   However this feature has not been generalized to all dialects
-       and is not yet part of SQLAlchemy's regular API.
-
+    For INSERT statements, the RETURNING feature may be used
+    both for single-row statements as well as for statements that INSERT
+    multiple rows at once.  Support for multiple-row INSERT with RETURNING
+    is dialect specific, however is supported for all the dialects
+    that are included in SQLAlchemy which support RETURNING.  See the section
+    :ref:`engine_insertmanyvalues` for background on this feature.
 
 
 .. seealso::
