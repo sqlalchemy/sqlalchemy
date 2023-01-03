@@ -127,6 +127,8 @@ API documentation for backend-specific types are in the dialect-specific
 documentation, listed at :ref:`dialect_toplevel`.
 
 
+.. _types_with_variant:
+
 Using "UPPERCASE" and Backend-specific types for multiple backends
 ------------------------------------------------------------------
 

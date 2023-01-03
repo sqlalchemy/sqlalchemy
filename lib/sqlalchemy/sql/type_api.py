@@ -543,6 +543,11 @@ class TypeEngine(Traversible):
         :param dialect_name: base name of the dialect which uses
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
+        .. seealso::
+
+            :ref:`types_with_variant` - illustrates the use of
+            :meth:`_types.TypeEngine.with_variant`.
+
         """
         return Variant(self, {dialect_name: to_instance(type_)})
 
