@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 9033
-    :versions: 2.0.0rc1
-
-    Fixed issue in the internal SQL traversal for DML statements like
-    :class:`_dml.Update` and :class:`_dml.Delete` which would cause among other
-    potential issues, a specific issue using lambda statements with the ORM
-    update/delete feature.

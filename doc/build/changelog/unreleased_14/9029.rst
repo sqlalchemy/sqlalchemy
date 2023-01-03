@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 9029
-    :versions: 2.0.0rc1
-
-    Fixed issue in lambda SQL feature where the calculated type of a literal
-    value would not take into account the type coercion rules of the "compared
-    to type", leading to a lack of typing information for SQL expressions, such
-    as comparisons to :class:`_types.JSON` elements and similar.

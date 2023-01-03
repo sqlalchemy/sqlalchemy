@@ -15,7 +15,157 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.46
-    :include_notes_from: unreleased_14
+    :released: January 3, 2023
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 8974
+        :versions: 2.0.0rc1
+
+        Fixed a long-standing race condition in the connection pool which could
+        occur under eventlet/gevent monkeypatching schemes in conjunction with the
+        use of eventlet/gevent ``Timeout`` conditions, where a connection pool
+        checkout that's interrupted due to the timeout would fail to clean up the
+        failed state, causing the underlying connection record and sometimes the
+        database connection itself to "leak", leaving the pool in an invalid state
+        with unreachable entries. This issue was first identified and fixed in
+        SQLAlchemy 1.2 for :ticket:`4225`, however the failure modes detected in
+        that fix failed to accommodate for ``BaseException``, rather than
+        ``Exception``, which prevented eventlet/gevent ``Timeout`` from being
+        caught. In addition, a block within initial pool connect has also been
+        identified and hardened with a ``BaseException`` -> "clean failed connect"
+        block to accommodate for the same condition in this location.
+        Big thanks to Github user @niklaus for their tenacious efforts in
+        identifying and describing this intricate issue.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9023
+        :versions: 2.0.0rc1
+
+        Fixed bug where the PostgreSQL
+        :paramref:`_postgresql.Insert.on_conflict_do_update.constraint` parameter
+        would accept an :class:`.Index` object, however would not expand this index
+        out into its individual index expressions, instead rendering its name in an
+        ON CONFLICT ON CONSTRAINT clause, which is not accepted by PostgreSQL; the
+        "constraint name" form only accepts unique or exclude constraint names. The
+        parameter continues to accept the index but now expands it out into its
+        component expressions for the render.
+
+    .. change::
+        :tags: bug, general
+        :tickets: 8995
+        :versions: 2.0.0rc1
+
+        Fixed regression where the base compat module was calling upon
+        ``platform.architecture()`` in order to detect some system properties,
+        which results in an over-broad system call against the system-level
+        ``file`` call that is unavailable under some circumstances, including
+        within some secure environment configurations.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 8393
+        :versions: 2.0.0b5
+
+        Added the PostgreSQL type ``MACADDR8``.
+        Pull request courtesy of Asim Farooq.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 8969
+        :versions: 2.0.0b5
+
+        Fixed regression caused by new support for reflection of partial indexes on
+        SQLite added in 1.4.45 for :ticket:`8804`, where the ``index_list`` pragma
+        command in very old versions of SQLite (possibly prior to 3.8.9) does not
+        return the current expected number of columns, leading to exceptions raised
+        when reflecting tables and indexes.
+
+    .. change::
+        :tags: bug, tests
+        :versions: 2.0.0rc1
+
+        Fixed issue in tox.ini file where changes in the tox 4.0 series to the
+        format of "passenv" caused tox to not function correctly, in particular
+        raising an error as of tox 4.0.6.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 9002
+        :versions: 2.0.0rc1
+
+        Added new exclusion rule for third party dialects called
+        ``unusual_column_name_characters``, which can be "closed" for third party
+        dialects that don't support column names with unusual characters such as
+        dots, slashes, or percent signs in them, even if the name is properly
+        quoted.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9009
+        :versions: 2.0.0b5
+
+        Added parameter
+        :paramref:`.FunctionElement.column_valued.joins_implicitly`, which is
+        useful in preventing the "cartesian product" warning when making use of
+        table-valued or column-valued functions. This parameter was already
+        introduced for :meth:`.FunctionElement.table_valued` in :ticket:`7845`,
+        however it failed to be added for :meth:`.FunctionElement.column_valued`
+        as well.
+
+    .. change::
+        :tags: change, general
+        :tickets: 8983
+
+        A new deprecation "uber warning" is now emitted at runtime the
+        first time any SQLAlchemy 2.0 deprecation warning would normally be
+        emitted, but the ``SQLALCHEMY_WARN_20`` environment variable is not set.
+        The warning emits only once at most, before setting a boolean to prevent
+        it from emitting a second time.
+
+        This deprecation warning intends to notify users who may not have set an
+        appropriate constraint in their requirements files to block against a
+        surprise SQLAlchemy 2.0 upgrade and also alert that the SQLAlchemy 2.0
+        upgrade process is available, as the first full 2.0 release is expected
+        very soon. The deprecation warning can be silenced by setting the
+        environment variable ``SQLALCHEMY_SILENCE_UBER_WARNING`` to ``"1"``.
+
+        .. seealso::
+
+            :ref:`migration_20_toplevel`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9033
+        :versions: 2.0.0rc1
+
+        Fixed issue in the internal SQL traversal for DML statements like
+        :class:`_dml.Update` and :class:`_dml.Delete` which would cause among other
+        potential issues, a specific issue using lambda statements with the ORM
+        update/delete feature.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 8989
+        :versions: 2.0.0b5
+
+        Fixed bug where SQL compilation would fail (assertion fail in 2.0, NoneType
+        error in 1.4) when using an expression whose type included
+        :meth:`_types.TypeEngine.bind_expression`, in the context of an "expanding"
+        (i.e. "IN") parameter in conjunction with the ``literal_binds`` compiler
+        parameter.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9029
+        :versions: 2.0.0rc1
+
+        Fixed issue in lambda SQL feature where the calculated type of a literal
+        value would not take into account the type coercion rules of the "compared
+        to type", leading to a lack of typing information for SQL expressions, such
+        as comparisons to :class:`_types.JSON` elements and similar.
 
 .. changelog::
     :version: 1.4.45
