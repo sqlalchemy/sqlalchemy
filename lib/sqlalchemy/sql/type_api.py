@@ -681,6 +681,11 @@ class TypeEngine(Visitable, Generic[_T]):
          .. versionchanged:: 2.0 multiple dialect names can be specified
             for one variant.
 
+        .. seealso::
+
+            :ref:`types_with_variant` - illustrates the use of
+            :meth:`_types.TypeEngine.with_variant`.
+
         """
 
         if not dialect_names:
