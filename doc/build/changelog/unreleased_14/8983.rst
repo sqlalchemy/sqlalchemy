@@ -2,9 +2,12 @@
     :tags: change, general
     :tickets: 8983
 
-    A new deprecation "uber warning" is now emitted at once at runtime, the
+    A new deprecation "uber warning" is now emitted at runtime the
     first time any SQLAlchemy 2.0 deprecation warning would normally be
     emitted, but the ``SQLALCHEMY_WARN_20`` environment variable is not set.
+    The warning emits only once at most, before setting a boolean to prevent
+    it from emitting a second time.
+
     This deprecation warning intends to notify users who may not have set an
     appropriate constraint in their requirements files to block against a
     surprise SQLAlchemy 2.0 upgrade and also alert that the SQLAlchemy 2.0
