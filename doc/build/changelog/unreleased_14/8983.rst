@@ -1,0 +1,17 @@
+.. change::
+    :tags: change, general
+    :tickets: 8983
+
+    A new deprecation "uber warning" is now emitted at once at runtime, the
+    first time any SQLAlchemy 2.0 deprecation warning would normally be
+    emitted, but the ``SQLALCHEMY_WARN_20`` environment variable is not set.
+    This deprecation warning intends to notify users who may not have set an
+    appropriate constraint in their requirements files to block against a
+    surprise SQLAlchemy 2.0 upgrade and also alert that the SQLAlchemy 2.0
+    upgrade process is available, as the first full 2.0 release is expected
+    very soon. The deprecation warning can be silenced by setting the
+    environment variable ``SQLALCHEMY_SILENCE_UBER_WARNING`` to ``"1"``.
+
+    .. seealso::
+
+        :ref:`migration_20_toplevel`
