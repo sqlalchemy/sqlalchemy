@@ -1,5 +1,5 @@
 # sqlalchemy/log.py
-# Copyright (C) 2006-2022 the SQLAlchemy authors and contributors
+# Copyright (C) 2006-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
