@@ -10,7 +10,7 @@
 
 .. _tutorial_core_update_delete:
 
-Updating and Deleting Rows with Core
+Using UPDATE and DELETE Statements
 -------------------------------------
 
 So far we've covered :class:`_sql.Insert`, so that we can get some data into

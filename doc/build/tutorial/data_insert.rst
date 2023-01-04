@@ -11,13 +11,13 @@
 
 .. _tutorial_core_insert:
 
-Inserting Rows with ``Insert()`` Constructs
--------------------------------------------
+Using INSERT Statements
+-----------------------
 
-When using Core as well as within some ORM use cases, a SQL INSERT statement is
-generated directly using the :func:`_sql.insert` function - this function
-generates a new instance of :class:`_sql.Insert` which represents an INSERT
-statement in SQL, that adds new data into a table.
+When using Core as well as when using the ORM for bulk operations, a SQL INSERT
+statement is generated directly using the :func:`_sql.insert` function - this
+function generates a new instance of :class:`_sql.Insert` which represents an
+INSERT statement in SQL, that adds new data into a table.
 
 .. container:: orm-header
 

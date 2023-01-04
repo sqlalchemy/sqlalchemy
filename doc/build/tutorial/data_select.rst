@@ -9,8 +9,8 @@
 
 .. rst-class:: core-header, orm-dependency
 
-Selecting Rows with Core or ORM
---------------------------------
+Using SELECT Statements
+-----------------------
 
 For both Core and ORM, the :func:`_sql.select` function generates a
 :class:`_sql.Select` construct which is used for all SELECT queries.

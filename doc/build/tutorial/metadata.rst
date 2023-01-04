@@ -31,7 +31,8 @@ Core-oriented style as well as an ORM-oriented style.
     a :class:`.Table` object within the ORM's configuration.
 
 
-.. rst-class:: core-header
+.. rst-class:: core-header, orm-dependency
+
 
 .. _tutorial_core_metadata:
 
@@ -40,19 +41,25 @@ Setting up MetaData with Table objects
 
 When we work with a relational database, the basic data-holding structure
 in the database which we query from is known a **table**.
-In SQLAlchemy, the database "table" may be represented
-directly by a Python object similarly named :class:`_schema.Table`.
+In SQLAlchemy, the database "table" is ultimately represented
+by a Python object similarly named :class:`_schema.Table`.
 
-To start using the SQLAlchemy Expression Language,
-we will want to have :class:`_schema.Table` objects constructed that represent
-all of the database tables we are interested in working with.   Each
-:class:`_schema.Table` may be **declared**, meaning we explicitly spell out
-in source code what the table looks like, or may be **reflected**, which means
-we generate the object based on what's already present in a particular database.
-The two approaches can also be blended in many ways, and also interact with
-ORM-centric styles of table declaration.
+To start using the SQLAlchemy Expression Language, we will want to have
+:class:`_schema.Table` objects constructed that represent all of the database
+tables we are interested in working with. The :class:`_schema.Table` is
+constructed programmatically, either directly by using the
+:class:`_schema.Table` constructor, or indirectly by using ORM Mapped classes
+(described later at :ref:`tutorial_orm_table_metadata`).
 
-Whether we will declare or reflect our tables, we start out with a collection
+Within the construction of :class:`_schema.Table`, the individual columns and
+constraints within the table themselves may be **declared**, meaning we
+explicitly spell out in source code what each column and constraint in the
+table looks like, or if working with an existing database there is also the
+option to collect this information directly from that database, meaning the
+contents of each :class:`_schema.Table` are **reflected** without us having
+to declare all (or any) of it explicitly.
+
+Whichever kind of approach is used, we always start out with a collection
 that will be where we place our tables known as the :class:`_schema.MetaData`
 object.  This object is essentially a :term:`facade` around a Python dictionary
 that stores a series of :class:`_schema.Table` objects keyed to their string
@@ -63,18 +70,27 @@ name.   Constructing this object looks like::
 
 Having a single :class:`_schema.MetaData` object for an entire application is
 the most common case, represented as a module-level variable in a single place
-in an application, often in a "models" or "dbschema" type of package.  There
-can be multiple :class:`_schema.MetaData` collections as well,  however
-it's typically most helpful if a series of :class:`_schema.Table` objects that are
-related to each other belong to a single :class:`_schema.MetaData` collection.
+in an application, often in a "models" or "dbschema" type of package. It is
+also very common that the :class:`_schema.MetaData` is accessed via an
+ORM-centric registry or base class such as the
+:ref:`Declarative Base <tutorial_orm_declarative_base>`, so that this same
+:class:`_schema.MetaData` is shared among ORM- and Core-declared
+:class:`_schema.Table` objects.
+
+There can be multiple :class:`_schema.MetaData` collections as well, however
+it's typically most helpful if a series of :class:`_schema.Table` objects that
+are related to each other belong to a single :class:`_schema.MetaData`
+collection.
 
 
 Once we have a :class:`_schema.MetaData` object, we can declare some
 :class:`_schema.Table` objects.  This tutorial will start with the classic
-SQLAlchemy tutorial model, that of the table ``user``, which would for
+SQLAlchemy tutorial model, that of the table ``user_account``, which would for
 example represent the users of a website, and the table ``address``,
-representing a list of email addresses associated with rows in the ``user``
-table.   We normally assign each :class:`_schema.Table` object to a variable
+representing a list of email addresses associated with rows in the ``user_account``
+table.   When not using ORM Declarative models at all, we construct
+each :class:`_schema.Table` object directly, typically assigning each
+to a variable
 that will be how we will refer to the table in application code::
 
     >>> from sqlalchemy import Table, Column, Integer, String
@@ -86,7 +102,10 @@ that will be how we will refer to the table in application code::
     ...     Column("fullname", String),
     ... )
 
-We can observe that the above :class:`_schema.Table` construct looks a lot like
+Components of ``Table``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+We can observe that the :class:`_schema.Table` construct looks a lot like
 a SQL CREATE TABLE statement; starting with the table name, then listing out
 each column, where each column has a name and a datatype.   The objects we
 use above are:
@@ -123,12 +142,10 @@ functions of :class:`_schema.Table` which
 is to generate :term:`DDL` on a particular database connection.  But first
 we will declare a second :class:`_schema.Table`.
 
-.. rst-class:: core-header
-
 Declaring Simple Constraints
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first :class:`_schema.Column` in the above ``user_table`` includes the
+The first :class:`_schema.Column` in the example ``user_table`` includes the
 :paramref:`_schema.Column.primary_key` parameter which is a shorthand technique
 of indicating that this :class:`_schema.Column` should be part of the primary
 key for this table.  The primary key itself is normally declared implicitly
@@ -174,13 +191,8 @@ parameter.
 In the next section we will emit the completed DDL for the ``user`` and
 ``address`` table to see the completed result.
 
-.. rst-class:: core-header, orm-dependency
-
-
-.. _tutorial_emitting_ddl:
-
 Emitting DDL to the Database
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've constructed a an object structure that represents
 two database tables in a database, starting at the root :class:`_schema.MetaData`
@@ -253,13 +265,34 @@ reverse order as it would emit CREATE in order to drop schema elements.
 
 .. _tutorial_orm_table_metadata:
 
-Defining Table Metadata with the ORM
-------------------------------------
+Using ORM Declarative Forms to Define Table Metadata
+----------------------------------------------------
 
-This ORM-only section will provide an example declaring the
-same database structure illustrated in the previous section, using a more
-ORM-centric configuration paradigm.   When using
-the ORM, the process by which we declare :class:`_schema.Table` metadata
+.. topic:: Why ORM Declarative?
+
+  The previous examples illustrated direct use of the :class:`_schema.Table`
+  object, which underlies how SQLAlchemy ultimately refers to database tables
+  when constructing SQL expressions. As mentioned, the SQLAlchemy ORM provides
+  for a facade around the :class:`_schema.Table` declaration process referred
+  towards as **Declarative Table**.  While Declarative Table is oriented
+  towards ORM-centric applications, it also may be used for a Core-centric
+  application where it still can offer several benefits over the raw construction
+  of :class:`_schema.Table` objects, including:
+
+  * A more succinct and Pythonic style of setting up column definitions, where
+    Python types may be used to refer to SQL types
+
+  * The resulting construct, referred towards as an "ORM Mapped Class", can be
+    used to form SQL expressions that in many cases maintain :pep:`484` typing
+    information on a per-column basis
+
+  * Allows declaration of table metadata and the ORM mapped class used in
+    persistence / object loading operations all at once.
+
+  This section will illustrate the same :class:`_schema.Table` metadata
+  of the previous section(s) being constructed using Declarative Table.
+
+When using the ORM, the process by which we declare :class:`_schema.Table` metadata
 is usually combined with the process of declaring :term:`mapped` classes.
 The mapped class is any Python class we'd like to create, which will then
 have attributes on it that will be linked to the columns in a database table.
@@ -268,6 +301,8 @@ style is known as
 :ref:`declarative <orm_declarative_mapper_config_toplevel>`, and allows us
 to declare our user-defined classes and :class:`_schema.Table` metadata
 at once.
+
+.. _tutorial_orm_declarative_base:
 
 Establishing a Declarative Base
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
