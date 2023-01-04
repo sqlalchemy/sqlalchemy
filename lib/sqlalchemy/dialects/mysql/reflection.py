@@ -322,7 +322,12 @@ class MySQLTableDefinitionParser(object):
     def _parse_keyexprs(self, identifiers):
         """Unpack '"col"(2),"col" ASC'-ish strings into components."""
 
-        return self._re_keyexprs.findall(identifiers)
+        return [
+            (colname, int(length) if length else None, modifiers)
+            for colname, length, modifiers in self._re_keyexprs.findall(
+                identifiers
+            )
+        ]
 
     def _prep_regexes(self):
         """Pre-compile regular expressions."""

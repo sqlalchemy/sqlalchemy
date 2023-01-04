@@ -3033,14 +3033,22 @@ class MySQLDialect(default.DefaultDialect):
                 ]
 
             index_d = {}
-            if dialect_options:
-                index_d["dialect_options"] = dialect_options
 
             index_d["name"] = spec["name"]
             index_d["column_names"] = [s[0] for s in spec["columns"]]
+            mysql_length = {
+                s[0]: s[1] for s in spec["columns"] if s[1] is not None
+            }
+            if mysql_length:
+                dialect_options["%s_length" % self.name] = mysql_length
+
             index_d["unique"] = unique
             if flavor:
                 index_d["type"] = flavor
+
+            if dialect_options:
+                index_d["dialect_options"] = dialect_options
+
             indexes.append(index_d)
         return indexes
 
