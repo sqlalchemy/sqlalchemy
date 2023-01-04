@@ -7,7 +7,10 @@
 # mypy: ignore-errors
 
 
+from .array import ARRAY
+from .array import array as _pg_array
 from ... import types as sqltypes
+from ...sql import cast
 from ...sql import operators
 
 
@@ -60,6 +63,27 @@ CONTAINS = operators.custom_op(
 
 CONTAINED_BY = operators.custom_op(
     "<@",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
+DELETE_PATH = operators.custom_op(
+    "#-",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
+PATH_EXISTS = operators.custom_op(
+    "@?",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
+)
+
+PATH_MATCH = operators.custom_op(
+    "@@",
     precedence=idx_precedence,
     natural_self_precedent=True,
     eager_grouping=True,
@@ -279,7 +303,10 @@ class JSONB(JSON):
     It also adds additional operators specific to JSONB, including
     :meth:`.JSONB.Comparator.has_key`, :meth:`.JSONB.Comparator.has_all`,
     :meth:`.JSONB.Comparator.has_any`, :meth:`.JSONB.Comparator.contains`,
-    and :meth:`.JSONB.Comparator.contained_by`.
+    :meth:`.JSONB.Comparator.contained_by`,
+    :meth:`.JSONB.Comparator.delete_path`,
+    :meth:`.JSONB.Comparator.path_exists` and
+    :meth:`.JSONB.Comparator.path_match`.
 
     Like the :class:`_types.JSON` type, the :class:`_postgresql.JSONB`
     type does not detect
@@ -338,6 +365,42 @@ class JSONB(JSON):
             """
             return self.operate(
                 CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
+
+        def delete_path(self, array):
+            """JSONB expression. Deletes field or array element specified in
+            the argument array.
+
+            The input may be a list of strings that will be coerced to an
+            ``ARRAY`` or an instance of :meth:`_postgres.array`.
+
+            .. versionadded:: 2.0
+            """
+            if not isinstance(array, _pg_array):
+                array = _pg_array(array)
+            right_side = cast(array, ARRAY(sqltypes.TEXT))
+            return self.operate(DELETE_PATH, right_side, result_type=JSONB)
+
+        def path_exists(self, other):
+            """Boolean expression. Test for presence of item given by the
+            argument JSONPath expression.
+
+            .. versionadded:: 2.0
+            """
+            return self.operate(
+                PATH_EXISTS, other, result_type=sqltypes.Boolean
+            )
+
+        def path_match(self, other):
+            """Boolean expression. Test if JSONPath predicate given by the
+            argument JSONPath expression matches.
+
+            Only the first item of the result is taken into account.
+
+            .. versionadded:: 2.0
+            """
+            return self.operate(
+                PATH_MATCH, other, result_type=sqltypes.Boolean
             )
 
     comparator_factory = Comparator

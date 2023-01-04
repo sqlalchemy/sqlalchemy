@@ -5683,6 +5683,24 @@ class JSONBTest(JSONTest):
             lambda self: self.jsoncol.contained_by({"foo": "1", "bar": None}),
             "test_table.test_column <@ %(test_column_1)s",
         ),
+        (
+            lambda self: self.jsoncol.delete_path(["a", "b"]),
+            "test_table.test_column #- CAST(ARRAY[%(param_1)s, "
+            "%(param_2)s] AS TEXT[])",
+        ),
+        (
+            lambda self: self.jsoncol.delete_path(array(["a", "b"])),
+            "test_table.test_column #- CAST(ARRAY[%(param_1)s, "
+            "%(param_2)s] AS TEXT[])",
+        ),
+        (
+            lambda self: self.jsoncol.path_exists("$.k1"),
+            "test_table.test_column @? %(test_column_1)s",
+        ),
+        (
+            lambda self: self.jsoncol.path_match("$.k1[0] > 2"),
+            "test_table.test_column @@ %(test_column_1)s",
+        ),
     )
     def test_where(self, whereclause_fn, expected):
         super().test_where(whereclause_fn, expected)
@@ -5711,6 +5729,19 @@ class JSONBRoundTripTest(JSONRoundTripTest):
 
         go("$.k1.k2", 0)
         go("$.k1.r6v1", 1)
+
+    @testing.combinations(
+        ["k1", "r6v1", "subr", 1],
+        array(["k1", "r6v1", "subr", 1]),
+        argnames="path",
+    )
+    def test_delete_path(self, connection, path):
+        self._fixture_data(connection)
+        q = select(self.data_table.c.data.delete_path(path)).where(
+            self.data_table.c.name == "r6"
+        )
+        res = connection.scalar(q)
+        eq_(res, {"k1": {"r6v1": {"subr": [1, 3]}}})
 
 
 class JSONBSuiteTest(suite.JSONTest):
