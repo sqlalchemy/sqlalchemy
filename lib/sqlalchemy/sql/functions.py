@@ -626,7 +626,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         """
 
-        return TableValuedAlias._construct(
+        return TableValuedAlias._construct(  # type: ignore[attr-defined]
             self,
             name,
             table_value_type=self.type,

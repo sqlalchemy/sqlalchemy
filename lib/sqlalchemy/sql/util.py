@@ -1164,7 +1164,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                         return None
                 return self.selectable  # type: ignore
             elif isinstance(col, Alias) and isinstance(
-                col.element, TableClause
+                col.element, TableClause  # type: ignore[attr-defined]
             ):
                 # we are a SELECT statement and not derived from an alias of a
                 # table (which nonetheless may be a table our SELECT derives

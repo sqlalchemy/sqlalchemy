@@ -89,7 +89,7 @@ def alias(
      :meth:`_expression.Join.alias` for details.
 
     """
-    return Alias._factory(selectable, name=name, flat=flat)
+    return Alias._factory(selectable, name=name, flat=flat)  # type: ignore
 
 
 def cte(
@@ -293,7 +293,7 @@ def lateral(
         :ref:`tutorial_lateral_correlation` -  overview of usage.
 
     """
-    return Lateral._factory(selectable, name=name)
+    return Lateral._factory(selectable, name=name)  # type: ignore
 
 
 def outerjoin(
@@ -568,7 +568,7 @@ def tablesample(
      REPEATABLE sub-clause is also rendered.
 
     """
-    return TableSample._factory(selectable, sampling, name=name, seed=seed)
+    return TableSample._factory(selectable, sampling, name=name, seed=seed)  # type: ignore # noqa E501
 
 
 def union(
