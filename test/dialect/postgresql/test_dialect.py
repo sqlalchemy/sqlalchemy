@@ -1522,6 +1522,11 @@ $$ LANGUAGE plpgsql;
         with engine.connect() as conn:
             ne_(conn.connection.status, STATUS_IN_TRANSACTION)
 
+    def test_select_rowcount(self):
+        conn = testing.db.connect()
+        cursor = conn.exec_driver_sql("SELECT 1")
+        eq_(cursor.rowcount, 1)
+
 
 class AutocommitTextTest(test_deprecations.AutocommitTextTest):
     __only_on__ = "postgresql"
