@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, mysql
+    :tickets: 9047
+    :versions: 2.0.0
+
+    Added support to MySQL index reflection to correctly reflect the
+    ``mysql_length`` dictionary, which previously was being ignored.
