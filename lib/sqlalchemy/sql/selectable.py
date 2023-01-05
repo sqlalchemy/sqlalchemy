@@ -297,7 +297,7 @@ class Selectable(ReturnsRows):
             :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
-        return Lateral._construct(self, name)  # type: ignore
+        return Lateral._construct(self, name)
 
     @util.deprecated(
         "1.4",
@@ -759,7 +759,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         """
 
-        return Alias._construct(self, name)  # type: ignore
+        return Alias._construct(self, name)
 
     def tablesample(
         self,
@@ -780,7 +780,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             :func:`_expression.tablesample` - usage guidelines and parameters
 
         """
-        return TableSample._construct(self, sampling, name, seed)  # type: ignore # noqa: E501
+        return TableSample._construct(self, sampling, name, seed)
 
     def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         """Return ``True`` if this :class:`_expression.FromClause` is
@@ -1218,7 +1218,7 @@ class Join(roles.DMLTableRole, FromClause):
         ).self_group()
 
         if onclause is None:
-            self.onclause = self._match_primaries(self.left, self.right)  # type: ignore # noqa: E501
+            self.onclause = self._match_primaries(self.left, self.right)
         else:
             # note: taken from If91f61527236fd4d7ae3cad1f24c38be921c90ba
             # not merged yet
@@ -1652,7 +1652,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         return name
 
     @util.ro_non_memoized_property
-    def implicit_returning(self):  # type: ignore
+    def implicit_returning(self):
         return self.element.implicit_returning  # type: ignore
 
     @property
@@ -1761,7 +1761,7 @@ class TableValuedAlias(LateralFromClause, Alias):
         ("_render_derived_w_types", InternalTraversal.dp_boolean),
     ]
 
-    def _init(  # type: ignore
+    def _init(
         self,
         selectable,
         name=None,
@@ -1809,7 +1809,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
         """
 
-        tva: TableValuedAlias = TableValuedAlias._construct(  # type: ignore
+        tva: TableValuedAlias = TableValuedAlias._construct(
             self,
             name=name,
             table_value_type=self._tableval_type,
@@ -1887,7 +1887,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
         # construct against original to prevent memory growth
         # for repeated generations
-        new_alias: TableValuedAlias = TableValuedAlias._construct(  # type: ignore # noqa: E501
+        new_alias: TableValuedAlias = TableValuedAlias._construct(
             self.element,
             name=name,
             table_value_type=self._tableval_type,
@@ -1952,7 +1952,7 @@ class TableSample(FromClauseAlias):
     __visit_name__ = "tablesample"
 
     _traverse_internals: _TraverseInternalsType = (
-        AliasedReturnsRows._traverse_internals  # type: ignore
+        AliasedReturnsRows._traverse_internals
         + [
             ("sampling", InternalTraversal.dp_clauseelement),
             ("seed", InternalTraversal.dp_clauseelement),
@@ -1972,7 +1972,7 @@ class TableSample(FromClauseAlias):
         )
 
     @util.preload_module("sqlalchemy.sql.functions")
-    def _init(  # type: ignore
+    def _init(
         self,
         selectable: Any,
         sampling: Union[float, Function[Any]],
@@ -2020,7 +2020,7 @@ class CTE(
     __visit_name__ = "cte"
 
     _traverse_internals: _TraverseInternalsType = (
-        AliasedReturnsRows._traverse_internals  # type: ignore
+        AliasedReturnsRows._traverse_internals
         + [
             ("_cte_alias", InternalTraversal.dp_clauseelement),
             ("_restates", InternalTraversal.dp_clauseelement),
@@ -2092,7 +2092,7 @@ class CTE(
             :func:`_expression.alias`
 
         """
-        return CTE._construct(  # type: ignore
+        return CTE._construct(
             self.element,
             name=name,
             recursive=self.recursive,
@@ -2121,7 +2121,7 @@ class CTE(
             self.element
         ), f"CTE element f{self.element} does not support union()"
 
-        return CTE._construct(  # type: ignore
+        return CTE._construct(
             self.element.union(*other),
             name=self.name,
             recursive=self.recursive,
@@ -2151,7 +2151,7 @@ class CTE(
             self.element
         ), f"CTE element f{self.element} does not support union_all()"
 
-        return CTE._construct(  # type: ignore
+        return CTE._construct(
             self.element.union_all(*other),
             name=self.name,
             recursive=self.recursive,
@@ -2780,7 +2780,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
             :meth:`_expression.HasCTE.cte`.
 
         """
-        return CTE._construct(  # type: ignore
+        return CTE._construct(
             self, name=name, recursive=recursive, nesting=nesting
         )
 
@@ -2887,7 +2887,7 @@ class FromGrouping(GroupedElement, FromClause):
     ) -> NamedFromGrouping:
         return NamedFromGrouping(self.element.alias(name=name, flat=flat))
 
-    def _anonymous_fromclause(self, **kw: Any):  # type: ignore
+    def _anonymous_fromclause(self, **kw: Any):
         return FromGrouping(self.element._anonymous_fromclause(**kw))
 
     @util.ro_non_memoized_property
@@ -3458,7 +3458,7 @@ class SelectBase(
         return self._implicit_subquery.columns
 
     @property
-    def columns(self):  # type: ignore
+    def columns(self):
         return self.c
 
     def get_label_style(self) -> SelectLabelStyle:
@@ -3554,7 +3554,7 @@ class SelectBase(
         if self._label_style is not LABEL_STYLE_NONE:
             self = self.set_label_style(LABEL_STYLE_NONE)
 
-        return ScalarSelect(self)  # type: ignore
+        return ScalarSelect(self)
 
     def label(self, name: Optional[str]) -> Label[Any]:
         """Return a 'scalar' representation of this selectable, embedded as a
@@ -3580,7 +3580,7 @@ class SelectBase(
             :ref:`tutorial_lateral_correlation` -  overview of usage.
 
         """
-        return Lateral._factory(self, name)  # type: ignore
+        return Lateral._factory(self, name)
 
     def subquery(self, name: Optional[str] = None) -> Subquery:
         """Return a subquery of this :class:`_expression.SelectBase`.
@@ -3622,9 +3622,9 @@ class SelectBase(
 
         """
 
-        return Subquery._construct(self._ensure_disambiguated_names(), name)  # type: ignore # noqa: E501
+        return Subquery._construct(self._ensure_disambiguated_names(), name)
 
-    def _ensure_disambiguated_names(self):  # type: ignore
+    def _ensure_disambiguated_names(self):
         """Ensure that the names generated by this selectbase will be
         disambiguated in some way, if possible.
 
@@ -3674,7 +3674,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         self.element = coercions.expect(roles.SelectStatementRole, element)
 
     def _ensure_disambiguated_names(self) -> SelectStatementGrouping:
-        new_element = self.element._ensure_disambiguated_names()  # type: ignore # noqa: E501
+        new_element = self.element._ensure_disambiguated_names()
         if new_element is not self.element:
             return SelectStatementGrouping(new_element)
         else:
@@ -3687,9 +3687,8 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         self, label_style: SelectLabelStyle
     ) -> SelectStatementGrouping:
         return SelectStatementGrouping(
-            self.element.set_label_style(label_style)  # type: ignore
-        )  # Argument 1 to "SelectStatementGrouping" has incompatible
-        # type "SelectBase"; expected "Select[Any]"  [arg-type]mypy(error)
+            self.element.set_label_style(label_style)
+        )
 
     @property
     def select_statement(self) -> SelectBase:
@@ -4261,7 +4260,7 @@ class GenerativeSelect(SelectBase, Generative):
 @CompileState.plugin_for("default", "compound_select")
 class CompoundSelectState(CompileState):
     @util.memoized_property
-    def _label_resolve_dict(self):  # type: ignore
+    def _label_resolve_dict(self):
         # TODO: this is hacky and slow
         hacky_subquery = self.statement.subquery()
         hacky_subquery.named_with_column = False
@@ -4375,7 +4374,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> GroupedElement:
-        return SelectStatementGrouping(self)  # type: ignore
+        return SelectStatementGrouping(self)
 
     def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
         for s in self.selects:
@@ -4392,7 +4391,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         return self
 
     def _ensure_disambiguated_names(self) -> CompoundSelect:
-        new_select = self.selects[0]._ensure_disambiguated_names()  # type: ignore # noqa: E501
+        new_select = self.selects[0]._ensure_disambiguated_names()
         if new_select is not self.selects[0]:
             self = self._generate()
             self.selects = [new_select] + self.selects[1:]
@@ -4584,26 +4583,26 @@ class SelectState(util.MemoizedSlots, CompileState):
                 return None
 
             elif not dedupe:
-                name = c._proxy_key  # type: ignore
+                name = c._proxy_key
                 if name is None:
                     name = "_no_label"
                 return name
 
-            name = c._tq_key_label if table_qualified else c._proxy_key  # type: ignore # noqa: E501
+            name = c._tq_key_label if table_qualified else c._proxy_key
 
             if name is None:
                 name = "_no_label"
                 if name in names:
-                    return c._anon_label(name) % pa  # type: ignore
+                    return c._anon_label(name) % pa
                 else:
                     names.add(name)
                     return name
 
             elif name in names:
                 return (
-                    c._anon_tq_key_label % pa  # type: ignore
+                    c._anon_tq_key_label % pa
                     if table_qualified
-                    else c._anon_key_label % pa  # type: ignore
+                    else c._anon_key_label % pa
                 )
             else:
                 names.add(name)
@@ -4667,7 +4666,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         if froms:
             toremove = set(
                 itertools.chain.from_iterable(
-                    [_expand_cloned(f._hide_froms) for f in froms]  # type: ignore # noqa: E501
+                    [_expand_cloned(f._hide_froms) for f in froms]
                 )
             )
             if toremove:
@@ -4715,8 +4714,8 @@ class SelectState(util.MemoizedSlots, CompileState):
                     f
                     for f in froms
                     if f
-                    not in _cloned_intersection(  # type: ignore
-                        _cloned_intersection(  # type: ignore
+                    not in _cloned_intersection(
+                        _cloned_intersection(
                             froms, explicit_correlate_froms or ()
                         ),
                         to_correlate,
@@ -4729,8 +4728,8 @@ class SelectState(util.MemoizedSlots, CompileState):
                 f
                 for f in froms
                 if f
-                not in _cloned_difference(  # type: ignore
-                    _cloned_intersection(  # type: ignore
+                not in _cloned_difference(
+                    _cloned_intersection(
                         froms, explicit_correlate_froms or ()
                     ),
                     self.statement._correlate_except,
@@ -4747,7 +4746,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                 f
                 for f in froms
                 if f
-                not in _cloned_intersection(froms, implicit_correlate_froms)  # type: ignore # noqa: E501
+                not in _cloned_intersection(froms, implicit_correlate_froms)
             ]
 
             if not len(froms):
@@ -5231,7 +5230,7 @@ class Select(
         from_entity = self._filter_by_zero()
 
         clauses = [
-            _entity_namespace_key(from_entity, key) == value  # type: ignore
+            _entity_namespace_key(from_entity, key) == value
             for key, value in kwargs.items()
         ]
         return self.filter(*clauses)
@@ -5958,8 +5957,8 @@ class Select(
         _MemoizedSelectEntities._generate_for_statement(self)
 
         self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, c)  # type: ignore
-            for c in coercions._expression_collection_was_a_list(  # type: ignore # noqa: E501
+            coercions.expect(roles.ColumnsClauseRole, c)
+            for c in coercions._expression_collection_was_a_list(
                 "entities", "Select.with_only_columns", entities
             )
         ]
@@ -6517,7 +6516,7 @@ class ScalarSelect(
         self.element = element
         self.type = element._scalar_type()
 
-    def __getattr__(self, attr: str):  # type: ignore
+    def __getattr__(self, attr: str):
         return getattr(self.element, attr)
 
     def __getstate__(self) -> Dict[str, Any]:
@@ -6728,7 +6727,7 @@ class Exists(UnaryExpression[bool]):
         """
         e = self._clone()
         e.element = self._regroup(
-            lambda element: element.correlate(*fromclauses)  # type: ignore
+            lambda element: element.correlate(*fromclauses)
         )
         return e
 
@@ -6747,7 +6746,7 @@ class Exists(UnaryExpression[bool]):
 
         e = self._clone()
         e.element = self._regroup(
-            lambda element: element.correlate_except(*fromclauses)  # type: ignore # noqa: E501
+            lambda element: element.correlate_except(*fromclauses)
         )
         return e
 
@@ -6765,7 +6764,7 @@ class Exists(UnaryExpression[bool]):
 
         """
         e = self._clone()
-        e.element = self._regroup(lambda element: element.select_from(*froms))  # type: ignore # noqa: E501
+        e.element = self._regroup(lambda element: element.select_from(*froms))
         return e
 
     def where(
@@ -6783,7 +6782,7 @@ class Exists(UnaryExpression[bool]):
 
         """
         e = self._clone()
-        e.element = self._regroup(lambda element: element.where(*clause))  # type: ignore # noqa: E501
+        e.element = self._regroup(lambda element: element.where(*clause))
         return e
 
 
@@ -6892,7 +6891,7 @@ class TextualSelect(SelectBase, Executable, Generative):
         self.element = self.element.bindparams(*binds, **bind_as_values)
         return self
 
-    def _generate_fromclause_column_proxies(  # type: ignore
+    def _generate_fromclause_column_proxies(
         self,
         fromclause: Subquery,
         proxy_compound_columns: Optional[zip[Any]] = None,
