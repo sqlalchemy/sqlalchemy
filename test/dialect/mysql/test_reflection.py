@@ -759,6 +759,93 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE FULLTEXT INDEX textdata_ix ON mytable (textdata)",
         )
 
+    def test_reflect_index_col_length(self, metadata, connection):
+        """test for #9047"""
+
+        tt = Table(
+            "test_table",
+            metadata,
+            Column("signal_type", Integer(), nullable=False),
+            Column("signal_data", String(200), nullable=False),
+            Column("signal_data_2", String(200), nullable=False),
+            Index(
+                "ix_1",
+                "signal_type",
+                "signal_data",
+                mysql_length={"signal_data": 25},
+                mariadb_length={"signal_data": 25},
+            ),
+        )
+        Index(
+            "ix_2",
+            tt.c.signal_type,
+            tt.c.signal_data,
+            tt.c.signal_data_2,
+            mysql_length={"signal_data": 25, "signal_data_2": 10},
+            mariadb_length={"signal_data": 25, "signal_data_2": 10},
+        )
+
+        mysql_length = (
+            "mysql_length"
+            if not connection.dialect.is_mariadb
+            else "mariadb_length"
+        )
+        eq_(
+            {idx.name: idx.kwargs[mysql_length] for idx in tt.indexes},
+            {
+                "ix_1": {"signal_data": 25},
+                "ix_2": {"signal_data": 25, "signal_data_2": 10},
+            },
+        )
+
+        metadata.create_all(connection)
+
+        eq_(
+            sorted(
+                inspect(connection).get_indexes("test_table"),
+                key=lambda rec: rec["name"],
+            ),
+            [
+                {
+                    "name": "ix_1",
+                    "column_names": ["signal_type", "signal_data"],
+                    "unique": False,
+                    "dialect_options": {mysql_length: {"signal_data": 25}},
+                },
+                {
+                    "name": "ix_2",
+                    "column_names": [
+                        "signal_type",
+                        "signal_data",
+                        "signal_data_2",
+                    ],
+                    "unique": False,
+                    "dialect_options": {
+                        mysql_length: {
+                            "signal_data": 25,
+                            "signal_data_2": 10,
+                        }
+                    },
+                },
+            ],
+        )
+
+        new_metadata = MetaData()
+        reflected_table = Table(
+            "test_table", new_metadata, autoload_with=connection
+        )
+
+        eq_(
+            {
+                idx.name: idx.kwargs[mysql_length]
+                for idx in reflected_table.indexes
+            },
+            {
+                "ix_1": {"signal_data": 25},
+                "ix_2": {"signal_data": 25, "signal_data_2": 10},
+            },
+        )
+
     @testing.requires.mysql_ngram_fulltext
     def test_reflect_fulltext_comment(
         self,
