@@ -4014,10 +4014,17 @@ class ColumnCollectionMixin:
             assert len(result) == len(self._pending_colargs)
             return result
         else:
-            return [
-                parent.c[col] if isinstance(col, str) else col
-                for col in self._pending_colargs
-            ]
+            try:
+                return [
+                    parent.c[col] if isinstance(col, str) else col
+                    for col in self._pending_colargs
+                ]
+            except KeyError as ke:
+                raise exc.ConstraintColumnNotFoundError(
+                    f"Can't create {self.__class__.__name__} "
+                    f"on table '{parent.description}': no column "
+                    f"named '{ke.args[0]}' is present."
+                ) from ke
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Table, Column))
@@ -4519,14 +4526,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         assert isinstance(table, Table)
         Constraint._set_parent(self, table)
 
-        try:
-            ColumnCollectionConstraint._set_parent(self, table)
-        except KeyError as ke:
-            raise exc.ArgumentError(
-                "Can't create ForeignKeyConstraint "
-                "on table '%s': no column "
-                "named '%s' is present." % (table.description, ke.args[0])
-            ) from ke
+        ColumnCollectionConstraint._set_parent(self, table)
 
         for col, fk in zip(self._columns, self.elements):
             if not hasattr(fk, "parent") or fk.parent is not col:

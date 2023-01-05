@@ -165,6 +165,15 @@ class AmbiguousForeignKeysError(ArgumentError):
     between two selectables during a join."""
 
 
+class ConstraintColumnNotFoundError(ArgumentError):
+    """raised when a constraint refers to a string column name that
+    is not present in the table being constrained.
+
+    .. versionadded:: 2.0
+
+    """
+
+
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected.
 

@@ -1786,16 +1786,25 @@ class Inspector(inspection.Inspectable["Inspector"]):
             else:
                 options = {}
 
-            table.append_constraint(
-                sa_schema.ForeignKeyConstraint(
-                    constrained_columns,
-                    refspec,
-                    conname,
-                    link_to_name=True,
-                    comment=fkey_d.get("comment"),
-                    **options,
+            try:
+                table.append_constraint(
+                    sa_schema.ForeignKeyConstraint(
+                        constrained_columns,
+                        refspec,
+                        conname,
+                        link_to_name=True,
+                        comment=fkey_d.get("comment"),
+                        **options,
+                    )
                 )
-            )
+            except exc.ConstraintColumnNotFoundError:
+                util.warn(
+                    f"On reflected table {table.name}, skipping reflection of "
+                    "foreign key constraint "
+                    f"{conname}; one or more subject columns within "
+                    f"name(s) {', '.join(constrained_columns)} are not "
+                    "present in the table"
+                )
 
     _index_sort_exprs = {
         "asc": operators.asc_op,
