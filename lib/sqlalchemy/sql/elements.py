@@ -91,10 +91,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
-    from .annotation import AnnotatedBindParameter
     from .annotation import AnnotatedBooleanClauseList
-    from .annotation import AnnotatedClauseList
-    from .annotation import AnnotatedLabel
     from .annotation import SupportsAnnotations
     from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
@@ -2130,9 +2127,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     def _gen_cache_key(
         self,
         anon_map: cache_anon_map,
-        bindparams: Union[
-            List[AnnotatedBindParameter], List[BindParameter[_T]]
-        ],
+        bindparams: Union[List[Annotated], List[BindParameter[_T]]],
     ) -> Optional[
         Union[
             typing_Tuple[str, Type[BindParameter[_T]]],
@@ -2592,7 +2587,7 @@ class TextClause(
         return self.type.comparator_factory(self)  # type: ignore
 
     def self_group(
-        self, against: Union[Callable[..., Any], OperatorType, None] = None
+        self, against: Optional[OperatorType] = None
     ) -> Union[Grouping[TextClause], TextClause]:
         if against is operators.in_op:
             return Grouping(self)
@@ -2796,9 +2791,8 @@ class ClauseList(
     def _from_objects(self) -> List[FromClause]:
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
-    def self_group(
-        self, against: OperatorType
-    ) -> Union[AnnotatedClauseList, Grouping[ClauseList]]:
+    def self_group(self, against: Optional[OperatorType]) -> ClauseElement:
+        assert against is not None
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2822,8 +2816,9 @@ class OperatorExpression(ColumnElement[_T]):
         return operators.is_comparison(self.operator)
 
     def self_group(
-        self, against: OperatorType
+        self, against: Optional[OperatorType]
     ) -> Union[Grouping[OperatorExpression[_T]], OperatorExpression[_T]]:
+        assert against is not None
         if (
             self.group
             and operators.is_precedent(self.operator, against)
@@ -3707,7 +3702,7 @@ class UnaryExpression(ColumnElement[_T]):
         else:
             return ClauseElement._negate(self)
 
-    def self_group(self, against: Optional[Callable[..., Any]] = None) -> Any:
+    def self_group(self, against: OperatorType) -> Any:
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -4004,9 +3999,7 @@ class Slice(ColumnElement[Any]):
         )
         self.type = type_api.NULLTYPE
 
-    def self_group(
-        self, against: Optional[Callable[..., Any]] = None
-    ) -> Slice:
+    def self_group(self, against: Optional[OperatorType] = None) -> Slice:
         assert against is operator.getitem
         return self
 
@@ -4030,7 +4023,7 @@ class GroupedElement(DQLDMLClauseElement):
     ) -> GroupedElement:
         return self
 
-    def _ungroup(self) -> Select:
+    def _ungroup(self) -> ClauseElement:
         return self.element._ungroup()
 
 
@@ -4174,7 +4167,18 @@ class Over(ColumnElement[_T]):
         else:
             self.rows = self.range_ = None
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple(
+        Type[Over[_T]],
+        typing_Tuple(
+            ColumnElement[_T],
+            Optional[ClauseList],
+            Optional[ClauseList],
+            Optional[typing_Tuple[int, int]],
+            Optional[typing_Tuple[int, int]],
+        ),
+    ):
         return self.__class__, (
             self.element,
             self.partition_by,
@@ -4359,7 +4363,9 @@ class FunctionFilter(ColumnElement[_T]):
         self.func = func
         self.filter(*criterion)
 
-    def filter(self, *criterion: BinaryExpression) -> FunctionFilter:
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> FunctionFilter[_T]:
         """Produce an additional FILTER against the function.
 
         This method adds additional criteria to the initial criteria
@@ -4423,16 +4429,14 @@ class FunctionFilter(ColumnElement[_T]):
             rows=rows,
         )
 
-    def self_group(
-        self, against: Optional[Callable[..., Any]] = None
-    ) -> Grouping:
+    def self_group(self, against: OperatorType) -> ClauseElement:
         if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
 
     @util.memoized_property
-    def type(self) -> ARRAY:
+    def type(self) -> TypeEngine[_T]:
         return self.func.type
 
     @util.ro_non_memoized_property
@@ -4463,8 +4467,9 @@ class NamedColumn(KeyedColumnElement[_T]):
     def description(self) -> str:
         return self.name
 
+    # QUESTION: Union[_anonymous_label, _truncated_label]
     @HasMemoized.memoized_attribute
-    def _tq_key_label(self) -> Union[_anonymous_label, _truncated_label]:
+    def _tq_key_label(self) -> Optional[str]:
         """table qualified label based on column key.
 
         for table-bound columns this is <tablename>_<column key/proxy key>;
@@ -4493,7 +4498,7 @@ class NamedColumn(KeyedColumnElement[_T]):
         return True
 
     @HasMemoized.memoized_attribute
-    def _non_anon_label(self) -> Any:
+    def _non_anon_label(self) -> Optional[str]:
         return self.name
 
     def _gen_tq_label(
@@ -4629,11 +4634,11 @@ class Label(  # type: ignore [misc]
 
     def _bind_param(
         self,
-        operator: Union[Callable],
+        operator: OperatorType,
         obj: Union[List[str], int, str],
-        type_: Optional[Any] = None,
+        type_: Optional[_TypeEngineArgument[_T]] = None,
         expanding: bool = False,
-    ) -> BindParameter:
+    ) -> BindParameter[_T]:
         return BindParameter(
             None,
             obj,
@@ -4653,24 +4658,24 @@ class Label(  # type: ignore [misc]
         return self.element._allow_label_resolve
 
     @property
-    def _order_by_label_element(self) -> Label:
+    def _order_by_label_element(self) -> Label[_T]:
         return self
 
     @HasMemoized.memoized_attribute
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
 
-    def self_group(
-        self, against: Optional[OperatorType] = None
-    ) -> Union[AnnotatedLabel, Label[_T]]:
+    # QUESTION: AnnotatedLabel
+    def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
-    def _negate(self):
+    def _negate(self) -> Label[_T]:
         return self._apply_to_inner(self._element._negate)
 
+    # QUESTION: AnnotatedLabel
     def _apply_to_inner(
         self, fn: Callable[..., Any], *arg: Any, **kw: Any
-    ) -> Union[AnnotatedLabel, Label[_T]]:
+    ) -> Label[_T]:
         sub_element = fn(*arg, **kw)
         if sub_element is not self._element:
             return Label(self.name, sub_element, type_=self.type)
@@ -4871,7 +4876,7 @@ class ColumnClause(  # type: ignore [misc]
         return self.table is not None
 
     @property
-    def _ddl_label(self) -> _truncated_label:
+    def _ddl_label(self) -> Optional[str]:
         return self._gen_tq_label(self.name, dedupe_on_key=False)
 
     def _compare_name_for_result(
