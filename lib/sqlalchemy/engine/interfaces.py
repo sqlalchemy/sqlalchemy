@@ -1790,15 +1790,19 @@ class Dialect(EventTarget):
            published so that third-party dialects may provide an
            implementation. It is **not** the public API for checking for table
            presence. Please use the :meth:`.Inspector.has_table` method.
-           Alternatively, for legacy cross-compatibility, the
-           :meth:`_engine.Engine.has_table` method may be used.
 
-        .. versionchanged:: 2.0
+        .. versionchanged:: 2.0:: :meth:`_engine.Dialect.has_table` now
+           formally supports checking for additional table-like objects:
 
-            The :meth:`_engine.Dialect.has_table` method should also check
-            for the presence of views.  In previous versions this
-            behavior was dialect specific. New dialect suite tests were added
-            to ensure that dialects conform with this behavior consistently.
+           * any type of views (plain or materialized)
+           * temporary tables of any kind
+
+           Previously, these two checks were not formally specified and
+           different dialects would vary in their behavior.   The dialect
+           testing suite now includes tests for all of these object types,
+           and dialects to the degree that the backing database supports views
+           or temporary tables should seek to support locating these objects
+           for full compliance.
 
         """
 

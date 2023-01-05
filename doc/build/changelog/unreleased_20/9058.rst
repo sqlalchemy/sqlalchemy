@@ -1,0 +1,23 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 9058
+
+    Restored the behavior of :meth:`.Inspector.has_table` to report on
+    temporary tables for MySQL / MariaDB. This is currently the behavior for
+    all other included dialects, but was removed for MySQL in 1.4 due to no
+    longer using the DESCRIBE command; there was no documented support for temp
+    tables being reported by the :meth:`.Inspector.has_table` method in this
+    version or on any previous version, so the previous behavior was undefined.
+
+    As SQLAlchemy 2.0 has added formal support for temp table status via
+    :meth:`.Inspector.has_table`, the MySQL /MariaDB dialect has been reverted
+    to use the "DESCRIBE" statement as it did in the SQLAlchemy 1.3 series and
+    previously, and test support is added to include MySQL / MariaDB for
+    this behavior.   The previous issues with ROLLBACK being emitted which
+    1.4 sought to improve upon don't apply in SQLAlchemy 2.0 due to
+    simplifications in how :class:`.Connection` handles transactions.
+
+    DESCRIBE is necessary as MariaDB in particular has no consistently
+    available public information schema of any kind in order to report on temp
+    tables other than DESCRIBE/SHOW COLUMNS, which rely on throwing an error
+    in order to report no results.

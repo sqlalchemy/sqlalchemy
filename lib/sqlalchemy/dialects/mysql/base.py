@@ -1013,7 +1013,6 @@ from itertools import compress
 import re
 
 from sqlalchemy import literal_column
-from sqlalchemy import text
 from sqlalchemy.sql import visitors
 from . import reflection as _reflection
 from .enumerated import ENUM
@@ -1070,7 +1069,6 @@ from ...sql import operators
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
-from ...sql.sqltypes import Unicode
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -2671,21 +2669,30 @@ class MySQLDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        rs = connection.execute(
-            text(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE "
-                "table_schema = :table_schema AND "
-                "table_name = :table_name"
-            ).bindparams(
-                sql.bindparam("table_schema", type_=Unicode),
-                sql.bindparam("table_name", type_=Unicode),
-            ),
-            {
-                "table_schema": str(schema),
-                "table_name": str(table_name),
-            },
+        assert schema is not None
+
+        full_name = ".".join(
+            self.identifier_preparer._quote_free_identifiers(
+                schema, table_name
+            )
         )
-        return bool(rs.scalar())
+
+        # DESCRIBE *must* be used because there is no information schema
+        # table that returns information on temp tables that is consistently
+        # available on MariaDB / MySQL / engine-agnostic etc.
+        # therefore we have no choice but to use DESCRIBE and an error catch
+        # to detect "False".  See issue #9058
+
+        try:
+            with connection.exec_driver_sql(
+                f"DESCRIBE {full_name}",
+                execution_options={"skip_user_error_events": True},
+            ) as rs:
+                return rs.fetchone() is not None
+        except exc.DBAPIError as e:
+            if self._extract_error_code(e.orig) == 1146:
+                return False
+            raise
 
     @reflection.cache
     def has_sequence(self, connection, sequence_name, schema=None, **kw):

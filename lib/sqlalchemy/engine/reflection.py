@@ -401,7 +401,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
     def has_table(
         self, table_name: str, schema: Optional[str] = None, **kw: Any
     ) -> bool:
-        r"""Return True if the backend has a table or view of the given name.
+        r"""Return True if the backend has a table, view, or temporary
+        table of the given name.
 
         :param table_name: name of the table to check
         :param schema: schema name to query, if not the default schema.
@@ -412,11 +413,17 @@ class Inspector(inspection.Inspectable["Inspector"]):
         .. versionadded:: 1.4 - the :meth:`.Inspector.has_table` method
            replaces the :meth:`_engine.Engine.has_table` method.
 
-        .. versionchanged:: 2.0:: The method checks also for any type of
-           views (plain or materialized).
-           In previous version this behaviour was dialect specific. New
-           dialect suite tests were added to ensure all dialect conform with
-           this behaviour.
+        .. versionchanged:: 2.0:: :meth:`.Inspector.has_table` now formally
+           supports checking for additional table-like objects:
+
+           * any type of views (plain or materialized)
+           * temporary tables of any kind
+
+           Previously, these two checks were not formally specified and
+           different dialects would vary in their behavior.   The dialect
+           testing suite now includes tests for all of these object types
+           and should be supported by all SQLAlchemy-included dialects.
+           Support among third party dialects may be lagging, however.
 
         """
         with self._operation_context() as conn:

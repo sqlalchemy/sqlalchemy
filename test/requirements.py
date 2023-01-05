@@ -625,9 +625,9 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        return only_on(["sqlite", "oracle", "postgresql", "mssql"]) + skip_if(
-            self._sqlite_file_db
-        )
+        # SQLite file db "works", but there's some kind of issue when
+        # run in the full test suite that causes it not to work
+        return skip_if(self._sqlite_file_db)
 
     @property
     def temporary_views(self):
