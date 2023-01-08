@@ -144,7 +144,7 @@ class DeclarativeAttributeIntercept(
 
 
 @compat_typing.dataclass_transform(
-    field_descriptors=(
+    field_specifiers=(
         MappedColumn[Any],
         RelationshipProperty[Any],
         Composite[Any],
@@ -1328,7 +1328,7 @@ class registry:
         return metaclass(name, bases, class_dict)
 
     @compat_typing.dataclass_transform(
-        field_descriptors=(
+        field_specifiers=(
             MappedColumn[Any],
             RelationshipProperty[Any],
             Composite[Any],
