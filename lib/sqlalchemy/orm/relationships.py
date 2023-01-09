@@ -758,9 +758,7 @@ class RelationshipProperty(StrategizedProperty):
         :param post_update:
           This indicates that the relationship should be handled by a
           second UPDATE statement after an INSERT or before a
-          DELETE. Currently, it also will issue an UPDATE after the
-          instance was UPDATEd as well, although this technically should
-          be improved. This flag is used to handle saving bi-directional
+          DELETE. This flag is used to handle saving bi-directional
           dependencies between two individual rows (i.e. each row
           references the other), where it would otherwise be impossible to
           INSERT or DELETE both rows fully since one row exists before the
