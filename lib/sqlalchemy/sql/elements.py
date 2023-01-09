@@ -132,6 +132,7 @@ _NUMBER = Union[float, int, Decimal]
 _T = TypeVar("_T", bound="Any")
 _OPT = TypeVar("_OPT", bound="Any")
 _NT = TypeVar("_NT", bound="_NUMERIC")
+
 _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
@@ -1564,7 +1565,6 @@ class ColumnElement(
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
-    # QUESTION: an override returns FrozenSet[ColumnElement[_T]]
     def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
         """Return True if the given column element compares to this one
         when targeting within a result row."""
@@ -2280,7 +2280,6 @@ class TextClause(
 
     _allow_label_resolve = False
 
-    # QUESTION: mypy bug
     @property
     def _is_star(self) -> bool:
         return self.text == "*"
@@ -4481,7 +4480,7 @@ class NamedColumn(KeyedColumnElement[_T]):
     def description(self) -> str:
         return self.name
 
-    # QUESTION: Union[_anonymous_label, _truncated_label]
+    # caught Union[_anonymous_label, _truncated_label] at runtime
     @HasMemoized.memoized_attribute
     def _tq_key_label(self) -> Optional[str]:
         """table qualified label based on column key.
