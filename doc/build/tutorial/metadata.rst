@@ -191,6 +191,8 @@ parameter.
 In the next section we will emit the completed DDL for the ``user`` and
 ``address`` table to see the completed result.
 
+.. _tutorial_emitting_ddl:
+
 Emitting DDL to the Database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
