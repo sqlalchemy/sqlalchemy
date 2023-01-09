@@ -4507,3 +4507,21 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"use the .scalar_values\(\) method.",
         ):
             fn(values(t.c.data).data([(1,), (42,)]))
+
+
+class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    def test_generic_bit_xor(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.op("^")(c2)),
+            "SELECT c1 ^ c2 AS anon_1",
+        )
+
+    def test_dedicated_bit_xor(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.bitwise_xor(c2)),
+            "SELECT c1 ^ c2 AS anon_1",
+        )
