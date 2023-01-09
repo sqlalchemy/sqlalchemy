@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: allow-untyped-calls
 
 """Core SQL expression elements, including :class:`_expression.ClauseElement`,
 :class:`_expression.ColumnElement`, and derived classes.
@@ -85,13 +84,11 @@ if typing.TYPE_CHECKING:
     from mypy_extensions import NoReturn
 
     from ._py_util import cache_anon_map
-    from ._py_util import prefix_anon_map
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
-    from .annotation import AnnotatedBooleanClauseList
     from .annotation import SupportsAnnotations
     from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
@@ -1568,9 +1565,8 @@ class ColumnElement(
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
-    def _compare_name_for_result(
-        self, other: ColumnElement[Any]
-    ) -> Union[bool, FrozenSet[ColumnElement[_T]]]:
+    # QUESTION: an override returns FrozenSet[ColumnElement[_T]]
+    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
         """Return True if the given column element compares to this one
         when targeting within a result row."""
 
@@ -2127,7 +2123,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     def _gen_cache_key(
         self,
         anon_map: cache_anon_map,
-        bindparams: Union[List[Annotated], List[BindParameter[_T]]],
+        bindparams: List[BindParameter[_T]],
     ) -> Optional[
         Union[
             typing_Tuple[str, Type[BindParameter[_T]]],
@@ -2285,6 +2281,7 @@ class TextClause(
 
     _allow_label_resolve = False
 
+    # QUESTION: mypy bug
     @property
     def _is_star(self) -> bool:
         return self.text == "*"
@@ -2791,7 +2788,9 @@ class ClauseList(
     def _from_objects(self) -> List[FromClause]:
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
-    def self_group(self, against: Optional[OperatorType]) -> ClauseElement:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ClauseElement:
         assert against is not None
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
@@ -2816,8 +2815,8 @@ class OperatorExpression(ColumnElement[_T]):
         return operators.is_comparison(self.operator)
 
     def self_group(
-        self, against: Optional[OperatorType]
-    ) -> Union[Grouping[OperatorExpression[_T]], OperatorExpression[_T]]:
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[Any]:
         assert against is not None
         if (
             self.group
@@ -3173,9 +3172,10 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
+    # caught AnnotatedBooleanClauseList at runtime
     def self_group(
         self, against: Optional[OperatorType] = None
-    ) -> Union[AnnotatedBooleanClauseList, BooleanClauseList, Grouping]:
+    ) -> ColumnElement[Any]:
         if not self.clauses:
             return self
         else:
@@ -3237,10 +3237,10 @@ class Tuple(  # type: ignore [misc]
     def _bind_param(
         self,
         operator: OperatorType,
-        obj: List[Tuple[int, str]],
-        type_: Optional[TypeEngine[_T]] = None,
+        obj: List[typing_Tuple[int, str]],
+        type_: Optional[_TypeEngineArgument[_T]] = None,
         expanding: bool = False,
-    ) -> Union[BindParameter[_T], Tuple]:
+    ) -> BindParameter[_T]:
         if expanding:
             return BindParameter(
                 None,
@@ -3591,7 +3591,7 @@ class UnaryExpression(ColumnElement[_T]):
         element: ColumnElement[Any],
         operator: Optional[OperatorType] = None,
         modifier: Optional[OperatorType] = None,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[Union[_TypeEngineArgument[_T], Boolean]] = None,
         wraps_column_expression: bool = False,
     ):
         self.operator = operator
@@ -3691,7 +3691,7 @@ class UnaryExpression(ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def _negate(self) -> UnaryExpression:
+    def _negate(self) -> ClauseElement:
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return UnaryExpression(
                 self.self_group(against=operators.inv),
@@ -3702,7 +3702,10 @@ class UnaryExpression(ColumnElement[_T]):
         else:
             return ClauseElement._negate(self)
 
-    def self_group(self, against: OperatorType) -> Any:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[Any]:
+        assert against is not None
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -3756,7 +3759,9 @@ class CollectionAggregate(UnaryExpression[_T]):
     # operate and reverse_operate are hardwired to
     # dispatch onto the type comparator directly, so that we can
     # ensure "reversed" behavior.
-    def operate(self, op, *other, **kwargs):
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         if not operators.is_comparison(op):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
@@ -3764,7 +3769,9 @@ class CollectionAggregate(UnaryExpression[_T]):
         kwargs["reverse"] = kwargs["_any_all_expr"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
-    def reverse_operate(self, op, other, **kwargs):
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> NoReturn:
         # comparison operators should never call reverse_operate
         assert not operators.is_comparison(op)
         raise exc.ArgumentError(
@@ -4169,16 +4176,16 @@ class Over(ColumnElement[_T]):
 
     def __reduce__(
         self,
-    ) -> typing_Tuple(
+    ) -> typing_Tuple[
         Type[Over[_T]],
-        typing_Tuple(
+        typing_Tuple[
             ColumnElement[_T],
             Optional[ClauseList],
             Optional[ClauseList],
             Optional[typing_Tuple[int, int]],
             Optional[typing_Tuple[int, int]],
-        ),
-    ):
+        ],
+    ]:
         return self.__class__, (
             self.element,
             self.partition_by,
@@ -4225,7 +4232,7 @@ class Over(ColumnElement[_T]):
         return lower, upper
 
     @util.memoized_property
-    def type(self) -> Union[NullType, String]:
+    def type(self) -> TypeEngine[_T]:
         return self.element.type
 
     @util.ro_non_memoized_property
@@ -4278,18 +4285,23 @@ class WithinGroup(ColumnElement[_T]):
                 *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
             )
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[
+        Type[WithinGroup[_T]],
+        typing_Tuple[Union[FunctionElement[_T], ColumnElement[Any]], ...],
+    ]:
         return self.__class__, (self.element,) + (
             tuple(self.order_by) if self.order_by is not None else ()
         )
 
     def over(
         self,
-        partition_by: ColumnClause = None,
-        order_by: ColumnClause = None,
-        range_: Optional[Tuple[int, int]] = None,
-        rows: Optional[Tuple[int, int]] = None,
-    ) -> Over:
+        partition_by: Optional[ColumnClause[_T]] = None,
+        order_by: Optional[ColumnClause[_T]] = None,
+        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
 
@@ -4306,7 +4318,7 @@ class WithinGroup(ColumnElement[_T]):
         )
 
     @util.memoized_property
-    def type(self) -> String:
+    def type(self) -> TypeEngine[_T]:
         wgt = self.element.within_group_type(self)
         if wgt is not None:
             return wgt
@@ -4429,7 +4441,10 @@ class FunctionFilter(ColumnElement[_T]):
             rows=rows,
         )
 
-    def self_group(self, against: OperatorType) -> ClauseElement:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[_T]:
+        assert against is not None
         if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
@@ -4458,7 +4473,7 @@ class NamedColumn(KeyedColumnElement[_T]):
     name: str
     key: str
 
-    def _compare_name_for_result(self, other: NamedColumn[_T]) -> bool:
+    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
         return (hasattr(other, "name") and self.name == other.name) or (
             hasattr(other, "_label") and self._label == other._label
         )
@@ -4665,14 +4680,14 @@ class Label(  # type: ignore [misc]
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
 
-    # QUESTION: AnnotatedLabel
+    # caught AnnotatedLabel at runtime
     def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
-    def _negate(self) -> Label[_T]:
+    def _negate(self) -> ColumnElement[_T]:
         return self._apply_to_inner(self._element._negate)
 
-    # QUESTION: AnnotatedLabel
+    # caught AnnotatedLabel at runtime
     def _apply_to_inner(
         self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Label[_T]:
@@ -4848,9 +4863,7 @@ class ColumnClause(  # type: ignore [misc]
         else:
             return super().entity_namespace
 
-    def _clone(
-        self, detect_subquery_cols: bool = False, **kw: Any
-    ) -> Union[ColumnClause[_T], Column[_T]]:
+    def _clone(self, detect_subquery_cols: bool = False, **kw: Any) -> Any:
         if (
             detect_subquery_cols
             and self.table is not None
@@ -4880,8 +4893,8 @@ class ColumnClause(  # type: ignore [misc]
         return self._gen_tq_label(self.name, dedupe_on_key=False)
 
     def _compare_name_for_result(
-        self, other: ColumnClause[_T]
-    ) -> Union[bool, FrozenSet[ColumnElement[_T]]]:
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         if (
             self.is_literal
             or self.table is None
@@ -5390,7 +5403,8 @@ class _anonymous_label(_truncated_label):
             )
         )
 
-    def apply_map(self, map_: Union[cache_anon_map, prefix_anon_map]) -> str:
+    # caught map_: Union[cache_anon_map, prefix_anon_map]
+    def apply_map(self, map_: Mapping[str, Any]) -> str:
         if self.quote is not None:
             # preserve quoting only if necessary
             return quoted_name(self % map_, self.quote)
