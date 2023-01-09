@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9067
-
-    The Data Class Transforms argument ``field_descriptors`` was renamed
-    to ``field_specifiers`` in the accepted version of PEP 681.

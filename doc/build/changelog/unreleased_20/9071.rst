@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 9071
-
-    Fixed issue where an overly restrictive ORM mapping rule were added in 2.0
-    which prevented mappings against :class:`.TableClause` objects, such as
-    those used in the view recipe on the wiki.

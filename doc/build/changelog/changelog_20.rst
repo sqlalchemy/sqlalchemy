@@ -10,7 +10,69 @@
 
 .. changelog::
     :version: 2.0.0rc2
-    :include_notes_from: unreleased_20
+    :released: January 9, 2023
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9067
+
+        The Data Class Transforms argument ``field_descriptors`` was renamed
+        to ``field_specifiers`` in the accepted version of PEP 681.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 9059
+
+        Supported use case for foreign key constraints where the local column is
+        marked as "invisible". The errors normally generated when a
+        :class:`.ForeignKeyConstraint` is created that check for the target column
+        are disabled when reflecting, and the constraint is skipped with a warning
+        in the same way which already occurs for an :class:`.Index` with a similar
+        issue.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9071
+
+        Fixed issue where an overly restrictive ORM mapping rule were added in 2.0
+        which prevented mappings against :class:`.TableClause` objects, such as
+        those used in the view recipe on the wiki.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 9058
+
+        Restored the behavior of :meth:`.Inspector.has_table` to report on
+        temporary tables for MySQL / MariaDB. This is currently the behavior for
+        all other included dialects, but was removed for MySQL in 1.4 due to no
+        longer using the DESCRIBE command; there was no documented support for temp
+        tables being reported by the :meth:`.Inspector.has_table` method in this
+        version or on any previous version, so the previous behavior was undefined.
+
+        As SQLAlchemy 2.0 has added formal support for temp table status via
+        :meth:`.Inspector.has_table`, the MySQL /MariaDB dialect has been reverted
+        to use the "DESCRIBE" statement as it did in the SQLAlchemy 1.3 series and
+        previously, and test support is added to include MySQL / MariaDB for
+        this behavior.   The previous issues with ROLLBACK being emitted which
+        1.4 sought to improve upon don't apply in SQLAlchemy 2.0 due to
+        simplifications in how :class:`.Connection` handles transactions.
+
+        DESCRIBE is necessary as MariaDB in particular has no consistently
+        available public information schema of any kind in order to report on temp
+        tables other than DESCRIBE/SHOW COLUMNS, which rely on throwing an error
+        in order to report no results.
+
+    .. change::
+        :tags: json, postgresql
+        :tickets: 7147
+
+        Implemented missing ``JSONB`` operations:
+
+        * ``@@`` using :meth:`_postgresql.JSONB.Comparator.path_match`
+        * ``@?`` using :meth:`_postgresql.JSONB.Comparator.path_exists`
+        * ``#-`` using :meth:`_postgresql.JSONB.Comparator.delete_path`
+
+        Pull request curtesy of Guilherme Martins Crocetti.
 
 .. changelog::
     :version: 2.0.0rc1
