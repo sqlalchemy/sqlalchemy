@@ -103,7 +103,7 @@ that will be how we will refer to the table in application code::
     ... )
 
 Components of ``Table``
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
 We can observe that the :class:`_schema.Table` construct looks a lot like
 a SQL CREATE TABLE statement; starting with the table name, then listing out
