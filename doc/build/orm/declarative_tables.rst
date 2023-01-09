@@ -322,13 +322,11 @@ the registry and Declarative base could be configured as::
 
 
     class Base(DeclarativeBase):
-        registry = registry(
-            type_annotation_map={
-                int: BIGINT,
-                datetime.datetime: TIMESTAMP(timezone=True),
-                str: String().with_variant(NVARCHAR, "mssql"),
-            }
-        )
+        type_annotation_map = {
+            int: BIGINT,
+            datetime.datetime: TIMESTAMP(timezone=True),
+            str: String().with_variant(NVARCHAR, "mssql"),
+        }
 
 
     class SomeClass(Base):

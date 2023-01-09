@@ -72,16 +72,19 @@ Having a single :class:`_schema.MetaData` object for an entire application is
 the most common case, represented as a module-level variable in a single place
 in an application, often in a "models" or "dbschema" type of package. It is
 also very common that the :class:`_schema.MetaData` is accessed via an
-ORM-centric registry or base class such as the
-:ref:`Declarative Base <tutorial_orm_declarative_base>`, so that this same
-:class:`_schema.MetaData` is shared among ORM- and Core-declared
+ORM-centric :class:`_orm.registry` or
+:ref:`Declarative Base <tutorial_orm_declarative_base>` base class, so that
+this same :class:`_schema.MetaData` is shared among ORM- and Core-declared
 :class:`_schema.Table` objects.
 
-There can be multiple :class:`_schema.MetaData` collections as well, however
-it's typically most helpful if a series of :class:`_schema.Table` objects that
-are related to each other belong to a single :class:`_schema.MetaData`
-collection.
-
+There can be multiple :class:`_schema.MetaData` collections as well;
+:class:`_schema.Table` objects can to refer to :class:`_schema.Table` objects
+in other collections without restrictions. However, for groups of
+:class:`_schema.Table` objects that are related to each other, it is in
+practice much more straightforward to have them set up within a single
+:class:`_schema.MetaData` collection, both from the perspective of declaring
+them, as well as from the perspective of DDL (i.e. CREATE and DROP) statements
+being emitted in the correct order.
 
 Once we have a :class:`_schema.MetaData` object, we can declare some
 :class:`_schema.Table` objects.  This tutorial will start with the classic
@@ -102,13 +105,17 @@ that will be how we will refer to the table in application code::
     ...     Column("fullname", String),
     ... )
 
+With the above example, when we wish to write code that refers to the
+"user_account" table in the database, we will use the ``user_table``
+Python variable to refer to it.
+
 Components of ``Table``
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-We can observe that the :class:`_schema.Table` construct looks a lot like
-a SQL CREATE TABLE statement; starting with the table name, then listing out
-each column, where each column has a name and a datatype.   The objects we
-use above are:
+We can observe that the :class:`_schema.Table` construct as written in Python
+has a resemblence to a SQL CREATE TABLE statement; starting with the table
+name, then listing out each column, where each column has a name and a
+datatype. The objects we use above are:
 
 * :class:`_schema.Table` - represents a database table and assigns itself
   to a :class:`_schema.MetaData` collection.
@@ -143,7 +150,7 @@ is to generate :term:`DDL` on a particular database connection.  But first
 we will declare a second :class:`_schema.Table`.
 
 Declaring Simple Constraints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The first :class:`_schema.Column` in the example ``user_table`` includes the
 :paramref:`_schema.Column.primary_key` parameter which is a shorthand technique
@@ -194,7 +201,7 @@ In the next section we will emit the completed DDL for the ``user`` and
 .. _tutorial_emitting_ddl:
 
 Emitting DDL to the Database
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 We've constructed a an object structure that represents
 two database tables in a database, starting at the root :class:`_schema.MetaData`
@@ -413,8 +420,9 @@ about these classes include:
   :class:`_orm.Mapped` type annotation alone, using simple Python types like
   ``int`` and ``str`` to mean :class:`.Integer` and :class:`.String`.
   Customization of how Python types are interpreted within the Declarative
-  mapping process is very open ended; see the section
-  :ref:`orm_declarative_mapped_column` for background.
+  mapping process is very open ended; see the sections
+  :ref:`orm_declarative_mapped_column` and
+  :ref:`orm_declarative_mapped_column_type_map` for background.
 * A column can be declared as "nullable" or "not null" based on the
   presence of the ``Optional[]`` type annotation; alternatively, the
   :paramref:`_orm.mapped_column.nullable` parameter may be used instead.

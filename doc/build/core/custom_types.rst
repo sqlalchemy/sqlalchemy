@@ -218,6 +218,37 @@ binary in CHAR(16) if desired::
                     value = uuid.UUID(value)
                 return value
 
+Linking Python ``uuid.UUID`` to the Custom Type for ORM mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When declaring ORM mappings using :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
+mappings, the custom ``GUID`` type defined above may be associated with
+the Python ``uuid.UUID`` datatype by adding it to the
+:ref:`type annotation map <orm_declarative_mapped_column_type_map>`,
+which is typically defined on the :class:`_orm.DeclarativeBase` class::
+
+    import uuid
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            uuid.UUID: GUID,
+        }
+
+With the above configuration, ORM mapped classes which extend from
+``Base`` may refer to Python ``uuid.UUID`` in annotations which will make use
+of ``GUID`` automatically::
+
+    class MyModel(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+
+.. seealso::
+
+    :ref:`orm_declarative_mapped_column_type_map`
+
 Marshal JSON Strings
 ^^^^^^^^^^^^^^^^^^^^
 

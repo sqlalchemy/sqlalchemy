@@ -82,7 +82,9 @@ that's associated with each :class:`_orm.Mapped` annotation; ``int`` for
 not the ``Optional[]`` type modifier is used. More specific typing information
 may be indicated using SQLAlchemy type objects in the right side
 :func:`_orm.mapped_column` directive, such as the :class:`.String` datatype
-used above in the ``User.name`` column.
+used above in the ``User.name`` column. The association between Python types
+and SQL types can be customized using the
+:ref:`type annotation map <orm_declarative_mapped_column_type_map>`.
 
 The :func:`_orm.mapped_column` directive is used for all column-based
 attributes that require more specific customization. Besides typing
