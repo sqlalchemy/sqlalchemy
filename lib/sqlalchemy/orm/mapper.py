@@ -78,6 +78,7 @@ from ..sql import coercions
 from ..sql import expression
 from ..sql import operators
 from ..sql import roles
+from ..sql import TableClause
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.cache_key import MemoizedHasCacheKey
@@ -892,7 +893,7 @@ class Mapper(
     _dependency_processors: List[DependencyProcessor]
     _memoized_values: Dict[Any, Callable[[], Any]]
     _inheriting_mappers: util.WeakSequence[Mapper[Any]]
-    _all_tables: Set[Table]
+    _all_tables: Set[TableClause]
     _polymorphic_attr_key: Optional[str]
 
     _pks_by_table: Dict[FromClause, OrderedSet[ColumnClause[Any]]]
@@ -908,9 +909,10 @@ class Mapper(
         Callable[[Mapper[_O], InstanceState[_O], _InstanceDict], None]
     ]
 
-    tables: Sequence[Table]
-    """A sequence containing the collection of :class:`_schema.Table` objects
-    which this :class:`_orm.Mapper` is aware of.
+    tables: Sequence[TableClause]
+    """A sequence containing the collection of :class:`_schema.Table`
+    or :class:`_schema.TableClause` objects which this :class:`_orm.Mapper`
+    is aware of.
 
     If the mapper is mapped to a :class:`_expression.Join`, or an
     :class:`_expression.Alias`
@@ -1534,17 +1536,9 @@ class Mapper(
         self.__dict__.pop("_configure_failed", None)
 
     def _configure_pks(self) -> None:
-        self.tables = cast(
-            "List[Table]", sql_util.find_tables(self.persist_selectable)
-        )
-        for t in self.tables:
-            if not isinstance(t, Table):
-                raise sa_exc.ArgumentError(
-                    f"ORM mappings can only be made against schema-level "
-                    f"Table objects, not TableClause; got "
-                    f"tableclause {t.name !r}"
-                )
-        self._all_tables.update(t for t in self.tables if isinstance(t, Table))
+        self.tables = sql_util.find_tables(self.persist_selectable)
+
+        self._all_tables.update(t for t in self.tables)
 
         self._pks_by_table = {}
         self._cols_by_table = {}
@@ -3802,7 +3796,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _sorted_tables(self):
-        table_to_mapper: Dict[Table, Mapper[Any]] = {}
+        table_to_mapper: Dict[TableClause, Mapper[Any]] = {}
 
         for mapper in self.base_mapper.self_and_descendants:
             for t in mapper.tables:

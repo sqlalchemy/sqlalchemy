@@ -363,33 +363,47 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             s,
         )
 
-    def test_no_tableclause(self):
-        """It's not tested for a Mapper to have lower-case table() objects
-        as part of its collection of tables, and in particular these objects
-        won't report on constraints or primary keys, which while this doesn't
-        necessarily disqualify them from being part of a mapper, we don't
-        have assumptions figured out right now to accommodate them.
+    def test_tableclause_is_ok(self):
+        """2.0 during typing added a rule to disallow mappers to TableClause,
+        however we clearly allow mappings to any FromClause including
+        TableClause, this is how the map to views recipe works.
 
-        found_during_type_annotation
+        found_during_type_annotation -> then introduced a regression :(
+
+        issue #9071
 
         """
+
         User = self.classes.User
+        Address = self.classes.Address
         users = self.tables.users
 
         address = table(
             "address",
-            column("address_id", Integer),
+            Column("address_id", Integer, primary_key=True),
             column("user_id", Integer),
         )
+        # manufacture the primary key collection which is otherwise
+        # not auto-populated from the above
+        address.primary_key.add(address.c.address_id)
 
-        with expect_raises_message(
-            sa.exc.ArgumentError,
-            "ORM mappings can only be made against schema-level Table "
-            "objects, not TableClause; got tableclause 'address'",
-        ):
-            self.mapper_registry.map_imperatively(
-                User, users.join(address, users.c.id == address.c.user_id)
-            )
+        self.mapper_registry.map_imperatively(
+            User, users.join(address, users.c.id == address.c.user_id)
+        )
+
+        self.mapper_registry.map_imperatively(Address, address)
+
+        self.assert_compile(
+            select(User),
+            "SELECT users.id, users.name, address.address_id, "
+            "address.user_id FROM users "
+            "JOIN address ON users.id = address.user_id",
+        )
+
+        self.assert_compile(
+            select(Address),
+            "SELECT address.address_id, address.user_id FROM address",
+        )
 
     def test_reconfigure_on_other_mapper(self):
         """A configure trigger on an already-configured mapper

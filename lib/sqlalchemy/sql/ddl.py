@@ -42,6 +42,7 @@ if typing.TYPE_CHECKING:
     from .schema import SchemaItem
     from .schema import Sequence
     from .schema import Table
+    from .selectable import TableClause
     from ..engine.base import Connection
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
@@ -1179,9 +1180,11 @@ class SchemaDropper(InvokeDropDDLBase):
 
 
 def sort_tables(
-    tables: Iterable[Table],
+    tables: Iterable[TableClause],
     skip_fn: Optional[Callable[[ForeignKeyConstraint], bool]] = None,
-    extra_dependencies: Optional[typing_Sequence[Tuple[Table, Table]]] = None,
+    extra_dependencies: Optional[
+        typing_Sequence[Tuple[TableClause, TableClause]]
+    ] = None,
 ) -> List[Table]:
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.
