@@ -80,6 +80,7 @@ from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
 from ..sql import Select
+from ..sql import TableClause
 from ..sql import visitors
 from ..sql.base import CompileState
 from ..sql.schema import Table
@@ -152,7 +153,7 @@ _PKIdentityArgument = Union[Any, Tuple[Any, ...]]
 _BindArguments = Dict[str, Any]
 
 _EntityBindKey = Union[Type[_O], "Mapper[_O]"]
-_SessionBindKey = Union[Type[Any], "Mapper[Any]", "Table", str]
+_SessionBindKey = Union[Type[Any], "Mapper[Any]", "TableClause", str]
 _SessionBind = Union["Engine", "Connection"]
 
 JoinTransactionMode = Literal[
@@ -2439,7 +2440,7 @@ class Session(_SessionClassMethods, EventTarget):
             if TYPE_CHECKING:
                 assert isinstance(insp, Inspectable)
 
-            if isinstance(insp, Table):
+            if isinstance(insp, TableClause):
                 self.__binds[insp] = bind
             elif insp_is_mapper(insp):
                 self.__binds[insp.class_] = bind
@@ -2480,7 +2481,7 @@ class Session(_SessionClassMethods, EventTarget):
         """
         self._add_bind(mapper, bind)
 
-    def bind_table(self, table: Table, bind: _SessionBind) -> None:
+    def bind_table(self, table: TableClause, bind: _SessionBind) -> None:
         """Associate a :class:`_schema.Table` with a "bind", e.g. an
         :class:`_engine.Engine`
         or :class:`_engine.Connection`.

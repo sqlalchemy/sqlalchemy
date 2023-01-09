@@ -8,6 +8,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
@@ -186,6 +187,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         (lambda Address: {"mapper": Address}, "e2"),
         (lambda Address: {"clause": Query([Address])._statement_20()}, "e2"),
         (lambda addresses: {"clause": select(addresses)}, "e2"),
+        (lambda Dingaling: {"mapper": Dingaling}, "e4"),
+        (lambda addresses_view: {"clause": addresses_view}, "e4"),
+        (lambda addresses_view: {"clause": select(addresses_view)}, "e4"),
+        (lambda users_view: {"clause": select(users_view)}, "e2"),
         (
             lambda User, addresses: {
                 "mapper": User,
@@ -260,23 +265,48 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             self.tables.addresses,
             self.classes.User,
         )
+        Dingaling = self.classes.Dingaling
 
         self.mapper_registry.map_imperatively(
             User, users, properties={"addresses": relationship(Address)}
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
+        users_view = table("users", Column("id", Integer, primary_key=True))
+        addresses_view = table(
+            "addresses",
+            Column("id", Integer, primary_key=True),
+            Column("user_id", Integer),
+            Column("email_address", String),
+        )
+        j = users_view.join(
+            addresses_view, users_view.c.id == addresses_view.c.user_id
+        )
+        self.mapper_registry.map_imperatively(
+            Dingaling,
+            j,
+            properties={
+                "user_t_id": users_view.c.id,
+                "address_id": addresses_view.c.id,
+            },
+        )
+
         e1 = engines.testing_engine()
         e2 = engines.testing_engine()
         e3 = engines.testing_engine()
+        e4 = engines.testing_engine()
 
         testcase = testing.resolve_lambda(
             testcase,
             User=User,
             Address=Address,
+            Dingaling=Dingaling,
             e1=e1,
             e2=e2,
             e3=e3,
+            e4=e4,
+            users_view=users_view,
+            addresses_view=addresses_view,
             addresses=addresses,
             users=users,
         )
@@ -284,8 +314,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess = Session(e3)
         sess.bind_mapper(User, e1)
         sess.bind_mapper(Address, e2)
+        sess.bind_mapper(Dingaling, e4)
+        sess.bind_table(users_view, e2)
 
-        engine = {"e1": e1, "e2": e2, "e3": e3}[expected]
+        engine = {"e1": e1, "e2": e2, "e3": e3, "e4": e4}[expected]
         conn = sess.connection(bind_arguments=testcase)
         is_(conn.engine, engine)
 
