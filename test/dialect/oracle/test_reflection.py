@@ -37,6 +37,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
@@ -345,20 +346,24 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class ConstraintTest(fixtures.TablesTest):
+class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
 
     __only_on__ = "oracle"
     __backend__ = True
-    run_deletes = None
 
-    @classmethod
-    def define_tables(cls, metadata):
-        Table("foo", metadata, Column("id", Integer, primary_key=True))
+    @testing.fixture
+    def plain_foo_table(self, metadata, connection):
+        foo = Table("foo", metadata, Column("id", Integer, primary_key=True))
+        foo.create(connection)
+        return foo
 
-    def test_oracle_has_no_on_update_cascade(self, connection):
+    def test_oracle_has_no_on_update_cascade(
+        self, metadata, connection, plain_foo_table
+    ):
+
         bar = Table(
             "bar",
-            self.tables_test_metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column(
                 "foo_id", Integer, ForeignKey("foo.id", onupdate="CASCADE")
@@ -368,14 +373,17 @@ class ConstraintTest(fixtures.TablesTest):
 
         bat = Table(
             "bat",
-            self.tables_test_metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("foo_id", Integer),
             ForeignKeyConstraint(["foo_id"], ["foo.id"], onupdate="CASCADE"),
         )
         assert_warns(exc.SAWarning, bat.create, connection)
 
-    def test_reflect_check_include_all(self, connection):
+    def test_reflect_check_include_all(
+        self, metadata, connection, plain_foo_table
+    ):
+
         insp = inspect(connection)
         eq_(insp.get_check_constraints("foo"), [])
         eq_(
@@ -384,6 +392,150 @@ class ConstraintTest(fixtures.TablesTest):
                 for rec in insp.get_check_constraints("foo", include_all=True)
             ],
             ['"ID" IS NOT NULL'],
+        )
+
+    @testing.fixture
+    def invisible_fk_fixture(self, metadata, connection):
+        Table("table_b", metadata, Column("id", Integer, primary_key=True))
+        Table(
+            "table_a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("a_col1", Integer),
+        )
+        metadata.create_all(connection)
+
+        connection.exec_driver_sql(
+            "alter table table_a modify (a_col1 invisible)"
+        )
+
+        connection.exec_driver_sql(
+            "alter table table_a add constraint FK_table_a_a_col1 "
+            "foreign key(a_col1) references table_b"
+        )
+
+    @testing.fixture
+    def invisible_index_fixture(self, metadata, connection):
+        Table(
+            "table_a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("a_col1", Integer),
+            Index("idx_col1", "a_col1"),
+        )
+        metadata.create_all(connection)
+
+        connection.exec_driver_sql(
+            "alter table table_a modify (a_col1 invisible)"
+        )
+
+    @testing.fixture
+    def invisible_uq_fixture(self, metadata, connection):
+        Table(
+            "table_a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("a_col1", Integer),
+            UniqueConstraint("a_col1", name="uq_col1"),
+        )
+        metadata.create_all(connection)
+
+        connection.exec_driver_sql(
+            "alter table table_a modify (a_col1 invisible)"
+        )
+
+    @testing.fixture
+    def invisible_pk_fixture(self, metadata, connection):
+        Table(
+            "table_a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("a_col1", Integer),
+        )
+        Table(
+            "table_b",
+            metadata,
+            Column("comp_id1", Integer, primary_key=True),
+            Column("comp_id2", Integer, primary_key=True),
+            Column("a_col1", Integer),
+        )
+        metadata.create_all(connection)
+
+        connection.exec_driver_sql("alter table table_a modify (id invisible)")
+        connection.exec_driver_sql(
+            "alter table table_b modify (comp_id2 invisible)"
+        )
+
+    def test_no_resolve_fks_w_invisible(
+        self, connection, invisible_fk_fixture
+    ):
+        metadata_reflect = MetaData()
+
+        with expect_warnings(
+            r"On reflected table table_a, skipping reflection of foreign key "
+            r"constraint fk_table_a_a_col1; one or more subject columns "
+            r"within name\(s\) a_col1 are not present in the table"
+        ):
+            metadata_reflect.reflect(connection)
+
+        ta = metadata_reflect.tables["table_a"]
+        tb = metadata_reflect.tables["table_b"]
+        self.assert_compile(
+            select(ta, tb),
+            "SELECT table_a.id, table_b.id AS id_1 FROM table_a, table_b",
+        )
+
+    def test_no_resolve_idx_w_invisible(
+        self, connection, invisible_index_fixture
+    ):
+        metadata_reflect = MetaData()
+
+        with expect_warnings(
+            r"index key 'a_col1' was not located in columns "
+            r"for table 'table_a'"
+        ):
+            metadata_reflect.reflect(connection)
+
+        ta = metadata_reflect.tables["table_a"]
+        self.assert_compile(
+            select(ta),
+            "SELECT table_a.id FROM table_a",
+        )
+
+    def test_no_resolve_uq_w_invisible(self, connection, invisible_uq_fixture):
+        metadata_reflect = MetaData()
+
+        with expect_warnings(
+            r"index key 'a_col1' was not located in columns "
+            r"for table 'table_a'"
+        ):
+            metadata_reflect.reflect(connection)
+
+        ta = metadata_reflect.tables["table_a"]
+        self.assert_compile(
+            select(ta),
+            "SELECT table_a.id FROM table_a",
+        )
+
+    def test_no_resolve_pk_w_invisible(self, connection, invisible_pk_fixture):
+        metadata_reflect = MetaData()
+
+        metadata_reflect.reflect(connection)
+
+        # single col pk fully invisible
+        ta = metadata_reflect.tables["table_a"]
+        eq_(list(ta.primary_key), [])
+        self.assert_compile(
+            select(ta),
+            "SELECT table_a.a_col1 FROM table_a",
+        )
+
+        # composite pk one col invisible
+        tb = metadata_reflect.tables["table_b"]
+        eq_(list(tb.primary_key), [tb.c.comp_id1])
+        self.assert_compile(
+            select(tb),
+            "SELECT table_b.comp_id1, table_b.a_col1 FROM table_b",
         )
 
 

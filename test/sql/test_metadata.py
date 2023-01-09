@@ -3946,11 +3946,12 @@ class ConstraintTest(fixtures.TestBase):
 
     def test_raise_index_nonexistent_name(self):
         m = MetaData()
-        # the KeyError isn't ideal here, a nicer message
-        # perhaps
-        assert_raises(
-            KeyError, Table, "t", m, Column("x", Integer), Index("foo", "q")
-        )
+
+        with expect_raises_message(
+            exc.ConstraintColumnNotFoundError,
+            "Can't create Index on table 't': no column named 'q' is present.",
+        ):
+            Table("t", m, Column("x", Integer), Index("foo", "q"))
 
     def test_raise_not_a_column(self):
         assert_raises(exc.ArgumentError, Index, "foo", 5)
