@@ -695,6 +695,16 @@ class ColumnOperators(Operators):
 
         return self.operate(bitwise_xor_op, other)
 
+    def bitwise_or(self, other):
+        """Return bitwise OR operation"""
+
+        return self.operate(bitwise_or_op, other)
+
+    def bitwise_and(self, other):
+        """Return bitwise AND operation"""
+
+        return self.operate(bitwise_and_op, other)
+
     def in_(self, other: Any) -> ColumnOperators:
         """Implement the ``in`` operator.
 
@@ -2125,6 +2135,16 @@ def bitwise_xor_op(a: Any, b: Any) -> Any:
     return a.bitwise_xor(b)
 
 
+@_operator_fn
+def bitwise_or_op(a: Any, b: Any) -> Any:
+    return a.bitwise_or(b)
+
+
+@_operator_fn
+def bitwise_and_op(a: Any, b: Any) -> Any:
+    return a.bitwise_and(b)
+
+
 def is_comparison(op: OperatorType) -> bool:
     return op in _comparison or isinstance(op, custom_op) and op.is_comparison
 
@@ -2205,6 +2225,9 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     neg: 8,
     add: 7,
     sub: 7,
+    bitwise_xor_op: 7,
+    bitwise_or_op: 7,
+    bitwise_and_op: 7,
     concat_op: 6,
     filter_op: 6,
     match_op: 5,
@@ -2236,7 +2259,6 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     is_false: 5,
     and_: 3,
     or_: 2,
-    bitwise_xor_op: 1,  # just guessing
     comma_op: -1,
     desc_op: 3,
     asc_op: 3,

@@ -1768,6 +1768,14 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(op2, "mytable.myid hoho :myid_1 lala :param_1")
         self.assert_compile(op3, "(mytable.myid hoho :myid_1) lala :param_1")
 
+    def test_bitwise_xor_precedence(self):
+        op1 = self.table1.c.myid.bitwise_xor
+        op2 = op1(5).op("lala", precedence=6)(4)
+        op3 = op1(5).op("lala", precedence=8)(4)
+
+        self.assert_compile(op2, "mytable.myid ^ :myid_1 lala :param_1")
+        self.assert_compile(op3, "(mytable.myid ^ :myid_1) lala :param_1")
+
     def test_is_eq_precedence_flat(self):
         self.assert_compile(
             (self.table1.c.name == null())
@@ -4510,18 +4518,26 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-    def test_generic_bit_xor(self):
-        c1 = column("c1", Integer)
-        c2 = column("c2", Integer)
-        self.assert_compile(
-            select(c1.op("^")(c2)),
-            "SELECT c1 ^ c2 AS anon_1",
-        )
-
-    def test_dedicated_bit_xor(self):
+    def test_bitwise_xor(self):
         c1 = column("c1", Integer)
         c2 = column("c2", Integer)
         self.assert_compile(
             select(c1.bitwise_xor(c2)),
             "SELECT c1 ^ c2 AS anon_1",
+        )
+
+    def test_bitwise_or(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.bitwise_or(c2)),
+            "SELECT c1 | c2 AS anon_1",
+        )
+
+    def test_bitwise_and(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.bitwise_and(c2)),
+            "SELECT c1 & c2 AS anon_1",
         )

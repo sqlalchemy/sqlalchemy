@@ -421,6 +421,8 @@ operator_lookup: Dict[
     "div": (_binary_operate, util.EMPTY_DICT),
     "mod": (_binary_operate, util.EMPTY_DICT),
     "bitwise_xor_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_or_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_and_op": (_binary_operate, util.EMPTY_DICT),
     "truediv": (_binary_operate, util.EMPTY_DICT),
     "floordiv": (_binary_operate, util.EMPTY_DICT),
     "custom_op": (_custom_op_operate, util.EMPTY_DICT),

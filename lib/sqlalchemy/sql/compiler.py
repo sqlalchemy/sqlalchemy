@@ -281,6 +281,8 @@ OPERATORS = {
     operators.nulls_last_op: " NULLS LAST",
     # bitwise
     operators.bitwise_xor_op: " ^ ",
+    operators.bitwise_or_op: " | ",
+    operators.bitwise_and_op: " & ",
 }
 
 FUNCTIONS: Dict[Type[Function[Any]], str] = {

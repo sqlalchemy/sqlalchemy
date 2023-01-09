@@ -2424,7 +2424,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE usages.date <@ %(date_1)s::DATERANGE",
         )
 
-    def test_dedicated_bit_xor(self):
+    def test_bitwise_xor(self):
         c1 = column("c1", Integer)
         c2 = column("c2", Integer)
         self.assert_compile(
