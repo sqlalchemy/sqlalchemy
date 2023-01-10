@@ -455,7 +455,7 @@ class ClauseElement(
         return self.__class__
 
     @HasMemoized.memoized_attribute
-    def _cloned_set(self) -> Any:
+    def _cloned_set(self) -> Set[ClauseElement]:
         """Return the set consisting all cloned ancestors of this
         ClauseElement.
 
@@ -1544,7 +1544,6 @@ class ColumnElement(
 
     @util.memoized_property
     def _expanded_proxy_set(self) -> FrozenSet[ColumnElement[Any]]:
-        # type: ignore [no-untyped-call]
         return frozenset(_expand_cloned(self.proxy_set))
 
     def _uncached_proxy_list(self) -> List[ColumnElement[Any]]:
