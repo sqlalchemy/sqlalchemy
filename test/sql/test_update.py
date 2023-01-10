@@ -316,7 +316,11 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_binds_that_match_columns(self):
         """test bind params named after column names
-        replace the normal SET/VALUES generation."""
+        replace the normal SET/VALUES generation.
+
+        See also test_compiler.py::CrudParamOverlapTest
+
+        """
 
         t = table("foo", column("x"), column("y"))
 

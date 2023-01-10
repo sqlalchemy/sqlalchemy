@@ -33,6 +33,7 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import join
@@ -61,6 +62,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import types
 from sqlalchemy import union
 from sqlalchemy import union_all
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
@@ -97,6 +99,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import Variation
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.types import UserDefinedType
 from sqlalchemy.util import u
@@ -4905,6 +4908,179 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                     expanded_state.positiontup,
                     ["%s_1" % (expected,), "%s_2" % (expected,)],
                 )
+
+
+class CrudParamOverlapTest(AssertsCompiledSQL, fixtures.TestBase):
+    """tests for #9075.
+
+    we apparently allow same-column-named bindparams in values(), even though
+    we do *not* allow same-column-named bindparams in other parts of the
+    statement, but only if the bindparam is associated with that column in the
+    VALUES / SET clause. If you use a name that matches that of a column in
+    values() but associate it with a different column, you also get the error.
+
+    This is supported, see
+    test_insert.py::InsertTest::test_binds_that_match_columns and
+    test_update.py::UpdateTest::test_binds_that_match_columns.  The use
+    case makes sense because the "overlapping binds" issue is that using
+    a column name in bindparam() will conflict with the bindparam()
+    that crud.py is going to make for that column in VALUES / SET; but if we
+    are replacing the actual expression that would be in VALUES / SET, then
+    it's fine, there is no conflict.
+
+    The test suite is extended in
+    test/orm/test_core_compilation.py with ORM mappings that caused
+    the failure that was fixed by #9075.
+
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.fixture(
+        params=Variation.generate_cases("type_", ["lowercase", "uppercase"]),
+        ids=["lowercase", "uppercase"],
+    )
+    def crud_table_fixture(self, request):
+        type_ = request.param
+
+        if type_.lowercase:
+            table1 = table(
+                "mytable",
+                column("myid", Integer),
+                column("name", String),
+                column("description", String),
+            )
+        elif type_.uppercase:
+            table1 = Table(
+                "mytable",
+                MetaData(),
+                Column("myid", Integer),
+                Column("name", String),
+                Column("description", String),
+            )
+        else:
+            type_.fail()
+
+        yield table1
+
+    def test_same_named_binds_insert_values(self, crud_table_fixture):
+        table1 = crud_table_fixture
+        stmt = insert(table1).values(
+            myid=bindparam("myid"),
+            description=func.coalesce(bindparam("description"), "default"),
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, description) VALUES "
+            "(:myid, coalesce(:description, :coalesce_1))",
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, description) VALUES "
+            "(:myid, coalesce(:description, :coalesce_1))",
+            params={"myid": 5, "description": "foo"},
+            checkparams={
+                "coalesce_1": "default",
+                "description": "foo",
+                "myid": 5,
+            },
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name, description) VALUES "
+            "(:myid, :name, coalesce(:description, :coalesce_1))",
+            params={"myid": 5, "description": "foo", "name": "bar"},
+            checkparams={
+                "coalesce_1": "default",
+                "description": "foo",
+                "myid": 5,
+                "name": "bar",
+            },
+        )
+
+    def test_same_named_binds_update_values(self, crud_table_fixture):
+        table1 = crud_table_fixture
+        stmt = update(table1).values(
+            myid=bindparam("myid"),
+            description=func.coalesce(bindparam("description"), "default"),
+        )
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET myid=:myid, "
+            "description=coalesce(:description, :coalesce_1)",
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET myid=:myid, "
+            "description=coalesce(:description, :coalesce_1)",
+            params={"myid": 5, "description": "foo"},
+            checkparams={
+                "coalesce_1": "default",
+                "description": "foo",
+                "myid": 5,
+            },
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET myid=:myid, name=:name, "
+            "description=coalesce(:description, :coalesce_1)",
+            params={"myid": 5, "description": "foo", "name": "bar"},
+            checkparams={
+                "coalesce_1": "default",
+                "description": "foo",
+                "myid": 5,
+                "name": "bar",
+            },
+        )
+
+    def test_different_named_binds_insert_values(self, crud_table_fixture):
+        table1 = crud_table_fixture
+        stmt = insert(table1).values(
+            myid=bindparam("myid"),
+            name=func.coalesce(bindparam("description"), "default"),
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name) VALUES "
+            "(:myid, coalesce(:description, :coalesce_1))",
+        )
+
+        with expect_raises_message(
+            exc.CompileError, r"bindparam\(\) name 'description' is reserved "
+        ):
+            stmt.compile(column_keys=["myid", "description"])
+
+        with expect_raises_message(
+            exc.CompileError, r"bindparam\(\) name 'description' is reserved "
+        ):
+            stmt.compile(column_keys=["myid", "description", "name"])
+
+    def test_different_named_binds_update_values(self, crud_table_fixture):
+        table1 = crud_table_fixture
+        stmt = update(table1).values(
+            myid=bindparam("myid"),
+            name=func.coalesce(bindparam("description"), "default"),
+        )
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET myid=:myid, "
+            "name=coalesce(:description, :coalesce_1)",
+        )
+
+        with expect_raises_message(
+            exc.CompileError, r"bindparam\(\) name 'description' is reserved "
+        ):
+            stmt.compile(column_keys=["myid", "description"])
+
+        with expect_raises_message(
+            exc.CompileError, r"bindparam\(\) name 'description' is reserved "
+        ):
+            stmt.compile(column_keys=["myid", "description", "name"])
 
 
 class UnsupportedTest(fixtures.TestBase):

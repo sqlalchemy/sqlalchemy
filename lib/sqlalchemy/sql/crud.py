@@ -77,14 +77,17 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
     if compile_state._has_multi_parameters:
         spd = compile_state._multi_parameters[0]
         stmt_parameter_tuples = list(spd.items())
+        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._ordered_values:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = compile_state._ordered_values
+        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._dict_parameters:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = list(spd.items())
+        spd_str_key = {_column_as_key(key) for key in spd}
     else:
-        stmt_parameter_tuples = spd = None
+        stmt_parameter_tuples = spd = spd_str_key = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
@@ -94,7 +97,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         parameters = dict(
             (_column_as_key(key), REQUIRED)
             for key in compiler.column_keys
-            if key not in spd
+            if key not in spd_str_key
         )
     else:
         parameters = dict(

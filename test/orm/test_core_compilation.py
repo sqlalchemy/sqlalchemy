@@ -40,12 +40,14 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import Variation
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.util.langhelpers import hybridproperty
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
+from ..sql import test_compiler
 from ..sql.test_compiler import CorrelateTest as _CoreCorrelateTest
 
 # TODO:
@@ -2643,3 +2645,29 @@ class CorrelateTest(fixtures.DeclarativeMappedTest, _CoreCorrelateTest):
     def _fixture(self):
         t1, t2 = self.classes("T1", "T2")
         return t1, t2, select(t1).where(t1.c.a == t2.c.a)
+
+
+class CrudParamOverlapTest(test_compiler.CrudParamOverlapTest):
+    @testing.fixture(
+        params=Variation.generate_cases("type_", ["orm"]),
+        ids=["orm"],
+    )
+    def crud_table_fixture(self, request):
+        type_ = request.param
+
+        if type_.orm:
+            from sqlalchemy.orm import declarative_base
+
+            Base = declarative_base()
+
+            class Foo(Base):
+                __tablename__ = "mytable"
+                myid = Column(Integer, primary_key=True)
+                name = Column(String)
+                description = Column(String)
+
+            table1 = Foo
+        else:
+            type_.fail()
+
+        yield table1

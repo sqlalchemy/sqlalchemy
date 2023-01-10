@@ -50,6 +50,7 @@ from .config import db
 from .config import fixture
 from .config import requirements as requires
 from .config import skip_test
+from .config import Variation
 from .config import variation
 from .exclusions import _is_excluded
 from .exclusions import _server_version

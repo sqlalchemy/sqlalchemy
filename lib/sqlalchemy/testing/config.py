@@ -94,20 +94,56 @@ def combinations_list(arg_iterable, **kw):
     return combinations(*arg_iterable, **kw)
 
 
-class _variation_base(object):
-    __slots__ = ("name", "argname")
+class Variation(object):
+    __slots__ = ("_name", "_argname")
 
     def __init__(self, case, argname, case_names):
-        self.name = case
-        self.argname = argname
+        self._name = case
+        self._argname = argname
         for casename in case_names:
             setattr(self, casename, casename == case)
 
+    @property
+    def name(self):
+        return self._name
+
     def __bool__(self):
-        return self.name == self.argname
+        return self._name == self._argname
 
     def __nonzero__(self):
         return not self.__bool__()
+
+    def __str__(self):
+        return "%s=%r" % (self._argname, self._name)
+
+    def __repr__(self):
+        return str(self)
+
+    def fail(self):
+        # can't import util.fail() under py2.x without resolving
+        # import cycle
+        assert False, "Unknown %s" % (self,)
+
+    @classmethod
+    def idfn(cls, variation):
+        return variation.name
+
+    @classmethod
+    def generate_cases(cls, argname, cases):
+        case_names = [
+            argname if c is True else "not_" + argname if c is False else c
+            for c in cases
+        ]
+
+        typ = type(
+            argname,
+            (Variation,),
+            {
+                "__slots__": tuple(case_names),
+            },
+        )
+
+        return [typ(casename, argname, case_names) for casename in case_names]
 
 
 def variation(argname, cases):
@@ -138,7 +174,7 @@ def variation(argname, cases):
             elif querytyp.legacy_query:
                 stmt = Session.query(Thing)
             else:
-                assert False
+                querytyp.fail()
 
 
     The variable provided is a slots object of boolean variables, as well
@@ -146,26 +182,35 @@ def variation(argname, cases):
 
     """
 
-    case_names = [
-        argname if c is True else "not_" + argname if c is False else c
-        for c in cases
+    cases_plus_limitations = [
+        entry
+        if (isinstance(entry, tuple) and len(entry) == 2)
+        else (entry, None)
+        for entry in cases
     ]
 
-    typ = type(
-        argname,
-        (_variation_base,),
-        {
-            "__slots__": tuple(case_names),
-        },
+    variations = Variation.generate_cases(
+        argname, [c for c, l in cases_plus_limitations]
+    )
+    return combinations(
+        id_="ia",
+        argnames=argname,
+        *[
+            (variation._name, variation, limitation)
+            if limitation is not None
+            else (variation._name, variation)
+            for variation, (case, limitation) in zip(
+                variations, cases_plus_limitations
+            )
+        ]
     )
 
-    return combinations(
-        *[
-            (casename, typ(casename, argname, case_names))
-            for casename in case_names
-        ],
-        id_="ia",
-        argnames=argname
+
+def variation_fixture(argname, cases, scope="function"):
+    return fixture(
+        params=Variation.generate_cases(argname, cases),
+        ids=Variation.idfn,
+        scope=scope,
     )
 
 
