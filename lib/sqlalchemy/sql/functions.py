@@ -1088,7 +1088,7 @@ class GenericFunction(Function[_T]):
     The above indicates that the following expression returns a ``datetime``
     object::
 
-        select(func.as_utc())
+        connection.scalar(select(func.as_utc()))
 
     .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
        recognized for quoting when used with the "name" attribute of the
