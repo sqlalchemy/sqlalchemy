@@ -696,7 +696,7 @@ class ClauseElement(
 
         return compiled_sql, extracted_params, cache_hit
 
-    def __invert__(self) -> ClauseElement:
+    def __invert__(self) -> Union[operators.Operators, ClauseElement]:
         # undocumented element currently used by the ORM for
         # relationship.contains()
         if hasattr(self, "negation_clause"):
@@ -4016,7 +4016,7 @@ class GroupedElement(DQLDMLClauseElement):
 
     def self_group(
         self, against: Optional[OperatorType] = None
-    ) -> GroupedElement:
+    ) -> ClauseElement:
         return self
 
     def _ungroup(self) -> ClauseElement:
