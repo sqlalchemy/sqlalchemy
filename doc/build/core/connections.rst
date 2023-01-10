@@ -1475,10 +1475,10 @@ Basic guidelines include:
         >>> with engine.connect() as conn:
         ...     print(conn.scalar(my_stmt(5, 10)))
         ...     print(conn.scalar(my_stmt(12, 8)))
-        {opensql}SELECT max(?, ?) AS max_1
+        {execsql}SELECT max(?, ?) AS max_1
         [generated in 0.00057s] (5, 10){stop}
         10
-        {opensql}SELECT max(?, ?) AS max_1
+        {execsql}SELECT max(?, ?) AS max_1
         [cached since 0.002059s ago] (12, 8){stop}
         12
 

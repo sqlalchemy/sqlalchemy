@@ -71,7 +71,7 @@ returns a new SQL expression::
     interval."end" - interval.start
 
     >>> print(Session().query(Interval).filter(Interval.length > 10))
-    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
     WHERE interval."end" - interval.start > :param_1
@@ -81,7 +81,7 @@ generally use ``getattr()`` to
 locate attributes, so can also be used with hybrid attributes::
 
     >>> print(Session().query(Interval).filter_by(length=5))
-    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
     WHERE interval."end" - interval.start = :param_1
@@ -104,14 +104,14 @@ SQL expression-level boolean behavior::
     False
 
     >>> print(Session().query(Interval).filter(Interval.contains(15)))
-    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
     WHERE interval.start <= :start_1 AND interval."end" > :end_1
 
     >>> ia = aliased(Interval)
     >>> print(Session().query(Interval, ia).filter(Interval.intersects(ia)))
-    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end, interval_1.id AS interval_1_id,
     interval_1.start AS interval_1_start, interval_1."end" AS interval_1_end
     FROM interval, interval AS interval_1
@@ -370,7 +370,7 @@ would use an outer join::
     >>> from sqlalchemy import or_
     >>> print (Session().query(User, User.balance).outerjoin(User.accounts).
     ...         filter(or_(User.balance < 5000, User.balance == None)))
-    SELECT "user".id AS user_id, "user".name AS user_name,
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
     FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id
     WHERE account.balance <  :balance_1 OR account.balance IS NULL
@@ -474,7 +474,7 @@ Above, SQL expressions against ``word_insensitive`` will apply the ``LOWER()``
 SQL function to both sides::
 
     >>> print(Session().query(SearchWord).filter_by(word_insensitive="Trucks"))
-    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
+    {printsql}SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
     FROM searchword
     WHERE lower(searchword.word) = lower(:lower_1)
 
@@ -628,7 +628,7 @@ SQL expression versus SQL expression::
     ...                        filter(
     ...                            sw1.word_insensitive > sw2.word_insensitive
     ...                        ))
-    SELECT lower(searchword_1.word) AS lower_1,
+    {printsql}SELECT lower(searchword_1.word) AS lower_1,
     lower(searchword_2.word) AS lower_2
     FROM searchword AS searchword_1, searchword AS searchword_2
     WHERE lower(searchword_1.word) > lower(searchword_2.word)

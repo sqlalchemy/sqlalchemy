@@ -460,7 +460,7 @@ object.  We can then, for demonstration purposes, print out the MySQL-specific
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(my_mysql_table).compile(mysql_engine))
-    {opensql}CREATE TABLE my_table (
+    {printsql}CREATE TABLE my_table (
     id INTEGER(11) NOT NULL AUTO_INCREMENT,
     data1 VARCHAR(50) CHARACTER SET latin1,
     data2 MEDIUMINT(4),
@@ -501,7 +501,7 @@ We now get a new :class:`_schema.Table` that is generic and uses
 
     >>> pg_engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     >>> my_generic_table.create(pg_engine)
-    {opensql}CREATE TABLE my_table (
+    {execsql}CREATE TABLE my_table (
         id SERIAL NOT NULL,
         data1 VARCHAR(50),
         data2 INTEGER,

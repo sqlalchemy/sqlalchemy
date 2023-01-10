@@ -727,7 +727,7 @@ Upon select, the polymorphic union produces a query like this:
 .. sourcecode:: python+sql
 
     session.scalars(select(Employee)).all()
-    {opensql}
+    {execsql}
     SELECT
         pjoin.id,
         pjoin.name,
@@ -882,7 +882,7 @@ class and any attributes that are locally declared upon it, such as the
 
     >>> stmt = select(Employee).where(Employee.name == "n1")
     >>> print(stmt)
-    SELECT pjoin.id, pjoin.name, pjoin.type, pjoin.manager_data, pjoin.engineer_info
+    {printsql}SELECT pjoin.id, pjoin.name, pjoin.type, pjoin.manager_data, pjoin.engineer_info
     FROM (
       SELECT engineer.id AS id, engineer.name AS name, engineer.engineer_info AS engineer_info,
       CAST(NULL AS VARCHAR(40)) AS manager_data, 'engineer' AS type

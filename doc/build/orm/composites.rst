@@ -69,7 +69,7 @@ The above mapping would correspond to a CREATE TABLE statement as:
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(Vertex.__table__))
-    {opensql}CREATE TABLE vertices (
+    {printsql}CREATE TABLE vertices (
       id INTEGER NOT NULL,
       x1 INTEGER NOT NULL,
       y1 INTEGER NOT NULL,
@@ -99,7 +99,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
     >>> v = Vertex(start=Point(3, 4), end=Point(5, 6))
     >>> session.add(v)
     >>> session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO vertices (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
     [generated in ...] (3, 4, 5, 6)
     COMMIT
@@ -115,7 +115,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
 
     >>> stmt = select(Vertex.start, Vertex.end)
     >>> session.execute(stmt).all()
-    {opensql}SELECT vertices.x1, vertices.y1, vertices.x2, vertices.y2
+    {execsql}SELECT vertices.x1, vertices.y1, vertices.x2, vertices.y2
     FROM vertices
     [...] ()
     {stop}[(Point(x=3, y=4), Point(x=5, y=6))]
@@ -129,7 +129,7 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
 
     >>> stmt = select(Vertex).where(Vertex.start == Point(3, 4)).where(Vertex.end < Point(7, 8))
     >>> session.scalars(stmt).all()
-    {opensql}SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
+    {execsql}SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
     FROM vertices
     WHERE vertices.x1 = ? AND vertices.y1 = ? AND vertices.x2 < ? AND vertices.y2 < ?
     [...] (3, 4, 7, 8)
@@ -157,14 +157,14 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   .. sourcecode:: pycon+sql
 
     >>> v1 = session.scalars(select(Vertex)).one()
-    {opensql}SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
+    {execsql}SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
     FROM vertices
     [...] ()
     {stop}
 
     >>> v1.end = Point(x=10, y=14)
     >>> session.commit()
-    {opensql}UPDATE vertices SET x2=?, y2=? WHERE vertices.id = ?
+    {execsql}UPDATE vertices SET x2=?, y2=? WHERE vertices.id = ?
     [...] (10, 14, 1)
     COMMIT
 

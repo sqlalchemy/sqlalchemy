@@ -31,7 +31,7 @@ the ORM to get rows back, the object is passed to
 returned::
 
     >>> result = session.execute(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
     [...] ('spongebob',){stop}
@@ -66,7 +66,7 @@ Below we select from the ``User`` entity, producing a :class:`_sql.Select`
 that selects from the mapped :class:`_schema.Table` to which ``User`` is mapped::
 
     >>> result = session.execute(select(User).order_by(User.id))
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
 
@@ -92,7 +92,7 @@ receive ORM entities directly.   This is most easily achieved by using the
 which yields single elements rather than rows is returned::
 
     >>> session.scalars(select(User).order_by(User.id)).all()
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
     {stop}[User(id=1, name='spongebob', fullname='Spongebob Squarepants'),
@@ -122,7 +122,7 @@ refer to them under the names ``User`` and ``Address``::
     >>> stmt = select(User, Address).join(User.addresses).order_by(User.id, Address.id)
     >>> for row in session.execute(stmt):
     ...     print(f"{row.User.name} {row.Address.email_address}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname,
     address.id AS id_1, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     ORDER BY user_account.id, address.id
@@ -146,7 +146,7 @@ parameter to alias them with an explicit name::
     ...     .order_by(user_cls.id, email_cls.id)
     ... )
     >>> row = session.execute(stmt).first()
-    {opensql}SELECT user_cls.id, user_cls.name, user_cls.fullname,
+    {execsql}SELECT user_cls.id, user_cls.name, user_cls.fullname,
     email.id AS id_1, email.user_id, email.email_address
     FROM user_account AS user_cls JOIN address AS email
     ON user_cls.id = email.user_id ORDER BY user_cls.id, email.id
@@ -166,7 +166,7 @@ above using this form as well::
     ...     select(User).join(User.addresses).add_columns(Address).order_by(User.id, Address.id)
     ... )
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname,
     address.id AS id_1, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     ORDER BY user_account.id, address.id
@@ -186,7 +186,7 @@ as table columns are used::
     ...     .join(User.addresses)
     ...     .order_by(User.id, Address.id)
     ... )
-    {opensql}SELECT user_account.name, address.email_address
+    {execsql}SELECT user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     ORDER BY user_account.id, address.id
     [...] (){stop}
@@ -220,7 +220,7 @@ allows sets of column expressions to be grouped in result rows::
     ... ).join_from(User, Address)
     >>> for row in session.execute(stmt):
     ...     print(f"{row.user.name} {row.user.fullname} {row.email.email_address}")
-    {opensql}SELECT user_account.name, user_account.fullname, address.email_address
+    {execsql}SELECT user_account.name, user_account.fullname, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     [...] (){stop}
     spongebob Spongebob Squarepants spongebob@sqlalchemy.org
@@ -253,7 +253,7 @@ construct against a mapped class::
     >>> from sqlalchemy.orm import aliased
     >>> u1 = aliased(User)
     >>> print(select(u1).order_by(u1.id))
-    {opensql}SELECT user_account_1.id, user_account_1.name, user_account_1.fullname
+    {printsql}SELECT user_account_1.id, user_account_1.name, user_account_1.fullname
     FROM user_account AS user_account_1 ORDER BY user_account_1.id
 
 As is the case when using :meth:`_schema.Table.alias`, the SQL alias
@@ -265,7 +265,7 @@ passed as well::
     >>> u1 = aliased(User, name="u1")
     >>> stmt = select(u1).order_by(u1.id)
     >>> row = session.execute(stmt).first()
-    {opensql}SELECT u1.id, u1.name, u1.fullname
+    {execsql}SELECT u1.id, u1.name, u1.fullname
     FROM user_account AS u1 ORDER BY u1.id
     [...] (){stop}
     >>> print(f"{row.u1.name}")
@@ -324,7 +324,7 @@ method::
     >>> orm_sql = select(User).from_statement(textual_sql)
     >>> for user_obj in session.execute(orm_sql).scalars():
     ...     print(user_obj)
-    {opensql}SELECT id, name, fullname FROM user_account ORDER BY id
+    {execsql}SELECT id, name, fullname FROM user_account ORDER BY id
     [...] (){stop}
     User(id=1, name='spongebob', fullname='Spongebob Squarepants')
     User(id=2, name='sandy', fullname='Sandy Cheeks')
@@ -341,7 +341,7 @@ construct, in a similar manner as discussed below in :ref:`orm_queryguide_subque
     >>> stmt = select(orm_subquery)
     >>> for user_obj in session.execute(stmt).scalars():
     ...     print(user_obj)
-    {opensql}SELECT anon_1.id, anon_1.name, anon_1.fullname
+    {execsql}SELECT anon_1.id, anon_1.name, anon_1.fullname
     FROM (SELECT id, name, fullname FROM user_account ORDER BY id) AS anon_1
     [...] (){stop}
     User(id=1, name='spongebob', fullname='Spongebob Squarepants')
@@ -375,7 +375,7 @@ derived from those entities, such as in the example below::
     >>> stmt = select(aliased_user)
     >>> for user_obj in session.execute(stmt).scalars():
     ...     print(user_obj)
-    {opensql} SELECT anon_1.id, anon_1.name, anon_1.fullname
+    {execsql} SELECT anon_1.id, anon_1.name, anon_1.fullname
     FROM (SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
     FROM user_account
     WHERE user_account.id < ? ORDER BY user_account.id) AS anon_1
@@ -415,7 +415,7 @@ is used::
     >>> stmt = select(User).from_statement(u)
     >>> for user_obj in session.execute(stmt).scalars():
     ...     print(user_obj)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id < ? UNION ALL SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
@@ -441,7 +441,7 @@ and order by criteria based on its exported columns::
     >>> stmt = select(user_alias).order_by(user_alias.id)
     >>> for user_obj in session.execute(stmt).scalars():
     ...     print(user_obj)
-    {opensql}SELECT anon_1.id, anon_1.name, anon_1.fullname
+    {execsql}SELECT anon_1.id, anon_1.name, anon_1.fullname
     FROM (SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
     FROM user_account
     WHERE user_account.id < ? UNION ALL SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
@@ -491,7 +491,7 @@ Where above, the call to :meth:`_sql.Select.join` along
 ``User.addresses`` will result in SQL approximately equivalent to::
 
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 In the above example we refer to ``User.addresses`` as passed to
@@ -527,7 +527,7 @@ JOIN elements in the resulting SQL::
 
     >>> stmt = select(User).join(User.orders).join(Order.items)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN user_order ON user_account.id = user_order.user_id
     JOIN order_items AS order_items_1 ON user_order.id = order_items_1.order_id
@@ -551,7 +551,7 @@ on the ``User.addresses`` relationship to our chain of joins::
 
     >>> stmt = select(User).join(User.orders).join(Order.items).join(User.addresses)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN user_order ON user_account.id = user_order.user_id
     JOIN order_items AS order_items_1 ON user_order.id = order_items_1.order_id
@@ -569,7 +569,7 @@ key relationship between two entities::
 
     >>> stmt = select(User).join(Address)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 In the above calling form, :meth:`_sql.Select.join` is called upon to infer
@@ -597,7 +597,7 @@ a SQL expression as the ON clause is as follows::
 
     >>> stmt = select(User).join(Address, User.id == Address.user_id)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 The expression-based ON clause may also be a :func:`_orm.relationship`-bound
@@ -606,7 +606,7 @@ attribute, in the same way it's used in
 
     >>> stmt = select(User).join(Address, User.addresses)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 The above example seems redundant in that it indicates the target of ``Address``
@@ -638,7 +638,7 @@ email addresses:
     ...     User.addresses.and_(Address.email_address == "squirrel@squirrelpower.org")
     ... )
     >>> session.execute(stmt).all()
-    {opensql}SELECT user_account.fullname
+    {execsql}SELECT user_account.fullname
     FROM user_account
     JOIN address ON user_account.id = address.user_id AND address.email_address = ?
     [...] ('squirrel@squirrelpower.org',){stop}
@@ -676,7 +676,7 @@ against the ``Address`` entity::
     ...     .where(address_alias_2.email_address == "patrick@gmail.com")
     ... )
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN address AS address_1 ON user_account.id = address_1.user_id
     JOIN address AS address_2 ON user_account.id = address_2.user_id
@@ -697,7 +697,7 @@ to produce the same SQL statement as the one just illustrated::
     ...     .join(User.addresses.of_type(address_alias_2))
     ...     .where(address_alias_2.email_address == "patrick@gmail.com")
     ... )
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN address AS address_1 ON user_account.id = address_1.user_id
     JOIN address AS address_2 ON user_account.id = address_2.user_id
@@ -711,7 +711,7 @@ construct directly::
 
     >>> user_alias_1 = aliased(User)
     >>> print(select(user_alias_1.name).join(user_alias_1.addresses))
-    {opensql}SELECT user_account_1.name
+    {printsql}SELECT user_account_1.name
     FROM user_account AS user_account_1
     JOIN address ON user_account_1.id = address.user_id
 
@@ -735,7 +735,7 @@ target of the :meth:`_sql.Select.join` method::
     >>> subq = select(Address).where(Address.email_address == "pat999@aol.com").subquery()
     >>> stmt = select(User).join(subq, User.id == subq.c.user_id)
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     JOIN (SELECT address.id AS id,
     address.user_id AS user_id, address.email_address AS email_address
@@ -755,7 +755,7 @@ so that we can refer to it by name in the result row::
     >>> stmt = select(User, address_subq).join(address_subq)
     >>> for row in session.execute(stmt):
     ...     print(f"{row.User} {row.address}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname,
     anon_1.id AS id_1, anon_1.user_id, anon_1.email_address
     FROM user_account
     JOIN (SELECT address.id AS id,
@@ -782,7 +782,7 @@ of the join::
     >>> stmt = select(User, address_subq).join(User.addresses.of_type(address_subq))
     >>> for row in session.execute(stmt):
     ...     print(f"{row.User} {row.address}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname,
     anon_1.id AS id_1, anon_1.user_id, anon_1.email_address
     FROM user_account
     JOIN (SELECT address.id AS id,
@@ -825,7 +825,7 @@ subquery once, but in a result-row context can return objects of both
     >>> stmt = select(user_alias, address_alias).where(user_alias.name == "sandy")
     >>> for row in session.execute(stmt):
     ...     print(f"{row.user} {row.address}")
-    {opensql}SELECT anon_1.id, anon_1.name, anon_1.fullname, anon_1.id_1, anon_1.email_address
+    {execsql}SELECT anon_1.id, anon_1.name, anon_1.fullname, anon_1.id_1, anon_1.email_address
     FROM (SELECT user_account.id AS id, user_account.name AS name,
     user_account.fullname AS fullname, address.id AS id_1,
     address.email_address AS email_address
@@ -847,7 +847,7 @@ the :meth:`_sql.Select.join_from` method may be used::
 
     >>> stmt = select(Address).join_from(User, User.addresses).where(User.name == "sandy")
     >>> print(stmt)
-    SELECT address.id, address.user_id, address.email_address
+    {printsql}SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
 
@@ -857,7 +857,7 @@ in the form ``(<join from>, <onclause>)``, or ``(<join from>, <join to>,
 
     >>> stmt = select(Address).join_from(User, Address).where(User.name == "sandy")
     >>> print(stmt)
-    SELECT address.id, address.user_id, address.email_address
+    {printsql}SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
 
@@ -868,7 +868,7 @@ be used::
 
     >>> stmt = select(Address).select_from(User).join(Address).where(User.name == "sandy")
     >>> print(stmt)
-    SELECT address.id, address.user_id, address.email_address
+    {printsql}SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
 
@@ -885,7 +885,7 @@ be used::
 
         >>> stmt = select(Address).select_from(User).join(Address.user).where(User.name == "sandy")
         >>> print(stmt)
-        SELECT address.id, address.user_id, address.email_address
+        {printsql}SELECT address.id, address.user_id, address.email_address
         FROM address JOIN user_account ON user_account.id = address.user_id
         WHERE user_account.name = :name_1
 
@@ -907,7 +907,7 @@ be used::
         ...     .where(user_table.c.name == "sandy")
         ... )
         >>> print(stmt)
-        SELECT address.id, address.user_id, address.email_address
+        {printsql}SELECT address.id, address.user_id, address.email_address
         FROM address JOIN user_account ON user_account.id = address.user_id
         WHERE user_account.name = :name_1
 
@@ -954,7 +954,7 @@ an optional WHERE criteria to limit the rows matched by the subquery:
     ...     User.addresses.any(Address.email_address == "squirrel@squirrelpower.org")
     ... )
     >>> session.execute(stmt).all()
-    {opensql}SELECT user_account.fullname
+    {execsql}SELECT user_account.fullname
     FROM user_account
     WHERE EXISTS (SELECT 1
     FROM address
@@ -971,7 +971,7 @@ for ``User`` entities that have no related ``Address`` rows:
 
     >>> stmt = select(User.fullname).where(~User.addresses.any())
     >>> session.execute(stmt).all()
-    {opensql}SELECT user_account.fullname
+    {execsql}SELECT user_account.fullname
     FROM user_account
     WHERE NOT (EXISTS (SELECT 1
     FROM address
@@ -988,7 +988,7 @@ which belonged to "sandy":
 
     >>> stmt = select(Address.email_address).where(Address.user.has(User.name == "sandy"))
     >>> session.execute(stmt).all()
-    {opensql}SELECT address.email_address
+    {execsql}SELECT address.email_address
     FROM address
     WHERE EXISTS (SELECT 1
     FROM user_account
@@ -1018,9 +1018,9 @@ in terms of the target :func:`_orm.relationship`.
   object given::
 
       >>> user_obj = session.get(User, 1)
-      SELECT ...
+      {execsql}SELECT ...
       >>> print(select(Address).where(Address.user == user_obj))
-      {opensql}SELECT address.id, address.user_id, address.email_address
+      {printsql}SELECT address.id, address.user_id, address.email_address
       FROM address
       WHERE :param_1 = address.user_id
 
@@ -1030,7 +1030,7 @@ in terms of the target :func:`_orm.relationship`.
   be used::
 
       >>> print(select(Address).where(Address.user != user_obj))
-      {opensql}SELECT address.id, address.user_id, address.email_address
+      {printsql}SELECT address.id, address.user_id, address.email_address
       FROM address
       WHERE address.user_id != :user_id_1 OR address.user_id IS NULL
 
@@ -1041,9 +1041,9 @@ in terms of the target :func:`_orm.relationship`.
   primary key equals the value of the foreign key in a related object::
 
       >>> address_obj = session.get(Address, 1)
-      SELECT ...
+      {execsql}SELECT ...
       >>> print(select(User).where(User.addresses.contains(address_obj)))
-      {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+      {printsql}SELECT user_account.id, user_account.name, user_account.fullname
       FROM user_account
       WHERE user_account.id = :param_1
 
@@ -1056,7 +1056,7 @@ in terms of the target :func:`_orm.relationship`.
 
       >>> from sqlalchemy.orm import with_parent
       >>> print(select(Address).where(with_parent(user_obj, User.addresses)))
-      {opensql}SELECT address.id, address.user_id, address.email_address
+      {printsql}SELECT address.id, address.user_id, address.email_address
       FROM address
       WHERE :param_1 = address.user_id
 

@@ -492,7 +492,7 @@ and :meth:`_sqlite.Insert.on_conflict_do_nothing`:
     ... )
 
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
     ON CONFLICT (id) DO UPDATE SET data = ?{stop}
 
     >>> do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
@@ -500,7 +500,7 @@ and :meth:`_sqlite.Insert.on_conflict_do_nothing`:
     ... )
 
     >>> print(do_nothing_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
     ON CONFLICT (id) DO NOTHING
 
 .. versionadded:: 1.4
@@ -537,11 +537,10 @@ Both methods supply the "target" of the conflict using column inference:
         ...     )
 
         >>> print(do_update_stmt)
-        {opensql}INSERT INTO my_table (data, user_email) VALUES (?, ?)
+        {printsql}INSERT INTO my_table (data, user_email) VALUES (?, ?)
         ON CONFLICT (user_email)
         WHERE user_email LIKE '%@gmail.com'
         DO UPDATE SET data = excluded.data
-        >>>
 
 The SET Clause
 ^^^^^^^^^^^^^^^
@@ -563,8 +562,7 @@ for UPDATE:
     ... )
 
     >>> print(do_update_stmt)
-
-    {opensql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
     ON CONFLICT (id) DO UPDATE SET data = ?
 
 .. warning::
@@ -599,7 +597,7 @@ would have been inserted had the constraint not failed:
     ... )
 
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data, author) VALUES (?, ?, ?)
+    {printsql}INSERT INTO my_table (id, data, author) VALUES (?, ?, ?)
     ON CONFLICT (id) DO UPDATE SET data = ?, author = excluded.author
 
 Additional WHERE Criteria
@@ -623,7 +621,7 @@ parameter, which will limit those rows which receive an UPDATE:
     ...     where=(my_table.c.status == 2)
     ... )
     >>> print(on_update_stmt)
-    {opensql}INSERT INTO my_table (id, data, author) VALUES (?, ?, ?)
+    {printsql}INSERT INTO my_table (id, data, author) VALUES (?, ?, ?)
     ON CONFLICT (id) DO UPDATE SET data = ?, author = excluded.author
     WHERE my_table.status = ?
 
@@ -640,7 +638,7 @@ using the :meth:`_sqlite.Insert.on_conflict_do_nothing` method:
     >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
     >>> stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
     >>> print(stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT (id) DO NOTHING
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT (id) DO NOTHING
 
 
 If ``DO NOTHING`` is used without specifying any columns or constraint,
@@ -652,7 +650,7 @@ occurs:
     >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
     >>> stmt = stmt.on_conflict_do_nothing()
     >>> print(stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT DO NOTHING
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT DO NOTHING
 
 .. _sqlite_type_reflection:
 

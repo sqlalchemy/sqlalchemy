@@ -262,7 +262,7 @@ parameter for ``created_at`` were passed proceeds as:
     >>> with Session(e) as session:
     ...     session.add(User())
     ...     session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO user_account (created_at) VALUES (utc_timestamp())
     [generated in 0.00010s] ()
     COMMIT

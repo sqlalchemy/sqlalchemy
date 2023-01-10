@@ -533,7 +533,7 @@ The ``User.values`` association proxy refers to the ``Element.value`` column.
 Standard column operations are now available, such as ``like``::
 
     >>> print(s.query(User).filter(User.values.like("%foo%")))
-    SELECT "user".id AS user_id
+    {printsql}SELECT "user".id AS user_id
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM element
@@ -542,7 +542,7 @@ Standard column operations are now available, such as ``like``::
 ``equals``::
 
     >>> print(s.query(User).filter(User.values == "foo"))
-    SELECT "user".id AS user_id
+    {printsql}SELECT "user".id AS user_id
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM element
@@ -553,7 +553,7 @@ a test that the related row does not exist at all; this is the same
 behavior as before::
 
     >>> print(s.query(User).filter(User.values == None))
-    SELECT "user".id AS user_id
+    {printsql}SELECT "user".id AS user_id
     FROM "user"
     WHERE (EXISTS (SELECT 1
     FROM element
@@ -567,7 +567,7 @@ the association proxy used ``.contains`` as a list containment operator only.
 With a column-oriented comparison, it now behaves like a "like"::
 
     >>> print(s.query(User).filter(User.values.contains("foo")))
-    SELECT "user".id AS user_id
+    {printsql}SELECT "user".id AS user_id
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM element
@@ -1234,7 +1234,7 @@ backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for PostgreSQL,
     ...         ),
     ...         q=[],
     ...     )
-    SELECT 1 WHERE 1 IN (SELECT CAST(NULL AS INTEGER) WHERE 1!=1)
+    {exexsql}SELECT 1 WHERE 1 IN (SELECT CAST(NULL AS INTEGER) WHERE 1!=1)
 
 The feature also works for tuple-oriented IN statements, where the "empty IN"
 expression will be expanded to support the elements given inside the tuple,
@@ -1250,7 +1250,7 @@ such as on PostgreSQL::
     ...         ),
     ...         q=[],
     ...     )
-    SELECT 1 WHERE (%(param_1)s, %(param_2)s)
+    {exexsql}SELECT 1 WHERE (%(param_1)s, %(param_2)s)
     IN (SELECT CAST(NULL AS INTEGER), CAST(NULL AS VARCHAR) WHERE 1!=1)
 
 

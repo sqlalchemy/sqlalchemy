@@ -47,7 +47,7 @@ SQL expressions can be stringified in place as a means to see the general
 form of what's being produced::
 
     >>> print(stmt)
-    {opensql}INSERT INTO user_account (name, fullname) VALUES (:name, :fullname)
+    {printsql}INSERT INTO user_account (name, fullname) VALUES (:name, :fullname)
 
 The stringified form is created by producing a :class:`_engine.Compiled` form
 of the object which includes a database-specific string SQL representation of
@@ -76,7 +76,7 @@ SQL logging:
     >>> with engine.connect() as conn:
     ...     result = conn.execute(stmt)
     ...     conn.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?)
     [...] ('spongebob', 'Spongebob Squarepants')
     COMMIT
@@ -131,7 +131,7 @@ illustrate this:
     ...         ],
     ...     )
     ...     conn.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?)
     [...] [('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star')]
     COMMIT{stop}
@@ -190,7 +190,7 @@ construct automatically.
         ...         ],
         ...     )
         ...     conn.commit()
-        {opensql}BEGIN (implicit)
+        {execsql}BEGIN (implicit)
         INSERT INTO address (user_id, email_address) VALUES ((SELECT user_account.id
         FROM user_account
         WHERE user_account.name = ?), ?)
@@ -212,7 +212,7 @@ method::
     ...     ["user_id", "email_address"], select_stmt
     ... )
     >>> print(insert_stmt)
-    {opensql}INSERT INTO address (user_id, email_address)
+    {printsql}INSERT INTO address (user_id, email_address)
     SELECT user_account.id, user_account.name || :name_1 AS anon_1
     FROM user_account
 
@@ -233,7 +233,7 @@ can be fetched::
     ...     address_table.c.id, address_table.c.email_address
     ... )
     >>> print(insert_stmt)
-    {opensql}INSERT INTO address (id, user_id, email_address)
+    {printsql}INSERT INTO address (id, user_id, email_address)
     VALUES (:id, :user_id, :email_address)
     RETURNING address.id, address.email_address
 
@@ -246,7 +246,7 @@ as in the example below that builds upon the example stated in
     ...     ["user_id", "email_address"], select_stmt
     ... )
     >>> print(insert_stmt.returning(address_table.c.id, address_table.c.email_address))
-    {opensql}INSERT INTO address (user_id, email_address)
+    {printsql}INSERT INTO address (user_id, email_address)
     SELECT user_account.id, user_account.name || :name_1 AS anon_1
     FROM user_account RETURNING address.id, address.email_address
 

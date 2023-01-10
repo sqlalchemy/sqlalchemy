@@ -258,7 +258,7 @@ If we mark ``user1`` for deletion, after the flush operation proceeds,
 
     >>> sess.delete(user1)
     >>> sess.commit()
-    {opensql}DELETE FROM address WHERE address.id = ?
+    {execsql}DELETE FROM address WHERE address.id = ?
     ((1,), (2,))
     DELETE FROM user WHERE user.id = ?
     (1,)
@@ -281,7 +281,7 @@ deleted, but are instead de-associated:
 
     >>> sess.delete(user1)
     >>> sess.commit()
-    {opensql}UPDATE address SET user_id=? WHERE address.id = ?
+    {execsql}UPDATE address SET user_id=? WHERE address.id = ?
     (None, 1)
     UPDATE address SET user_id=? WHERE address.id = ?
     (None, 2)

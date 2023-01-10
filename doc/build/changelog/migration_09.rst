@@ -655,7 +655,7 @@ signs within the enumerated values::
     >>> type = postgresql.ENUM("one", "two", "three's", name="myenum")
     >>> from sqlalchemy.dialects.postgresql import base
     >>> print(base.CreateEnumType(type).compile(dialect=postgresql.dialect()))
-    CREATE TYPE myenum AS ENUM ('one','two','three''s')
+    {printsql}CREATE TYPE myenum AS ENUM ('one','two','three''s')
 
 Existing workarounds which already escape single quote signs will need to be
 modified, else they will now double-escape.
@@ -894,7 +894,7 @@ where it will be used to render an ``INSERT .. SELECT`` construct::
     >>> t1 = table("t1", column("a"), column("b"))
     >>> t2 = table("t2", column("x"), column("y"))
     >>> print(t1.insert().from_select(["a", "b"], t2.select().where(t2.c.y == 5)))
-    INSERT INTO t1 (a, b) SELECT t2.x, t2.y
+    {printsql}INSERT INTO t1 (a, b) SELECT t2.x, t2.y
     FROM t2
     WHERE t2.y = :y_1
 
@@ -1603,7 +1603,7 @@ on backends that don't feature ``true``/``false`` constant behavior::
     >>> from sqlalchemy.dialects import mysql, postgresql
 
     >>> print(select([t1]).where(t1.c.x).compile(dialect=mysql.dialect()))
-    SELECT t.x, t.y  FROM t WHERE t.x = 1
+    {printsql}SELECT t.x, t.y  FROM t WHERE t.x = 1
 
 The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
 "short circuit" behavior, that is truncating a rendered expression, when a
@@ -1612,32 +1612,32 @@ The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
     >>> print(
     ...     select([t1]).where(and_(t1.c.y > 5, false())).compile(dialect=postgresql.dialect())
     ... )
-    SELECT t.x, t.y FROM t WHERE false
+    {printsql}SELECT t.x, t.y FROM t WHERE false
 
 :func:`.true` can be used as the base to build up an expression::
 
     >>> expr = true()
     >>> expr = expr & (t1.c.y > 5)
     >>> print(select([t1]).where(expr))
-    SELECT t.x, t.y FROM t WHERE t.y > :y_1
+    {printsql}SELECT t.x, t.y FROM t WHERE t.y > :y_1
 
 The boolean constants :func:`.true` and :func:`.false` themselves render as
 ``0 = 1`` and ``1 = 1`` for a backend with no boolean constants::
 
     >>> print(select([t1]).where(and_(t1.c.y > 5, false())).compile(dialect=mysql.dialect()))
-    SELECT t.x, t.y FROM t WHERE 0 = 1
+    {printsql}SELECT t.x, t.y FROM t WHERE 0 = 1
 
 Interpretation of ``None``, while not particularly valid SQL, is at least
 now consistent::
 
     >>> print(select([t1.c.x]).where(None))
-    SELECT t.x FROM t WHERE NULL
+    {printsql}SELECT t.x FROM t WHERE NULL
 
     >>> print(select([t1.c.x]).where(None).where(None))
-    SELECT t.x FROM t WHERE NULL AND NULL
+    {printsql}SELECT t.x FROM t WHERE NULL AND NULL
 
     >>> print(select([t1.c.x]).where(and_(None, None)))
-    SELECT t.x FROM t WHERE NULL AND NULL
+    {printsql}SELECT t.x FROM t WHERE NULL AND NULL
 
 :ticket:`2804`
 

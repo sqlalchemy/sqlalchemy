@@ -268,11 +268,11 @@ We see two queries emitted like this:
 .. sourcecode:: pycon+sql
 
     >>> session.scalars(select(User).options(subqueryload(User.addresses))).all()
-    {opensql}-- the "main" query
+    {execsql}-- the "main" query
     SELECT users.id AS users_id
     FROM users
     {stop}
-    {opensql}-- the "load" query issued by subqueryload
+    {execsql}-- the "load" query issued by subqueryload
     SELECT addresses.id AS addresses_id,
            addresses.user_id AS addresses_user_id,
            anon_1.users_id AS anon_1_users_id
@@ -289,12 +289,12 @@ the two queries may not see the same results:
     >>> user = session.scalars(
     ...     select(User).options(subqueryload(User.addresses)).limit(1)
     ... ).first()
-    {opensql}-- the "main" query
+    {execsql}-- the "main" query
     SELECT users.id AS users_id
     FROM users
      LIMIT 1
     {stop}
-    {opensql}-- the "load" query issued by subqueryload
+    {execsql}-- the "load" query issued by subqueryload
     SELECT addresses.id AS addresses_id,
            addresses.user_id AS addresses_user_id,
            anon_1.users_id AS anon_1_users_id

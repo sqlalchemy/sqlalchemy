@@ -154,7 +154,7 @@ looks like:
         .join(Node.parent.of_type(nodealias))
         .where(nodealias.data == "child2")
     ).all()
-    {opensql}SELECT node.id AS node_id,
+    {execsql}SELECT node.id AS node_id,
             node.parent_id AS node_parent_id,
             node.data AS node_data
     FROM node JOIN node AS node_1
@@ -191,7 +191,7 @@ configured via :paramref:`~.relationships.join_depth`:
 
 
     session.scalars(select(Node)).all()
-    {opensql}SELECT node_1.id AS node_1_id,
+    {execsql}SELECT node_1.id AS node_1_id,
             node_1.parent_id AS node_1_parent_id,
             node_1.data AS node_1_data,
             node_2.id AS node_2_id,

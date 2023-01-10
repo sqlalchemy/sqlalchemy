@@ -1032,7 +1032,7 @@ class NamedFromClause(FromClause):
             >>> a = table("a", column("id"), column("x"), column("y"))
             >>> stmt = select(func.row_to_json(a.table_valued()))
             >>> print(stmt)
-            SELECT row_to_json(a) AS row_to_json_1
+            {printsql}SELECT row_to_json(a) AS row_to_json_1
             FROM a
 
         .. versionadded:: 1.4.0b2
@@ -1061,7 +1061,7 @@ class SelectLabelStyle(Enum):
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
         >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_NONE))
-        SELECT table1.columna, table1.columnb, table2.columna, table2.columnc
+        {printsql}SELECT table1.columna, table1.columnb, table2.columna, table2.columnc
         FROM table1 JOIN table2 ON true
 
     Used with the :meth:`_sql.Select.set_label_style` method.
@@ -1084,7 +1084,7 @@ class SelectLabelStyle(Enum):
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
         >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL))
-        SELECT table1.columna AS table1_columna, table1.columnb AS table1_columnb, table2.columna AS table2_columna, table2.columnc AS table2_columnc
+        {printsql}SELECT table1.columna AS table1_columna, table1.columnb AS table1_columnb, table2.columna AS table2_columna, table2.columnc AS table2_columnc
         FROM table1 JOIN table2 ON true
 
     Used with the :meth:`_sql.GenerativeSelect.set_label_style` method.
@@ -1111,7 +1111,7 @@ class SelectLabelStyle(Enum):
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
         >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY))
-        SELECT table1.columna, table1.columnb, table2.columna AS columna_1, table2.columnc
+        {printsql}SELECT table1.columna, table1.columnb, table2.columna AS columna_1, table2.columnc
         FROM table1 JOIN table2 ON true
 
     Used with the :meth:`_sql.GenerativeSelect.set_label_style` method,
@@ -1719,7 +1719,7 @@ class TableValuedAlias(LateralFromClause, Alias):
         >>> from sqlalchemy import select, func
         >>> fn = func.json_array_elements_text('["one", "two", "three"]').table_valued("value")
         >>> print(select(fn.c.value))
-        SELECT anon_1.value
+        {printsql}SELECT anon_1.value
         FROM json_array_elements_text(:json_array_elements_text_1) AS anon_1
 
     .. versionadded:: 1.4.0b2
@@ -1831,7 +1831,7 @@ class TableValuedAlias(LateralFromClause, Alias):
                         table_valued("x", with_ordinality="o").render_derived()
             ...     )
             ... )
-            SELECT anon_1.x, anon_1.o
+            {printsql}SELECT anon_1.x, anon_1.o
             FROM unnest(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s]) WITH ORDINALITY AS anon_1(x, o)
 
         The ``with_types`` keyword will render column types inline within
@@ -1847,7 +1847,7 @@ class TableValuedAlias(LateralFromClause, Alias):
             ...         .render_derived(with_types=True)
             ...     )
             ... )
-            SELECT anon_1.a, anon_1.b FROM json_to_recordset(:json_to_recordset_1)
+            {printsql}SELECT anon_1.a, anon_1.b FROM json_to_recordset(:json_to_recordset_1)
             AS anon_1(a INTEGER, b VARCHAR)
 
         :param name: optional string name that will be applied to the alias

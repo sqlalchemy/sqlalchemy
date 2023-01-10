@@ -213,7 +213,7 @@ sending it the :class:`_engine.Engine` that refers to the target database:
 .. sourcecode:: pycon+sql
 
     >>> metadata_obj.create_all(engine)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     PRAGMA main.table_...info("user_account")
     ...
     PRAGMA main.table_...info("address")
@@ -598,7 +598,7 @@ using the :paramref:`_schema.Table.autoload_with` parameter:
 .. sourcecode:: pycon+sql
 
     >>> some_table = Table("some_table", metadata_obj, autoload_with=engine)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     PRAGMA main.table_...info("some_table")
     [raw sql] ()
     SELECT sql FROM  (SELECT * FROM sqlite_master UNION ALL   SELECT * FROM sqlite_temp_master) WHERE name = ? AND type in ('table', 'view')

@@ -767,7 +767,7 @@ ORM, we get SQL that looks like the following:
 
     >>> stmt = select(Employee, Manager).join(Employee.reports_to)
     >>> print(stmt)
-    {opensql}SELECT employee.id, employee.manager_id, employee.name,
+    {printsql}SELECT employee.id, employee.manager_id, employee.name,
     employee.type, manager_1.id AS id_1, employee_1.id AS id_2,
     employee_1.manager_id AS manager_id_1, employee_1.name AS name_1,
     employee_1.type AS type_1
@@ -804,7 +804,7 @@ embedding the join into a new subquery:
     >>> manager_alias = aliased(Manager, flat=True)
     >>> stmt = select(Employee, manager_alias).join(Employee.reports_to.of_type(manager_alias))
     >>> print(stmt)
-    {opensql}SELECT employee.id, employee.manager_id, employee.name,
+    {printsql}SELECT employee.id, employee.manager_id, employee.name,
     employee.type, manager_1.id AS id_1, employee_1.id AS id_2,
     employee_1.manager_id AS manager_id_1, employee_1.name AS name_1,
     employee_1.type AS type_1
@@ -1043,7 +1043,7 @@ not detect the same setting in terms of ``A.bs``:
     >>> a1.bs = [b1, b2]
     >>> session.add_all([a1, b1, b2])
     >>> session.commit()
-    {opensql}
+    {execsql}
     INSERT INTO a DEFAULT VALUES
     ()
     INSERT INTO b (a_id) VALUES (?)
@@ -1061,7 +1061,7 @@ to NULL, but this is usually not what's desired:
 
     >>> session.delete(b1)
     >>> session.commit()
-    {opensql}
+    {execsql}
     UPDATE b SET a_id=? WHERE b.id = ?
     (None, 2)
     DELETE FROM b WHERE b.id = ?

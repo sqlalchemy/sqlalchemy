@@ -755,7 +755,7 @@ whenever the ``test_table.c.data`` column is rendered in the columns
 clause of a SELECT statement::
 
     >>> print(select([test_table]).where(test_table.c.data == "HI"))
-    SELECT lower(test_table.data) AS data
+    {printsql}SELECT lower(test_table.data) AS data
     FROM test_table
     WHERE test_table.data = lower(:data_1)
 
@@ -955,7 +955,7 @@ when features such as :meth:`_schema.MetaData.create_all` and :func:`.cast` is u
 
     >>> stmt = select([cast(sometable.c.somechar, String(20, collation="utf8"))])
     >>> print(stmt)
-    SELECT CAST(sometable.somechar AS VARCHAR(20) COLLATE "utf8") AS anon_1
+    {printsql}SELECT CAST(sometable.somechar AS VARCHAR(20) COLLATE "utf8") AS anon_1
     FROM sometable
 
 .. seealso::

@@ -151,7 +151,7 @@ in our target SQLite database, using a method called :meth:`_schema.MetaData.cre
 .. sourcecode:: pycon+sql
 
     >>> Base.metadata.create_all(engine)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     PRAGMA main.table_...info("user_account")
     ...
     PRAGMA main.table_...info("address")
@@ -217,7 +217,7 @@ is used:
     ...     session.add_all([spongebob, sandy, patrick])
     ...
     ...     session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
     [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks', 'patrick', 'Patrick Star')
     INSERT INTO address (email_address, user_id) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
@@ -261,7 +261,7 @@ the ORM objects we've selected:
 
     >>> for user in session.scalars(stmt):
     ...     print(user)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name IN (?, ?)
@@ -294,7 +294,7 @@ construct creates joins using the :meth:`_sql.Select.join` method:
     ...     .where(Address.email_address == "sandy@sqlalchemy.org")
     ... )
     >>> sandy_address = session.scalars(stmt).one()
-    {opensql}SELECT address.id, address.email_address, address.user_id
+    {execsql}SELECT address.id, address.email_address, address.user_id
     FROM address JOIN user_account ON user_account.id = address.user_id
     WHERE user_account.name = ? AND address.email_address = ?
     [...] ('sandy', 'sandy@sqlalchemy.org')
@@ -324,14 +324,14 @@ address associated with "sandy", and also add a new email address to
 
     >>> stmt = select(User).where(User.name == "patrick")
     >>> patrick = session.scalars(stmt).one()
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
     [...] ('patrick',)
     {stop}
 
     >>> patrick.addresses.append(Address(email_address="patrickstar@sqlalchemy.org"))
-    {opensql}SELECT address.id AS address_id, address.email_address AS address_email_address, address.user_id AS address_user_id
+    {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address, address.user_id AS address_user_id
     FROM address
     WHERE ? = address.user_id
     [...] (3,){stop}
@@ -339,7 +339,7 @@ address associated with "sandy", and also add a new email address to
     >>> sandy_address.email_address = "sandy_cheeks@sqlalchemy.org"
 
     >>> session.commit()
-    {opensql}UPDATE address SET email_address=? WHERE address.id = ?
+    {execsql}UPDATE address SET email_address=? WHERE address.id = ?
     [...] ('sandy_cheeks@sqlalchemy.org', 2)
     INSERT INTO address (email_address, user_id) VALUES (?, ?)
     [...] ('patrickstar@sqlalchemy.org', 3)
@@ -369,14 +369,14 @@ object by primary key using :meth:`_orm.Session.get`, then work with the object:
 .. sourcecode:: pycon+sql
 
     >>> sandy = session.get(User, 2)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (2,){stop}
 
     >>> sandy.addresses.remove(sandy_address)
-    {opensql}SELECT address.id AS address_id, address.email_address AS address_email_address, address.user_id AS address_user_id
+    {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address, address.user_id AS address_user_id
     FROM address
     WHERE ? = address.user_id
     [...] (2,)
@@ -393,7 +393,7 @@ committing the transaction, using the
 .. sourcecode:: pycon+sql
 
     >>> session.flush()
-    {opensql}DELETE FROM address WHERE address.id = ?
+    {execsql}DELETE FROM address WHERE address.id = ?
     [...] (2,)
 
 Next, we will delete the "patrick" user entirely.  For a top-level delete of
@@ -406,7 +406,7 @@ options that we configured, in this case, onto the related ``Address`` objects:
 .. sourcecode:: pycon+sql
 
     >>> session.delete(patrick)
-    {opensql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
+    {execsql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (3,)
@@ -428,7 +428,7 @@ To illustrate the rows being deleted, here's the commit:
 .. sourcecode:: pycon+sql
 
     >>> session.commit()
-    {opensql}DELETE FROM address WHERE address.id = ?
+    {execsql}DELETE FROM address WHERE address.id = ?
     [...] (4,)
     DELETE FROM user_account WHERE user_account.id = ?
     [...] (3,)

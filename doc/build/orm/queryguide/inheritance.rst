@@ -41,7 +41,7 @@ objects of type ``Manager``::
     >>> from sqlalchemy import select
     >>> stmt = select(Manager).order_by(Manager.id)
     >>> managers = session.scalars(stmt).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT manager.id, employee.id AS id_1, employee.name, employee.type, employee.company_id, manager.manager_name
     FROM employee JOIN manager ON employee.id = manager.id ORDER BY manager.id
     [...] ()
@@ -72,7 +72,7 @@ and ``Employee``, may be within the result set::
     >>> from sqlalchemy import select
     >>> stmt = select(Employee).order_by(Employee.id)
     >>> objects = session.scalars(stmt).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type, employee.company_id
     FROM employee ORDER BY employee.id
     [...] ()
@@ -89,7 +89,7 @@ accessed using :term:`lazy loading`::
 
     >>> mr_krabs = objects[0]
     >>> print(mr_krabs.manager_name)
-    {opensql}SELECT manager.manager_name AS manager_manager_name
+    {execsql}SELECT manager.manager_name AS manager_manager_name
     FROM manager
     WHERE ? = manager.id
     [...] (1,)
@@ -144,7 +144,7 @@ load columns local to both the ``Manager`` and ``Engineer`` subclasses::
     >>> loader_opt = selectin_polymorphic(Employee, [Manager, Engineer])
     >>> stmt = select(Employee).order_by(Employee.id).options(loader_opt)
     >>> objects = session.scalars(stmt).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type, employee.company_id
     FROM employee ORDER BY employee.id
     [...] ()
@@ -209,8 +209,8 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     ...         selectinload(Manager.paperwork),
     ...     )
     ... )
-    {opensql}>>> objects = session.scalars(stmt).all()
-    BEGIN (implicit)
+    >>> objects = session.scalars(stmt).all()
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type, employee.company_id
     FROM employee ORDER BY employee.id
     [...] ()
@@ -254,7 +254,7 @@ we only indicate the additional target subclasses we wish to load::
     >>> for company in session.scalars(stmt):
     ...     print(f"company: {company.name}")
     ...     print(f"employees: {company.employees}")
-    {opensql}SELECT company.id, company.name
+    {execsql}SELECT company.id, company.name
     FROM company
     [...] ()
     SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
@@ -370,7 +370,7 @@ section, to load all columns for ``Manager`` and ``Engineer`` at once::
 
     >>> stmt = select(employee_poly).order_by(employee_poly.id)
     >>> objects = session.scalars(stmt).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type, employee.company_id,
     manager.id AS id_1, manager.manager_name, engineer.id AS id_2, engineer.engineer_info
     FROM employee
@@ -419,7 +419,7 @@ construct to create criteria against both classes at once::
     ...     .order_by(employee_poly.id)
     ... )
     >>> objects = session.scalars(stmt).all()
-    {opensql}SELECT employee.id, employee.name, employee.type, employee.company_id, manager.id AS id_1,
+    {execsql}SELECT employee.id, employee.name, employee.type, employee.company_id, manager.id AS id_1,
     manager.manager_name, engineer.id AS id_2, engineer.engineer_info
     FROM employee
     LEFT OUTER JOIN manager ON employee.id = manager.id
@@ -480,7 +480,7 @@ column along with some additional limiting criteria against the
     ... )
     >>> for manager, engineer in session.execute(stmt):
     ...     print(f"{manager} {engineer}")
-    {opensql}SELECT
+    {execsql}SELECT
     employee_1.id, employee_1.name, employee_1.type, employee_1.company_id,
     manager_1.id AS id_1, manager_1.manager_name,
     employee_2.id AS id_2, employee_2.name AS name_1, employee_2.type AS type_1,
@@ -523,7 +523,7 @@ subquery, producing a more verbose form::
     ...     .order_by(engineer_employee.name, manager_employee.name)
     ... )
     >>> print(stmt)
-    {opensql}SELECT anon_1.employee_id, anon_1.employee_name, anon_1.employee_type,
+    {printsql}SELECT anon_1.employee_id, anon_1.employee_name, anon_1.employee_type,
     anon_1.employee_company_id, anon_1.manager_id, anon_1.manager_manager_name, anon_2.employee_id AS employee_id_1,
     anon_2.employee_name AS employee_name_1, anon_2.employee_type AS employee_type_1,
     anon_2.employee_company_id AS employee_company_id_1, anon_2.engineer_id, anon_2.engineer_engineer_info
@@ -613,7 +613,7 @@ automatically assume the use of
 when the statement is emitted::
 
     print(select(Employee))
-    {opensql}SELECT employee.id, employee.name, employee.type, engineer.id AS id_1,
+    {printsql}SELECT employee.id, employee.name, employee.type, engineer.id AS id_1,
     engineer.engineer_info, manager.id AS id_2, manager.manager_name
     FROM employee
     LEFT OUTER JOIN engineer ON employee.id = engineer.id
@@ -630,7 +630,7 @@ entity::
             or_(Manager.manager_name == "x", Engineer.engineer_info == "y")
         )
     )
-    {opensql}SELECT employee.id, employee.name, employee.type, engineer.id AS id_1,
+    {printsql}SELECT employee.id, employee.name, employee.type, engineer.id AS id_1,
     engineer.engineer_info, manager.id AS id_2, manager.manager_name
     FROM employee
     LEFT OUTER JOIN engineer ON employee.id = engineer.id
@@ -724,7 +724,7 @@ using a :func:`_orm.with_polymorphic` entity as the target::
     ... )
     >>> for company_name, emp_name in session.execute(stmt):
     ...     print(f"{company_name} {emp_name}")
-    {opensql}SELECT company.name, employee.name AS name_1
+    {execsql}SELECT company.name, employee.name AS name_1
     FROM company JOIN (employee LEFT OUTER JOIN engineer ON employee.id = engineer.id) ON company.id = employee.company_id
     WHERE employee.name = ? OR engineer.engineer_info = ?
     [...] ('SpongeBob', 'Senior Customer Engagement Engineer')
@@ -748,7 +748,7 @@ query could be written strictly in terms of ``Engineer`` targets as follows::
     ... )
     >>> for company_name, emp_name in session.execute(stmt):
     ...     print(f"{company_name} {emp_name}")
-    {opensql}SELECT company.name, employee.name AS name_1
+    {execsql}SELECT company.name, employee.name AS name_1
     FROM company JOIN (employee JOIN engineer ON employee.id = engineer.id) ON company.id = employee.company_id
     WHERE employee.name = ? OR engineer.engineer_info = ?
     [...] ('SpongeBob', 'Senior Customer Engagement Engineer')
@@ -780,7 +780,7 @@ eagerly load all elements of ``Company.employees`` using the
     >>> for company in session.scalars(stmt):
     ...     print(f"company: {company.name}")
     ...     print(f"employees: {company.employees}")
-    {opensql}SELECT company.id, company.name
+    {execsql}SELECT company.id, company.name
     FROM company
     [...] ()
     SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
@@ -842,7 +842,7 @@ As an example, a query for the single-inheritance example mapping of
     >>> stmt = select(Employee).order_by(Employee.id)
     >>> for obj in session.scalars(stmt):
     ...     print(f"{obj}")
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type
     FROM employee ORDER BY employee.id
     [...] ()
@@ -856,7 +856,7 @@ the ``Engineer`` entity is performed::
 
     >>> stmt = select(Engineer).order_by(Engineer.id)
     >>> objects = session.scalars(stmt).all()
-    {opensql}SELECT employee.id, employee.name, employee.type, employee.engineer_info
+    {execsql}SELECT employee.id, employee.name, employee.type, employee.engineer_info
     FROM employee
     WHERE employee.type IN (?) ORDER BY employee.id
     [...] ('engineer',)
@@ -884,13 +884,13 @@ attribute is not present by default, and an additional SELECT is emitted
 when it's accessed::
 
     >>> mr_krabs = session.scalars(select(Employee).where(Employee.name == "Mr. Krabs")).one()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type
     FROM employee
     WHERE employee.name = ?
     [...] ('Mr. Krabs',)
     {stop}>>> mr_krabs.manager_name
-    {opensql}SELECT employee.manager_name AS employee_manager_name
+    {execsql}SELECT employee.manager_name AS employee_manager_name
     FROM employee
     WHERE employee.id = ? AND employee.type IN (?)
     [...] (1, 'manager')
@@ -911,7 +911,7 @@ efficient for single-inheritance mappers::
     >>> employees = with_polymorphic(Employee, "*")
     >>> stmt = select(employees).order_by(employees.id)
     >>> objects = session.scalars(stmt).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT employee.id, employee.name, employee.type,
     employee.manager_name, employee.engineer_info
     FROM employee ORDER BY employee.id
@@ -966,14 +966,9 @@ their columns included in SELECT statements against the ``Employee``
 entity automatically::
 
     >>> print(select(Employee))
-    {opensql}SELECT employee.id, employee.name, employee.type,
+    {printsql}SELECT employee.id, employee.name, employee.type,
     employee.manager_name, employee.engineer_info
     FROM employee
-
-
-
-
-
 
 Inheritance Loading API
 -----------------------

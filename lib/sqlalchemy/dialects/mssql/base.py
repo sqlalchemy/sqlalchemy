@@ -343,7 +343,7 @@ The :class:`.Sequence` object creates "real" sequences, i.e.,
     >>> from sqlalchemy.schema import CreateSequence
     >>> from sqlalchemy.dialects import mssql
     >>> print(CreateSequence(Sequence("my_seq", start=1)).compile(dialect=mssql.dialect()))
-    CREATE SEQUENCE my_seq START WITH 1
+    {printsql}CREATE SEQUENCE my_seq START WITH 1
 
 For integer primary key generation, SQL Server's ``IDENTITY`` construct should
 generally be preferred vs. sequence.
@@ -697,7 +697,7 @@ below::
 
     >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
     >>> print(account_table.select().compile(eng))
-    SELECT account_1.id, account_1.info
+    {printsql}SELECT account_1.id, account_1.info
     FROM customer_schema.account AS account_1
 
 This mode of behavior is now off by default, as it appears to have served

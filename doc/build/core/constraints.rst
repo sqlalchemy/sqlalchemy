@@ -158,7 +158,7 @@ constraints are created separately:
 
     >>> with engine.connect() as conn:
     ...     metadata_obj.create_all(conn, checkfirst=False)
-    {opensql}CREATE TABLE element (
+    {execsql}CREATE TABLE element (
         element_id SERIAL NOT NULL,
         parent_node_id INTEGER,
         PRIMARY KEY (element_id)
@@ -186,7 +186,7 @@ those constraints that are named:
 
     >>> with engine.connect() as conn:
     ...     metadata_obj.drop_all(conn, checkfirst=False)
-    {opensql}ALTER TABLE element DROP CONSTRAINT fk_element_parent_node_id
+    {execsql}ALTER TABLE element DROP CONSTRAINT fk_element_parent_node_id
     DROP TABLE node
     DROP TABLE element
     {stop}
@@ -232,7 +232,7 @@ and not the other one:
 
     >>> with engine.connect() as conn:
     ...     metadata_obj.create_all(conn, checkfirst=False)
-    {opensql}CREATE TABLE element (
+    {execsql}CREATE TABLE element (
         element_id SERIAL NOT NULL,
         parent_node_id INTEGER,
         PRIMARY KEY (element_id)
@@ -388,7 +388,7 @@ MySQL.
     )
 
     mytable.create(engine)
-    {opensql}CREATE TABLE mytable (
+    {execsql}CREATE TABLE mytable (
         col1 INTEGER  CHECK (col1>5),
         col2 INTEGER,
         col3 INTEGER,
@@ -875,7 +875,7 @@ INDEX" is issued right after the create statements for the table:
     Index("myindex", mytable.c.col5, mytable.c.col6, unique=True)
 
     mytable.create(engine)
-    {opensql}CREATE TABLE mytable (
+    {execsql}CREATE TABLE mytable (
         col1 INTEGER,
         col2 INTEGER,
         col3 INTEGER,
@@ -914,7 +914,7 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 
     i = Index("someindex", mytable.c.col5)
     i.create(engine)
-    {opensql}CREATE INDEX someindex ON mytable (col5){stop}
+    {execsql}CREATE INDEX someindex ON mytable (col5){stop}
 
 .. _schema_indexes_functional:
 

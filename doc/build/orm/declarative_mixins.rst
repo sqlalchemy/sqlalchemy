@@ -97,7 +97,7 @@ example::
 
     >>> from sqlalchemy import select
     >>> print(select(MyModel).join(MyModel.log_record))
-    SELECT mymodel.name, mymodel.id, mymodel.log_record_id
+    {printsql}SELECT mymodel.name, mymodel.id, mymodel.log_record_id
     FROM mymodel JOIN logrecord ON logrecord.id = mymodel.log_record_id
 
 .. tip:: The examples of :class:`_orm.declared_attr` will attempt to illustrate
@@ -366,10 +366,10 @@ to ``Target`` accessed along the ``.target`` attribute::
 
     >>> from sqlalchemy import select
     >>> print(select(Foo).join(Foo.target))
-    SELECT foo.id, foo.target_id
+    {printsql}SELECT foo.id, foo.target_id
     FROM foo JOIN target ON target.id = foo.target_id
     >>> print(select(Bar).join(Bar.target))
-    SELECT bar.id, bar.target_id
+    {printsql}SELECT bar.id, bar.target_id
     FROM bar JOIN target ON target.id = bar.target_id
 
 Special arguments such as :paramref:`_orm.relationship.primaryjoin` may also
@@ -440,7 +440,7 @@ it produces the full expression::
 
     >>> from sqlalchemy import select
     >>> print(select(Something.x_plus_y))
-    SELECT something.x + something.y AS anon_1
+    {printsql}SELECT something.x + something.y AS anon_1
     FROM something
 
 .. tip::  The :class:`_orm.declared_attr` decorator causes the decorated callable

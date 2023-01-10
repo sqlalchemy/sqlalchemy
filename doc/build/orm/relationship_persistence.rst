@@ -107,7 +107,7 @@ row at a time for the time being):
     >>> w1.entries = [e1]
     >>> session.add_all([w1, e1])
     >>> session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO widget (favorite_entry_id, name) VALUES (?, ?)
     (None, 'somewidget')
     INSERT INTO entry (widget_id, name) VALUES (?, ?)

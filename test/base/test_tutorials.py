@@ -110,7 +110,9 @@ class DocTest(fixtures.TestBase):
                 doctest_enabled = True
 
                 for line_counter, line in enumerate(file_, 1):
-                    line = re.sub(r"{(?:stop|sql|opensql)}", "", line)
+                    line = re.sub(
+                        r"{(?:stop|sql|opensql|execsql|printsql)}", "", line
+                    )
 
                     include = re.match(r"\.\. doctest-include (.+\.rst)", line)
                     if include:

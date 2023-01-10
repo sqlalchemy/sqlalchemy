@@ -573,7 +573,7 @@ standard column operators can be used which will be embedded in the subquery.
 For example a straight equality operator::
 
     >>> print(session.scalars(select(User).where(User.special_keys == "jek")))
-    SELECT "user".id AS user_id, "user".name AS user_name
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM user_keyword
@@ -582,7 +582,7 @@ For example a straight equality operator::
 a LIKE operator::
 
     >>> print(session.scalars(select(User).where(User.special_keys.like("%jek"))))
-    SELECT "user".id AS user_id, "user".name AS user_name
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM user_keyword
@@ -596,7 +596,7 @@ two association proxies linked together, so when using this proxy for generating
 SQL phrases, we get two levels of EXISTS subqueries::
 
     >>> print(session.scalars(select(User).where(User.keywords.any(Keyword.keyword == "jek"))))
-    SELECT "user".id AS user_id, "user".name AS user_name
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1
     FROM user_keyword

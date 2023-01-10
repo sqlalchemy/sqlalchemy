@@ -189,7 +189,7 @@ are loaded with additional SELECT statements:
     ... )
 
     >>> query.all()
-    {opensql}SELECT
+    {execsql}SELECT
         employee.id AS employee_id,
         employee.name AS employee_name,
         employee.type AS employee_type
@@ -578,7 +578,7 @@ query across the two proxies ``A.b_values``, ``AtoB.b_value``:
 .. sourcecode:: pycon+sql
 
     >>> s.query(A).filter(A.b_values.contains("hi")).all()
-    {opensql}SELECT a.id AS a_id
+    {execsql}SELECT a.id AS a_id
     FROM a
     WHERE EXISTS (SELECT 1
     FROM atob
@@ -592,7 +592,7 @@ to query across the two proxies ``A.c_values``, ``AtoB.c_value``:
 .. sourcecode:: pycon+sql
 
     >>> s.query(A).filter(A.c_values.any(value="x")).all()
-    {opensql}SELECT a.id AS a_id
+    {execsql}SELECT a.id AS a_id
     FROM a
     WHERE EXISTS (SELECT 1
     FROM atob
@@ -1036,7 +1036,7 @@ are named in the documentation now::
     ...     )
     ... )
     >>> print(stmt)
-    SELECT sum(t.value) AS sum_1
+    {printsql}SELECT sum(t.value) AS sum_1
     FROM t GROUP BY GROUPING SETS((t.x, t.y), (t.z, t.q))
 
 :ticket:`3429`

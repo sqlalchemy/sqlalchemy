@@ -681,7 +681,7 @@ class UpdateBase(
             ...     .returning(table.c.server_flag, table.c.updated_timestamp)
             ... )
             >>> print(stmt)
-            UPDATE some_table SET status=:status
+            {printsql}UPDATE some_table SET status=:status
             WHERE some_table.data = :data_1
             RETURNING some_table.server_flag, some_table.updated_timestamp
 
@@ -702,7 +702,7 @@ class UpdateBase(
             ...     (table.c.first_name + " " + table.c.last_name).label("fullname")
             ... )
             >>> print(stmt)
-            INSERT INTO some_table (first_name, last_name)
+            {printsql}INSERT INTO some_table (first_name, last_name)
             VALUES (:first_name, :last_name)
             RETURNING some_table.first_name || :first_name_1 || some_table.last_name AS fullname
 

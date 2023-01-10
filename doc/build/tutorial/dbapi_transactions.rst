@@ -65,11 +65,11 @@ in more detail later:
     >>> with engine.connect() as conn:
     ...     result = conn.execute(text("select 'hello world'"))
     ...     print(result.all())
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     select 'hello world'
     [...] ()
     {stop}[('hello world',)]
-    {opensql}ROLLBACK{stop}
+    {execsql}ROLLBACK{stop}
 
 In the above example, the context manager provided for a database connection
 and also framed the operation inside of a transaction. The default behavior of
@@ -110,7 +110,7 @@ where we acquired the :class:`_engine.Connection` object:
     ...         [{"x": 1, "y": 1}, {"x": 2, "y": 4}],
     ...     )
     ...     conn.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     CREATE TABLE some_table (x int, y int)
     [...] ()
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
@@ -147,7 +147,7 @@ may be referred towards as **begin once**:
     ...         text("INSERT INTO some_table (x, y) VALUES (:x, :y)"),
     ...         [{"x": 6, "y": 8}, {"x": 9, "y": 10}],
     ...     )
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
     [...] [(6, 8), (9, 10)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
@@ -216,14 +216,14 @@ statement on the table we've created:
     ...     result = conn.execute(text("SELECT x, y FROM some_table"))
     ...     for row in result:
     ...         print(f"x: {row.x}  y: {row.y}")
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT x, y FROM some_table
     [...] ()
     {stop}x: 1  y: 1
     x: 2  y: 4
     x: 6  y: 8
     x: 9  y: 10
-    {opensql}ROLLBACK{stop}
+    {execsql}ROLLBACK{stop}
 
 Above, the "SELECT" string we executed selected all rows from our table.
 The object returned is called :class:`_engine.Result` and represents an
@@ -319,13 +319,13 @@ construct accepts these using a colon format "``:y``".   The actual value for
     ...     result = conn.execute(text("SELECT x, y FROM some_table WHERE y > :y"), {"y": 2})
     ...     for row in result:
     ...         print(f"x: {row.x}  y: {row.y}")
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT x, y FROM some_table WHERE y > ?
     [...] (2,)
     {stop}x: 2  y: 4
     x: 6  y: 8
     x: 9  y: 10
-    {opensql}ROLLBACK{stop}
+    {execsql}ROLLBACK{stop}
 
 
 In the logged SQL output, we can see that the bound parameter ``:y`` was
@@ -370,7 +370,7 @@ of execution is known as :term:`executemany`:
     ...         [{"x": 11, "y": 12}, {"x": 13, "y": 14}],
     ...     )
     ...     conn.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
     [...] [(11, 12), (13, 14)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
@@ -439,14 +439,14 @@ a context manager:
     ...     result = session.execute(stmt, {"y": 6})
     ...     for row in result:
     ...         print(f"x: {row.x}  y: {row.y}")
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT x, y FROM some_table WHERE y > ? ORDER BY x, y
     [...] (6,){stop}
     x: 6  y: 8
     x: 9  y: 10
     x: 11  y: 12
     x: 13  y: 14
-    {opensql}ROLLBACK{stop}
+    {execsql}ROLLBACK{stop}
 
 The example above can be compared to the example in the preceding section
 in :ref:`tutorial_sending_parameters` - we directly replace the call to
@@ -467,7 +467,7 @@ our data:
     ...         [{"x": 9, "y": 11}, {"x": 13, "y": 15}],
     ...     )
     ...     session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     UPDATE some_table SET y=? WHERE x=?
     [...] [(11, 9), (15, 13)]
     COMMIT{stop}

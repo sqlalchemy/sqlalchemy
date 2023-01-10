@@ -539,7 +539,7 @@ and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
     ...     index_elements=['id']
     ... )
     >>> print(do_nothing_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO NOTHING
     {stop}
 
@@ -548,7 +548,7 @@ and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT ON CONSTRAINT pk_my_table DO UPDATE SET data = %(param_1)s
 
 .. versionadded:: 1.1
@@ -577,7 +577,7 @@ named constraint or by column inference:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
     {stop}
 
@@ -586,7 +586,7 @@ named constraint or by column inference:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 * When using :paramref:`_postgresql.Insert.on_conflict_do_update.index_elements` to
@@ -602,7 +602,7 @@ named constraint or by column inference:
     ...     set_=dict(data=stmt.excluded.data)
     ... )
     >>> print(stmt)
-    {opensql}INSERT INTO my_table (data, user_email)
+    {printsql}INSERT INTO my_table (data, user_email)
     VALUES (%(data)s, %(user_email)s) ON CONFLICT (user_email)
     WHERE user_email LIKE %(user_email_1)s DO UPDATE SET data = excluded.data
 
@@ -617,7 +617,7 @@ named constraint or by column inference:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT ON CONSTRAINT my_table_idx_1 DO UPDATE SET data = %(param_1)s
     {stop}
 
@@ -626,7 +626,7 @@ named constraint or by column inference:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT ON CONSTRAINT my_table_pk DO UPDATE SET data = %(param_1)s
     {stop}
 
@@ -649,7 +649,7 @@ named constraint or by column inference:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 The SET Clause
@@ -670,7 +670,7 @@ for UPDATE:
     ...     set_=dict(data='updated value')
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 .. warning::
@@ -705,7 +705,7 @@ table:
     ...     set_=dict(data='updated value', author=stmt.excluded.author)
     ... )
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data, author)
+    {printsql}INSERT INTO my_table (id, data, author)
     VALUES (%(id)s, %(data)s, %(author)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
 
@@ -729,7 +729,7 @@ parameter, which will limit those rows which receive an UPDATE:
     ...     where=(my_table.c.status == 2)
     ... )
     >>> print(on_update_stmt)
-    {opensql}INSERT INTO my_table (id, data, author)
+    {printsql}INSERT INTO my_table (id, data, author)
     VALUES (%(id)s, %(data)s, %(author)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
     WHERE my_table.status = %(status_1)s
@@ -747,7 +747,7 @@ this is illustrated using the
     >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
     >>> stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
     >>> print(stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO NOTHING
 
 If ``DO NOTHING`` is used without specifying any columns or constraint,
@@ -759,7 +759,7 @@ constraint violation which occurs:
     >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
     >>> stmt = stmt.on_conflict_do_nothing()
     >>> print(stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT DO NOTHING
 
 .. _postgresql_match:
@@ -1249,7 +1249,7 @@ Examples from PostgreSQL's reference documentation follow below:
     >>> from sqlalchemy import select, func
     >>> stmt = select(func.json_each('{"a":"foo", "b":"bar"}').table_valued("key", "value"))
     >>> print(stmt)
-    SELECT anon_1.key, anon_1.value
+    {printsql}SELECT anon_1.key, anon_1.value
     FROM json_each(:json_each_1) AS anon_1
 
 * ``json_populate_record()``::
@@ -1262,7 +1262,7 @@ Examples from PostgreSQL's reference documentation follow below:
     ...     ).table_valued("a", "b", name="x")
     ... )
     >>> print(stmt)
-    SELECT x.a, x.b
+    {printsql}SELECT x.a, x.b
     FROM json_populate_record(null::myrowtype, :json_populate_record_1) AS x
 
 * ``json_to_record()`` - this form uses a PostgreSQL specific form of derived
@@ -1279,7 +1279,7 @@ Examples from PostgreSQL's reference documentation follow below:
     ...     ).render_derived(name="x", with_types=True)
     ... )
     >>> print(stmt)
-    SELECT x.a, x.b, x.d
+    {printsql}SELECT x.a, x.b, x.d
     FROM json_to_record(:json_to_record_1) AS x(a INTEGER, b TEXT, d TEXT)
 
 * ``WITH ORDINALITY`` - part of the SQL standard, ``WITH ORDINALITY`` adds an
@@ -1296,7 +1296,7 @@ Examples from PostgreSQL's reference documentation follow below:
     ...     render_derived()
     ... )
     >>> print(stmt)
-    SELECT anon_1.value, anon_1.ordinality
+    {printsql}SELECT anon_1.value, anon_1.ordinality
     FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3)
     WITH ORDINALITY AS anon_1(value, ordinality)
 
@@ -1333,7 +1333,7 @@ scalar value.  PostgreSQL functions such as ``json_array_elements()``,
     >>> from sqlalchemy import select, func
     >>> stmt = select(func.unnest(array([1, 2])).column_valued())
     >>> print(stmt)
-    SELECT anon_1
+    {printsql}SELECT anon_1
     FROM unnest(ARRAY[%(param_1)s, %(param_2)s]) AS anon_1
 
   The function can of course be used against an existing table-bound column
@@ -1344,7 +1344,7 @@ scalar value.  PostgreSQL functions such as ``json_array_elements()``,
     >>> t = table("t", column('value', ARRAY(Integer)))
     >>> stmt = select(func.unnest(t.c.value).column_valued("unnested_value"))
     >>> print(stmt)
-    SELECT unnested_value
+    {printsql}SELECT unnested_value
     FROM unnest(t.value) AS unnested_value
 
 .. seealso::
@@ -1395,7 +1395,7 @@ itself::
     >>> a = table( "a", column("id"), column("x"), column("y"))
     >>> stmt = select(func.row_to_json(a.table_valued()))
     >>> print(stmt)
-    SELECT row_to_json(a) AS row_to_json_1
+    {printsql}SELECT row_to_json(a) AS row_to_json_1
     FROM a
 
 .. versionadded:: 1.4.0b2

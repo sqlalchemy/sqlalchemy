@@ -194,7 +194,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             >>> from sqlalchemy import func, select
             >>> fn = func.jsonb_each("{'k', 'v'}").scalar_table_valued("key")
             >>> print(select(fn))
-            SELECT (jsonb_each(:jsonb_each_1)).key
+            {printsql}SELECT (jsonb_each(:jsonb_each_1)).key
 
         .. versionadded:: 1.4.0b2
 
@@ -222,11 +222,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             ... )
 
             >>> print(select(fn))
-            SELECT anon_1.value, anon_1.start, anon_1.stop, anon_1.step
+            {printsql}SELECT anon_1.value, anon_1.start, anon_1.stop, anon_1.step
             FROM generate_series(:generate_series_1, :generate_series_2) AS anon_1
 
             >>> print(select(fn.c.value, fn.c.stop).where(fn.c.value > 2))
-            SELECT anon_1.value, anon_1.stop
+            {printsql}SELECT anon_1.value, anon_1.stop
             FROM generate_series(:generate_series_1, :generate_series_2) AS anon_1
             WHERE anon_1.value > :value_1
 
@@ -235,7 +235,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
             >>> fn = func.generate_series(4, 1, -1).table_valued("gen", with_ordinality="ordinality")
             >>> print(select(fn))
-            SELECT anon_1.gen, anon_1.ordinality
+            {printsql}SELECT anon_1.gen, anon_1.ordinality
             FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
 
         :param \*expr: A series of string column names that will be added to the
@@ -301,7 +301,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             >>> from sqlalchemy import select, func
             >>> gs = func.generate_series(1, 5, -1).column_valued()
             >>> print(select(gs))
-            SELECT anon_1
+            {printsql}SELECT anon_1
             FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) AS anon_1
 
         This is shorthand for::
@@ -341,7 +341,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             >>> from sqlalchemy import column, select, func
             >>> stmt = select(column('x'), column('y')).select_from(func.myfunction())
             >>> print(stmt)
-            SELECT x, y FROM myfunction()
+            {printsql}SELECT x, y FROM myfunction()
 
         The above form is a legacy feature that is now superseded by the
         fully capable :meth:`_functions.FunctionElement.table_valued`
@@ -588,7 +588,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             >>> from sqlalchemy import func, select, column
             >>> data_view = func.unnest([1, 2, 3]).alias("data_view")
             >>> print(select(data_view.column))
-            SELECT data_view
+            {printsql}SELECT data_view
             FROM unnest(:unnest_1) AS data_view
 
         The :meth:`_functions.FunctionElement.column_valued` method provides
@@ -596,7 +596,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
             >>> data_view = func.unnest([1, 2, 3]).column_valued("data_view")
             >>> print(select(data_view))
-            SELECT data_view
+            {printsql}SELECT data_view
             FROM unnest(:unnest_1) AS data_view
 
         .. versionadded:: 1.4.0b2  Added the ``.column`` accessor
@@ -772,7 +772,7 @@ class _FunctionGenerator:
     column-oriented SQL element like any other, and is used in that way::
 
         >>> print(select(func.count(table.c.id)))
-        SELECT count(sometable.id) FROM sometable
+        {printsql}SELECT count(sometable.id) FROM sometable
 
     Any name can be given to :data:`.func`. If the function name is unknown to
     SQLAlchemy, it will be rendered exactly as is. For common SQL functions
@@ -780,13 +780,13 @@ class _FunctionGenerator:
     function* which will be compiled appropriately to the target database::
 
         >>> print(func.current_timestamp())
-        CURRENT_TIMESTAMP
+        {printsql}CURRENT_TIMESTAMP
 
     To call functions which are present in dot-separated packages,
     specify them in the same manner::
 
         >>> print(func.stats.yield_curve(5, 10))
-        stats.yield_curve(:yield_curve_1, :yield_curve_2)
+        {printsql}stats.yield_curve(:yield_curve_1, :yield_curve_2)
 
     SQLAlchemy can be made aware of the return type of functions to enable
     type-specific lexical and result-based behavior. For example, to ensure
@@ -796,7 +796,7 @@ class _FunctionGenerator:
 
         >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
         ...       func.my_string(u'there', type_=Unicode))
-        my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
+        {printsql}my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
 
     The object returned by a :data:`.func` call is usually an instance of
     :class:`.Function`.
@@ -834,7 +834,7 @@ class _FunctionGenerator:
 
         :class:`.Function`
 
-    """
+    """  # noqa
 
     def __init__(self, **opts):
         self.__names = []
@@ -1250,14 +1250,14 @@ class concat(GenericFunction[str]):
     E.g.::
 
         >>> print(select(func.concat('a', 'b')))
-        SELECT concat(:concat_2, :concat_3) AS concat_1
+        {printsql}SELECT concat(:concat_2, :concat_3) AS concat_1
 
     String concatenation in SQLAlchemy is more commonly available using the
     Python ``+`` operator with string datatypes, which will render a
     backend-specific concatenation operator, such as ::
 
         >>> print(select(literal("a") + "b"))
-        SELECT :param_1 || :param_2 AS anon_1
+        {printsql}SELECT :param_1 || :param_2 AS anon_1
 
 
     """

@@ -193,7 +193,7 @@ at execution time, illustrated below:
 
     >>> stmt = select(User.id).where(User.id.in_([1, 2, 3]))
     >>> result = conn.execute(stmt)
-    {opensql}SELECT user_account.id
+    {execsql}SELECT user_account.id
     FROM user_account
     WHERE user_account.id IN (?, ?, ?)
     [...] (1, 2, 3){stop}
@@ -209,7 +209,7 @@ in other words, "it just works":
 
     >>> stmt = select(User.id).where(User.id.in_([]))
     >>> result = conn.execute(stmt)
-    {opensql}SELECT user_account.id
+    {execsql}SELECT user_account.id
     FROM user_account
     WHERE user_account.id IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
     [...] ()
@@ -254,7 +254,7 @@ To illustrate the parameters rendered:
     >>> tup = tuple_(User.id, Address.id)
     >>> stmt = select(User.name).join(Address).where(tup.in_([(1, 1), (2, 2)]))
     >>> conn.execute(stmt).all()
-    {opensql}SELECT user_account.name
+    {execsql}SELECT user_account.name
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE (user_account.id, address.id) IN (VALUES (?, ?), (?, ?))
     [...] (1, 1, 2, 2){stop}
@@ -601,7 +601,7 @@ The most common conjunction, "AND", is automatically applied if we make repeated
     ...     .where(user_table.c.name == "squidward")
     ...     .where(address_table.c.user_id == user_table.c.id)
     ... )
-    SELECT address.email_address
+    {printsql}SELECT address.email_address
     FROM address, user_account
     WHERE user_account.name = :name_1 AND address.user_id = user_account.id
 
@@ -613,7 +613,7 @@ The most common conjunction, "AND", is automatically applied if we make repeated
     ...         address_table.c.user_id == user_table.c.id,
     ...     )
     ... )
-    SELECT address.email_address
+    {printsql}SELECT address.email_address
     FROM address, user_account
     WHERE user_account.name = :name_1 AND address.user_id = user_account.id
 
@@ -629,7 +629,7 @@ The "AND" conjunction, as well as its partner "OR", are both available directly 
     ...         )
     ...     )
     ... )
-    SELECT address.email_address
+    {printsql}SELECT address.email_address
     FROM address, user_account
     WHERE (user_account.name = :name_1 OR user_account.name = :name_2)
     AND address.user_id = user_account.id

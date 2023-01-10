@@ -103,10 +103,12 @@ def _format_block(
 
 format_directive = re.compile(r"^\.\.\s*format\s*:\s*(on|off)\s*$")
 
-doctest_code_start = re.compile(r"^(\s+)({(?:opensql|sql|stop)})?>>>\s?(.+)")
+doctest_code_start = re.compile(
+    r"^(\s+)({(?:opensql|execsql|printsql|sql|stop)})?>>>\s?(.+)"
+)
 doctest_code_continue = re.compile(r"^\s+\.\.\.\s?(\s*.*)")
 
-sql_code_start = re.compile(r"^(\s+)({(?:open)?sql})")
+sql_code_start = re.compile(r"^(\s+)({(?:open|print|exec)?sql})")
 sql_code_stop = re.compile(r"^(\s+){stop}")
 
 start_code_section = re.compile(

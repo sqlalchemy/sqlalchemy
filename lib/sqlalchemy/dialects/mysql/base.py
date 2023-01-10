@@ -553,7 +553,7 @@ the generative method :meth:`~.mysql.Insert.on_duplicate_key_update`:
     ...     status='U'
     ... )
     >>> print(on_duplicate_key_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%s, %s)
     ON DUPLICATE KEY UPDATE data = VALUES(data), status = %s
 
 
@@ -584,7 +584,7 @@ as values:
     ... )
 
     >>> print(on_duplicate_key_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%s, %s)
     ON DUPLICATE KEY UPDATE data = %s, updated_at = CURRENT_TIMESTAMP
 
 In a manner similar to that of :meth:`.UpdateBase.values`, other parameter
@@ -613,7 +613,7 @@ this context is unambiguous:
     ... )
 
     >>> print(on_duplicate_key_stmt)
-    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    {printsql}INSERT INTO my_table (id, data) VALUES (%s, %s)
     ON DUPLICATE KEY UPDATE data = %s, updated_at = CURRENT_TIMESTAMP
 
 .. versionchanged:: 1.3 support for parameter-ordered UPDATE clause within
@@ -649,7 +649,7 @@ table:
     ... )
 
     >>> print(do_update_stmt)
-    {opensql}INSERT INTO my_table (id, data, author) VALUES (%s, %s, %s)
+    {printsql}INSERT INTO my_table (id, data, author) VALUES (%s, %s, %s)
     ON DUPLICATE KEY UPDATE data = %s, author = VALUES(author)
 
 When rendered, the "inserted" namespace will produce the expression
