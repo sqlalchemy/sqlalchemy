@@ -696,7 +696,7 @@ class ClauseElement(
 
         return compiled_sql, extracted_params, cache_hit
 
-    def __invert__(self) -> Union[ColumnElement[bool], ClauseElement]:
+    def __invert__(self) -> ClauseElement:
         # undocumented element currently used by the ORM for
         # relationship.contains()
         if hasattr(self, "negation_clause"):
@@ -709,7 +709,7 @@ class ClauseElement(
         assert isinstance(grouped, ColumnElement)
         return UnaryExpression(grouped, operator=operators.inv)
 
-    def __bool__(self) -> NoReturn:
+    def __bool__(self) -> bool:
         raise TypeError("Boolean value of this clause is not defined")
 
     def __repr__(self) -> str:
@@ -1874,7 +1874,7 @@ class WrapsColumnExpression(ColumnElement[_T]):
             return self._dedupe_anon_tq_label_idx(idx)
 
     @property
-    def _proxy_key(self) -> Optional[str]:  # type: ignore [override]
+    def _proxy_key(self) -> Optional[str]:
         wce = self.wrapped_column_expression
 
         if not wce._is_text_clause:
@@ -2589,9 +2589,7 @@ class TextClause(
             return self
 
 
-class Null(  # type: ignore [misc]
-    SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]
-):
+class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
     """Represent the NULL keyword in a SQL statement.
 
     :class:`.Null` is accessed as a constant via the
@@ -2618,7 +2616,7 @@ class Null(  # type: ignore [misc]
 Null._create_singleton()
 
 
-class False_(  # type: ignore [misc]
+class False_(
     SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]
 ):
     """Represent the ``false`` keyword, or equivalent, in a SQL statement.
@@ -2647,9 +2645,7 @@ class False_(  # type: ignore [misc]
 False_._create_singleton()
 
 
-class True_(  # type: ignore [misc]
-    SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]
-):
+class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
     """Represent the ``true`` keyword, or equivalent, in a SQL statement.
 
     :class:`.True_` is accessed as a constant via the
@@ -3183,9 +3179,7 @@ and_ = BooleanClauseList.and_
 or_ = BooleanClauseList.or_
 
 
-class Tuple(  # type: ignore [misc]
-    ClauseList, ColumnElement[typing_Tuple[Any, ...]]
-):
+class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
     """Represent a SQL tuple."""
 
     __visit_name__ = "tuple"
@@ -3776,9 +3770,7 @@ class CollectionAggregate(UnaryExpression[_T]):
         )
 
 
-class AsBoolean(  # type: ignore [misc]
-    WrapsColumnExpression[bool], UnaryExpression[bool]
-):
+class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
     inherit_cache = True
 
     def __init__(
@@ -3897,7 +3889,7 @@ class BinaryExpression(OperatorExpression[_T]):
     ) -> typing_Tuple[ColumnElement[Any], ...]:
         return (self.left, self.right)
 
-    def __bool__(self) -> bool:  # type: ignore [override]
+    def __bool__(self) -> bool:
         """Implement Python-side "bool" for BinaryExpression as a
         simple "identity" check for the left and right attributes,
         if the operator is "eq" or "ne".  Otherwise the expression
@@ -4031,7 +4023,7 @@ class GroupedElement(DQLDMLClauseElement):
         return self.element._ungroup()
 
 
-class Grouping(GroupedElement, ColumnElement[_T]):  # type: ignore [misc]
+class Grouping(GroupedElement, ColumnElement[_T]):
     """Represent a grouping within a column expression"""
 
     _traverse_internals: _TraverseInternalsType = [
@@ -4568,9 +4560,7 @@ class NamedColumn(KeyedColumnElement[_T]):
         return c.key, c
 
 
-class Label(  # type: ignore [misc]
-    roles.LabeledColumnExprRole[_T], NamedColumn[_T]
-):
+class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     """Represents a column label (AS).
 
     Represent a label, as typically applied to any column-level
@@ -4762,7 +4752,7 @@ class Label(  # type: ignore [misc]
         return self.key, e
 
 
-class ColumnClause(  # type: ignore [misc]
+class ColumnClause(
     roles.DDLReferredColumnRole,
     roles.LabeledColumnExprRole[_T],
     roles.StrAsPlainColumnRole,
