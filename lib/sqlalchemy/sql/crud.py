@@ -212,25 +212,29 @@ def _get_crud_params(
         assert mp is not None
         spd = mp[0]
         stmt_parameter_tuples = list(spd.items())
+        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._ordered_values:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = compile_state._ordered_values
+        assert spd is not None
+        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._dict_parameters:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = list(spd.items())
+        spd_str_key = {_column_as_key(key) for key in spd}
     else:
-        stmt_parameter_tuples = spd = None
+        stmt_parameter_tuples = spd = spd_str_key = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
     if compiler.column_keys is None:
         parameters = {}
     elif stmt_parameter_tuples:
-        assert spd is not None
+        assert spd_str_key is not None
         parameters = {
             _column_as_key(key): REQUIRED
             for key in compiler.column_keys
-            if key not in spd
+            if key not in spd_str_key
         }
     else:
         parameters = {
