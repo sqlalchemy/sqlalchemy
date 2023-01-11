@@ -752,6 +752,7 @@ class TypesTest(fixtures.TestBase):
             Column("d3", TIMESTAMP),
             Column("d4", TIMESTAMP(timezone=True)),
             Column("d5", oracle.INTERVAL(second_precision=5)),
+            Column("d6", oracle.TIMESTAMP(local_timezone=True)),
         )
         metadata.create_all(connection)
         m = MetaData()
@@ -760,10 +761,12 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(t1.c.d1.type, DateTime)
         assert isinstance(t1.c.d2.type, oracle.DATE)
         assert isinstance(t1.c.d2.type, DateTime)
-        assert isinstance(t1.c.d3.type, TIMESTAMP)
+        assert isinstance(t1.c.d3.type, oracle.TIMESTAMP)
         assert not t1.c.d3.type.timezone
-        assert isinstance(t1.c.d4.type, TIMESTAMP)
+        assert isinstance(t1.c.d4.type, oracle.TIMESTAMP)
         assert t1.c.d4.type.timezone
+        assert isinstance(t1.c.d6.type, oracle.TIMESTAMP)
+        assert t1.c.d6.type.local_timezone
         assert isinstance(t1.c.d5.type, oracle.INTERVAL)
 
     def _dont_test_reflect_all_types_schema(self):

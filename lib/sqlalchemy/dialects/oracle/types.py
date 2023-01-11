@@ -5,6 +5,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
@@ -214,6 +215,33 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             second_precision=self.second_precision,
             day_precision=self.day_precision,
         )
+
+
+class TIMESTAMP(sqltypes.TIMESTAMP):
+    """Oracle implementation of ``TIMESTAMP``, which supports additional
+    Oracle-specific modes
+
+    .. versionadded:: 2.0
+
+    """
+
+    def __init__(self, timezone: bool = False, local_timezone: bool = False):
+        """Construct a new :class:`_oracle.TIMESTAMP`.
+
+        :param timezone: boolean.  Indicates that the TIMESTAMP type should
+         use Oracle's ``TIMESTAMP WITH TIME ZONE`` datatype.
+
+        :param local_timezone: boolean.  Indicates that the TIMESTAMP type
+         should use Oracle's ``TIMESTAMP WITH LOCAL TIME ZONE`` datatype.
+
+
+        """
+        if timezone and local_timezone:
+            raise exc.ArgumentError(
+                "timezone and local_timezone are mutually exclusive"
+            )
+        super().__init__(timezone=timezone)
+        self.local_timezone = local_timezone
 
 
 class ROWID(sqltypes.TypeEngine):

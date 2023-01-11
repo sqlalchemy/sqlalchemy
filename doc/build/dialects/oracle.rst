@@ -65,6 +65,9 @@ construction arguments, are as follows:
 .. autoclass:: RAW
   :members: __init__
 
+.. autoclass:: TIMESTAMP
+  :members: __init__
+
 .. _cx_oracle:
 
 cx_Oracle
