@@ -140,6 +140,7 @@ if TYPE_CHECKING:
     from .schema import ForeignKey
     from .schema import ForeignKeyConstraint
     from .schema import Table
+    from .sqltypes import TableValueType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
 
@@ -1564,7 +1565,7 @@ class Join(roles.DMLTableRole, FromClause):
 
 
 class NoInit:
-    def __init__(self, *arg: Any, **kw: Any) -> NoReturn:
+    def __init__(self, *arg: Any, **kw: Any):
         raise NotImplementedError(
             "The %s class is not intended to be constructed "
             "directly.  Please use the %s() standalone "
@@ -1652,7 +1653,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         return name
 
     @util.ro_non_memoized_property
-    def implicit_returning(self):
+    def implicit_returning(self) -> bool:
         return self.element.implicit_returning  # type: ignore
 
     @property
@@ -1764,9 +1765,9 @@ class TableValuedAlias(LateralFromClause, Alias):
     def _init(
         self,
         selectable,
-        name=None,
-        table_value_type=None,
-        joins_implicitly=False,
+        name: Optional[str] = None,
+        table_value_type: Optional[TableValueType] = None,
+        joins_implicitly: bool = False,
     ) -> None:
         super()._init(selectable, name=name)
 
