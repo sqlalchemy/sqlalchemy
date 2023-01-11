@@ -25,7 +25,19 @@ SSL Connections
 ------------------
 
 The PyMySQL DBAPI accepts the same SSL arguments as that of MySQLdb,
-described at :ref:`mysqldb_ssl`.   See that section for examples.
+described at :ref:`mysqldb_ssl`.   See that section for additional examples.
+
+If the server uses an automatically-generated certificate that is self-signed
+or does not match the host name (as seen from the client), it may also be
+necessary to indicate ``ssl_check_hostname=false`` in PyMySQL::
+
+    connection_uri = (
+        "mysql+pymysql://scott:tiger@192.168.0.134/test"
+        "?ssl_ca=/home/gord/client-ssl/ca.pem"
+        "&ssl_cert=/home/gord/client-ssl/client-cert.pem"
+        "&ssl_key=/home/gord/client-ssl/client-key.pem"
+        "&ssl_check_hostname=false"
+    )
 
 
 MySQL-Python Compatibility

@@ -63,19 +63,6 @@ where they will be interpreted into the "ssl" dictionary automatically:
         "&ssl_key=/home/gord/client-ssl/client-key.pem"
     )
 
-If the server uses an automatically-generated certificate that is self-signed
-or does not match the host name (as seen from the client), it may also be
-necessary to indicate ``ssl_check_hostname=false``::
-
-    connection_uri = (
-        "mysql+pymysql://scott:tiger@192.168.0.134/test"
-        "?ssl_ca=/home/gord/client-ssl/ca.pem"
-        "&ssl_cert=/home/gord/client-ssl/client-cert.pem"
-        "&ssl_key=/home/gord/client-ssl/client-key.pem"
-        "&ssl_check_hostname=false"
-    )
-
-
 .. seealso::
 
     :ref:`pymysql_ssl` in the PyMySQL dialect
