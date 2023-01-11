@@ -1764,7 +1764,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
     def _init(
         self,
-        selectable,
+        selectable: Any,
         name: Optional[str] = None,
         table_value_type: Optional[TableValueType] = None,
         joins_implicitly: bool = False,
