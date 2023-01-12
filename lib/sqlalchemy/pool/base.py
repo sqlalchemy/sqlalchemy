@@ -689,7 +689,8 @@ class _ConnectionRecord(ConnectionPoolEntry):
                 self.dbapi_connection
             )
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "2.0",
         "The _ConnectionRecord.connection attribute is deprecated; "
         "please use 'driver_connection'",
@@ -1234,7 +1235,8 @@ class _ConnectionFairy(PoolProxiedConnection):
             return None
         return self._connection_record.driver_connection
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "2.0",
         "The _ConnectionFairy.connection attribute is deprecated; "
         "please use 'driver_connection'",

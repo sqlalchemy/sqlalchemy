@@ -76,7 +76,6 @@ from .deprecations import became_legacy_20 as became_legacy_20
 from .deprecations import deprecated as deprecated
 from .deprecations import deprecated_cls as deprecated_cls
 from .deprecations import deprecated_params as deprecated_params
-from .deprecations import deprecated_property as deprecated_property
 from .deprecations import moved_20 as moved_20
 from .deprecations import warn_deprecated as warn_deprecated
 from .langhelpers import add_parameter_text as add_parameter_text

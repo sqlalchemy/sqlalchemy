@@ -357,7 +357,8 @@ class DefaultDialect(Dialect):
         if insertmanyvalues_page_size is not _NoArg.NO_ARG:
             self.insertmanyvalues_page_size = insertmanyvalues_page_size
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "2.0",
         "full_returning is deprecated, please use insert_returning, "
         "update_returning, delete_returning",

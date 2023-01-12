@@ -129,7 +129,8 @@ class ClassManager(
 
     _bases: List[ClassManager[Any]]
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "1.4",
         message="The ClassManager.deferred_scalar_loader attribute is now "
         "named expired_attribute_loader",

@@ -3413,7 +3413,8 @@ class SelectBase(
         """
         return self.selected_columns.as_readonly()
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "1.4",
         "The :attr:`_expression.SelectBase.c` and "
         ":attr:`_expression.SelectBase.columns` attributes "
@@ -5531,7 +5532,8 @@ class Select(
 
         return self._compile_state_factory(self, None)._get_display_froms()
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "1.4.23",
         "The :attr:`_expression.Select.froms` attribute is moved to "
         "the :meth:`_expression.Select.get_final_froms` method.",
