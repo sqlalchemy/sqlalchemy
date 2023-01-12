@@ -671,14 +671,6 @@ The above conjunction functions :func:`_sql.and_`, :func:`_sql.or_`,
 
   ..
 
-
-
-Operator Customization
-^^^^^^^^^^^^^^^^^^^^^^
-
-TODO
-
-
 ..  Setup code, not for display
 
     >>> conn.close()
