@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -12,15 +11,27 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
-from . import base
 from .collections import collection
 from .. import exc as sa_exc
 from .. import util
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
+
+
+if TYPE_CHECKING:
+    from typing import List
+    from typing import Optional
+    from typing import Tuple
+    from typing import Union
+
+    from . import base
+    from . import InstrumentedAttribute
+    from . import Mapper
+    from ..sql.elements import KeyedColumnElement
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
@@ -38,28 +49,35 @@ class _PlainColumnGetter:
 
     __slots__ = ("cols", "composite")
 
-    def __init__(self, cols):
+    def __init__(self, cols: List[KeyedColumnElement[Optional[_KT]]]) -> None:
         self.cols = cols
         self.composite = len(cols) > 1
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> Tuple[
+        Type[_SerializableColumnGetterV2],
+        Tuple[List[Tuple[str, Optional[_KT]]]],
+    ]:
         return _SerializableColumnGetterV2._reduce_from_cols(self.cols)
 
-    def _cols(self, mapper):
+    def _cols(
+        self, mapper: Mapper[_KT]
+    ) -> List[KeyedColumnElement[Optional[_KT]]]:
         return self.cols
 
-    def __call__(self, value):
+    def __call__(self, value: _KT) -> Union[_KT, Tuple[_KT, ...]]:
         state = base.instance_state(value)
         m = base._state_mapper(state)
 
-        key = [
+        key = [  # type: ignore
             m._get_state_attr_by_column(state, state.dict, col)
             for col in self._cols(m)
         ]
         if self.composite:
             return tuple(key)
         else:
-            return key[0]
+            return key[0]  # type: ignore
 
 
 class _SerializableColumnGetterV2(_PlainColumnGetter):
@@ -76,25 +94,36 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
 
     __slots__ = ("colkeys",)
 
-    def __init__(self, colkeys):
+    def __init__(self, colkeys: List[Tuple[str, Optional[str]]]) -> None:
         self.colkeys = colkeys
         self.composite = len(colkeys) > 1
 
-    def __reduce__(self):
-        return self.__class__, (self.colkeys,)
+    def __reduce__(
+        self,
+    ) -> Tuple[
+        Type[_SerializableColumnGetterV2], Tuple[List[Tuple[str, Any]]]
+    ]:
+        return self.__class__, (self.colkeys,)  # type: ignore
 
     @classmethod
-    def _reduce_from_cols(cls, cols):
-        def _table_key(c):
+    def _reduce_from_cols(
+        cls, cols: List[KeyedColumnElement[_KT]]
+    ) -> Tuple[
+        Type[_SerializableColumnGetterV2],
+        Tuple[List[Tuple[str, Optional[_KT]]]],
+    ]:
+        def _table_key(c: KeyedColumnElement[_KT]) -> Optional[_KT]:
             if not isinstance(c.table, expression.TableClause):
                 return None
             else:
-                return c.table.key
+                return c.table.key  # type: ignore
 
         colkeys = [(c.key, _table_key(c)) for c in cols]
         return _SerializableColumnGetterV2, (colkeys,)
 
-    def _cols(self, mapper):
+    def _cols(
+        self, mapper: Mapper[_KT]
+    ) -> List[KeyedColumnElement[Optional[_KT]]]:
         cols = []
         metadata = getattr(mapper.local_table, "metadata", None)
         for (ckey, tkey) in self.colkeys:
@@ -106,8 +135,10 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
 
 
 def column_keyed_dict(
-    mapping_spec, *, ignore_unpopulated_attribute: bool = False
-):
+    mapping_spec: Union[Type[_KT], Callable[[_KT], _VT]],
+    *,
+    ignore_unpopulated_attribute: bool = False,
+) -> Type[KeyFuncDict[_KT, _KT]]:
     """A dictionary-based collection type with column-based keying.
 
     .. versionchanged:: 2.0 Renamed :data:`.column_mapped_collection` to
@@ -153,9 +184,11 @@ def column_keyed_dict(
         coercions.expect(roles.ColumnArgumentRole, q, argname="mapping_spec")
         for q in util.to_list(mapping_spec)
     ]
-    keyfunc = _PlainColumnGetter(cols)
-    return _mapped_collection_cls(
-        keyfunc, ignore_unpopulated_attribute=ignore_unpopulated_attribute
+    keyfunc = _PlainColumnGetter(cols)  # type: ignore
+    return _mapped_collection_cls(  # type: ignore
+        keyfunc,  # type: ignore
+        ignore_unpopulated_attribute=ignore_unpopulated_attribute,
+        # type: ignore
     )
 
 
@@ -169,13 +202,13 @@ class _AttrGetter:
         dict_ = base.instance_dict(mapped_object)
         return dict_.get(self.attr_name, base.NO_VALUE)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[Type[_AttrGetter], Tuple[str]]:
         return _AttrGetter, (self.attr_name,)
 
 
 def attribute_keyed_dict(
     attr_name: str, *, ignore_unpopulated_attribute: bool = False
-) -> Type[KeyFuncDict]:
+) -> Type[KeyFuncDict[_KT, _KT]]:
     """A dictionary-based collection type with attribute-based keying.
 
     .. versionchanged:: 2.0 Renamed :data:`.attribute_mapped_collection` to
@@ -223,7 +256,7 @@ def attribute_keyed_dict(
 
 
 def keyfunc_mapping(
-    keyfunc: Callable[[Any], _KT],
+    keyfunc: Callable[[_KT], _KT],
     *,
     ignore_unpopulated_attribute: bool = False,
 ) -> Type[KeyFuncDict[_KT, Any]]:
@@ -297,7 +330,12 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     """
 
-    def __init__(self, keyfunc, *, ignore_unpopulated_attribute=False):
+    def __init__(
+        self,
+        keyfunc: Callable[[_KT], _KT],
+        *,
+        ignore_unpopulated_attribute: bool = False,
+    ) -> None:
         """Create a new collection with keying provided by keyfunc.
 
         keyfunc may be any callable that takes an object and returns an object
@@ -315,21 +353,30 @@ class KeyFuncDict(Dict[_KT, _VT]):
         self.ignore_unpopulated_attribute = ignore_unpopulated_attribute
 
     @classmethod
-    def _unreduce(cls, keyfunc, values):
-        mp = KeyFuncDict(keyfunc)
+    def _unreduce(
+        cls, keyfunc: Callable[[_KT], _KT], values: Dict[_KT, _KT]
+    ) -> "KeyFuncDict[_KT, _KT]":
+        mp: KeyFuncDict[_KT, _KT] = KeyFuncDict(keyfunc)
         mp.update(values)
         return mp
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> tuple[
+        Callable[[_KT, _KT], KeyFuncDict[_KT, _KT]],
+        tuple[Any, dict[_KT, _KT] | dict[_KT, _KT]],
+    ]:
         return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
 
-    def _raise_for_unpopulated(self, value, initiator):
+    def _raise_for_unpopulated(
+        self, value: _KT, initiator: Optional[InstrumentedAttribute[_KT]]
+    ) -> None:
         mapper = base.instance_state(value).mapper
 
         if initiator is None:
             relationship = "unknown relationship"
         else:
-            relationship = mapper.attrs[initiator.key]
+            relationship = mapper.attrs[initiator.key]  # type: ignore
 
         raise sa_exc.InvalidRequestError(
             f"In event triggered from population of attribute {relationship} "
@@ -345,9 +392,13 @@ class KeyFuncDict(Dict[_KT, _VT]):
             f"parameter on the mapped collection factory."
         )
 
-    @collection.appender
-    @collection.internally_instrumented
-    def set(self, value, _sa_initiator=None):
+    @collection.appender  # type: ignore[misc]
+    @collection.internally_instrumented  # type: ignore[misc]
+    def set(
+        self,
+        value: _KT,
+        _sa_initiator: Optional[InstrumentedAttribute[_KT]] = None,
+    ) -> None:
         """Add an item by value, consulting the keyfunc for the key."""
 
         key = self.keyfunc(value)
@@ -358,11 +409,15 @@ class KeyFuncDict(Dict[_KT, _VT]):
             else:
                 return
 
-        self.__setitem__(key, value, _sa_initiator)
+        self.__setitem__(key, value, _sa_initiator)  # type: ignore[call-arg]
 
-    @collection.remover
-    @collection.internally_instrumented
-    def remove(self, value, _sa_initiator=None):
+    @collection.remover  # type: ignore[misc]
+    @collection.internally_instrumented  # type: ignore[misc]
+    def remove(
+        self,
+        value: _KT,
+        _sa_initiator: Optional[InstrumentedAttribute[_KT]] = None,
+    ) -> None:
         """Remove an item by value, consulting the keyfunc for the key."""
 
         key = self.keyfunc(value)
@@ -381,12 +436,14 @@ class KeyFuncDict(Dict[_KT, _VT]):
                 "based on mutable properties or properties that only obtain "
                 "values after flush?" % (value, self[key], key)
             )
-        self.__delitem__(key, _sa_initiator)
+        self.__delitem__(key, _sa_initiator)  # type: ignore[call-arg]
 
 
-def _mapped_collection_cls(keyfunc, ignore_unpopulated_attribute):
-    class _MKeyfuncMapped(KeyFuncDict):
-        def __init__(self):
+def _mapped_collection_cls(
+    keyfunc: Callable[[_KT], _KT], ignore_unpopulated_attribute: bool
+) -> type[KeyFuncDict[_KT, _KT]]:
+    class _MKeyfuncMapped(KeyFuncDict):  # type: ignore
+        def __init__(self) -> None:
             super().__init__(
                 keyfunc,
                 ignore_unpopulated_attribute=ignore_unpopulated_attribute,
