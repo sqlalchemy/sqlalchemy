@@ -1025,7 +1025,9 @@ All three of GROUPING SETS, CUBE, ROLLUP are available via the
 :attr:`.func` namespace.  In the case of CUBE and ROLLUP, these functions
 already work in previous versions, however for GROUPING SETS, a placeholder
 is added to the compiler to allow for the space.  All three functions
-are named in the documentation now::
+are named in the documentation now:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, table, column, func, tuple_
     >>> t = table("t", column("value"), column("x"), column("y"), column("z"), column("q"))
@@ -1497,10 +1499,12 @@ in all cases, including for :class:`_types.ARRAY` and :class:`_types.JSON`::
 
 To assist with boolean comparison operators, a new shorthand method
 :meth:`.Operators.bool_op` has been added.    This method should be preferred
-for on-the-fly boolean operators::
+for on-the-fly boolean operators:
+
+.. sourcecode:: pycon+sql
 
     >>> print(column("x", types.Integer).bool_op("-%>")(5))
-    x -%> :x_1
+    {printsql}x -%> :x_1
 
 
 .. _change_3740:
@@ -1513,23 +1517,27 @@ conditionally, based on whether or not the DBAPI in use makes use of a
 percent-sign-sensitive paramstyle or not (e.g. 'format' or 'pyformat').
 
 Previously, it was not possible to produce a :obj:`_expression.literal_column`
-construct that stated a single percent sign::
+construct that stated a single percent sign:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import literal_column
     >>> print(literal_column("some%symbol"))
-    some%%symbol
+    {printsql}some%%symbol
 
 The percent sign is now unaffected for dialects that are not set to
 use the 'format' or 'pyformat' paramstyles; dialects such most MySQL
 dialects which do state one of these paramstyles will continue to escape
-as is appropriate::
+as is appropriate:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import literal_column
     >>> print(literal_column("some%symbol"))
-    some%symbol
+    {printsql}some%symbol{stop}
     >>> from sqlalchemy.dialects import mysql
     >>> print(literal_column("some%symbol").compile(dialect=mysql.dialect()))
-    some%%symbol
+    {printsql}some%%symbol{stop}
 
 As part of this change, the doubling that has been present when using
 operators like :meth:`.ColumnOperators.contains`,

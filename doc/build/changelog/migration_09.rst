@@ -629,15 +629,17 @@ want, form of:
 The :meth:`.ColumnOperators.collate` operator now works more appropriately within an
 ``ORDER BY`` expression as well, as a specific precedence has been given to the
 ``ASC`` and ``DESC`` operators which will again ensure no parentheses are
-generated::
+generated:
+
+.. sourcecode:: pycon+sql
 
     >>> # 0.8
     >>> print(column("x").collate("en_EN").desc())
-    (x COLLATE en_EN) DESC
+    {printsql}(x COLLATE en_EN) DESC{stop}
 
     >>> # 0.9
     >>> print(column("x").collate("en_EN").desc())
-    x COLLATE en_EN DESC
+    {printsql}x COLLATE en_EN DESC{stop}
 
 :ticket:`2879`
 
@@ -649,7 +651,9 @@ PostgreSQL CREATE TYPE <x> AS ENUM now applies quoting to values
 ----------------------------------------------------------------
 
 The :class:`_postgresql.ENUM` type will now apply escaping to single quote
-signs within the enumerated values::
+signs within the enumerated values:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.dialects import postgresql
     >>> type = postgresql.ENUM("one", "two", "three's", name="myenum")
@@ -888,7 +892,9 @@ After literally years of pointless procrastination this relatively minor
 syntactical feature has been added, and is also backported to 0.8.3,
 so technically isn't "new" in 0.9.   A :func:`_expression.select` construct or other
 compatible construct can be passed to the new method :meth:`_expression.Insert.from_select`
-where it will be used to render an ``INSERT .. SELECT`` construct::
+where it will be used to render an ``INSERT .. SELECT`` construct:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.sql import table, column
     >>> t1 = table("t1", column("a"), column("b"))
@@ -1597,7 +1603,9 @@ Starting with a table such as this::
     t1 = Table("t", MetaData(), Column("x", Boolean()), Column("y", Integer))
 
 A select construct will now render the boolean column as a binary expression
-on backends that don't feature ``true``/``false`` constant behavior::
+on backends that don't feature ``true``/``false`` constant behavior:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, and_, false, true
     >>> from sqlalchemy.dialects import mysql, postgresql
@@ -1607,14 +1615,18 @@ on backends that don't feature ``true``/``false`` constant behavior::
 
 The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
 "short circuit" behavior, that is truncating a rendered expression, when a
-:func:`.true` or :func:`.false` constant is present::
+:func:`.true` or :func:`.false` constant is present:
+
+.. sourcecode:: pycon+sql
 
     >>> print(
     ...     select([t1]).where(and_(t1.c.y > 5, false())).compile(dialect=postgresql.dialect())
     ... )
     {printsql}SELECT t.x, t.y FROM t WHERE false
 
-:func:`.true` can be used as the base to build up an expression::
+:func:`.true` can be used as the base to build up an expression:
+
+.. sourcecode:: pycon+sql
 
     >>> expr = true()
     >>> expr = expr & (t1.c.y > 5)
@@ -1622,22 +1634,26 @@ The :func:`.and_` and :func:`.or_` constructs will now exhibit quasi
     {printsql}SELECT t.x, t.y FROM t WHERE t.y > :y_1
 
 The boolean constants :func:`.true` and :func:`.false` themselves render as
-``0 = 1`` and ``1 = 1`` for a backend with no boolean constants::
+``0 = 1`` and ``1 = 1`` for a backend with no boolean constants:
+
+.. sourcecode:: pycon+sql
 
     >>> print(select([t1]).where(and_(t1.c.y > 5, false())).compile(dialect=mysql.dialect()))
     {printsql}SELECT t.x, t.y FROM t WHERE 0 = 1
 
 Interpretation of ``None``, while not particularly valid SQL, is at least
-now consistent::
+now consistent:
+
+.. sourcecode:: pycon+sql
 
     >>> print(select([t1.c.x]).where(None))
-    {printsql}SELECT t.x FROM t WHERE NULL
+    {printsql}SELECT t.x FROM t WHERE NULL{stop}
 
     >>> print(select([t1.c.x]).where(None).where(None))
-    {printsql}SELECT t.x FROM t WHERE NULL AND NULL
+    {printsql}SELECT t.x FROM t WHERE NULL AND NULL{stop}
 
     >>> print(select([t1.c.x]).where(and_(None, None)))
-    {printsql}SELECT t.x FROM t WHERE NULL AND NULL
+    {printsql}SELECT t.x FROM t WHERE NULL AND NULL{stop}
 
 :ticket:`2804`
 

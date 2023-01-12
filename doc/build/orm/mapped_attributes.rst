@@ -278,13 +278,15 @@ attribute available by an additional name::
 
 The above class ``MyClass`` has two attributes, ``.job_status`` and
 ``.status`` that will behave as one attribute, both at the expression
-level::
+level:
+
+.. sourcecode:: pycon+sql
 
     >>> print(MyClass.job_status == "some_status")
-    my_table.job_status = :job_status_1
+    {printsql}my_table.job_status = :job_status_1{stop}
 
     >>> print(MyClass.status == "some_status")
-    my_table.job_status = :job_status_1
+    {printsql}my_table.job_status = :job_status_1{stop}
 
 and at the instance level::
 

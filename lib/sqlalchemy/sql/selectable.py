@@ -1026,7 +1026,9 @@ class NamedFromClause(FromClause):
         backend dependent, and is supported in various forms by backends
         such as PostgreSQL, Oracle and SQL Server.
 
-        E.g.::
+        E.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import select, column, func, table
             >>> a = table("a", column("id"), column("x"), column("y"))
@@ -1055,7 +1057,9 @@ class SelectLabelStyle(Enum):
 
     Below, the columns named ``columna`` are both rendered as is, meaning that
     the name ``columna`` can only refer to the first occurrence of this name
-    within a result set, as well as if the statement were used as a subquery::
+    within a result set, as well as if the statement were used as a subquery:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_NONE
         >>> table1 = table("table1", column("columna"), column("columnb"))
@@ -1078,7 +1082,9 @@ class SelectLabelStyle(Enum):
 
     Below, all column names are given a label so that the two same-named
     columns ``columna`` are disambiguated as ``table1_columna`` and
-    ``table2_columna``::
+    ``table2_columna``:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_TABLENAME_PLUS_COL
         >>> table1 = table("table1", column("columna"), column("columnb"))
@@ -1105,7 +1111,9 @@ class SelectLabelStyle(Enum):
 
     Below, most column names are left unaffected, except for the second
     occurrence of the name ``columna``, which is labeled using the
-    label ``columna_1`` to disambiguate it from that of ``tablea.columna``::
+    label ``columna_1`` to disambiguate it from that of ``tablea.columna``:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_DISAMBIGUATE_ONLY
         >>> table1 = table("table1", column("columna"), column("columnb"))
@@ -1714,7 +1722,9 @@ class TableValuedAlias(LateralFromClause, Alias):
     This construct provides for a SQL function that returns columns
     to be used in the FROM clause of a SELECT statement.   The
     object is generated using the :meth:`_functions.FunctionElement.table_valued`
-    method, e.g.::
+    method, e.g.:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import select, func
         >>> fn = func.json_array_elements_text('["one", "two", "three"]').table_valued("value")
@@ -1770,10 +1780,12 @@ class TableValuedAlias(LateralFromClause, Alias):
         :meth:`_functions.FunctionElement.column_valued` method. See that
         method for further details.
 
-        E.g.::
+        E.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> print(select(func.some_func().table_valued("value").column))
-            SELECT anon_1 FROM some_func() AS anon_1
+            {printsql}SELECT anon_1 FROM some_func() AS anon_1
 
         .. seealso::
 
@@ -1823,7 +1835,9 @@ class TableValuedAlias(LateralFromClause, Alias):
         """Apply "render derived" to this :class:`_sql.TableValuedAlias`.
 
         This has the effect of the individual column names listed out
-        after the alias name in the "AS" sequence, e.g.::
+        after the alias name in the "AS" sequence, e.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> print(
             ...     select(
@@ -1836,7 +1850,9 @@ class TableValuedAlias(LateralFromClause, Alias):
 
         The ``with_types`` keyword will render column types inline within
         the alias expression (this syntax currently applies to the
-        PostgreSQL database)::
+        PostgreSQL database):
+
+        .. sourcecode:: pycon+sql
 
             >>> print(
             ...     select(

@@ -358,10 +358,12 @@ using a Core :class:`_schema.Table` object as follows::
 
 SQL that is rendered using this :class:`_schema.Table`, such as the SELECT
 statement below, will explicitly qualify the table name ``financial_info`` with
-the ``remote_banks`` schema name::
+the ``remote_banks`` schema name:
+
+.. sourcecode:: pycon+sql
 
     >>> print(select(financial_info))
-    SELECT remote_banks.financial_info.id, remote_banks.financial_info.value
+    {printsql}SELECT remote_banks.financial_info.id, remote_banks.financial_info.value
     FROM remote_banks.financial_info
 
 When a :class:`_schema.Table` object is declared with an explicit schema

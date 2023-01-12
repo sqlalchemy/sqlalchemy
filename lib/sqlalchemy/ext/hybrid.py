@@ -65,7 +65,9 @@ When dealing with the ``Interval`` class itself, the :class:`.hybrid_property`
 descriptor evaluates the function body given the ``Interval`` class as
 the argument, which when evaluated with SQLAlchemy expression mechanics
 (here using the :attr:`.QueryableAttribute.expression` accessor)
-returns a new SQL expression::
+returns a new SQL expression:
+
+.. sourcecode:: pycon+sql
 
     >>> print(Interval.length.expression)
     interval."end" - interval.start
@@ -78,7 +80,9 @@ returns a new SQL expression::
 
 ORM methods such as :meth:`_query.Query.filter_by`
 generally use ``getattr()`` to
-locate attributes, so can also be used with hybrid attributes::
+locate attributes, so can also be used with hybrid attributes:
+
+.. sourcecode:: pycon+sql
 
     >>> print(Session().query(Interval).filter_by(length=5))
     {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
@@ -92,7 +96,9 @@ The ``Interval`` class example also illustrates two methods,
 methods that :class:`.hybrid_property` applies to attributes.   The
 methods return boolean values, and take advantage of the Python ``|``
 and ``&`` bitwise operators to produce equivalent instance-level and
-SQL expression-level boolean behavior::
+SQL expression-level boolean behavior:
+
+.. sourcecode:: pycon+sql
 
     >>> i1.contains(6)
     True
@@ -107,7 +113,7 @@ SQL expression-level boolean behavior::
     {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
-    WHERE interval.start <= :start_1 AND interval."end" > :end_1
+    WHERE interval.start <= :start_1 AND interval."end" > :end_1{stop}
 
     >>> ia = aliased(Interval)
     >>> print(Session().query(Interval, ia).filter(Interval.intersects(ia)))
@@ -118,7 +124,7 @@ SQL expression-level boolean behavior::
     WHERE interval.start <= interval_1.start
         AND interval."end" > interval_1.start
         OR interval.start <= interval_1."end"
-        AND interval."end" > interval_1."end"
+        AND interval."end" > interval_1."end"{stop}
 
 .. _hybrid_distinct_expression:
 
@@ -150,13 +156,15 @@ usage of the absolute value function::
 
 Above the Python function ``abs()`` is used for instance-level
 operations, the SQL function ``ABS()`` is used via the :data:`.func`
-object for class-level expressions::
+object for class-level expressions:
+
+.. sourcecode:: pycon+sql
 
     >>> i1.radius
     2
 
     >>> print(Session().query(Interval).filter(Interval.radius > 5))
-    SELECT interval.id AS interval_id, interval.start AS interval_start,
+    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
         interval."end" AS interval_end
     FROM interval
     WHERE abs(interval."end" - interval.start) / :abs_1 > :param_1
@@ -253,7 +261,9 @@ Above, if we use ``Interval.length`` in an UPDATE expression as::
     session.query(Interval).update(
         {Interval.length: 25}, synchronize_session='fetch')
 
-We'll get an UPDATE statement along the lines of::
+We'll get an UPDATE statement along the lines of:
+
+.. sourcecode:: sql
 
     UPDATE interval SET end=start + :value
 
@@ -353,11 +363,13 @@ list available on ``self``.
 
 However, at the expression level, it's expected that the ``User`` class will
 be used in an appropriate context such that an appropriate join to
-``SavingsAccount`` will be present::
+``SavingsAccount`` will be present:
+
+.. sourcecode:: pycon+sql
 
     >>> print(Session().query(User, User.balance).
     ...       join(User.accounts).filter(User.balance > 5000))
-    SELECT "user".id AS user_id, "user".name AS user_name,
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
     FROM "user" JOIN account ON "user".id = account.user_id
     WHERE account.balance > :balance_1
@@ -365,7 +377,9 @@ be used in an appropriate context such that an appropriate join to
 Note however, that while the instance level accessors need to worry
 about whether ``self.accounts`` is even present, this issue expresses
 itself differently at the SQL expression level, where we basically
-would use an outer join::
+would use an outer join:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import or_
     >>> print (Session().query(User, User.balance).outerjoin(User.accounts).
@@ -418,10 +432,12 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
                     label('total_balance')
 
 The above recipe will give us the ``balance`` column which renders
-a correlated SELECT::
+a correlated SELECT:
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.balance > 400))
-    SELECT "user".id AS user_id, "user".name AS user_name
+    {printsql}SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE (SELECT sum(account.balance) AS sum_1
     FROM account
@@ -471,7 +487,9 @@ named ``word_insensitive``::
             return CaseInsensitiveComparator(cls.word)
 
 Above, SQL expressions against ``word_insensitive`` will apply the ``LOWER()``
-SQL function to both sides::
+SQL function to both sides:
+
+.. sourcecode:: pycon+sql
 
     >>> print(Session().query(SearchWord).filter_by(word_insensitive="Trucks"))
     {printsql}SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
@@ -611,14 +629,18 @@ SQL side or Python side. Our ``SearchWord`` class can now deliver the
 
 The ``word_insensitive`` attribute now has case-insensitive comparison behavior
 universally, including SQL expression vs. Python expression (note the Python
-value is converted to lower case on the Python side here)::
+value is converted to lower case on the Python side here):
+
+.. sourcecode:: pycon+sql
 
     >>> print(Session().query(SearchWord).filter_by(word_insensitive="Trucks"))
-    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
+    {printsql}SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
     FROM searchword
     WHERE lower(searchword.word) = :lower_1
 
-SQL expression versus SQL expression::
+SQL expression versus SQL expression:
+
+.. sourcecode:: pycon+sql
 
     >>> sw1 = aliased(SearchWord)
     >>> sw2 = aliased(SearchWord)

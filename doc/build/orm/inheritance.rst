@@ -878,7 +878,9 @@ may be persisted; querying against the ``Employee`` class will always produce
 
 Using the above mapping, queries can be produced in terms of the ``Employee``
 class and any attributes that are locally declared upon it, such as the
-``Employee.name``::
+``Employee.name``:
+
+.. sourcecode:: pycon+sql
 
     >>> stmt = select(Employee).where(Employee.name == "n1")
     >>> print(stmt)

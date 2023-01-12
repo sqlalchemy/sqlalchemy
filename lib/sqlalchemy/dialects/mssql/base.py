@@ -337,7 +337,9 @@ SEQUENCE support
 ----------------
 
 The :class:`.Sequence` object creates "real" sequences, i.e.,
-``CREATE SEQUENCE``::
+``CREATE SEQUENCE``:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
@@ -348,7 +350,7 @@ The :class:`.Sequence` object creates "real" sequences, i.e.,
 For integer primary key generation, SQL Server's ``IDENTITY`` construct should
 generally be preferred vs. sequence.
 
-..tip::
+.. tip::
 
     The default start value for T-SQL is ``-2**63`` instead of 1 as
     in most other SQL databases. Users should explicitly set the
@@ -693,7 +695,9 @@ SELECT statement; given a table::
 
 this legacy mode of rendering would assume that "customer_schema.account"
 would not be accepted by all parts of the SQL statement, as illustrated
-below::
+below:
+
+.. sourcecode:: pycon+sql
 
     >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
     >>> print(account_table.select().compile(eng))

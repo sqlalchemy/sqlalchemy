@@ -438,11 +438,13 @@ more specific to the "stringification" use case but describes the general
 background as well.
 
 Normally, a Core SQL construct or ORM :class:`_query.Query` object can be stringified
-directly, such as when we use ``print()``::
+directly, such as when we use ``print()``:
+
+.. sourcecode:: pycon+sql
 
   >>> from sqlalchemy import column
   >>> print(column("x") == 5)
-  x = :x_1
+  {printsql}x = :x_1
 
 When the above SQL expression is stringified, the :class:`.StrSQLCompiler`
 compiler class is used, which is a special statement compiler that is invoked
@@ -471,11 +473,13 @@ to turn into a string, such as the PostgreSQL
 In order to stringify constructs that are specific to particular backend,
 the :meth:`_expression.ClauseElement.compile` method must be used, passing either an
 :class:`_engine.Engine` or a :class:`.Dialect` object which will invoke the correct
-compiler.   Below we use a PostgreSQL dialect::
+compiler.   Below we use a PostgreSQL dialect:
+
+.. sourcecode:: pycon+sql
 
   >>> from sqlalchemy.dialects import postgresql
   >>> print(insert_stmt.compile(dialect=postgresql.dialect()))
-  INSERT INTO my_table (x) VALUES (%(x)s) ON CONFLICT (y) DO NOTHING
+  {printsql}INSERT INTO my_table (x) VALUES (%(x)s) ON CONFLICT (y) DO NOTHING
 
 For an ORM :class:`_query.Query` object, the statement can be accessed using the
 :attr:`~.orm.query.Query.statement` accessor::

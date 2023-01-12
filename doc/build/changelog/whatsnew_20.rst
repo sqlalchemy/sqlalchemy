@@ -1552,7 +1552,9 @@ DATE, TIME, DATETIME datatypes now support literal rendering on all backends
 -----------------------------------------------------------------------------
 
 Literal rendering is now implemented for date and time types for backend
-specific compilation, including PostgreSQL and Oracle::
+specific compilation, including PostgreSQL and Oracle:
+
+.. sourcecode:: pycon+sql
 
     >>> import datetime
 
@@ -1568,14 +1570,14 @@ specific compilation, including PostgreSQL and Oracle::
     ...         dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
     ...     )
     ... )
-    '2022-12-17 11:02:13.575789'
+    {printsql}'2022-12-17 11:02:13.575789'{stop}
 
     >>> print(
     ...     date_literal.compile(
     ...         dialect=oracle.dialect(), compile_kwargs={"literal_binds": True}
     ...     )
     ... )
-    TO_TIMESTAMP('2022-12-17 11:02:13.575789', 'YYYY-MM-DD HH24:MI:SS.FF')
+    {printsql}TO_TIMESTAMP('2022-12-17 11:02:13.575789', 'YYYY-MM-DD HH24:MI:SS.FF'){stop}
 
 Previously, such literal rendering only worked when stringifying statements
 without any dialect given; when attempting to render with a dialect-specific
@@ -1825,7 +1827,9 @@ The ``Sequence`` construct reverts to not having any explicit default "start" va
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Prior to SQLAlchemy 1.4, the :class:`.Sequence` construct would emit only
-simple ``CREATE SEQUENCE`` DDL, if no additional arguments were specified::
+simple ``CREATE SEQUENCE`` DDL, if no additional arguments were specified:
+
+.. sourcecode:: pycon+sql
 
     >>> # SQLAlchemy 1.3 (and 2.0)
     >>> from sqlalchemy import Sequence
@@ -1836,7 +1840,9 @@ simple ``CREATE SEQUENCE`` DDL, if no additional arguments were specified::
 However, as :class:`.Sequence` support was added for MS SQL Server, where the
 default start value is inconveniently set to ``-2**63``,
 version 1.4 decided to default the DDL to emit a start value of 1, if
-:paramref:`.Sequence.start` were not otherwise provided::
+:paramref:`.Sequence.start` were not otherwise provided:
+
+.. sourcecode:: pycon+sql
 
     >>> # SQLAlchemy 1.4 (only)
     >>> from sqlalchemy import Sequence
@@ -1856,13 +1862,15 @@ itself to make its decisions on how the various parameters of ``SEQUENCE``
 should interact with each other.
 
 Therefore, to ensure that the start value is 1 on all backends,
-**the start value of 1 may be indicated explicitly**, as below::
+**the start value of 1 may be indicated explicitly**, as below:
+
+.. sourcecode:: pycon+sql
 
     >>> # All SQLAlchemy versions
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
     >>> print(CreateSequence(Sequence("my_seq", start=1)))
-    CREATE SEQUENCE my_seq START WITH 1
+    {printsql}CREATE SEQUENCE my_seq START WITH 1
 
 Beyond all of that, for autogeneration of integer primary keys on modern
 backends including PostgreSQL, Oracle, SQL Server, the :class:`.Identity`
@@ -1931,7 +1939,7 @@ when used against integers, meaning the above result would return the integer
 "0".  For this and similar backends, SQLAlchemy now renders the SQL using
 a form which is equivalent towards:
 
-.. sourcecode:: text
+.. sourcecode:: sql
 
     %(param_1)s / CAST(%(param_2)s AS NUMERIC)
 
@@ -1947,7 +1955,7 @@ as "true division" when used against integers, meaning the above result
 would return the floating point value "0.5".  For these and similar backends,
 SQLAlchemy now renders the SQL using a form which is equivalent towards:
 
-.. sourcecode:: text
+.. sourcecode:: sql
 
     FLOOR(%(param_1)s / %(param_2)s)
 

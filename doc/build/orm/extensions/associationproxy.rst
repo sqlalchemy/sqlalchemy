@@ -570,7 +570,9 @@ the EXISTS SQL operator so that it can be used in a WHERE clause without
 the need for additional modifications to the enclosing query.  If the
 immediate target of an association proxy is a **mapped column expression**,
 standard column operators can be used which will be embedded in the subquery.
-For example a straight equality operator::
+For example a straight equality operator:
+
+.. sourcecode:: pycon+sql
 
     >>> print(session.scalars(select(User).where(User.special_keys == "jek")))
     {printsql}SELECT "user".id AS user_id, "user".name AS user_name
@@ -579,7 +581,9 @@ For example a straight equality operator::
     FROM user_keyword
     WHERE "user".id = user_keyword.user_id AND user_keyword.special_key = :special_key_1)
 
-a LIKE operator::
+a LIKE operator:
+
+.. sourcecode:: pycon+sql
 
     >>> print(session.scalars(select(User).where(User.special_keys.like("%jek"))))
     {printsql}SELECT "user".id AS user_id, "user".name AS user_name
@@ -593,7 +597,9 @@ or another association proxy or attribute on the related object**, relationship-
 operators can be used instead, such as :meth:`_orm.PropComparator.has` and
 :meth:`_orm.PropComparator.any`.   The ``User.keywords`` attribute is in fact
 two association proxies linked together, so when using this proxy for generating
-SQL phrases, we get two levels of EXISTS subqueries::
+SQL phrases, we get two levels of EXISTS subqueries:
+
+.. sourcecode:: pycon+sql
 
     >>> print(session.scalars(select(User).where(User.keywords.any(Keyword.keyword == "jek"))))
     {printsql}SELECT "user".id AS user_id, "user".name AS user_name

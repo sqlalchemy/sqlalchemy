@@ -579,7 +579,6 @@ Ascending / descending is available from the :meth:`_sql.ColumnElement.asc`
 and :meth:`_sql.ColumnElement.desc` modifiers, which are present
 from ORM-bound attributes as well::
 
-
     >>> print(select(User).order_by(User.fullname.desc()))
     {printsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.fullname DESC
@@ -1394,11 +1393,10 @@ the :class:`_functions.now` function::
 
     >>> from sqlalchemy.dialects import postgresql
     >>> print(select(func.now()).compile(dialect=postgresql.dialect()))
-    {printsql}SELECT now() AS now_1
-
+    {printsql}SELECT now() AS now_1{stop}
     >>> from sqlalchemy.dialects import oracle
     >>> print(select(func.now()).compile(dialect=oracle.dialect()))
-    {printsql}SELECT CURRENT_TIMESTAMP AS now_1 FROM DUAL
+    {printsql}SELECT CURRENT_TIMESTAMP AS now_1 FROM DUAL{stop}
 
 Functions Have Return Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1450,7 +1448,7 @@ elements::
 
     >>> stmt = select(function_expr["def"])
     >>> print(stmt)
-    SELECT json_object(:json_object_1)[:json_object_2] AS anon_1
+    {printsql}SELECT json_object(:json_object_1)[:json_object_2] AS anon_1
 
 Built-in Functions Have Pre-Configured Return Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1584,8 +1582,8 @@ number the email addresses of individual users:
     user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     [...] ()
-    [(1, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (1, 'spongebob', 'spongebob@sqlalchemy.org')]
-    ROLLBACK
+    {stop}[(1, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (1, 'spongebob', 'spongebob@sqlalchemy.org')]
+    {printsql}ROLLBACK{stop}
 
 Above, the :paramref:`_functions.FunctionElement.over.partition_by` parameter
 is used so that the ``PARTITION BY`` clause is rendered within the OVER clause.
@@ -1610,8 +1608,8 @@ We also may make use of the ``ORDER BY`` clause using :paramref:`_functions.Func
     user_account.name, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     [...] ()
-    [(2, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (3, 'spongebob', 'spongebob@sqlalchemy.org')]
-    ROLLBACK
+    {stop}[(2, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (3, 'spongebob', 'spongebob@sqlalchemy.org')]
+    {printsql}ROLLBACK{stop}
 
 Further options for window functions include usage of ranges; see
 :func:`_expression.over` for more examples.
@@ -1643,7 +1641,7 @@ method::
     ...         func.percentile_disc([0.25, 0.5, 0.75, 1]).within_group(user_table.c.name)
     ...     )
     ... )
-    unnest(percentile_disc(:percentile_disc_1) WITHIN GROUP (ORDER BY user_account.name))
+    {printsql}unnest(percentile_disc(:percentile_disc_1) WITHIN GROUP (ORDER BY user_account.name))
 
 "FILTER" is supported by some backends to limit the range of an aggregate function to a
 particular subset of rows compared to the total range of rows returned, available
@@ -1795,7 +1793,7 @@ the Python side as well. A string expression that is :func:`.cast` to
 
     >>> from sqlalchemy import JSON
     >>> print(cast("{'a': 'b'}", JSON)["a"])
-    CAST(:param_1 AS JSON)[:param_2]
+    {printsql}CAST(:param_1 AS JSON)[:param_2]
 
 
 type_coerce() - a Python-only "cast"

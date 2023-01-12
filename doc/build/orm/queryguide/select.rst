@@ -1018,7 +1018,7 @@ in terms of the target :func:`_orm.relationship`.
   object given::
 
       >>> user_obj = session.get(User, 1)
-      {execsql}SELECT ...
+      {execsql}SELECT ...{stop}
       >>> print(select(Address).where(Address.user == user_obj))
       {printsql}SELECT address.id, address.user_id, address.email_address
       FROM address
@@ -1041,7 +1041,7 @@ in terms of the target :func:`_orm.relationship`.
   primary key equals the value of the foreign key in a related object::
 
       >>> address_obj = session.get(Address, 1)
-      {execsql}SELECT ...
+      {execsql}SELECT ...{stop}
       >>> print(select(User).where(User.addresses.contains(address_obj)))
       {printsql}SELECT user_account.id, user_account.name, user_account.fullname
       FROM user_account

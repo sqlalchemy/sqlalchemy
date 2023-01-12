@@ -1219,13 +1219,15 @@ class ColumnElement(
     together with the addition operator ``+`` to produce
     a :class:`.BinaryExpression`.
     Both :class:`.ColumnClause` and :class:`.BinaryExpression` are subclasses
-    of :class:`_expression.ColumnElement`::
+    of :class:`_expression.ColumnElement`:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
         >>> print(column('a') + column('b'))
-        a + b
+        {printsql}a + b
 
     .. seealso::
 
@@ -3653,13 +3655,15 @@ class BinaryExpression(OperatorExpression[_T]):
     """Represent an expression that is ``LEFT <operator> RIGHT``.
 
     A :class:`.BinaryExpression` is generated automatically
-    whenever two column expressions are used in a Python binary expression::
+    whenever two column expressions are used in a Python binary expression:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
         >>> print(column('a') + column('b'))
-        a + b
+        {printsql}a + b
 
     """
 

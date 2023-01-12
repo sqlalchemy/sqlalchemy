@@ -356,10 +356,12 @@ the same expression that the base "greater than" does::
 Since ``Point`` is a dataclass, we may make use of
 ``dataclasses.astuple()`` to get a tuple form of ``Point`` instances.
 
-The custom comparator then returns the appropriate SQL expression::
+The custom comparator then returns the appropriate SQL expression:
+
+.. sourcecode:: pycon+sql
 
   >>> print(Vertex.start > Point(5, 6))
-  vertices.x1 > :x1_1 AND vertices.y1 > :y1_1
+  {printsql}vertices.x1 > :x1_1 AND vertices.y1 > :y1_1
 
 
 Nesting Composites

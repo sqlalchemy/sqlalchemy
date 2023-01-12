@@ -202,7 +202,9 @@ class String(Concatenable, TypeEngine[str]):
         :param collation: Optional, a column-level collation for
           use in DDL and CAST expressions.  Renders using the
           COLLATE keyword supported by SQLite, MySQL, and PostgreSQL.
-          E.g.::
+          E.g.:
+
+          .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import cast, select, String
             >>> print(select(cast('some string', String(collation='utf8'))))

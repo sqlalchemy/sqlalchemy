@@ -224,7 +224,9 @@ added with the job of providing the inspection API in
 certain contexts, such as :class:`.AliasedInsp` and
 :class:`.AttributeState`.
 
-A walkthrough of some key capabilities follows::
+A walkthrough of some key capabilities follows:
+
+.. sourcecode:: pycon+sql
 
     >>> class User(Base):
     ...     __tablename__ = "user"
@@ -282,7 +284,7 @@ A walkthrough of some key capabilities follows::
 
     >>> # an expression
     >>> print(b.expression)
-    "user".id = address.user_id
+    {printsql}"user".id = address.user_id{stop}
 
     >>> # inspect works on instances
     >>> u1 = User(id=3, name="x")
@@ -752,7 +754,9 @@ functionality, except on the database side::
 
 Above, the ``LowerString`` type defines a SQL expression that will be emitted
 whenever the ``test_table.c.data`` column is rendered in the columns
-clause of a SELECT statement::
+clause of a SELECT statement:
+
+.. sourcecode:: pycon+sql
 
     >>> print(select([test_table]).where(test_table.c.data == "HI"))
     {printsql}SELECT lower(test_table.data) AS data
@@ -951,7 +955,9 @@ Huge thanks to Nate Dub for the sprinting on this at Pycon 2012.
 
 The "collate" keyword, long accepted by the MySQL dialect, is now established
 on all :class:`.String` types and will render on any backend, including
-when features such as :meth:`_schema.MetaData.create_all` and :func:`.cast` is used::
+when features such as :meth:`_schema.MetaData.create_all` and :func:`.cast` is used:
+
+.. sourcecode:: pycon+sql
 
     >>> stmt = select([cast(sometable.c.somechar, String(20, collation="utf8"))])
     >>> print(stmt)

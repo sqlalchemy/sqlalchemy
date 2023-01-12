@@ -325,10 +325,12 @@ Glossary
         of :class:`.InstrumentedAttribute`, which are descriptors that
         provide the above mentioned ``__get__()``, ``__set__()`` and
         ``__delete__()`` methods.   The :class:`.InstrumentedAttribute`
-        will generate a SQL expression when used at the class level::
+        will generate a SQL expression when used at the class level:
+
+        .. sourcecode:: pycon+sql
 
             >>> print(MyClass.data == 5)
-            data = :data_1
+            {printsql}data = :data_1
 
         and at the instance level, keeps track of changes to values,
         and also :term:`lazy loads` unloaded attributes

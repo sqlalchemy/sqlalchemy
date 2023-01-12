@@ -530,7 +530,9 @@ and is **not** an object reference or another association proxy::
         value = Column(String)
 
 The ``User.values`` association proxy refers to the ``Element.value`` column.
-Standard column operations are now available, such as ``like``::
+Standard column operations are now available, such as ``like``:
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.values.like("%foo%")))
     {printsql}SELECT "user".id AS user_id
@@ -539,7 +541,9 @@ Standard column operations are now available, such as ``like``::
     FROM element
     WHERE "user".id = element.user_id AND element.value LIKE :value_1)
 
-``equals``::
+``equals``:
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.values == "foo"))
     {printsql}SELECT "user".id AS user_id
@@ -550,7 +554,9 @@ Standard column operations are now available, such as ``like``::
 
 When comparing to ``None``, the ``IS NULL`` expression is augmented with
 a test that the related row does not exist at all; this is the same
-behavior as before::
+behavior as before:
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.values == None))
     {printsql}SELECT "user".id AS user_id
@@ -564,7 +570,9 @@ behavior as before::
 Note that the :meth:`.ColumnOperators.contains` operator is in fact a string
 comparison operator; **this is a change in behavior** in that previously,
 the association proxy used ``.contains`` as a list containment operator only.
-With a column-oriented comparison, it now behaves like a "like"::
+With a column-oriented comparison, it now behaves like a "like":
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.values.contains("foo")))
     {printsql}SELECT "user".id AS user_id
@@ -606,7 +614,9 @@ as before, that of testing for collection membership, e.g. given a mapping::
         value = Column(String)
 
 The ``.contains()`` method produces the same expression as before, testing
-the list of ``User.elements`` for the presence of an ``Element`` object::
+the list of ``User.elements`` for the presence of an ``Element`` object:
+
+.. sourcecode:: pycon+sql
 
     >>> print(s.query(User).filter(User.elements.contains(Element(id=1))))
     SELECT "user".id AS user_id

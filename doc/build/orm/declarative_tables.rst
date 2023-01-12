@@ -339,7 +339,9 @@ the registry and Declarative base could be configured as::
         status: Mapped[str]
 
 Below illustrates the CREATE TABLE statement generated for the above mapping,
-first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatype::
+first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatype:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
     >>> from sqlalchemy.dialects import mssql, postgresql
@@ -351,7 +353,9 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
       PRIMARY KEY (id)
     )
 
-Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``::
+Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``:
+
+.. sourcecode:: pycon+sql
 
     >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
     {printsql}CREATE TABLE some_table (
@@ -538,11 +542,13 @@ more specific type constructions, as in the following example::
         short_num_value: Mapped[num_6_2]
 
 a CREATE TABLE for the above mapping will illustrate the different variants
-of ``VARCHAR`` and ``NUMERIC`` we've configured, and looks like::
+of ``VARCHAR`` and ``NUMERIC`` we've configured, and looks like:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(SomeClass.__table__))
-    CREATE TABLE some_table (
+    {printsql}CREATE TABLE some_table (
       short_name VARCHAR(30) NOT NULL,
       long_name VARCHAR(50) NOT NULL,
       num_value NUMERIC(12, 4) NOT NULL,
@@ -621,7 +627,9 @@ specific to each attribute::
         name: Mapped[required_name]
         created_at: Mapped[timestamp]
 
-``CREATE TABLE`` for our above mapping looks like::
+``CREATE TABLE`` for our above mapping looks like:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(SomeClass.__table__))
@@ -709,11 +717,13 @@ default for the ``created_at`` column::
 
 The CREATE TABLE statement illustrates these per-attribute settings,
 adding a ``FOREIGN KEY`` constraint as well as substituting
-``UTC_TIMESTAMP`` for ``CURRENT_TIMESTAMP``::
+``UTC_TIMESTAMP`` for ``CURRENT_TIMESTAMP``:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(SomeClass.__table__))
-    CREATE TABLE some_table (
+    {printsql}CREATE TABLE some_table (
       id INTEGER NOT NULL,
       created_at DATETIME DEFAULT UTC_TIMESTAMP() NOT NULL,
       PRIMARY KEY (id),
@@ -940,7 +950,9 @@ given to the columns themselves::
 Where above ``User.id`` resolves to a column named ``user_id``
 and ``User.name`` resolves to a column named ``user_name``.  We
 may write a :func:`_sql.select` statement using our Python attribute names
-and will see the SQL names generated::
+and will see the SQL names generated:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> print(select(User.id, User.name).where(User.name == "x"))

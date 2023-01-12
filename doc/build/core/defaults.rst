@@ -491,7 +491,9 @@ passing it directly to a SQL execution method::
 In order to embed the "next value" function of a :class:`.Sequence`
 inside of a SQL statement like a SELECT or INSERT, use the :meth:`.Sequence.next_value`
 method, which will render at statement compilation time a SQL function that is
-appropriate for the target backend::
+appropriate for the target backend:
+
+.. sourcecode:: pycon+sql
 
     >>> my_seq = Sequence("some_sequence", start=1)
     >>> stmt = select(my_seq.next_value())

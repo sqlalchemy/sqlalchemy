@@ -16,7 +16,9 @@ expression fragment, as well as that of an ORM :class:`_query.Query` object,
 in the majority of simple cases is as simple as using
 the ``str()`` builtin function, as below when use it with the ``print``
 function (note the Python ``print`` function also calls ``str()`` automatically
-if we don't use it explicitly)::
+if we don't use it explicitly):
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, select
     >>> t = table("my_table", column("x"))
@@ -28,11 +30,13 @@ if we don't use it explicitly)::
 The ``str()`` builtin, or an equivalent, can be invoked on ORM
 :class:`_query.Query`  object as well as any statement such as that of
 :func:`_expression.select`, :func:`_expression.insert` etc. and also any expression fragment, such
-as::
+as:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import column
     >>> print(column("x") == "some value")
-    x = :x_1
+    {printsql}x = :x_1
 
 Stringifying for Specific Databases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -318,29 +322,35 @@ being passed to a particular invocation of :meth:`_sql.ColumnOperators.in_`::
   >>> stmt = select(A).where(A.id.in_[1, 2, 3])
 
 To render the IN clause with real bound parameter symbols, use the
-``render_postcompile=True`` flag with :meth:`_sql.ClauseElement.compile`::
+``render_postcompile=True`` flag with :meth:`_sql.ClauseElement.compile`:
+
+.. sourcecode:: pycon+sql
 
   >>> e = create_engine("postgresql+psycopg2://")
   >>> print(stmt.compile(e, compile_kwargs={"render_postcompile": True}))
-  SELECT a.id, a.data
+  {printsql}SELECT a.id, a.data
   FROM a
   WHERE a.id IN (%(id_1_1)s, %(id_1_2)s, %(id_1_3)s)
 
 The ``literal_binds`` flag, described in the previous section regarding
 rendering of bound parameters, automatically sets ``render_postcompile`` to
 True, so for a statement with simple ints/strings, these can be stringified
-directly::
+directly:
+
+.. sourcecode:: pycon+sql
 
   # render_postcompile is implied by literal_binds
   >>> print(stmt.compile(e, compile_kwargs={"literal_binds": True}))
-  SELECT a.id, a.data
+  {printsql}SELECT a.id, a.data
   FROM a
   WHERE a.id IN (1, 2, 3)
 
 The :attr:`.SQLCompiler.params` and :attr:`.SQLCompiler.positiontup` are
 also compatible with ``render_postcompile``, so that
 the previous recipes for rendering inline bound parameters will work here
-in the same way, such as SQLite's positional form::
+in the same way, such as SQLite's positional form:
+
+.. sourcecode:: pycon+sql
 
   >>> u1, u2, u3 = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
   >>> stmt = select(A).where(A.data.in_([u1, u2, u3]))
@@ -350,7 +360,7 @@ in the same way, such as SQLite's positional form::
   >>> compiled = stmt.compile(e, compile_kwargs={"render_postcompile": True})
   >>> params = (repr(compiled.params[name]) for name in compiled.positiontup)
   >>> print(re.sub(r"\?", lambda m: next(params), str(compiled)))
-  SELECT a.id, a.data
+  {printsql}SELECT a.id, a.data
   FROM a
   WHERE a.data IN (UUID('aa1944d6-9a5a-45d5-b8da-0ba1ef0a4f38'), UUID('a81920e6-15e2-4392-8a3c-d775ffa9ccd2'), UUID('b5574cdb-ff9b-49a3-be52-dbc89f087bfa'))
 
@@ -396,7 +406,9 @@ like:
 
 The default compilers for databases like PostgreSQL (default DBAPI is psycopg2)
 and MySQL (default DBAPI is mysqlclient) will have this percent sign
-escaping behavior::
+escaping behavior:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column
     >>> from sqlalchemy.dialects import postgresql
@@ -408,7 +420,9 @@ escaping behavior::
 When such a dialect is being used, if non-DBAPI statements are desired that
 don't include bound parameter symbols, one quick way to remove the percent
 signs is to simply substitute in an empty set of parameters using Python's
-``%`` operator directly::
+``%`` operator directly:
+
+.. sourcecode:: pycon+sql
 
     >>> strstmt = str(t.select().compile(dialect=postgresql.dialect()))
     >>> print(strstmt % ())
@@ -421,7 +435,9 @@ The other is to set a different parameter style on the dialect being used; all
 dialect to use the given parameter style.  Below, the very common ``named``
 parameter style is set within the dialect used for the compilation so that
 percent signs are no longer significant in the compiled form of SQL, and will
-no longer be escaped::
+no longer be escaped:
+
+.. sourcecode:: pycon+sql
 
     >>> print(t.select().compile(dialect=postgresql.dialect(paramstyle="named")))
     {printsql}SELECT my_table."value % one", my_table."value % two"
@@ -434,33 +450,41 @@ I'm using op() to generate a custom operator and my parenthesis are not coming o
 ---------------------------------------------------------------------------------------------
 
 The :meth:`.Operators.op` method allows one to create a custom database operator
-otherwise not known by SQLAlchemy::
+otherwise not known by SQLAlchemy:
+
+.. sourcecode:: pycon+sql
 
     >>> print(column("q").op("->")(column("p")))
-    q -> p
+    {printsql}q -> p
 
 However, when using it on the right side of a compound expression, it doesn't
-generate parenthesis as we expect::
+generate parenthesis as we expect:
+
+.. sourcecode:: pycon+sql
 
     >>> print((column("q1") + column("q2")).op("->")(column("p")))
-    q1 + q2 -> p
+    {printsql}q1 + q2 -> p
 
 Where above, we probably want ``(q1 + q2) -> p``.
 
 The solution to this case is to set the precedence of the operator, using
 the :paramref:`.Operators.op.precedence` parameter, to a high
 number, where 100 is the maximum value, and the highest number used by any
-SQLAlchemy operator is currently 15::
+SQLAlchemy operator is currently 15:
+
+.. sourcecode:: pycon+sql
 
     >>> print((column("q1") + column("q2")).op("->", precedence=100)(column("p")))
-    (q1 + q2) -> p
+    {printsql}(q1 + q2) -> p
 
 We can also usually force parenthesization around a binary expression (e.g.
 an expression that has left/right operands and an operator) using the
-:meth:`_expression.ColumnElement.self_group` method::
+:meth:`_expression.ColumnElement.self_group` method:
+
+.. sourcecode:: pycon+sql
 
     >>> print((column("q1") + column("q2")).self_group().op("->")(column("p")))
-    (q1 + q2) -> p
+    {printsql}(q1 + q2) -> p
 
 Why are the parentheses rules like this?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -485,7 +509,9 @@ the very least readability, such as::
 
     column("q", ARRAY(Integer, dimensions=2))[5][6]
 
-would produce::
+would produce:
+
+.. sourcecode:: sql
 
     ((q[5])[6])
 
@@ -498,19 +524,23 @@ For :meth:`.Operators.op`, the value of precedence defaults to zero.
 
 What if we defaulted the value of :paramref:`.Operators.op.precedence` to 100,
 e.g. the highest?  Then this expression makes more parenthesis, but is
-otherwise OK, that is, these two are equivalent::
+otherwise OK, that is, these two are equivalent:
+
+.. sourcecode:: pycon+sql
 
     >>> print((column("q") - column("y")).op("+", precedence=100)(column("z")))
-    (q - y) + z
+    {printsql}(q - y) + z{stop}
     >>> print((column("q") - column("y")).op("+")(column("z")))
-    q - y + z
+    {printsql}q - y + z{stop}
 
-but these two are not::
+but these two are not:
+
+.. sourcecode:: pycon+sql
 
     >>> print(column("q") - column("y").op("+", precedence=100)(column("z")))
-    q - y + z
+    {printsql}q - y + z{stop}
     >>> print(column("q") - column("y").op("+")(column("z")))
-    q - (y + z)
+    {printsql}q - (y + z){stop}
 
 For now, it's not clear that as long as we are doing parenthesization based on
 operator precedence and associativity, if there is really a way to parenthesize

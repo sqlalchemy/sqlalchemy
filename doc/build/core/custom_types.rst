@@ -516,12 +516,14 @@ When the need arises for a SQL operator that isn't directly supported by the
 already supplied methods above, the most expedient way to produce this operator is
 to use the :meth:`_sql.Operators.op` method on any SQL expression object; this method
 is given a string representing the SQL operator to render, and the return value
-is a Python callable that accepts any arbitrary right-hand side expression::
+is a Python callable that accepts any arbitrary right-hand side expression:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import column
     >>> expr = column("x").op(">>")(column("y"))
     >>> print(expr)
-    x >> y
+    {printsql}x >> y
 
 When making use of custom SQL types, there is also a means of implementing
 custom operators as above that are automatically present upon any column
@@ -555,11 +557,13 @@ establishes the :attr:`.TypeEngine.comparator_factory` attribute as
 referring to a new class, subclassing the :class:`.TypeEngine.Comparator` class
 associated with the :class:`.Integer` type.
 
-Usage::
+Usage:
+
+.. sourcecode:: pycon+sql
 
     >>> sometable = Table("sometable", metadata, Column("data", MyInt))
     >>> print(sometable.c.data + 5)
-    sometable.data goofy :data_1
+    {printsql}sometable.data goofy :data_1
 
 The implementation for :meth:`.ColumnOperators.__add__` is consulted
 by an owning SQL expression, by instantiating the :class:`.TypeEngine.Comparator` with
@@ -589,10 +593,12 @@ to integers::
             def log(self, other):
                 return func.log(self.expr, other)
 
-Using the above type::
+Using the above type:
+
+.. sourcecode:: pycon+sql
 
     >>> print(sometable.c.data.log(5))
-    log(:log_1, :log_2)
+    {printsql}log(:log_1, :log_2)
 
 When using :meth:`.Operators.op` for comparison operations that return a
 boolean result, the :paramref:`.Operators.op.is_comparison` flag should be
@@ -620,11 +626,13 @@ along with a :class:`.custom_op` to produce the factorial expression::
                     self.expr, modifier=operators.custom_op("!"), type_=MyInteger
                 )
 
-Using the above type::
+Using the above type:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.sql import column
     >>> print(column("x", MyInteger).factorial())
-    x !
+    {printsql}x !
 
 .. seealso::
 
@@ -671,7 +679,9 @@ The implication of this is that if a :class:`_schema.Table` object makes use of 
 objects that don't correspond directly to the database-native type name, if we
 create a new :class:`_schema.Table` object against a new :class:`_schema.MetaData` collection
 for this database table elsewhere using reflection, it will not have this
-datatype. For example::
+datatype. For example:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import (
     ...     Table,
@@ -707,7 +717,9 @@ object that was created by us directly, it is :class:`.PickleType`::
 
 However, if we create another instance of :class:`_schema.Table` using reflection,
 the use of :class:`.PickleType` is not represented in the SQLite database we've
-created; we instead get back :class:`.BLOB`::
+created; we instead get back :class:`.BLOB`:
+
+.. sourcecode:: pycon+sql
 
     >>> metadata_two = MetaData()
     >>> my_reflected_table = Table("my_table", metadata_two, autoload_with=engine)

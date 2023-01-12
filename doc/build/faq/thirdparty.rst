@@ -44,12 +44,14 @@ In the latter case, the issue is due to the ``numpy.int64`` datatype overriding
 the ``__eq__()`` method and enforcing that the return type of an expression is
 ``numpy.True`` or ``numpy.False``, which breaks SQLAlchemy's expression
 language behavior that expects to return :class:`_sql.ColumnElement`
-expressions from Python equality comparisons::
+expressions from Python equality comparisons:
+
+.. sourcecode:: pycon+sql
 
     >>> import numpy
     >>> from sqlalchemy import column, Integer
     >>> print(column("x", Integer) == numpy.int64(10))  # works
-    x = :x_1
+    {printsql}x = :x_1{stop}
     >>> print(numpy.int64(10) == column("x", Integer))  # breaks
     False
 

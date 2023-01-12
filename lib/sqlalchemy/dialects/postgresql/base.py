@@ -1244,7 +1244,9 @@ namespace.
 
 Examples from PostgreSQL's reference documentation follow below:
 
-* ``json_each()``::
+* ``json_each()``:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(func.json_each('{"a":"foo", "b":"bar"}').table_valued("key", "value"))
@@ -1252,7 +1254,9 @@ Examples from PostgreSQL's reference documentation follow below:
     {printsql}SELECT anon_1.key, anon_1.value
     FROM json_each(:json_each_1) AS anon_1
 
-* ``json_populate_record()``::
+* ``json_populate_record()``:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, func, literal_column
     >>> stmt = select(
@@ -1270,7 +1274,9 @@ Examples from PostgreSQL's reference documentation follow below:
   types to produce them.  The :meth:`_functions.FunctionElement.table_valued`
   method produces  a :class:`_sql.TableValuedAlias` construct, and the method
   :meth:`_sql.TableValuedAlias.render_derived` method sets up the derived
-  columns specification::
+  columns specification:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, func, column, Integer, Text
     >>> stmt = select(
@@ -1287,7 +1293,9 @@ Examples from PostgreSQL's reference documentation follow below:
   of PostgreSQL functions including ``unnest()`` and ``generate_series()``. The
   :meth:`_functions.FunctionElement.table_valued` method accepts a keyword
   parameter ``with_ordinality`` for this purpose, which accepts the string name
-  that will be applied to the "ordinality" column::
+  that will be applied to the "ordinality" column:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(
@@ -1317,17 +1325,20 @@ scalar value.  PostgreSQL functions such as ``json_array_elements()``,
 ``unnest()`` and ``generate_series()`` may use this form. Column valued functions are available using the
 :meth:`_functions.FunctionElement.column_valued` method of :class:`_functions.FunctionElement`:
 
-* ``json_array_elements()``::
+* ``json_array_elements()``:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(func.json_array_elements('["one", "two"]').column_valued("x"))
     >>> print(stmt)
-    SELECT x
+    {printsql}SELECT x
     FROM json_array_elements(:json_array_elements_1) AS x
 
 * ``unnest()`` - in order to generate a PostgreSQL ARRAY literal, the
-  :func:`_postgresql.array` construct may be used::
+  :func:`_postgresql.array` construct may be used:
 
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.dialects.postgresql import array
     >>> from sqlalchemy import select, func
@@ -1337,7 +1348,9 @@ scalar value.  PostgreSQL functions such as ``json_array_elements()``,
     FROM unnest(ARRAY[%(param_1)s, %(param_2)s]) AS anon_1
 
   The function can of course be used against an existing table-bound column
-  that's of type :class:`_types.ARRAY`::
+  that's of type :class:`_types.ARRAY`:
+
+  .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, ARRAY, Integer
     >>> from sqlalchemy import select, func
@@ -1357,7 +1370,9 @@ Row Types
 
 Built-in support for rendering a ``ROW`` may be approximated using
 ``func.ROW`` with the :attr:`_sa.func` namespace, or by using the
-:func:`_sql.tuple_` construct::
+:func:`_sql.tuple_` construct:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, func, tuple_
     >>> t = table("t", column("id"), column("fk"))
@@ -1367,7 +1382,7 @@ Built-in support for rendering a ``ROW`` may be approximated using
     ...     func.ROW(t.c.id, t.c.fk) < func.ROW(3, 7)
     ... )
     >>> print(stmt)
-    SELECT t.id, t.fk
+    {printsql}SELECT t.id, t.fk
     FROM t
     WHERE (t.id, t.fk) > (:param_1, :param_2) AND ROW(t.id, t.fk) < ROW(:ROW_1, :ROW_2)
 
@@ -1388,8 +1403,9 @@ such as :class:`_schema.Table` support this special form using the
 :meth:`_sql.FromClause.table_valued` method, which is comparable to the
 :meth:`_functions.FunctionElement.table_valued` method except that the collection
 of columns is already established by that of the :class:`_sql.FromClause`
-itself::
+itself:
 
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, func, select
     >>> a = table( "a", column("id"), column("x"), column("y"))

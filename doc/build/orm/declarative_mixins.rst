@@ -93,7 +93,9 @@ variety of constructs that are supported on mixins and base classes, including:
   object called ``LogRecord``.
 
 The features above may all be demonstrated using a :func:`_sql.select`
-example::
+example:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> print(select(MyModel).join(MyModel.log_record))
@@ -362,15 +364,17 @@ reference a common target class via many-to-one::
         id: Mapped[int] = mapped_column(primary_key=True)
 
 With the above mapping, each of ``Foo`` and ``Bar`` contain a relationship
-to ``Target`` accessed along the ``.target`` attribute::
+to ``Target`` accessed along the ``.target`` attribute:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> print(select(Foo).join(Foo.target))
     {printsql}SELECT foo.id, foo.target_id
-    FROM foo JOIN target ON target.id = foo.target_id
+    FROM foo JOIN target ON target.id = foo.target_id{stop}
     >>> print(select(Bar).join(Bar.target))
     {printsql}SELECT bar.id, bar.target_id
-    FROM bar JOIN target ON target.id = bar.target_id
+    FROM bar JOIN target ON target.id = bar.target_id{stop}
 
 Special arguments such as :paramref:`_orm.relationship.primaryjoin` may also
 be used within mixed-in classmethods, which often need to refer to the class
@@ -436,7 +440,9 @@ columns together::
         id: Mapped[int] = mapped_column(primary_key=True)
 
 Above, we may make use of ``Something.x_plus_y`` in a statement where
-it produces the full expression::
+it produces the full expression:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
     >>> print(select(Something.x_plus_y))

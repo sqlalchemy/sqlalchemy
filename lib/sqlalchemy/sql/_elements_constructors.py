@@ -1062,27 +1062,33 @@ def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
 def false() -> False_:
     """Return a :class:`.False_` construct.
 
-    E.g.::
+    E.g.:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import false
         >>> print(select(t.c.x).where(false()))
         {printsql}SELECT x FROM t WHERE false
 
     A backend which does not support true/false constants will render as
-    an expression against 1 or 0::
+    an expression against 1 or 0:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(t.c.x).where(false()))
         {printsql}SELECT x FROM t WHERE 0 = 1
 
     The :func:`.true` and :func:`.false` constants also feature
     "short circuit" operation within an :func:`.and_` or :func:`.or_`
-    conjunction::
+    conjunction:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
-        {printsql}SELECT x FROM t WHERE true
+        {printsql}SELECT x FROM t WHERE true{stop}
 
         >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
-        {printsql}SELECT x FROM t WHERE false
+        {printsql}SELECT x FROM t WHERE false{stop}
 
     .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
        better integrated behavior within conjunctions and on dialects
@@ -1479,27 +1485,33 @@ def text(text: str) -> TextClause:
 def true() -> True_:
     """Return a constant :class:`.True_` construct.
 
-    E.g.::
+    E.g.:
+
+    .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import true
         >>> print(select(t.c.x).where(true()))
         {printsql}SELECT x FROM t WHERE true
 
     A backend which does not support true/false constants will render as
-    an expression against 1 or 0::
+    an expression against 1 or 0:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(t.c.x).where(true()))
         {printsql}SELECT x FROM t WHERE 1 = 1
 
     The :func:`.true` and :func:`.false` constants also feature
     "short circuit" operation within an :func:`.and_` or :func:`.or_`
-    conjunction::
+    conjunction:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
-        {printsql}SELECT x FROM t WHERE true
+        {printsql}SELECT x FROM t WHERE true{stop}
 
         >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
-        {printsql}SELECT x FROM t WHERE false
+        {printsql}SELECT x FROM t WHERE false{stop}
 
     .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
        better integrated behavior within conjunctions and on dialects
@@ -1559,7 +1571,9 @@ def type_coerce(
     The above construct will produce a :class:`.TypeCoerce` object, which
     does not modify the rendering in any way on the SQL side, with the
     possible exception of a generated label if used in a columns clause
-    context::
+    context:
+
+    .. sourcecode:: sql
 
         SELECT date_string AS date_string FROM log
 
@@ -1595,16 +1609,18 @@ def type_coerce(
     When using :func:`.type_coerce` with composed expressions, note that
     **parenthesis are not applied**.   If :func:`.type_coerce` is being
     used in an operator context where the parenthesis normally present from
-    CAST are necessary, use the :meth:`.TypeCoerce.self_group` method::
+    CAST are necessary, use the :meth:`.TypeCoerce.self_group` method:
+
+    .. sourcecode:: pycon+sql
 
         >>> some_integer = column("someint", Integer)
         >>> some_string = column("somestr", String)
         >>> expr = type_coerce(some_integer + 5, String) + some_string
         >>> print(expr)
-        someint + :someint_1 || somestr
+        {printsql}someint + :someint_1 || somestr{stop}
         >>> expr = type_coerce(some_integer + 5, String).self_group() + some_string
         >>> print(expr)
-        (someint + :someint_1) || somestr
+        {printsql}(someint + :someint_1) || somestr{stop}
 
     :param expression: A SQL expression, such as a
      :class:`_expression.ColumnElement`

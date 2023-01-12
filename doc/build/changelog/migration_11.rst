@@ -1171,7 +1171,9 @@ render the CTE at the top of the entire statement, rather than nested
 in the SELECT statement as was the case in 1.0.
 
 Below is an example that renders UPDATE, INSERT and SELECT all in one
-statement::
+statement:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, select, literal, exists
     >>> orders = table(
@@ -1221,18 +1223,20 @@ Support for RANGE and ROWS specification within window functions
 ----------------------------------------------------------------
 
 New :paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` parameters allow
-RANGE and ROWS expressions for window functions::
+RANGE and ROWS expressions for window functions:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import func
 
     >>> print(func.row_number().over(order_by="x", range_=(-5, 10)))
-    row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND :param_2 FOLLOWING)
+    {printsql}row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND :param_2 FOLLOWING){stop}
 
     >>> print(func.row_number().over(order_by="x", rows=(None, 0)))
-    row_number() OVER (ORDER BY x ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+    {printsql}row_number() OVER (ORDER BY x ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW){stop}
 
     >>> print(func.row_number().over(order_by="x", range_=(-2, None)))
-    row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND UNBOUNDED FOLLOWING)
+    {printsql}row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND UNBOUNDED FOLLOWING){stop}
 
 :paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` are specified as
 2-tuples and indicate negative and positive values for specific ranges,
@@ -1254,7 +1258,9 @@ and greater, however as it is part of the SQL standard support for this keyword
 is added to Core.   The implementation of :meth:`_expression.Select.lateral` employs
 special logic beyond just rendering the LATERAL keyword to allow for
 correlation of tables that are derived from the same FROM clause as the
-selectable, e.g. lateral correlation::
+selectable, e.g. lateral correlation:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column, select, true
     >>> people = table("people", column("people_id"), column("age"), column("name"))
@@ -1419,22 +1425,28 @@ Support for IS DISTINCT FROM and IS NOT DISTINCT FROM
 
 New operators :meth:`.ColumnOperators.is_distinct_from` and
 :meth:`.ColumnOperators.isnot_distinct_from` allow the IS DISTINCT
-FROM and IS NOT DISTINCT FROM sql operation::
+FROM and IS NOT DISTINCT FROM sql operation:
+
+.. sourcecode:: pycon+sql
 
     >>> print(column("x").is_distinct_from(None))
-    x IS DISTINCT FROM NULL
+    {printsql}x IS DISTINCT FROM NULL{stop}
 
-Handling is provided for NULL, True and False::
+Handling is provided for NULL, True and False:
+
+.. sourcecode:: pycon+sql
 
     >>> print(column("x").isnot_distinct_from(False))
-    x IS NOT DISTINCT FROM false
+    {printsql}x IS NOT DISTINCT FROM false{stop}
 
 For SQLite, which doesn't have this operator, "IS" / "IS NOT" is rendered,
-which on SQLite works for NULL unlike other backends::
+which on SQLite works for NULL unlike other backends:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.dialects import sqlite
     >>> print(column("x").is_distinct_from(None).compile(dialect=sqlite.dialect()))
-    x IS NOT NULL
+    {printsql}x IS NOT NULL{stop}
 
 .. _change_1957:
 
@@ -2053,7 +2065,9 @@ different schema each time::
 Calling ``str()`` on a Core SQL construct will now produce a string
 in more cases than before, supporting various SQL constructs not normally
 present in default SQL such as RETURNING, array indexes, and non-standard
-datatypes::
+datatypes:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import table, column
     t>>> t = table('x', column('a'), column('b'))
@@ -2368,7 +2382,9 @@ String server_default now literal quoted
 
 A server default passed to :paramref:`_schema.Column.server_default` as a plain
 Python string that has quotes embedded is now
-passed through the literal quoting system::
+passed through the literal quoting system:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
     >>> from sqlalchemy.types import String
@@ -2989,7 +3005,9 @@ given a table such as::
     )
 
 The legacy mode of behavior will attempt to turn a schema-qualified table
-name into an alias::
+name into an alias:
+
+.. sourcecode:: pycon+sql
 
     >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
     >>> print(account_table.select().compile(eng))
