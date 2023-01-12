@@ -63,7 +63,7 @@ columns ``.title``, ``.summary`` and ``.cover_photo``. Using
     >>> from sqlalchemy.orm import load_only
     >>> stmt = select(Book).options(load_only(Book.title, Book.summary))
     >>> books = session.scalars(stmt).all()
-    {opensql}SELECT book.id, book.title, book.summary
+    {execsql}SELECT book.id, book.title, book.summary
     FROM book
     [...] ()
     {stop}>>> for book in books:
@@ -87,7 +87,7 @@ order to load the value.  Below, accessing ``.cover_photo`` emits a SELECT
 statement to load its value::
 
     >>> img_data = books[0].cover_photo
-    {opensql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo AS book_cover_photo
     FROM book
     WHERE book.id = ?
     [...] (1,)
@@ -119,7 +119,7 @@ statement, all columns for ``user_account`` are present, whereas only
 
     >>> stmt = select(User, Book).join_from(User, Book).options(load_only(Book.title))
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {printsql}SELECT user_account.id, user_account.name, user_account.fullname,
     book.id AS id_1, book.title
     FROM user_account JOIN book ON user_account.id = book.owner_id
 
@@ -132,7 +132,7 @@ If we wanted to apply :func:`_orm.load_only` options to both ``User`` and
     ...     .options(load_only(User.name), load_only(Book.title))
     ... )
     >>> print(stmt)
-    {opensql}SELECT user_account.id, user_account.name, book.id AS id_1, book.title
+    {printsql}SELECT user_account.id, user_account.name, book.id AS id_1, book.title
     FROM user_account JOIN book ON user_account.id = book.owner_id
 
 .. _orm_queryguide_load_only_related:
@@ -154,7 +154,7 @@ in addition to primary key column::
     >>> stmt = select(User).options(selectinload(User.books).load_only(Book.title))
     >>> for user in session.scalars(stmt):
     ...     print(f"{user.fullname}   {[b.title for b in user.books]}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
     SELECT book.owner_id AS book_owner_id, book.id AS book_id, book.title AS book_title
@@ -181,7 +181,7 @@ the SELECT statement emitted for each ``User.books`` collection::
     >>> stmt = select(User).options(defaultload(User.books).load_only(Book.title))
     >>> for user in session.scalars(stmt):
     ...     print(f"{user.fullname}   {[b.title for b in user.books]}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
     SELECT book.id AS book_id, book.title AS book_title
@@ -189,7 +189,7 @@ the SELECT statement emitted for each ``User.books`` collection::
     WHERE ? = book.owner_id
     [...] (1,)
     {stop}Spongebob Squarepants   ['100 Years of Krabby Patties', 'Sea Catch 22', 'The Sea Grapes of Wrath']
-    {opensql}SELECT book.id AS book_id, book.title AS book_title
+    {execsql}SELECT book.id AS book_id, book.title AS book_title
     FROM book
     WHERE ? = book.owner_id
     [...] (2,)
@@ -209,7 +209,7 @@ unchanged::
     >>> from sqlalchemy.orm import defer
     >>> stmt = select(Book).where(Book.owner_id == 2).options(defer(Book.cover_photo))
     >>> books = session.scalars(stmt).all()
-    {opensql}SELECT book.id, book.owner_id, book.title, book.summary
+    {execsql}SELECT book.id, book.owner_id, book.title, book.summary
     FROM book
     WHERE book.owner_id = ?
     [...] (2,)
@@ -223,7 +223,7 @@ As is the case with :func:`_orm.load_only`, unloaded columns by default
 will load themselves when accessed using :term:`lazy loading`::
 
     >>> img_data = books[0].cover_photo
-    {opensql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo AS book_cover_photo
     FROM book
     WHERE book.id = ?
     [...] (4,)
@@ -267,7 +267,7 @@ access::
   >>> book = session.scalar(
   ...     select(Book).options(defer(Book.cover_photo, raiseload=True)).where(Book.id == 4)
   ... )
-  {opensql}SELECT book.id, book.owner_id, book.title, book.summary
+  {execsql}SELECT book.id, book.owner_id, book.title, book.summary
   FROM book
   WHERE book.id = ?
   [...] (4,)
@@ -285,7 +285,7 @@ to all deferred attributes::
   >>> book = session.scalar(
   ...     select(Book).options(load_only(Book.title, raiseload=True)).where(Book.id == 5)
   ... )
-  {opensql}SELECT book.id, book.title
+  {execsql}SELECT book.id, book.title
   FROM book
   WHERE book.id = ?
   [...] (5,)
@@ -344,7 +344,7 @@ Using the above mapping, queries against ``Book`` will automatically not
 include the ``summary`` and ``cover_photo`` columns::
 
     >>> book = session.scalar(select(Book).where(Book.id == 2))
-    {opensql}SELECT book.id, book.owner_id, book.title
+    {execsql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -354,7 +354,7 @@ on the loaded object are first accessed is that they will :term:`lazy load`
 their value::
 
     >>> img_data = book.cover_photo
-    {opensql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo AS book_cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -455,7 +455,7 @@ as deferred::
 
     >>> from sqlalchemy.orm import undefer
     >>> book = session.scalar(select(Book).where(Book.id == 2).options(undefer(Book.summary)))
-    {opensql}SELECT book.id, book.owner_id, book.title, book.summary
+    {execsql}SELECT book.id, book.owner_id, book.title, book.summary
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -505,12 +505,12 @@ Using the above mapping, accessing either ``summary`` or ``cover_photo``
 will load both columns at once using just one SELECT statement::
 
     >>> book = session.scalar(select(Book).where(Book.id == 2))
-    {opensql}SELECT book.id, book.owner_id, book.title
+    {execsql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
     [...] (2,)
     {stop}>>> img_data, summary = book.cover_photo, book.summary
-    {opensql}SELECT book.summary AS book_summary, book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.summary AS book_summary, book.cover_photo AS book_cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -528,7 +528,7 @@ option, passing the string name of the group to be eagerly loaded::
     >>> book = session.scalar(
     ...     select(Book).where(Book.id == 2).options(undefer_group("book_attrs"))
     ... )
-    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
+    {execsql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -547,7 +547,7 @@ columns can be undeferred at once, without using a group name, by indicating
 a wildcard::
 
     >>> book = session.scalar(select(Book).where(Book.id == 3).options(undefer("*")))
-    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
+    {execsql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (3,)
@@ -586,7 +586,7 @@ Using the above mapping, the ``.summary`` and ``.cover_photo`` columns are
 by default not loadable::
 
     >>> book = session.scalar(select(Book).where(Book.id == 2))
-    {opensql}SELECT book.id, book.owner_id, book.title
+    {execsql}SELECT book.id, book.owner_id, book.title
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -607,7 +607,7 @@ Only by overridding their behavior at query time, typically using
     ...     .options(undefer("*"))
     ...     .execution_options(populate_existing=True)
     ... )
-    {opensql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
+    {execsql}SELECT book.id, book.owner_id, book.title, book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -660,7 +660,7 @@ entries, one for ``User`` and one for ``func.count(Book.id)``::
     >>> stmt = select(User, func.count(Book.id)).join_from(User, Book).group_by(Book.owner_id)
     >>> for user, book_count in session.execute(stmt):
     ...     print(f"Username: {user.name}  Number of books: {book_count}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname,
     count(book.id) AS count_1
     FROM user_account JOIN book ON user_account.id = book.owner_id
     GROUP BY book.owner_id
@@ -729,7 +729,7 @@ to each ``User`` object as it's loaded::
     ... )
     >>> for user in session.scalars(stmt):
     ...     print(f"Username: {user.name}  Number of books: {user.book_count}")
-    {opensql}SELECT count(book.id) AS count_1, user_account.id, user_account.name,
+    {execsql}SELECT count(book.id) AS count_1, user_account.id, user_account.name,
     user_account.fullname
     FROM user_account JOIN book ON user_account.id = book.owner_id
     GROUP BY book.owner_id

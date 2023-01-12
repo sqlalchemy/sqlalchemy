@@ -496,7 +496,7 @@ appropriate for the target backend::
     >>> my_seq = Sequence("some_sequence", start=1)
     >>> stmt = select(my_seq.next_value())
     >>> print(stmt.compile(dialect=postgresql.dialect()))
-    SELECT nextval('some_sequence') AS next_value_1
+    {printsql}SELECT nextval('some_sequence') AS next_value_1
 
 .. _sequence_metadata:
 

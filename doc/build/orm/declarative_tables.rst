@@ -344,8 +344,7 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
     >>> from sqlalchemy.schema import CreateTable
     >>> from sqlalchemy.dialects import mssql, postgresql
     >>> print(CreateTable(SomeClass.__table__).compile(dialect=mssql.dialect()))
-
-    CREATE TABLE some_table (
+    {printsql}CREATE TABLE some_table (
       id BIGINT NOT NULL IDENTITY,
       date TIMESTAMP NOT NULL,
       status NVARCHAR(max) NOT NULL,
@@ -355,8 +354,7 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
 Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``::
 
     >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
-
-    CREATE TABLE some_table (
+    {printsql}CREATE TABLE some_table (
       id BIGSERIAL NOT NULL,
       date TIMESTAMP WITH TIME ZONE NOT NULL,
       status VARCHAR NOT NULL,
@@ -627,7 +625,7 @@ specific to each attribute::
 
     >>> from sqlalchemy.schema import CreateTable
     >>> print(CreateTable(SomeClass.__table__))
-    CREATE TABLE some_table (
+    {printsql}CREATE TABLE some_table (
       id INTEGER NOT NULL,
       name VARCHAR(30) NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -946,7 +944,7 @@ and will see the SQL names generated::
 
     >>> from sqlalchemy import select
     >>> print(select(User.id, User.name).where(User.name == "x"))
-    SELECT "user".user_id, "user".user_name
+    {printsql}SELECT "user".user_id, "user".user_name
     FROM "user"
     WHERE "user".user_name = :user_name_1
 

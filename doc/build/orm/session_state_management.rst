@@ -452,7 +452,7 @@ one of these columns and are watching SQL, we'd see this:
 .. sourcecode:: pycon+sql
 
     >>> print(user.name)
-    {opensql}SELECT user.id AS user_id, user.name AS user_name
+    {execsql}SELECT user.id AS user_id, user.name AS user_name
     FROM user
     WHERE user.id = ?
     (1,)

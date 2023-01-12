@@ -69,7 +69,7 @@ Example use looks like::
 
     >>> stmt = select(User).execution_options(populate_existing=True)
     >>> result = session.execute(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     ...
 
@@ -132,7 +132,7 @@ to not invoke the "autoflush" step.  It is equivalent to using the
 
     >>> stmt = select(User).execution_options(autoflush=False)
     >>> session.execute(stmt)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     ...
 
@@ -209,7 +209,7 @@ ORM objects is illustrated below::
     >>> stmt = select(User).execution_options(yield_per=10)
     >>> for user_obj in session.scalars(stmt):
     ...     print(user_obj)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
     {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')
@@ -227,7 +227,7 @@ method of :class:`_engine.Result`::
     >>> stmt = select(User).execution_options(stream_results=True, max_row_buffer=10)
     >>> for user_obj in session.scalars(stmt).yield_per(10):
     ...     print(user_obj)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
     {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')
@@ -244,7 +244,7 @@ partitions. The size of each partition defaults to the integer value passed to
     >>> for partition in session.scalars(stmt).partitions():
     ...     for user_obj in partition:
     ...         print(user_obj)
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
     {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')

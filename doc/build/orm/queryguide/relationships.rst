@@ -321,7 +321,7 @@ in order to load the related object or objects:
 .. sourcecode:: pycon+sql
 
     >>> spongebob.addresses
-    {opensql}SELECT
+    {execsql}SELECT
         addresses.id AS addresses_id,
         addresses.email_address AS addresses_email_address,
         addresses.user_id AS addresses_user_id
@@ -449,7 +449,7 @@ using the :func:`_orm.joinedload` loader option:
     >>> from sqlalchemy.orm import joinedload
     >>> stmt = select(User).options(joinedload(User.addresses)).filter_by(name="spongebob")
     >>> spongebob = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         addresses_1.id AS addresses_1_id,
         addresses_1.email_address AS addresses_1_email_address,
         addresses_1.user_id AS addresses_1_user_id,
@@ -508,7 +508,7 @@ an OUTER JOIN:
     ...     joinedload(User.addresses).joinedload(Address.widgets, innerjoin=True)
     ... )
     >>> results = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         widgets_1.id AS widgets_1_id,
         widgets_1.name AS widgets_1_name,
         addresses_1.id AS addresses_1_id,
@@ -580,7 +580,7 @@ named in the query:
     ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         addresses_1.id AS addresses_1_id,
         addresses_1.email_address AS addresses_1_email_address,
         addresses_1.user_id AS addresses_1_user_id,
@@ -609,7 +609,7 @@ address is to use :meth:`_sql.Select.join`:
     ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
-    {opensql}
+    {execsql}
     SELECT
         users.id AS users_id,
         users.name AS users_name,
@@ -638,7 +638,7 @@ are ordering on, the other is used anonymously to load the contents of the
     ...     .order_by(Address.email_address)
     ... )
     >>> result = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         addresses_1.id AS addresses_1_id,
         addresses_1.email_address AS addresses_1_email_address,
         addresses_1.user_id AS addresses_1_user_id,
@@ -673,7 +673,7 @@ to see why :func:`joinedload` does what it does, consider if we were
     ...     .filter(Address.email_address == "someaddress@foo.com")
     ... )
     >>> result = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         addresses_1.id AS addresses_1_id,
         addresses_1.email_address AS addresses_1_email_address,
         addresses_1.user_id AS addresses_1_user_id,
@@ -709,7 +709,7 @@ into :func:`.selectinload`:
     ...     .filter(Address.email_address == "someaddress@foo.com")
     ... )
     >>> result = session.scalars(stmt).all()
-    {opensql}SELECT
+    {execsql}SELECT
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
@@ -765,7 +765,7 @@ order to load related associations:
     ...     .filter(or_(User.name == "spongebob", User.name == "ed"))
     ... )
     >>> result = session.scalars(stmt).all()
-    {opensql}SELECT
+    {execsql}SELECT
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
@@ -799,7 +799,7 @@ value from the parent object is used:
     >>> from sqlalchemy import selectinload
     >>> stmt = select(Address).options(selectinload(Address.user))
     >>> result = session.scalars(stmt).all()
-    {opensql}SELECT
+    {execsql}SELECT
         addresses.id AS addresses_id,
         addresses.email_address AS addresses_email_address,
         addresses.user_id AS addresses_user_id
@@ -882,7 +882,7 @@ the collection members to load them at once:
     >>> from sqlalchemy.orm import subqueryload
     >>> stmt = select(User).options(subqueryload(User.addresses)).filter_by(name="spongebob")
     >>> results = session.scalars(stmt).all()
-    {opensql}SELECT
+    {execsql}SELECT
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
@@ -1104,7 +1104,7 @@ the specific :func:`_orm.aliased` construct to be passed:
 
     # get results normally
     r = session.scalars(stmt).unique().all()
-    {opensql}SELECT
+    {execsql}SELECT
         users.user_id AS users_user_id,
         users.user_name AS users_user_name,
         adalias.address_id AS adalias_address_id,

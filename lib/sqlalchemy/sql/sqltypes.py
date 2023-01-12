@@ -206,7 +206,7 @@ class String(Concatenable, TypeEngine[str]):
 
             >>> from sqlalchemy import cast, select, String
             >>> print(select(cast('some string', String(collation='utf8'))))
-            SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
+            {printsql}SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
           .. note::
 

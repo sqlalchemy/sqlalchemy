@@ -67,7 +67,7 @@ as much as possible for many rows::
     ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {opensql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
+    {execsql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
     [...] [('spongebob', 'Spongebob Squarepants'), ('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star'),
     ('squidward', 'Squidward Tentacles'), ('ehkrabs', 'Eugene H. Krabs')]
     {stop}<...>
@@ -126,7 +126,7 @@ iteration of ``User`` objects::
     ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {opensql}INSERT INTO user_account (name, fullname)
+    {execsql}INSERT INTO user_account (name, fullname)
     VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?) RETURNING id, name, fullname, species
     [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'sandy',
     'Sandy Cheeks', 'patrick', 'Patrick Star', 'squidward', 'Squidward Tentacles',
@@ -190,7 +190,7 @@ to each set of keys and batch accordingly into separate INSERT statements::
     ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
     ...     ],
     ... )
-    {opensql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
     [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge', 'sandy', 'Sandy Cheeks', 'Squirrel')
     INSERT INTO user_account (name, species) VALUES (?, ?) RETURNING id, name, fullname, species
     [...] ('patrick', 'Starfish')
@@ -232,7 +232,7 @@ the returned rows include values for all columns inserted::
     ...         {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {opensql}INSERT INTO employee (name, type) VALUES (?, ?), (?, ?) RETURNING id, name, type
+    {execsql}INSERT INTO employee (name, type) VALUES (?, ?), (?, ?) RETURNING id, name, type
     [... (insertmanyvalues)] ('sandy', 'manager', 'ehkrabs', 'manager')
     INSERT INTO manager (id, manager_name) VALUES (?, ?), (?, ?) RETURNING id, manager_name
     [... (insertmanyvalues)] (1, 'Sandy Cheeks', 2, 'Eugene H. Krabs')
@@ -280,7 +280,7 @@ and then pass the additional records using "bulk" mode::
     ...         {"message": "log message #4"},
     ...     ],
     ... )
-    {opensql}INSERT INTO log_record (message, code, timestamp)
+    {execsql}INSERT INTO log_record (message, code, timestamp)
     VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
     (?, ?, CURRENT_TIMESTAMP)
     RETURNING id, message, code, timestamp
@@ -359,7 +359,7 @@ and also demonstrates :meth:`_dml.Insert.returning` in this form, is below::
   ...     )
   ...     .returning(Address),
   ... )
-  {opensql}INSERT INTO address (user_id, email_address) VALUES
+  {execsql}INSERT INTO address (user_id, email_address) VALUES
   ((SELECT user_account.id
   FROM user_account
   WHERE user_account.name = ?), ?), ((SELECT user_account.id
@@ -498,7 +498,7 @@ as ORM mapped attribute keys, rather than column names:
     ...     index_elements=[User.name], set_=dict(fullname=stmt.excluded.fullname)
     ... )
     >>> session.execute(stmt)
-    {opensql}INSERT INTO user_account (name, fullname)
+    {execsql}INSERT INTO user_account (name, fullname)
     VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
     ON CONFLICT (name) DO UPDATE SET fullname = excluded.fullname
     [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks',
@@ -521,7 +521,7 @@ example in the previous section::
     >>> result = session.scalars(
     ...     stmt.returning(User), execution_options={"populate_existing": True}
     ... )
-    {opensql}INSERT INTO user_account (name, fullname)
+    {execsql}INSERT INTO user_account (name, fullname)
     VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
     ON CONFLICT (name) DO UPDATE SET fullname = excluded.fullname
     RETURNING id, name, fullname, species
@@ -605,7 +605,7 @@ appropriate WHERE criteria to match each row by primary key, and using
     ...         {"id": 5, "fullname": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
     [...] [('Spongebob Squarepants', 1), ('Patrick Star', 3), ('Eugene H. Krabs', 5)]
     {stop}<...>
 
@@ -671,7 +671,7 @@ Example::
     ...         },
     ...     ],
     ... )
-    {opensql}UPDATE employee SET name=? WHERE employee.id = ?
+    {execsql}UPDATE employee SET name=? WHERE employee.id = ?
     [...] [('scheeks', 1), ('eugene', 2)]
     UPDATE manager SET manager_name=? WHERE manager.id = ?
     [...] [('Sandy Cheeks, President', 1), ('Eugene H. Krabs, VP Marketing', 2)]
@@ -753,7 +753,7 @@ field of multiple rows
     ...     .values(fullname="Name starts with S")
     ... )
     >>> session.execute(stmt)
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.name IN (?, ?)
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name IN (?, ?)
     [...] ('Name starts with S', 'squidward', 'sandy')
     {stop}<...>
 
@@ -763,7 +763,7 @@ For a DELETE, an example of deleting rows based on criteria::
     >>> from sqlalchemy import delete
     >>> stmt = delete(User).where(User.name.in_(["squidward", "sandy"]))
     >>> session.execute(stmt)
-    {opensql}DELETE FROM user_account WHERE user_account.name IN (?, ?)
+    {execsql}DELETE FROM user_account WHERE user_account.name IN (?, ?)
     [...] ('squidward', 'sandy')
     {stop}<...>
 
@@ -799,7 +799,7 @@ which is passed as an string ORM execution option, typically by using the
     ...     update(User).where(User.name == "squidward").values(fullname="Squidward Tentacles")
     ... )
     >>> session.execute(stmt, execution_options={"synchronize_session": False})
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
     [...] ('Squidward Tentacles', 'squidward')
     {stop}<...>
 
@@ -814,7 +814,7 @@ The execution option may also be bundled with the statement itself using the
     ...     .execution_options(synchronize_session=False)
     ... )
     >>> session.execute(stmt)
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
     [...] ('Squidward Tentacles', 'squidward')
     {stop}<...>
 
@@ -893,7 +893,7 @@ and/or columns may be indicated for RETURNING::
     ...     .returning(User)
     ... )
     >>> result = session.scalars(stmt)
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
     RETURNING id, name, fullname, species
     [...] ('Squidward Tentacles', 'squidward')
     {stop}>>> print(result.all())
@@ -945,7 +945,7 @@ that are local to the subclass table, as in the example below::
     ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
-    UPDATE manager SET manager_name=? WHERE manager.id = ?
+    {execsql}UPDATE manager SET manager_name=? WHERE manager.id = ?
     [...] ('Sandy Cheeks, President', 1)
     <...>
 
@@ -961,7 +961,7 @@ to locate rows which will work on any SQL backend is so use a subquery::
     ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
-    {opensql}UPDATE manager SET manager_name=? WHERE manager.id = (SELECT employee.id
+    {execsql}UPDATE manager SET manager_name=? WHERE manager.id = (SELECT employee.id
     FROM employee
     WHERE employee.name = ?) RETURNING id
     [...] ('Sandy Cheeks, President', 'sandy')
@@ -977,7 +977,7 @@ tables must be stated explicitly in some way::
     ...     .values(manager_name="Sandy Cheeks, President")
     ... )
     >>> session.execute(stmt)
-    {opensql}UPDATE manager SET manager_name=? FROM employee
+    {execsql}UPDATE manager SET manager_name=? FROM employee
     WHERE manager.id = employee.id AND employee.name = ?
     [...] ('Sandy Cheeks, President', 'sandy')
     {stop}<...>
@@ -990,11 +990,11 @@ table individually::
 
     >>> from sqlalchemy import delete
     >>> session.execute(delete(Manager).where(Manager.id == 1))
-    {opensql}DELETE FROM manager WHERE manager.id = ?
+    {execsql}DELETE FROM manager WHERE manager.id = ?
     [...] (1,)
     {stop}<...>
     >>> session.execute(delete(Employee).where(Employee.id == 1))
-    {opensql}DELETE FROM employee WHERE employee.id = ?
+    {execsql}DELETE FROM employee WHERE employee.id = ?
     [...] (1,)
     {stop}<...>
 

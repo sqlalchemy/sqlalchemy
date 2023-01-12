@@ -149,7 +149,7 @@ source of objects to start, where below we use a Python ``list``::
     >>> with Session(engine) as session:
     ...     session.add(new_account)
     ...     session.commit()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO account (identifier) VALUES (?)
     [...] ('account_01',)
     INSERT INTO account_transaction (account_id, description, amount, timestamp) VALUES
@@ -185,7 +185,7 @@ methods::
     >>> from sqlalchemy import select
     >>> session = Session(engine, expire_on_commit=False)
     >>> existing_account = session.scalar(select(Account).filter_by(identifier="account_01"))
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT account.id, account.identifier
     FROM account
     WHERE account.identifier = ?
@@ -198,7 +198,7 @@ methods::
     ...     ]
     ... )
     >>> session.commit()
-    {opensql}INSERT INTO account_transaction (account_id, description, amount, timestamp)
+    {execsql}INSERT INTO account_transaction (account_id, description, amount, timestamp)
     VALUES (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP)
     RETURNING id, timestamp
     [...] (1, 'paycheck', 2000.0, 1, 'rent', -800.0)
@@ -232,7 +232,7 @@ criteria, indicated in the example mapping by the
 this criteria would be omitted if the parameter were not configured::
 
     >>> print(existing_account.account_transactions.select())
-    {opensql}SELECT account_transaction.id, account_transaction.account_id, account_transaction.description,
+    {printsql}SELECT account_transaction.id, account_transaction.account_id, account_transaction.description,
     account_transaction.amount, account_transaction.timestamp
     FROM account_transaction
     WHERE :param_1 = account_transaction.account_id ORDER BY account_transaction.timestamp
@@ -251,7 +251,7 @@ rows::
     ...     .where(AccountTransaction.amount < 0)
     ...     .limit(10)
     ... ).all()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT account_transaction.id, account_transaction.account_id, account_transaction.description,
     account_transaction.amount, account_transaction.timestamp
     FROM account_transaction
@@ -277,7 +277,7 @@ DELETE of that row::
   >>> existing_transaction = account_transactions[0]
   >>> existing_account.account_transactions.remove(existing_transaction)
   >>> session.commit()
-  {opensql}DELETE FROM account_transaction WHERE account_transaction.id = ?
+  {execsql}DELETE FROM account_transaction WHERE account_transaction.id = ?
   [...] (3,)
   COMMIT
 
@@ -319,7 +319,7 @@ related collection::
   ...         {"description": "transaction 4", "amount": Decimal("-300.00")},
   ...     ],
   ... )
-  {opensql}BEGIN (implicit)
+  {execsql}BEGIN (implicit)
   INSERT INTO account_transaction (account_id, description, amount, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)
   [...] [(1, 'transaction 1', 47.5), (1, 'transaction 2', -501.25), (1, 'transaction 3', 1800.0), (1, 'transaction 4', -300.0)]
   <...>
@@ -385,7 +385,7 @@ we could just as easily use existing ``AccountTransaction`` objects as well)::
   ...         {"description": "odd trans 3", "amount": Decimal("45.00")},
   ...     ],
   ... ).all()
-  {opensql}BEGIN (implicit)
+  {execsql}BEGIN (implicit)
   INSERT INTO account_transaction (account_id, description, amount, timestamp) VALUES
   (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP)
   RETURNING id, account_id, description, amount, timestamp
@@ -400,7 +400,7 @@ at once with a new ``BankAudit`` object::
   >>> session.add(bank_audit)
   >>> bank_audit.account_transactions.add_all(new_transactions)
   >>> session.commit()
-  {opensql}INSERT INTO audit DEFAULT VALUES
+  {execsql}INSERT INTO audit DEFAULT VALUES
   [...] ()
   INSERT INTO audit_transaction (audit_id, transaction_id) VALUES (?, ?)
   [...] [(1, 10), (1, 11), (1, 12)]
@@ -438,7 +438,7 @@ adding the amount of ``200`` to them::
   ...     .values(amount=AccountTransaction.amount + 200)
   ...     .where(AccountTransaction.amount == -800),
   ... )
-  {opensql}BEGIN (implicit)
+  {execsql}BEGIN (implicit)
   UPDATE account_transaction SET amount=(account_transaction.amount + ?)
   WHERE ? = account_transaction.account_id AND account_transaction.amount = ?
   [...] (200, 1, -800)
@@ -452,7 +452,7 @@ DELETE statement that is invoked in the same way::
   ...         AccountTransaction.amount.between(0, 30)
   ...     ),
   ... )
-  {opensql}DELETE FROM account_transaction WHERE ? = account_transaction.account_id
+  {execsql}DELETE FROM account_transaction WHERE ? = account_transaction.account_id
   AND account_transaction.amount BETWEEN ? AND ? RETURNING id
   [...] (1, 0, 30)
   <...>
@@ -484,7 +484,7 @@ many-to-many ``BankAudit.account_transactions`` collection::
     ...         description=AccountTransaction.description + " (audited)"
     ...     )
     ... )
-    {opensql}UPDATE account_transaction SET description=(account_transaction.description || ?)
+    {execsql}UPDATE account_transaction SET description=(account_transaction.description || ?)
     FROM audit_transaction WHERE ? = audit_transaction.audit_id
     AND account_transaction.id = audit_transaction.transaction_id RETURNING id
     [...] (' (audited)', 1)
@@ -509,7 +509,7 @@ produce a :term:`scalar subquery`::
     ...     .values(description=AccountTransaction.description + " (audited)")
     ...     .where(AccountTransaction.id.in_(subq))
     ... )
-    {opensql}UPDATE account_transaction SET description=(account_transaction.description || ?)
+    {execsql}UPDATE account_transaction SET description=(account_transaction.description || ?)
     WHERE account_transaction.id IN (SELECT account_transaction.id
     FROM audit_transaction
     WHERE ? = audit_transaction.audit_id AND account_transaction.id = audit_transaction.transaction_id)

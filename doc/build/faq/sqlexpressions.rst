@@ -22,7 +22,7 @@ if we don't use it explicitly)::
     >>> t = table("my_table", column("x"))
     >>> statement = select(t)
     >>> print(str(statement))
-    SELECT my_table.x
+    {printsql}SELECT my_table.x
     FROM my_table
 
 The ``str()`` builtin, or an equivalent, can be invoked on ORM
@@ -402,7 +402,7 @@ escaping behavior::
     >>> from sqlalchemy.dialects import postgresql
     >>> t = table("my_table", column("value % one"), column("value % two"))
     >>> print(t.select().compile(dialect=postgresql.dialect()))
-    SELECT my_table."value %% one", my_table."value %% two"
+    {printsql}SELECT my_table."value %% one", my_table."value %% two"
     FROM my_table
 
 When such a dialect is being used, if non-DBAPI statements are desired that
@@ -412,7 +412,7 @@ signs is to simply substitute in an empty set of parameters using Python's
 
     >>> strstmt = str(t.select().compile(dialect=postgresql.dialect()))
     >>> print(strstmt % ())
-    SELECT my_table."value % one", my_table."value % two"
+    {printsql}SELECT my_table."value % one", my_table."value % two"
     FROM my_table
 
 The other is to set a different parameter style on the dialect being used; all
@@ -424,7 +424,7 @@ percent signs are no longer significant in the compiled form of SQL, and will
 no longer be escaped::
 
     >>> print(t.select().compile(dialect=postgresql.dialect(paramstyle="named")))
-    SELECT my_table."value % one", my_table."value % two"
+    {printsql}SELECT my_table."value % one", my_table."value % two"
     FROM my_table
 
 

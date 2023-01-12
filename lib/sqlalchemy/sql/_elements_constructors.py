@@ -1066,23 +1066,23 @@ def false() -> False_:
 
         >>> from sqlalchemy import false
         >>> print(select(t.c.x).where(false()))
-        SELECT x FROM t WHERE false
+        {printsql}SELECT x FROM t WHERE false
 
     A backend which does not support true/false constants will render as
     an expression against 1 or 0::
 
         >>> print(select(t.c.x).where(false()))
-        SELECT x FROM t WHERE 0 = 1
+        {printsql}SELECT x FROM t WHERE 0 = 1
 
     The :func:`.true` and :func:`.false` constants also feature
     "short circuit" operation within an :func:`.and_` or :func:`.or_`
     conjunction::
 
         >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
-        SELECT x FROM t WHERE true
+        {printsql}SELECT x FROM t WHERE true
 
         >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
-        SELECT x FROM t WHERE false
+        {printsql}SELECT x FROM t WHERE false
 
     .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
        better integrated behavior within conjunctions and on dialects
@@ -1483,23 +1483,23 @@ def true() -> True_:
 
         >>> from sqlalchemy import true
         >>> print(select(t.c.x).where(true()))
-        SELECT x FROM t WHERE true
+        {printsql}SELECT x FROM t WHERE true
 
     A backend which does not support true/false constants will render as
     an expression against 1 or 0::
 
         >>> print(select(t.c.x).where(true()))
-        SELECT x FROM t WHERE 1 = 1
+        {printsql}SELECT x FROM t WHERE 1 = 1
 
     The :func:`.true` and :func:`.false` constants also feature
     "short circuit" operation within an :func:`.and_` or :func:`.or_`
     conjunction::
 
         >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
-        SELECT x FROM t WHERE true
+        {printsql}SELECT x FROM t WHERE true
 
         >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
-        SELECT x FROM t WHERE false
+        {printsql}SELECT x FROM t WHERE false
 
     .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
        better integrated behavior within conjunctions and on dialects

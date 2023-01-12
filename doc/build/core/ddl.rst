@@ -125,7 +125,7 @@ first looking within the PostgreSQL catalogs to see if it exists:
     )
 
     users.create(engine)
-    {opensql}CREATE TABLE users (
+    {execsql}CREATE TABLE users (
         user_id SERIAL NOT NULL,
         user_name VARCHAR(40) NOT NULL,
         PRIMARY KEY (user_id)
@@ -136,7 +136,7 @@ first looking within the PostgreSQL catalogs to see if it exists:
     {stop}
 
     users.drop(engine)
-    {opensql}SELECT conname FROM pg_constraint WHERE conname='cst_user_name_length'
+    {execsql}SELECT conname FROM pg_constraint WHERE conname='cst_user_name_length'
     ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
@@ -154,7 +154,7 @@ one can use the :class:`.CreateTable` construct:
 
     with engine.connect() as conn:
         conn.execute(CreateTable(mytable))
-    {opensql}CREATE TABLE mytable (
+    {execsql}CREATE TABLE mytable (
         col1 INTEGER,
         col2 INTEGER,
         col3 INTEGER,
@@ -226,7 +226,7 @@ dialect, for example, neither construct will be included:
     >>> from sqlalchemy import create_engine
     >>> sqlite_engine = create_engine("sqlite+pysqlite://", echo=True)
     >>> meta.create_all(sqlite_engine)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     PRAGMA main.table_info("my_table")
     [raw sql] ()
     PRAGMA temp.table_info("my_table")
@@ -250,7 +250,7 @@ statement emitted for the index:
     ...     "postgresql+psycopg2://scott:tiger@localhost/test", echo=True
     ... )
     >>> meta.create_all(postgresql_engine)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where pg_catalog.pg_table_is_visible(c.oid) and relname=%(name)s
     [generated in 0.00009s] {'name': 'my_table'}
 

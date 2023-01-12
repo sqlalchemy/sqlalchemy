@@ -1831,7 +1831,7 @@ simple ``CREATE SEQUENCE`` DDL, if no additional arguments were specified::
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
     >>> print(CreateSequence(Sequence("my_seq")))
-    CREATE SEQUENCE my_seq
+    {printsql}CREATE SEQUENCE my_seq
 
 However, as :class:`.Sequence` support was added for MS SQL Server, where the
 default start value is inconveniently set to ``-2**63``,
@@ -1842,7 +1842,7 @@ version 1.4 decided to default the DDL to emit a start value of 1, if
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
     >>> print(CreateSequence(Sequence("my_seq")))
-    CREATE SEQUENCE my_seq START WITH 1
+    {printsql}CREATE SEQUENCE my_seq START WITH 1
 
 This change has introduced other complexities, including that when
 the :paramref:`.Sequence.min_value` parameter is included, this default of

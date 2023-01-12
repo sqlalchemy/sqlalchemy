@@ -1071,14 +1071,14 @@ an IN expression::
 The pre-execution string representation is::
 
     >>> print(stmt)
-    SELECT a.id, a.data
+    {printsql}SELECT a.id, a.data
     FROM a
     WHERE a.id IN ([POSTCOMPILE_id_1])
 
 To render the values directly, use ``literal_binds`` as was the case previously::
 
     >>> print(stmt.compile(compile_kwargs={"literal_binds": True}))
-    SELECT a.id, a.data
+    {printsql}SELECT a.id, a.data
     FROM a
     WHERE a.id IN (1, 2, 3)
 
@@ -1086,7 +1086,7 @@ A new flag, "render_postcompile", is added as a helper to allow the current
 bound value to be rendered as it would be passed to the database::
 
     >>> print(stmt.compile(compile_kwargs={"render_postcompile": True}))
-    SELECT a.id, a.data
+    {printsql}SELECT a.id, a.data
     FROM a
     WHERE a.id IN (:id_1_1, :id_1_2, :id_1_3)
 
@@ -1260,7 +1260,7 @@ method will not emit a warning unless the linting flag is supplied::
     >>> from sqlalchemy.sql import FROM_LINTING
     >>> print(q.statement.compile(linting=FROM_LINTING))
     SAWarning: SELECT statement has a cartesian product between FROM element(s) "addresses" and FROM element "users".  Apply join condition(s) between each element to resolve.
-    SELECT users.id, users.name, users.fullname, users.nickname
+    {printsql}SELECT users.id, users.name, users.fullname, users.nickname
     FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE addresses.email_address = :email_address_1
 
@@ -1538,7 +1538,7 @@ such as :class:`.Subquery` and :class:`_expression.Alias`::
     ]
 
     >>> print(stmt.subquery().select())
-    SELECT anon_1.c1, anon_1.c2, anon_1.c2, anon_1.c2, anon_1.c4
+    {printsql}SELECT anon_1.c1, anon_1.c2, anon_1.c2, anon_1.c2, anon_1.c4
     FROM (SELECT c1, c2, c3 AS c2, c2, c4) AS anon_1
 
 :class:`_expression.ColumnCollection` also allows access by integer index to support
@@ -1576,7 +1576,7 @@ as::
     >>> from sqlalchemy import union
     >>> u = union(s1, s2)
     >>> print(u)
-    SELECT "user".id, "user".name, "user".id
+    {printsql}SELECT "user".id, "user".name, "user".id
     FROM "user" UNION SELECT c1, c2, c3
 
 
@@ -1642,14 +1642,14 @@ reasonable behavior for simple modifications to a single column, most
 prominently with CAST::
 
     >>> print(select(cast(foo.c.data, String)))
-    SELECT CAST(foo.data AS VARCHAR) AS data
+    {printsql}SELECT CAST(foo.data AS VARCHAR) AS data
     FROM foo
 
 For CAST against expressions that don't have a name, the previous logic is used
 to generate the usual "anonymous" labels::
 
     >>> print(select(cast("hi there," + foo.c.data, String)))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
+    {printsql}SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
     FROM foo
 
 A :func:`.cast` against a :class:`.Label`, despite having to omit the label
@@ -1657,14 +1657,14 @@ expression as these don't render inside of a CAST, will nonetheless make use of
 the given name::
 
     >>> print(select(cast(("hi there," + foo.c.data).label("hello_data"), String)))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    {printsql}SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
     FROM foo
 
 And of course as was always the case, :class:`.Label` can be applied to the
 expression on the outside to apply an "AS <name>" label directly::
 
     >>> print(select(cast(("hi there," + foo.c.data), String).label("hello_data")))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    {printsql}SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
     FROM foo
 
 
@@ -2291,7 +2291,7 @@ the ``.data`` column attribute, the object is refreshed and this will now
 include the joinedload operation as well::
 
     >>> a1.data
-    SELECT a.id AS a_id, a.data AS a_data, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
+    {execsql}SELECT a.id AS a_id, a.data AS a_data, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id
     FROM a LEFT OUTER JOIN b AS b_1 ON a.id = b_1.a_id
     WHERE a.id = ?
 
@@ -2310,7 +2310,7 @@ an additional query::
     >>> a1.data = "new data"
     >>> session.commit()
     >>> a1.data
-    SELECT a.id AS a_id, a.data AS a_data
+    {execsql}SELECT a.id AS a_id, a.data AS a_data
     FROM a
     WHERE a.id = ?
     (1,)

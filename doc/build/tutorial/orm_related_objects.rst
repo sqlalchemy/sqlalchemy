@@ -196,7 +196,7 @@ newly generated primary key of the ``user_account`` row is applied to the
 .. sourcecode:: pycon+sql
 
   >>> session.commit()
-  {opensql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
+  {execsql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
   [...] ('pkrabs', 'Pearl Krabs')
   INSERT INTO address (email_address, user_id) VALUES (?, ?), (?, ?) RETURNING id
   [...] ('pearl.krabs@gmail.com', 6, 'pearl@aol.com', 6)
@@ -220,7 +220,7 @@ newly generated primary key for the ``u1`` object:
 .. sourcecode:: pycon+sql
 
   >>> u1.id
-  {opensql}BEGIN (implicit)
+  {execsql}BEGIN (implicit)
   SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
   user_account.fullname AS user_account_fullname
   FROM user_account
@@ -236,7 +236,7 @@ we again see a :term:`lazy load` emitted in order to retrieve the objects:
 .. sourcecode:: pycon+sql
 
   >>> u1.addresses
-  {opensql}SELECT address.id AS address_id, address.email_address AS address_email_address,
+  {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address,
   address.user_id AS address_user_id
   FROM address
   WHERE ? = address.user_id
@@ -305,7 +305,7 @@ argument** to :meth:`_sql.Select.join`, where it serves to indicate both the
 right side of the join as well as the ON clause at once::
 
     >>> print(select(Address.email_address).select_from(User).join(User.addresses))
-    {opensql}SELECT address.email_address
+    {printsql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 The presence of an ORM :func:`_orm.relationship` on a mapping is not used
@@ -317,7 +317,7 @@ between the two mapped :class:`_schema.Table` objects, not because of the
 :func:`_orm.relationship` objects on the ``User`` and ``Address`` classes::
 
     >>> print(select(Address.email_address).join_from(User, Address))
-    {opensql}SELECT address.email_address
+    {printsql}SELECT address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 See the section :ref:`orm_queryguide_joins` in the :ref:`queryguide_toplevel`
@@ -447,7 +447,7 @@ related ``Address`` objects:
     ...     print(
     ...         f"{row.User.name}  ({', '.join(a.email_address for a in row.User.addresses)})"
     ...     )
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
     SELECT address.user_id AS address_user_id, address.id AS address_id,
@@ -492,7 +492,7 @@ as below where we know that all ``Address`` objects have an associated
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
-    {opensql}SELECT address.id, address.email_address, address.user_id, user_account_1.id AS id_1,
+    {execsql}SELECT address.id, address.email_address, address.user_id, user_account_1.id AS id_1,
     user_account_1.name, user_account_1.fullname
     FROM address
     JOIN user_account AS user_account_1 ON user_account_1.id = address.user_id
@@ -563,7 +563,7 @@ example:
     ... )
     >>> for row in session.execute(stmt):
     ...     print(f"{row.Address.email_address} {row.Address.user.name}")
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname,
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname,
     address.id AS id_1, address.email_address, address.user_id
     FROM address JOIN user_account ON user_account.id = address.user_id
     WHERE user_account.name = ? ORDER BY address.id
@@ -584,7 +584,7 @@ SQL query that unnecessarily joins twice::
     ...     .order_by(Address.id)
     ... )
     >>> print(stmt)  # SELECT has a JOIN and LEFT OUTER JOIN unnecessarily
-    {opensql}SELECT address.id, address.email_address, address.user_id,
+    {printsql}SELECT address.id, address.email_address, address.user_id,
     user_account_1.id AS id_1, user_account_1.name, user_account_1.fullname
     FROM address JOIN user_account ON user_account.id = address.user_id
     LEFT OUTER JOIN user_account AS user_account_1 ON user_account_1.id = address.user_id
@@ -644,7 +644,7 @@ Using such a mapping, the application is blocked from lazy loading,
 indicating that a particular query would need to specify a loader strategy::
 
     >>> u1 = session.execute(select(User)).scalars().first()
-    {opensql}SELECT user_account.id FROM user_account
+    {execsql}SELECT user_account.id FROM user_account
     [...] ()
     {stop}>>> u1.addresses
     Traceback (most recent call last):
@@ -660,7 +660,7 @@ instead::
     ...     .scalars()
     ...     .first()
     ... )
-    {opensql}SELECT user_account.id
+    {execsql}SELECT user_account.id
     FROM user_account
     [...] ()
     SELECT address.user_id AS address_user_id, address.id AS address_id

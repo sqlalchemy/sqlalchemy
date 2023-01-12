@@ -687,7 +687,7 @@ datatype. For example::
     ... )
     >>> engine = create_engine("sqlite://", echo="debug")
     >>> my_table.create(engine)
-    INFO sqlalchemy.engine.base.Engine
+    {execsql}INFO sqlalchemy.engine.base.Engine
     CREATE TABLE my_table (
         id INTEGER,
         data BLOB
@@ -711,7 +711,7 @@ created; we instead get back :class:`.BLOB`::
 
     >>> metadata_two = MetaData()
     >>> my_reflected_table = Table("my_table", metadata_two, autoload_with=engine)
-    INFO sqlalchemy.engine.base.Engine PRAGMA main.table_info("my_table")
+    {execsql}INFO sqlalchemy.engine.base.Engine PRAGMA main.table_info("my_table")
     INFO sqlalchemy.engine.base.Engine ()
     DEBUG sqlalchemy.engine.base.Engine Col ('cid', 'name', 'type', 'notnull', 'dflt_value', 'pk')
     DEBUG sqlalchemy.engine.base.Engine Row (0, 'id', 'INTEGER', 0, None, 0)

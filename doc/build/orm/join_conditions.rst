@@ -740,7 +740,7 @@ directly.  A query from ``A`` to ``D`` looks like:
 
     sess.scalars(select(A).join(A.d)).all()
 
-    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    {execsql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (
         b AS b_1 JOIN d AS d_1 ON b_1.d_id = d_1.id
             JOIN c AS c_1 ON c_1.d_id = d_1.id)
@@ -845,7 +845,7 @@ With the above mapping, a simple join looks like:
 
     sess.scalars(select(A).join(A.b)).all()
 
-    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    {execsql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
 
 Using the AliasedClass target in Queries
@@ -871,7 +871,7 @@ A query using the above ``A.b`` relationship will render a subquery:
 
     sess.scalars(select(A).join(A.b)).all()
 
-    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    {execsql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
     FROM b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) AS anon_1 ON a.b_id = anon_1.id
 
@@ -887,7 +887,7 @@ so in terms of ``B_viacd_subquery`` rather than ``B`` directly:
         .order_by(B_viacd_subquery.id)
     ).all()
 
-    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    {execsql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
     FROM b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) AS anon_1 ON a.b_id = anon_1.id
     WHERE anon_1.some_b_column = ? ORDER BY anon_1.id

@@ -123,7 +123,7 @@ method:
 .. sourcecode:: pycon+sql
 
     >>> session.flush()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?) RETURNING id
     [...] ('squidward', 'Squidward Tentacles', 'ehkrabs', 'Eugene H. Krabs')
 
@@ -255,7 +255,7 @@ as well as the :meth:`_engine.Result.scalar_one` method):
 .. sourcecode:: pycon+sql
 
     >>> sandy = session.execute(select(User).filter_by(name="sandy")).scalar_one()
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
@@ -288,7 +288,7 @@ from this row and we will get our updated value back:
 .. sourcecode:: pycon+sql
 
     >>> sandy_fullname = session.execute(select(User.fullname).where(User.id == 2)).scalar_one()
-    {opensql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.id = ?
     [...] ('Sandy Squirrel', 2)
     SELECT user_account.fullname
     FROM user_account
@@ -333,7 +333,7 @@ Let's load up ``patrick`` from the database:
 .. sourcecode:: pycon+sql
 
     >>> patrick = session.get(User, 3)
-    {opensql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
+    {execsql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
     user_account.fullname AS user_account_fullname
     FROM user_account
     WHERE user_account.id = ?
@@ -350,7 +350,7 @@ until the flush proceeds, which as mentioned before occurs if we emit a query:
 .. sourcecode:: pycon+sql
 
     >>> session.execute(select(User).where(User.name == "patrick")).first()
-    {opensql}SELECT address.id AS address_id, address.email_address AS address_email_address,
+    {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address,
     address.user_id AS address_user_id
     FROM address
     WHERE ? = address.user_id
@@ -460,7 +460,7 @@ a new transaction and refresh ``sandy`` with the current database row:
 .. sourcecode:: pycon+sql
 
     >>> sandy.fullname
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
     user_account.fullname AS user_account_fullname
     FROM user_account
@@ -487,7 +487,7 @@ and of course the database data is present again as well:
 .. sourcecode:: pycon+sql
 
     >>> session.execute(select(User).where(User.name == "patrick")).scalar_one() is patrick
-    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.name = ?
     [...] ('patrick',){stop}
@@ -506,7 +506,7 @@ close out the :class:`_orm.Session` when we are done with it:
 .. sourcecode:: pycon+sql
 
     >>> session.close()
-    {opensql}ROLLBACK
+    {execsql}ROLLBACK
 
 Closing the :class:`_orm.Session`, which is what happens when we use it in
 a context manager as well, accomplishes the following things:
@@ -542,7 +542,7 @@ a context manager as well, accomplishes the following things:
 
       >>> session.add(squidward)
       >>> squidward.name
-      {opensql}BEGIN (implicit)
+      {execsql}BEGIN (implicit)
       SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
       FROM user_account
       WHERE user_account.id = ?

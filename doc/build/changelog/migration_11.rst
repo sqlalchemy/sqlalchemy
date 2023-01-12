@@ -1197,8 +1197,8 @@ statement::
     ...     ),
     ... )
     >>>
-    >>> print(insert)  # note formatting added for clarity
-    WITH upsert AS
+    >>> print(insert)  # Note: formatting added for clarity
+    {printsql}WITH upsert AS
     (UPDATE orders SET amount=:amount, product=:product, quantity=:quantity
      WHERE orders.region = :region_1
      RETURNING orders.region, orders.amount, orders.product, orders.quantity
@@ -1265,7 +1265,7 @@ selectable, e.g. lateral correlation::
     ...     .lateral("book_subq")
     ... )
     >>> print(select([people]).select_from(people.join(subq, true())))
-    SELECT people.people_id, people.age, people.name
+    {printsql}SELECT people.people_id, people.age, people.name
     FROM people JOIN LATERAL (SELECT books.book_id AS book_id
     FROM books WHERE books.owner_id = people.people_id)
     AS book_subq ON true
@@ -2058,7 +2058,7 @@ datatypes::
     >>> from sqlalchemy import table, column
     t>>> t = table('x', column('a'), column('b'))
     >>> print(t.insert().returning(t.c.a, t.c.b))
-    INSERT INTO x (a, b) VALUES (:a, :b) RETURNING x.a, x.b
+    {printsql}INSERT INTO x (a, b) VALUES (:a, :b) RETURNING x.a, x.b
 
 The ``str()`` function now calls upon an entirely separate dialect / compiler
 intended just for plain string printing without a specific dialect set up,
@@ -2374,8 +2374,7 @@ passed through the literal quoting system::
     >>> from sqlalchemy.types import String
     >>> t = Table("t", MetaData(), Column("x", String(), server_default="hi ' there"))
     >>> print(CreateTable(t))
-
-    CREATE TABLE t (
+    {printsql}CREATE TABLE t (
         x VARCHAR DEFAULT 'hi '' there'
     )
 
@@ -2994,7 +2993,7 @@ name into an alias::
 
     >>> eng = create_engine("mssql+pymssql://mydsn", legacy_schema_aliasing=True)
     >>> print(account_table.select().compile(eng))
-    SELECT account_1.id, account_1.info
+    {printsql}SELECT account_1.id, account_1.info
     FROM customer_schema.account AS account_1
 
 However, this aliasing has been shown to be unnecessary and in many cases

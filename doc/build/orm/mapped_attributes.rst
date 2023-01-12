@@ -188,7 +188,7 @@ that is, from the ``EmailAddress`` class directly:
     address = session.scalars(
         select(EmailAddress).where(EmailAddress.email == "address@example.com")
     ).one()
-    {opensql}SELECT address.email AS address_email, address.id AS address_id
+    {execsql}SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE address.email = ?
     ('address@example.com',)
@@ -196,7 +196,7 @@ that is, from the ``EmailAddress`` class directly:
 
     address.email = "otheraddress@example.com"
     session.commit()
-    {opensql}UPDATE address SET email=? WHERE address.id = ?
+    {execsql}UPDATE address SET email=? WHERE address.id = ?
     ('otheraddress@example.com', 1)
     COMMIT
     {stop}
@@ -246,7 +246,7 @@ attribute, a SQL function is rendered which produces the same effect:
     address = session.scalars(
         select(EmailAddress).where(EmailAddress.email == "address")
     ).one()
-    {opensql}SELECT address.email AS address_email, address.id AS address_id
+    {execsql}SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
     (0, 12, 'address')
