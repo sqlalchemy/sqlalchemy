@@ -1,0 +1,6 @@
+.. change::
+    :tags: oracle, usecase
+    :tickets: 9086
+
+    Added support for the Oracle SQL type ``TIMESTAMP WITH LOCAL TIME ZONE``,
+    using a newly added Oracle-specific :class:`_oracle.TIMESTAMP` datatype.

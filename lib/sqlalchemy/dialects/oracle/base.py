@@ -564,6 +564,7 @@ from .types import NVARCHAR2  # noqa
 from .types import OracleRaw  # noqa
 from .types import RAW
 from .types import ROWID  # noqa
+from .types import TIMESTAMP
 from .types import VARCHAR2  # noqa
 from ... import Computed
 from ... import exc
@@ -595,7 +596,6 @@ from ...types import INTEGER
 from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import REAL
-from ...types import TIMESTAMP
 from ...types import VARCHAR
 
 RESERVED_WORDS = set(
@@ -635,6 +635,7 @@ ischema_names = {
     "NCLOB": NCLOB,
     "TIMESTAMP": TIMESTAMP,
     "TIMESTAMP WITH TIME ZONE": TIMESTAMP,
+    "TIMESTAMP WITH LOCAL TIME ZONE": TIMESTAMP,
     "INTERVAL DAY TO SECOND": INTERVAL,
     "RAW": RAW,
     "FLOAT": FLOAT,
@@ -681,7 +682,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return "LONG"
 
     def visit_TIMESTAMP(self, type_, **kw):
-        if type_.timezone:
+        if getattr(type_, "local_timezone", False):
+            return "TIMESTAMP WITH LOCAL TIME ZONE"
+        elif type_.timezone:
             return "TIMESTAMP WITH TIME ZONE"
         else:
             return "TIMESTAMP"
@@ -2330,6 +2333,8 @@ class OracleDialect(default.DefaultDialect):
                 coltype = self.ischema_names.get(coltype)(char_length)
             elif "WITH TIME ZONE" in coltype:
                 coltype = TIMESTAMP(timezone=True)
+            elif "WITH LOCAL TIME ZONE" in coltype:
+                coltype = TIMESTAMP(local_timezone=True)
             else:
                 coltype = re.sub(r"\(\d+\)", "", coltype)
                 try:
