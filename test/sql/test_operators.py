@@ -4518,26 +4518,19 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-    def test_bitwise_xor(self):
+    @testing.combinations(
+        ("xor", operators.bitwise_xor_op, "^"),
+        ("or", operators.bitwise_or_op, "|"),
+        ("and", operators.bitwise_and_op, "&"),
+        ("not", operators.bitwise_not_op, "~"),
+        ("lshift", operators.bitwise_lshift_op, "<<"),
+        ("rshift", operators.bitwise_rshift_op, ">>"),
+        id_="iaa",
+    )
+    def test_default_compile(self, py_op, sql_op):
         c1 = column("c1", Integer)
         c2 = column("c2", Integer)
         self.assert_compile(
-            select(c1.bitwise_xor(c2)),
-            "SELECT c1 ^ c2 AS anon_1",
-        )
-
-    def test_bitwise_or(self):
-        c1 = column("c1", Integer)
-        c2 = column("c2", Integer)
-        self.assert_compile(
-            select(c1.bitwise_or(c2)),
-            "SELECT c1 | c2 AS anon_1",
-        )
-
-    def test_bitwise_and(self):
-        c1 = column("c1", Integer)
-        c2 = column("c2", Integer)
-        self.assert_compile(
-            select(c1.bitwise_and(c2)),
-            "SELECT c1 & c2 AS anon_1",
+            select(py_op(c1, c2)),
+            f"SELECT c1 {sql_op} c2 AS anon_1",
         )

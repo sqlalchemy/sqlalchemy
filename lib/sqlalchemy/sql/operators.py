@@ -690,17 +690,17 @@ class ColumnOperators(Operators):
         """
         return self.operate(ilike_op, other, escape=escape)
 
-    def bitwise_xor(self, other):
+    def bitwise_xor(self, other: Any) -> ColumnOperators:
         """Return bitwise XOR operation"""
 
         return self.operate(bitwise_xor_op, other)
 
-    def bitwise_or(self, other):
+    def bitwise_or(self, other: Any) -> ColumnOperators:
         """Return bitwise OR operation"""
 
         return self.operate(bitwise_or_op, other)
 
-    def bitwise_and(self, other):
+    def bitwise_and(self, other: Any) -> ColumnOperators:
         """Return bitwise AND operation"""
 
         return self.operate(bitwise_and_op, other)
@@ -2143,6 +2143,21 @@ def bitwise_or_op(a: Any, b: Any) -> Any:
 @_operator_fn
 def bitwise_and_op(a: Any, b: Any) -> Any:
     return a.bitwise_and(b)
+
+
+@_operator_fn
+def bitwise_not_op(a: Any) -> Any:
+    return a.bitwise_not()
+
+
+@_operator_fn
+def bitwise_lshift_op(a: Any, b: Any) -> Any:
+    return a.bitwise_lshift(b)
+
+
+@_operator_fn
+def bitwise_rshift_op(a: Any, b: Any) -> Any:
+    return a.bitwise_rshift(b)
 
 
 def is_comparison(op: OperatorType) -> bool:
