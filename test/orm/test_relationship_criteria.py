@@ -15,6 +15,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
@@ -53,6 +54,35 @@ class _Fixtures(_fixtures.FixtureTest):
                     self.mapper_registry.map_imperatively(Address, addresses),
                     order_by=Address.id,
                 )
+            },
+        )
+        return User, Address
+
+    @testing.fixture
+    def user_address_col_property_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address,
+                    order_by=Address.id,
+                ),
+                "num_addresses": column_property(
+                    select(func.count(Address.id))
+                    .where(Address.user_id == users.c.id)
+                    .correlate_except(Address)
+                    .scalar_subquery()
+                ),
             },
         )
         return User, Address
@@ -452,6 +482,38 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT count(*) AS count_1 FROM users "
             "WHERE users.name != :name_1",
+        )
+
+    def test_criteria_applies_to_column_property(
+        self, user_address_col_property_fixture
+    ):
+        """test related to #8064, added after discussion #9091 which
+        requested this behavior for with_loader_criteria() where it was
+        found to be working as of this issue, just not tested"""
+
+        User, Address = user_address_col_property_fixture
+
+        stmt = select(User)
+
+        self.assert_compile(
+            stmt,
+            "SELECT (SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE addresses.user_id = users.id) AS anon_1, "
+            "users.id, users.name FROM users",
+        )
+
+        stmt = select(User).options(
+            with_loader_criteria(
+                Address, Address.email_address != "email_address"
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT (SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE addresses.user_id = users.id AND "
+            "addresses.email_address != :email_address_1) AS anon_1, "
+            "users.id, users.name FROM users",
         )
 
     def test_select_from_mapper_mapper_criteria(self, user_address_fixture):
