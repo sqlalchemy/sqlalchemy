@@ -96,54 +96,6 @@ def deprecated_cls(
     return decorate
 
 
-def deprecated_property(
-    version: str,
-    message: Optional[str] = None,
-    add_deprecation_to_docstring: bool = True,
-    warning: Optional[Type[exc.SADeprecationWarning]] = None,
-    enable_warnings: bool = True,
-) -> Callable[[Callable[..., Any]], property]:
-    """the @deprecated decorator with a @property.
-
-    E.g.::
-
-        class Foo:
-            @deprecated_property("1.4", "thing is deprecated")
-            def thing(self):
-                return "thing"
-
-    is equivalent to::
-
-        class Foo:
-            @property
-            @deprecated("1.4", "thing is deprecated")
-            def thing(self):
-                return "thing"
-
-    How come?
-
-    Because::
-
-        mypy: error: Decorated property not supported
-
-    great!   now it is.
-
-    """
-
-    def decorate(fn: Callable[..., Any]) -> property:
-        return property(
-            deprecated(
-                version,
-                message=message,
-                add_deprecation_to_docstring=add_deprecation_to_docstring,
-                warning=warning,
-                enable_warnings=enable_warnings,
-            )(fn)
-        )
-
-    return decorate
-
-
 def deprecated(
     version: str,
     message: Optional[str] = None,

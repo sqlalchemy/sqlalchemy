@@ -1712,7 +1712,8 @@ class ColumnElement(
         """
         return self._anon_label(self._proxy_key)
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "1.4",
         "The :attr:`_expression.ColumnElement.anon_label` attribute is now "
         "private, and the public accessor is deprecated.",
@@ -1720,7 +1721,8 @@ class ColumnElement(
     def anon_label(self) -> str:
         return self._anon_name_label
 
-    @util.deprecated_property(
+    @property
+    @util.deprecated(
         "1.4",
         "The :attr:`_expression.ColumnElement.anon_key_label` attribute is "
         "now private, and the public accessor is deprecated.",
