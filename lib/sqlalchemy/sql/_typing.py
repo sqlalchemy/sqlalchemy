@@ -70,6 +70,8 @@ _T = TypeVar("_T", bound=Any)
 
 _CE = TypeVar("_CE", bound="ColumnElement[Any]")
 
+_CLE = TypeVar("_CLE", bound="ClauseElement")
+
 
 class _HasClauseElement(Protocol):
     """indicates a class that has a __clause_element__() method"""

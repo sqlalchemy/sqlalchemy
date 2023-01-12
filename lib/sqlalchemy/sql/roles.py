@@ -225,7 +225,7 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
     if TYPE_CHECKING:
 
         def _anonymous_fromclause(
-            self, name: Optional[str] = None, flat: bool = False
+            self, *, name: Optional[str] = None, flat: bool = False
         ) -> FromClause:
             ...
 

@@ -628,7 +628,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         return TableValuedAlias._construct(
             self,
-            name,
+            name=name,
             table_value_type=self.type,
             joins_implicitly=joins_implicitly,
         )

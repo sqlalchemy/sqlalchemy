@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from . import type_api
     from ._orm_types import DMLStrategyArgument
     from ._orm_types import SynchronizeSessionArgument
+    from ._typing import _CLE
     from .elements import BindParameter
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
@@ -282,7 +283,9 @@ def _clone(element, **kw):
     return element._clone(**kw)
 
 
-def _expand_cloned(elements):
+def _expand_cloned(
+    elements: Iterable[_CLE],
+) -> Iterable[_CLE]:
     """expand the given set of ClauseElements to be the set of all 'cloned'
     predecessors.
 
@@ -291,7 +294,7 @@ def _expand_cloned(elements):
     return itertools.chain(*[x._cloned_set for x in elements])
 
 
-def _cloned_intersection(a, b):
+def _cloned_intersection(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     """return the intersection of sets a and b, counting
     any overlap between 'cloned' predecessors.
 
@@ -302,7 +305,7 @@ def _cloned_intersection(a, b):
     return {elem for elem in a if all_overlap.intersection(elem._cloned_set)}
 
 
-def _cloned_difference(a, b):
+def _cloned_difference(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
     return {
         elem for elem in a if not all_overlap.intersection(elem._cloned_set)
