@@ -1381,7 +1381,7 @@ class ColumnElement(
         """
         return getattr(self, "name", None)
 
-    _render_label_in_columns_clause = True
+    _render_label_in_columns_clause: bool = True
     """A flag used by select._columns_plus_names that helps to determine
     we are actually going to render in terms of "SELECT <col> AS <label>".
     This flag can be returned as False for some Column objects that want
@@ -2784,8 +2784,11 @@ class ClauseList(
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ClauseElement:
-        assert against is not None
-        if self.group and operators.is_precedent(self.operator, against):
+        if (
+            against is not None
+            and self.group
+            and operators.is_precedent(self.operator, against)
+        ):
             return Grouping(self)
         else:
             return self
@@ -2972,7 +2975,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     __visit_name__ = "expression_clauselist"
     inherit_cache = True
 
-    def __init__(self, *arg: Any, **kw: Any) -> NoReturn:
+    def __init__(self, *arg: Any, **kw: Any):
         raise NotImplementedError(
             "BooleanClauseList has a private constructor"
         )
@@ -3165,7 +3168,6 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
-    # caught AnnotatedBooleanClauseList at runtime
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
@@ -4471,7 +4473,6 @@ class NamedColumn(KeyedColumnElement[_T]):
     def description(self) -> str:
         return self.name
 
-    # caught Union[_anonymous_label, _truncated_label] at runtime
     @HasMemoized.memoized_attribute
     def _tq_key_label(self) -> Optional[str]:
         """table qualified label based on column key.
@@ -4667,14 +4668,12 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
 
-    # caught AnnotatedLabel at runtime
     def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
     def _negate(self) -> ColumnElement[_T]:
         return self._apply_to_inner(self._element._negate)
 
-    # caught AnnotatedLabel at runtime
     def _apply_to_inner(
         self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Label[_T]:
@@ -5390,7 +5389,6 @@ class _anonymous_label(_truncated_label):
             )
         )
 
-    # caught map_: Union[cache_anon_map, prefix_anon_map]
     def apply_map(self, map_: Mapping[str, Any]) -> str:
         if self.quote is not None:
             # preserve quoting only if necessary
