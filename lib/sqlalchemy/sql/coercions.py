@@ -14,6 +14,7 @@ import re
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -21,6 +22,7 @@ from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -140,7 +142,11 @@ def _document_text_coercion(
     )
 
 
-def _expression_collection_was_a_list(attrname, fnname, args):
+def _expression_collection_was_a_list(
+    attrname: str,
+    fnname: str,
+    args: Union[Sequence[_T], Sequence[Sequence[_T]]],
+) -> Sequence[_T]:
     if args and isinstance(args[0], (list, set, dict)) and len(args) == 1:
         if isinstance(args[0], list):
             raise exc.ArgumentError(
@@ -149,9 +155,9 @@ def _expression_collection_was_a_list(attrname, fnname, args):
                 "of items, is now passed as a series of positional "
                 "elements, rather than as a list. "
             )
-        return args[0]
+        return cast("Sequence[_T]", args[0])
 
-    return args
+    return cast("Sequence[_T]", args)
 
 
 @overload

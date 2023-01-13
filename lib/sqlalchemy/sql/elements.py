@@ -582,7 +582,9 @@ class ClauseElement(
         """
         return traversals.compare(self, other, **kw)
 
-    def self_group(self, against: Optional[OperatorType] = None) -> Any:
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ClauseElement:
         """Apply a 'grouping' to this :class:`_expression.ClauseElement`.
 
         This method is overridden by subclasses to return a "grouping"
@@ -609,7 +611,7 @@ class ClauseElement(
         """
         return self
 
-    def _ungroup(self):
+    def _ungroup(self) -> ClauseElement:
         """Return this :class:`_expression.ClauseElement`
         without any groupings.
         """
@@ -3453,6 +3455,8 @@ class UnaryExpression(ColumnElement[_T]):
         ("operator", InternalTraversal.dp_operator),
         ("modifier", InternalTraversal.dp_operator),
     ]
+
+    element: ClauseElement
 
     def __init__(
         self,
