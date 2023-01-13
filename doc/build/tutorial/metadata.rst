@@ -78,7 +78,7 @@ this same :class:`_schema.MetaData` is shared among ORM- and Core-declared
 :class:`_schema.Table` objects.
 
 There can be multiple :class:`_schema.MetaData` collections as well;
-:class:`_schema.Table` objects can to refer to :class:`_schema.Table` objects
+:class:`_schema.Table` objects can refer to :class:`_schema.Table` objects
 in other collections without restrictions. However, for groups of
 :class:`_schema.Table` objects that are related to each other, it is in
 practice much more straightforward to have them set up within a single
