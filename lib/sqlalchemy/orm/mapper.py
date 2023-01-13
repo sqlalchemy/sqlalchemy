@@ -222,6 +222,7 @@ class Mapper(
         polymorphic_identity: Optional[Any] = None,
         concrete: bool = False,
         with_polymorphic: Optional[_WithPolymorphicArg] = None,
+        polymorphic_abstract: bool = False,
         polymorphic_load: Optional[Literal["selectin", "inline"]] = None,
         allow_partial_pks: bool = True,
         batch: bool = True,
@@ -265,6 +266,20 @@ class Mapper(
            :class:`_schema.Table`
            produced as a result of the ``__tablename__``
            and :class:`_schema.Column` arguments present.
+
+        :param polymorphic_abstract: Indicates this class will be mapped in a
+            polymorphic hierarchy, but not directly instantiated. The class is
+            mapped normally, except that it has no requirement for a
+            :paramref:`_orm.Mapper.polymorphic_identity` within an inheritance
+            hierarchy. The class however must be part of a polymorphic
+            inheritance scheme which uses
+            :paramref:`_orm.Mapper.polymorphic_on` at the base.
+
+            .. versionadded:: 2.0
+
+            .. seealso::
+
+                :ref:`orm_inheritance_abstract_poly`
 
         :param always_refresh: If True, all query operations for this mapped
            class will overwrite all data within object instances that already
@@ -607,12 +622,16 @@ class Mapper(
             :ref:`inheritance_toplevel`
 
         :param polymorphic_identity: Specifies the value which
-          identifies this particular class as returned by the
-          column expression referred to by the ``polymorphic_on``
-          setting.  As rows are received, the value corresponding
-          to the ``polymorphic_on`` column expression is compared
-          to this value, indicating which subclass should
-          be used for the newly reconstructed object.
+          identifies this particular class as returned by the column expression
+          referred to by the :paramref:`_orm.Mapper.polymorphic_on` setting. As
+          rows are received, the value corresponding to the
+          :paramref:`_orm.Mapper.polymorphic_on` column expression is compared
+          to this value, indicating which subclass should be used for the newly
+          reconstructed object.
+
+          .. seealso::
+
+            :ref:`inheritance_toplevel`
 
         :param properties: A dictionary mapping the string names of object
            attributes to :class:`.MapperProperty` instances, which define the
@@ -781,6 +800,7 @@ class Mapper(
             if polymorphic_on is not None
             else None
         )
+        self.polymorphic_abstract = polymorphic_abstract
         self._dependency_processors = []
         self.validators = util.EMPTY_DICT
         self.passive_updates = passive_updates
@@ -1262,19 +1282,21 @@ class Mapper(
             if self.polymorphic_identity is None:
                 self._identity_class = self.class_
 
-                if self.inherits.base_mapper.polymorphic_on is not None:
+                if (
+                    not self.polymorphic_abstract
+                    and self.inherits.base_mapper.polymorphic_on is not None
+                ):
                     util.warn(
-                        "Mapper %s does not indicate a polymorphic_identity, "
+                        f"{self} does not indicate a 'polymorphic_identity', "
                         "yet is part of an inheritance hierarchy that has a "
-                        "polymorphic_on column of '%s'.  Objects of this type "
-                        "cannot be loaded polymorphically which can lead to "
-                        "degraded or incorrect loading behavior in some "
-                        "scenarios.  Please establish a polmorphic_identity "
-                        "for this class, or leave it un-mapped.  "
-                        "To omit mapping an intermediary class when using "
-                        "declarative, set the '__abstract__ = True' "
-                        "attribute on that class."
-                        % (self, self.inherits.base_mapper.polymorphic_on)
+                        f"'polymorphic_on' column of "
+                        f"'{self.inherits.base_mapper.polymorphic_on}'. "
+                        "If this is an intermediary class that should not be "
+                        "instantiated, the class may either be left unmapped, "
+                        "or may include the 'polymorphic_abstract=True' "
+                        "parameter in its Mapper arguments. To leave the "
+                        "class unmapped when using Declarative, set the "
+                        "'__abstract__ = True' attribute on the class."
                     )
             elif self.concrete:
                 self._identity_class = self.class_
@@ -1859,7 +1881,6 @@ class Mapper(
             # column in the property
             self.polymorphic_on = prop.columns[0]
             polymorphic_key = prop.key
-
         else:
             # no polymorphic_on was set.
             # check inheriting mappers for one.
@@ -1894,16 +1915,36 @@ class Mapper(
                         self._polymorphic_attr_key = None
                     return
 
+        if self.polymorphic_abstract and self.polymorphic_on is None:
+            raise sa_exc.InvalidRequestError(
+                "The Mapper.polymorphic_abstract parameter may only be used "
+                "on a mapper hierarchy which includes the "
+                "Mapper.polymorphic_on parameter at the base of the hierarchy."
+            )
+
         if setter:
 
             def _set_polymorphic_identity(state):
                 dict_ = state.dict
                 # TODO: what happens if polymorphic_on column attribute name
                 # does not match .key?
+
+                polymorphic_identity = (
+                    state.manager.mapper.polymorphic_identity
+                )
+                if (
+                    polymorphic_identity is None
+                    and state.manager.mapper.polymorphic_abstract
+                ):
+                    raise sa_exc.InvalidRequestError(
+                        f"Can't instantiate class for {state.manager.mapper}; "
+                        "mapper is marked polymorphic_abstract=True"
+                    )
+
                 state.get_impl(polymorphic_key).set(
                     state,
                     dict_,
-                    state.manager.mapper.polymorphic_identity,
+                    polymorphic_identity,
                     None,
                 )
 
@@ -2480,7 +2521,13 @@ class Mapper(
         if self.single and self.inherits and self.polymorphic_on is not None:
             return self.polymorphic_on._annotate(
                 {"parententity": self, "parentmapper": self}
-            ).in_([m.polymorphic_identity for m in self.self_and_descendants])
+            ).in_(
+                [
+                    m.polymorphic_identity
+                    for m in self.self_and_descendants
+                    if not m.polymorphic_abstract
+                ]
+            )
         else:
             return None
 

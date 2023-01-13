@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from contextlib import nullcontext
+from typing import List
 
 from sqlalchemy import and_
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -16,14 +20,19 @@ from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -2083,3 +2092,218 @@ class ColExprTest(AssertsCompiledSQL, fixtures.TestBase):
             "SELECT (SELECT max(employee.id) AS max_1 FROM employee "
             "WHERE employee.type IN (__[POSTCOMPILE_type_1])) AS anon_1",
         )
+
+
+class AbstractPolymorphicTest(
+    AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """test new polymorphic_abstract feature added as of #9060"""
+
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Company(Base):
+            __tablename__ = "company"
+            id = Column(Integer, primary_key=True)
+
+            executives: Mapped[List[Executive]] = relationship()
+            technologists: Mapped[List[Technologist]] = relationship()
+
+        class Employee(Base):
+            __tablename__ = "employee"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
+            name: Mapped[str]
+            type: Mapped[str]
+
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+            }
+
+        class Executive(Employee):
+            """An executive of the company"""
+
+            executive_background: Mapped[str] = mapped_column(nullable=True)
+            __mapper_args__ = {"polymorphic_abstract": True}
+
+        class Technologist(Employee):
+            """An employee who works with technology"""
+
+            competencies: Mapped[str] = mapped_column(nullable=True)
+            __mapper_args__ = {"polymorphic_abstract": True}
+
+        class Manager(Executive):
+            """a manager"""
+
+            __mapper_args__ = {"polymorphic_identity": "manager"}
+
+        class Principal(Executive):
+            """a principal of the company"""
+
+            __mapper_args__ = {"polymorphic_identity": "principal"}
+
+        class Engineer(Technologist):
+            """an engineer"""
+
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class SysAdmin(Technologist):
+            """a systems administrator"""
+
+            __mapper_args__ = {"polymorphic_identity": "sysadmin"}
+
+    def test_select_against_abstract(self):
+        Technologist = self.classes.Technologist
+
+        self.assert_compile(
+            select(Technologist).where(
+                Technologist.competencies.like("%Java%")
+            ),
+            "SELECT employee.id, employee.company_id, employee.name, "
+            "employee.type, employee.competencies FROM employee "
+            "WHERE employee.competencies LIKE :competencies_1 "
+            "AND employee.type IN (:type_1_1, :type_1_2)",
+            checkparams={
+                "competencies_1": "%Java%",
+                "type_1_1": "engineer",
+                "type_1_2": "sysadmin",
+            },
+            render_postcompile=True,
+        )
+
+    def test_relationship_join(self):
+        Technologist = self.classes.Technologist
+        Company = self.classes.Company
+
+        self.assert_compile(
+            select(Company)
+            .join(Company.technologists)
+            .where(Technologist.competencies.like("%Java%")),
+            "SELECT company.id FROM company JOIN employee "
+            "ON company.id = employee.company_id AND employee.type "
+            "IN (:type_1_1, :type_1_2) WHERE employee.competencies "
+            "LIKE :competencies_1",
+            checkparams={
+                "competencies_1": "%Java%",
+                "type_1_1": "engineer",
+                "type_1_2": "sysadmin",
+            },
+            render_postcompile=True,
+        )
+
+    @testing.fixture
+    def data_fixture(self, connection):
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+        Manager = self.classes.Manager
+        Principal = self.classes.Principal
+
+        with Session(connection) as sess:
+            sess.add(
+                Company(
+                    technologists=[
+                        Engineer(name="e1", competencies="Java programming")
+                    ],
+                    executives=[
+                        Manager(name="m1", executive_background="eb1"),
+                        Principal(name="p1", executive_background="eb2"),
+                    ],
+                )
+            )
+            sess.flush()
+
+            yield sess
+
+    def test_relationship_join_w_eagerload(self, data_fixture):
+        Company = self.classes.Company
+        Technologist = self.classes.Technologist
+
+        session = data_fixture
+
+        with self.sql_execution_asserter() as asserter:
+            session.scalars(
+                select(Company)
+                .join(Company.technologists)
+                .where(Technologist.competencies.ilike("%java%"))
+                .options(selectinload(Company.executives))
+            ).all()
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT company.id FROM company JOIN employee ON "
+                "company.id = employee.company_id AND employee.type "
+                "IN (__[POSTCOMPILE_type_1]) WHERE "
+                "lower(employee.competencies) LIKE lower(:competencies_1)",
+                [
+                    {
+                        "type_1": ["engineer", "sysadmin"],
+                        "competencies_1": "%java%",
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "SELECT employee.company_id AS employee_company_id, "
+                "employee.id AS employee_id, employee.name AS employee_name, "
+                "employee.type AS employee_type, "
+                "employee.executive_background AS "
+                "employee_executive_background "
+                "FROM employee WHERE employee.company_id "
+                "IN (__[POSTCOMPILE_primary_keys]) "
+                "AND employee.type IN (__[POSTCOMPILE_type_1])",
+                [
+                    {
+                        "primary_keys": [mock.ANY],
+                        "type_1": ["manager", "principal"],
+                    }
+                ],
+            ),
+        )
+
+    @testing.variation("given_type", ["none", "invalid", "valid"])
+    def test_no_instantiate(self, given_type):
+        Technologist = self.classes.Technologist
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Can't instantiate class for Mapper\[Technologist\(employee\)\]; "
+            r"mapper is marked polymorphic_abstract=True",
+        ):
+            if given_type.none:
+                Technologist()
+            elif given_type.invalid:
+                Technologist(type="madeup")
+            elif given_type.valid:
+                Technologist(type="engineer")
+            else:
+                given_type.fail()
+
+    def test_not_supported_wo_poly_inheriting(self, decl_base):
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "The Mapper.polymorphic_abstract parameter may only be used "
+            "on a mapper hierarchy which includes the Mapper.polymorphic_on",
+        ):
+
+            class Nope(MyClass):
+                __mapper_args__ = {"polymorphic_abstract": True}
+
+    def test_not_supported_wo_poly_base(self, decl_base):
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "The Mapper.polymorphic_abstract parameter may only be used "
+            "on a mapper hierarchy which includes the Mapper.polymorphic_on",
+        ):
+
+            class Nope(decl_base):
+                __tablename__ = "my_table"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                __mapper_args__ = {"polymorphic_abstract": True}

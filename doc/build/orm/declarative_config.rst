@@ -450,6 +450,11 @@ created perhaps within distinct databases::
     DefaultBase.metadata.create_all(some_engine)
     OtherBase.metadata.create_all(some_other_engine)
 
+.. seealso::
+
+    :ref:`orm_inheritance_abstract_poly` - an alternative form of "abstract"
+    mapped class that is appropriate for inheritance hierarchies.
+
 ``__table_cls__``
 ~~~~~~~~~~~~~~~~~
 

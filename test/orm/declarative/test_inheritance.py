@@ -44,7 +44,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
-    @testing.emits_warning(r".*does not indicate a polymorphic_identity")
+    @testing.emits_warning(r".*does not indicate a 'polymorphic_identity'")
     def test_we_must_copy_mapper_args(self):
         class Person(Base):
 

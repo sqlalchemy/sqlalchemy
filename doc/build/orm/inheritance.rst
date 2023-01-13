@@ -287,10 +287,11 @@ inheritance, except only the base class specifies ``__tablename__``. A
 discriminator column is also required on the base table so that classes can be
 differentiated from each other.
 
-Even though subclasses share the base table for all of their attributes,
-when using Declarative,  :class:`_schema.Column` objects may still be specified on
-subclasses, indicating that the column is to be mapped only to that subclass;
-the :class:`_schema.Column` will be applied to the same base :class:`_schema.Table` object::
+Even though subclasses share the base table for all of their attributes, when
+using Declarative, :class:`_orm.mapped_column` objects may still be specified
+on subclasses, indicating that the column is to be mapped only to that
+subclass; the :class:`_orm.mapped_column` will be applied to the same base
+:class:`_schema.Table` object::
 
     class Employee(Base):
         __tablename__ = "employee"
@@ -305,7 +306,7 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
 
     class Manager(Employee):
-        manager_data: Mapped[str]
+        manager_data: Mapped[str] = mapped_column(nullable=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -313,7 +314,7 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
 
     class Engineer(Employee):
-        engineer_info: Mapped[str]
+        engineer_info: Mapped[str] = mapped_column(nullable=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -321,7 +322,11 @@ the :class:`_schema.Column` will be applied to the same base :class:`_schema.Tab
 
 Note that the mappers for the derived classes Manager and Engineer omit the
 ``__tablename__``, indicating they do not have a mapped table of
-their own.
+their own.  Additionally, a :func:`_orm.mapped_column` directive with
+``nullable=True`` is included; as the Python types declared for these classes
+do not include ``Optional[]``, the column would normally be mapped as
+``NOT NULL``, which would not be appropriate as this column only expects to
+be populated for those rows that correspond to that particular subclass.
 
 .. _orm_inheritance_column_conflicts:
 
@@ -352,14 +357,14 @@ comes up when two subclasses want to specify *the same* column, as below::
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
         }
-        start_date: Mapped[datetime]
+        start_date: Mapped[datetime] = mapped_column(nullable=True)
 
 
     class Manager(Employee):
         __mapper_args__ = {
             "polymorphic_identity": "manager",
         }
-        start_date: Mapped[datetime]
+        start_date: Mapped[datetime] = mapped_column(nullable=True)
 
 Above, the ``start_date`` column declared on both ``Engineer`` and ``Manager``
 will result in an error:
@@ -399,7 +404,9 @@ mapped, if already present, else to map a new column::
             "polymorphic_identity": "engineer",
         }
 
-        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
+        start_date: Mapped[datetime] = mapped_column(
+            nullable=True, use_existing_column=True
+        )
 
 
     class Manager(Employee):
@@ -407,7 +414,9 @@ mapped, if already present, else to map a new column::
             "polymorphic_identity": "manager",
         }
 
-        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
+        start_date: Mapped[datetime] = mapped_column(
+            nullable=True, use_existing_column=True
+        )
 
 Above, when ``Manager`` is mapped, the ``start_date`` column is
 already present on the ``Employee`` class, having been provided by the
@@ -444,7 +453,9 @@ from a reusable mixin class::
 
 
     class HasStartDate:
-        start_date: Mapped[datetime] = mapped_column(use_existing_column=True)
+        start_date: Mapped[datetime] = mapped_column(
+            nullable=True, use_existing_column=True
+        )
 
 
     class Engineer(HasStartDate, Employee):
@@ -488,7 +499,7 @@ relationship::
 
 
     class Manager(Employee):
-        manager_data: Mapped[str]
+        manager_data: Mapped[str] = mapped_column(nullable=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "manager",
@@ -496,7 +507,7 @@ relationship::
 
 
     class Engineer(Employee):
-        engineer_info: Mapped[str]
+        engineer_info: Mapped[str] = mapped_column(nullable=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -527,7 +538,7 @@ or subclasses::
 
 
     class Manager(Employee):
-        manager_name: Mapped[str]
+        manager_name: Mapped[str] = mapped_column(nullable=True)
 
         company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
         company: Mapped[Company] = relationship(back_populates="managers")
@@ -538,7 +549,7 @@ or subclasses::
 
 
     class Engineer(Employee):
-        engineer_info: Mapped[str]
+        engineer_info: Mapped[str] = mapped_column(nullable=True)
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -548,6 +559,172 @@ Above, the ``Manager`` class will have a ``Manager.company`` attribute;
 ``Company`` will have a ``Company.managers`` attribute that always
 loads against the ``employee`` with an additional WHERE clause that
 limits rows to those with ``type = 'manager'``.
+
+.. _orm_inheritance_abstract_poly:
+
+Building Deeper Hierarchies with ``polymorphic_abstract``
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. versionadded:: 2.0
+
+When building any kind of inheritance hierarchy, a mapped class may include the
+:paramref:`_orm.Mapper.polymorphic_abstract` parameter set to ``True``, which
+indicates that the class should be mapped normally, however would not expect to
+be instantiated directly and would not include a
+:paramref:`_orm.Mapper.polymorphic_identity`. Subclasses may then be declared
+as subclasses of this mapped class, which themselves can include a
+:paramref:`_orm.Mapper.polymorphic_identity` and therefore be used normally.
+This allows a series of subclasses to be referenced at once by a common base
+class which is considered to be "abstract" within the hierarchy, both in
+queries as well as in :func:`_orm.relationship` declarations. This use differs
+from the use of the :ref:`declarative_abstract` attribute with Declarative,
+which leaves the target class entirely unmapped and thus not usable as a mapped
+class by itself. :paramref:`_orm.Mapper.polymorphic_abstract` may be applied to
+any class or classes at any level in the hierarchy, including on multiple
+levels at once.
+
+As an example, suppose ``Manager`` and ``Principal`` were both to be classified
+against a superclass ``Executive``, and ``Engineer`` and ``Sysadmin`` were
+classified against a superclass ``Technologist``. Neither ``Executive`` or
+``Technologist`` is ever instantiated, therefore have no
+:paramref:`_orm.Mapper.polymorphic_identity`. These classes can be configured
+using :paramref:`_orm.Mapper.polymorphic_abstract` as follows::
+
+    class Employee(Base):
+        __tablename__ = "employee"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+        type: Mapped[str]
+
+        __mapper_args__ = {
+            "polymorphic_identity": "employee",
+            "polymorphic_on": "type",
+        }
+
+
+    class Executive(Employee):
+        """An executive of the company"""
+
+        executive_background: Mapped[str] = mapped_column(nullable=True)
+
+        __mapper_args__ = {"polymorphic_abstract": True}
+
+
+    class Technologist(Employee):
+        """An employee who works with technology"""
+
+        competencies: Mapped[str] = mapped_column(nullable=True)
+
+        __mapper_args__ = {"polymorphic_abstract": True}
+
+
+    class Manager(Executive):
+        """a manager"""
+
+        __mapper_args__ = {"polymorphic_identity": "manager"}
+
+
+    class Principal(Executive):
+        """a principal of the company"""
+
+        __mapper_args__ = {"polymorphic_identity": "principal"}
+
+
+    class Engineer(Technologist):
+        """an engineer"""
+
+        __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+
+    class SysAdmin(Technologist):
+        """a systems administrator"""
+
+        __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+In the above example, the new classes ``Technologist`` and ``Executive``
+are ordinary mapped classes, and also indicate new columns to be added to the
+superclass called ``executive_background`` and ``competencies``.   However,
+they both lack a setting for :paramref:`_orm.Mapper.polymorphic_identity`;
+this is because it's not expected that ``Technologist`` or ``Executive`` would
+ever be instantiated directly; we'd always have one of ``Manager``, ``Principal``,
+``Engineer`` or ``SysAdmin``.   We can however query for
+``Principal`` and ``Technologist`` roles, as well as have them be targets
+of :func:`_orm.relationship`.  The example below demonstrates a SELECT
+statement for ``Technologist`` objects:
+
+
+.. sourcecode:: python+sql
+
+    session.scalars(select(Technologist)).all()
+    {execsql}
+    SELECT employee.id, employee.name, employee.type, employee.competencies
+    FROM employee
+    WHERE employee.type IN (?, ?)
+    [...] ('engineer', 'sysadmin')
+
+The ``Technologist`` and ``Executive`` abstract mapped classes may also be
+made the targets of :func:`_orm.relationship` mappings, like any other
+mapped class.  We can extend the above example to include ``Company``,
+with separate collections ``Company.technologists`` and ``Company.principals``::
+
+    class Company(Base):
+        __tablename__ = "company"
+        id = Column(Integer, primary_key=True)
+
+        executives: Mapped[List[Executive]] = relationship()
+        technologists: Mapped[List[Technologist]] = relationship()
+
+
+    class Employee(Base):
+        __tablename__ = "employee"
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        # foreign key to "company.id" is added
+        company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
+
+        # rest of mapping is the same
+        name: Mapped[str]
+        type: Mapped[str]
+
+        __mapper_args__ = {
+            "polymorphic_on": "type",
+        }
+
+
+    # Executive, Technologist, Manager, Principal, Engineer, SysAdmin
+    # classes from previous example would follow here unchanged
+
+Using the above mapping we can use joins and relationship loading techniques
+across ``Company.technologists`` and ``Company.executives`` individually:
+
+.. sourcecode:: python+sql
+
+    session.scalars(
+        select(Company)
+        .join(Company.technologists)
+        .where(Technologist.competency.ilike("%java%"))
+        .options(selectinload(Company.executives))
+    ).all()
+    {execsql}
+    SELECT company.id
+    FROM company JOIN employee ON company.id = employee.company_id AND employee.type IN (?, ?)
+    WHERE lower(employee.competencies) LIKE lower(?)
+    [...] ('engineer', 'sysadmin', '%java%')
+
+    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
+    employee.name AS employee_name, employee.type AS employee_type,
+    employee.executive_background AS employee_executive_background
+    FROM employee
+    WHERE employee.company_id IN (?) AND employee.type IN (?, ?)
+    [...] (1, 'manager', 'principal')
+
+
+
+.. seealso::
+
+    :ref:`declarative_abstract` - Declarative parameter which allows a
+    Declarative class to be completely un-mapped within a hierarchy, while
+    still extending from a mapped superclass.
 
 
 Loading Single Inheritance Mappings

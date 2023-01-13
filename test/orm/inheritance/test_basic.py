@@ -3666,8 +3666,8 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
         )
 
         with expect_warnings(
-            r"Mapper Mapper\[B\(base\)\] does not indicate a "
-            "polymorphic_identity,"
+            r"Mapper\[B\(base\)\] does not indicate a "
+            "'polymorphic_identity',"
         ):
             cls.mapper_registry.map_imperatively(B, inherits=A)
         cls.mapper_registry.map_imperatively(
@@ -3695,8 +3695,7 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
             __mapper_args__ = {"polymorphic_identity": "b"}
 
         with expect_warnings(
-            r"Mapper Mapper\[C\(a\)\] does not indicate a "
-            "polymorphic_identity,"
+            r"Mapper\[C\(a\)\] does not indicate a " "'polymorphic_identity',"
         ):
 
             class C(A):

@@ -301,6 +301,7 @@ class AbstractConcreteBase(ConcreteBase):
         def mapper_args():
             args = m_args()
             args["polymorphic_on"] = pjoin.c[discriminator_name]
+            args["polymorphic_abstract"] = True
             if strict_attrs:
                 args["include_properties"] = (
                     set(pjoin.primary_key)

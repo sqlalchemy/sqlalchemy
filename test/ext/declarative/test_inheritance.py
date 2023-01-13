@@ -316,6 +316,13 @@ class ConcreteInhTest(
 
         self._roundtrip(Employee, Manager, Engineer, Boss)
 
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't instantiate class for Mapper\[Employee\(pjoin\)\]; "
+            r"mapper is marked polymorphic_abstract=True",
+        ):
+            Employee()
+
     @testing.combinations(True, False)
     def test_abstract_concrete_extension_descriptor_refresh(
         self, use_strict_attrs
