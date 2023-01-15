@@ -396,7 +396,7 @@ for this use case.
    generally used for updating or deleting many individual rows separately.
 
 
-.. rst-class:: orm-addin
+.. rst-class:: orm-header
 
 .. _tutorial_executing_orm_session:
 
