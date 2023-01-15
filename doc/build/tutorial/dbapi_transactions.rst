@@ -401,7 +401,7 @@ for many rows while still supporting RETURNING.
    result sets with "executemany" executions.
 
 
-.. rst-class:: orm-addin
+.. rst-class:: orm-header
 
 .. _tutorial_executing_orm_session:
 
