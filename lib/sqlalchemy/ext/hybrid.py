@@ -707,7 +707,9 @@ from ..sql import roles
 from ..sql._typing import is_has_clause_element
 from ..sql.elements import ColumnElement
 from ..sql.elements import SQLCoreOperations
+from ..util.typing import Concatenate
 from ..util.typing import Literal
+from ..util.typing import ParamSpec
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
@@ -719,6 +721,8 @@ if TYPE_CHECKING:
     from ..sql._typing import _InfoType
     from ..sql.operators import OperatorType
 
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 _T_con = TypeVar("_T_con", bound=Any, contravariant=True)
@@ -784,7 +788,7 @@ class _HybridExprCallableType(Protocol[_T_co]):
         ...
 
 
-class hybrid_method(interfaces.InspectionAttrInfo, Generic[_T]):
+class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
@@ -795,8 +799,10 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_T]):
 
     def __init__(
         self,
-        func: Callable[..., _T],
-        expr: Optional[Callable[..., SQLCoreOperations[_T]]] = None,
+        func: Callable[Concatenate[Any, _P], _R],
+        expr: Optional[
+            Callable[Concatenate[Any, _P], SQLCoreOperations[_R]]
+        ] = None,
     ):
         """Create a new :class:`.hybrid_method`.
 
@@ -815,31 +821,34 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_T]):
 
         """
         self.func = func
-        self.expression(expr or func)
+        if expr is not None:
+            self.expression(expr)
+        else:
+            self.expression(func)  # type: ignore
 
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[object]
-    ) -> Callable[[Any], SQLCoreOperations[_T]]:
+    ) -> Callable[_P, SQLCoreOperations[_R]]:
         ...
 
     @overload
     def __get__(
         self, instance: object, owner: Type[object]
-    ) -> Callable[[Any], _T]:
+    ) -> Callable[_P, _R]:
         ...
 
     def __get__(
         self, instance: Optional[object], owner: Type[object]
-    ) -> Union[Callable[[Any], _T], Callable[[Any], SQLCoreOperations[_T]]]:
+    ) -> Union[Callable[_P, _R], Callable[_P, SQLCoreOperations[_R]]]:
         if instance is None:
             return self.expr.__get__(owner, owner)  # type: ignore
         else:
             return self.func.__get__(instance, owner)  # type: ignore
 
     def expression(
-        self, expr: Callable[..., SQLCoreOperations[_T]]
-    ) -> hybrid_method[_T]:
+        self, expr: Callable[Concatenate[Any, _P], SQLCoreOperations[_R]]
+    ) -> hybrid_method[_P, _R]:
         """Provide a modifying decorator that defines a
         SQL-expression producing method."""
 

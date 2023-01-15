@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from .elements import ColumnElement
     from .elements import KeyedColumnElement
     from .elements import quoted_name
+    from .elements import SQLCoreOperations
     from .elements import TextClause
     from .lambdas import LambdaElement
     from .roles import ColumnsClauseRole
@@ -128,6 +129,7 @@ _TextCoercedExpressionArgument = Union[
 _ColumnsClauseArgument = Union[
     roles.TypedColumnsClauseRole[_T],
     roles.ColumnsClauseRole,
+    "SQLCoreOperations[_T]",
     Literal["*", 1],
     Type[_T],
     Inspectable[_HasClauseElement],
@@ -144,7 +146,10 @@ sets; select(...), insert().returning(...), etc.
 """
 
 _TypedColumnClauseArgument = Union[
-    roles.TypedColumnsClauseRole[_T], roles.ExpressionElementRole[_T], Type[_T]
+    roles.TypedColumnsClauseRole[_T],
+    "SQLCoreOperations[_T]",
+    roles.ExpressionElementRole[_T],
+    Type[_T],
 ]
 
 _TP = TypeVar("_TP", bound=Tuple[Any, ...])
@@ -164,6 +169,7 @@ _T9 = TypeVar("_T9", bound=Any)
 _ColumnExpressionArgument = Union[
     "ColumnElement[_T]",
     _HasClauseElement,
+    "SQLCoreOperations[_T]",
     roles.ExpressionElementRole[_T],
     Callable[[], "ColumnElement[_T]"],
     "LambdaElement",

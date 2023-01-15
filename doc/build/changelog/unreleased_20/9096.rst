@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9096
+
+    Fixes to the annotations within the ``sqlalchemy.ext.hybrid`` extension for
+    more effective typing of user-defined methods. The typing now uses
+    :pep:`612` features, now supported by recent versions of Mypy, to maintain
+    argument signatures for :class:`.hybrid_method`. Return values for hybrid
+    methods are accepted as SQL expressions in contexts such as
+    :meth:`_sql.Select.where` while still supporting SQL methods.
