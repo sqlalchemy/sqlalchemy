@@ -602,6 +602,7 @@ Glossary
     mapping
     mapped
     mapped class
+    ORM mapped class
         We say a class is "mapped" when it has been associated with an
         instance of the :class:`_orm.Mapper` class. This process associates
         the class with a database table or other :term:`selectable` construct,

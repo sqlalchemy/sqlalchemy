@@ -681,19 +681,77 @@ class DeclarativeBase(
     """
 
     if typing.TYPE_CHECKING:
-        registry: ClassVar[_RegistryType]
         _sa_registry: ClassVar[_RegistryType]
+
+        registry: ClassVar[_RegistryType]
+        """Refers to the :class:`_orm.registry` in use where new
+        :class:`_orm.Mapper` objects will be associated."""
+
         metadata: ClassVar[MetaData]
+        """Refers to the :class:`_schema.MetaData` collection that will be used
+        for new :class:`_schema.Table` objects.
+
+        .. seealso::
+
+            :ref:`orm_declarative_metadata`
+
+        """
 
         __name__: ClassVar[str]
+
         __mapper__: ClassVar[Mapper[Any]]
+        """The :class:`_orm.Mapper` object to which a particular class is
+        mapped.
+
+        May also be acquired using :func:`_sa.inspect`, e.g.
+        ``inspect(klass)``.
+
+        """
+
         __table__: ClassVar[FromClause]
+        """The :class:`_schema.Table` to which a particular subclass is
+        mapped.
+
+        .. seealso::
+
+            :ref:`orm_declarative_metadata`
+
+        """
 
         # pyright/pylance do not consider a classmethod a ClassVar so use Any
         # https://github.com/microsoft/pylance-release/issues/3484
         __tablename__: Any
+        """String name to assign to the generated
+        :class:`_schema.Table` object, if not specified directly via
+        :attr:`_orm.DeclarativeBase.__table__`.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table`
+
+        """
+
         __mapper_args__: Any
+        """Dictionary of arguments which will be passed to the
+        :class:`_orm.Mapper` constructor.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapper_options`
+
+        """
+
         __table_args__: Any
+        """A dictionary or tuple of arguments that will be passed to the
+        :class:`_schema.Table` constructor.  See
+        :ref:`orm_declarative_table_configuration`
+        for background on the specific structure of this collection.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table_configuration`
+
+        """
 
         def __init__(self, **kw: Any):
             ...
@@ -734,13 +792,75 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
 
     """
 
-    registry: ClassVar[_RegistryType]
     _sa_registry: ClassVar[_RegistryType]
+
+    registry: ClassVar[_RegistryType]
+    """Refers to the :class:`_orm.registry` in use where new
+    :class:`_orm.Mapper` objects will be associated."""
+
     metadata: ClassVar[MetaData]
+    """Refers to the :class:`_schema.MetaData` collection that will be used
+    for new :class:`_schema.Table` objects.
+
+    .. seealso::
+
+        :ref:`orm_declarative_metadata`
+
+    """
+
     __mapper__: ClassVar[Mapper[Any]]
+    """The :class:`_orm.Mapper` object to which a particular class is
+    mapped.
+
+    May also be acquired using :func:`_sa.inspect`, e.g.
+    ``inspect(klass)``.
+
+    """
+
     __table__: Optional[FromClause]
+    """The :class:`_schema.Table` to which a particular subclass is
+    mapped.
+
+    .. seealso::
+
+        :ref:`orm_declarative_metadata`
+
+    """
 
     if typing.TYPE_CHECKING:
+
+        __tablename__: Any
+        """String name to assign to the generated
+        :class:`_schema.Table` object, if not specified directly via
+        :attr:`_orm.DeclarativeBase.__table__`.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table`
+
+        """
+
+        __mapper_args__: Any
+        """Dictionary of arguments which will be passed to the
+        :class:`_orm.Mapper` constructor.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapper_options`
+
+        """
+
+        __table_args__: Any
+        """A dictionary or tuple of arguments that will be passed to the
+        :class:`_schema.Table` constructor.  See
+        :ref:`orm_declarative_table_configuration`
+        for background on the specific structure of this collection.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table_configuration`
+
+        """
 
         def __init__(self, **kw: Any):
             ...

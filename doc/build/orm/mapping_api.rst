@@ -109,12 +109,13 @@ Class Mapping API
             :class:`_orm.declared_attr`
 
 
+.. autoclass:: DeclarativeBase
+    :members:
+    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
 
 .. autoclass:: DeclarativeBaseNoMeta
     :members:
-
-.. autoclass:: DeclarativeBase
-    :members:
+    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
 
 .. autofunction:: has_inherited_table
 
