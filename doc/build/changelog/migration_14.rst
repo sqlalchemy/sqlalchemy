@@ -2359,7 +2359,7 @@ to be more noticeable.
 
 :ticket:`1763`
 
-.. _change_8879
+.. _change_8879:
 
 Column loaders such as ``deferred()``, ``with_expression()`` only take effect when indicated on the outermost, full entity query
 --------------------------------------------------------------------------------------------------------------------------------
