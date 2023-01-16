@@ -103,7 +103,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
     ) -> Tuple[
         Type[_SerializableColumnGetterV2], Tuple[List[Tuple[str, Any]]]
     ]:
-        return self.__class__, (self.colkeys,)  # type: ignore
+        return self.__class__, (self.colkeys,)
 
     @classmethod
     def _reduce_from_cols(
