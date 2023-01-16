@@ -2280,6 +2280,175 @@ to be more noticeable.
 
 :ticket:`1763`
 
+.. _change_8879:
+
+Column loaders such as ``deferred()``, ``with_expression()`` only take effect when indicated on the outermost, full entity query
+--------------------------------------------------------------------------------------------------------------------------------
+
+.. note:: This change note was not present in earlier versions of this document,
+   however is relevant for all SQLAlchemy 1.4 versions.
+
+A behavior that was never supported in 1.3 and previous versions
+yet nonetheless would have a particular effect
+was to repurpose column loader options such as :func:`_orm.defer` and
+:func:`_orm.with_expression` in subqueries in order to control which
+SQL expressions would be in the columns clause of each subquery.  A typical
+example would be to
+construct UNION queries, such as::
+
+    q1 = session.query(User).options(with_expression(User.expr, literal("u1")))
+    q2 = session.query(User).options(with_expression(User.expr, literal("u2")))
+
+    q1.union_all(q2).all()
+
+In version 1.3, the :func:`_orm.with_expression` option would take effect
+for each element of the UNION, such as:
+
+.. sourcecode:: sql
+
+    SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.user_account_id AS anon_1_user_account_id,
+    anon_1.user_account_name AS anon_1_user_account_name
+    FROM (
+        SELECT ? AS anon_2, user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+        UNION ALL
+        SELECT ? AS anon_3, user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+    ) AS anon_1
+    ('u1', 'u2')
+
+SQLAlchemy 1.4's notion of loader options has been made more strict, and as such
+are applied to the **outermost part of the query only**, which is the
+SELECT that is intended to populate the actual ORM entities to be returned; the
+query above in 1.4 will produce:
+
+.. sourcecode:: sql
+
+    SELECT ? AS anon_1, anon_2.user_account_id AS anon_2_user_account_id,
+    anon_2.user_account_name AS anon_2_user_account_name
+    FROM (
+        SELECT user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+        UNION ALL
+        SELECT user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+    ) AS anon_2
+    ('u1',)
+
+that is, the options for the :class:`_orm.Query` were taken from the first
+element of the UNION, since all loader options are only to be at the topmost
+level.  The option from the second query was ignored.
+
+Rationale
+^^^^^^^^^
+
+This behavior now more closely matches that of other kinds of loader options
+such as relationship loader options like :func:`_orm.joinedload` in all
+SQLAlchemy versions, 1.3 and earlier included, which in a UNION situation were
+already copied out to the top most level of the query, and only taken from the
+first element of the UNION, discarding any options on other parts of the query.
+
+This implicit copying and selective ignoring of options, demonstrated above as
+being fairly arbitrary, is a legacy behavior that's only part of
+:class:`_orm.Query`, and is a particular example of where :class:`_orm.Query`
+and its means of applying :meth:`_orm.Query.union_all` falls short, as it's
+ambiguous how to turn a single SELECT into a UNION of itself and another query
+and how loader options should be applied to that new statement.
+
+SQLAlchemy 1.4's behavior can be demonstrated as generally superior to that
+of 1.3 for a more common case of using :func:`_orm.defer`.  The following
+query::
+
+    q1 = session.query(User).options(defer(User.name))
+    q2 = session.query(User).options(defer(User.name))
+
+    q1.union_all(q2).all()
+
+In 1.3 would awkwardly add NULL to the inner queries and then SELECT it:
+
+.. sourcecode:: sql
+
+    SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.user_account_id AS anon_1_user_account_id
+    FROM (
+        SELECT NULL AS anon_2, user_account.id AS user_account_id
+        FROM user_account
+        UNION ALL
+        SELECT NULL AS anon_2, user_account.id AS user_account_id
+        FROM user_account
+    ) AS anon_1
+
+If all queries didn't have the identical options set up, the above scenario
+would raise an error due to not being able to form a proper UNION.
+
+Whereas in 1.4, the option is applied only at the top layer, omitting
+the fetch for ``User.name``, and this complexity is avoided:
+
+.. sourcecode:: sql
+
+    SELECT anon_1.user_account_id AS anon_1_user_account_id
+    FROM (
+        SELECT user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+        UNION ALL
+        SELECT user_account.id AS user_account_id, user_account.name AS user_account_name
+        FROM user_account
+    ) AS anon_1
+
+Correct Approach
+^^^^^^^^^^^^^^^^
+
+Using :term:`2.0-style` querying, no warning is emitted at the moment, however
+the nested :func:`_orm.with_expression` options are consistently ignored as
+they don't apply to an entity being loaded, and are not implicitly copied
+anywhere. The query below produces no output for the
+:func:`_orm.with_expression` calls::
+
+    s1 = select(User).options(with_expression(User.expr, literal("u1")))
+    s2 = select(User).options(with_expression(User.expr, literal("u2")))
+
+    stmt = union_all(s1, s2)
+
+    session.scalars(select(User).from_statement(stmt)).all()
+
+producing the SQL:
+
+.. sourcecode:: sql
+
+    SELECT user_account.id, user_account.name
+    FROM user_account
+    UNION ALL
+    SELECT user_account.id, user_account.name
+    FROM user_account
+
+To correctly apply :func:`_orm.with_expression` to the ``User`` entity,
+it should be applied to the outermost level of the query, using an
+ordinary SQL expression inside the columns clause of each SELECT::
+
+    s1 = select(User, literal("u1").label("some_literal"))
+    s2 = select(User, literal("u2").label("some_literal"))
+
+    stmt = union_all(s1, s2)
+
+    session.scalars(
+        select(User)
+        .from_statement(stmt)
+        .options(with_expression(User.expr, stmt.selected_columns.some_literal))
+    ).all()
+
+Which will produce the expected SQL:
+
+.. sourcecode:: sql
+
+    SELECT user_account.id, user_account.name, ? AS some_literal
+    FROM user_account
+    UNION ALL
+    SELECT user_account.id, user_account.name, ? AS some_literal
+    FROM user_account
+
+The ``User`` objects themselves will include this expression in their
+contents underneath ``User.expr``.
+
+
 .. _change_4519:
 
 Accessing an uninitialized collection attribute on a transient object no longer mutates __dict__

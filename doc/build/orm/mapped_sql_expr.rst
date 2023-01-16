@@ -365,7 +365,17 @@ The :func:`.query_expression` mapping has these caveats:
   a new :func:`.with_expression` directive will the attribute be set to a
   non-None value.
 
-* The mapped attribute currently **cannot** be applied to other parts of the
+* :func:`_orm.with_expression`, as an object loading option, only takes effect
+  on the **outermost part
+  of a query** and only for a query against a full entity, and not for arbitrary
+  column selects, within subqueries, or the elements of a compound
+  statement such as a UNION.  See the next
+  section :ref:`mapper_querytime_expression_unions` for an example.
+
+  .. versionchanged:: 1.4 This is new as of version 1.4.  See the change notes
+     at :ref:`change_8879` for background.
+
+* The mapped attribute **cannot** be applied to other parts of the
   query, such as the WHERE clause, the ORDER BY clause, and make use of the
   ad-hoc expression; that is, this won't work::
 
@@ -391,3 +401,73 @@ The :func:`.query_expression` mapping has these caveats:
 
 .. versionadded:: 1.2
 
+
+.. _mapper_querytime_expression_unions:
+
+
+Using ``with_expression()`` with UNIONs, other subqueries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :func:`_orm.with_expression` construct is an ORM loader option, and as
+such may only be applied to the outermost level of a SELECT statement which
+is to load a particular ORM entity.   It does not have any effect if used
+inside of a :func:`_sql.select` that will then be used as a subquery or
+as an element within a compound statement such as a UNION.
+
+.. versionchanged:: 1.4 The behavior of column loader options applying
+   only at the outermost layer of an ORM SELECT statement was previously
+   not applied consistently; in 1.4 it applies to all loader options
+   for both columns as well as relationships.  Background on this change
+   is at :ref:`change_8879`.
+
+In order to use arbitrary SQL expressions in subqueries, normal Core-style
+means of adding expressions should be used. To assemble a subquery-derived
+expression onto the ORM entity's :func:`_orm.query_expression` attributes,
+:func:`_orm.with_expression` is used at the top layer of ORM object loading,
+referencing the SQL expression within the subquery.
+
+.. note::
+
+    The example below uses :term:`2.0 style` queries in order to demonstrate a
+    UNION.  ORM UNIONs may be assembled without ambiguity using this style
+    of query.
+
+In the example below, two :func:`_sql.select` constructs are used against
+the ORM entity ``A`` with an additional SQL expression labeled in
+``expr``, and combined using :func:`_sql.union_all`.  Then, at the topmost
+layer, the ``A`` entity is SELECTed from this UNION, using the
+querying technique described at :ref:`orm_queryguide_unions`, adding an
+option with :func:`_orm.with_expression` to extract this SQL expression
+onto newly loaded instances of ``A``:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import union_all
+    >>> s1 = (
+    ...     select(User, func.count(Book.id).label("book_count"))
+    ...     .join_from(User, Book)
+    ...     .where(User.name == "spongebob")
+    ... )
+    >>> s2 = (
+    ...     select(User, func.count(Book.id).label("book_count"))
+    ...     .join_from(User, Book)
+    ...     .where(User.name == "sandy")
+    ... )
+    >>> union_stmt = union_all(s1, s2)
+    >>> orm_stmt = (
+    ...     select(User)
+    ...     .from_statement(union_stmt)
+    ...     .options(with_expression(User.book_count, union_stmt.c.book_count))
+    ... )
+    >>> for user in session.scalars(orm_stmt):
+    ...     print(f"Username: {user.name}  Number of books: {user.book_count}")
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname, count(book.id) AS book_count
+    FROM user_account JOIN book ON user_account.id = book.owner_id
+    WHERE user_account.name = ?
+    UNION ALL
+    SELECT user_account.id, user_account.name, user_account.fullname, count(book.id) AS book_count
+    FROM user_account JOIN book ON user_account.id = book.owner_id
+    WHERE user_account.name = ?
+    [...] ('spongebob', 'sandy'){stop}
+    Username: spongebob  Number of books: 3
+    Username: sandy  Number of books: 3

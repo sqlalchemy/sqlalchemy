@@ -1955,9 +1955,16 @@ def with_expression(loadopt, key, expression):
 
     .. versionadded:: 1.2
 
-    :param key: Attribute to be undeferred.
+    :param key: Attribute to be populated.
 
     :param expr: SQL expression to be applied to the attribute.
+
+    .. versionchanged:: 1.4  Loader options such as
+       :func:`_orm.with_expression`
+       take effect only at the **outermost** query used, and should not be used
+       within subqueries or inner elements of a UNION. See the change notes at
+       :ref:`change_8879` for background on how to correctly add arbitrary
+       columns to subqueries.
 
     .. note:: the target attribute is populated only if the target object
        is **not currently loaded** in the current :class:`_orm.Session`
