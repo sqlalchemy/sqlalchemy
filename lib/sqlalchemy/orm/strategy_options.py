@@ -739,13 +739,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         E.g.::
 
-            sess.query(SomeClass).options(
+            stmt = select(SomeClass).options(
                 with_expression(SomeClass.x_y_expr, SomeClass.x + SomeClass.y)
             )
 
         .. versionadded:: 1.2
 
-        :param key: Attribute to be undeferred.
+        :param key: Attribute to be populated
 
         :param expr: SQL expression to be applied to the attribute.
 

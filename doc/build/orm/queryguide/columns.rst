@@ -781,7 +781,14 @@ The :func:`.query_expression` mapping has these caveats:
   expression and its value is no longer associated with the attribute and will
   return ``None`` on subsequent access.
 
-* The mapped attribute currently **cannot** be applied to other parts of the
+* :func:`_orm.with_expression`, as an object loading option, only takes effect
+  on the **outermost part
+  of a query** and only for a query against a full entity, and not for arbitrary
+  column selects, within subqueries, or the elements of a compound
+  statement such as a UNION.  See the next
+  section :ref:`orm_queryguide_with_expression_unions` for an example.
+
+* The mapped attribute **cannot** be applied to other parts of the
   query, such as the WHERE clause, the ORDER BY clause, and make use of the
   ad-hoc expression; that is, this won't work:
 
@@ -817,6 +824,67 @@ The :func:`.query_expression` mapping has these caveats:
     apply SQL expressions to mapped classes dynamically at query time.
     For ordinary fixed SQL expressions configured on mappers,
     see the section :ref:`mapper_sql_expressions`.
+
+.. _orm_queryguide_with_expression_unions:
+
+Using ``with_expression()`` with UNIONs, other subqueries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. comment
+
+  >>> session.close()
+
+The :func:`_orm.with_expression` construct is an ORM loader option, and as
+such may only be applied to the outermost level of a SELECT statement which
+is to load a particular ORM entity.   It does not have any effect if used
+inside of a :func:`_sql.select` that will then be used as a subquery or
+as an element within a compound statement such as a UNION.
+
+In order to use arbitrary SQL expressions in subqueries, normal Core-style
+means of adding expressions should be used. To assemble a subquery-derived
+expression onto the ORM entity's :func:`_orm.query_expression` attributes,
+:func:`_orm.with_expression` is used at the top layer of ORM object loading,
+referencing the SQL expression within the subquery.
+
+In the example below, two :func:`_sql.select` constructs are used against
+the ORM entity ``A`` with an additional SQL expression labeled in
+``expr``, and combined using :func:`_sql.union_all`.  Then, at the topmost
+layer, the ``A`` entity is SELECTed from this UNION, using the
+querying technique described at :ref:`orm_queryguide_unions`, adding an
+option with :func:`_orm.with_expression` to extract this SQL expression
+onto newly loaded instances of ``A``::
+
+    >>> from sqlalchemy import union_all
+    >>> s1 = (
+    ...     select(User, func.count(Book.id).label("book_count"))
+    ...     .join_from(User, Book)
+    ...     .where(User.name == "spongebob")
+    ... )
+    >>> s2 = (
+    ...     select(User, func.count(Book.id).label("book_count"))
+    ...     .join_from(User, Book)
+    ...     .where(User.name == "sandy")
+    ... )
+    >>> union_stmt = union_all(s1, s2)
+    >>> orm_stmt = (
+    ...     select(User)
+    ...     .from_statement(union_stmt)
+    ...     .options(with_expression(User.book_count, union_stmt.c.book_count))
+    ... )
+    >>> for user in session.scalars(orm_stmt):
+    ...     print(f"Username: {user.name}  Number of books: {user.book_count}")
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname, count(book.id) AS book_count
+    FROM user_account JOIN book ON user_account.id = book.owner_id
+    WHERE user_account.name = ?
+    UNION ALL
+    SELECT user_account.id, user_account.name, user_account.fullname, count(book.id) AS book_count
+    FROM user_account JOIN book ON user_account.id = book.owner_id
+    WHERE user_account.name = ?
+    [...] ('spongebob', 'sandy'){stop}
+    Username: spongebob  Number of books: 3
+    Username: sandy  Number of books: 3
+
+
 
 Column Loading API
 -------------------
