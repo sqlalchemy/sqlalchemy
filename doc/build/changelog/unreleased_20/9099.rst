@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9099
+
+    Fixed issue where using a pep-593 ``Annotated`` type in the
+    :paramref:`_orm.registry.type_annotation_map` which itself contained a
+    generic plain container or ``collections.abc`` type (e.g. ``list``,
+    ``dict``, ``collections.abc.Sequence``, etc. ) as the target type would
+    produce an internal error when the ORM were trying to interpret the
+    ``Annotated`` instance.
+
+

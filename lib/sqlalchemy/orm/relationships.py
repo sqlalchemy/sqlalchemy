@@ -18,6 +18,7 @@ from __future__ import annotations
 import collections
 from collections import abc
 import dataclasses
+import inspect as _py_inspect
 import re
 import typing
 from typing import Any
@@ -1768,7 +1769,18 @@ class RelationshipProperty(
                 arg_origin, abc.Collection
             ):
                 if self.collection_class is None:
+                    if _py_inspect.isabstract(arg_origin):
+                        raise sa_exc.ArgumentError(
+                            f"Collection annotation type {arg_origin} cannot "
+                            "be instantiated; please provide an explicit "
+                            "'collection_class' parameter "
+                            "(e.g. list, set, etc.) to the "
+                            "relationship() function to accompany this "
+                            "annotation"
+                        )
+
                     self.collection_class = arg_origin
+
             elif not is_write_only and not is_dynamic:
                 self.uselist = False
 
