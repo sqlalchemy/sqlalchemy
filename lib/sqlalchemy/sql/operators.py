@@ -705,6 +705,21 @@ class ColumnOperators(Operators):
 
         return self.operate(bitwise_and_op, other)
 
+    def bitwise_not(self) -> ColumnOperators:
+        """Return bitwise NOT operation"""
+
+        return self.operate(bitwise_not_op)
+
+    def bitwise_lshift(self, other: Any) -> ColumnOperators:
+        """Return bitwise LSHIFT operation"""
+
+        return self.operate(bitwise_lshift_op, other)
+
+    def bitwise_rshift(self, other: Any) -> ColumnOperators:
+        """Return bitwise RSHIFT operation"""
+
+        return self.operate(bitwise_rshift_op, other)
+
     def in_(self, other: Any) -> ColumnOperators:
         """Implement the ``in`` operator.
 
@@ -2243,6 +2258,9 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     bitwise_xor_op: 7,
     bitwise_or_op: 7,
     bitwise_and_op: 7,
+    bitwise_not_op: 7,
+    bitwise_lshift_op: 7,
+    bitwise_rshift_op: 7,
     concat_op: 6,
     filter_op: 6,
     match_op: 5,

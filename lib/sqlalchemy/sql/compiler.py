@@ -283,6 +283,9 @@ OPERATORS = {
     operators.bitwise_xor_op: " ^ ",
     operators.bitwise_or_op: " | ",
     operators.bitwise_and_op: " & ",
+    operators.bitwise_not_op: "~",
+    operators.bitwise_lshift_op: " << ",
+    operators.bitwise_rshift_op: " >> ",
 }
 
 FUNCTIONS: Dict[Type[Function[Any]], str] = {
