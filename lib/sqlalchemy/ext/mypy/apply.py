@@ -169,9 +169,6 @@ def re_apply_declarative_assignments(
 
                     update_cls_metadata = True
 
-            # for some reason if you have a Mapped type explicitly annotated,
-            # and here you set it again, mypy forgets how to do descriptors.
-            # no idea.  100% feeling around in the dark to see what sticks
             if (
                 not isinstance(left_node.type, Instance)
                 or left_node.type.type.fullname != NAMED_TYPE_SQLA_MAPPED
@@ -213,6 +210,12 @@ def apply_type_to_mapped_statement(
     left_node = lvalue.node
     assert isinstance(left_node, Var)
 
+    # to be completely honest I have no idea what the difference between
+    # left_node.type and stmt.type is, what it means if these are different
+    # vs. the same, why in order to get tests to pass I have to assign
+    # to stmt.type for the second case and not the first.  this is complete
+    # trying every combination until it works stuff.
+
     if left_hand_explicit_type is not None:
         lvalue.is_inferred_def = False
         left_node.type = api.named_type(
@@ -222,7 +225,9 @@ def apply_type_to_mapped_statement(
         lvalue.is_inferred_def = False
         left_node.type = api.named_type(
             NAMED_TYPE_SQLA_MAPPED,
-            [] if python_type_for_type is None else [python_type_for_type],
+            [AnyType(TypeOfAny.special_form)]
+            if python_type_for_type is None
+            else [python_type_for_type],
         )
 
     # so to have it skip the right side totally, we can do this:
@@ -238,6 +243,9 @@ def apply_type_to_mapped_statement(
     # the original right-hand side is maintained so it gets type checked
     # internally
     stmt.rvalue = expr_to_mapped_constructor(stmt.rvalue)
+
+    if stmt.type is not None and python_type_for_type is not None:
+        stmt.type = python_type_for_type
 
 
 def add_additional_orm_attributes(
