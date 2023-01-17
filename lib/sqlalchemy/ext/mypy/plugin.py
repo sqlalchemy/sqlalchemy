@@ -184,10 +184,13 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         else:
             continue
 
-        assert isinstance(target.expr, NameExpr)
-        sym = ctx.api.lookup_qualified(
-            target.expr.name, target, suppress_errors=True
-        )
+        if isinstance(target.expr, NameExpr):
+            sym = ctx.api.lookup_qualified(
+                target.expr.name, target, suppress_errors=True
+            )
+        else:
+            continue
+
         if sym and sym.node:
             sym_type = get_proper_type(sym.type)
             if isinstance(sym_type, Instance):

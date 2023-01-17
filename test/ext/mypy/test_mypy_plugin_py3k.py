@@ -76,6 +76,10 @@ class MypyPluginTest(fixtures.TestBase):
                 shutil.copyfile(path, test_program)
                 args.append(test_program)
 
+            # I set this locally but for the suite here needs to be
+            # disabled
+            os.environ.pop("MYPY_FORCE_COLOR", None)
+
             result = api.run(args)
             return result
 
