@@ -70,7 +70,7 @@ class _PlainColumnGetter:
         state = base.instance_state(value)
         m = base._state_mapper(state)
 
-        key = [  # type: ignore
+        key = [
             m._get_state_attr_by_column(state, state.dict, col)
             for col in self._cols(m)
         ]
@@ -442,7 +442,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 def _mapped_collection_cls(
     keyfunc: Callable[[_KT], _KT], ignore_unpopulated_attribute: bool
 ) -> type[KeyFuncDict[_KT, _KT]]:
-    class _MKeyfuncMapped(KeyFuncDict):  # type: ignore
+    class _MKeyfuncMapped(KeyFuncDict[_KT, _KT]):
         def __init__(self) -> None:
             super().__init__(
                 keyfunc,
