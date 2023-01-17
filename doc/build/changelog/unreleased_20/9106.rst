@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9106
+
+    Fixed regression where psycopg3 changed an API call as of version 3.1.8 to
+    expect a specific object type that was previously not enforced, breaking
+    connectivity for the psycopg3 dialect.

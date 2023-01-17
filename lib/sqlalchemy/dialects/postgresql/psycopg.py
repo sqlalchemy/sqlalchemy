@@ -339,7 +339,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
     def _type_info_fetch(self, connection, name):
         from psycopg.types import TypeInfo
 
-        return TypeInfo.fetch(connection.connection, name)
+        return TypeInfo.fetch(connection.connection.driver_connection, name)
 
     def initialize(self, connection):
         super().initialize(connection)
@@ -717,7 +717,7 @@ class PGDialectAsync_psycopg(PGDialect_psycopg):
         from psycopg.types import TypeInfo
 
         adapted = connection.connection
-        return adapted.await_(TypeInfo.fetch(adapted._connection, name))
+        return adapted.await_(TypeInfo.fetch(adapted.driver_connection, name))
 
     def _do_isolation_level(self, connection, autocommit, isolation_level):
         connection.set_autocommit(autocommit)
