@@ -7,10 +7,12 @@ Do not edit manually, any change will be lost.
 
 from __future__ import annotations
 
+import collections.abc
 import dataclasses
 import datetime
 from decimal import Decimal
 import enum
+import typing
 from typing import Any
 from typing import ClassVar
 from typing import Dict
@@ -702,6 +704,48 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 Element.__table__.c.id
             )
         )
+
+    @testing.combinations(
+        (collections.abc.Sequence, (str,), testing.requires.python310),
+        (collections.abc.MutableSequence, (str,), testing.requires.python310),
+        (collections.abc.Mapping, (str, str), testing.requires.python310),
+        (
+            collections.abc.MutableMapping,
+            (str, str),
+            testing.requires.python310,
+        ),
+        (typing.Mapping, (str, str), testing.requires.python310),
+        (typing.MutableMapping, (str, str), testing.requires.python310),
+        (typing.Sequence, (str,)),
+        (typing.MutableSequence, (str,)),
+        (list, (str,), testing.requires.python310),
+        (
+            List,
+            (str,),
+        ),
+        (dict, (str, str), testing.requires.python310),
+        (
+            Dict,
+            (str, str),
+        ),
+        id_="sa",
+    )
+    def test_extract_generic_from_pep593(self, container_typ, args):
+        """test #9099"""
+
+        global TestType
+        TestType = Annotated[container_typ[args], 0]
+
+        class Base(DeclarativeBase):
+            type_annotation_map = {TestType: JSON()}
+
+        class MyClass(Base):
+            __tablename__ = "my_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[TestType] = mapped_column()
+
+        is_(MyClass.__table__.c.data.type._type_affinity, JSON)
 
     @testing.combinations(
         ("default", lambda ctx: 10),
@@ -1515,6 +1559,94 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "relationship 'bs' expects a class or a mapper argument",
         ):
             registry.configure()
+
+    @testing.variation(
+        "datatype",
+        [
+            "typing_sequence",
+            ("collections_sequence", testing.requires.python310),
+            "typing_mutable_sequence",
+            ("collections_mutable_sequence", testing.requires.python310),
+        ],
+    )
+    @testing.variation("include_explicit", [True, False])
+    def test_relationship_abstract_cls_error(
+        self, decl_base, datatype, include_explicit
+    ):
+        """test #9100"""
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[str]
+
+        if include_explicit:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+                # note this can be done more succinctly by assigning to
+                # an interim type, however making it explicit here
+                # allows us to further test de-stringifying of these
+                # collection types
+                if datatype.typing_sequence:
+                    bs: Mapped[typing.Sequence[B]] = relationship(
+                        collection_class=list
+                    )
+                elif datatype.collections_sequence:
+                    bs: Mapped[collections.abc.Sequence[B]] = relationship(
+                        collection_class=list
+                    )
+                elif datatype.typing_mutable_sequence:
+                    bs: Mapped[typing.MutableSequence[B]] = relationship(
+                        collection_class=list
+                    )
+                elif datatype.collections_mutable_sequence:
+                    bs: Mapped[
+                        collections.abc.MutableSequence[B]
+                    ] = relationship(collection_class=list)
+                else:
+                    datatype.fail()
+
+            decl_base.registry.configure()
+            self.assert_compile(
+                select(A).join(A.bs),
+                "SELECT a.id FROM a JOIN b ON a.id = b.a_id",
+            )
+        else:
+            with expect_raises_message(
+                sa_exc.ArgumentError,
+                r"Collection annotation type "
+                r".*Sequence.* cannot be "
+                r"instantiated; please provide an explicit "
+                r"'collection_class' parameter \(e.g. list, set, etc.\) to "
+                r"the relationship\(\) function to accompany this annotation",
+            ):
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id: Mapped[int] = mapped_column(primary_key=True)
+
+                    if datatype.typing_sequence:
+                        bs: Mapped[typing.Sequence[B]] = relationship()
+                    elif datatype.collections_sequence:
+                        bs: Mapped[
+                            collections.abc.Sequence[B]
+                        ] = relationship()
+                    elif datatype.typing_mutable_sequence:
+                        bs: Mapped[typing.MutableSequence[B]] = relationship()
+                    elif datatype.collections_mutable_sequence:
+                        bs: Mapped[
+                            collections.abc.MutableSequence[B]
+                        ] = relationship()
+                    else:
+                        datatype.fail()
+
+                decl_base.registry.configure()
 
     def test_14_style_anno_accepted_w_allow_unmapped(self):
         """test for #8692"""

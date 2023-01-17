@@ -97,8 +97,12 @@ class GenericProtocol(Protocol[_T]):
     __args__: Tuple[_AnnotationScanType, ...]
     __origin__: Type[_T]
 
-    def copy_with(self, params: Tuple[_AnnotationScanType, ...]) -> Type[_T]:
-        ...
+    # Python's builtin _GenericAlias has this method, however builtins like
+    # list, dict, etc. do not, even though they have ``__origin__`` and
+    # ``__args__``
+    #
+    # def copy_with(self, params: Tuple[_AnnotationScanType, ...]) -> Type[_T]:
+    #     ...
 
 
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -158,8 +162,19 @@ def de_stringify_annotation(
             for elem in annotation.__args__
         )
 
-        return annotation.copy_with(elements)
+        return _copy_generic_annotation_with(annotation, elements)
     return annotation  # type: ignore
+
+
+def _copy_generic_annotation_with(
+    annotation: GenericProtocol[_T], elements: Tuple[_AnnotationScanType, ...]
+) -> Type[_T]:
+    if hasattr(annotation, "copy_with"):
+        # List, Dict, etc. real generics
+        return annotation.copy_with(elements)  # type: ignore
+    else:
+        # Python builtins list, dict, etc.
+        return annotation.__origin__[elements]  # type: ignore
 
 
 def eval_expression(expression: str, module_name: str) -> Any:
