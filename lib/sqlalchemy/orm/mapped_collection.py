@@ -14,6 +14,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
+from . import base
 from .collections import collection
 from .. import exc as sa_exc
 from .. import util
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from typing import Tuple
     from typing import Union
 
-    from . import base
     from . import InstrumentedAttribute
     from . import Mapper
     from ..sql.elements import KeyedColumnElement
