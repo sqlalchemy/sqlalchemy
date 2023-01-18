@@ -1161,7 +1161,7 @@ class LazyLoader(
                     self,
                     loadopt,
                     loadopt._generate_extra_criteria(context)
-                    if loadopt._extra_criteria
+                    if loadopt and loadopt._extra_criteria
                     else None,
                 ),
                 key,
