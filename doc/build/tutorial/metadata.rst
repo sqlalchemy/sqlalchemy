@@ -53,7 +53,7 @@ constructed programmatically, either directly by using the
 option to load some or all table information from an existing database,
 called :term:`reflection`.
 
-.. note:  the word "simply" is used below.  While I dont like this word, I am
+.. comment:  the word "simply" is used below.  While I dont like this word, I am
    using it here to stress that creating the MetaData directly will not
    introduce complexity (as long as one knows to associate it w/ declarative
    base)
