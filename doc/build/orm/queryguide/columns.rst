@@ -775,7 +775,7 @@ The :func:`.query_expression` mapping has these caveats:
         .execution_options(populate_existing=True)
     ).first()
 
-* The :func:`_orm.with_expression` SQL expression **is lost when when the object is
+* The :func:`_orm.with_expression` SQL expression **is lost when the object is
   expired**.  Once the object is expired, either via :meth:`.Session.expire`
   or via the expire_on_commit behavior of :meth:`.Session.commit`, the SQL
   expression and its value is no longer associated with the attribute and will
