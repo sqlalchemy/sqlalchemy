@@ -2885,10 +2885,6 @@ class Engine(
     :class:`~sqlalchemy.engine.interfaces.Dialect` together to provide a
     source of database connectivity and behavior.
 
-    This is the **SQLAlchemy 1.x version** of :class:`_engine.Engine`.  For
-    the :term:`2.0 style` version, which includes  some API differences,
-    see :class:`_engine.Engine`.
-
     An :class:`_engine.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.
 
