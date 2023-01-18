@@ -16,19 +16,19 @@ combinatoric generated code approach.
 .. versionadded:: 2.0
 
 """
+# mypy: ignore-errors
+
 from __future__ import annotations
 
-from argparse import ArgumentParser
 import importlib
 import os
 from pathlib import Path
 import re
-import shutil
 import sys
 from tempfile import NamedTemporaryFile
 import textwrap
 
-from sqlalchemy.util.langhelpers import console_scripts
+from sqlalchemy.util.tool_support import code_writer_cmd
 
 is_posix = os.name == "posix"
 
@@ -36,13 +36,15 @@ is_posix = os.name == "posix"
 sys.path.append(str(Path(__file__).parent.parent))
 
 
-def process_module(modname: str, filename: str) -> str:
+def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
 
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
     with NamedTemporaryFile(
-        mode="w", delete=False, suffix=".py", dir=Path(filename).parent
+        mode="w",
+        delete=False,
+        suffix=".py",
     ) as buf, open(filename) as orig_py:
         indent = ""
         in_block = False
@@ -64,7 +66,7 @@ def process_module(modname: str, filename: str) -> str:
                 start_index = int(m.group(4))
                 end_index = int(m.group(5))
 
-                sys.stderr.write(
+                cmd.write_status(
                     f"Generating {start_index}-{end_index} overloads "
                     f"attributes for "
                     f"class {'self.' if use_self else ''}{current_fnname} "
@@ -111,42 +113,24 @@ def {current_fnname}(
     return buf.name
 
 
-def run_module(modname, stdout):
+def run_module(modname: str, cmd: code_writer_cmd) -> None:
 
-    sys.stderr.write(f"importing module {modname}\n")
+    cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
-    filename = destination_path = mod.__file__
-    assert filename is not None
+    destination_path = mod.__file__
+    assert destination_path is not None
 
-    tempfile = process_module(modname, filename)
+    tempfile = process_module(modname, destination_path, cmd)
 
-    ignore_output = stdout
-
-    console_scripts(
-        str(tempfile),
-        {"entrypoint": "zimports"},
-        ignore_output=ignore_output,
-    )
-
-    console_scripts(
-        str(tempfile),
-        {"entrypoint": "black"},
-        ignore_output=ignore_output,
-    )
-
-    if stdout:
-        with open(tempfile) as tf:
-            print(tf.read())
-        os.unlink(tempfile)
-    else:
-        sys.stderr.write(f"Writing {destination_path}...\n")
-        shutil.move(tempfile, destination_path)
+    cmd.run_zimports(tempfile)
+    cmd.run_black(tempfile)
+    cmd.write_output_file_from_tempfile(tempfile, destination_path)
 
 
-def main(args):
+def main(cmd: code_writer_cmd) -> None:
     for modname in entries:
-        if args.module in {"all", modname}:
-            run_module(modname, args.stdout)
+        if cmd.args.module in {"all", modname}:
+            run_module(modname, cmd)
 
 
 entries = [
@@ -158,17 +142,16 @@ entries = [
 ]
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument(
-        "--module",
-        choices=entries + ["all"],
-        default="all",
-        help="Which file to generate. Default is to regenerate all files",
-    )
-    parser.add_argument(
-        "--stdout",
-        action="store_true",
-        help="Write to stdout instead of saving to file",
-    )
-    args = parser.parse_args()
-    main(args)
+
+    cmd = code_writer_cmd(__file__)
+
+    with cmd.add_arguments() as parser:
+        parser.add_argument(
+            "--module",
+            choices=entries + ["all"],
+            default="all",
+            help="Which file to generate. Default is to regenerate all files",
+        )
+
+    with cmd.run_program():
+        main(cmd)

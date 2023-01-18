@@ -4,7 +4,10 @@ this script parses the documentation files and runs black on the code blocks
 that it extracts from the documentation.
 
 .. versionadded:: 2.0
+
 """
+# mypy: ignore-errors
+
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Iterator

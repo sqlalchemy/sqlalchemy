@@ -877,6 +877,7 @@ class scoped_session(Generic[_S]):
         with_for_update: Optional[ForUpdateArg] = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
     ) -> Optional[_O]:
         r"""Return an instance based on the given primary key identifier,
         or ``None`` if not found.
@@ -975,6 +976,13 @@ class scoped_session(Generic[_S]):
             :ref:`orm_queryguide_execution_options` - ORM-specific execution
             options
 
+        :param bind_arguments: dictionary of additional arguments to determine
+         the bind.  May include "mapper", "bind", or other custom arguments.
+         Contents of this dictionary are passed to the
+         :meth:`.Session.get_bind` method.
+
+         .. versionadded: 2.0.0rc1
+
         :return: The object instance, or ``None``.
 
 
@@ -988,15 +996,18 @@ class scoped_session(Generic[_S]):
             with_for_update=with_for_update,
             identity_token=identity_token,
             execution_options=execution_options,
+            bind_arguments=bind_arguments,
         )
 
     def get_bind(
         self,
         mapper: Optional[_EntityBindKey[_O]] = None,
+        *,
         clause: Optional[ClauseElement] = None,
         bind: Optional[_SessionBind] = None,
         _sa_skip_events: Optional[bool] = None,
         _sa_skip_for_implicit_returning: bool = False,
+        **kw: Any,
     ) -> Union[Engine, Connection]:
         r"""Return a "bind" to which this :class:`.Session` is bound.
 
@@ -1082,6 +1093,7 @@ class scoped_session(Generic[_S]):
             bind=bind,
             _sa_skip_events=_sa_skip_events,
             _sa_skip_for_implicit_returning=_sa_skip_for_implicit_returning,
+            **kw,
         )
 
     def is_modified(

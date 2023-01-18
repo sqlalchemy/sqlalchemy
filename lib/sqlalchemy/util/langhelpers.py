@@ -19,7 +19,6 @@ import hashlib
 import inspect
 import itertools
 import operator
-import os
 import re
 import sys
 import textwrap
@@ -34,7 +33,6 @@ from typing import Generic
 from typing import Iterator
 from typing import List
 from typing import Mapping
-from typing import no_type_check
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -2180,45 +2178,3 @@ def has_compiled_ext(raise_=False):
         )
     else:
         return False
-
-
-@no_type_check
-def console_scripts(
-    path: str, options: dict, ignore_output: bool = False
-) -> None:
-
-    import subprocess
-    import shlex
-    from pathlib import Path
-
-    is_posix = os.name == "posix"
-
-    entrypoint_name = options["entrypoint"]
-
-    for entry in compat.importlib_metadata_get("console_scripts"):
-        if entry.name == entrypoint_name:
-            impl = entry
-            break
-    else:
-        raise Exception(
-            f"Could not find entrypoint console_scripts.{entrypoint_name}"
-        )
-    cmdline_options_str = options.get("options", "")
-    cmdline_options_list = shlex.split(cmdline_options_str, posix=is_posix) + [
-        path
-    ]
-
-    kw = {}
-    if ignore_output:
-        kw["stdout"] = kw["stderr"] = subprocess.DEVNULL
-
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import %s; %s.%s()" % (impl.module, impl.module, impl.attr),
-        ]
-        + cmdline_options_list,
-        cwd=Path(__file__).parent.parent,
-        **kw,
-    )
