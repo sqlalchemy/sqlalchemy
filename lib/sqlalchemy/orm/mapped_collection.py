@@ -36,6 +36,8 @@ if TYPE_CHECKING:
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 
+_AnyCallable = TypeVar("_AnyCallable", bound=Callable[[Any], Any])
+
 
 class _PlainColumnGetter:
     """Plain column getter, stores collection of Column objects
@@ -70,14 +72,14 @@ class _PlainColumnGetter:
         state = base.instance_state(value)
         m = base._state_mapper(state)
 
-        key = [
+        key: List[_KT] = [
             m._get_state_attr_by_column(state, state.dict, col)
             for col in self._cols(m)
         ]
         if self.composite:
             return tuple(key)
         else:
-            return key[0]  # type: ignore
+            return key[0]
 
 
 class _SerializableColumnGetterV2(_PlainColumnGetter):
@@ -256,7 +258,7 @@ def attribute_keyed_dict(
 
 
 def keyfunc_mapping(
-    keyfunc: Callable[[_KT], _KT],
+    keyfunc: _AnyCallable,
     *,
     ignore_unpopulated_attribute: bool = False,
 ) -> Type[KeyFuncDict[_KT, Any]]:
@@ -332,7 +334,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     def __init__(
         self,
-        keyfunc: Callable[[_KT], _KT],
+        keyfunc: _AnyCallable,
         *,
         ignore_unpopulated_attribute: bool = False,
     ) -> None:
@@ -354,7 +356,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     @classmethod
     def _unreduce(
-        cls, keyfunc: Callable[[_KT], _KT], values: Dict[_KT, _KT]
+        cls, keyfunc: _AnyCallable, values: Dict[_KT, _KT]
     ) -> "KeyFuncDict[_KT, _KT]":
         mp: KeyFuncDict[_KT, _KT] = KeyFuncDict(keyfunc)
         mp.update(values)
@@ -440,7 +442,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
 
 def _mapped_collection_cls(
-    keyfunc: Callable[[_KT], _KT], ignore_unpopulated_attribute: bool
+    keyfunc: _AnyCallable, ignore_unpopulated_attribute: bool
 ) -> type[KeyFuncDict[_KT, _KT]]:
     class _MKeyfuncMapped(KeyFuncDict[_KT, _KT]):
         def __init__(self) -> None:
