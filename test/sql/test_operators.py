@@ -1768,13 +1768,25 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(op2, "mytable.myid hoho :myid_1 lala :param_1")
         self.assert_compile(op3, "(mytable.myid hoho :myid_1) lala :param_1")
 
-    def test_bitwise_xor_precedence(self):
-        op1 = self.table1.c.myid.bitwise_xor
-        op2 = op1(5).op("lala", precedence=6)(4)
-        op3 = op1(5).op("lala", precedence=8)(4)
+    @testing.combinations(
+        ("xor", operators.bitwise_xor_op, "^"),
+        ("or", operators.bitwise_or_op, "|"),
+        ("and", operators.bitwise_and_op, "&"),
+        ("lshift", operators.bitwise_lshift_op, "<<"),
+        ("rshift", operators.bitwise_rshift_op, ">>"),
+        id_="iaa",
+    )
+    def test_bitwise_op_precedence(self, py_op, sql_op):
+        c = self.table1.c.myid
+        op1 = py_op(c, 5).op("lala", precedence=6)(4)
+        op2 = py_op(c, 5).op("lala", precedence=8)(4)
 
-        self.assert_compile(op2, "mytable.myid ^ :myid_1 lala :param_1")
-        self.assert_compile(op3, "(mytable.myid ^ :myid_1) lala :param_1")
+        self.assert_compile(
+            op1, f"mytable.myid {sql_op} :myid_1 lala :param_1"
+        )
+        self.assert_compile(
+            op2, f"(mytable.myid {sql_op} :myid_1) lala :param_1"
+        )
 
     def test_is_eq_precedence_flat(self):
         self.assert_compile(
