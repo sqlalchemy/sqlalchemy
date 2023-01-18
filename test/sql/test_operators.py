@@ -4518,6 +4518,16 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_compile_not(self):
+        c = column("c", Integer)
+
+        self.assert_compile(
+            select(operators.bitwise_not_op(c)),
+            "SELECT ~c",
+        )
+
     @testing.combinations(
         ("xor", operators.bitwise_xor_op, "^"),
         ("or", operators.bitwise_or_op, "|"),
