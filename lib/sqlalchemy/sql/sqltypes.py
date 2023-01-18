@@ -4,7 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: allow-untyped-defs, allow-untyped-calls
+
 
 """SQL specific types.
 
@@ -89,7 +89,7 @@ class HasExpressionLookup(TypeEngineMixin):
     """
 
     @property
-    def _expression_adaptations(self):
+    def _expression_adaptations(self) -> None:
         raise NotImplementedError()
 
     class Comparator(TypeEngine.Comparator[_CT]):
