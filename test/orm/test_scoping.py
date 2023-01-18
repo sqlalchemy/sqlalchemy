@@ -160,6 +160,7 @@ class ScopedSessionTest(fixtures.MappedTest):
                     with_for_update=None,
                     identity_token=None,
                     execution_options=util.EMPTY_DICT,
+                    bind_arguments=None,
                 ),
             ],
         )
