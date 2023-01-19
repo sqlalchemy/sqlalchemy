@@ -10,7 +10,84 @@
 
 .. changelog::
     :version: 2.0.0rc3
-    :include_notes_from: unreleased_20
+    :released: January 18, 2023
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9096
+
+        Fixes to the annotations within the ``sqlalchemy.ext.hybrid`` extension for
+        more effective typing of user-defined methods. The typing now uses
+        :pep:`612` features, now supported by recent versions of Mypy, to maintain
+        argument signatures for :class:`.hybrid_method`. Return values for hybrid
+        methods are accepted as SQL expressions in contexts such as
+        :meth:`_sql.Select.where` while still supporting SQL methods.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9099
+
+        Fixed issue where using a pep-593 ``Annotated`` type in the
+        :paramref:`_orm.registry.type_annotation_map` which itself contained a
+        generic plain container or ``collections.abc`` type (e.g. ``list``,
+        ``dict``, ``collections.abc.Sequence``, etc. ) as the target type would
+        produce an internal error when the ORM were trying to interpret the
+        ``Annotated`` instance.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9100
+
+        Added an error message when a :func:`_orm.relationship` is mapped against
+        an abstract container type, such as ``Mapped[Sequence[B]]``, without
+        providing the :paramref:`_orm.relationship.container_class` parameter which
+        is necessary when the type is abstract. Previously the the abstract
+        container would attempt to be instantiated at a later step and fail.
+
+
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 9060
+
+        Added a new parameter to :class:`_orm.Mapper` called
+        :paramref:`_orm.Mapper.polymorphic_abstract`. The purpose of this directive
+        is so that the ORM will not consider the class to be instantiated or loaded
+        directly, only subclasses. The actual effect is that the
+        :class:`_orm.Mapper` will prevent direct instantiation of instances
+        of the class and will expect that the class does not have a distinct
+        polymorphic identity configured.
+
+        In practice, the class that is mapped with
+        :paramref:`_orm.Mapper.polymorphic_abstract` can be used as the target of a
+        :func:`_orm.relationship` as well as be used in queries; subclasses must of
+        course include polymorphic identities in their mappings.
+
+        The new parameter is automatically applied to classes that subclass
+        the :class:`.AbstractConcreteBase` class, as this class is not intended
+        to be instantiated.
+
+        .. seealso::
+
+            :ref:`orm_inheritance_abstract_poly`
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9106
+
+        Fixed regression where psycopg3 changed an API call as of version 3.1.8 to
+        expect a specific object type that was previously not enforced, breaking
+        connectivity for the psycopg3 dialect.
+
+    .. change::
+        :tags: oracle, usecase
+        :tickets: 9086
+
+        Added support for the Oracle SQL type ``TIMESTAMP WITH LOCAL TIME ZONE``,
+        using a newly added Oracle-specific :class:`_oracle.TIMESTAMP` datatype.
 
 .. changelog::
     :version: 2.0.0rc2
