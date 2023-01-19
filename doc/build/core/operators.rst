@@ -590,6 +590,60 @@ Arithmetic Operators
   ..
 
 
+Bitwise Operators
+^^^^^^^^^^^^^^^^^
+
+Bitwise operator functions provide uniform access to bitwise operators across different backends.
+
+* :meth:`_sql.ColumnOperators.bitwise_not`::
+
+    >>> from sqlalchemy import bitwise_not
+    >>> print(bitwise_not(column("x")))
+    ~x
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_and`::
+
+    >>> from sqlalchemy import bitwise_and
+    >>> print(column("x").bitwise_and(5))
+    x & :x_1
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_or`::
+
+    >>> from sqlalchemy import bitwise_or
+    >>> print(column("x").bitwise_or(5))
+    x | :x_1
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_xor`::
+
+    >>> from sqlalchemy import bitwise_xor
+    >>> print(column("x").bitwise_xor(5))
+    x ^ :x_1
+
+  Note that for PostgreSQL, which uses "#" to represent bitwise XOR, this function will produce an appropriate result::
+
+    >>> from sqlalchemy import bitwise_xor
+    >>> print(column("x").bitwise_xor(5))
+    x # :x_1
+  
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_rshift`, :meth:`_sql.ColumnOperators.bitwise_lshift`::
+
+    >>> from sqlalchemy import bitwise_rshift, bitwise_lshift
+    >>> print(column("x").bitwise_rshift(5))
+    x >> :x_1
+    >>> print(column("x").bitwise_lshift(5))
+    x << :x_1
+
+  ..
+
+
 Using Conjunctions and Negations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
