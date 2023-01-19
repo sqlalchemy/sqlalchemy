@@ -2,6 +2,7 @@ import collections.abc as collections_abc
 import datetime
 import operator
 import pickle
+import re
 
 from sqlalchemy import and_
 from sqlalchemy import between
@@ -1401,19 +1402,33 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=default.DefaultDialect(supports_native_boolean=False),
         )
 
-    @combinations((and_, "and_", "True"), (or_, "or_", "False"))
-    def test_empty_clauses(self, op, str_op, str_continue):
+    @combinations(
+        (and_, "and_", r"true", "True"),
+        (or_, "or_", r"false", "False"),
+    )
+    def test_empty_clauses(self, op, str_op, str_continue, str_continue_2):
         # these warning classes will change to ArgumentError when the
         # deprecated behavior is disabled
 
         with expect_deprecated(
-            r"Invoking %(str_op)s\(\) without arguments is deprecated, and "
-            r"will be disallowed in a future release.   For an empty "
-            r"%(str_op)s\(\) construct, use "
-            r"%(str_op)s\(%(str_continue)s, \*args\)\."
-            % {"str_op": str_op, "str_continue": str_continue}
+            re.escape(
+                f"Invoking {str_op}() without arguments is deprecated, and "
+                "will be disallowed in a future release.   For an empty "
+                f"{str_op}() construct, use "
+                f"'{str_op}({str_continue}(), *args)' or "
+                f"'{str_op}({str_continue_2}, *args)'."
+            )
         ):
             op()
+
+    def test_empty_construct_for_whereclause(self):
+        eq_(BooleanClauseList._construct_for_whereclause(()), None)
+
+    def test_non_empty_construct_for_whereclause(self):
+        self.assert_compile(
+            BooleanClauseList._construct_for_whereclause([column("q") == 5]),
+            "q = :q_1",
+        )
 
     def test_empty_and_raw(self):
         self.assert_compile(
