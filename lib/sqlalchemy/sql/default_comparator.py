@@ -276,7 +276,7 @@ def _neg_impl(
 def _bitwise_not_impl(
     expr: ColumnElement[Any], op: OperatorType, **kw: Any
 ) -> ColumnElement[Any]:
-    """Binary negation implementation"""
+    """See :meth:`.ColumnOperators.bitwise_not`."""
 
     return UnaryExpression(
         expr, operator=operators.bitwise_not_op, type_=expr.type
