@@ -61,9 +61,6 @@ _closure_per_cache_key: _LambdaCacheType = util.LRUCache(1000)
 
 
 class _LambdaType(Protocol):
-    __code__: CodeType
-    __closure__: Iterable[Tuple[Any, Any]]
-
     def __call__(self, *arg: Any, **kw: Any) -> ClauseElement:
         ...
 
