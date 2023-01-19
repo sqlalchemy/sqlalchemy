@@ -106,9 +106,9 @@ if typing.TYPE_CHECKING:
     from ..engine import Dialect
     from ..engine import Engine
     from ..engine.interfaces import _CoreMultiExecuteParams
-    from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
 
@@ -481,7 +481,7 @@ class ClauseElement(
         self,
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: CoreExecuteOptionsParameter,
     ) -> Result[Any]:
         if self.supports_execution:
             if TYPE_CHECKING:
@@ -496,7 +496,7 @@ class ClauseElement(
         self,
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: CoreExecuteOptionsParameter,
     ) -> Any:
         """an additional hook for subclasses to provide a different
         implementation for connection.scalar() vs. connection.execute().
