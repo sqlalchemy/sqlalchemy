@@ -4544,14 +4544,14 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("xor", operators.bitwise_xor_op, "^"),
         ("or", operators.bitwise_or_op, "|"),
         ("and", operators.bitwise_and_op, "&"),
-        ("not", operators.bitwise_not_op, "~"),
         ("lshift", operators.bitwise_lshift_op, "<<"),
         ("rshift", operators.bitwise_rshift_op, ">>"),
         id_="iaa",
     )
-    def test_default_compile(self, py_op, sql_op):
+    def test_compile_binary(self, py_op, sql_op):
         c1 = column("c1", Integer)
         c2 = column("c2", Integer)
+
         self.assert_compile(
             select(py_op(c1, c2)),
             f"SELECT c1 {sql_op} c2 AS anon_1",
