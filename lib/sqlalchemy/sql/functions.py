@@ -910,6 +910,155 @@ class _FunctionGenerator:
             self.__names[-1], packagenames=tuple(self.__names[0:-1]), *c, **o
         )
 
+    if TYPE_CHECKING:
+
+        # START GENERATED FUNCTION ACCESSORS
+
+        # code within this block is **programmatically,
+        # statically generated** by tools/generate_sql_functions.py
+
+        @property
+        def ansifunction(self) -> Type[AnsiFunction[Any]]:
+            ...
+
+        @property
+        def array_agg(self) -> Type[array_agg[Any]]:
+            ...
+
+        @property
+        def cast(self) -> Type[Cast[Any]]:
+            ...
+
+        @property
+        def char_length(self) -> Type[char_length]:
+            ...
+
+        @property
+        def coalesce(self) -> Type[coalesce[Any]]:
+            ...
+
+        @property
+        def concat(self) -> Type[concat]:
+            ...
+
+        @property
+        def count(self) -> Type[count]:
+            ...
+
+        @property
+        def cube(self) -> Type[cube[Any]]:
+            ...
+
+        @property
+        def cume_dist(self) -> Type[cume_dist[Any]]:
+            ...
+
+        @property
+        def current_date(self) -> Type[current_date]:
+            ...
+
+        @property
+        def current_time(self) -> Type[current_time]:
+            ...
+
+        @property
+        def current_timestamp(self) -> Type[current_timestamp]:
+            ...
+
+        @property
+        def current_user(self) -> Type[current_user]:
+            ...
+
+        @property
+        def dense_rank(self) -> Type[dense_rank]:
+            ...
+
+        @property
+        def extract(self) -> Type[Extract]:
+            ...
+
+        @property
+        def grouping_sets(self) -> Type[grouping_sets[Any]]:
+            ...
+
+        @property
+        def localtime(self) -> Type[localtime]:
+            ...
+
+        @property
+        def localtimestamp(self) -> Type[localtimestamp]:
+            ...
+
+        @property
+        def max(self) -> Type[max[Any]]:  # noqa: A001
+            ...
+
+        @property
+        def min(self) -> Type[min[Any]]:  # noqa: A001
+            ...
+
+        @property
+        def mode(self) -> Type[mode[Any]]:
+            ...
+
+        @property
+        def next_value(self) -> Type[next_value]:
+            ...
+
+        @property
+        def now(self) -> Type[now]:
+            ...
+
+        @property
+        def orderedsetagg(self) -> Type[OrderedSetAgg[Any]]:
+            ...
+
+        @property
+        def percent_rank(self) -> Type[percent_rank[Any]]:
+            ...
+
+        @property
+        def percentile_cont(self) -> Type[percentile_cont[Any]]:
+            ...
+
+        @property
+        def percentile_disc(self) -> Type[percentile_disc[Any]]:
+            ...
+
+        @property
+        def random(self) -> Type[random]:
+            ...
+
+        @property
+        def rank(self) -> Type[rank]:
+            ...
+
+        @property
+        def returntypefromargs(self) -> Type[ReturnTypeFromArgs[Any]]:
+            ...
+
+        @property
+        def rollup(self) -> Type[rollup[Any]]:
+            ...
+
+        @property
+        def session_user(self) -> Type[session_user]:
+            ...
+
+        @property
+        def sum(self) -> Type[sum[Any]]:  # noqa: A001
+            ...
+
+        @property
+        def sysdate(self) -> Type[sysdate]:
+            ...
+
+        @property
+        def user(self) -> Type[user]:
+            ...
+
+        # END GENERATED FUNCTION ACCESSORS
+
 
 func = _FunctionGenerator()
 func.__doc__ = _FunctionGenerator.__doc__
