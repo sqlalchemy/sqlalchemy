@@ -863,7 +863,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def in_(
             self,
             other: Union[
-                Sequence[Any], BindParameter[Any], roles.InElementRole
+                Iterable[Any], BindParameter[Any], roles.InElementRole
             ],
         ) -> BinaryExpression[bool]:
             ...
@@ -871,7 +871,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def not_in(
             self,
             other: Union[
-                Sequence[Any], BindParameter[Any], roles.InElementRole
+                Iterable[Any], BindParameter[Any], roles.InElementRole
             ],
         ) -> BinaryExpression[bool]:
             ...
@@ -2944,16 +2944,39 @@ class BooleanClauseList(ExpressionClauseList[bool]):
         operator: OperatorType,
         continue_on: Any,
         skip_on: Any,
-        *clauses: _ColumnExpressionArgument[Any],
+        initial_clause: Any = _NoArg.NO_ARG,
+        *clauses: Any,
         **kw: Any,
     ) -> ColumnElement[Any]:
+
+        if initial_clause is _NoArg.NO_ARG:
+            # no elements period.  deprecated use case.  return an empty
+            # ClauseList construct that generates nothing unless it has
+            # elements added to it.
+            name = operator.__name__
+
+            util.warn_deprecated(
+                f"Invoking {name}() without arguments is deprecated, and "
+                f"will be disallowed in a future release.   For an empty "
+                f"""{name}() construct, use '{name}({
+                    'true()' if continue_on is True_._singleton else 'false()'
+                }, *args)' """
+                f"""or '{name}({
+                    'True' if continue_on is True_._singleton else 'False'
+                }, *args)'.""",
+                version="1.4",
+            )
+            return cls._construct_raw(operator)  # type: ignore[no-any-return]
+
         lcc, convert_clauses = cls._process_clauses_for_boolean(
             operator,
             continue_on,
             skip_on,
             [
                 coercions.expect(roles.WhereHavingRole, clause)
-                for clause in util.coerce_generator_arg(clauses)
+                for clause in util.coerce_generator_arg(
+                    (initial_clause,) + clauses
+                )
             ],
         )
 
@@ -2969,27 +2992,11 @@ class BooleanClauseList(ExpressionClauseList[bool]):
             )
 
             return cls._construct_raw(operator, flattened_clauses)  # type: ignore # noqa: E501
-        elif lcc == 1:
+        else:
+            assert lcc
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
             return convert_clauses[0]  # type: ignore[no-any-return] # noqa: E501
-        else:
-            # no elements period.  deprecated use case.  return an empty
-            # ClauseList construct that generates nothing unless it has
-            # elements added to it.
-            util.warn_deprecated(
-                "Invoking %(name)s() without arguments is deprecated, and "
-                "will be disallowed in a future release.   For an empty "
-                "%(name)s() construct, use %(name)s(%(continue_on)s, *args)."
-                % {
-                    "name": operator.__name__,
-                    "continue_on": "True"
-                    if continue_on is True_._singleton
-                    else "False",
-                },
-                version="1.4",
-            )
-            return cls._construct_raw(operator)  # type: ignore[no-any-return] # noqa: E501
 
     @classmethod
     def _construct_for_whereclause(
@@ -3035,26 +3042,42 @@ class BooleanClauseList(ExpressionClauseList[bool]):
 
     @classmethod
     def and_(
-        cls, *clauses: _ColumnExpressionArgument[bool]
+        cls,
+        initial_clause: Union[
+            Literal[True], _ColumnExpressionArgument[bool], _NoArg
+        ] = _NoArg.NO_ARG,
+        *clauses: _ColumnExpressionArgument[bool],
     ) -> ColumnElement[bool]:
         r"""Produce a conjunction of expressions joined by ``AND``.
 
         See :func:`_sql.and_` for full documentation.
         """
         return cls._construct(
-            operators.and_, True_._singleton, False_._singleton, *clauses
+            operators.and_,
+            True_._singleton,
+            False_._singleton,
+            initial_clause,
+            *clauses,
         )
 
     @classmethod
     def or_(
-        cls, *clauses: _ColumnExpressionArgument[bool]
+        cls,
+        initial_clause: Union[
+            Literal[False], _ColumnExpressionArgument[bool], _NoArg
+        ] = _NoArg.NO_ARG,
+        *clauses: _ColumnExpressionArgument[bool],
     ) -> ColumnElement[bool]:
         """Produce a conjunction of expressions joined by ``OR``.
 
         See :func:`_sql.or_` for full documentation.
         """
         return cls._construct(
-            operators.or_, False_._singleton, True_._singleton, *clauses
+            operators.or_,
+            False_._singleton,
+            True_._singleton,
+            initial_clause,
+            *clauses,
         )
 
     @property

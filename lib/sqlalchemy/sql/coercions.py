@@ -311,7 +311,7 @@ def expect(
 
 @overload
 def expect(
-    role: Union[Type[roles.JoinTargetRole], Type[roles.OnClauseRole]],
+    role: Type[roles.JoinTargetRole],
     element: _JoinTargetProtocol,
     **kw: Any,
 ) -> _JoinTargetProtocol:

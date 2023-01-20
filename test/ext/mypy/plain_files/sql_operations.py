@@ -1,11 +1,15 @@
 import typing
 
+from sqlalchemy import and_
 from sqlalchemy import Boolean
 from sqlalchemy import column
+from sqlalchemy import false
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import true
 
 
 # builtin.pyi stubs define object.__eq__() as returning bool,  which
@@ -20,6 +24,28 @@ c1 = column("a", String)
 c2 = column("a", Integer)
 
 expr2 = c2.in_([1, 2, 3])
+
+expr2_set = c2.in_({1, 2, 3})
+
+expr2_gen = c2.in_((x for x in (1, 2, 3)))
+
+nexpr2 = c2.not_in([1, 2, 3])
+
+nexpr2_set = c2.not_in({1, 2, 3})
+
+nexpr2_gen = c2.not_in((x for x in (1, 2, 3)))
+
+short_cir1 = and_(True, c2 == 5)
+short_cir2 = or_(False, c2 == 5)
+
+short_cir3 = and_(true(), c2 == 5)
+short_cir4 = or_(false(), c2 == 5)
+
+# EXPECTED_MYPY: Missing positional argument "initial_clause" in call to "and_"
+no_empty_1 = and_()
+
+# EXPECTED_MYPY: Missing positional argument "initial_clause" in call to "or_"
+no_empty_2 = or_()
 
 expr3 = c2 / 5
 

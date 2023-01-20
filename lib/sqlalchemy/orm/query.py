@@ -28,6 +28,7 @@ from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -2856,10 +2857,10 @@ class Query(
         except sa_exc.NoResultFound:
             return None
 
-    def __iter__(self) -> Iterable[_T]:
+    def __iter__(self) -> Iterator[_T]:
         result = self._iter()
         try:
-            yield from result
+            yield from result  # type: ignore
         except GeneratorExit:
             # issue #8710 - direct iteration is not re-usable after
             # an iterable block is broken, so close the result

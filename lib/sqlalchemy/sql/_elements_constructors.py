@@ -16,6 +16,7 @@ from typing import Optional
 from typing import overload
 from typing import Sequence
 from typing import Tuple as typing_Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -112,7 +113,10 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
     return CollectionAggregate._create_all(expr)
 
 
-def and_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
+def and_(  # type: ignore[empty-body]
+    initial_clause: Union[Literal[True], _ColumnExpressionArgument[bool]],
+    *clauses: _ColumnExpressionArgument[bool],
+) -> ColumnElement[bool]:
     r"""Produce a conjunction of expressions joined by ``AND``.
 
     E.g.::
@@ -150,13 +154,15 @@ def and_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
     argument in order to be valid; a :func:`.and_` construct with no
     arguments is ambiguous.   To produce an "empty" or dynamically
     generated :func:`.and_`  expression, from a given list of expressions,
-    a "default" element of ``True`` should be specified::
+    a "default" element of :func:`_sql.true` (or just ``True``) should be
+    specified::
 
-        criteria = and_(True, *expressions)
+        from sqlalchemy import true
+        criteria = and_(true(), *expressions)
 
     The above expression will compile to SQL as the expression ``true``
     or ``1 = 1``, depending on backend, if no other expressions are
-    present.  If expressions are present, then the ``True`` value is
+    present.  If expressions are present, then the :func:`_sql.true` value is
     ignored as it does not affect the outcome of an AND expression that
     has other elements.
 
@@ -170,7 +176,13 @@ def and_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
         :func:`.or_`
 
     """
-    return BooleanClauseList.and_(*clauses)
+    ...
+
+
+if not TYPE_CHECKING:
+    # handle deprecated case which allows zero-arguments
+    def and_(*clauses):  # noqa: F811
+        return BooleanClauseList.and_(*clauses)
 
 
 def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
@@ -1251,7 +1263,10 @@ def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_nulls_last(column)
 
 
-def or_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
+def or_(  # type: ignore[empty-body]
+    initial_clause: Union[Literal[False], _ColumnExpressionArgument[bool]],
+    *clauses: _ColumnExpressionArgument[bool],
+) -> ColumnElement[bool]:
     """Produce a conjunction of expressions joined by ``OR``.
 
     E.g.::
@@ -1279,13 +1294,15 @@ def or_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
     argument in order to be valid; a :func:`.or_` construct with no
     arguments is ambiguous.   To produce an "empty" or dynamically
     generated :func:`.or_`  expression, from a given list of expressions,
-    a "default" element of ``False`` should be specified::
+    a "default" element of :func:`_sql.false` (or just ``False``) should be
+    specified::
 
-        or_criteria = or_(False, *expressions)
+        from sqlalchemy import false
+        or_criteria = or_(false(), *expressions)
 
     The above expression will compile to SQL as the expression ``false``
     or ``0 = 1``, depending on backend, if no other expressions are
-    present.  If expressions are present, then the ``False`` value is
+    present.  If expressions are present, then the :func:`_sql.false` value is
     ignored as it does not affect the outcome of an OR expression which
     has other elements.
 
@@ -1299,7 +1316,13 @@ def or_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
         :func:`.and_`
 
     """
-    return BooleanClauseList.or_(*clauses)
+    ...
+
+
+if not TYPE_CHECKING:
+    # handle deprecated case which allows zero-arguments
+    def or_(*clauses):  # noqa: F811
+        return BooleanClauseList.or_(*clauses)
 
 
 def over(

@@ -85,7 +85,8 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_deprecated(
             r"Invoking and_\(\) without arguments is deprecated, and "
             r"will be disallowed in a future release.   For an empty "
-            r"and_\(\) construct, use and_\(True, \*args\)"
+            r"and_\(\) construct, use 'and_\(true\(\), \*args\)' or "
+            r"'and_\(True, \*args\)'"
         ):
             self.assert_compile(or_(and_()), "")
 
