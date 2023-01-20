@@ -422,8 +422,8 @@ class ClauseElement(
 
     def _negate_in_binary(
         self: SelfClauseElement,
-        negated_op: Callable[..., Any],
-        original_op: Callable[..., Any],
+        negated_op: OperatorType,
+        original_op: OperatorType,
     ) -> SelfClauseElement:
         """a hook to allow the right side of a binary expression to respond
         to a negation of the binary expression.
@@ -1564,7 +1564,9 @@ class ColumnElement(
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
-    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         """Return True if the given column element compares to this one
         when targeting within a result row."""
 
@@ -2087,7 +2089,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         )
 
     def _negate_in_binary(
-        self, negated_op: Callable[..., Any], original_op: Callable[..., Any]
+        self, negated_op: OperatorType, original_op: OperatorType
     ) -> BindParameter[_T]:
         if self.expand_op is original_op:
             bind = self._clone()
@@ -4464,7 +4466,9 @@ class NamedColumn(KeyedColumnElement[_T]):
     name: str
     key: str
 
-    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         return (hasattr(other, "name") and self.name == other.name) or (
             hasattr(other, "_label") and self._label == other._label
         )
@@ -4671,7 +4675,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
-    def _negate(self) -> ColumnElement[_T]:
+    def _negate(self) -> ColumnElement[Any]:
         return self._apply_to_inner(self._element._negate)
 
     def _apply_to_inner(
