@@ -257,15 +257,15 @@ class Mapper(
           this argument is automatically passed as the declared class
           itself.
 
-        :param local_table: The :class:`_schema.Table` or other selectable
-           to which the class is mapped.  May be ``None`` if
-           this mapper inherits from another mapper using single-table
-           inheritance.   When using Declarative, this argument is
-           automatically passed by the extension, based on what
-           is configured via the ``__table__`` argument or via the
-           :class:`_schema.Table`
-           produced as a result of the ``__tablename__``
-           and :class:`_schema.Column` arguments present.
+        :param local_table: The :class:`_schema.Table` or other
+           :class:`_sql.FromClause` (i.e. selectable) to which the class is
+           mapped. May be ``None`` if this mapper inherits from another mapper
+           using single-table inheritance. When using Declarative, this
+           argument is automatically passed by the extension, based on what is
+           configured via the :attr:`_orm.DeclarativeBase.__table__` attribute
+           or via the :class:`_schema.Table` produced as a result of
+           the :attr:`_orm.DeclarativeBase.__tablename__` attribute being
+           present.
 
         :param polymorphic_abstract: Indicates this class will be mapped in a
             polymorphic hierarchy, but not directly instantiated. The class is

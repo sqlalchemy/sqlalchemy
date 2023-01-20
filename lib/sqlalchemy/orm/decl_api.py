@@ -709,8 +709,12 @@ class DeclarativeBase(
         """
 
         __table__: ClassVar[FromClause]
-        """The :class:`_schema.Table` to which a particular subclass is
+        """The :class:`_sql.FromClause` to which a particular subclass is
         mapped.
+
+        This is usually an instance of :class:`_schema.Table` but may also
+        refer to other kinds of :class:`_sql.FromClause` such as
+        :class:`_sql.Subquery`, depending on how the class is mapped.
 
         .. seealso::
 
@@ -818,8 +822,12 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
     """
 
     __table__: Optional[FromClause]
-    """The :class:`_schema.Table` to which a particular subclass is
+    """The :class:`_sql.FromClause` to which a particular subclass is
     mapped.
+
+    This is usually an instance of :class:`_schema.Table` but may also
+    refer to other kinds of :class:`_sql.FromClause` such as
+    :class:`_sql.Subquery`, depending on how the class is mapped.
 
     .. seealso::
 
