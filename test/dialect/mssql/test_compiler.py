@@ -599,20 +599,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkpositional=("bar",),
         )
 
-    def test_schema_single_token_bracketed(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            schema="[abc]",
-        )
-
-        self.assert_compile(
-            select(tbl),
-            "SELECT abc.test.id FROM abc.test",
-        )
-
     def test_schema_many_tokens_one(self):
         metadata = MetaData()
         tbl = Table(

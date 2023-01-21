@@ -2875,7 +2875,6 @@ def _owner_plus_db(dialect, schema):
         return _schema_elements(schema)
 
 
-
 _memoized_schema = util.LRUCache()
 
 

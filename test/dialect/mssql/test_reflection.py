@@ -410,6 +410,24 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             )
             Table(tname, MetaData(), autoload_with=conn)
 
+    @testing.combinations(
+        ("test_schema"),
+        ("[test_schema]"),
+        argnames="schema_value",
+    )
+    def test_has_table_with_schema_token_comb(
+        self, metadata, connection, schema_value
+    ):
+        tt = Table(
+            'test',
+            metadata,
+            Column("id", Integer),
+            schema=schema_value
+        )
+        tt.create(connection)
+        found_it = inspect(connection).has_table("test", schema=schema_value)
+        eq_(found_it, True)
+
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(
