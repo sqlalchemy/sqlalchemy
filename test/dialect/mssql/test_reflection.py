@@ -415,9 +415,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         ("[test_schema]"),
         argnames="schema_value",
     )
-    def test_has_table_with_schema_token_comb(
+    def test_has_table_with_single_token_schema(
         self, metadata, connection, schema_value
     ):
+        # Addresses bug #9133
         tt = Table(
             'test',
             metadata,
