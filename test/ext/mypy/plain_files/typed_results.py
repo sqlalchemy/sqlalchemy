@@ -232,6 +232,11 @@ def t_connection_execute_multi_row_t() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*CursorResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*CursorResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: sqlalchemy.*Row\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
@@ -251,6 +256,11 @@ def t_connection_execute_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -270,6 +280,11 @@ def t_connection_execute_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
@@ -286,6 +301,10 @@ def t_connection_execute_single_row_scalar() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
 
     x = result.scalar()
 
@@ -305,6 +324,11 @@ def t_connection_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
@@ -316,6 +340,11 @@ def t_session_execute_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -335,6 +364,11 @@ def t_session_execute_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
@@ -358,6 +392,11 @@ def t_session_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
@@ -369,6 +408,11 @@ async def t_async_connection_execute_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -388,6 +432,10 @@ async def t_async_connection_execute_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
 
     row = result.one()
 
@@ -412,6 +460,11 @@ async def t_async_connection_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
@@ -423,6 +476,11 @@ async def t_async_session_execute_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -442,6 +500,11 @@ async def t_async_session_execute_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
@@ -465,6 +528,11 @@ async def t_async_session_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
@@ -476,6 +544,11 @@ async def t_async_connection_stream_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = await result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -495,6 +568,11 @@ async def t_async_connection_stream_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = await result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
@@ -511,6 +589,11 @@ async def t_async_connection_stream_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = await result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\*?\[builtins.str\*?\]
@@ -522,6 +605,11 @@ async def t_async_session_stream_multi() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = await result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
@@ -541,6 +629,11 @@ async def t_async_session_stream_single() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
+        reveal_type(context_result)
+
     row = await result.one()
 
     # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
@@ -557,6 +650,11 @@ async def t_async_session_stream_scalars() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
     reveal_type(result)
+
+    with result as context_result:
+        # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
+        reveal_type(context_result)
+
     data = await result.all()
 
     # EXPECTED_RE_TYPE: typing.Sequence\*?\[builtins.str\*?\]
