@@ -929,7 +929,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
     def __init__(self, cursor_metadata: ResultMetaData):
         self._metadata = cursor_metadata
 
-    def __enter__(self) -> Result[_TP]:
+    def __enter__(self: SelfResult) -> SelfResult:
         return self
 
     def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
