@@ -420,10 +420,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         # Addresses bug #9133
         tt = Table(
-            'test',
-            metadata,
-            Column("id", Integer),
-            schema=schema_value
+            "test", metadata, Column("id", Integer), schema=schema_value
         )
         tt.create(connection)
         found_it = inspect(connection).has_table("test", schema=schema_value)
