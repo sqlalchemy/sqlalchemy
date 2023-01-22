@@ -2664,10 +2664,8 @@ def _switch_db(dbname, connection, fn, *arg, **kw):
 def _owner_plus_db(dialect, schema):
     if not schema:
         return None, dialect.default_schema_name
-    elif "." in schema:
-        return _schema_elements(schema)
     else:
-        return None, schema
+        return _schema_elements(schema)
 
 
 _memoized_schema = util.LRUCache()

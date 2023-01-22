@@ -411,6 +411,35 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             )
             Table(tname, MetaData(), autoload_with=conn)
 
+    @testing.combinations(
+        ("test_schema"),
+        ("[test_schema]"),
+        argnames="schema_value",
+    )
+    @testing.variation(
+        "reflection_operation", ["has_table", "reflect_table", "get_columns"]
+    )
+    def test_has_table_with_single_token_schema(
+        self, metadata, connection, schema_value, reflection_operation
+    ):
+        """test for #9133"""
+        tt = Table(
+            "test", metadata, Column("id", Integer), schema=schema_value
+        )
+        tt.create(connection)
+
+        if reflection_operation.has_table:
+            is_true(inspect(connection).has_table("test", schema=schema_value))
+        elif reflection_operation.reflect_table:
+            m2 = MetaData()
+            Table("test", m2, autoload_with=connection, schema=schema_value)
+        elif reflection_operation.get_columns:
+            is_true(
+                inspect(connection).get_columns("test", schema=schema_value)
+            )
+        else:
+            reflection_operation.fail()
+
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(

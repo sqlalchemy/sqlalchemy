@@ -585,6 +585,47 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkpositional=("bar",),
         )
 
+    @testing.variation("use_schema_translate", [True, False])
+    @testing.combinations(
+        "abc", "has spaces", "[abc]", "[has spaces]", argnames="schemaname"
+    )
+    def test_schema_single_token_bracketed(
+        self, use_schema_translate, schemaname
+    ):
+        """test for #9133.
+
+        this is not the actual regression case for #9133, which is instead
+        within the reflection process.  However, when we implemented
+        #2626, we never considered the case of ``[schema]`` without any
+        dots in it.
+
+        """
+
+        schema_no_brackets = schemaname.strip("[]")
+
+        if " " in schemaname:
+            rendered_schema = "[%s]" % (schema_no_brackets,)
+        else:
+            rendered_schema = schema_no_brackets
+
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            schema=schemaname if not use_schema_translate else None,
+        )
+
+        self.assert_compile(
+            select(tbl),
+            "SELECT %(name)s.test.id FROM %(name)s.test"
+            % {"name": rendered_schema},
+            schema_translate_map={None: schemaname}
+            if use_schema_translate
+            else None,
+            render_schema_translate=True if use_schema_translate else False,
+        )
+
     def test_schema_many_tokens_one(self):
         metadata = MetaData()
         tbl = Table(
