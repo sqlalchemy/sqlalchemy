@@ -2815,9 +2815,9 @@ class OperatorExpression(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
-        assert against is not None
         if (
-            self.group
+            against is not None
+            and self.group
             and operators.is_precedent(self.operator, against)
             or (
                 # a negate against a non-boolean operator
@@ -3700,8 +3700,11 @@ class UnaryExpression(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
-        assert against is not None
-        if self.operator and operators.is_precedent(self.operator, against):
+        if (
+            against is not None
+            and self.operator
+            and operators.is_precedent(self.operator, against)
+        ):
             return Grouping(self)
         else:
             return self
@@ -4437,8 +4440,9 @@ class FunctionFilter(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[_T]:
-        assert against is not None
-        if operators.is_precedent(operators.filter_op, against):
+        if against is not None and operators.is_precedent(
+            operators.filter_op, against
+        ):
             return Grouping(self)
         else:
             return self
