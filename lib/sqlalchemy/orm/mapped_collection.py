@@ -22,7 +22,6 @@ from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 
-
 if TYPE_CHECKING:
     from typing import List
     from typing import Optional
@@ -31,7 +30,7 @@ if TYPE_CHECKING:
 
     from . import InstrumentedAttribute
     from . import Mapper
-    from ..sql.elements import KeyedColumnElement
+    from ..sql.elements import ColumnElement
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
@@ -51,7 +50,7 @@ class _PlainColumnGetter:
 
     __slots__ = ("cols", "composite")
 
-    def __init__(self, cols: List[KeyedColumnElement[Optional[_KT]]]) -> None:
+    def __init__(self, cols: List[ColumnElement[Optional[_KT]]]) -> None:
         self.cols = cols
         self.composite = len(cols) > 1
 
@@ -59,13 +58,11 @@ class _PlainColumnGetter:
         self,
     ) -> Tuple[
         Type[_SerializableColumnGetterV2],
-        Tuple[List[Tuple[str, Optional[_KT]]]],
+        Tuple[List[Tuple[Optional[str], Optional[str]]]],
     ]:
         return _SerializableColumnGetterV2._reduce_from_cols(self.cols)
 
-    def _cols(
-        self, mapper: Mapper[_KT]
-    ) -> List[KeyedColumnElement[Optional[_KT]]]:
+    def _cols(self, mapper: Mapper[_KT]) -> List[ColumnElement[Optional[_KT]]]:
         return self.cols
 
     def __call__(self, value: _KT) -> Union[_KT, Tuple[_KT, ...]]:
@@ -96,25 +93,28 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
 
     __slots__ = ("colkeys",)
 
-    def __init__(self, colkeys: List[Tuple[str, Optional[str]]]) -> None:
+    def __init__(
+        self, colkeys: List[Tuple[Optional[str], Optional[str]]]
+    ) -> None:
         self.colkeys = colkeys
         self.composite = len(colkeys) > 1
 
     def __reduce__(
         self,
     ) -> Tuple[
-        Type[_SerializableColumnGetterV2], Tuple[List[Tuple[str, Any]]]
+        Type[_SerializableColumnGetterV2],
+        Tuple[List[Tuple[Optional[str], Optional[str]]]],
     ]:
         return self.__class__, (self.colkeys,)
 
     @classmethod
     def _reduce_from_cols(
-        cls, cols: List[KeyedColumnElement[_KT]]
+        cls, cols: List[ColumnElement[_KT]]
     ) -> Tuple[
         Type[_SerializableColumnGetterV2],
-        Tuple[List[Tuple[str, Optional[_KT]]]],
+        Tuple[List[Tuple[Optional[str], Optional[str]]]],
     ]:
-        def _table_key(c: KeyedColumnElement[_KT]) -> Optional[_KT]:
+        def _table_key(c: ColumnElement[_KT]) -> Optional[str]:
             if not isinstance(c.table, expression.TableClause):
                 return None
             else:
@@ -123,14 +123,12 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
         colkeys = [(c.key, _table_key(c)) for c in cols]
         return _SerializableColumnGetterV2, (colkeys,)
 
-    def _cols(
-        self, mapper: Mapper[_KT]
-    ) -> List[KeyedColumnElement[Optional[_KT]]]:
-        cols = []
+    def _cols(self, mapper: Mapper[_KT]) -> List[ColumnElement[Optional[_KT]]]:
+        cols: List[ColumnElement[Optional[_KT]]] = []
         metadata = getattr(mapper.local_table, "metadata", None)
         for (ckey, tkey) in self.colkeys:
             if tkey is None or metadata is None or tkey not in metadata:
-                cols.append(mapper.local_table.c[ckey])
+                cols.append(mapper.local_table.c[ckey])  # type: ignore
             else:
                 cols.append(metadata.tables[tkey].c[ckey])
         return cols
@@ -366,7 +364,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
         self,
     ) -> tuple[
         Callable[[_KT, _KT], KeyFuncDict[_KT, _KT]],
-        tuple[Any, dict[_KT, _KT] | dict[_KT, _KT]],
+        tuple[Any, Union[dict[_KT, _KT], dict[_KT, _KT]]],
     ]:
         return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
 
