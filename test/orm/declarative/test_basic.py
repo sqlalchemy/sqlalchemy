@@ -2616,21 +2616,33 @@ class DeclarativeMultiBaseTest(
 class NamedAttrOrderingTest(fixtures.TestBase):
     """test for #8705"""
 
-    @testing.combinations(
-        "decl_base_fn",
-        "decl_base_base",
-        "classical_mapping",
-        argnames="mapping_style",
+    @testing.variation(
+        "mapping_style",
+        [
+            "decl_base_fn",
+            "decl_base_base",
+            "classical_mapping",
+        ],
     )
     def test_ordering_of_attrs_cols_named_or_unnamed(self, mapping_style):
+        seen_names = {"noname"}
+
+        is_declarative = (
+            mapping_style.decl_base_fn or mapping_style.decl_base_base
+        )
+
         def make_name():
-            uppercase = random.randint(1, 3) == 1
-            name = "".join(
-                random.choice("abcdefghijklmnopqrstuvxyz")
-                for i in range(random.randint(4, 10))
-            )
-            if uppercase:
-                name = random.choice("ABCDEFGHIJKLMNOP") + name
+            name = "noname"
+
+            while name in seen_names:
+                uppercase = random.randint(1, 3) == 1
+                name = "".join(
+                    random.choice("abcdefghijklmnopqrstuvxyz")
+                    for i in range(random.randint(4, 10))
+                )
+                if uppercase:
+                    name = random.choice("ABCDEFGHIJKLMNOP") + name
+            seen_names.add(name)
             return name
 
         def make_column(assign_col_name):
@@ -2658,10 +2670,7 @@ class NamedAttrOrderingTest(fixtures.TestBase):
 
             args.append(Integer)
 
-            if mapping_style.startswith("decl"):
-                use_mapped_column = random.randint(1, 2) == 1
-            else:
-                use_mapped_column = False
+            use_mapped_column = is_declarative and random.randint(1, 2) == 1
 
             if use_mapped_column:
                 col = mapped_column(*args, **kw)
@@ -2678,7 +2687,7 @@ class NamedAttrOrderingTest(fixtures.TestBase):
 
             return name, expected_c_name, col, col_prop
 
-        assign_col_name = mapping_style == "classical_mapping"
+        assign_col_name = mapping_style.classical_mapping
 
         names = [
             make_column(assign_col_name) for i in range(random.randint(10, 15))
@@ -2695,10 +2704,10 @@ class NamedAttrOrderingTest(fixtures.TestBase):
         col_names_only = [col_name for _, col_name, _, _ in names]
         cols_only = [col for _, _, col, _ in names]
 
-        if mapping_style in ("decl_base_fn", "decl_base_base"):
-            if mapping_style == "decl_base_fn":
+        if is_declarative:
+            if mapping_style.decl_base_fn:
                 Base = declarative_base()
-            elif mapping_style == "decl_base_base":
+            elif mapping_style.decl_base_base:
 
                 class Base(DeclarativeBase):
                     pass
@@ -2713,7 +2722,7 @@ class NamedAttrOrderingTest(fixtures.TestBase):
 
             new_cls = type("NewCls", (Base,), clsdict)
 
-        elif mapping_style == "classical_mapping":
+        elif mapping_style.classical_mapping:
 
             class new_cls:
                 pass
@@ -2731,7 +2740,7 @@ class NamedAttrOrderingTest(fixtures.TestBase):
                 },
             )
         else:
-            assert False
+            mapping_style.fail()
 
         eq_(new_cls.__table__.c.keys(), col_names_only)
         eq_(new_cls.__mapper__.attrs.keys(), names_only)
