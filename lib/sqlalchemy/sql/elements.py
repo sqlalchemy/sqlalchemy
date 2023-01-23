@@ -2787,7 +2787,7 @@ class ClauseList(
         self, against: Optional[OperatorType] = None
     ) -> ClauseElement:
         if (
-            against is not None
+            against
             and self.group
             and operators.is_precedent(self.operator, against)
         ):
@@ -2816,7 +2816,7 @@ class OperatorExpression(ColumnElement[_T]):
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
         if (
-            against is not None
+            against
             and self.group
             and operators.is_precedent(self.operator, against)
             or (
@@ -3701,7 +3701,7 @@ class UnaryExpression(ColumnElement[_T]):
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
         if (
-            against is not None
+            against
             and self.operator
             and operators.is_precedent(self.operator, against)
         ):
@@ -4440,9 +4440,7 @@ class FunctionFilter(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[_T]:
-        if against is not None and operators.is_precedent(
-            operators.filter_op, against
-        ):
+        if against and operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
