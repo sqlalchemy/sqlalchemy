@@ -27,4 +27,13 @@
     :tickets: 9125
 
     Fixed typing issue where iterating over a :class:`_orm.Query` object
-    was not correctly typed. 
+    was not correctly typed.
+
+.. change::
+    :tags: typing, bug
+    :tickets: 9136
+
+    Fixed typing issue where the object type when using :class:`_engine.Result`
+    as a context manager were not preserved, indicating :class:`_engine.Result`
+    in all cases rather than the specific :class:`_engine.Result` sub-type.
+    Pull request courtesy Martin Baláž.

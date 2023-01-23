@@ -77,6 +77,28 @@ multi_stmt = select(User.id, User.name).where(User.name == "foo")
 reveal_type(multi_stmt)
 
 
+def t_result_ctxmanager() -> None:
+    with connection.execute(select(column("q", Integer))) as r1:
+        # EXPECTED_TYPE: CursorResult[Tuple[int]]
+        reveal_type(r1)
+
+        with r1.mappings() as r1m:
+            # EXPECTED_TYPE: MappingResult
+            reveal_type(r1m)
+
+    with connection.scalars(select(column("q", Integer))) as r2:
+        # EXPECTED_TYPE: ScalarResult[int]
+        reveal_type(r2)
+
+    with session.execute(select(User.id)) as r3:
+        # EXPECTED_TYPE: Result[Tuple[int]]
+        reveal_type(r3)
+
+    with session.scalars(select(User.id)) as r4:
+        # EXPECTED_TYPE: ScalarResult[int]
+        reveal_type(r4)
+
+
 def t_entity_varieties() -> None:
 
     a1 = aliased(User)
