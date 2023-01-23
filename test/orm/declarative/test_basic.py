@@ -611,6 +611,24 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
                     sa.Column("id", Integer, primary_key=True),
                 )
 
+    def test_cannot_add_to_selectable(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class Foo(Base):
+            __table__ = (
+                select(sa.Column("x", sa.Integer, primary_key=True))
+                .select_from(sa.table("foo"))
+                .subquery("foo")
+            )
+
+        with assertions.expect_raises_message(
+            exc.InvalidRequestError,
+            "Cannot add a new attribute to mapped class 'Foo' "
+            "because it's not mapped against a table",
+        ):
+            Foo.y = mapped_column(sa.Text)
+
 
 @testing.combinations(
     ("declarative_base_nometa_superclass",),

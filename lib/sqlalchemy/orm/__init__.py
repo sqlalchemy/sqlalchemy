@@ -65,6 +65,7 @@ from .decl_api import has_inherited_table as has_inherited_table
 from .decl_api import MappedAsDataclass as MappedAsDataclass
 from .decl_api import registry as registry
 from .decl_api import synonym_for as synonym_for
+from .decl_base import MappedClassProtocol as MappedClassProtocol
 from .descriptor_props import Composite as Composite
 from .descriptor_props import CompositeProperty as CompositeProperty
 from .descriptor_props import Synonym as Synonym
