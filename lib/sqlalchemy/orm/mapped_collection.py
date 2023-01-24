@@ -23,22 +23,24 @@ from ..sql import expression
 from ..sql import roles
 
 if TYPE_CHECKING:
+    from typing import Generic
     from typing import List
     from typing import Optional
+    from typing import Sequence
     from typing import Tuple
     from typing import Union
 
-    from . import InstrumentedAttribute
+    from . import AttributeEventToken
     from . import Mapper
     from ..sql.elements import ColumnElement
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 
-_AnyCallable = TypeVar("_AnyCallable", bound=Callable[[Any], Any])
+_F = TypeVar("_F", bound=Callable[[Any], Any])
 
 
-class _PlainColumnGetter:
+class _PlainColumnGetter(Generic[_KT]):
     """Plain column getter, stores collection of Column objects
     directly.
 
@@ -50,19 +52,19 @@ class _PlainColumnGetter:
 
     __slots__ = ("cols", "composite")
 
-    def __init__(self, cols: List[ColumnElement[Optional[_KT]]]) -> None:
+    def __init__(self, cols: Sequence[ColumnElement[_KT]]) -> None:
         self.cols = cols
         self.composite = len(cols) > 1
 
     def __reduce__(
         self,
     ) -> Tuple[
-        Type[_SerializableColumnGetterV2],
-        Tuple[List[Tuple[Optional[str], Optional[str]]]],
+        Type[_SerializableColumnGetterV2[_KT]],
+        Tuple[Sequence[Tuple[Optional[str], Optional[str]]]],
     ]:
         return _SerializableColumnGetterV2._reduce_from_cols(self.cols)
 
-    def _cols(self, mapper: Mapper[_KT]) -> List[ColumnElement[Optional[_KT]]]:
+    def _cols(self, mapper: Mapper[_KT]) -> Sequence[ColumnElement[_KT]]:
         return self.cols
 
     def __call__(self, value: _KT) -> Union[_KT, Tuple[_KT, ...]]:
@@ -79,7 +81,7 @@ class _PlainColumnGetter:
             return key[0]
 
 
-class _SerializableColumnGetterV2(_PlainColumnGetter):
+class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
     """Updated serializable getter which deals with
     multi-table mapped classes.
 
@@ -94,7 +96,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
     __slots__ = ("colkeys",)
 
     def __init__(
-        self, colkeys: List[Tuple[Optional[str], Optional[str]]]
+        self, colkeys: Sequence[Tuple[Optional[str], Optional[str]]]
     ) -> None:
         self.colkeys = colkeys
         self.composite = len(colkeys) > 1
@@ -102,17 +104,17 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
     def __reduce__(
         self,
     ) -> Tuple[
-        Type[_SerializableColumnGetterV2],
-        Tuple[List[Tuple[Optional[str], Optional[str]]]],
+        Type[_SerializableColumnGetterV2[_KT]],
+        Tuple[Sequence[Tuple[Optional[str], Optional[str]]]],
     ]:
         return self.__class__, (self.colkeys,)
 
     @classmethod
     def _reduce_from_cols(
-        cls, cols: List[ColumnElement[_KT]]
+        cls, cols: Sequence[ColumnElement[_KT]]
     ) -> Tuple[
-        Type[_SerializableColumnGetterV2],
-        Tuple[List[Tuple[Optional[str], Optional[str]]]],
+        Type[_SerializableColumnGetterV2[_KT]],
+        Tuple[Sequence[Tuple[Optional[str], Optional[str]]]],
     ]:
         def _table_key(c: ColumnElement[_KT]) -> Optional[str]:
             if not isinstance(c.table, expression.TableClause):
@@ -123,8 +125,8 @@ class _SerializableColumnGetterV2(_PlainColumnGetter):
         colkeys = [(c.key, _table_key(c)) for c in cols]
         return _SerializableColumnGetterV2, (colkeys,)
 
-    def _cols(self, mapper: Mapper[_KT]) -> List[ColumnElement[Optional[_KT]]]:
-        cols: List[ColumnElement[Optional[_KT]]] = []
+    def _cols(self, mapper: Mapper[_KT]) -> Sequence[ColumnElement[_KT]]:
+        cols: List[ColumnElement[_KT]] = []
         metadata = getattr(mapper.local_table, "metadata", None)
         for (ckey, tkey) in self.colkeys:
             if tkey is None or metadata is None or tkey not in metadata:
@@ -184,11 +186,10 @@ def column_keyed_dict(
         coercions.expect(roles.ColumnArgumentRole, q, argname="mapping_spec")
         for q in util.to_list(mapping_spec)
     ]
-    keyfunc = _PlainColumnGetter(cols)  # type: ignore
-    return _mapped_collection_cls(  # type: ignore
-        keyfunc,  # type: ignore
+    keyfunc = _PlainColumnGetter(cols)
+    return _mapped_collection_cls(
+        keyfunc,
         ignore_unpopulated_attribute=ignore_unpopulated_attribute,
-        # type: ignore
     )
 
 
@@ -256,7 +257,7 @@ def attribute_keyed_dict(
 
 
 def keyfunc_mapping(
-    keyfunc: _AnyCallable,
+    keyfunc: _F,
     *,
     ignore_unpopulated_attribute: bool = False,
 ) -> Type[KeyFuncDict[_KT, Any]]:
@@ -332,7 +333,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     def __init__(
         self,
-        keyfunc: _AnyCallable,
+        keyfunc: _F,
         *,
         ignore_unpopulated_attribute: bool = False,
     ) -> None:
@@ -354,7 +355,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     @classmethod
     def _unreduce(
-        cls, keyfunc: _AnyCallable, values: Dict[_KT, _KT]
+        cls, keyfunc: _F, values: Dict[_KT, _KT]
     ) -> "KeyFuncDict[_KT, _KT]":
         mp: KeyFuncDict[_KT, _KT] = KeyFuncDict(keyfunc)
         mp.update(values)
@@ -362,21 +363,21 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     def __reduce__(
         self,
-    ) -> tuple[
+    ) -> Tuple[
         Callable[[_KT, _KT], KeyFuncDict[_KT, _KT]],
-        tuple[Any, Union[dict[_KT, _KT], dict[_KT, _KT]]],
+        Tuple[Any, Union[Dict[_KT, _KT], Dict[_KT, _KT]]],
     ]:
         return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
 
     def _raise_for_unpopulated(
-        self, value: _KT, initiator: Optional[InstrumentedAttribute[_KT]]
+        self, value: _KT, initiator: Optional[AttributeEventToken]
     ) -> None:
         mapper = base.instance_state(value).mapper
 
         if initiator is None:
             relationship = "unknown relationship"
         else:
-            relationship = mapper.attrs[initiator.key]  # type: ignore
+            relationship = f"{mapper.attrs[initiator.key]}"
 
         raise sa_exc.InvalidRequestError(
             f"In event triggered from population of attribute {relationship} "
@@ -397,7 +398,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
     def set(
         self,
         value: _KT,
-        _sa_initiator: Optional[InstrumentedAttribute[_KT]] = None,
+        _sa_initiator: Optional[AttributeEventToken] = None,
     ) -> None:
         """Add an item by value, consulting the keyfunc for the key."""
 
@@ -416,7 +417,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
     def remove(
         self,
         value: _KT,
-        _sa_initiator: Optional[InstrumentedAttribute[_KT]] = None,
+        _sa_initiator: Optional[AttributeEventToken] = None,
     ) -> None:
         """Remove an item by value, consulting the keyfunc for the key."""
 
@@ -440,8 +441,8 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
 
 def _mapped_collection_cls(
-    keyfunc: _AnyCallable, ignore_unpopulated_attribute: bool
-) -> type[KeyFuncDict[_KT, _KT]]:
+    keyfunc: _F, ignore_unpopulated_attribute: bool
+) -> Type[KeyFuncDict[_KT, _KT]]:
     class _MKeyfuncMapped(KeyFuncDict[_KT, _KT]):
         def __init__(self) -> None:
             super().__init__(
