@@ -476,6 +476,8 @@ class CreateSchema(_CreateBase):
 
     __visit_name__ = "create_schema"
 
+    stringify_dialect = "default"  # type: ignore
+
     def __init__(
         self,
         name,
