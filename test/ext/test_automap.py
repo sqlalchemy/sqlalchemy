@@ -5,6 +5,7 @@ from unittest.mock import Mock
 from unittest.mock import patch
 
 from sqlalchemy import create_engine
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -12,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.ext.automap import AutomapBase
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
@@ -19,6 +21,10 @@ from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
+from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.schema import Column
@@ -68,6 +74,55 @@ class AutomapTest(fixtures.MappedTest):
         )
         assert hasattr(Base.classes, "users")
         assert not hasattr(Base.classes, "addresses")
+
+    def test_prepare_call_multiple_times(self):
+        """newly added in 2.0 as part of #5145"""
+
+        Base = automap_base()
+
+        Base.prepare(
+            testing.db,
+            reflection_options={"only": ["users"], "resolve_fks": False},
+        )
+        assert hasattr(Base.classes, "users")
+        assert not hasattr(Base.classes, "addresses")
+        um = Base.classes.users.__mapper__
+
+        Base.prepare(
+            testing.db,
+            reflection_options={"only": ["users"], "resolve_fks": False},
+        )
+        assert hasattr(Base.classes, "users")
+        assert not hasattr(Base.classes, "addresses")
+        is_(Base.classes.users.__mapper__, um)
+
+        Base.prepare(testing.db)
+        assert hasattr(Base.classes, "users")
+        assert hasattr(Base.classes, "addresses")
+
+        am = Base.classes.addresses.__mapper__
+
+        Base.prepare()
+        Base.prepare()
+
+        is_(Base.classes.users.__mapper__, um)
+        is_(Base.classes.addresses.__mapper__, am)
+
+    def test_prepare_call_dont_rely_on_reflected(self):
+        """newly added in 2.0 as part of #5145"""
+
+        Base = automap_base()
+
+        Base.metadata.reflect(testing.db, only=["users"], resolve_fks=False)
+        Base.prepare(
+            testing.db,
+            reflection_options={"only": ["addresses"]},
+        )
+
+        # check that users was prepared also, even though it wasn't in
+        # the second reflection call
+        assert hasattr(Base.classes, "users")
+        assert hasattr(Base.classes, "addresses")
 
     def test_exception_prepare_not_called(self):
         Base = automap_base(metadata=self.tables_test_metadata)
@@ -300,6 +355,136 @@ class AutomapTest(fixtures.MappedTest):
                 (Base, interfaces.ONETOMANY, "addresses_collection"),
             ]
         )
+
+
+class MultipleSchemaTest(AssertsCompiledSQL, fixtures.MappedTest):
+    """test #5145"""
+
+    __requires__ = ("schemas",)
+    __dialect__ = "default"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "user",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+        )
+        Table(
+            "user",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+            schema=config.test_schema,
+        )
+
+    @testing.variation("reflect_method", ["reflect", "prepare"])
+    def test_by_schema_collection(self, reflect_method):
+        m2 = MetaData()
+        Base: AutomapBase = automap_base(metadata=m2)
+
+        def mnft(cls, tablename, table):
+            return table.schema
+
+        if reflect_method.reflect:
+            m2.reflect(testing.db)
+            m2.reflect(testing.db, schema=config.test_schema)
+            Base.prepare(modulename_for_table=mnft)
+        elif reflect_method.prepare:
+            Base.prepare(autoload_with=testing.db, modulename_for_table=mnft)
+            Base.prepare(
+                autoload_with=testing.db,
+                modulename_for_table=mnft,
+                schema=config.test_schema,
+            )
+        else:
+            reflect_method.fail()
+
+        # only class with None for __module__ gets placed in .classes
+        is_(Base.classes.user, Base.by_module.sqlalchemy.ext.automap.user)
+
+        self.assert_compile(
+            select(Base.by_module.sqlalchemy.ext.automap.user),
+            'SELECT "user".id, "user".name FROM "user"',
+        )
+
+        self.assert_compile(
+            select(Base.by_module[config.test_schema].user),
+            f'SELECT {config.test_schema}."user".id, '
+            f'{config.test_schema}."user".name '
+            f'FROM {config.test_schema}."user"',
+        )
+
+    def test_named_not_in_classes(self):
+        Base: AutomapBase = automap_base()
+
+        def mnft(cls, tablename, table):
+            assert table.schema is not None
+            return table.schema
+
+        Base.prepare(
+            autoload_with=testing.db,
+            schema=config.test_schema,
+            modulename_for_table=mnft,
+        )
+
+        assert "user" not in Base.classes
+        assert "user" in Base.by_module[config.test_schema]
+
+        Base.prepare(autoload_with=testing.db)
+        assert "user" in Base.classes
+
+    def test_cls_schema_name_conflict(self):
+        m2 = MetaData()
+        Base: AutomapBase = automap_base(metadata=m2)
+        m2.reflect(testing.db)
+        m2.reflect(testing.db, schema=config.test_schema)
+
+        def mnft(cls, tablename, table):
+            if table.schema is not None:
+                return "user.user"
+            else:
+                return "user"
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            'name "user" matches both a class name and a module name',
+        ):
+            Base.prepare(modulename_for_table=mnft)
+
+    def test_dupe_clsname_warning(self):
+        Base: AutomapBase = automap_base()
+        Base.prepare(testing.db)
+
+        with expect_warnings(
+            "Ignoring duplicate class name 'user' received in automap base "
+            f"for table {config.test_schema}.user "
+            "without ``__module__`` being set;",
+        ):
+            Base.prepare(testing.db, schema=config.test_schema)
+
+    def test_dupe_tablename_ok_w_explicit_classes(self):
+        Base = automap_base()
+
+        class User1(Base):
+            __tablename__ = "user"
+
+        class User2(Base):
+            __tablename__ = "user"
+            __table_args__ = {"schema": config.test_schema}
+
+        # currently we have to do the reflection separate since prepare()
+        # tries to map all the classes at once
+        Base.metadata.reflect(testing.db, extend_existing=True)
+        Base.metadata.reflect(
+            testing.db, schema=config.test_schema, extend_existing=True
+        )
+        Base.prepare()
 
 
 class CascadeTest(fixtures.MappedTest):
