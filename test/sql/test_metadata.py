@@ -48,6 +48,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2593,6 +2594,32 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("t1", m, Column("x", Integer), schema="bar")
         t2 = Table("t2", m, Column("x", Integer, ForeignKey("bar.t1.x")))
         assert t2.c.x.references(t1.c.x)
+
+    @testing.combinations(
+        (schema.CreateSchema("sa_schema"), "CREATE SCHEMA sa_schema"),
+        # note we don't yet support lower-case table() or
+        # lower-case column() for this
+        # (
+        #    schema.CreateTable(table("t", column("q", Integer))),
+        #    "CREATE TABLE t (q INTEGER)",
+        # ),
+        (
+            schema.CreateTable(Table("t", MetaData(), Column("q", Integer))),
+            "CREATE TABLE t (q INTEGER)",
+        ),
+        (
+            schema.CreateIndex(
+                Index(
+                    "foo",
+                    "x",
+                    _table=Table("t", MetaData(), Column("x", Integer)),
+                )
+            ),
+            "CREATE INDEX foo ON t (x)",
+        ),
+    )
+    def test_stringify_schema_elements(self, element, expected):
+        eq_ignore_whitespace(str(element), expected)
 
     def test_create_drop_schema(self):
 

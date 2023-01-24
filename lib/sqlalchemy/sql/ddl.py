@@ -422,6 +422,8 @@ class CreateSchema(_CreateDropBase):
 
     __visit_name__ = "create_schema"
 
+    stringify_dialect = "default"
+
     def __init__(self, name, quote=None, **kw):
         """Create a new :class:`.CreateSchema` construct."""
 
