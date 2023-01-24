@@ -644,6 +644,7 @@ ischema_names = {
     "LONG": LONG,
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
+    "ROWID": ROWID,
 }
 
 

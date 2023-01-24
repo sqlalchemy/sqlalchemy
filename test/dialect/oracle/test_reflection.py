@@ -26,7 +26,9 @@ from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
 from sqlalchemy.dialects.oracle.base import NUMBER
+from sqlalchemy.dialects.oracle.base import RAW
 from sqlalchemy.dialects.oracle.base import REAL
+from sqlalchemy.dialects.oracle.base import ROWID
 from sqlalchemy.dialects.oracle.types import NVARCHAR2
 from sqlalchemy.dialects.oracle.types import VARCHAR2
 from sqlalchemy.engine import ObjectKind
@@ -1231,6 +1233,17 @@ class TypeReflectionTest(fixtures.TestBase):
             (NCHAR(42), NCHAR(42)),
         ]
         self._run_test(metadata, connection, specs, ["length"])
+
+    @testing.combinations(ROWID(), RAW(1), argnames="type_")
+    def test_misc_types(self, metadata, connection, type_):
+        t = Table("t1", metadata, Column("x", type_))
+
+        t.create(connection)
+
+        eq_(
+            inspect(connection).get_columns("t1")[0]["type"]._type_affinity,
+            type_._type_affinity,
+        )
 
 
 class IdentityReflectionTest(fixtures.TablesTest):
