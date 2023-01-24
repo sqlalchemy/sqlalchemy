@@ -1,26 +1,26 @@
 """Illustrates sharding using a single SQLite database, that will however
 have multiple tables using a naming convention."""
+from __future__ import annotations
 
 import datetime
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
-from sqlalchemy import DateTime
 from sqlalchemy import event
-from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
-from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.horizontal_shard import set_shard_id
 from sqlalchemy.ext.horizontal_shard import ShardedSession
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import visitors
-
 
 echo = True
 engine = create_engine("sqlite://", echo=echo)
@@ -55,7 +55,9 @@ Session = sessionmaker(
 
 
 # mappings and tables
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
+
 
 # we need a way to create identifiers which are unique across all databases.
 # one easy way would be to just use a composite primary key, where  one value
@@ -86,13 +88,13 @@ def id_generator(ctx):
 class WeatherLocation(Base):
     __tablename__ = "_prefix__weather_locations"
 
-    id = Column(Integer, primary_key=True, default=id_generator)
-    continent = Column(String(30), nullable=False)
-    city = Column(String(50), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, default=id_generator)
+    continent: Mapped[str]
+    city: Mapped[str]
 
-    reports = relationship("Report", backref="location")
+    reports: Mapped[list[Report]] = relationship(back_populates="location")
 
-    def __init__(self, continent, city):
+    def __init__(self, continent: str, city: str):
         self.continent = continent
         self.city = city
 
@@ -100,29 +102,22 @@ class WeatherLocation(Base):
 class Report(Base):
     __tablename__ = "_prefix__weather_reports"
 
-    id = Column(Integer, primary_key=True)
-    location_id = Column(
-        "location_id", Integer, ForeignKey("_prefix__weather_locations.id")
+    id: Mapped[int] = mapped_column(primary_key=True)
+    location_id: Mapped[int] = mapped_column(
+        ForeignKey("_prefix__weather_locations.id")
     )
-    temperature = Column("temperature", Float)
-    report_time = Column(
-        "report_time", DateTime, default=datetime.datetime.now
+    temperature: Mapped[float]
+    report_time: Mapped[datetime.datetime] = mapped_column(
+        default=datetime.datetime.now
     )
 
-    def __init__(self, temperature):
+    location: Mapped[WeatherLocation] = relationship(back_populates="reports")
+
+    def __init__(self, temperature: float):
         self.temperature = temperature
 
 
-# create tables
-for db in (db1, db2, db3, db4):
-    Base.metadata.create_all(db)
-
-# establish initial "id" in db1
-with db1.begin() as conn:
-    conn.execute(ids.insert(), {"nextid": 1})
-
-
-# step 5. define sharding functions.
+# define sharding functions.
 
 # we'll use a straight mapping of a particular set of "country"
 # attributes to shard id.
@@ -255,61 +250,89 @@ Session.configure(
     execute_chooser=execute_chooser,
 )
 
-# save and load objects!
 
-tokyo = WeatherLocation("Asia", "Tokyo")
-newyork = WeatherLocation("North America", "New York")
-toronto = WeatherLocation("North America", "Toronto")
-london = WeatherLocation("Europe", "London")
-dublin = WeatherLocation("Europe", "Dublin")
-brasilia = WeatherLocation("South America", "Brasila")
-quito = WeatherLocation("South America", "Quito")
+def setup():
+    # create tables
+    for db in (db1, db2, db3, db4):
+        Base.metadata.create_all(db)
 
-tokyo.reports.append(Report(80.0))
-newyork.reports.append(Report(75))
-quito.reports.append(Report(85))
+    # establish initial "id" in db1
+    with db1.begin() as conn:
+        conn.execute(ids.insert(), {"nextid": 1})
 
-with Session() as sess:
 
-    sess.add_all([tokyo, newyork, toronto, london, dublin, brasilia, quito])
+def main():
+    setup()
 
-    sess.commit()
+    # save and load objects!
 
-    t = sess.get(WeatherLocation, tokyo.id)
-    assert t.city == tokyo.city
-    assert t.reports[0].temperature == 80.0
+    tokyo = WeatherLocation("Asia", "Tokyo")
+    newyork = WeatherLocation("North America", "New York")
+    toronto = WeatherLocation("North America", "Toronto")
+    london = WeatherLocation("Europe", "London")
+    dublin = WeatherLocation("Europe", "Dublin")
+    brasilia = WeatherLocation("South America", "Brasila")
+    quito = WeatherLocation("South America", "Quito")
 
-    north_american_cities = sess.execute(
-        select(WeatherLocation).filter(
-            WeatherLocation.continent == "North America"
+    tokyo.reports.append(Report(80.0))
+    newyork.reports.append(Report(75))
+    quito.reports.append(Report(85))
+
+    with Session() as sess:
+
+        sess.add_all(
+            [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )
-    ).scalars()
 
-    assert {c.city for c in north_american_cities} == {"New York", "Toronto"}
+        sess.commit()
 
-    asia_and_europe = sess.execute(
-        select(WeatherLocation).filter(
-            WeatherLocation.continent.in_(["Europe", "Asia"])
+        t = sess.get(WeatherLocation, tokyo.id)
+        assert t.city == tokyo.city
+        assert t.reports[0].temperature == 80.0
+
+        # optionally set a shard id for the query and all related loaders
+        north_american_cities_w_t = sess.execute(
+            select(WeatherLocation)
+            .filter(WeatherLocation.city.startswith("T"))
+            .options(set_shard_id("north_america"))
+        ).scalars()
+
+        # Tokyo not included since not in the north_america shard
+        assert {c.city for c in north_american_cities_w_t} == {
+            "Toronto",
+        }
+
+        asia_and_europe = sess.execute(
+            select(WeatherLocation).filter(
+                WeatherLocation.continent.in_(["Europe", "Asia"])
+            )
+        ).scalars()
+
+        assert {c.city for c in asia_and_europe} == {
+            "Tokyo",
+            "London",
+            "Dublin",
+        }
+
+        # the Report class uses a simple integer primary key.  So across two
+        # databases, a primary key will be repeated.  The "identity_token"
+        # tracks in memory that these two identical primary keys are local to
+        # different shards.
+        newyork_report = newyork.reports[0]
+        tokyo_report = tokyo.reports[0]
+
+        assert inspect(newyork_report).identity_key == (
+            Report,
+            (1,),
+            "north_america",
         )
-    ).scalars()
+        assert inspect(tokyo_report).identity_key == (Report, (1,), "asia")
 
-    assert {c.city for c in asia_and_europe} == {"Tokyo", "London", "Dublin"}
+        # the token representing the originating shard is also available
+        # directly
+        assert inspect(newyork_report).identity_token == "north_america"
+        assert inspect(tokyo_report).identity_token == "asia"
 
-    # the Report class uses a simple integer primary key.  So across two
-    # databases, a primary key will be repeated.  The "identity_token" tracks
-    # in memory that these two identical primary keys are local to different
-    # databases.
-    newyork_report = newyork.reports[0]
-    tokyo_report = tokyo.reports[0]
 
-    assert inspect(newyork_report).identity_key == (
-        Report,
-        (1,),
-        "north_america",
-    )
-    assert inspect(tokyo_report).identity_key == (Report, (1,), "asia")
-
-    # the token representing the originating shard is also available directly
-
-    assert inspect(newyork_report).identity_token == "north_america"
-    assert inspect(tokyo_report).identity_token == "asia"
+if __name__ == "__main__":
+    main()

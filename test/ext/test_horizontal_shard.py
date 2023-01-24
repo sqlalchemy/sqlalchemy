@@ -17,9 +17,12 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy import util
+from sqlalchemy.ext.horizontal_shard import set_shard_id
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -83,7 +86,7 @@ class ShardTest:
 
     def setup_test(self):
         global db1, db2, db3, db4
-        db1, db2, db3, db4 = self._dbs = self._init_dbs()
+        db1, db2, db3, db4 = self._dbs = self.dbs = self._init_dbs()
 
         for db in (db1, db2, db3, db4):
             self.tables_test_metadata.create_all(db)
@@ -244,6 +247,103 @@ class ShardTest:
         # now it found it
         t2 = sess.get(WeatherLocation, 1)
         eq_(t2.city, "Tokyo")
+
+    @testing.variation("option_type", ["none", "lazyload", "selectinload"])
+    @testing.variation(
+        "limit_shard",
+        ["none", "lead_only", "propagate_to_loaders", "bind_arg"],
+    )
+    def test_set_shard_option_relationship(self, option_type, limit_shard):
+        sess = self._fixture_data()
+
+        stmt = select(WeatherLocation).filter(
+            WeatherLocation.city == "New York"
+        )
+
+        bind_arguments = {}
+
+        if limit_shard.none:
+            # right now selectinload / lazyload runs all the shards even if the
+            # ids are limited to just one shard, since that information
+            # is not transferred
+            counts = [2, 2, 2, 2]
+        elif limit_shard.lead_only:
+            if option_type.selectinload:
+                counts = [2, 0, 0, 0]
+            else:
+                counts = [2, 1, 1, 1]
+        elif limit_shard.bind_arg:
+            counts = [2, 1, 1, 1]
+        elif limit_shard.propagate_to_loaders:
+            counts = [2, 0, 0, 0]
+        else:
+            limit_shard.fail()
+
+        if option_type.lazyload:
+            stmt = stmt.options(lazyload(WeatherLocation.reports))
+        elif option_type.selectinload:
+            stmt = stmt.options(selectinload(WeatherLocation.reports))
+
+        if limit_shard.lead_only:
+            stmt = stmt.options(
+                set_shard_id("north_america", propagate_to_loaders=False)
+            )
+        elif limit_shard.propagate_to_loaders:
+            stmt = stmt.options(set_shard_id("north_america"))
+        elif limit_shard.bind_arg:
+            bind_arguments["shard_id"] = "north_america"
+
+        with self.assert_statement_count_multi_db(self.dbs, counts):
+            w1 = sess.scalars(stmt, bind_arguments=bind_arguments).first()
+            w1.reports
+
+    @testing.variation("option_type", ["none", "defer"])
+    @testing.variation(
+        "limit_shard",
+        ["none", "lead_only", "propagate_to_loaders", "bind_arg"],
+    )
+    def test_set_shard_option_column(self, option_type, limit_shard):
+        sess = self._fixture_data()
+
+        stmt = select(WeatherLocation).filter(
+            WeatherLocation.city == "New York"
+        )
+
+        bind_arguments = {}
+
+        if limit_shard.none:
+            if option_type.defer:
+                counts = [2, 1, 1, 1]
+            else:
+                counts = [1, 1, 1, 1]
+        elif limit_shard.lead_only or limit_shard.propagate_to_loaders:
+            if option_type.defer:
+                counts = [2, 0, 0, 0]
+            else:
+                counts = [1, 0, 0, 0]
+        elif limit_shard.bind_arg:
+            if option_type.defer:
+                counts = [2, 0, 0, 0]
+            else:
+                counts = [1, 0, 0, 0]
+        else:
+            limit_shard.fail()
+
+        if option_type.defer:
+            stmt = stmt.options(defer(WeatherLocation.continent))
+
+        if limit_shard.lead_only:
+            stmt = stmt.options(
+                set_shard_id("north_america", propagate_to_loaders=False)
+            )
+        elif limit_shard.propagate_to_loaders:
+            stmt = stmt.options(set_shard_id("north_america"))
+        elif limit_shard.bind_arg:
+            bind_arguments["shard_id"] = "north_america"
+
+        with self.assert_statement_count_multi_db(self.dbs, counts):
+            w1 = sess.scalars(stmt, bind_arguments=bind_arguments).first()
+            w1.continent
 
     def test_query_explicit_shard_via_bind_opts(self):
         sess = self._fixture_data()
@@ -502,13 +602,8 @@ class ShardTest:
                 .execution_options(synchronize_session=synchronize_session)
             )
 
-        # test synchronize session
-        def go():
+        with self.assert_statement_count_multi_db(self.dbs, [0, 0, 0, 0]):
             eq_({t.temperature for t in temps}, {86.0, 75.0, 91.0})
-
-        self.assert_sql_count(
-            sess._ShardedSession__shards["north_america"], go, 0
-        )
 
         eq_(
             {row.temperature for row in sess.query(Report.temperature)},
@@ -536,14 +631,10 @@ class ShardTest:
                 .execution_options(synchronize_session=synchronize_session)
             )
 
-        def go():
+        with self.assert_statement_count_multi_db(self.dbs, [0, 0, 0, 0]):
             # test synchronize session
             for t in temps:
                 assert inspect(t).deleted is (t.temperature >= 80)
-
-        self.assert_sql_count(
-            sess._ShardedSession__shards["north_america"], go, 0
-        )
 
         eq_(
             {row.temperature for row in sess.query(Report.temperature)},
@@ -704,16 +795,15 @@ class TableNameConventionShardTest(ShardTest, fixtures.MappedTest):
     schema = "changeme"
 
     def _init_dbs(self):
-        db1 = testing_engine(
-            "sqlite://", options={"execution_options": {"shard_id": "shard1"}}
-        )
-        db2 = db1.execution_options(shard_id="shard2")
-        db3 = db1.execution_options(shard_id="shard3")
-        db4 = db1.execution_options(shard_id="shard4")
+        dbmain = testing_engine("sqlite://")
+        db1 = dbmain.execution_options(shard_id="shard1")
+        db2 = dbmain.execution_options(shard_id="shard2")
+        db3 = dbmain.execution_options(shard_id="shard3")
+        db4 = dbmain.execution_options(shard_id="shard4")
 
         import re
 
-        @event.listens_for(db1, "before_cursor_execute", retval=True)
+        @event.listens_for(dbmain, "before_cursor_execute", retval=True)
         def _switch_shard(conn, cursor, stmt, params, context, executemany):
             shard_id = conn._execution_options["shard_id"]
             # because SQLite can't just give us a "use" statement, we have
@@ -977,11 +1067,9 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
 
         session.expire(page, ["book"])
 
-        def go():
+        with self.assert_statement_count_multi_db(self.dbs, [0, 0]):
+            # doesn't emit SQL
             eq_(page.book, book)
-
-        # doesn't emit SQL
-        self.assert_multiple_sql_count(self.dbs, go, [0, 0])
 
     def test_lazy_load_from_db(self):
         session = self._fixture(lazy_load_book=True)
@@ -999,11 +1087,9 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
         book1_page = session.query(Page).first()
         session.expire(book1_page, ["book"])
 
-        def go():
+        with self.assert_statement_count_multi_db(self.dbs, [1, 0]):
+            # emits one query
             eq_(inspect(book1_page.book).identity_key, book1_id)
-
-        # emits one query
-        self.assert_multiple_sql_count(self.dbs, go, [1, 0])
 
     def test_lazy_load_no_baked_conflict(self):
         session = self._fixture(lazy_load_pages=True)

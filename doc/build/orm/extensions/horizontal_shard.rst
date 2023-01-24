@@ -11,6 +11,9 @@ API Documentation
 .. autoclass:: ShardedSession
    :members:
 
+.. autoclass:: set_shard_id
+   :members:
+
 .. autoclass:: ShardedQuery
    :members:
 

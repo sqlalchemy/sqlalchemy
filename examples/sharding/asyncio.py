@@ -1,42 +1,56 @@
-"""Illustrates sharding using distinct SQLite databases."""
+"""Illustrates sharding API used with asyncio.
+
+For the sync version of this example, see separate_databases.py.
+
+Most of the code here is copied from separate_databases.py and works
+in exactly the same way.   The main change is how the
+``async_sessionmaker`` is configured, and as is specific to this example
+the routine that generates new primary keys.
+
+"""
 from __future__ import annotations
 
+import asyncio
 import datetime
 
 from sqlalchemy import Column
-from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Table
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.horizontal_shard import set_shard_id
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import visitors
 
 
 echo = True
-db1 = create_engine("sqlite://", echo=echo)
-db2 = create_engine("sqlite://", echo=echo)
-db3 = create_engine("sqlite://", echo=echo)
-db4 = create_engine("sqlite://", echo=echo)
+db1 = create_async_engine("sqlite+aiosqlite://", echo=echo)
+db2 = create_async_engine("sqlite+aiosqlite://", echo=echo)
+db3 = create_async_engine("sqlite+aiosqlite://", echo=echo)
+db4 = create_async_engine("sqlite+aiosqlite://", echo=echo)
 
 
-# create session function.  this binds the shard ids
-# to databases within a ShardedSession and returns it.
-Session = sessionmaker(
-    class_=ShardedSession,
+# for asyncio, the ShardedSession class is passed
+# via sync_session_class.  The shards themselves are used within
+# implicit-awaited internals, so we use the sync_engine Engine objects
+# in the shards dictionary.
+Session = async_sessionmaker(
+    sync_session_class=ShardedSession,
+    expire_on_commit=False,
     shards={
-        "north_america": db1,
-        "asia": db2,
-        "europe": db3,
-        "south_america": db4,
+        "north_america": db1.sync_engine,
+        "asia": db2.sync_engine,
+        "europe": db3.sync_engine,
+        "south_america": db4.sync_engine,
     },
 )
 
@@ -57,8 +71,10 @@ ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 
 
 def id_generator(ctx):
-    # in reality, might want to use a separate transaction for this.
-    with db1.begin() as conn:
+    # id_generator is run within a "synchronous" context, where
+    # we use an implicit-await API that will convert back to explicit await
+    # calls when it reaches the driver.
+    with db1.sync_engine.begin() as conn:
         nextid = conn.scalar(ids.select().with_for_update())
         conn.execute(ids.update().values({ids.c.nextid: ids.c.nextid + 1}))
     return nextid
@@ -104,7 +120,7 @@ class Report(Base):
         self.temperature = temperature
 
 
-# define sharding functions.
+# step 5. define sharding functions.
 
 # we'll use a straight mapping of a particular set of "country"
 # attributes to shard id.
@@ -238,18 +254,19 @@ Session.configure(
 )
 
 
-def setup():
+async def setup():
     # create tables
     for db in (db1, db2, db3, db4):
-        Base.metadata.create_all(db)
+        async with db.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     # establish initial "id" in db1
-    with db1.begin() as conn:
-        conn.execute(ids.insert(), {"nextid": 1})
+    async with db1.begin() as conn:
+        await conn.execute(ids.insert(), {"nextid": 1})
 
 
-def main():
-    setup()
+async def main():
+    await setup()
 
     # save and load objects!
 
@@ -265,22 +282,28 @@ def main():
     newyork.reports.append(Report(75))
     quito.reports.append(Report(85))
 
-    with Session() as sess:
+    async with Session() as sess:
 
         sess.add_all(
             [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )
 
-        sess.commit()
+        await sess.commit()
 
-        t = sess.get(WeatherLocation, tokyo.id)
+        t = await sess.get(
+            WeatherLocation,
+            tokyo.id,
+            options=[immediateload(WeatherLocation.reports)],
+        )
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0
 
         # select across shards
-        asia_and_europe = sess.execute(
-            select(WeatherLocation).filter(
-                WeatherLocation.continent.in_(["Europe", "Asia"])
+        asia_and_europe = (
+            await sess.execute(
+                select(WeatherLocation).filter(
+                    WeatherLocation.continent.in_(["Europe", "Asia"])
+                )
             )
         ).scalars()
 
@@ -291,10 +314,12 @@ def main():
         }
 
         # optionally set a shard id for the query and all related loaders
-        north_american_cities_w_t = sess.execute(
-            select(WeatherLocation)
-            .filter(WeatherLocation.city.startswith("T"))
-            .options(set_shard_id("north_america"))
+        north_american_cities_w_t = (
+            await sess.execute(
+                select(WeatherLocation)
+                .filter(WeatherLocation.city.startswith("T"))
+                .options(set_shard_id("north_america"))
+            )
         ).scalars()
 
         # Tokyo not included since not in the north_america shard
@@ -323,4 +348,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -46,6 +46,7 @@ from . import state as statelib
 from ._typing import _O
 from ._typing import insp_is_mapper
 from ._typing import is_composite_class
+from ._typing import is_orm_option
 from ._typing import is_user_defined_option
 from .base import _class_to_mapper
 from .base import _none_set
@@ -729,6 +730,14 @@ class ORMExecuteState(util.MemoizedSlots):
             "_sa_orm_update_options",
             bulk_persistence.BulkUDCompileState.default_update_options,
         )
+
+    @property
+    def _non_compile_orm_options(self) -> Sequence[ORMOption]:
+        return [
+            opt
+            for opt in self.statement._with_options
+            if is_orm_option(opt) and not opt._is_compile_state
+        ]
 
     @property
     def user_defined_options(self) -> Sequence[UserDefinedOption]:

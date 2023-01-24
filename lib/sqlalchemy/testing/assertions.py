@@ -906,21 +906,6 @@ class AssertsExecutionResults:
             db, callable_, assertsql.CountStatements(count)
         )
 
-    def assert_multiple_sql_count(self, dbs, callable_, counts):
-        recs = [
-            (self.sql_execution_asserter(db), db, count)
-            for (db, count) in zip(dbs, counts)
-        ]
-        asserters = []
-        for ctx, db, count in recs:
-            asserters.append(ctx.__enter__())
-        try:
-            return callable_()
-        finally:
-            for asserter, (ctx, db, count) in zip(asserters, recs):
-                ctx.__exit__(None, None, None)
-                asserter.assert_(assertsql.CountStatements(count))
-
     @contextlib.contextmanager
     def assert_execution(self, db, *rules):
         with self.sql_execution_asserter(db) as asserter:
@@ -929,6 +914,22 @@ class AssertsExecutionResults:
 
     def assert_statement_count(self, db, count):
         return self.assert_execution(db, assertsql.CountStatements(count))
+
+    @contextlib.contextmanager
+    def assert_statement_count_multi_db(self, dbs, counts):
+        recs = [
+            (self.sql_execution_asserter(db), db, count)
+            for (db, count) in zip(dbs, counts)
+        ]
+        asserters = []
+        for ctx, db, count in recs:
+            asserters.append(ctx.__enter__())
+        try:
+            yield
+        finally:
+            for asserter, (ctx, db, count) in zip(asserters, recs):
+                ctx.__exit__(None, None, None)
+                asserter.assert_(assertsql.CountStatements(count))
 
 
 class ComparesIndexes:

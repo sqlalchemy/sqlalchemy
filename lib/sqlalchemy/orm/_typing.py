@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .decl_api import registry as _registry_type
     from .interfaces import InspectionAttr
     from .interfaces import MapperProperty
+    from .interfaces import ORMOption
     from .interfaces import UserDefinedOption
     from .mapper import Mapper
     from .relationships import RelationshipProperty
@@ -120,6 +121,12 @@ class _ORMAdapterProto(Protocol):
 class _LoaderCallable(Protocol):
     def __call__(self, state: InstanceState[Any], passive: PassiveFlag) -> Any:
         ...
+
+
+def is_orm_option(
+    opt: ExecutableOption,
+) -> TypeGuard[ORMOption]:
+    return not opt._is_core  # type: ignore
 
 
 def is_user_defined_option(
