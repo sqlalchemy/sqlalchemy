@@ -11,11 +11,6 @@ included, using asyncio-compatible dialects.
 .. warning:: Please read :ref:`asyncio_install` for important platform
    installation notes for many platforms, including **Apple M1 Architecture**.
 
-.. tip:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
-   be **beta level** software. API details are subject to change however at this
-   point it is unlikely for there to be significant backwards-incompatible
-   changes.
-
 .. seealso::
 
     :ref:`change_3414` - initial feature announcement

@@ -71,6 +71,11 @@ where new :ref:`declarative <orm_declarative_mapper_config_toplevel>` forms allo
 for fully typed ORM models that integrate all the way from statement to
 result set.
 
+.. tip:: Typing support should be considered **beta level** software
+   for the 2.0 series. Typing details are subject to change however
+   significant backwards-incompatible changes are not planned.
+
+
 SQL Expression / Statement / Result Set Typing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -611,19 +616,17 @@ the same type, such as ``str``, may be used which each provide variants
 of :class:`_types.String`, as below where use of an ``Annotated`` ``str`` called
 ``str50`` will indicate ``String(50)``::
 
-  from typing_extensions import Annotated
-  from sqlalchemy.orm import DeclarativeBase
+    from typing_extensions import Annotated
+    from sqlalchemy.orm import DeclarativeBase
 
-  str50 = Annotated[str, 50]
+    str50 = Annotated[str, 50]
 
-  # declarative base with a type-level override, using a type that is
-  # expected to be used in multiple places
-  class Base(DeclarativeBase):
-      registry = registry(
-          type_annotation_map={
-              str50: String(50),
-          }
-      )
+    # declarative base with a type-level override, using a type that is
+    # expected to be used in multiple places
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            str50: String(50),
+        }
 
 Second, Declarative will extract full
 :func:`_orm.mapped_column` definitions from the left hand type if
@@ -650,11 +653,9 @@ example below adds additional ``Annotated`` types in addition to our
 
 
     class Base(DeclarativeBase):
-        registry = registry(
-            type_annotation_map={
-                str50: String(50),
-            }
-        )
+        type_annotation_map = {
+            str50: String(50),
+        }
 
 
     # set up mapped_column() overrides, using whole column styles that are
