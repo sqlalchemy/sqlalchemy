@@ -15,14 +15,23 @@ from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.oracle import NVARCHAR2
+from sqlalchemy.dialects.oracle import VARCHAR2
 from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
 from sqlalchemy.dialects.oracle.base import NUMBER
+from sqlalchemy.dialects.oracle.base import RAW
+from sqlalchemy.dialects.oracle.base import ROWID
+from sqlalchemy.sql.sqltypes import CHAR
+from sqlalchemy.sql.sqltypes import NCHAR
+from sqlalchemy.sql.sqltypes import NVARCHAR
+from sqlalchemy.sql.sqltypes import VARCHAR
 from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -816,6 +825,32 @@ class TypeReflectionTest(fixtures.TestBase):
             # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
         ]
         self._run_test(metadata, connection, specs, ["precision"])
+
+    def test_string_types(
+        self,
+        metadata,
+        connection,
+    ):
+        specs = [
+            (String(125), VARCHAR(125)),
+            (String(42).with_variant(VARCHAR2(42), "oracle"), VARCHAR(42)),
+            (Unicode(125), VARCHAR(125)),
+            (Unicode(42).with_variant(NVARCHAR2(42), "oracle"), NVARCHAR(42)),
+            (CHAR(125), CHAR(125)),
+            (NCHAR(42), NCHAR(42)),
+        ]
+        self._run_test(metadata, connection, specs, ["length"])
+
+    @testing.combinations(ROWID(), RAW(1), argnames="type_")
+    def test_misc_types(self, metadata, connection, type_):
+        t = Table("t1", metadata, Column("x", type_))
+
+        t.create(connection)
+
+        eq_(
+            inspect(connection).get_columns("t1")[0]["type"]._type_affinity,
+            type_._type_affinity,
+        )
 
 
 class IdentityReflectionTest(fixtures.TablesTest):
