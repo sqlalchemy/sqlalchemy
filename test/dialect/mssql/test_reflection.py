@@ -28,6 +28,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -784,7 +785,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             is_(col["type"].length, None)
             in_("max", str(col["type"].compile(dialect=connection.dialect)))
 
-    def test_comments(self, metadata, connection):
+    @testing.fixture
+    def comment_table(self, metadata):
         Table(
             "tbl_with_comments",
             metadata,
@@ -802,12 +804,40 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ),
             comment="table comment çòé 🐍",
         )
-        metadata.create_all(connection)
+        metadata.create_all(testing.db)
+
+    def test_comments(self, connection, comment_table):
         insp = inspect(connection)
         eq_(
             insp.get_table_comment("tbl_with_comments"),
             {"text": "table comment çòé 🐍"},
         )
+
+        cols = {
+            col["name"]: col["comment"]
+            for col in insp.get_columns("tbl_with_comments")
+        }
+        eq_(
+            cols,
+            {
+                "id": "pk comment 🔑",
+                "no_comment": None,
+                "has_comment": "has the comment § méil 📧",
+            },
+        )
+
+    def test_comments_not_supported(self, testing_engine, comment_table):
+        eng = testing_engine(options={"supports_comments": False})
+        insp = inspect(eng)
+
+        with expect_raises_message(
+            NotImplementedError,
+            "Can't get table comments on current SQL Server version in use",
+        ):
+            insp.get_table_comment("tbl_with_comments")
+
+        # currently, column comments still reflect normally since we
+        # aren't using an fn/sp for that
 
         cols = {
             col["name"]: col["comment"]

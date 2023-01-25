@@ -5,6 +5,7 @@ from unittest.mock import Mock
 from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import select
@@ -618,6 +619,76 @@ class VersionDetectionTest(fixtures.TestBase):
             )
 
             eq_(dialect._get_server_version_info(conn), expected)
+
+
+class MiscTest(fixtures.TestBase):
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    @testing.variation("enable_comments", [True, False])
+    def test_comments_enabled_disabled(
+        self, testing_engine, metadata, enable_comments
+    ):
+        Table(
+            "tbl_with_comments",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                comment="pk comment",
+            ),
+            Column("no_comment", Integer),
+            Column(
+                "has_comment",
+                String(20),
+                comment="has the comment",
+            ),
+            comment="table comment",
+        )
+
+        eng = testing_engine(
+            options={"supports_comments": bool(enable_comments)}
+        )
+        metadata.create_all(eng)
+
+        insp = inspect(testing.db)
+        if enable_comments:
+            eq_(
+                insp.get_table_comment("tbl_with_comments"),
+                {"text": "table comment"},
+            )
+
+            cols = {
+                col["name"]: col["comment"]
+                for col in insp.get_columns("tbl_with_comments")
+            }
+            eq_(
+                cols,
+                {
+                    "id": "pk comment",
+                    "no_comment": None,
+                    "has_comment": "has the comment",
+                },
+            )
+        else:
+            eq_(
+                insp.get_table_comment("tbl_with_comments"),
+                {"text": None},
+            )
+
+            cols = {
+                col["name"]: col["comment"]
+                for col in insp.get_columns("tbl_with_comments")
+            }
+            eq_(
+                cols,
+                {
+                    "id": None,
+                    "no_comment": None,
+                    "has_comment": None,
+                },
+            )
 
 
 class RealIsolationLevelTest(fixtures.TestBase):

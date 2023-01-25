@@ -435,6 +435,29 @@ Note that when using LIMIT and/or OFFSET, whether using the older
 or newer SQL Server syntaxes, the statement must have an ORDER BY as well,
 else a :class:`.CompileError` is raised.
 
+.. _mssql_comment_support:
+
+DDL Comment Support
+--------------------
+
+Comment support, which includes DDL rendering for attributes such as
+:paramref:`_schema.Table.comment` and :paramref:`_schema.Column.comment`, as
+well as the ability to reflect these comments, is supported assuming a
+supported version of SQL Server is in use. If a non-supported version such as
+Azure Synapse is detected at first-connect time (based on the presence
+of the ``fn_listextendedproperty`` SQL function), comment support including
+rendering and table-comment reflection is disabled, as both features rely upon
+SQL Server stored procedures and functions that are not available on all
+backend types.
+
+To force comment support to be on or off, bypassing autodetection, set the
+parameter ``supports_comments`` within :func:`_sa.create_engine`::
+
+    e = create_engine("mssql+pyodbc://u:p@dsn", supports_comments=False)
+
+.. versionadded:: 2.0 Added support for table and column comments for
+   the SQL Server dialect, including DDL generation and reflection.
+
 .. _mssql_isolation_level:
 
 Transaction Isolation Level
@@ -3039,6 +3062,7 @@ class MSDialect(default.DefaultDialect):
         use_scope_identity=True,
         schema_name="dbo",
         deprecate_large_types=None,
+        supports_comments=None,
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
@@ -3053,6 +3077,9 @@ class MSDialect(default.DefaultDialect):
         self.ignore_no_transaction_on_rollback = (
             ignore_no_transaction_on_rollback
         )
+        self._user_defined_supports_comments = uds = supports_comments
+        if uds is not None:
+            self.supports_comments = uds
 
         if legacy_schema_aliasing is not None:
             util.warn_deprecated(
@@ -3160,6 +3187,7 @@ class MSDialect(default.DefaultDialect):
         super().initialize(connection)
         self._setup_version_attributes()
         self._setup_supports_nvarchar_max(connection)
+        self._setup_supports_comments(connection)
 
     def _setup_version_attributes(self):
         if self.server_version_info[0] not in list(range(8, 17)):
@@ -3192,6 +3220,23 @@ class MSDialect(default.DefaultDialect):
             self._supports_nvarchar_max = False
         else:
             self._supports_nvarchar_max = True
+
+    def _setup_supports_comments(self, connection):
+        if self._user_defined_supports_comments is not None:
+            return
+
+        try:
+            connection.scalar(
+                sql.text(
+                    "SELECT 1 FROM fn_listextendedproperty"
+                    "(default, default, default, default, "
+                    "default, default, default)"
+                )
+            )
+        except exc.DBAPIError:
+            self.supports_comments = False
+        else:
+            self.supports_comments = True
 
     def _get_default_schema_name(self, connection):
         query = sql.text("SELECT schema_name()")
@@ -3432,6 +3477,11 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):
+        if not self.supports_comments:
+            raise NotImplementedError(
+                "Can't get table comments on current SQL Server version in use"
+            )
+
         schema_name = schema if schema else self.default_schema_name
         COMMENT_SQL = """
             SELECT cast(com.value as nvarchar(max))
