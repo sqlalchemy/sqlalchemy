@@ -1771,8 +1771,8 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_bitwise_not_precedence(self):
         op1 = operators.bitwise_not_op
         c = self.table1.c.myid
-        op2 = op1(c).op("lala", precedence=6)(4)
-        op3 = op1(c).op("lala", precedence=8)(4)
+        op2 = op1(c).op("lala", precedence=7)(4)
+        op3 = op1(c).op("lala", precedence=9)(4)
 
         self.assert_compile(op2, "~mytable.myid lala :param_1")
         self.assert_compile(op3, "(~mytable.myid) lala :param_1")
