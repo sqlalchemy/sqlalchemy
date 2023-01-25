@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedClassProtocol
 from sqlalchemy.sql.schema import PrimaryKeyConstraint
 
 
@@ -68,6 +69,24 @@ class Manager(Employee):
             "start date",
             mapped_column("start date", DateTime),
         )
+
+
+def do_something_with_mapped_class(
+    cls_: MappedClassProtocol[Employee],
+) -> None:
+
+    # EXPECTED_TYPE: Select[Any]
+    reveal_type(cls_.__table__.select())
+
+    # EXPECTED_TYPE: Mapper[Employee]
+    reveal_type(cls_.__mapper__)
+
+    # EXPECTED_TYPE: Employee
+    reveal_type(cls_())
+
+
+do_something_with_mapped_class(Manager)
+do_something_with_mapped_class(Engineer)
 
 
 if typing.TYPE_CHECKING:

@@ -36,6 +36,8 @@ the class itself has been :term:`instrumented` to include behaviors linked to
 relational operations both at the level of the class as well as on instances of
 that class. As the process is basically the same in all cases, classes mapped
 from different styles are always fully interoperable with each other.
+The protocol :class:`_orm.MappedClassProtocol` can be used to indicate a mapped
+class when using type checkers such as mypy.
 
 The original mapping API is commonly referred to as "classical" style,
 whereas the more automated style of mapping is known as "declarative" style.

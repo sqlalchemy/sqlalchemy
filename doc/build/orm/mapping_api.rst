@@ -141,3 +141,6 @@ Class Mapping API
 
 .. autoclass:: MappedAsDataclass
     :members:
+
+.. autoclass:: MappedClassProtocol
+    :no-members:
