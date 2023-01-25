@@ -3792,7 +3792,7 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
         self._is_implicitly_boolean = element._is_implicitly_boolean
 
     @property
-    def wrapped_column_expression(self) -> ColumnElement[Any]:
+    def wrapped_column_expression(self) -> ColumnClause[Any]:
         return self.element
 
     def self_group(self, against: Optional[OperatorType] = None) -> AsBoolean:
