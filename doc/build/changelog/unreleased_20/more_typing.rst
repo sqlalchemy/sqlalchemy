@@ -37,3 +37,11 @@
     as a context manager were not preserved, indicating :class:`_engine.Result`
     in all cases rather than the specific :class:`_engine.Result` sub-type.
     Pull request courtesy Martin Baláž.
+
+.. change::
+    :tags: typing, bug
+    :tickets: 9150
+
+    Fixed issue where using the :paramref:`_orm.relationship.remote_side`
+    and similar parameters, passing an annotated declarative object typed as
+    :class:`_orm.Mapped`, would not be accepted by the type checker.
