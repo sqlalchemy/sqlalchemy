@@ -9,7 +9,7 @@
 
 
 .. changelog::
-    :version: 2.0.0rc4
+    :version: 2.0.0
     :include_notes_from: unreleased_20
 
 .. changelog::

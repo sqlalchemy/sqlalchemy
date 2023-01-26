@@ -1877,9 +1877,9 @@ def _warnings_warn(
 
             if frame.f_code in _warning_tags:
                 warning_tag_found = True
-                (_prefix, _category) = _warning_tags[frame.f_code]
+                (_suffix, _category) = _warning_tags[frame.f_code]
                 category = category or _category
-                message = f"{message} ({_prefix})"
+                message = f"{message} ({_suffix})"
 
             frame = frame.f_back  # type: ignore[assignment]
 

@@ -3,7 +3,7 @@
     :tickets: 9122
 
     The :meth:`_sql.ColumnOperators.in_` and
-    :meth:`_sql.ColumnOperators.not_in_` are typed to include
+    :meth:`_sql.ColumnOperators.not_in` methods are typed to include
     ``Iterable[Any]`` rather than ``Sequence[Any]`` for more flexibility in
     argument type.
 
