@@ -2311,6 +2311,12 @@ class Mapper(
                 "columns get mapped." % (key, self, column.key, prop)
             )
 
+    @util.langhelpers.tag_method_for_warnings(
+        "This warning originated from the `configure_mappers()` process, "
+        "which was invoked automatically in response to a user-initiated "
+        "operation.",
+        sa_exc.SAWarning,
+    )
     def _check_configure(self) -> None:
         if self.registry._new_mappers:
             _configure_registries({self.registry}, cascade=True)
