@@ -10,10 +10,148 @@
 
 .. changelog::
     :version: 2.0.0
-    :include_notes_from: unreleased_20
+    :released: January 26, 2023
+
+    .. change::
+        :tags: usecase, orm extensions
+        :tickets: 5145
+
+        Added new feature to :class:`.AutomapBase` for autoload of classes across
+        multiple schemas which may have overlapping names, by providing a
+        :paramref:`.AutomapBase.prepare.modulename_for_table` parameter which
+        allows customization of the ``__module__`` attribute of newly generated
+        classes, as well as a new collection :attr:`.AutomapBase.by_module`, which
+        stores a dot-separated namespace of module names linked to classes based on
+        the ``__module__`` attribute.
+
+        Additionally, the :meth:`.AutomapBase.prepare` method may now be invoked
+        any number of times, with or without reflection enabled; only newly
+        added tables that were not previously mapped will be processed on each
+        call.   Previously, the :meth:`.MetaData.reflect` method would need to be
+        called explicitly each time.
+
+        .. seealso::
+
+            :ref:`automap_by_module` - illustrates use of both techniques at once.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 7305
+
+        Improved the notification of warnings that are emitted within the configure
+        mappers or flush process, which are often invoked as part of a different
+        operation, to add additional context to the message that indicates one of
+        these operations as the source of the warning within operations that may
+        not be obviously related.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9129
+
+        Added typing for the built-in generic functions that are available from the
+        :data:`_sql.func` namespace, which accept a particular set of arguments and
+        return a particular type, such as for :class:`_sql.count`,
+        :class:`_sql.current_timestamp`, etc.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9120
+
+        Corrected the type passed for "lambda statements" so that a plain lambda is
+        accepted by mypy, pyright, others without any errors about argument types.
+        Additionally implemented typing for more of the public API for lambda
+        statements and ensured :class:`.StatementLambdaElement` is part of the
+        :class:`.Executable` hierarchy so it's typed as accepted by
+        :meth:`_engine.Connection.execute`.
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9122
+
+        The :meth:`_sql.ColumnOperators.in_` and
+        :meth:`_sql.ColumnOperators.not_in` methods are typed to include
+        ``Iterable[Any]`` rather than ``Sequence[Any]`` for more flexibility in
+        argument type.
+
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9123
+
+        The :func:`_sql.or_` and :func:`_sql.and_` from a typing perspective
+        require the first argument to be present, however these functions still
+        accept zero arguments which will emit a deprecation warning at runtime.
+        Typing is also added to support sending the fixed literal ``False`` for
+        :func:`_sql.or_` and ``True`` for :func:`_sql.and_` as the first argument
+        only, however the documentation now indicates sending the
+        :func:`_sql.false` and :func:`_sql.true` constructs in these cases as a
+        more explicit approach.
+
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9125
+
+        Fixed typing issue where iterating over a :class:`_orm.Query` object
+        was not correctly typed.
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9136
+
+        Fixed typing issue where the object type when using :class:`_engine.Result`
+        as a context manager were not preserved, indicating :class:`_engine.Result`
+        in all cases rather than the specific :class:`_engine.Result` sub-type.
+        Pull request courtesy Martin Baláž.
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9150
+
+        Fixed issue where using the :paramref:`_orm.relationship.remote_side`
+        and similar parameters, passing an annotated declarative object typed as
+        :class:`_orm.Mapped`, would not be accepted by the type checker.
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9148
+
+        Added typing to legacy operators such as ``isnot()``, ``notin_()``, etc.
+        which previously were referencing the newer operators but were not
+        themselves typed.
+
+    .. change::
+        :tags: feature, orm extensions
+        :tickets: 7226
+
+        Added new option to horizontal sharding API
+        :class:`_horizontal.set_shard_id` which sets the effective shard identifier
+        to query against, for both the primary query as well as for all secondary
+        loaders including relationship eager loaders as well as relationship and
+        column lazy loaders.
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 9142
+
+        The newly added comment reflection and rendering capability of the MSSQL
+        dialect, added in :ticket:`7844`, will now be disabled by default if it
+        cannot be determined that an unsupported backend such as Azure Synapse may
+        be in use; this backend does not support table and column comments and does
+        not support the SQL Server routines in use to generate them as well as to
+        reflect them. A new parameter ``supports_comments`` is added to the dialect
+        which defaults to ``None``, indicating that comment support should be
+        auto-detected. When set to ``True`` or ``False``, the comment support is
+        either enabled or disabled unconditionally.
+
+        .. seealso::
+
+            :ref:`mssql_comment_support`
+
 
 .. changelog::
     :version: 2.0.0rc3
+    :released: January 26, 2023
     :released: January 18, 2023
 
     .. change::
@@ -95,6 +233,7 @@
 
 .. changelog::
     :version: 2.0.0rc2
+    :released: January 26, 2023
     :released: January 9, 2023
 
     .. change::
@@ -161,6 +300,7 @@
 
 .. changelog::
     :version: 2.0.0rc1
+    :released: January 26, 2023
     :released: December 28, 2022
 
     .. change::
@@ -456,6 +596,7 @@
 
 .. changelog::
     :version: 2.0.0b4
+    :released: January 26, 2023
     :released: December 5, 2022
 
     .. change::
@@ -777,6 +918,7 @@
 
 .. changelog::
     :version: 2.0.0b3
+    :released: January 26, 2023
     :released: November 4, 2022
 
     .. change::
@@ -931,6 +1073,7 @@
 
 .. changelog::
     :version: 2.0.0b2
+    :released: January 26, 2023
     :released: October 20, 2022
 
     .. change::
@@ -1044,6 +1187,7 @@
 
 .. changelog::
     :version: 2.0.0b1
+    :released: January 26, 2023
     :released: October 13, 2022
 
     .. change::

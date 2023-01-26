@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, bug
-    :tickets: 7305
-
-    Improved the notification of warnings that are emitted within the configure
-    mappers or flush process, which are often invoked as part of a different
-    operation, to add additional context to the message that indicates one of
-    these operations as the source of the warning within operations that may
-    not be obviously related.

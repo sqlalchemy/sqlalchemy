@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9129
-
-    Added typing for the built-in generic functions that are available from the
-    :data:`_sql.func` namespace, which accept a particular set of arguments and
-    return a particular type, such as for :class:`_sql.count`,
-    :class:`_sql.current_timestamp`, etc.

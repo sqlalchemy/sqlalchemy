@@ -1,9 +1,0 @@
-.. change::
-    :tags: feature, orm extensions
-    :tickets: 7226
-
-    Added new option to horizontal sharding API
-    :class:`_horizontal.set_shard_id` which sets the effective shard identifier
-    to query against, for both the primary query as well as for all secondary
-    loaders including relationship eager loaders as well as relationship and
-    column lazy loaders.
