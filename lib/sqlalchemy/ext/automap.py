@@ -27,7 +27,7 @@ mappings.
    of tables, the :class:`.DeferredReflection` class, described at
    :ref:`orm_declarative_reflected_deferred_reflection`, is a better choice.
 
-
+.. _automap_basic_use:
 
 Basic Use
 =========
@@ -125,6 +125,110 @@ explicit table declaration::
     # mapped classes are ready
     User, Address, Order = Base.classes.user, Base.classes.address,\
         Base.classes.user_order
+
+.. _automap_by_module:
+
+Generating Mappings from Multiple Schemas
+=========================================
+
+The :meth:`.AutomapBase.prepare` method when used with reflection may reflect
+tables from one schema at a time at most, using the
+:paramref:`.AutomapBase.prepare.schema` parameter to indicate the name of a
+schema to be reflected from. In order to populate the :class:`.AutomapBase`
+with tables from multiple schemas, :meth:`.AutomapBase.prepare` may be invoked
+multiple times, each time passing a different name to the
+:paramref:`.AutomapBase.prepare.schema` parameter. The
+:meth:`.AutomapBase.prepare` method keeps an internal list of
+:class:`_schema.Table` objects that have already been mapped, and will add new
+mappings only for those :class:`_schema.Table` objects that are new since the
+last time :meth:`.AutomapBase.prepare` was run::
+
+    e = create_engine("postgresql://scott:tiger@localhost/test")
+
+    Base.metadata.create_all(e)
+
+    Base = automap_base()
+
+    Base.prepare(e)
+    Base.prepare(e, schema="test_schema")
+    Base.prepare(e, schema="test_schema_2")
+
+.. versionadded:: 2.0  The :meth:`.AutomapBase.prepare` method may be called
+   any number of times; only newly added tables will be mapped
+   on each run.   Previously in version 1.4 and earlier, multiple calls would
+   cause errors as it would attempt to re-map an already mapped class.
+   The previous workaround approach of invoking
+   :meth:`_schema.MetaData.reflect` directly remains available as well.
+
+Automapping same-named tables across multiple schemas
+-----------------------------------------------------
+
+For the common case where multiple schemas may have same-named tables and
+therefore would generate same-named classes, conflicts can be resolved either
+through use of the :paramref:`.AutomapBase.prepare.classname_for_table` hook to
+apply different classnames on a per-schema basis, or by using the
+:paramref:`.AutomapBase.prepare.modulename_for_table` hook, which allows
+disambiguation of same-named classes by changing their effective ``__module__``
+attribute. In the example below, this hook is used to create a ``__module__``
+attribute for all classes that is of the form ``mymodule.<schemaname>``, where
+the schema name ``default`` is used if no schema is present::
+
+    e = create_engine("postgresql://scott:tiger@localhost/test")
+
+    Base.metadata.create_all(e)
+
+    def module_name_for_table(cls, tablename, table):
+        if table.schema is not None:
+            return f"mymodule.{table.schema}"
+        else:
+            return f"mymodule.default"
+
+    Base = automap_base()
+
+    Base.prepare(e, modulename_for_table=module_name_for_table)
+    Base.prepare(e, schema="test_schema", modulename_for_table=module_name_for_table)
+    Base.prepare(e, schema="test_schema_2", modulename_for_table=module_name_for_table)
+
+
+The same named-classes are organized into a hierarchical collection available
+at :attr:`.AutomapBase.by_module`.  This collection is traversed using the
+dot-separated name of a particular package/module down into the desired
+class name.
+
+.. note:: When using the :paramref:`.AutomapBase.prepare.modulename_for_table`
+   hook to return a new ``__module__`` that is not ``None``, the class is
+   **not** placed into the :attr:`.AutomapBase.classes` collection; only
+   classes that were not given an explicit modulename are placed here, as the
+   collection cannot represent same-named classes individually.
+
+In the example above, if the database contained a table named ``accounts`` in
+all three of the default schema, the ``test_schema`` schema, and the
+``test_schema_2`` schema, three separate classes will be available as::
+
+    Base.by_module.mymodule.default.accounts
+    Base.by_module.mymodule.test_schema.accounts
+    Base.by_module.mymodule.test_schema_2.accounts
+
+The default module namespace generated for all :class:`.AutomapBase` classes is
+``sqlalchemy.ext.automap``. If no
+:paramref:`.AutomapBase.prepare.modulename_for_table` hook is used, the
+contents of :attr:`.AutomapBase.by_module` will be entirely within the
+``sqlalchemy.ext.automap`` namespace (e.g.
+``MyBase.by_module.sqlalchemy.ext.automap.<classname>``), which would contain
+the same series of classes as what would be seen in
+:attr:`.AutomapBase.classes`. Therefore it's generally only necessary to use
+:attr:`.AutomapBase.by_module` when explicit ``__module__`` conventions are
+present.
+
+.. versionadded: 2.0
+
+    Added the :attr:`.AutomapBase.by_module` collection, which stores
+    classes within a named hierarchy based on dot-separated module names,
+    as well as the :paramref:`.Automap.prepare.modulename_for_table` parameter
+    which allows for custom ``__module__`` schemes for automapped
+    classes.
+
+
 
 Specifying Classes Explicitly
 =============================
@@ -573,14 +677,17 @@ be applied as::
 """  # noqa
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import ClassVar
 from typing import Dict
 from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -597,6 +704,7 @@ from ..orm.decl_base import _DeferredMapperConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
 from ..schema import ForeignKeyConstraint
 from ..sql import and_
+from ..util import Properties
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
@@ -604,27 +712,24 @@ if TYPE_CHECKING:
     from ..orm.base import RelationshipDirection
     from ..orm.relationships import ORMBackrefArgument
     from ..orm.relationships import Relationship
-    from ..sql.elements import quoted_name
     from ..sql.schema import Column
+    from ..sql.schema import MetaData
     from ..sql.schema import Table
     from ..util import immutabledict
-    from ..util import Properties
 
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 
 
-class ClassnameForTableType(Protocol):
-    def __call__(
-        self, base: Type[Any], tablename: quoted_name, table: Table
-    ) -> str:
+class PythonNameForTableType(Protocol):
+    def __call__(self, base: Type[Any], tablename: str, table: Table) -> str:
         ...
 
 
 def classname_for_table(
     base: Type[Any],
-    tablename: quoted_name,
+    tablename: str,
     table: Table,
 ) -> str:
     """Return the class name that should be used, given the name
@@ -878,6 +983,9 @@ def generate_relationship(
         raise TypeError("Unknown relationship function: %s" % return_fn)
 
 
+ByModuleProperties = Properties[Union["ByModuleProperties", Type[Any]]]
+
+
 class AutomapBase:
     """Base class for an "automap" schema.
 
@@ -897,7 +1005,7 @@ class AutomapBase:
 
     __abstract__ = True
 
-    classes: Optional[Properties[Type[Any]]] = None
+    classes: ClassVar[Properties[Type[Any]]]
     """An instance of :class:`.util.Properties` containing classes.
 
     This object behaves much like the ``.c`` collection on a table.  Classes
@@ -909,6 +1017,46 @@ class AutomapBase:
         User, Address = Base.classes.User, Base.classes.Address
 
     """
+
+    by_module: ClassVar[ByModuleProperties]
+    """An instance of :class:`.util.Properties` containing a hierarchal
+    structure of dot-separated module names linked to classes.
+
+    This collection is an alternative to the :attr:`.AutomapBase.classes`
+    collection that is useful when making use of the
+    :paramref:`.AutomapBase.prepare.modulename_for_table` parameter, which will
+    apply distinct ``__module__`` attributes to generated classes.
+
+    The default ``__module__`` an automap-generated class is
+    ``sqlalchemy.ext.automap``; to access this namespace using
+    :attr:`.AutomapBase.by_module` looks like::
+
+        User = Base.by_module.sqlalchemy.ext.automap.User
+
+    If a class had a ``__module__`` of ``mymodule.account``, accessing
+    this namespace looks like::
+
+        MyClass = Base.by_module.mymodule.account.MyClass
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :ref:`automap_by_module`
+
+    """
+
+    metadata: ClassVar[MetaData]
+    """Refers to the :class:`_schema.MetaData` collection that will be used
+    for new :class:`_schema.Table` objects.
+
+    .. seealso::
+
+        :ref:`orm_declarative_metadata`
+
+    """
+
+    _sa_automapbase_bookkeeping: ClassVar[_Bookkeeping]
 
     @classmethod
     @util.deprecated_params(
@@ -930,12 +1078,13 @@ class AutomapBase:
         ),
     )
     def prepare(
-        cls: Type[Any],
+        cls: Type[AutomapBase],
         autoload_with: Optional[Engine] = None,
         engine: Optional[Any] = None,
         reflect: bool = False,
         schema: Optional[str] = None,
-        classname_for_table: Optional[ClassnameForTableType] = None,
+        classname_for_table: Optional[PythonNameForTableType] = None,
+        modulename_for_table: Optional[PythonNameForTableType] = None,
         collection_class: Optional[Any] = None,
         name_for_scalar_relationship: Optional[
             NameForScalarRelationshipType
@@ -949,28 +1098,50 @@ class AutomapBase:
         ] = util.EMPTY_DICT,
     ) -> None:
         """Extract mapped classes and relationships from the
-        :class:`_schema.MetaData` and
-        perform mappings.
+        :class:`_schema.MetaData` and perform mappings.
 
-        :param engine: an :class:`_engine.Engine` or
+        For full documentation and examples see
+        :ref:`automap_basic_use`.
+
+        :param autoload_with: an :class:`_engine.Engine` or
          :class:`_engine.Connection` with which
-         to perform schema reflection, if specified.
-         If the :paramref:`.AutomapBase.prepare.reflect` argument is False,
-         this object is not used.
+         to perform schema reflection; when specified, the
+         :meth:`_schema.MetaData.reflect` method will be invoked within
+         the scope of this method.
 
-        :param reflect: if True, the :meth:`_schema.MetaData.reflect`
-         method is called
-         on the :class:`_schema.MetaData` associated with this
-         :class:`.AutomapBase`.
-         The :class:`_engine.Engine` passed via
-         :paramref:`.AutomapBase.prepare.engine` will be used to perform the
-         reflection if present; else, the :class:`_schema.MetaData`
-         should already be
-         bound to some engine else the operation will fail.
+        :param engine: legacy; use :paramref:`.AutomapBase.autoload_with`.
+         Used to indicate the :class:`_engine.Engine` or
+         :class:`_engine.Connection` with which to reflect tables with,
+         if :paramref:`.AutomapBase.reflect` is True.
+
+        :param reflect: legacy; use :paramref:`.AutomapBase.autoload_with`.
+         Indicates that :meth:`_schema.MetaData.reflect` should be invoked.
 
         :param classname_for_table: callable function which will be used to
          produce new class names, given a table name.  Defaults to
          :func:`.classname_for_table`.
+
+        :param modulename_for_table: callable function which will be used to
+         produce the effective ``__module__`` for an internally generated
+         class, to allow for multiple classes of the same name in a single
+         automap base which would be in different "modules".
+
+         Defaults to ``None``, which will indicate that ``__module__`` will not
+         be set explicitly; the Python runtime will use the value
+         ``sqlalchemy.ext.automap`` for these classes.
+
+         When assigning ``__module__`` to generated classes, they can be
+         accessed based on dot-separated module names using the
+         :attr:`.AutomapBase.by_module` collection.   Classes that have
+         an explicit ``__module_`` assigned using this hook do **not** get
+         placed into the :attr:`.AutomapBase.classes` collection, only
+         into :attr:`.AutomapBase.by_module`.
+
+         .. versionadded:: 2.0
+
+         .. seealso::
+
+            :ref:`automap_by_module`
 
         :param name_for_scalar_relationship: callable function which will be
          used to produce relationship names for scalar relationships.  Defaults
@@ -989,14 +1160,25 @@ class AutomapBase:
          object is created that represents a
          collection.  Defaults to ``list``.
 
-        :param schema: When present in conjunction with the
-         :paramref:`.AutomapBase.prepare.reflect` flag, is passed to
-         :meth:`_schema.MetaData.reflect`
-         to indicate the primary schema where tables
-         should be reflected from.  When omitted, the default schema in use
-         by the database connection is used.
+        :param schema: Schema name to reflect when reflecting tables using
+         the :paramref:`.AutomapBase.prepare.autoload_with` parameter. The name
+         is passed to the :paramref:`_schema.MetaData.reflect.schema` parameter
+         of :meth:`_schema.MetaData.reflect`. When omitted, the default schema
+         in use by the database connection is used.
 
-         .. versionadded:: 1.1
+         .. note:: The :paramref:`.AutomapBase.prepare.schema`
+            parameter supports reflection of a single schema at a time.
+            In order to include tables from many schemas, use
+            multiple calls to :meth:`.AutomapBase.prepare`.
+
+            For an overview of multiple-schema automap including the use
+            of additional naming conventions to resolve table name
+            conflicts, see the section :ref:`automap_by_module`.
+
+            .. versionadded:: 2.0 :meth:`.AutomapBase.prepare` supports being
+               directly invoked any number of times, keeping track of tables
+               that have already been processed to avoid processing them
+               a second time.
 
         :param reflection_options: When present, this dictionary of options
          will be passed to :meth:`_schema.MetaData.reflect`
@@ -1037,7 +1219,7 @@ class AutomapBase:
             )
             if reflection_options:
                 opts.update(reflection_options)
-            cls.metadata.reflect(autoload_with, **opts)
+            cls.metadata.reflect(autoload_with, **opts)  # type: ignore[arg-type]  # noqa: E501
 
         with _CONFIGURE_MUTEX:
             table_to_map_config: Union[
@@ -1059,7 +1241,15 @@ class AutomapBase:
                 ]
             ] = []
 
-            for table in cls.metadata.tables.values():
+            bookkeeping = cls._sa_automapbase_bookkeeping
+            metadata_tables = cls.metadata.tables
+
+            for table_key in set(metadata_tables).difference(
+                bookkeeping.table_keys
+            ):
+                table = metadata_tables[table_key]
+                bookkeeping.table_keys.add(table_key)
+
                 lcl_m2m, rem_m2m, m2m_const = _is_many_to_many(cls, table)
                 if lcl_m2m is not None:
                     assert rem_m2m is not None
@@ -1068,15 +1258,57 @@ class AutomapBase:
                 elif not table.primary_key:
                     continue
                 elif table not in table_to_map_config:
+                    clsdict: Dict[str, Any] = {"__table__": table}
+                    if modulename_for_table is not None:
+                        new_module = modulename_for_table(
+                            cls, table.name, table
+                        )
+                        if new_module is not None:
+                            clsdict["__module__"] = new_module
+                    else:
+                        new_module = None
+
+                    newname = classname_for_table(cls, table.name, table)
+                    if new_module is None and newname in cls.classes:
+                        util.warn(
+                            "Ignoring duplicate class name "
+                            f"'{newname}' "
+                            "received in automap base for table "
+                            f"{table.key} without "
+                            "``__module__`` being set; consider using the "
+                            "``modulename_for_table`` hook"
+                        )
+                        continue
+
                     mapped_cls = type(
-                        classname_for_table(cls, table.name, table),
+                        newname,
                         (cls,),
-                        {"__table__": table},
+                        clsdict,
                     )
                     map_config = _DeferredMapperConfig.config_for_cls(
                         mapped_cls
                     )
-                    cls.classes[map_config.cls.__name__] = mapped_cls
+                    assert map_config.cls.__name__ == newname
+                    if new_module is None:
+                        cls.classes[newname] = mapped_cls
+
+                    by_module_properties: ByModuleProperties = cls.by_module
+                    for token in map_config.cls.__module__.split("."):
+
+                        if token not in by_module_properties:
+                            by_module_properties[token] = util.Properties({})
+
+                        props = by_module_properties[token]
+
+                        # we can assert this because the clsregistry
+                        # module would have raised if there was a mismatch
+                        # between modules/classes already.
+                        # see test_cls_schema_name_conflict
+                        assert isinstance(props, Properties)
+                        by_module_properties = props
+
+                    by_module_properties[map_config.cls.__name__] = mapped_cls
+
                     table_to_map_config[table] = map_config
 
             for map_config in table_to_map_config.values():
@@ -1139,6 +1371,13 @@ class AutomapBase:
         )
 
 
+@dataclasses.dataclass
+class _Bookkeeping:
+    __slots__ = ("table_keys",)
+
+    table_keys: Set[str]
+
+
 def automap_base(
     declarative_base: Optional[Type[Any]] = None, **kw: Any
 ) -> Any:
@@ -1169,7 +1408,12 @@ def automap_base(
     return type(
         Base.__name__,
         (AutomapBase, Base),
-        {"__abstract__": True, "classes": util.Properties({})},
+        {
+            "__abstract__": True,
+            "classes": util.Properties({}),
+            "by_module": util.Properties({}),
+            "_sa_automapbase_bookkeeping": _Bookkeeping(set()),
+        },
     )
 
 

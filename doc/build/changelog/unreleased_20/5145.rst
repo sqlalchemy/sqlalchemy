@@ -1,0 +1,21 @@
+.. change::
+    :tags: usecase, orm extensions
+    :tickets: 5145
+
+    Added new feature to :class:`.AutomapBase` for autoload of classes across
+    multiple schemas which may have overlapping names, by providing a
+    :paramref:`.AutomapBase.prepare.modulename_for_table` parameter which
+    allows customization of the ``__module__`` attribute of newly generated
+    classes, as well as a new collection :attr:`.AutomapBase.by_module`, which
+    stores a dot-separated namespace of module names linked to classes based on
+    the ``__module__`` attribute.
+
+    Additionally, the :meth:`.AutomapBase.prepare` method may now be invoked
+    any number of times, with or without reflection enabled; only newly
+    added tables that were not previously mapped will be processed on each
+    call.   Previously, the :meth:`.MetaData.reflect` method would need to be
+    called explicitly each time.
+
+    .. seealso::
+
+        :ref:`automap_by_module` - illustrates use of both techniques at once.
