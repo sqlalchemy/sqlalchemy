@@ -1,6 +1,8 @@
 """this suite experiments with other kinds of relationship syntaxes.
 
 """
+from __future__ import annotations
+
 import typing
 from typing import List
 from typing import Optional
@@ -46,6 +48,28 @@ class Address(Base):
 
     user_style_one: Mapped[User] = relationship()
     user_style_two: Mapped["User"] = relationship()
+
+
+class SelfReferential(Base):
+    """test for #9150"""
+
+    __tablename__ = "MyTable"
+
+    idx: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mytable_id: Mapped[int] = mapped_column(ForeignKey("MyTable.idx"))
+
+    not_anno = mapped_column(Integer)
+
+    selfref_1: Mapped[Optional[SelfReferential]] = relationship(
+        remote_side=idx
+    )
+    selfref_2: Mapped[Optional[SelfReferential]] = relationship(
+        foreign_keys=mytable_id
+    )
+
+    selfref_3: Mapped[Optional[SelfReferential]] = relationship(
+        remote_side=not_anno
+    )
 
 
 if typing.TYPE_CHECKING:
