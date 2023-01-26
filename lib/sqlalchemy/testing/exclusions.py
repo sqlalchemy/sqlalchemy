@@ -429,9 +429,8 @@ def fails(reason=None):
     return fails_if(BooleanPredicate(True, reason or "expected to fail"))
 
 
-@decorator
-def future(fn, *arg):
-    return fails_if(LambdaPredicate(fn), "Future feature")
+def future():
+    return fails_if(BooleanPredicate(True, "Future feature"))
 
 
 def fails_on(db, reason=None):

@@ -2311,7 +2311,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
         eq_(sess.query(T2).all(), [T2()])
         eq_(sess.query(T3).all(), [T3()])
 
-    @testing.future
+    @testing.future()
     def test_preserves_orphans_onelevel_postremove(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
