@@ -7402,7 +7402,7 @@ class ImmediateTest(_fixtures.FixtureTest):
             .one_or_none,
         )
 
-    @testing.future
+    @testing.future()
     def test_getslice(self):
         assert False
 
