@@ -924,7 +924,7 @@ Operations that are improved by this feature include:
 
 * unit of work flushes for objects added to the session using
   :meth:`_orm.Session.add` and :meth:`_orm.Session.add_all`.
-* The new `ORM Bulk Insert Statement <orm_queryguide_bulk_insert>` feature,
+* The new :ref:`ORM Bulk Insert Statement <orm_queryguide_bulk_insert>` feature,
   which improves upon the experimental version of this feature first introduced
   in SQLAlchemy 1.4.
 * the :class:`_orm.Session` "bulk" operations described at
