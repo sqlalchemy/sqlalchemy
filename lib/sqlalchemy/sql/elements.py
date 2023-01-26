@@ -876,7 +876,20 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> BinaryExpression[bool]:
             ...
 
+        def notin_(
+            self,
+            other: Union[
+                Iterable[Any], BindParameter[Any], roles.InElementRole
+            ],
+        ) -> BinaryExpression[bool]:
+            ...
+
         def not_like(
+            self, other: Any, escape: Optional[str] = None
+        ) -> BinaryExpression[bool]:
+            ...
+
+        def notlike(
             self, other: Any, escape: Optional[str] = None
         ) -> BinaryExpression[bool]:
             ...
@@ -886,10 +899,18 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> BinaryExpression[bool]:
             ...
 
+        def notilike(
+            self, other: Any, escape: Optional[str] = None
+        ) -> BinaryExpression[bool]:
+            ...
+
         def is_(self, other: Any) -> BinaryExpression[bool]:
             ...
 
         def is_not(self, other: Any) -> BinaryExpression[bool]:
+            ...
+
+        def isnot(self, other: Any) -> BinaryExpression[bool]:
             ...
 
         def startswith(
@@ -933,7 +954,13 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def nulls_first(self) -> UnaryExpression[_T]:
             ...
 
+        def nullsfirst(self) -> UnaryExpression[_T]:
+            ...
+
         def nulls_last(self) -> UnaryExpression[_T]:
+            ...
+
+        def nullslast(self) -> UnaryExpression[_T]:
             ...
 
         def collate(self, collation: str) -> CollationClause:

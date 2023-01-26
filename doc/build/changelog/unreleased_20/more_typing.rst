@@ -45,3 +45,11 @@
     Fixed issue where using the :paramref:`_orm.relationship.remote_side`
     and similar parameters, passing an annotated declarative object typed as
     :class:`_orm.Mapped`, would not be accepted by the type checker.
+
+.. change::
+    :tags: typing, bug
+    :tickets: 9148
+
+    Added typing to legacy operators such as ``isnot()``, ``notin_()``, etc.
+    which previously were referencing the newer operators but were not
+    themselves typed.

@@ -64,6 +64,17 @@ stmt = select(column("q")).where(lambda: column("g") > 5).where(c2 == 5)
 
 expr9 = c1.bool_op("@@")(func.to_tsquery("some & query"))
 
+# add tests for #9148
+and_(c1.is_(q))
+and_(c1.is_not(q))
+and_(c1.isnot(q))
+and_(c1.not_in(["x"]))
+and_(c1.notin_(["x"]))
+and_(c1.not_like("x"))
+and_(c1.notlike("x"))
+and_(c1.not_ilike("x"))
+and_(c1.notilike("x"))
+
 
 if typing.TYPE_CHECKING:
 
