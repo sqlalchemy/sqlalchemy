@@ -4,6 +4,7 @@ from sqlalchemy import column
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -22,6 +23,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
@@ -4054,6 +4057,59 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
             r"Mapper\[AJoinedSubA\(ajoinedsuba\)\]",
             q.all,
         )
+
+
+class CompositeJoinedInTest(fixtures.DeclarativeMappedTest):
+    """test #9164"""
+
+    run_setup_mappers = "once"
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "table_a"
+
+            order_id: Mapped[str] = mapped_column(primary_key=True)
+            _sku: Mapped[str] = mapped_column(primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "a",
+                "polymorphic_on": "type",
+            }
+
+            type: Mapped[str]
+
+            def __init__(self, order_id: str, sku: str):
+                self.order_id = order_id
+                self._sku = sku
+
+        class B(A):
+            __tablename__ = "table_b"
+
+            _increment_id: Mapped[str] = mapped_column(primary_key=True)
+            _sku: Mapped[str] = mapped_column(primary_key=True)
+
+            __table_args__ = (
+                ForeignKeyConstraint(
+                    ["_increment_id", "_sku"],
+                    ["table_a.order_id", "table_a._sku"],
+                ),
+            )
+
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+    def test_round_trip(self):
+        B = self.classes.B
+
+        sess = fixture_session()
+        b1 = B(order_id="iid1", sku="sku1")
+        sess.add(b1)
+        sess.commit()
+
+        eq_(sess.scalar(select(B)), b1)
 
 
 class NameConflictTest(fixtures.MappedTest):
