@@ -3920,12 +3920,16 @@ class Mapper(
             ],
         ] = util.defaultdict(list)
 
+        def set_union(x, y):
+            return x.union(y)
+
         for table in self._sorted_tables:
             cols = set(table.c)
+
             for m in self.iterate_to_root():
                 if m._inherits_equated_pairs and cols.intersection(
                     reduce(
-                        set.union,  # type: ignore
+                        set_union,
                         [l.proxy_set for l, r in m._inherits_equated_pairs],
                     )
                 ):

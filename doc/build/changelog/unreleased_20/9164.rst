@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 9164
+
+    Fixed regression where ORM models that used joined table inheritance with a
+    composite foreign key would encounter an internal error in the mapper
+    internals.
+
+
