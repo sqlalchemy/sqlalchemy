@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9156
+
+    The :meth:`_expression.ColumnElement.cast` is typed to accept
+    both ``Type[TypeEngine[T]]`` and ``TypeEngine[T]`` rather only
+    ``TypeEngine[T]``.
