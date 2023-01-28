@@ -47,7 +47,6 @@ from .. import util
 from ..sql import coercions
 from ..sql import roles
 from ..sql.base import _NoArg
-from ..sql.roles import DDLConstraintColumnRole
 from ..sql.schema import Column
 from ..sql.schema import SchemaConst
 from ..sql.type_api import TypeEngine
@@ -504,7 +503,6 @@ class MappedSQLExpression(ColumnProperty[_T], _DeclarativeMapped[_T]):
 
 
 class MappedColumn(
-    DDLConstraintColumnRole,
     _IntrospectsAnnotations,
     _MapsColumns[_T],
     _DeclarativeMapped[_T],

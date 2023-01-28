@@ -31,6 +31,7 @@ from ._typing import insp_is_mapper
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
+from ..sql import roles
 from ..sql.elements import SQLColumnExpression
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
@@ -775,6 +776,7 @@ class Mapped(
     SQLORMExpression[_T],
     ORMDescriptor[_T],
     _MappedAnnotationBase[_T],
+    roles.DDLConstraintColumnRole,
 ):
     """Represent an ORM mapped attribute on a mapped class.
 

@@ -135,7 +135,6 @@ class QueryableAttribute(
     interfaces.PropComparator[_T],
     roles.JoinTargetRole,
     roles.OnClauseRole,
-    roles.DDLConstraintColumnRole,
     sql_base.Immutable,
     cache_key.SlotsMemoizedHasCacheKey,
     util.MemoizedSlots,

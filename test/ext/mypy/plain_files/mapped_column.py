@@ -1,7 +1,10 @@
 from typing import Optional
 
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -44,9 +47,10 @@ class X(Base):
     c: Mapped[str] = mapped_column(nullable=True)
     d: Mapped[str] = mapped_column(nullable=False)
 
-    e: Mapped[Optional[str]] = mapped_column(nullable=True)
+    e: Mapped[Optional[str]] = mapped_column(ForeignKey(c), nullable=True)
 
-    f: Mapped[Optional[str]] = mapped_column(nullable=False)
+    f1 = mapped_column(Integer)
+    f: Mapped[Optional[str]] = mapped_column(ForeignKey(f1), nullable=False)
 
     g: Mapped[str] = mapped_column(String)
     h: Mapped[Optional[str]] = mapped_column(String)
@@ -88,3 +92,5 @@ class X(Base):
         String,
         nullable=False,
     )
+
+    __table_args__ = (UniqueConstraint(a, b, name="uq1"), Index("ix1", c, d))
