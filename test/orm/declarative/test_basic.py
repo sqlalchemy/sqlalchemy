@@ -14,6 +14,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
@@ -88,6 +89,104 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
         with testing.expect_raises(exc.UnboundExecutionError):
             s.get_bind(User)
+
+    @testing.variation(
+        "base_type",
+        ["declbase", "declbasenometa", "declbasefn", "asdeclarative"],
+    )
+    def test_reg_constructor_is_present(self, base_type):
+        """test #9171"""
+
+        if base_type.declbase:
+
+            class Base(DeclarativeBase):
+                pass
+
+        elif base_type.declbasenometa:
+
+            class Base(DeclarativeBaseNoMeta):
+                pass
+
+        elif base_type.declbasefn:
+            Base = declarative_base()
+        elif base_type.asdeclarative:
+
+            @as_declarative()
+            class Base:
+                pass
+
+        else:
+            base_type.fail()
+
+        # check for direct assignment
+        is_(Base.registry.constructor, Base.__init__)
+        is_(Base.__dict__["__init__"], Base.__init__)
+
+        class fakeself:
+            foo = None
+            bar = None
+
+        fs = fakeself()
+        Base.__init__(fs, foo="bar", bar="bat")
+        eq_(fs.foo, "bar")
+        eq_(fs.bar, "bat")
+
+    @testing.variation(
+        "base_type",
+        ["declbase", "declbasenometa", "declbasefn", "asdeclarative"],
+    )
+    def test_reg_constructor_custom_init(self, base_type):
+        """test for #9171 testing what an explicit __init__ does.
+
+        Here we decide that newer DeclarativeBase superclasses should
+        honor the ``__init__`` that's given.
+
+        """
+
+        m1 = mock.Mock()
+
+        if base_type.declbase:
+
+            class Base(DeclarativeBase):
+                def __init__(self, x=None):
+                    m1.init(x)
+
+        elif base_type.declbasenometa:
+
+            class Base(DeclarativeBaseNoMeta):
+                def __init__(self, x=None):
+                    m1.init(x)
+
+        elif base_type.declbasefn:
+
+            class _B:
+                def __init__(self, x=None):
+                    m1.init(x)
+
+            Base = declarative_base(cls=_B)
+        elif base_type.asdeclarative:
+
+            @as_declarative()
+            class Base:
+                def __init__(self, x=None):
+                    m1.init(x)
+
+        else:
+            base_type.fail()
+
+        class fakeself:
+            pass
+
+        fs = fakeself()
+
+        if base_type.declbase or base_type.declbasenometa:
+            Base.__init__(fs, x=5)
+            eq_(m1.mock_calls, [mock.call.init(5)])
+        else:
+            with expect_raises_message(
+                TypeError, "'x' is an invalid keyword argument for fakeself"
+            ):
+                Base.__init__(fs, x=5)
 
     def test_dispose_attrs(self):
         reg = registry()
