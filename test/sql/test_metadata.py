@@ -2597,6 +2597,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.combinations(
         (schema.CreateSchema("sa_schema"), "CREATE SCHEMA sa_schema"),
+        (schema.DropSchema("sa_schema"), "DROP SCHEMA sa_schema"),
         # note we don't yet support lower-case table() or
         # lower-case column() for this
         # (
@@ -2608,6 +2609,10 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t (q INTEGER)",
         ),
         (
+            schema.DropTable(Table("t", MetaData(), Column("q", Integer))),
+            "DROP TABLE t",
+        ),
+        (
             schema.CreateIndex(
                 Index(
                     "foo",
@@ -2617,6 +2622,21 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "CREATE INDEX foo ON t (x)",
         ),
+        (
+            schema.DropIndex(
+                Index(
+                    "foo",
+                    "x",
+                    _table=Table("t", MetaData(), Column("x", Integer)),
+                )
+            ),
+            "DROP INDEX foo",
+        ),
+        (
+            schema.CreateSequence(Sequence("my_seq")),
+            "CREATE SEQUENCE my_seq START WITH 1",
+        ),
+        (schema.DropSequence(Sequence("my_seq")), "DROP SEQUENCE my_seq"),
     )
     def test_stringify_schema_elements(self, element, expected):
         eq_ignore_whitespace(str(element), expected)

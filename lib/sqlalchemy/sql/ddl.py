@@ -440,6 +440,8 @@ class DropSchema(_CreateDropBase):
 
     __visit_name__ = "drop_schema"
 
+    stringify_dialect = "default"
+
     def __init__(self, name, quote=None, cascade=False, **kw):
         """Create a new :class:`.DropSchema` construct."""
 
