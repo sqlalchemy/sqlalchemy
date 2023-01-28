@@ -1641,7 +1641,7 @@ class ColumnElement(
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
         return key, co
 
-    def cast(self, type_: TypeEngine[_T]) -> Cast[_T]:
+    def cast(self, type_: _TypeEngineArgument[_T]) -> Cast[_T]:
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
 
         This is a shortcut to the :func:`_expression.cast` function.
