@@ -497,6 +497,8 @@ class DropSchema(_DropBase):
 
     __visit_name__ = "drop_schema"
 
+    stringify_dialect = "default"  # type: ignore
+
     def __init__(
         self,
         name,

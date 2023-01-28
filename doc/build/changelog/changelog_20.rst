@@ -17,6 +17,16 @@
     :released: January 26, 2023
 
     .. change::
+        :tags: bug, sql
+        :tickets: 7664
+
+        Fixed stringify for a the :class:`.CreateSchema` DDL construct, which
+        would fail with an ``AttributeError`` when stringified without a
+        dialect. Update: Note this fix failed to accommodate for
+        :class:`.DropSchema`; a followup fix in version 2.0.1 repairs this
+        case. The fix for both elements is backported to 1.4.47.
+
+    .. change::
         :tags: usecase, orm extensions
         :tickets: 5145
 

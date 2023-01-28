@@ -1,8 +1,8 @@
 .. change::
     :tags: bug, sql
     :tickets: 7664
-    :versions: 2.0.0
 
-    Fixed stringify for a the :class:`.CreateSchema` DDL construct, which would
-    fail with an ``AttributeError`` when stringified without a dialect.
+    Fixed stringify for a the :class:`.CreateSchema` and :class:`.DropSchema`
+    DDL constructs, which would fail with an ``AttributeError`` when
+    stringified without a dialect.
 
