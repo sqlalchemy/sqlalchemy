@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9177
+
+    Improved the ruleset used to interpret :pep:`593` ``Annotated`` types when
+    used with Annotated Declarative mapping, the inner type will be checked for
+    "Optional" in all cases which will be added to the criteria by which the
+    column is set as "nullable" or not; if the type within the ``Annotated``
+    container is optional (or unioned with ``None``), the column will be
+    considered nullable if there are no explicit
+    :paramref:`_orm.mapped_column.nullable` parameters overriding it.
