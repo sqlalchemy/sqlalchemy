@@ -186,7 +186,6 @@ overall which brings in the TextClause object also.
 
 """
 
-
 _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
 
 _ColumnExpressionOrStrLabelArgument = Union[str, _ColumnExpressionArgument[_T]]
