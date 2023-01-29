@@ -23,6 +23,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import provision
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -825,6 +826,119 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
         eq_(result.inserted_primary_key_rows, [(1,), (2,), (3,)])
 
+    @testing.requires.ctes_on_dml
+    @testing.variation("add_expr_returning", [True, False])
+    def test_insert_w_bindparam_in_nested_insert(
+        self, connection, add_expr_returning
+    ):
+        """test related to #9173"""
+
+        data, extra_table = self.tables("data", "extra_table")
+
+        inst = (
+            extra_table.insert()
+            .values(x_value="x", y_value="y")
+            .returning(extra_table.c.id)
+            .cte("inst")
+        )
+
+        stmt = (
+            data.insert()
+            .values(x="the x", z=select(inst.c.id).scalar_subquery())
+            .add_cte(inst)
+        )
+
+        if add_expr_returning:
+            stmt = stmt.returning(data.c.id, data.c.y + " returned y")
+        else:
+            stmt = stmt.returning(data.c.id)
+
+        result = connection.execute(
+            stmt,
+            [
+                {"y": "y1"},
+                {"y": "y2"},
+                {"y": "y3"},
+            ],
+        )
+
+        result_rows = result.all()
+
+        ids = [row[0] for row in result_rows]
+
+        extra_row = connection.execute(
+            select(extra_table).order_by(extra_table.c.id)
+        ).one()
+        extra_row_id = extra_row[0]
+        eq_(extra_row, (extra_row_id, "x", "y"))
+        eq_(
+            connection.execute(select(data).order_by(data.c.id)).all(),
+            [
+                (ids[0], "the x", "y1", extra_row_id),
+                (ids[1], "the x", "y2", extra_row_id),
+                (ids[2], "the x", "y3", extra_row_id),
+            ],
+        )
+
+    @testing.requires.provisioned_upsert
+    def test_upsert_w_returning(self, connection):
+        """test cases that will execise SQL similar to that of
+        test/orm/dml/test_bulk_statements.py
+
+        """
+
+        data = self.tables.data
+
+        initial_data = [
+            {"x": "x1", "y": "y1", "z": 4},
+            {"x": "x2", "y": "y2", "z": 8},
+        ]
+        ids = connection.scalars(
+            data.insert().returning(data.c.id), initial_data
+        ).all()
+
+        upsert_data = [
+            {
+                "id": ids[0],
+                "x": "x1",
+                "y": "y1",
+            },
+            {
+                "id": 32,
+                "x": "x19",
+                "y": "y7",
+            },
+            {
+                "id": ids[1],
+                "x": "x5",
+                "y": "y6",
+            },
+            {
+                "id": 28,
+                "x": "x9",
+                "y": "y15",
+            },
+        ]
+
+        stmt = provision.upsert(
+            config,
+            data,
+            (data,),
+            lambda inserted: {"x": inserted.x + " upserted"},
+        )
+
+        result = connection.execute(stmt, upsert_data)
+
+        eq_(
+            result.all(),
+            [
+                (ids[0], "x1 upserted", "y1", 4),
+                (32, "x19", "y7", 5),
+                (ids[1], "x5 upserted", "y2", 8),
+                (28, "x9", "y15", 5),
+            ],
+        )
+
     @testing.combinations(True, False, argnames="use_returning")
     @testing.combinations(1, 2, argnames="num_embedded_params")
     @testing.combinations(True, False, argnames="use_whereclause")
@@ -835,7 +949,11 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
     def test_insert_w_bindparam_in_subq(
         self, connection, use_returning, num_embedded_params, use_whereclause
     ):
-        """test #8639"""
+        """test #8639
+
+        see also test_insert_w_bindparam_in_nested_insert
+
+        """
 
         t = self.tables.data
         extra = self.tables.extra_table
