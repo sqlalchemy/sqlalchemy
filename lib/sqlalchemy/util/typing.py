@@ -152,7 +152,11 @@ def de_stringify_annotation(
 
         annotation = eval_expression(annotation, originating_module)
 
-    if include_generic and is_generic(annotation):
+    if (
+        include_generic
+        and is_generic(annotation)
+        and not is_literal(annotation)
+    ):
         elements = tuple(
             de_stringify_annotation(
                 cls,
@@ -247,6 +251,10 @@ def de_stringify_union_elements(
 
 def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
+
+
+def is_literal(type_: _AnnotationScanType) -> bool:
+    return get_origin(type_) is Literal
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:

@@ -17,6 +17,9 @@ from typing import TypeVar
 from typing import Union
 import uuid
 
+from typing_extensions import get_args as get_args
+from typing_extensions import Literal as Literal
+
 from sqlalchemy import BIGINT
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
@@ -64,6 +67,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import Variation
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.util import compat
 from sqlalchemy.util.typing import Annotated
@@ -1298,83 +1302,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped["fake"]  # noqa
 
-    @testing.variation("use_callable", [True, False])
-    @testing.variation("include_generic", [True, False])
-    def test_enum_explicit(self, use_callable, include_generic):
-        # anno only: global FooEnum
-
-        class FooEnum(enum.Enum):
-            foo = enum.auto()
-            bar = enum.auto()
-
-        if use_callable:
-            tam = {FooEnum: Enum(FooEnum, length=500)}
-        else:
-            tam = {FooEnum: Enum(FooEnum, length=500)}
-        if include_generic:
-            tam[enum.Enum] = Enum(enum.Enum)
-        Base = declarative_base(type_annotation_map=tam)
-
-        class MyClass(Base):
-            __tablename__ = "mytable"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[FooEnum]
-
-        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
-        eq_(MyClass.__table__.c.data.type.length, 500)
-        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
-
-    def test_enum_generic(self):
-        """test for #8859"""
-        # anno only: global FooEnum
-
-        class FooEnum(enum.Enum):
-            foo = enum.auto()
-            bar = enum.auto()
-
-        Base = declarative_base(
-            type_annotation_map={enum.Enum: Enum(enum.Enum, length=42)}
-        )
-
-        class MyClass(Base):
-            __tablename__ = "mytable"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[FooEnum]
-
-        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
-        eq_(MyClass.__table__.c.data.type.length, 42)
-        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
-
-    def test_enum_default(self, decl_base):
-        """test #8859.
-
-        We now have Enum in the default SQL lookup map, in conjunction with
-        a mechanism that will adapt it for a given enum type.
-
-        This relies on a search through __mro__ for the given type,
-        which in other tests we ensure does not actually function if
-        we aren't dealing with Enum (or some other type that allows for
-        __mro__ lookup)
-
-        """
-        # anno only: global FooEnum
-
-        class FooEnum(enum.Enum):
-            foo = "foo"
-            bar_value = "bar"
-
-        class MyClass(decl_base):
-            __tablename__ = "mytable"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[FooEnum]
-
-        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
-        eq_(MyClass.__table__.c.data.type.length, 9)
-        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
-
     def test_type_dont_mis_resolve_on_superclass(self):
         """test for #8859.
 
@@ -1451,6 +1378,264 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         is_true(isinstance(MyClass.__table__.c.data.type, String))
         eq_(MyClass.__table__.c.data.type.length, 42)
+
+
+class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.variation("use_callable", [True, False])
+    @testing.variation("include_generic", [True, False])
+    @testing.variation("set_native_enum", ["none", True, False])
+    def test_enum_explicit(
+        self, use_callable, include_generic, set_native_enum: Variation
+    ):
+        # anno only: global FooEnum
+
+        class FooEnum(enum.Enum):
+            foo = enum.auto()
+            bar = enum.auto()
+
+        kw = {"length": 500}
+
+        if set_native_enum.none:
+            expected_native_enum = True
+        elif set_native_enum.set_native_enum:
+            kw["native_enum"] = True
+            expected_native_enum = True
+        elif set_native_enum.not_set_native_enum:
+            kw["native_enum"] = False
+            expected_native_enum = False
+        else:
+            set_native_enum.fail()
+
+        if use_callable:
+            tam = {FooEnum: Enum(FooEnum, **kw)}
+        else:
+            tam = {FooEnum: Enum(FooEnum, **kw)}
+
+        if include_generic:
+            tam[enum.Enum] = Enum(enum.Enum)
+        Base = declarative_base(type_annotation_map=tam)
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[FooEnum]
+
+        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
+        eq_(MyClass.__table__.c.data.type.length, 500)
+        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+        is_(MyClass.__table__.c.data.type.native_enum, expected_native_enum)
+
+    @testing.variation("set_native_enum", ["none", True, False])
+    def test_enum_generic(self, set_native_enum: Variation):
+        """test for #8859"""
+        # anno only: global FooEnum
+
+        class FooEnum(enum.Enum):
+            foo = enum.auto()
+            bar = enum.auto()
+
+        kw = {"length": 42}
+
+        if set_native_enum.none:
+            expected_native_enum = True
+        elif set_native_enum.set_native_enum:
+            kw["native_enum"] = True
+            expected_native_enum = True
+        elif set_native_enum.not_set_native_enum:
+            kw["native_enum"] = False
+            expected_native_enum = False
+        else:
+            set_native_enum.fail()
+
+        Base = declarative_base(
+            type_annotation_map={enum.Enum: Enum(enum.Enum, **kw)}
+        )
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[FooEnum]
+
+        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
+        eq_(MyClass.__table__.c.data.type.length, 42)
+        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+        is_(MyClass.__table__.c.data.type.native_enum, expected_native_enum)
+
+    def test_enum_default(self, decl_base):
+        """test #8859.
+
+        We now have Enum in the default SQL lookup map, in conjunction with
+        a mechanism that will adapt it for a given enum type.
+
+        This relies on a search through __mro__ for the given type,
+        which in other tests we ensure does not actually function if
+        we aren't dealing with Enum (or some other type that allows for
+        __mro__ lookup)
+
+        """
+        # anno only: global FooEnum
+
+        class FooEnum(enum.Enum):
+            foo = "foo"
+            bar_value = "bar"
+
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[FooEnum]
+
+        is_true(isinstance(MyClass.__table__.c.data.type, Enum))
+        eq_(MyClass.__table__.c.data.type.length, 9)
+        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+
+    @testing.variation(
+        "sqltype", ["custom", "base_enum", "specific_enum", "string"]
+    )
+    @testing.variation("indicate_type_explicitly", [True, False])
+    def test_pep586_literal(
+        self, decl_base, sqltype: Variation, indicate_type_explicitly
+    ):
+        """test #9187."""
+
+        # anno only: global Status
+
+        Status = Literal["to-do", "in-progress", "done"]
+
+        if sqltype.custom:
+
+            class LiteralSqlType(types.TypeDecorator):
+                impl = types.String
+                cache_ok = True
+
+                def __init__(self, literal_type: Any) -> None:
+                    super().__init__()
+                    self._possible_values = get_args(literal_type)
+
+            our_type = mapped_col_type = LiteralSqlType(Status)
+        elif sqltype.specific_enum:
+            our_type = mapped_col_type = Enum(
+                "to-do", "in-progress", "done", native_enum=False
+            )
+        elif sqltype.base_enum:
+            our_type = Enum(enum.Enum, native_enum=False)
+            mapped_col_type = Enum(
+                "to-do", "in-progress", "done", native_enum=False
+            )
+        elif sqltype.string:
+            our_type = mapped_col_type = String(50)
+        else:
+            sqltype.fail()
+
+        decl_base.registry.update_type_annotation_map({Status: our_type})
+
+        class Foo(decl_base):
+            __tablename__ = "footable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if indicate_type_explicitly:
+                status: Mapped[Status] = mapped_column(mapped_col_type)
+            else:
+                status: Mapped[Status]
+
+        is_true(isinstance(Foo.__table__.c.status.type, type(our_type)))
+
+        if sqltype.custom:
+            eq_(
+                Foo.__table__.c.status.type._possible_values,
+                ("to-do", "in-progress", "done"),
+            )
+        elif sqltype.specific_enum or sqltype.base_enum:
+            eq_(
+                Foo.__table__.c.status.type.enums,
+                ["to-do", "in-progress", "done"],
+            )
+            is_(Foo.__table__.c.status.type.native_enum, False)
+
+    @testing.variation("indicate_type_explicitly", [True, False])
+    def test_pep586_literal_defaults_to_enum(
+        self, decl_base, indicate_type_explicitly
+    ):
+        """test #9187."""
+
+        # anno only: global Status
+
+        Status = Literal["to-do", "in-progress", "done"]
+
+        if indicate_type_explicitly:
+            expected_native_enum = True
+        else:
+            expected_native_enum = False
+
+        class Foo(decl_base):
+            __tablename__ = "footable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if indicate_type_explicitly:
+                status: Mapped[Status] = mapped_column(
+                    Enum("to-do", "in-progress", "done")
+                )
+            else:
+                status: Mapped[Status]
+
+        is_true(isinstance(Foo.__table__.c.status.type, Enum))
+
+        eq_(
+            Foo.__table__.c.status.type.enums,
+            ["to-do", "in-progress", "done"],
+        )
+        is_(Foo.__table__.c.status.type.native_enum, expected_native_enum)
+
+    @testing.variation("override_in_type_map", [True, False])
+    @testing.variation("indicate_type_explicitly", [True, False])
+    def test_pep586_literal_checks_the_arguments(
+        self, decl_base, indicate_type_explicitly, override_in_type_map
+    ):
+        """test #9187."""
+
+        # anno only: global NotReallyStrings
+
+        NotReallyStrings = Literal["str1", 17, False]
+
+        if override_in_type_map:
+            decl_base.registry.update_type_annotation_map(
+                {NotReallyStrings: JSON}
+            )
+
+        if not override_in_type_map and not indicate_type_explicitly:
+            with expect_raises_message(
+                ArgumentError,
+                "Can't create string-based Enum datatype from non-string "
+                "values: 17, False.  Please provide an explicit Enum "
+                "datatype for this Python type",
+            ):
+
+                class Foo(decl_base):
+                    __tablename__ = "footable"
+
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    status: Mapped[NotReallyStrings]
+
+        else:
+            # if we override the type in the type_map or mapped_column,
+            # then we can again use a Literal with non-strings
+            class Foo(decl_base):
+                __tablename__ = "footable"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+                if indicate_type_explicitly:
+                    status: Mapped[NotReallyStrings] = mapped_column(JSON)
+                else:
+                    status: Mapped[NotReallyStrings]
+
+            is_true(isinstance(Foo.__table__.c.status.type, JSON))
 
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -2613,21 +2798,43 @@ class BackendTests(fixtures.TestBase):
 
     @testing.variation("native_enum", [True, False])
     @testing.variation("include_column", [True, False])
+    @testing.variation("python_type", ["enum", "literal"])
     def test_schema_type_actually_works(
-        self, connection, decl_base, include_column, native_enum
+        self,
+        connection,
+        decl_base,
+        include_column,
+        native_enum,
+        python_type: Variation,
     ):
         """test that schema type bindings are set up correctly"""
 
         # anno only: global Status
 
-        class Status(enum.Enum):
-            PENDING = "pending"
-            RECEIVED = "received"
-            COMPLETED = "completed"
+        if python_type.enum:
+
+            class Status(enum.Enum):
+                PENDING = "pending"
+                RECEIVED = "received"
+                COMPLETED = "completed"
+
+            enum_argument = [Status]
+            test_value = Status.RECEIVED
+        elif python_type.literal:
+            Status = Literal[  # type: ignore
+                "pending", "received", "completed"
+            ]
+            enum_argument = ["pending", "received", "completed"]
+            test_value = "received"
+        else:
+            python_type.fail()
 
         if not include_column and not native_enum:
             decl_base.registry.update_type_annotation_map(
-                {enum.Enum: Enum(enum.Enum, native_enum=False)}
+                {
+                    enum.Enum: Enum(enum.Enum, native_enum=False),
+                    Literal: Enum(enum.Enum, native_enum=False),
+                }
             )
 
         class SomeClass(decl_base):
@@ -2637,7 +2844,11 @@ class BackendTests(fixtures.TestBase):
 
             if include_column:
                 status: Mapped[Status] = mapped_column(
-                    Enum(Status, native_enum=bool(native_enum))
+                    Enum(
+                        *enum_argument,
+                        native_enum=bool(native_enum),
+                        name="status",
+                    )
                 )
             else:
                 status: Mapped[Status]
@@ -2645,12 +2856,12 @@ class BackendTests(fixtures.TestBase):
         decl_base.metadata.create_all(connection)
 
         with Session(connection) as sess:
-            sess.add(SomeClass(id=1, status=Status.RECEIVED))
+            sess.add(SomeClass(id=1, status=test_value))
             sess.commit()
 
             eq_(
                 sess.scalars(
                     select(SomeClass.status).where(SomeClass.id == 1)
                 ).first(),
-                Status.RECEIVED,
+                test_value,
             )

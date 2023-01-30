@@ -1,0 +1,34 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9187
+
+    Added support for :pep:`586` ``Literal[]`` to be used in the
+    :paramref:`_orm.registry.type_annotation_map` as well as within
+    :class:`.Mapped` constructs. To use custom types such as these, they must
+    appear explicitly within the :paramref:`_orm.registry.type_annotation_map`
+    to be mapped.  Pull request courtesy Frederik Aalund.
+
+    As part of this change, the support for :class:`.sqltypes.Enum` in the
+    :paramref:`_orm.registry.type_annotation_map` has been expanded to include
+    support for ``Literal[]`` types consisting of string values to be used,
+    in addition to ``enum.Enum`` datatypes.    If a ``Literal[]`` datatype
+    is used within ``Mapped[]`` that is not linked in
+    :paramref:`_orm.registry.type_annotation_map` to a specific datatype,
+    a :class:`.sqltypes.Enum` will be used by default.
+
+    .. seealso::
+
+        :ref:`orm_declarative_mapped_column_enums`
+
+
+.. change::
+    :tags: bug, orm
+    :tickets: 9200
+
+    Fixed issue involving the use of :class:`.sqltypes.Enum` within the
+    :paramref:`_orm.registry.type_annotation_map` where the
+    :paramref:`_sqltypes.Enum.native_enum` parameter would not be correctly
+    copied to the mapped column datatype, if it were overridden
+    as stated in the documentation to set this parameter to False.
+
+
