@@ -41,18 +41,17 @@ from .base import _NONE_NAME
 from .base import NO_ARG
 from .base import SchemaEventTarget
 from .cache_key import HasCacheKey
-from .elements import BinaryExpression
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
-from .type_api import _LiteralProcessorType
 from .type_api import Emulated
+from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance as to_instance
 from .type_api import TypeDecorator as TypeDecorator
 from .type_api import TypeEngine as TypeEngine
 from .type_api import TypeEngineMixin
+from .type_api import Variant  # noqa
 from .visitors import InternalTraversal
-from .. import Compiled
 from .. import event
 from .. import exc
 from .. import inspection
@@ -69,6 +68,7 @@ if TYPE_CHECKING:
 
     from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
+    from .elements import BinaryExpression
     from .elements import ColumnElement
     from .operators import OperatorType
     from .schema import Column
@@ -76,8 +76,10 @@ if TYPE_CHECKING:
     from .schema import Table
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
+    from .type_api import _LiteralProcessorType
     from .type_api import _MatchedOnType
     from .type_api import _ResultProcessorType
+    from .. import Compiled
     from ..engine.interfaces import Connectable
     from ..engine.interfaces import Dialect
 
@@ -586,7 +588,9 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
         else:
             return processors.to_float  # type: ignore
 
-    def result_processor(self, dialect: Dialect, coltype: _T) -> Optional[_ResultProcessorType[_N]]:  # type: ignore
+    def result_processor(
+        self, dialect: Dialect, coltype: _T
+    ) -> Optional[_ResultProcessorType[_N]]:  # type: ignore
         if self.asdecimal:
             if dialect.supports_native_decimal:
                 # we're a "numeric", DBAPI will give us Decimal directly
@@ -762,14 +766,16 @@ class _RenderISO8601NoT:
 
             def process(value: Optional[dt.datetime]) -> Optional[str]:
                 if value is not None:
-                    value = f"""'{value.isoformat().split("T")[_portion]}'"""  # type: ignore
+                    value = f"""'{value.isoformat()
+                    .split("T")[_portion]}'"""  # type: ignore
                 return value  # type: ignore
 
         else:
 
             def process(value: Optional[dt.datetime]) -> Optional[str]:
                 if value is not None:
-                    value = f"""'{value.isoformat().replace("T", " ")}'"""  # type: ignore
+                    value = f"""'{value.isoformat()
+                    .replace("T", " ")}'"""  # type: ignore
                 return value  # type: ignore
 
         return process  # type: ignore
@@ -1070,18 +1076,24 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             event.listen(
                 self.metadata,
                 "before_create",
-                util.portable_instancemethod(self._on_metadata_create),  # type: ignore
+                util.portable_instancemethod(
+                    self._on_metadata_create
+                ),  # type: ignore
             )
             event.listen(
                 self.metadata,
                 "after_drop",
-                util.portable_instancemethod(self._on_metadata_drop),  # type: ignore
+                util.portable_instancemethod(
+                    self._on_metadata_drop
+                ),  # type: ignore
             )
 
         if _adapted_from:
             self.dispatch = self.dispatch._join(_adapted_from.dispatch)
 
-    def _set_parent(self, column: Column[_T], **kw: _T) -> None:  # type: ignore
+    def _set_parent(  # type: ignore
+        self, column: Column[_T], **kw: _T
+    ) -> None:
         # set parent hook is when this type is associated with a column.
         # Column calls it for all SchemaEventTarget instances, either the
         # base type and/or variants in _variant_mapping.
@@ -1095,7 +1107,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # on_table/metadata_create/drop in this method, which is used by
         # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
 
-        column._on_table_attach(util.portable_instancemethod(self._set_table))  # type: ignore
+        column._on_table_attach(
+            util.portable_instancemethod(self._set_table)  # type: ignore
+        )
 
     def _variant_mapping_for_set_table(
         self, column: Column[_T]
@@ -1153,7 +1167,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 ),
             )
 
-    def copy(self, **kw: _T) -> TypeEngine[_T]:
+    def copy(self, **kw: _T) -> TypeEngine[Any]:
         return self.adapt(
             cast("Type[TypeEngine[Any]]", self.__class__),
             _create_events=True,
@@ -1168,7 +1182,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         ...
 
     def adapt(
-        self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
+        self, cls: Type[Union[_TE, TypeEngineMixin]], **kw: Any
     ) -> TypeEngine[Any]:
         kw.setdefault("_create_events", False)
         kw.setdefault("_adapted_from", self)
@@ -1228,7 +1242,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_drop(target, bind, **kw)
 
-    def _is_impl_for_variant(self, dialect: Dialect, kw: _T) -> bool:  # type: ignore
+    def _is_impl_for_variant(  # type: ignore
+        self, dialect: Dialect, kw: _T
+    ) -> bool:
         variant_mapping = kw.pop("variant_mapping", None)
 
         if not variant_mapping:
@@ -1548,11 +1564,15 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class: Optional[enum.EnumMeta] = enums[0]
 
-            _members: Dict[str, _T] = self.enum_class.__members__  # type: ignore
+            _members: Dict[
+                str, Any
+            ] = self.enum_class.__members__  # type: ignore
             if self._omit_aliases is True:
                 # remove aliases
                 members = OrderedDict(
-                    (n, v) for n, v in _members.items() if v.name == n  # type: ignore
+                    (n, v)
+                    for n, v in _members.items()
+                    if v.name == n  # type: ignore
                 )
             else:
                 members = _members
@@ -1676,7 +1696,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                     % (
                         elem,
                         self.name,
-                        langhelpers.repr_tuple_names(self.enums),  # type: ignore
+                        langhelpers.repr_tuple_names(
+                            self.enums  # type: ignore
+                        ),
                     )
                 ) from err
 
@@ -1756,7 +1778,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         assert "_enums" in kw
         return impltype(**kw)
 
-    def adapt(self, impltype: Type[TypeEngine[Any]], **kw: Any) -> TypeEngine[Any]:  # type: ignore
+    def adapt(  # type: ignore
+        self, impltype: Type[_TE], **kw: Any
+    ) -> TypeEngine[Any]:
         kw["_enums"] = self._enums_argument
         kw["_disable_warnings"] = True
         return super().adapt(impltype, **kw)
@@ -1802,7 +1826,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         return process
 
-    def bind_processor(self, dialect: Dialect) -> Optional[_BindProcessorType[_T]]:  # type: ignore
+    def bind_processor(  # type: ignore
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[_T]]:
         parent_processor = super().bind_processor(dialect)
 
         def process(value: Any) -> Any:
@@ -1813,7 +1839,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         return process
 
-    def result_processor(self, dialect: Dialect, coltype: _T) -> Optional[_ResultProcessorType[_T]]:  # type: ignore
+    def result_processor(  # type: ignore
+        self, dialect: Dialect, coltype: _T
+    ) -> Optional[_ResultProcessorType[_T]]:
         parent_processor = super().result_processor(dialect, coltype)
 
         def process(value: _T) -> _T:
@@ -2011,7 +2039,7 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
             return False
         return (
             not compiler.dialect.supports_native_boolean
-            and compiler.dialect.non_native_boolean_check_constraint  # type: ignore
+            and compiler.dialect.non_native_boolean_check_constraint  # type: ignore  # noqa
         )
 
     @util.preload_module("sqlalchemy.sql.schema")
@@ -2613,7 +2641,9 @@ class JSON(Indexable, TypeEngine[Any]):
 
         __slots__ = ()
 
-        def _setup_getitem(self, index: Any) -> Tuple[OperatorType, Any, TypeEngine[_T]]:  # type: ignore
+        def _setup_getitem(  # type: ignore
+            self, index: Any
+        ) -> Tuple[OperatorType, Any, TypeEngine[_T]]:
             if not isinstance(index, str) and isinstance(
                 index, collections_abc.Sequence
             ):
@@ -2811,15 +2841,21 @@ class JSON(Indexable, TypeEngine[Any]):
 
     def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any]:
         string_process = self._str_impl.bind_processor(dialect)  # type: ignore
-        json_serializer = dialect._json_serializer or json.dumps  # type: ignore
+        json_serializer = (
+            dialect._json_serializer or json.dumps  # type: ignore
+        )
 
         return self._make_bind_processor(string_process, json_serializer)
 
     def result_processor(
         self, dialect: Dialect, coltype: _T
     ) -> Callable[[Any], Any]:
-        string_process = self._str_impl.result_processor(dialect, coltype)  # type: ignore
-        json_deserializer = dialect._json_deserializer or json.loads  # type: ignore
+        string_process = self._str_impl.result_processor(
+            dialect, coltype
+        )  # type: ignore
+        json_deserializer = (
+            dialect._json_deserializer or json.loads  # type: ignore
+        )
 
         def process(value: _T) -> Any:
             if value is None:
@@ -3185,13 +3221,17 @@ class ARRAY(
     def compare_values(self, x: _T, y: _T) -> Any:
         return x == y
 
-    def _set_parent(self, column: Column, outer: bool = False, **kw: _T) -> None:  # type: ignore
+    def _set_parent(  # type: ignore
+        self, column: Column[_T], outer: bool = False, **kw: _T
+    ) -> None:
         """Support SchemaEventTarget"""
 
         if not outer and isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent(column, **kw)
 
-    def _set_parent_with_dispatch(self, parent: SchemaEventTarget) -> None:  # type: ignore
+    def _set_parent_with_dispatch(  # type: ignore
+        self, parent: SchemaEventTarget
+    ) -> None:
         """Support SchemaEventTarget"""
 
         super()._set_parent_with_dispatch(parent, outer=True)
@@ -3273,7 +3313,7 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
 
     _is_tuple_type = True
 
-    types: List[TypeEngine[Any]]
+    types: Sequence[TypeEngine[Any]]
 
     def __init__(self, *types: _TypeEngineArgument[Any]):
         self._fully_typed = NULLTYPE not in types
