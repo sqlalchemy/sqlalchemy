@@ -18,6 +18,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import Generic
 from typing import List
+from typing import NewType
 from typing import Optional
 from typing import Set
 from typing import Type
@@ -460,8 +461,12 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         global anno_str, anno_str_optional, anno_str_mc
         global anno_str_optional_mc, anno_str_mc_nullable
         global anno_str_optional_mc_notnull
+        global newtype_str
+
         anno_str = Annotated[str, 50]
         anno_str_optional = Annotated[Optional[str], 30]
+
+        newtype_str = NewType("MyType", str)
 
         anno_str_mc = Annotated[str, mapped_column()]
         anno_str_optional_mc = Annotated[Optional[str], mapped_column()]
@@ -471,7 +476,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ]
 
         decl_base.registry.update_type_annotation_map(
-            {anno_str: String(50), anno_str_optional: String(30)}
+            {
+                anno_str: String(50),
+                anno_str_optional: String(30),
+                newtype_str: String(40),
+            }
         )
 
         class User(decl_base):
@@ -517,6 +526,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 *args
             )
             anno_6b: Mapped[anno_str_optional_mc_notnull] = mapped_column(
+                *args, nullable=True
+            )
+
+            newtype_1a: Mapped[newtype_str] = mapped_column(*args)
+            newtype_1b: Mapped[newtype_str] = mapped_column(
                 *args, nullable=True
             )
 
@@ -588,6 +602,41 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_two.type.length, 30)
         is_true(MyClass.__table__.c.data_two.nullable)
         eq_(MyClass.__table__.c.data_three.type.length, 50)
+
+    def test_pep484_newtypes_as_typemap_keys(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+
+        global str50, str30, str3050
+
+        str50 = NewType("str50", str)
+        str30 = NewType("str30", str)
+        str3050 = NewType("str30", str50)
+
+        decl_base.registry.update_type_annotation_map(
+            {str50: String(50), str30: String(30), str3050: String(150)}
+        )
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[str50] = mapped_column(primary_key=True)
+            data_one: Mapped[str30]
+            data_two: Mapped[str50]
+            data_three: Mapped[Optional[str30]]
+            data_four: Mapped[str3050]
+
+        eq_(MyClass.__table__.c.data_one.type.length, 30)
+        is_false(MyClass.__table__.c.data_one.nullable)
+
+        eq_(MyClass.__table__.c.data_two.type.length, 50)
+        is_false(MyClass.__table__.c.data_two.nullable)
+
+        eq_(MyClass.__table__.c.data_three.type.length, 30)
+        is_true(MyClass.__table__.c.data_three.nullable)
+
+        eq_(MyClass.__table__.c.data_four.type.length, 150)
+        is_false(MyClass.__table__.c.data_four.nullable)
 
     def test_extract_base_type_from_pep593(
         self, decl_base: Type[DeclarativeBase]
@@ -1396,7 +1445,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_type_secondary_resolution(self):
         class MyString(String):
-            def _resolve_for_python_type(self, python_type, matched_type):
+            def _resolve_for_python_type(
+                self, python_type, matched_type, matched_on_flattened
+            ):
                 return String(length=42)
 
         Base = declarative_base(type_annotation_map={str: MyString})

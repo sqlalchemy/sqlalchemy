@@ -18,6 +18,7 @@ from typing import Dict
 from typing import ForwardRef
 from typing import Generic
 from typing import Iterable
+from typing import NewType
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -71,10 +72,9 @@ typing_get_args = get_args
 typing_get_origin = get_origin
 
 
-# copied from TypeShed, required in order to implement
-# MutableMapping.update()
-
-_AnnotationScanType = Union[Type[Any], str, ForwardRef, "GenericProtocol[Any]"]
+_AnnotationScanType = Union[
+    Type[Any], str, ForwardRef, NewType, "GenericProtocol[Any]"
+]
 
 
 class ArgsTypeProcotol(Protocol):
@@ -105,6 +105,8 @@ class GenericProtocol(Protocol[_T]):
     #     ...
 
 
+# copied from TypeShed, required in order to implement
+# MutableMapping.update()
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]:
         ...
@@ -247,17 +249,23 @@ def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
 
+def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
+    return hasattr(type_, "__supertype__")
+
+    # doesn't work in 3.8, 3.7 as it passes a closure, not an
+    # object instance
+    # return isinstance(type_, NewType)
+
+
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
 
 
-def flatten_generic(
-    type_: Union[GenericProtocol[Any], Type[Any]]
-) -> Type[Any]:
-    if is_generic(type_):
-        return type_.__origin__
-    else:
-        return cast("Type[Any]", type_)
+def flatten_newtype(type_: NewType) -> Type[Any]:
+    super_type = type_.__supertype__
+    while is_newtype(super_type):
+        super_type = super_type.__supertype__
+    return super_type
 
 
 def is_fwd_ref(

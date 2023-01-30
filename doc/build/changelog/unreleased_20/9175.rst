@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9175
+
+    Added support for :pep:`484` ``NewType`` to be used in the
+    :paramref:`_orm.registry.type_annotation_map` as well as within
+    :class:`.Mapped` constructs. These types will behave in the same way as
+    custom subclasses of types right now; they must appear explicitly within
+    the :paramref:`_orm.registry.type_annotation_map` to be mapped.

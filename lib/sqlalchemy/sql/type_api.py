@@ -19,6 +19,7 @@ from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import Mapping
+from typing import NewType
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -35,7 +36,6 @@ from .operators import ColumnOperators
 from .visitors import Visitable
 from .. import exc
 from .. import util
-from ..util.typing import flatten_generic
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
@@ -64,6 +64,8 @@ _T_con = TypeVar("_T_con", bound=Any, contravariant=True)
 _O = TypeVar("_O", bound=object)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
+
+_MatchedOnType = Union["GenericProtocol[Any]", NewType, Type[Any]]
 
 # replace with pep-673 when applicable
 SelfTypeEngine = typing.TypeVar("SelfTypeEngine", bound="TypeEngine[Any]")
@@ -731,7 +733,8 @@ class TypeEngine(Visitable, Generic[_T]):
     def _resolve_for_python_type(
         self: SelfTypeEngine,
         python_type: Type[Any],
-        matched_on: Union[GenericProtocol[Any], Type[Any]],
+        matched_on: _MatchedOnType,
+        matched_on_flattened: Type[Any],
     ) -> Optional[SelfTypeEngine]:
         """given a Python type (e.g. ``int``, ``str``, etc. ) return an
         instance of this :class:`.TypeEngine` that's appropriate for this type.
@@ -772,9 +775,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         """
 
-        matched_on = flatten_generic(matched_on)
-
-        if python_type is not matched_on:
+        if python_type is not matched_on_flattened:
             return None
 
         return self

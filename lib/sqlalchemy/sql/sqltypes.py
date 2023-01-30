@@ -59,7 +59,6 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
-from ..util.typing import GenericProtocol
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -69,6 +68,7 @@ if TYPE_CHECKING:
     from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
+    from .type_api import _MatchedOnType
     from .type_api import _ResultProcessorType
     from ..engine.interfaces import Dialect
 
@@ -1493,14 +1493,16 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             return enums, enums
 
     def _resolve_for_literal(self, value: Any) -> Enum:
-        typ = self._resolve_for_python_type(type(value), type(value))
+        tv = type(value)
+        typ = self._resolve_for_python_type(tv, tv, tv)
         assert typ is not None
         return typ
 
     def _resolve_for_python_type(
         self,
         python_type: Type[Any],
-        matched_on: Union[GenericProtocol[Any], Type[Any]],
+        matched_on: _MatchedOnType,
+        matched_on_flattened: Type[Any],
     ) -> Optional[Enum]:
         if not issubclass(python_type, enum.Enum):
             return None
