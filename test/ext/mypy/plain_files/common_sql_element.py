@@ -128,3 +128,13 @@ q1 = (
 )
 # EXPECTED_TYPE: RowReturningQuery[Tuple[int]]
 reveal_type(q1)
+
+# test 9174
+s9174_1 = select(User).with_for_update(of=User)
+s9174_2 = select(User).with_for_update(of=User.id)
+s9174_3 = select(User).with_for_update(of=[User.id, User.email])
+s9174_4 = select(user_table).with_for_update(of=user_table)
+s9174_5 = select(user_table).with_for_update(of=user_table.c.id)
+s9174_6 = select(user_table).with_for_update(
+    of=[user_table.c.id, user_table.c.email]
+)

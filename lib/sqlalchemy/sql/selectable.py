@@ -163,6 +163,16 @@ class _JoinTargetProtocol(Protocol):
 _JoinTargetElement = Union["FromClause", _JoinTargetProtocol]
 _OnClauseElement = Union["ColumnElement[bool]", _JoinTargetProtocol]
 
+_ForUpdateOfArgument = Union[
+    # single column, Table, ORM Entity
+    Union[
+        "_ColumnExpressionArgument[Any]",
+        "_FromClauseArgument",
+    ],
+    # or sequence of single column elements
+    Sequence["_ColumnExpressionArgument[Any]"],
+]
+
 
 _SetupJoinsElement = Tuple[
     _JoinTargetElement,
@@ -3151,12 +3161,7 @@ class ForUpdateArg(ClauseElement):
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[
-            Union[
-                _ColumnExpressionArgument[Any],
-                Sequence[_ColumnExpressionArgument[Any]],
-            ]
-        ] = None,
+        of: Optional[_ForUpdateOfArgument] = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ):
@@ -3822,12 +3827,7 @@ class GenerativeSelect(SelectBase, Generative):
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[
-            Union[
-                _ColumnExpressionArgument[Any],
-                Sequence[_ColumnExpressionArgument[Any]],
-            ]
-        ] = None,
+        of: Optional[_ForUpdateOfArgument] = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ) -> SelfGenerativeSelect:
@@ -3860,12 +3860,12 @@ class GenerativeSelect(SelectBase, Generative):
          ``FOR SHARE`` on PostgreSQL.  On PostgreSQL, when combined with
          ``nowait``, will render ``FOR SHARE NOWAIT``.
 
-        :param of: SQL expression or list of SQL expression elements
-         (typically :class:`_schema.Column`
-         objects or a compatible expression) which
-         will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
-         and Oracle.  May render as a table or as a column depending on
-         backend.
+        :param of: SQL expression or list of SQL expression elements,
+         (typically :class:`_schema.Column` objects or a compatible expression,
+         for some backends may also be a table expression) which will render
+         into a ``FOR UPDATE OF`` clause; supported by PostgreSQL Oracle, some
+         MySQL versions and possibly others. May render as a table or as a
+         column depending on backend.
 
         :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED``
          on Oracle and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED`` if

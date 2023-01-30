@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9174
+
+    Opened up typing on :meth:`.Select.with_for_update.of` to also accept table
+    and mapped class arguments, as seems to be available for the MySQL dialect.
