@@ -89,6 +89,7 @@ from .sql.expression import between as between
 from .sql.expression import BinaryExpression as BinaryExpression
 from .sql.expression import bindparam as bindparam
 from .sql.expression import BindParameter as BindParameter
+from .sql.expression import bitwise_not as bitwise_not
 from .sql.expression import BooleanClauseList as BooleanClauseList
 from .sql.expression import CacheKey as CacheKey
 from .sql.expression import Case as Case

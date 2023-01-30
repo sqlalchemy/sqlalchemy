@@ -22,6 +22,7 @@ from ._elements_constructors import any_ as any_
 from ._elements_constructors import asc as asc
 from ._elements_constructors import between as between
 from ._elements_constructors import bindparam as bindparam
+from ._elements_constructors import bitwise_not as bitwise_not
 from ._elements_constructors import case as case
 from ._elements_constructors import cast as cast
 from ._elements_constructors import collate as collate

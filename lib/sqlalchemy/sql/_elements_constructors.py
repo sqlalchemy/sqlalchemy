@@ -1018,6 +1018,12 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_distinct(expr)
 
 
+def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+    """Produce a column-expression-level unary ``~`` clause."""
+
+    return UnaryExpression._create_bitwise_not(expr)
+
+
 def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
     """Return a :class:`.Extract` construct.
 
