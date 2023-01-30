@@ -150,7 +150,7 @@ def de_stringify_annotation(
 
         annotation = eval_expression(annotation, originating_module)
 
-    if include_generic and is_generic(annotation):
+    if include_generic and is_generic(annotation, include_literal=False):
         elements = tuple(
             de_stringify_annotation(
                 cls,
@@ -246,8 +246,16 @@ def de_stringify_union_elements(
 def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
+def is_literal(type_: _AnnotationScanType) -> bool:
+    return get_origin(type_) is Literal
 
-def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
+def is_generic(
+    type_: _AnnotationScanType,
+    *,
+    include_literal: bool = True
+) -> TypeGuard[GenericProtocol[Any]]:
+    if not include_literal and is_literal(type_):
+        return False
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
 
 

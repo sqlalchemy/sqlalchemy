@@ -16,6 +16,9 @@ from typing import TypeVar
 from typing import Union
 import uuid
 
+from typing_extensions import get_args as get_args  # 3.10
+from typing_extensions import Literal as Literal  # 3.8
+
 from sqlalchemy import BIGINT
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
@@ -1339,6 +1342,58 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         is_true(isinstance(MyClass.__table__.c.data.type, String))
         eq_(MyClass.__table__.c.data.type.length, 42)
+
+    def test_string_literal(self, decl_base):
+        """test #9187."""
+        class LiteralSqlType(types.TypeDecorator):
+            impl = types.String
+            cache_ok = True
+
+            def __init__(self, literal_type: Any) -> None:
+                super().__init__()
+                self._possible_values = get_args(literal_type)
+
+            def process_bind_param(
+                self, value: Optional[str], dialect
+            ) -> Optional[str]:
+                if value not in self._possible_values:
+                    raise ValueError(
+                        f"Invalid literal value '{value}'. Value must be one of"
+                        f" {self._possible_values}."
+                    )
+                return value
+
+        Status = Literal["to-do", "in-progress", "done"]
+        Base = declarative_base()
+        BaseWithMap = declarative_base(
+            type_annotation_map={Status: LiteralSqlType(Status)}
+        )
+
+        class Foo(Base):
+            __tablename__ = "footable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            status: Mapped[Status] = mapped_column(LiteralSqlType(Status))
+
+        class Bar(Base):
+            __tablename__ = "bartable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            status: Mapped[Annotated[Status, mapped_column(LiteralSqlType(Status))]]
+
+        class Baz(BaseWithMap):
+            __tablename__ = "baztable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            status: Mapped[Status]
+
+        is_true(isinstance(Foo.__table__.c.status.type, LiteralSqlType))
+        is_true(isinstance(Bar.__table__.c.status.type, LiteralSqlType))
+        is_true(isinstance(Baz.__table__.c.status.type, LiteralSqlType))
+        eq_(Foo.__table__.c.status.type._possible_values, ("to-do", "in-progress", "done"))
+        eq_(Bar.__table__.c.status.type._possible_values, ("to-do", "in-progress", "done"))
+        eq_(Baz.__table__.c.status.type._possible_values, ("to-do", "in-progress", "done"))
+
 
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
