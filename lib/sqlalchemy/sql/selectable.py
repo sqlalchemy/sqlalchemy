@@ -3863,7 +3863,7 @@ class GenerativeSelect(SelectBase, Generative):
         :param of: SQL expression or list of SQL expression elements,
          (typically :class:`_schema.Column` objects or a compatible expression,
          for some backends may also be a table expression) which will render
-         into a ``FOR UPDATE OF`` clause; supported by PostgreSQL Oracle, some
+         into a ``FOR UPDATE OF`` clause; supported by PostgreSQL, Oracle, some
          MySQL versions and possibly others. May render as a table or as a
          column depending on backend.
 
