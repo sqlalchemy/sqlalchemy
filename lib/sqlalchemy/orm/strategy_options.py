@@ -1171,10 +1171,13 @@ class Load(_AbstractLoad):
             cast("_InternalEntityType[Any]", parent.path[-1]),
             cast("_InternalEntityType[Any]", cloned.path[0]),
         ):
-            raise sa_exc.ArgumentError(
-                f'Attribute "{cloned.path[1]}" does not link '
-                f'from element "{parent.path[-1]}".'
-            )
+            if len(cloned.path) > 1:
+                attrname = cloned.path[1]
+                parent_entity = cloned.path[0]
+            else:
+                attrname = cloned.path[0]
+                parent_entity = cloned.path[0]
+            _raise_for_does_not_link(parent.path, attrname, parent_entity)
 
         cloned.path = PathRegistry.coerce(parent.path[0:-1] + cloned.path[:])
 
@@ -1911,33 +1914,8 @@ class _AttributeStrategyLoad(_LoadElement):
                         "loader option to multiple entities in the "
                         "same option. Use separate options per entity."
                     )
-                elif len(path) > 1:
-                    path_is_of_type = (
-                        path[-1].entity is not path[-2].mapper.class_
-                    )
-                    raise sa_exc.ArgumentError(
-                        f'ORM mapped attribute "{attr}" does not '
-                        f'link from relationship "{path[-2]}%s".%s'
-                        % (
-                            f".of_type({path[-1]})" if path_is_of_type else "",
-                            (
-                                "  Did you mean to use "
-                                f'"{path[-2]}'
-                                f'.of_type({attr.class_.__name__})"?'
-                                if not path_is_of_type
-                                and not path[-1].is_aliased_class
-                                and orm_util._entity_corresponds_to(
-                                    path.entity, attr.parent.mapper
-                                )
-                                else ""
-                            ),
-                        )
-                    )
                 else:
-                    raise sa_exc.ArgumentError(
-                        f'ORM mapped attribute "{attr}" does not '
-                        f'link mapped class "{path[-1]}"'
-                    )
+                    _raise_for_does_not_link(path, str(attr), attr.parent)
             else:
                 return None
 
@@ -2500,3 +2478,36 @@ def selectin_polymorphic(
 ) -> _AbstractLoad:
     ul = Load(base_cls)
     return ul.selectin_polymorphic(classes)
+
+
+def _raise_for_does_not_link(path, attrname, parent_entity):
+    if len(path) > 1:
+        path_is_of_type = path[-1].entity is not path[-2].mapper.class_
+        if insp_is_aliased_class(parent_entity):
+            parent_entity_str = str(parent_entity)
+        else:
+            parent_entity_str = parent_entity.class_.__name__
+
+        raise sa_exc.ArgumentError(
+            f'ORM mapped entity or attribute "{attrname}" does not '
+            f'link from relationship "{path[-2]}%s".%s'
+            % (
+                f".of_type({path[-1]})" if path_is_of_type else "",
+                (
+                    "  Did you mean to use "
+                    f'"{path[-2]}'
+                    f'.of_type({parent_entity_str})"?'
+                    if not path_is_of_type
+                    and not path[-1].is_aliased_class
+                    and orm_util._entity_corresponds_to(
+                        path.entity, inspect(parent_entity).mapper
+                    )
+                    else ""
+                ),
+            )
+        )
+    else:
+        raise sa_exc.ArgumentError(
+            f'ORM mapped attribute "{attrname}" does not '
+            f'link mapped class "{path[-1]}"'
+        )

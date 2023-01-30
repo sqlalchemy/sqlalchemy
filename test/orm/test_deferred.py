@@ -2009,8 +2009,8 @@ class InheritanceTest(_Polymorphic):
 
         with expect_raises_message(
             sa.exc.ArgumentError,
-            'ORM mapped attribute "Manager.status" does not link from '
-            r'relationship "Company.employees.'
+            r'ORM mapped entity or attribute "Manager.status" does not link '
+            r'from relationship "Company.employees.'
             r'of_type\(with_polymorphic\(Person, \[Manager\]\)\)".',
         ):
             s.query(Company).options(

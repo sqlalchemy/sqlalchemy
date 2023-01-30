@@ -2334,8 +2334,8 @@ class JoinedloadOverWPolyAliased(
 
             with expect_raises_message(
                 exc.ArgumentError,
-                r'ORM mapped attribute "Sub1.links" does not link from '
-                r'relationship "Link.child".  Did you mean to use '
+                r'ORM mapped entity or attribute "Sub1.links" does not '
+                r'link from relationship "Link.child".  Did you mean to use '
                 r'"Link.child.of_type\(Sub1\)"\?',
             ):
                 session.query(cls).options(

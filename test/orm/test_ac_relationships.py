@@ -182,7 +182,7 @@ class AliasedClassRelationshipTest(
 
         with expect_raises_message(
             exc.ArgumentError,
-            r'ORM mapped attribute "B.cs" does not link from '
+            r'ORM mapped entity or attribute "B.cs" does not link from '
             r'relationship "A.partitioned_bs.of_type\(aliased\(B\)\)"',
         ):
             if use_of_type:
