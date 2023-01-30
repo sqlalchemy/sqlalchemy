@@ -1449,13 +1449,13 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.scalar(
+          session.scalars(
             select(func.count()).
             select_from(User)
-          )
-          session.scalar(
+          ).one()
+          session.scalars(
             select(func.count(User.id))
-          )
+          ).one()
 
       - :meth:`_orm.Session.scalar`
 
