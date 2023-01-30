@@ -1320,6 +1320,72 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         ("default_enhanced",),
         ("postgresql",),
+        ("postgresql+asyncpg",),
+    )
+    def test_insert_w_cte_in_scalar_subquery(self, dialect):
+        """test #9173"""
+
+        customer = table(
+            "customer",
+            column("id"),
+            column("name"),
+        )
+        order = table(
+            "order",
+            column("id"),
+            column("price"),
+            column("customer_id"),
+        )
+
+        inst = (
+            customer.insert()
+            .values(name="John")
+            .returning(customer.c.id)
+            .cte("inst")
+        )
+
+        stmt = (
+            order.insert()
+            .values(
+                price=1,
+                customer_id=select(inst.c.id).scalar_subquery(),
+            )
+            .add_cte(inst)
+        )
+
+        if dialect == "default_enhanced":
+            self.assert_compile(
+                stmt,
+                "WITH inst AS (INSERT INTO customer (name) VALUES (:param_1) "
+                'RETURNING customer.id) INSERT INTO "order" '
+                "(price, customer_id) VALUES "
+                "(:price, (SELECT inst.id FROM inst))",
+                dialect=dialect,
+            )
+        elif dialect == "postgresql":
+            self.assert_compile(
+                stmt,
+                "WITH inst AS (INSERT INTO customer (name) "
+                "VALUES (%(param_1)s) "
+                'RETURNING customer.id) INSERT INTO "order" '
+                "(price, customer_id) "
+                "VALUES (%(price)s, (SELECT inst.id FROM inst))",
+                dialect=dialect,
+            )
+        elif dialect == "postgresql+asyncpg":
+            self.assert_compile(
+                stmt,
+                "WITH inst AS (INSERT INTO customer (name) VALUES ($2) "
+                'RETURNING customer.id) INSERT INTO "order" '
+                "(price, customer_id) VALUES ($1, (SELECT inst.id FROM inst))",
+                dialect=dialect,
+            )
+        else:
+            assert False
+
+    @testing.combinations(
+        ("default_enhanced",),
+        ("postgresql",),
     )
     def test_select_from_delete_cte(self, dialect):
         t1 = table("table_1", column("id"), column("val"))

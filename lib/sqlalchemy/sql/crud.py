@@ -150,6 +150,17 @@ def _get_crud_params(
     compiler.update_prefetch = []
     compiler.implicit_returning = []
 
+    visiting_cte = kw.get("visiting_cte", None)
+    if visiting_cte is not None:
+        # for insert -> CTE -> insert, don't populate an incoming
+        # _crud_accumulate_bind_names collection; the INSERT we process here
+        # will not be inline within the VALUES of the enclosing INSERT as the
+        # CTE is placed on the outside.  See issue #9173
+        kw.pop("accumulate_bind_names", None)
+    assert (
+        "accumulate_bind_names" not in kw
+    ), "Don't know how to handle insert within insert without a CTE"
+
     # getters - these are normally just column.key,
     # but in the case of mysql multi-table update, the rules for
     # .key must conditionally take tablename into account
