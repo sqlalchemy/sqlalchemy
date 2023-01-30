@@ -1078,10 +1078,18 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         self.cls.__annotations__ = annotations
 
-        self._assert_dc_arguments(dataclass_setup_arguments)
+        self._apply_dataclasses_to_any_class(
+            dataclass_setup_arguments, self.cls
+        )
+
+    @classmethod
+    def _apply_dataclasses_to_any_class(
+        cls, dataclass_setup_arguments: _DataclassArguments, klass: Type[_O]
+    ) -> None:
+        cls._assert_dc_arguments(dataclass_setup_arguments)
 
         dataclasses.dataclass(
-            self.cls,
+            klass,
             **{
                 k: v
                 for k, v in dataclass_setup_arguments.items()

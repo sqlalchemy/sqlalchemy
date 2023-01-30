@@ -45,6 +45,7 @@ from ._orm_constructors import relationship
 from ._orm_constructors import synonym
 from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
+from .base import _is_mapped_class
 from .base import Mapped
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
@@ -596,19 +597,28 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
             "kw_only": kw_only,
         }
 
+        current_transforms: _DataclassArguments
+
         if hasattr(cls, "_sa_apply_dc_transforms"):
             current = cls._sa_apply_dc_transforms  # type: ignore[attr-defined]
 
             _ClassScanMapperConfig._assert_dc_arguments(current)
 
-            cls._sa_apply_dc_transforms = {
+            cls._sa_apply_dc_transforms = current_transforms = {  # type: ignore  # noqa: E501
                 k: current.get(k, _NoArg.NO_ARG) if v is _NoArg.NO_ARG else v
                 for k, v in apply_dc_transforms.items()
             }
         else:
-            cls._sa_apply_dc_transforms = apply_dc_transforms
+            cls._sa_apply_dc_transforms = (
+                current_transforms
+            ) = apply_dc_transforms
 
         super().__init_subclass__()
+
+        if not _is_mapped_class(cls):
+            _ClassScanMapperConfig._apply_dataclasses_to_any_class(
+                current_transforms, cls
+            )
 
 
 class DeclarativeBase(
