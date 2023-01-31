@@ -156,13 +156,13 @@ Using annotated Declarative mappings, the type of collection used for the
 :func:`_orm.relationship` is derived from the collection type passed to the
 :class:`_orm.Mapped` container type.  The example from the previous section
 may be written to use a ``set`` rather than a ``list`` for the
-``Parent.children`` collection using ``Mapped[set["Child"]]``::
+``Parent.children`` collection using ``Mapped[Set["Child"]]``::
 
     class Parent(Base):
         __tablename__ = "parent_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[set["Child"]] = relationship(back_populates="parent")
+        children: Mapped[Set["Child"]] = relationship(back_populates="parent")
 
 When using non-annotated forms including imperative mappings, the Python
 class to use as a collection may be passed using the
@@ -523,7 +523,7 @@ such as ``set``::
         __tablename__ = "left_table"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[set["Child"]] = relationship(secondary=association_table)
+        children: Mapped[Set["Child"]] = relationship(secondary=association_table)
 
 When using non-annotated forms including imperative mappings, as is
 the case with one-to-many, the Python

@@ -59,6 +59,7 @@ below where ``list`` is used::
 Or for a ``set``, illustrated in the same
 ``Parent.children`` collection::
 
+    from typing import Set
     from sqlalchemy import ForeignKey
 
     from sqlalchemy.orm import DeclarativeBase
@@ -77,7 +78,7 @@ Or for a ``set``, illustrated in the same
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a set
-        children: Mapped[set["Child"]] = relationship()
+        children: Mapped[Set["Child"]] = relationship()
 
 
     class Child(Base):
