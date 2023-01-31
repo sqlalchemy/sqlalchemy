@@ -124,6 +124,8 @@ The example below illustrates the relationship example at
 relationship to use :ref:`selectin_eager_loading` when a SELECT
 statement for ``Parent`` objects is emitted::
 
+    from typing import List
+
     from sqlalchemy import ForeignKey
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import Mapped
@@ -139,7 +141,7 @@ statement for ``Parent`` objects is emitted::
         __tablename__ = "parent"
 
         id: Mapped[int] = mapped_column(primary_key=True)
-        children: Mapped[list["Child"]] = relationship(lazy="selectin")
+        children: Mapped[List["Child"]] = relationship(lazy="selectin")
 
 
     class Child(Base):

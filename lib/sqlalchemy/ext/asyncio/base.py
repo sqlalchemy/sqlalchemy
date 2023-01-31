@@ -21,6 +21,7 @@ from typing import Generic
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 import weakref
@@ -160,8 +161,8 @@ class GeneratorStartableContext(StartableContext[_T_co]):
     def __init__(
         self,
         func: Callable[..., AsyncIterator[_T_co]],
-        args: tuple[Any, ...],
-        kwds: dict[str, Any],
+        args: Tuple[Any, ...],
+        kwds: Dict[str, Any],
     ):
         self.gen = func(*args, **kwds)  # type: ignore
 

@@ -11,6 +11,7 @@ the :ref:`queryguide_toplevel`.
 ..  sourcecode:: python
 
 
+    >>> from typing import List
     >>> from sqlalchemy import create_engine
     >>> from sqlalchemy import ForeignKey
     >>> from sqlalchemy.orm import DeclarativeBase
@@ -26,7 +27,7 @@ the :ref:`queryguide_toplevel`.
     ...     __tablename__ = "company"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
     ...     name: Mapped[str]
-    ...     employees: Mapped[list["Employee"]] = relationship(back_populates="company")
+    ...     employees: Mapped[List["Employee"]] = relationship(back_populates="company")
     >>>
     >>> class Employee(Base):
     ...     __tablename__ = "employee"
@@ -48,7 +49,7 @@ the :ref:`queryguide_toplevel`.
     ...     __tablename__ = "manager"
     ...     id: Mapped[int] = mapped_column(ForeignKey("employee.id"), primary_key=True)
     ...     manager_name: Mapped[str]
-    ...     paperwork: Mapped[list["Paperwork"]] = relationship()
+    ...     paperwork: Mapped[List["Paperwork"]] = relationship()
     ...     __mapper_args__ = {
     ...         "polymorphic_identity": "manager",
     ...     }

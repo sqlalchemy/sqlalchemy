@@ -34,7 +34,7 @@ and other directives:
 
         # ... mapped_column() mappings
 
-        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
 
     class Address(Base):
@@ -400,7 +400,7 @@ the :paramref:`_orm.relationship.lazy` option, e.g.:
     class User(Base):
         __tablename__ = "user_account"
 
-        addresses: Mapped[list["Address"]] = relationship(
+        addresses: Mapped[List["Address"]] = relationship(
             back_populates="user", lazy="selectin"
         )
 
@@ -629,7 +629,7 @@ relationship will never try to emit SQL:
     >>> class User(Base):
     ...     __tablename__ = "user_account"
     ...     id: Mapped[int] = mapped_column(primary_key=True)
-    ...     addresses: Mapped[list["Address"]] = relationship(
+    ...     addresses: Mapped[List["Address"]] = relationship(
     ...         back_populates="user", lazy="raise_on_sql"
     ...     )
 

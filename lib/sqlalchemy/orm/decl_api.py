@@ -380,7 +380,7 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
             type: Mapped[str] = mapped_column(String(50))
 
             @declared_attr.directive
-            def __mapper_args__(cls) -> dict[str, Any]:
+            def __mapper_args__(cls) -> Dict[str, Any]:
                 if cls.__name__ == 'Employee':
                     return {
                             "polymorphic_on":cls.type,

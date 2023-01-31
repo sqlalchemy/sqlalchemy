@@ -738,7 +738,7 @@
         :tickets: 8777
 
         Fixed a suite of issues involving :class:`.Mapped` use with dictionary
-        types, such as ``Mapped[dict[str, str] | None]``, would not be correctly
+        types, such as ``Mapped[Dict[str, str] | None]``, would not be correctly
         interpreted in Declarative ORM mappings. Support to correctly
         "de-optionalize" this type including for lookup in ``type_annotation_map``
         has been fixed.

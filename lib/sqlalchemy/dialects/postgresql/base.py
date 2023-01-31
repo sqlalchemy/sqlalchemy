@@ -1428,6 +1428,7 @@ import re
 from typing import Any
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 from . import array as _array
 from . import hstore as _hstore
@@ -3350,7 +3351,7 @@ class PGDialect(default.DefaultDialect):
         else:
             return False, {}
 
-    def _kind_to_relkinds(self, kind: ObjectKind) -> tuple[str, ...]:
+    def _kind_to_relkinds(self, kind: ObjectKind) -> Tuple[str, ...]:
         if kind is ObjectKind.ANY:
             return pg_catalog.RELKINDS_ALL_TABLE_LIKE
         relkinds = ()
