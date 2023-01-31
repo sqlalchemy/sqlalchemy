@@ -562,6 +562,9 @@ def _setup_declarative_base(cls: Type[Any]) -> None:
     if "metadata" not in cls.__dict__:
         cls.metadata = cls.registry.metadata  # type: ignore
 
+    if "__init__" not in cls.__dict__:
+        cls.__init__ = cls.registry.constructor
+
 
 class MappedAsDataclass(metaclass=DCTransformDeclarative):
     """Mixin class to indicate when mapping this class, also convert it to be
@@ -678,6 +681,52 @@ class DeclarativeBase(
        where the base class returned cannot be recognized by type checkers
        without using plugins.
 
+    **__init__ behavior**
+
+    In a plain Python class, the base-most ``__init__()`` method in the class
+    hierarchy is ``object.__init__()``, which accepts no arguments. However,
+    when the :class:`_orm.DeclarativeBase` subclass is first declared, the
+    class is given an ``__init__()`` method that links to the
+    :paramref:`_orm.registry.constructor` constructor function, if no
+    ``__init__()`` method is already present; this is the usual declarative
+    constructor that will assign keyword arguments as attributes on the
+    instance, assuming those attributes are established at the class level
+    (i.e. are mapped, or are linked to a descriptor). This constructor is
+    **never accessed by a mapped class without being called explicitly via
+    super()**, as mapped classes are themselves given an ``__init__()`` method
+    directly which calls :paramref:`_orm.registry.constructor`, so in the
+    default case works independently of what the base-most ``__init__()``
+    method does.
+
+    .. versionchanged:: 2.0.1  :class:`_orm.DeclarativeBase` has a default
+       constructor that links to :paramref:`_orm.registry.constructor` by
+       default, so that calls to ``super().__init__()`` can access this
+       constructor. Previously, due to an implementation mistake, this default
+       constructor was missing, and calling ``super().__init__()`` would invoke
+       ``object.__init__()``.
+
+    The :class:`_orm.DeclarativeBase` subclass may also declare an explicit
+    ``__init__()`` method which will replace the use of the
+    :paramref:`_orm.registry.constructor` function at this level::
+
+        class Base(DeclarativeBase):
+            def __init__(self, id=None):
+                self.id = id
+
+    Mapped classes still will not invoke this constructor implicitly; it
+    remains only accessible by calling ``super().__init__()``::
+
+        class MyClass(Base):
+            def __init__(self, id=None, name=None):
+                self.name = name
+                super().__init__(id=id)
+
+    Note that this is a different behavior from what functions like the legacy
+    :func:`_orm.declarative_base` would do; the base created by those functions
+    would always install :paramref:`_orm.registry.constructor` for
+    ``__init__()``.
+
+
     """
 
     if typing.TYPE_CHECKING:
@@ -784,7 +833,7 @@ def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
         )
 
 
-class DeclarativeBaseNoMeta(inspection.Inspectable[Mapper[Any]]):
+class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
     """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
     to intercept new attributes.
 
