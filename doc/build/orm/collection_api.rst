@@ -47,7 +47,7 @@ below where ``list`` is used::
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a list
-        children: Mapped[list["Child"]] = relationship()
+        children: Mapped[List["Child"]] = relationship()
 
 
     class Child(Base):

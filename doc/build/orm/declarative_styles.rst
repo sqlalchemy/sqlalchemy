@@ -75,7 +75,7 @@ of the base::
         nickname: Mapped[Optional[str]] = mapped_column(String(64))
         create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
 
     class Address(Base):
@@ -126,6 +126,7 @@ previous section, using the :meth:`_orm.registry.mapped`
 decorator rather than using the :class:`_orm.DeclarativeBase` superclass::
 
     from datetime import datetime
+    from typing import List
     from typing import Optional
 
     from sqlalchemy import ForeignKey
@@ -150,7 +151,7 @@ decorator rather than using the :class:`_orm.DeclarativeBase` superclass::
         nickname: Mapped[Optional[str]] = mapped_column(String(64))
         create_date: Mapped[datetime] = mapped_column(insert_default=func.now())
 
-        addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+        addresses: Mapped[List["Address"]] = relationship(back_populates="user")
 
 
     @mapper_registry.mapped

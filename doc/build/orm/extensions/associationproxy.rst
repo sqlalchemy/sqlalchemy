@@ -52,13 +52,13 @@ exception of an extra attribute added to the ``User`` class called
         __tablename__ = "user"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
-        kw: Mapped[list[Keyword]] = relationship(secondary=lambda: user_keyword_table)
+        kw: Mapped[List[Keyword]] = relationship(secondary=lambda: user_keyword_table)
 
         def __init__(self, name: str):
             self.name = name
 
         # proxy the 'keyword' attribute from the 'kw' relationship
-        keywords: AssociationProxy[list[str]] = association_proxy("kw", "keyword")
+        keywords: AssociationProxy[List[str]] = association_proxy("kw", "keyword")
 
 
     class Keyword(Base):
@@ -150,7 +150,7 @@ using a lambda as is typical::
         ...
 
         # use Keyword(keyword=kw) on append() events
-        keywords: AssociationProxy[list[str]] = association_proxy(
+        keywords: AssociationProxy[List[str]] = association_proxy(
             "kw", "keyword", creator=lambda kw: Keyword(keyword=kw)
         )
 
@@ -203,14 +203,14 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
 
-        user_keyword_associations: Mapped[list[UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[List[UserKeywordAssociation]] = relationship(
             back_populates="user",
             cascade="all, delete-orphan",
         )
 
         # association proxy of "user_keyword_associations" collection
         # to "keyword" attribute
-        keywords: AssociationProxy[list[Keyword]] = association_proxy(
+        keywords: AssociationProxy[List[Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda keyword: UserKeywordAssociation(keyword=Keyword(keyword)),
@@ -547,7 +547,7 @@ to a related object, as in the example mapping below::
         )
 
         # column-targeted association proxy
-        special_keys: AssociationProxy[list[str]] = association_proxy(
+        special_keys: AssociationProxy[List[str]] = association_proxy(
             "user_keyword_associations", "special_key"
         )
 

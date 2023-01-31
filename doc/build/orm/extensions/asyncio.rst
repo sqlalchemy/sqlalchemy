@@ -150,6 +150,7 @@ illustrates a complete example including mapper and session configuration::
 
     import asyncio
     import datetime
+    from typing import List
 
     from sqlalchemy import ForeignKey
     from sqlalchemy import func
@@ -174,7 +175,7 @@ illustrates a complete example including mapper and session configuration::
         id: Mapped[int] = mapped_column(primary_key=True)
         data: Mapped[str]
         create_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
-        bs: Mapped[list[B]] = relationship()
+        bs: Mapped[List[B]] = relationship()
 
 
     class B(Base):
