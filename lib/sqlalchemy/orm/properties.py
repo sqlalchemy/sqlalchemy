@@ -730,14 +730,23 @@ class MappedColumn(
         our_type = de_optionalize_union_types(argument)
 
         use_args_from = None
+
         if is_pep593(our_type):
             our_type_is_pep593 = True
-            for elem in typing_get_args(our_type):
+            pep_593_components = typing_get_args(our_type)
+            raw_pep_593_type = pep_593_components[0]
+            if is_optional_union(raw_pep_593_type):
+                nullable = True
+                if not self._has_nullable:
+                    self.column.nullable = nullable
+                raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
+            for elem in pep_593_components[1:]:
                 if isinstance(elem, MappedColumn):
                     use_args_from = elem
                     break
         else:
             our_type_is_pep593 = False
+            raw_pep_593_type = None
 
         if use_args_from is not None:
             if (
@@ -752,9 +761,9 @@ class MappedColumn(
             new_sqltype = None
 
             if our_type_is_pep593:
-                checks = (our_type,) + typing_get_args(our_type)
+                checks = [our_type, raw_pep_593_type]
             else:
-                checks = (our_type,)
+                checks = [our_type]
 
             for check_type in checks:
 

@@ -448,6 +448,23 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             args = ()
 
+        # anno only: global anno_str, anno_str_optional, anno_str_mc
+        # anno only: global anno_str_optional_mc, anno_str_mc_nullable
+        # anno only: global anno_str_optional_mc_notnull
+        anno_str = Annotated[str, 50]
+        anno_str_optional = Annotated[Optional[str], 30]
+
+        anno_str_mc = Annotated[str, mapped_column()]
+        anno_str_optional_mc = Annotated[Optional[str], mapped_column()]
+        anno_str_mc_nullable = Annotated[str, mapped_column(nullable=True)]
+        anno_str_optional_mc_notnull = Annotated[
+            Optional[str], mapped_column(nullable=False)
+        ]
+
+        decl_base.registry.update_type_annotation_map(
+            {anno_str: String(50), anno_str_optional: String(30)}
+        )
+
         class User(decl_base):
             __tablename__ = "users"
 
@@ -464,6 +481,36 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 *args, nullable=True
             )
 
+            # test #9177 cases
+            anno_1a: Mapped[anno_str] = mapped_column(*args)
+            anno_1b: Mapped[anno_str] = mapped_column(*args, nullable=True)
+
+            anno_2a: Mapped[anno_str_optional] = mapped_column(*args)
+            anno_2b: Mapped[anno_str_optional] = mapped_column(
+                *args, nullable=False
+            )
+
+            anno_3a: Mapped[anno_str_mc] = mapped_column(*args)
+            anno_3b: Mapped[anno_str_mc] = mapped_column(*args, nullable=True)
+            anno_3c: Mapped[Optional[anno_str_mc]] = mapped_column(*args)
+
+            anno_4a: Mapped[anno_str_optional_mc] = mapped_column(*args)
+            anno_4b: Mapped[anno_str_optional_mc] = mapped_column(
+                *args, nullable=False
+            )
+
+            anno_5a: Mapped[anno_str_mc_nullable] = mapped_column(*args)
+            anno_5b: Mapped[anno_str_mc_nullable] = mapped_column(
+                *args, nullable=False
+            )
+
+            anno_6a: Mapped[anno_str_optional_mc_notnull] = mapped_column(
+                *args
+            )
+            anno_6b: Mapped[anno_str_optional_mc_notnull] = mapped_column(
+                *args, nullable=True
+            )
+
         is_false(User.__table__.c.lnnl_rndf.nullable)
         is_false(User.__table__.c.lnnl_rnnl.nullable)
         is_true(User.__table__.c.lnnl_rnl.nullable)
@@ -471,6 +518,20 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.lnl_rndf.nullable)
         is_false(User.__table__.c.lnl_rnnl.nullable)
         is_true(User.__table__.c.lnl_rnl.nullable)
+
+        is_false(User.__table__.c.anno_1a.nullable)
+        is_true(User.__table__.c.anno_1b.nullable)
+        is_true(User.__table__.c.anno_2a.nullable)
+        is_false(User.__table__.c.anno_2b.nullable)
+        is_false(User.__table__.c.anno_3a.nullable)
+        is_true(User.__table__.c.anno_3b.nullable)
+        is_true(User.__table__.c.anno_3c.nullable)
+        is_true(User.__table__.c.anno_4a.nullable)
+        is_false(User.__table__.c.anno_4b.nullable)
+        is_true(User.__table__.c.anno_5a.nullable)
+        is_false(User.__table__.c.anno_5b.nullable)
+        is_false(User.__table__.c.anno_6a.nullable)
+        is_true(User.__table__.c.anno_6b.nullable)
 
         # test #8410
         is_false(User.__table__.c.lnnl_rndf._copy().nullable)
