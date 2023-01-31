@@ -27,6 +27,7 @@ which we will be querying from the database.  This structure, known as a
 Python object model, as well as :term:`database metadata` that describes
 real SQL tables that exist, or will exist, in a particular database::
 
+    >>> from typing import List
     >>> from typing import Optional
     >>> from sqlalchemy import ForeignKey
     >>> from sqlalchemy import String
@@ -45,7 +46,7 @@ real SQL tables that exist, or will exist, in a particular database::
     ...     name: Mapped[str] = mapped_column(String(30))
     ...     fullname: Mapped[Optional[str]]
     ...
-    ...     addresses: Mapped[list["Address"]] = relationship(
+    ...     addresses: Mapped[List["Address"]] = relationship(
     ...         back_populates="user", cascade="all, delete-orphan"
     ...     )
     ...

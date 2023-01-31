@@ -847,7 +847,7 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         else:
             return value
 
-    def __getstate__(self) -> dict[_KT, _VT]:
+    def __getstate__(self) -> Dict[_KT, _VT]:
         return dict(self)
 
     def __setstate__(
@@ -1051,7 +1051,7 @@ class MutableSet(Mutable, Set[_T]):
         else:
             return value
 
-    def __getstate__(self) -> set[_T]:
+    def __getstate__(self) -> Set[_T]:
         return set(self)
 
     def __setstate__(self, state: Iterable[_T]) -> None:

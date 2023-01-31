@@ -631,7 +631,7 @@ emit a lazy load::
 
         # ...
 
-        children: Mapped[list[MyRelatedClass]] = relationship(lazy="raise")
+        children: Mapped[List[MyRelatedClass]] = relationship(lazy="raise")
 
 Above, attribute access on the ``children`` collection will raise an exception
 if it was not previously populated.  This includes read access but for

@@ -186,7 +186,7 @@ and ``Employee``::
         __tablename__ = "company"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
-        employees: Mapped[list[Employee]] = relationship(back_populates="company")
+        employees: Mapped[List[Employee]] = relationship(back_populates="company")
 
 
     class Employee(Base):
@@ -220,7 +220,7 @@ established between the ``Manager`` and ``Company`` classes::
         __tablename__ = "company"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
-        managers: Mapped[list[Manager]] = relationship(back_populates="company")
+        managers: Mapped[List[Manager]] = relationship(back_populates="company")
 
 
     class Employee(Base):
@@ -481,7 +481,7 @@ relationship::
         __tablename__ = "company"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
-        employees: Mapped[list[Employee]] = relationship(back_populates="company")
+        employees: Mapped[List[Employee]] = relationship(back_populates="company")
 
 
     class Employee(Base):
@@ -522,7 +522,7 @@ or subclasses::
         __tablename__ = "company"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str]
-        managers: Mapped[list[Manager]] = relationship(back_populates="company")
+        managers: Mapped[List[Manager]] = relationship(back_populates="company")
 
 
     class Employee(Base):

@@ -52,13 +52,13 @@ exception of an extra attribute added to the ``User`` class called
         __tablename__ = "user"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
-        kw: Mapped[list[Keyword]] = relationship(secondary=lambda: user_keyword_table)
+        kw: Mapped[List[Keyword]] = relationship(secondary=lambda: user_keyword_table)
 
         def __init__(self, name: str):
             self.name = name
 
         # proxy the 'keyword' attribute from the 'kw' relationship
-        keywords: AssociationProxy[list[str]] = association_proxy("kw", "keyword")
+        keywords: AssociationProxy[List[str]] = association_proxy("kw", "keyword")
 
 
     class Keyword(Base):
@@ -150,7 +150,7 @@ using a lambda as is typical::
         ...
 
         # use Keyword(keyword=kw) on append() events
-        keywords: AssociationProxy[list[str]] = association_proxy(
+        keywords: AssociationProxy[List[str]] = association_proxy(
             "kw", "keyword", creator=lambda kw: Keyword(keyword=kw)
         )
 
@@ -203,14 +203,14 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
 
-        user_keyword_associations: Mapped[list[UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[List[UserKeywordAssociation]] = relationship(
             back_populates="user",
             cascade="all, delete-orphan",
         )
 
         # association proxy of "user_keyword_associations" collection
         # to "keyword" attribute
-        keywords: AssociationProxy[list[Keyword]] = association_proxy(
+        keywords: AssociationProxy[List[Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda keyword: UserKeywordAssociation(keyword=Keyword(keyword)),
@@ -315,6 +315,7 @@ argument to the ``User.keywords`` proxy so that these values are assigned approp
 when new elements are added to the dictionary::
 
     from __future__ import annotations
+    from typing import Dict
 
     from sqlalchemy import ForeignKey
     from sqlalchemy import String
@@ -338,7 +339,7 @@ when new elements are added to the dictionary::
 
         # user/user_keyword_associations relationship, mapping
         # user_keyword_associations with a dictionary against "special_key" as key.
-        user_keyword_associations: Mapped[dict[str, UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[Dict[str, UserKeywordAssociation]] = relationship(
             back_populates="user",
             collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
@@ -346,7 +347,7 @@ when new elements are added to the dictionary::
         # proxy to 'user_keyword_associations', instantiating
         # UserKeywordAssociation assigning the new key to 'special_key',
         # values to 'keyword'.
-        keywords: AssociationProxy[dict[str, Keyword]] = association_proxy(
+        keywords: AssociationProxy[Dict[str, Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
@@ -426,14 +427,14 @@ present on ``UserKeywordAssociation``::
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
 
-        user_keyword_associations: Mapped[dict[str, UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[Dict[str, UserKeywordAssociation]] = relationship(
             back_populates="user",
             collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
         )
         # the same 'user_keyword_associations'->'keyword' proxy as in
         # the basic dictionary example.
-        keywords: AssociationProxy[dict[str, str]] = association_proxy(
+        keywords: AssociationProxy[Dict[str, str]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
@@ -458,7 +459,7 @@ present on ``UserKeywordAssociation``::
 
         # 'keyword' is changed to be a proxy to the
         # 'keyword' attribute of 'Keyword'
-        keyword: AssociationProxy[dict[str, str]] = association_proxy("kw", "keyword")
+        keyword: AssociationProxy[Dict[str, str]] = association_proxy("kw", "keyword")
 
 
     class Keyword(Base):
@@ -547,7 +548,7 @@ to a related object, as in the example mapping below::
         )
 
         # column-targeted association proxy
-        special_keys: AssociationProxy[list[str]] = association_proxy(
+        special_keys: AssociationProxy[List[str]] = association_proxy(
             "user_keyword_associations", "special_key"
         )
 

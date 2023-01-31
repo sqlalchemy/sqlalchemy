@@ -1232,14 +1232,10 @@ class AutomapBase:
                 )
             }
 
-            many_to_many: list[
-                tuple[
-                    Table,
-                    Table,
-                    list[ForeignKeyConstraint],
-                    Table,
-                ]
-            ] = []
+            many_to_many: List[
+                Tuple[Table, Table, List[ForeignKeyConstraint], Table]
+            ]
+            many_to_many = []
 
             bookkeeping = cls._sa_automapbase_bookkeeping
             metadata_tables = cls.metadata.tables
@@ -1430,7 +1426,7 @@ def _is_many_to_many(
     if len(fk_constraints) != 2:
         return None, None, None
 
-    cols: list[Column[Any]] = sum(
+    cols: List[Column[Any]] = sum(
         [
             [fk.parent for fk in fk_constraint.elements]
             for fk_constraint in fk_constraints
@@ -1488,7 +1484,7 @@ def _relationships_for_fks(
                 automap_base, referred_cls, local_cls, constraint
             )
 
-            o2m_kws: dict[str, Union[str, bool]] = {}
+            o2m_kws: Dict[str, Union[str, bool]] = {}
             nullable = False not in {fk.parent.nullable for fk in fks}
             if not nullable:
                 o2m_kws["cascade"] = "all, delete-orphan"

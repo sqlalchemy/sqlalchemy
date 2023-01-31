@@ -28,6 +28,7 @@ from typing import ItemsView
 from typing import Iterable
 from typing import Iterator
 from typing import KeysView
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import MutableSequence
@@ -1552,38 +1553,38 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
     def __ne__(self, other: object) -> bool:
         return list(self) != other
 
-    def __lt__(self, other: list[_T]) -> bool:
+    def __lt__(self, other: List[_T]) -> bool:
         return list(self) < other
 
-    def __le__(self, other: list[_T]) -> bool:
+    def __le__(self, other: List[_T]) -> bool:
         return list(self) <= other
 
-    def __gt__(self, other: list[_T]) -> bool:
+    def __gt__(self, other: List[_T]) -> bool:
         return list(self) > other
 
-    def __ge__(self, other: list[_T]) -> bool:
+    def __ge__(self, other: List[_T]) -> bool:
         return list(self) >= other
 
-    def __add__(self, other: list[_T]) -> list[_T]:
+    def __add__(self, other: List[_T]) -> List[_T]:
         try:
             other = list(other)
         except TypeError:
             return NotImplemented
         return list(self) + other
 
-    def __radd__(self, other: list[_T]) -> list[_T]:
+    def __radd__(self, other: List[_T]) -> List[_T]:
         try:
             other = list(other)
         except TypeError:
             return NotImplemented
         return other + list(self)
 
-    def __mul__(self, n: SupportsIndex) -> list[_T]:
+    def __mul__(self, n: SupportsIndex) -> List[_T]:
         if not isinstance(n, int):
             return NotImplemented
         return list(self) * n
 
-    def __rmul__(self, n: SupportsIndex) -> list[_T]:
+    def __rmul__(self, n: SupportsIndex) -> List[_T]:
         if not isinstance(n, int):
             return NotImplemented
         return n * list(self)
@@ -1616,7 +1617,7 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
             ls = list(self)
             return ls.index(value, *arg)
 
-    def copy(self) -> list[_T]:
+    def copy(self) -> List[_T]:
         return list(self)
 
     def __repr__(self) -> str:
@@ -1776,7 +1777,7 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         for key in removals:
             del self[key]
 
-    def copy(self) -> dict[_KT, _VT]:
+    def copy(self) -> Dict[_KT, _VT]:
         return dict(self.items())
 
     def __hash__(self) -> NoReturn:
