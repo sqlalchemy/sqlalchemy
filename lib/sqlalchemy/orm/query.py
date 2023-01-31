@@ -116,6 +116,7 @@ if TYPE_CHECKING:
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _DMLColumnArgument
     from ..sql._typing import _JoinTargetArgument
+    from ..sql._typing import _LimitOffsetType
     from ..sql._typing import _MAYBE_ENTITY
     from ..sql._typing import _no_kw
     from ..sql._typing import _NOT_ENTITY
@@ -2615,9 +2616,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition)
-    def limit(
-        self: SelfQuery, limit: Union[int, _ColumnExpressionArgument[int]]
-    ) -> SelfQuery:
+    def limit(self: SelfQuery, limit: _LimitOffsetType) -> SelfQuery:
         """Apply a ``LIMIT`` to the query and return the newly resulting
         ``Query``.
 
@@ -2631,9 +2630,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition)
-    def offset(
-        self: SelfQuery, offset: Union[int, _ColumnExpressionArgument[int]]
-    ) -> SelfQuery:
+    def offset(self: SelfQuery, offset: _LimitOffsetType) -> SelfQuery:
         """Apply an ``OFFSET`` to the query and return the newly resulting
         ``Query``.
 

@@ -48,7 +48,19 @@ def t_select_1() -> None:
 
 
 def t_select_2() -> None:
-    stmt = select(User).filter(User.id == 5)
+    stmt = (
+        select(User)
+        .filter(User.id == 5)
+        .limit(1)
+        .offset(3)
+        .offset(None)
+        .limit(None)
+        .limit(User.id)
+        .offset(User.id)
+        .fetch(1)
+        .fetch(None)
+        .fetch(User.id)
+    )
 
     # EXPECTED_TYPE: Select[Tuple[User]]
     reveal_type(stmt)

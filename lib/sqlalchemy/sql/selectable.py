@@ -109,6 +109,7 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
+    from ._typing import _LimitOffsetType
     from ._typing import _MAYBE_ENTITY
     from ._typing import _NOT_ENTITY
     from ._typing import _OnClauseArgument
@@ -3955,7 +3956,7 @@ class GenerativeSelect(SelectBase, Generative):
 
     def _offset_or_limit_clause(
         self,
-        element: Union[int, _ColumnExpressionArgument[Any]],
+        element: _LimitOffsetType,
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[int]] = None,
     ) -> ColumnElement[Any]:
@@ -4041,8 +4042,7 @@ class GenerativeSelect(SelectBase, Generative):
 
     @_generative
     def limit(
-        self: SelfGenerativeSelect,
-        limit: Union[int, _ColumnExpressionArgument[int]],
+        self: SelfGenerativeSelect, limit: _LimitOffsetType
     ) -> SelfGenerativeSelect:
         """Return a new selectable with the given LIMIT criterion
         applied.
@@ -4078,7 +4078,7 @@ class GenerativeSelect(SelectBase, Generative):
     @_generative
     def fetch(
         self: SelfGenerativeSelect,
-        count: Union[int, _ColumnExpressionArgument[int]],
+        count: _LimitOffsetType,
         with_ties: bool = False,
         percent: bool = False,
     ) -> SelfGenerativeSelect:
@@ -4133,8 +4133,7 @@ class GenerativeSelect(SelectBase, Generative):
 
     @_generative
     def offset(
-        self: SelfGenerativeSelect,
-        offset: Union[int, _ColumnExpressionArgument[int]],
+        self: SelfGenerativeSelect, offset: _LimitOffsetType
     ) -> SelfGenerativeSelect:
         """Return a new selectable with the given OFFSET criterion
         applied.

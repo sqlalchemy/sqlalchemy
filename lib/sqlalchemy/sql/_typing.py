@@ -260,6 +260,8 @@ _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 
 _EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 
+_LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
+
 if TYPE_CHECKING:
 
     def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]:
