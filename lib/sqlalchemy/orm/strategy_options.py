@@ -400,8 +400,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             is not yet an option to automatically traverse recursive structures
             with more than one relationship involved.
 
-         .. warning:: This parameter is new and experimental and should be
-            treated as "alpha" status
+            Additionally, the :paramref:`_orm.selectinload.recursion_depth`
+            parameter is new and experimental and should be treated as "alpha"
+            status for the 2.0 series.
 
          .. versionadded:: 2.0 added
             :paramref:`_orm.selectinload.recursion_depth`
