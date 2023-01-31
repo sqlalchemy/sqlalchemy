@@ -823,6 +823,167 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
                 )
 
 
+class DataclassesForNonMappedClassesTest(fixtures.TestBase):
+    """test for cases added in #9179"""
+
+    def test_base_is_dc(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int
+
+        class Child(Parent):
+            __tablename__ = "child"
+            b: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_regex(repr(Child(5, 6)), r".*\.Child\(a=5, b=6\)")
+
+    def test_base_is_dc_plus_options(self):
+        class Parent(MappedAsDataclass, DeclarativeBase, unsafe_hash=True):
+            a: int
+
+        class Child(Parent, repr=False):
+            __tablename__ = "child"
+            b: Mapped[int] = mapped_column(primary_key=True)
+
+        c1 = Child(5, 6)
+        eq_(hash(c1), hash(Child(5, 6)))
+
+        # still reprs, because base has a repr, but b not included
+        eq_regex(repr(c1), r".*\.Child\(a=5\)")
+
+    def test_base_is_dc_init_var(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: InitVar[int]
+
+        class Child(Parent):
+            __tablename__ = "child"
+            b: Mapped[int] = mapped_column(primary_key=True)
+
+        c1 = Child(a=5, b=6)
+        eq_regex(repr(c1), r".*\.Child\(b=6\)")
+
+    def test_base_is_dc_field(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int = dataclasses.field(default=10)
+
+        class Child(Parent):
+            __tablename__ = "child"
+            b: Mapped[int] = mapped_column(primary_key=True, default=7)
+
+        c1 = Child(a=5, b=6)
+        eq_regex(repr(c1), r".*\.Child\(a=5, b=6\)")
+
+        c1 = Child(b=6)
+        eq_regex(repr(c1), r".*\.Child\(a=10, b=6\)")
+
+        c1 = Child()
+        eq_regex(repr(c1), r".*\.Child\(a=10, b=7\)")
+
+    def test_abstract_and_base_is_dc(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int
+
+        class Mixin(Parent):
+            __abstract__ = True
+            b: int
+
+        class Child(Mixin):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_regex(repr(Child(5, 6, 7)), r".*\.Child\(a=5, b=6, c=7\)")
+
+    def test_abstract_and_base_is_dc_plus_options(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int
+
+        class Mixin(Parent, unsafe_hash=True):
+            __abstract__ = True
+            b: int
+
+        class Child(Mixin, repr=False):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_(hash(Child(5, 6, 7)), hash(Child(5, 6, 7)))
+
+        eq_regex(repr(Child(5, 6, 7)), r".*\.Child\(a=5, b=6\)")
+
+    def test_abstract_and_base_is_dc_init_var(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: InitVar[int]
+
+        class Mixin(Parent):
+            __abstract__ = True
+            b: InitVar[int]
+
+        class Child(Mixin):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        c1 = Child(a=5, b=6, c=7)
+        eq_regex(repr(c1), r".*\.Child\(c=7\)")
+
+    def test_abstract_and_base_is_dc_field(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int = dataclasses.field(default=10)
+
+        class Mixin(Parent):
+            __abstract__ = True
+            b: int = dataclasses.field(default=7)
+
+        class Child(Mixin):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True, default=9)
+
+        c1 = Child(b=6, c=7)
+        eq_regex(repr(c1), r".*\.Child\(a=10, b=6, c=7\)")
+
+        c1 = Child()
+        eq_regex(repr(c1), r".*\.Child\(a=10, b=7, c=9\)")
+
+    def test_abstract_is_dc(self):
+        class Parent(DeclarativeBase):
+            a: int
+
+        class Mixin(MappedAsDataclass, Parent):
+            __abstract__ = True
+            b: int
+
+        class Child(Mixin):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
+
+    def test_mixin_and_base_is_dc(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: int
+
+        @dataclasses.dataclass
+        class Mixin:
+            b: int
+
+        class Child(Mixin, Parent):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_regex(repr(Child(5, 6, 7)), r".*\.Child\(a=5, b=6, c=7\)")
+
+    def test_mixin_and_base_is_dc_init_var(self):
+        class Parent(MappedAsDataclass, DeclarativeBase):
+            a: InitVar[int]
+
+        @dataclasses.dataclass
+        class Mixin:
+            b: InitVar[int]
+
+        class Child(Mixin, Parent):
+            __tablename__ = "child"
+            c: Mapped[int] = mapped_column(primary_key=True)
+
+        eq_regex(repr(Child(a=5, b=6, c=7)), r".*\.Child\(c=7\)")
+
+
 class DataclassArgsTest(fixtures.TestBase):
     dc_arg_names = ("init", "repr", "eq", "order", "unsafe_hash")
     if compat.py310:
@@ -986,12 +1147,17 @@ class DataclassArgsTest(fixtures.TestBase):
             create("g", 10) >= create("b", 7)
 
     def _assert_repr(self, cls, create, dc_arguments):
+        assert "__repr__" in cls.__dict__
         a1 = create("some data", 12)
         eq_regex(repr(a1), r".*A\(id=None, data='some data', x=12\)")
 
     def _assert_not_repr(self, cls, create, dc_arguments):
-        a1 = create("some data", 12)
-        eq_regex(repr(a1), r"<.*A object at 0x.*>")
+        assert "__repr__" not in cls.__dict__
+
+        # if a superclass has __repr__, then we still get repr.
+        # so can't test this
+        # a1 = create("some data", 12)
+        # eq_regex(repr(a1), r"<.*A object at 0x.*>")
 
     def _assert_init(self, cls, create, dc_arguments):
         if not dc_arguments.get("kw_only", False):
