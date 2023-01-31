@@ -471,7 +471,7 @@ are subject to these errors, as would occur in the example below::
         id: int = Column(Integer, primary_key=True)
 
         # will raise
-        bars: List["Bar"] = relationship("Bar", back_populates="foo")
+        bars: list["Bar"] = relationship("Bar", back_populates="foo")
 
 
     class Bar(Base):
@@ -519,7 +519,7 @@ that descend from ``Base``::
 
         id: int = Column(Integer, primary_key=True)
 
-        bars: List["Bar"] = relationship("Bar", back_populates="foo")
+        bars: list["Bar"] = relationship("Bar", back_populates="foo")
 
 
     class Bar(Base):
