@@ -71,8 +71,8 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
-    from ._typing import _ColumnExpressionArgument
     from ._typing import _EquivalentColumnMap
+    from ._typing import _LimitOffsetType
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .elements import TextClause
@@ -1411,7 +1411,7 @@ class ColumnAdapter(ClauseAdapter):
 
 
 def _offset_or_limit_clause(
-    element: Union[int, _ColumnExpressionArgument[int]],
+    element: _LimitOffsetType,
     name: Optional[str] = None,
     type_: Optional[_TypeEngineArgument[int]] = None,
 ) -> ColumnElement[int]:
@@ -1427,8 +1427,8 @@ def _offset_or_limit_clause(
 
 
 def _offset_or_limit_clause_asint_if_possible(
-    clause: Optional[Union[int, _ColumnExpressionArgument[int]]]
-) -> Optional[Union[int, _ColumnExpressionArgument[int]]]:
+    clause: _LimitOffsetType,
+) -> _LimitOffsetType:
     """Return the offset or limit clause as a simple integer if possible,
     else return the clause.
 
@@ -1443,8 +1443,8 @@ def _offset_or_limit_clause_asint_if_possible(
 
 
 def _make_slice(
-    limit_clause: Optional[Union[int, _ColumnExpressionArgument[int]]],
-    offset_clause: Optional[Union[int, _ColumnExpressionArgument[int]]],
+    limit_clause: _LimitOffsetType,
+    offset_clause: _LimitOffsetType,
     start: int,
     stop: int,
 ) -> Tuple[Optional[ColumnElement[int]], Optional[ColumnElement[int]]]:

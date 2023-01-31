@@ -89,4 +89,8 @@ with Session(e) as sess:
         # EXPECTED_TYPE: User
         reveal_type(uobj1)
 
+    sess.query(User).limit(None).offset(None).limit(10).offset(10).limit(
+        User.id
+    ).offset(User.id)
+
 # more result tests in typed_results.py
