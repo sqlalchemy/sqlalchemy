@@ -315,6 +315,7 @@ argument to the ``User.keywords`` proxy so that these values are assigned approp
 when new elements are added to the dictionary::
 
     from __future__ import annotations
+    from typing import Dict
 
     from sqlalchemy import ForeignKey
     from sqlalchemy import String
@@ -338,7 +339,7 @@ when new elements are added to the dictionary::
 
         # user/user_keyword_associations relationship, mapping
         # user_keyword_associations with a dictionary against "special_key" as key.
-        user_keyword_associations: Mapped[dict[str, UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[Dict[str, UserKeywordAssociation]] = relationship(
             back_populates="user",
             collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
@@ -346,7 +347,7 @@ when new elements are added to the dictionary::
         # proxy to 'user_keyword_associations', instantiating
         # UserKeywordAssociation assigning the new key to 'special_key',
         # values to 'keyword'.
-        keywords: AssociationProxy[dict[str, Keyword]] = association_proxy(
+        keywords: AssociationProxy[Dict[str, Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
@@ -426,14 +427,14 @@ present on ``UserKeywordAssociation``::
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(64))
 
-        user_keyword_associations: Mapped[dict[str, UserKeywordAssociation]] = relationship(
+        user_keyword_associations: Mapped[Dict[str, UserKeywordAssociation]] = relationship(
             back_populates="user",
             collection_class=attribute_keyed_dict("special_key"),
             cascade="all, delete-orphan",
         )
         # the same 'user_keyword_associations'->'keyword' proxy as in
         # the basic dictionary example.
-        keywords: AssociationProxy[dict[str, str]] = association_proxy(
+        keywords: AssociationProxy[Dict[str, str]] = association_proxy(
             "user_keyword_associations",
             "keyword",
             creator=lambda k, v: UserKeywordAssociation(special_key=k, keyword=v),
@@ -458,7 +459,7 @@ present on ``UserKeywordAssociation``::
 
         # 'keyword' is changed to be a proxy to the
         # 'keyword' attribute of 'Keyword'
-        keyword: AssociationProxy[dict[str, str]] = association_proxy("kw", "keyword")
+        keyword: AssociationProxy[Dict[str, str]] = association_proxy("kw", "keyword")
 
 
     class Keyword(Base):

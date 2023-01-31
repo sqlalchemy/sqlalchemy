@@ -155,6 +155,7 @@ the :paramref:`_orm.relationship.collection_class` parameter
 is required in this case so that the :func:`.attribute_keyed_dict`
 may be appropriately parametrized::
 
+    from typing import Dict
     from typing import Optional
 
     from sqlalchemy import ForeignKey
@@ -174,7 +175,7 @@ may be appropriately parametrized::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[dict[str, "Note"]] = relationship(
+        notes: Mapped[Dict[str, "Note"]] = relationship(
             collection_class=attribute_keyed_dict("keyword"),
             cascade="all, delete-orphan",
         )
@@ -221,7 +222,7 @@ of the ``Note.text`` field::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[dict[str, "Note"]] = relationship(
+        notes: Mapped[Dict[str, "Note"]] = relationship(
             collection_class=attribute_keyed_dict("note_key"),
             back_populates="item",
             cascade="all, delete-orphan",
@@ -269,7 +270,7 @@ object directly::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[dict[str, "Note"]] = relationship(
+        notes: Mapped[Dict[str, "Note"]] = relationship(
             collection_class=column_keyed_dict(Note.__table__.c.keyword),
             cascade="all, delete-orphan",
         )
@@ -286,7 +287,7 @@ with a ``@property`` as mentioned earlier::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        notes: Mapped[dict[str, "Note"]] = relationship(
+        notes: Mapped[Dict[str, "Note"]] = relationship(
             collection_class=mapped_collection(lambda note: note.text[0:10]),
             cascade="all, delete-orphan",
         )
@@ -312,7 +313,7 @@ to populate an attribute mapped collection.  Given the following::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        bs: Mapped[dict[str, "B"]] = relationship(
+        bs: Mapped[Dict[str, "B"]] = relationship(
             collection_class=attribute_keyed_dict("data"),
             back_populates="a",
         )
