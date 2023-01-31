@@ -1785,7 +1785,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         kw["_disable_warnings"] = True
         return super().adapt(impltype, **kw)
 
-    def _should_create_constraint(self, compiler: Compiled, kw: Any) -> bool:
+    def _should_create_constraint(self, compiler: Compiled, **kw: Any) -> bool:
         if not self._is_impl_for_variant(compiler.dialect, kw):
             return False
         return (
@@ -1929,7 +1929,7 @@ class PickleType(TypeDecorator[object]):
         self, dialect: Dialect
     ) -> Optional[_BindProcessorType[_T]]:
         impl_processor = self.impl_instance.bind_processor(dialect)
-        dumps = self.pickler.dusmps
+        dumps = self.pickler.dumps
         protocol = self.protocol
         if impl_processor:
             fixed_impl_processor = impl_processor
