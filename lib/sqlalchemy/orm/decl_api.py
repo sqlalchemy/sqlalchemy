@@ -77,6 +77,7 @@ from ..util import typing as compat_typing
 from ..util.typing import CallableReference
 from ..util.typing import flatten_newtype
 from ..util.typing import is_generic
+from ..util.typing import is_literal
 from ..util.typing import is_newtype
 from ..util.typing import Literal
 
@@ -1218,10 +1219,19 @@ class registry:
     ) -> Optional[sqltypes.TypeEngine[Any]]:
 
         search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
+        python_type_type: Type[Any]
 
         if is_generic(python_type):
-            python_type_type: Type[Any] = python_type.__origin__
-            search = ((python_type, python_type_type),)
+            if is_literal(python_type):
+                python_type_type = cast("Type[Any]", python_type)
+
+                search = (  # type: ignore[assignment]
+                    (python_type, python_type_type),
+                    (Literal, python_type_type),
+                )
+            else:
+                python_type_type = python_type.__origin__
+                search = ((python_type, python_type_type),)
         elif is_newtype(python_type):
             python_type_type = flatten_newtype(python_type)
             search = ((python_type, python_type_type),)

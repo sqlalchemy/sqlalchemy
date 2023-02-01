@@ -369,107 +369,6 @@ while still being able to use succinct annotation-only :func:`_orm.mapped_column
 configurations.  There are two more levels of Python-type configurability
 available beyond this, described in the next two sections.
 
-.. _orm_declarative_mapped_column_enums:
-
-Using Python ``Enum`` types in the type map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. versionadded:: 2.0.0b4
-
-User-defined Python types which derive from the Python built-in ``enum.Enum``
-class are automatically linked to the SQLAlchemy :class:`.Enum` datatype
-when used in an ORM declarative mapping::
-
-    import enum
-
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class Status(enum.Enum):
-        PENDING = "pending"
-        RECEIVED = "received"
-        COMPLETED = "completed"
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        status: Mapped[Status]
-
-In the above example, the mapped attribute ``SomeClass.status`` will be
-linked to a :class:`.Column` with the datatype of ``Enum(Status)``.
-We can see this for example in the CREATE TABLE output for the PostgreSQL
-database:
-
-.. sourcecode:: sql
-
-  CREATE TYPE status AS ENUM ('PENDING', 'RECEIVED', 'COMPLETED')
-
-  CREATE TABLE some_table (
-    id SERIAL NOT NULL,
-    status status NOT NULL,
-    PRIMARY KEY (id)
-  )
-
-The entry used in :paramref:`_orm.registry.type_annotation_map` links the
-base ``enum.Enum`` Python type to the SQLAlchemy :class:`.Enum` SQL
-type, using a special form which indicates to the :class:`.Enum` datatype
-that it should automatically configure itself against an arbitrary enumerated
-type.   This configuration, which is implicit by default, would be indicated
-explicitly as::
-
-    import enum
-    import sqlalchemy
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {enum.Enum: sqlalchemy.Enum(enum.Enum)}
-
-The resolution logic within Declarative is able to resolve subclasses
-of ``enum.Enum``, in the above example the custom ``Status`` enumeration,
-to match the ``enum.Enum`` entry in the
-:paramref:`_orm.registry.type_annotation_map` dictionary.  The :class:`.Enum`
-SQL type then knows how to produce a configured version of itself with the
-appropriate settings, including default string length.
-
-In order to modify the configuration of the :class:`.enum.Enum` datatype used
-in this mapping, use the above form, indicating additional arguments. For
-example, to use "non native enumerations" on all backends, the
-:paramref:`.Enum.native_enum` parameter may be set to False for all types::
-
-    import enum
-    import sqlalchemy
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {enum.Enum: sqlalchemy.Enum(enum.Enum, native_enum=False)}
-
-To use a specific configuration for a specific ``enum.Enum`` subtype, such
-as setting the string length to 50 when using the example ``Status``
-datatype::
-
-    import enum
-    import sqlalchemy
-
-
-    class Status(enum.Enum):
-        PENDING = "pending"
-        RECEIVED = "received"
-        COMPLETED = "completed"
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
-        }
-
 .. _orm_declarative_mapped_column_type_map_pep593:
 
 Mapping Multiple Type Configurations to Python Types
@@ -738,6 +637,253 @@ adding a ``FOREIGN KEY`` constraint as well as substituting
    to indicate further arguments for :func:`_orm.relationship` and similar
    will raise a ``NotImplementedError`` exception at runtime, but
    may be implemented in future releases.
+
+.. _orm_declarative_mapped_column_enums:
+
+Using Python ``Enum`` or pep-586 ``Literal`` types in the type map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 2.0.0b4 - Added ``Enum`` support
+
+.. versionadded:: 2.0.1 - Added ``Literal`` support
+
+User-defined Python types which derive from the Python built-in ``enum.Enum``
+as well as the ``typing.Literal``
+class are automatically linked to the SQLAlchemy :class:`.Enum` datatype
+when used in an ORM declarative mapping.  The example below uses
+a custom ``enum.Enum`` within the ``Mapped[]`` constructor::
+
+    import enum
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status]
+
+In the above example, the mapped attribute ``SomeClass.status`` will be
+linked to a :class:`.Column` with the datatype of ``Enum(Status)``.
+We can see this for example in the CREATE TABLE output for the PostgreSQL
+database:
+
+.. sourcecode:: sql
+
+  CREATE TYPE status AS ENUM ('PENDING', 'RECEIVED', 'COMPLETED')
+
+  CREATE TABLE some_table (
+    id SERIAL NOT NULL,
+    status status NOT NULL,
+    PRIMARY KEY (id)
+  )
+
+In a similar way, ``typing.Literal`` may be used instead, using
+a ``typing.Literal`` that consists of all strings::
+
+
+    from typing import Literal
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status]
+
+The entries used in :paramref:`_orm.registry.type_annotation_map` link the base
+``enum.Enum`` Python type as well as the ``typing.Literal`` type to the
+SQLAlchemy :class:`.Enum` SQL type, using a special form which indicates to the
+:class:`.Enum` datatype that it should automatically configure itself against
+an arbitrary enumerated type. This configuration, which is implicit by default,
+would be indicated explicitly as::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            enum.Enum: sqlalchemy.Enum(enum.Enum),
+            typing.Literal: sqlalchemy.Enum(enum.Enum),
+        }
+
+The resolution logic within Declarative is able to resolve subclasses
+of ``enum.Enum`` as well as instances of ``typing.Literal`` to match the
+``enum.Enum`` or ``typing.Literal`` entry in the
+:paramref:`_orm.registry.type_annotation_map` dictionary.  The :class:`.Enum`
+SQL type then knows how to produce a configured version of itself with the
+appropriate settings, including default string length.   If a ``typing.Literal``
+that does not consist of only string values is passed, an informative
+error is raised.
+
+Native Enums and Naming
++++++++++++++++++++++++
+
+The :paramref:`.sqltypes.Enum.native_enum` parameter refers to if the
+:class:`.sqltypes.Enum` datatype should create a so-called "native"
+enum, which on MySQL/MariaDB is the ``ENUM`` datatype and on PostgreSQL is
+a new ``TYPE`` object created by ``CREATE TYPE``, or a "non-native" enum,
+which means that ``VARCHAR`` will be used to create the datatype.  For
+backends other than MySQL/MariaDB or PostgreSQL, ``VARCHAR`` is used in
+all cases (third party dialects may have their own behaviors).
+
+Because PostgreSQL's ``CREATE TYPE`` requires that there's an explicit name
+for the type to be created, special fallback logic exists when working
+with implicitly generated :class:`.sqltypes.Enum` without specifying an
+explicit :class:`.sqltypes.Enum` datatype within a mapping:
+
+1. If the :class:`.sqltypes.Enum` is linked to an ``enum.Enum`` object,
+   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
+   ``True`` and the name of the enum will be taken from the name of the
+   ``enum.Enum`` datatype.  The PostgreSQL backend will assume ``CREATE TYPE``
+   with this name.
+2. If the :class:`.sqltypes.Enum` is linked to a ``typing.Literal`` object,
+   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
+   ``False``; no name is generated and ``VARCHAR`` is assumed.
+
+To use ``typing.Literal`` with a PostgreSQL ``CREATE TYPE`` type, an
+explicit :class:`.sqltypes.Enum` must be used, either within the
+type map::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            Status: sqlalchemy.Enum("pending", "received", "completed", name="status_enum"),
+        }
+
+Or alternatively within :func:`_orm.mapped_column`::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status] = mapped_column(
+            sqlalchemy.Enum("pending", "received", "completed", name="status_enum")
+        )
+
+Altering the Configuration of the Default Enum
++++++++++++++++++++++++++++++++++++++++++++++++
+
+In order to modify the fixed configuration of the :class:`.enum.Enum` datatype
+that's generated implicitly, specify new entries in the
+:paramref:`_orm.registry.type_annotation_map`, indicating additional arguments.
+For example, to use "non native enumerations" unconditionally, the
+:paramref:`.Enum.native_enum` parameter may be set to False for all types::
+
+    import enum
+    import typing
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            enum.Enum: sqlalchemy.Enum(enum.Enum, native_enum=False),
+            typing.Literal: sqlalchemy.Enum(enum.Enum, native_enum=False),
+        }
+
+.. versionchanged:: 2.0.1  Implemented support for overriding parameters
+   such as :paramref:`_sqltypes.Enum.native_enum` within the
+   :class:`_sqltypes.Enum` datatype when establishing the
+   :paramref:`_orm.registry.type_annotation_map`.  Previously, this
+   functionality was not working.
+
+To use a specific configuration for a specific ``enum.Enum`` subtype, such
+as setting the string length to 50 when using the example ``Status``
+datatype::
+
+    import enum
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
+        }
+
+Linking Specific ``enum.Enum`` or ``typing.Literal`` to other datatypes
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+The above examples feature the use of an :class:`_sqltypes.Enum` that is
+automatically configuring itself to the arguments / attributes present on
+an ``enum.Enum`` or ``typing.Literal`` type object.    For use cases where
+specific kinds of ``enum.Enum`` or ``typing.Literal`` should be linked to
+other types, these specific types may be placed in the type map also.
+In the example below, an entry for ``Literal[]`` that contains non-string
+types is linked to the :class:`_sqltypes.JSON` datatype::
+
+
+    from typing import Literal
+
+    from sqlalchemy import JSON
+    from sqlalchemy.orm import DeclarativeBase
+
+    my_literal = Literal[0, 1, True, False, "true", "false"]
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {my_literal: JSON}
+
+In the above configuration, the ``my_literal`` datatype will resolve to a
+:class:`._sqltypes.JSON` instance.  Other ``Literal`` variants will continue
+to resolve to :class:`_sqltypes.Enum` datatypes.
+
 
 Dataclass features in ``mapped_column()``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
