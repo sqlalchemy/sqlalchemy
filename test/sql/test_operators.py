@@ -4541,7 +4541,15 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_compile_not(self):
+    def test_compile_not_column_lvl(self):
+        c = column("c", Integer)
+
+        self.assert_compile(
+            select(c.bitwise_not()),
+            "SELECT ~c",
+        )
+
+    def test_compile_not_colexpr_lvl(self):
         c = column("c", Integer)
 
         self.assert_compile(
