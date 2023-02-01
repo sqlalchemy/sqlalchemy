@@ -595,13 +595,13 @@ Bitwise Operators
 
 Bitwise operator functions provide uniform access to bitwise operators across different backends.
 
-* :meth:`_sql.ColumnOperators.bitwise_not`.
-  Available as a column-level method::
+* :meth:`_sql.ColumnOperators.bitwise_not`, :func:`_sql.bitwise_not`.
+  Available as column-level method, producing a bitwise NOT clause against a parent object::
 
     >>> print(column("x").bitwise_not())
     ~x
-
-  And at the column-expression level::
+  
+  And a column-expression-level method, applying bitwise NOT to an individual column expression::
 
     >>> from sqlalchemy import bitwise_not
     >>> print(bitwise_not(column("x")))
