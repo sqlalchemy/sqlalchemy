@@ -1079,7 +1079,7 @@ from ...util import topological
 SET_RE = re.compile(
     r"\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w", re.I | re.UNICODE
 )
-
+ON_DUP_ALIAS_NAME = "_new"
 
 # old names
 MSTime = TIME
@@ -1315,10 +1315,10 @@ class MySQLCompiler(compiler.SQLCompiler):
         else:
             cols = statement.table.c
 
+        alias_clause = ""
         clauses = []
         # traverses through all table columns to preserve table column order
         for column in (col for col in cols if col.key in on_duplicate.update):
-
             val = on_duplicate.update[column.key]
 
             if coercions._is_literal(val):
@@ -1327,6 +1327,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             else:
 
                 def replace(obj):
+                    nonlocal alias
                     if (
                         isinstance(obj, elements.BindParameter)
                         and obj.type._isnull
@@ -1335,16 +1336,17 @@ class MySQLCompiler(compiler.SQLCompiler):
                         obj.type = column.type
                         return obj
                     elif (
-                        isinstance(obj, elements.ColumnClause)
-                        and obj.table is on_duplicate.inserted_alias
+                      isinstance(obj, elements.ColumnClause)
+                      and obj.table is on_duplicate.inserted_alias
                     ):
-                        obj = literal_column(
-                            "VALUES(" + self.preparer.quote(obj.name) + ")"
+                        if not alias_clause:
+                          alias = f"AS {ON_DUP_ALIAS_NAME} "
+                        return literal_column(
+                          f"{ON_DUP_ALIAS_NAME}.{self.preparer.quote(obj.name)}"
                         )
-                        return obj
                     else:
-                        # element is not replaced
-                        return None
+                      # element is not replaced
+                      return None
 
                 val = visitors.replacement_traverse(val, {}, replace)
                 value_text = self.process(val.self_group(), use_schema=False)
@@ -1362,8 +1364,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                     (", ".join("'%s'" % c for c in non_matching)),
                 )
             )
-
-        return "ON DUPLICATE KEY UPDATE " + ", ".join(clauses)
+        return alias_clause + "ON DUPLICATE KEY UPDATE " + ", ".join(clauses)
 
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw

@@ -1109,7 +1109,9 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         expected_sql = (
             "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
-            "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
+            f"AS {mysql.ON_DUP_ALIAS_NAME} ON DUPLICATE KEY UPDATE "
+            f"bar = {mysql.ON_DUP_ALIAS_NAME}.bar, "
+            f"baz = {mysql.ON_DUP_ALIAS_NAME}.baz"
         )
         self.assert_compile(stmt, expected_sql)
 
@@ -1144,9 +1146,10 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             baz=stmt.inserted.baz + "some literal" + stmt.inserted.bar,
         )
         expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
-            "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
-            "baz = (concat(VALUES(baz), %s, VALUES(bar)))"
+            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+            f"AS {mysql.ON_DUP_ALIAS_NAME} ON DUPLICATE KEY UPDATE bar = "
+            f"coalesce({mysql.ON_DUP_ALIAS_NAME}.bar), "
+            f"baz = (concat({mysql.ON_DUP_ALIAS_NAME}.baz, %s, {mysql.ON_DUP_ALIAS_NAME}.bar))"
         )
         self.assert_compile(
             stmt,
@@ -1159,7 +1162,6 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "baz_1": "some literal",
             },
         )
-
 
 class RegexpCommon(testing.AssertsCompiledSQL):
     def setup_test(self):
