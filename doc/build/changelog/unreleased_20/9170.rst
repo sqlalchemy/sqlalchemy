@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9170
-
-    Fixed typing issue where :func:`_orm.mapped_column` objects typed as
-    :class:`_orm.Mapped` wouldn't be accepted in schema constraints such as
-    :class:`_schema.ForeignKey`, :class:`_schema.UniqueConstraint` or
-    :class:`_schema.Index`.

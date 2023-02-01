@@ -10,7 +10,182 @@
 
 .. changelog::
     :version: 2.0.1
-    :include_notes_from: unreleased_20
+    :released: February 1, 2023
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9174
+
+        Opened up typing on :paramref:`.Select.with_for_update.of` to also accept
+        table and mapped class arguments, as seems to be available for the MySQL
+        dialect.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9164
+
+        Fixed regression where ORM models that used joined table inheritance with a
+        composite foreign key would encounter an internal error in the mapper
+        internals.
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7664
+
+        Corrected the fix for :ticket:`7664`, released in version 2.0.0, to also
+        include :class:`.DropSchema` which was inadvertently missed in this fix,
+        allowing stringification without a dialect. The fixes for both constructs
+        is backported to the 1.4 series as of 1.4.47.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9175
+
+        Added support for :pep:`484` ``NewType`` to be used in the
+        :paramref:`_orm.registry.type_annotation_map` as well as within
+        :class:`.Mapped` constructs. These types will behave in the same way as
+        custom subclasses of types right now; they must appear explicitly within
+        the :paramref:`_orm.registry.type_annotation_map` to be mapped.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9183
+
+        Fixed typing for limit/offset methods including :meth:`.Select.limit`,
+        :meth:`.Select.offset`, :meth:`_orm.Query.limit`, :meth:`_orm.Query.offset`
+        to allow ``None``, which is the documented API to "cancel" the current
+        limit/offset.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9179
+
+        When using the :class:`.MappedAsDataclass` superclass, all classes within
+        the hierarchy that are subclasses of this class will now be run through the
+        ``@dataclasses.dataclass`` function whether or not they are actually
+        mapped, so that non-ORM fields declared on non-mapped classes within the
+        hierarchy will be used when mapped subclasses are turned into dataclasses.
+        This behavior applies both to intermediary classes mapped with
+        ``__abstract__ = True`` as well as to the user-defined declarative base
+        itself, assuming :class:`.MappedAsDataclass` is present as a superclass for
+        these classes.
+
+        This allows non-mapped attributes such as ``InitVar`` declarations on
+        superclasses to be used, without the need to run the
+        ``@dataclasses.dataclass`` decorator explicitly on each non-mapped class.
+        The new behavior is considered as correct as this is what the :pep:`681`
+        implementation expects when using a superclass to indicate dataclass
+        behavior.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9170
+
+        Fixed typing issue where :func:`_orm.mapped_column` objects typed as
+        :class:`_orm.Mapped` wouldn't be accepted in schema constraints such as
+        :class:`_schema.ForeignKey`, :class:`_schema.UniqueConstraint` or
+        :class:`_schema.Index`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9187
+
+        Added support for :pep:`586` ``Literal[]`` to be used in the
+        :paramref:`_orm.registry.type_annotation_map` as well as within
+        :class:`.Mapped` constructs. To use custom types such as these, they must
+        appear explicitly within the :paramref:`_orm.registry.type_annotation_map`
+        to be mapped.  Pull request courtesy Frederik Aalund.
+
+        As part of this change, the support for :class:`.sqltypes.Enum` in the
+        :paramref:`_orm.registry.type_annotation_map` has been expanded to include
+        support for ``Literal[]`` types consisting of string values to be used,
+        in addition to ``enum.Enum`` datatypes.    If a ``Literal[]`` datatype
+        is used within ``Mapped[]`` that is not linked in
+        :paramref:`_orm.registry.type_annotation_map` to a specific datatype,
+        a :class:`.sqltypes.Enum` will be used by default.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapped_column_enums`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9200
+
+        Fixed issue involving the use of :class:`.sqltypes.Enum` within the
+        :paramref:`_orm.registry.type_annotation_map` where the
+        :paramref:`_sqltypes.Enum.native_enum` parameter would not be correctly
+        copied to the mapped column datatype, if it were overridden
+        as stated in the documentation to set this parameter to False.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9171
+
+        Fixed regression in :class:`.DeclarativeBase` class where the registry's
+        default constructor would not be applied to the base itself, which is
+        different from how the previous :func:`_orm.declarative_base` construct
+        works. This would prevent a mapped class with its own ``__init__()`` method
+        from calling ``super().__init__()`` in order to access the registry's
+        default constructor and automatically populate attributes, instead hitting
+        ``object.__init__()`` which would raise a ``TypeError`` on any arguments.
+
+
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 9173
+
+        Fixed regression related to the implementation for the new
+        "insertmanyvalues" feature where an internal ``TypeError`` would occur in
+        arrangements where a :func:`_sql.insert` would be referred towards inside
+        of another :func:`_sql.insert` via a CTE; made additional repairs for this
+        use case for positional dialects such as asyncpg when using
+        "insertmanyvalues".
+
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9156
+
+        Fixed typing for :meth:`_expression.ColumnElement.cast` to accept
+        both ``Type[TypeEngine[T]]`` and ``TypeEngine[T]``; previously
+        only ``TypeEngine[T]`` was accepted.  Pull request courtesy Yurii Karabas.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9177
+
+        Improved the ruleset used to interpret :pep:`593` ``Annotated`` types when
+        used with Annotated Declarative mapping, the inner type will be checked for
+        "Optional" in all cases which will be added to the criteria by which the
+        column is set as "nullable" or not; if the type within the ``Annotated``
+        container is optional (or unioned with ``None``), the column will be
+        considered nullable if there are no explicit
+        :paramref:`_orm.mapped_column.nullable` parameters overriding it.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9182
+
+        Improved the error reporting when linking strategy options from a base
+        class to another attribute that's off a subclass, where ``of_type()``
+        should be used. Previously, when :meth:`.Load.options` is used, the message
+        would lack informative detail that ``of_type()`` should be used, which was
+        not the case when linking the options directly. The informative detail now
+        emits even if :meth:`.Load.options` is used.
+
+
 
 .. changelog::
     :version: 2.0.0

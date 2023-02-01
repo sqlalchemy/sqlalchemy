@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9156
-
-    Fixed typing for :meth:`_expression.ColumnElement.cast` to accept
-    both ``Type[TypeEngine[T]]`` and ``TypeEngine[T]``; previously
-    only ``TypeEngine[T]`` was accepted.  Pull request courtesy Yurii Karabas.
