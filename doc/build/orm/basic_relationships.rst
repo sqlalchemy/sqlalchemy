@@ -653,7 +653,7 @@ A Python functional approach might look like the following::
         # ...
 
         children = relationship(
-            _resolve_child_model(),
+            _resolve_child_model,
             order_by=lambda: desc(_resolve_child_model().email_address),
             primaryjoin=lambda: Parent.id == _resolve_child_model().parent_id,
         )
