@@ -36,6 +36,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -2725,6 +2726,21 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             )
 
             eq_(q.all(), expected)
+
+    def test_unrelated_column(self):
+        """Test for 9217"""
+
+        User = self.classes.User
+
+        q = select(User.id, func.lower("SANDY").label("name")).where(
+            User.id == 7
+        )
+
+        s = select(User).from_statement(q)
+        sess = fixture_session()
+        res = sess.scalars(s).one()
+        in_("name", res.__dict__)
+        eq_(res.name, "sandy")
 
     def test_expression_selectable_matches_mzero(self):
         User, Address = self.classes.User, self.classes.Address
