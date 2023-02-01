@@ -2,6 +2,9 @@
     :tags: bug, typing
     :tickets: 9183
 
-    Fixed typing of limit, offset and fetch to allow ``None``.
+    Fixed typing for limit/offset methods including :meth:`.Select.limit`,
+    :meth:`.Select.offset`, :meth:`_orm.Query.limit`, :meth:`_orm.Query.offset`
+    to allow ``None``, which is the documented API to "cancel" the current
+    limit/offset.
 
 
