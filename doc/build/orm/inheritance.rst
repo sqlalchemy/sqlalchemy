@@ -130,7 +130,7 @@ subclasses introduce a second identity are not supported.
 The ORM uses the value set up by :paramref:`_orm.Mapper.polymorphic_identity` in
 order to determine which class a row belongs towards when loading rows
 polymorphically.  In the example above, every row which represents an
-``Employee`` will have the value ``'employee'`` in its ``type`` row; similarly,
+``Employee`` will have the value ``'employee'`` in its ``type`` column; similarly,
 every ``Engineer`` will get the value ``'engineer'``, and each ``Manager`` will
 get the value ``'manager'``. Regardless of whether the inheritance mapping uses
 distinct joined tables for subclasses as in joined table inheritance, or all
