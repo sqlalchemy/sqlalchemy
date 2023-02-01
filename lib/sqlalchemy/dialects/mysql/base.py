@@ -1327,7 +1327,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             else:
 
                 def replace(obj):
-                    nonlocal alias
+                    nonlocal alias_clause
                     if (
                         isinstance(obj, elements.BindParameter)
                         and obj.type._isnull
@@ -1340,7 +1340,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                       and obj.table is on_duplicate.inserted_alias
                     ):
                         if not alias_clause:
-                          alias = f"AS {ON_DUP_ALIAS_NAME} "
+                          alias_clause = f"AS {ON_DUP_ALIAS_NAME} "
                         return literal_column(
                           f"{ON_DUP_ALIAS_NAME}.{self.preparer.quote(obj.name)}"
                         )
