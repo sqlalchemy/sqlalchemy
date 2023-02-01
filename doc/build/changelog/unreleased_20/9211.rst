@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9211
+
+    An explicit error is raised if a mapping attempts to mix the use of
+    :class:`_orm.MappedAsDataclass` with
+    :meth:`_orm.registry.mapped_as_dataclass` within the same class hierarchy,
+    as this produces issues with the dataclass function being applied at the
+    wrong time to the mapped class, leading to errors during the mapping
+    process.

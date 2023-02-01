@@ -629,6 +629,23 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         b1 = Bar(mixin_value=5)
         eq_(b1.bar_value, 78)
 
+    def test_mixing_MappedAsDataclass_with_decorator_raises(self, registry):
+        """test #9211"""
+
+        class Mixin(MappedAsDataclass):
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Class .*Foo.* is already a dataclass; ensure that "
+            "base classes / decorator styles of establishing dataclasses "
+            "are not being mixed. ",
+        ):
+
+            @registry.mapped_as_dataclass
+            class Foo(Mixin):
+                bar_value: Mapped[float] = mapped_column(default=78)
+
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
     def test_list(self, dc_decl_base: Type[MappedAsDataclass]):
