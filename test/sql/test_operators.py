@@ -4559,10 +4559,15 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.combinations(
         ("xor", operators.bitwise_xor_op, "^"),
+        ("xor_lambda", lambda c1, c2: c1.bitwise_xor(c2), "^"),
         ("or", operators.bitwise_or_op, "|"),
+        ("or_lambda", lambda c1, c2: c1.bitwise_or(c2), "|"),
         ("and", operators.bitwise_and_op, "&"),
+        ("and_lambda", lambda c1, c2: c1.bitwise_and(c2), "&"),
         ("lshift", operators.bitwise_lshift_op, "<<"),
+        ("ls_lambda", lambda c1, c2: c1.bitwise_lshift(c2), "<<"),
         ("rshift", operators.bitwise_rshift_op, ">>"),
+        ("rs_lambda", lambda c1, c2: c1.bitwise_rshift(c2), ">>"),
         id_="iaa",
     )
     def test_compile_binary(self, py_op, sql_op):
