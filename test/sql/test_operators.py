@@ -1783,6 +1783,35 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(op2, "mytable.myid hoho :myid_1 lala :param_1")
         self.assert_compile(op3, "(mytable.myid hoho :myid_1) lala :param_1")
 
+    def test_bitwise_not_precedence(self):
+        op1 = operators.bitwise_not_op
+        c = self.table1.c.myid
+        op2 = op1(c).op("lala", precedence=7)(4)
+        op3 = op1(c).op("lala", precedence=9)(4)
+
+        self.assert_compile(op2, "~mytable.myid lala :param_1")
+        self.assert_compile(op3, "(~mytable.myid) lala :param_1")
+
+    @testing.combinations(
+        ("xor", operators.bitwise_xor_op, "^"),
+        ("or", operators.bitwise_or_op, "|"),
+        ("and", operators.bitwise_and_op, "&"),
+        ("lshift", operators.bitwise_lshift_op, "<<"),
+        ("rshift", operators.bitwise_rshift_op, ">>"),
+        id_="iaa",
+    )
+    def test_bitwise_op_precedence(self, py_op, sql_op):
+        c = self.table1.c.myid
+        op1 = py_op(c, 5).op("lala", precedence=6)(4)
+        op2 = py_op(c, 5).op("lala", precedence=8)(4)
+
+        self.assert_compile(
+            op1, f"mytable.myid {sql_op} :myid_1 lala :param_1"
+        )
+        self.assert_compile(
+            op2, f"(mytable.myid {sql_op} :myid_1) lala :param_1"
+        )
+
     def test_is_eq_precedence_flat(self):
         self.assert_compile(
             (self.table1.c.name == null())
@@ -4522,3 +4551,45 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"use the .scalar_values\(\) method.",
         ):
             fn(values(t.c.data).data([(1,), (42,)]))
+
+
+class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_compile_not_column_lvl(self):
+        c = column("c", Integer)
+
+        self.assert_compile(
+            select(c.bitwise_not()),
+            "SELECT ~c",
+        )
+
+    def test_compile_not_colexpr_lvl(self):
+        c = column("c", Integer)
+
+        self.assert_compile(
+            select(operators.bitwise_not_op(c)),
+            "SELECT ~c",
+        )
+
+    @testing.combinations(
+        ("xor", operators.bitwise_xor_op, "^"),
+        ("xor_lambda", lambda c1, c2: c1.bitwise_xor(c2), "^"),
+        ("or", operators.bitwise_or_op, "|"),
+        ("or_lambda", lambda c1, c2: c1.bitwise_or(c2), "|"),
+        ("and", operators.bitwise_and_op, "&"),
+        ("and_lambda", lambda c1, c2: c1.bitwise_and(c2), "&"),
+        ("lshift", operators.bitwise_lshift_op, "<<"),
+        ("ls_lambda", lambda c1, c2: c1.bitwise_lshift(c2), "<<"),
+        ("rshift", operators.bitwise_rshift_op, ">>"),
+        ("rs_lambda", lambda c1, c2: c1.bitwise_rshift(c2), ">>"),
+        id_="iaa",
+    )
+    def test_compile_binary(self, py_op, sql_op):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+
+        self.assert_compile(
+            select(py_op(c1, c2)),
+            f"SELECT c1 {sql_op} c2 AS anon_1",
+        )

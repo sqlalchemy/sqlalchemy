@@ -1730,6 +1730,9 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(element.stop, **kw),
         )
 
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(binary, " # ", **kw)
+
     def visit_json_getitem_op_binary(
         self, binary, operator, _cast_applied=False, **kw
     ):

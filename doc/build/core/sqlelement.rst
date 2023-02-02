@@ -26,6 +26,8 @@ used when building up SQLAlchemy Expression Language constructs.
 
 .. autofunction:: bindparam
 
+.. autofunction:: bitwise_not
+
 .. autofunction:: case
 
 .. autofunction:: cast

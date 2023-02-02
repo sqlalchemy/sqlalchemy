@@ -2424,6 +2424,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE usages.date <@ %(date_1)s::DATERANGE",
         )
 
+    def test_bitwise_xor(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.bitwise_xor(c2)),
+            "SELECT c1 # c2 AS anon_1",
+        )
+
 
 class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
