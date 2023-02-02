@@ -1019,7 +1019,7 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
 
 
 def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
-    """Produce a column-expression-level unary bitwise NOT (``~``) clause.
+    """Produce a column-expression-level unary bitwise ``NOT`` (``~``) clause.
 
     Not to be confused with boolean negation :func:`_sql.not_`.
 
