@@ -1918,7 +1918,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         raise NotImplementedError()
 
     def process_result_value(
-        self, value: Optional[Any], dialect: Any
+        self, value: Optional[Any], dialect: Dialect
     ) -> Optional[_T]:
         """Receive a result-row column value to be converted.
 

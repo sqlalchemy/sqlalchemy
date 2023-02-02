@@ -64,12 +64,15 @@ class MONEY(sqltypes.TypeEngine[str]):
 
         import re
         import decimal
+        from sqlalchemy import Dialect
         from sqlalchemy import TypeDecorator
 
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
-            def process_result_value(self, value: Any, dialect: Any) -> None:
+            def process_result_value(
+                self, value: Any, dialect: Dialect
+            ) -> None:
                 if value is not None:
                     # adjust this for the currency and numeric
                     m = re.match(r"\$([\d.]+)", value)
