@@ -861,6 +861,8 @@ class Mapper(
             self._log("constructed")
             self._expire_memoizations()
 
+        self.dispatch.after_mapper_constructed(self, self.class_)
+
     def _prefer_eager_defaults(self, dialect, table):
         if self.eager_defaults == "auto":
             if not table.implicit_returning:
@@ -1686,7 +1688,6 @@ class Mapper(
         # that's given.  For other properties, set them up in _props now.
         if self._init_properties:
             for key, prop_arg in self._init_properties.items():
-
                 if not isinstance(prop_arg, MapperProperty):
                     possible_col_prop = self._make_prop_from_column(
                         key, prop_arg
@@ -1698,17 +1699,22 @@ class Mapper(
                 # Column that is local to the local Table, don't set it up
                 # in ._props yet, integrate it into the order given within
                 # the Table.
-                if isinstance(possible_col_prop, properties.ColumnProperty):
-                    given_col = possible_col_prop.columns[0]
-                    if self.local_table.c.contains_column(given_col):
-                        explicit_col_props_by_key[key] = possible_col_prop
-                        explicit_col_props_by_column[given_col] = (
-                            key,
-                            possible_col_prop,
-                        )
-                        continue
 
-                self._configure_property(key, possible_col_prop, init=False)
+                _map_as_property_now = True
+                if isinstance(possible_col_prop, properties.ColumnProperty):
+                    for given_col in possible_col_prop.columns:
+                        if self.local_table.c.contains_column(given_col):
+                            _map_as_property_now = False
+                            explicit_col_props_by_key[key] = possible_col_prop
+                            explicit_col_props_by_column[given_col] = (
+                                key,
+                                possible_col_prop,
+                            )
+
+                if _map_as_property_now:
+                    self._configure_property(
+                        key, possible_col_prop, init=False
+                    )
 
         # step 2: pull properties from the inherited mapper.  reconcile
         # columns with those which are explicit above.  for properties that
@@ -1728,10 +1734,12 @@ class Mapper(
                         incoming_prop=incoming_prop,
                     )
                     explicit_col_props_by_key[key] = new_prop
-                    explicit_col_props_by_column[incoming_prop.columns[0]] = (
-                        key,
-                        new_prop,
-                    )
+
+                    for inc_col in incoming_prop.columns:
+                        explicit_col_props_by_column[inc_col] = (
+                            key,
+                            new_prop,
+                        )
                 elif key not in self._props:
                     self._adapt_inherited_property(key, inherited_prop, False)
 
@@ -1742,7 +1750,6 @@ class Mapper(
         # reconciliation against inherited columns occurs here also.
 
         for column in self.persist_selectable.columns:
-
             if column in explicit_col_props_by_column:
                 # column was explicitly passed to properties; configure
                 # it now in the order in which it corresponds to the
@@ -2428,7 +2435,7 @@ class Mapper(
         return key in self._props
 
     def get_property(
-        self, key: str, _configure_mappers: bool = True
+        self, key: str, _configure_mappers: bool = False
     ) -> MapperProperty[Any]:
         """return a MapperProperty associated with the given key."""
 
@@ -2439,7 +2446,9 @@ class Mapper(
             return self._props[key]
         except KeyError as err:
             raise sa_exc.InvalidRequestError(
-                "Mapper '%s' has no property '%s'" % (self, key)
+                f"Mapper '{self}' has no property '{key}'.  If this property "
+                "was indicated from other mappers or configure events, ensure "
+                "registry.configure() has been called."
             ) from err
 
     def get_property_by_column(
@@ -2454,7 +2463,6 @@ class Mapper(
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
 
-        self._check_configure()
         return iter(self._props.values())
 
     def _mappers_from_spec(
@@ -4080,6 +4088,7 @@ def _do_configure_registries(
 
         for mapper in reg._mappers_to_configure():
             run_configure = None
+
             for fn in mapper.dispatch.before_mapper_configured:
                 run_configure = fn(mapper, mapper.class_)
                 if run_configure is EXT_SKIP:

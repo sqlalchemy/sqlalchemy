@@ -22,9 +22,9 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from test.orm.test_events import _RemoveListeners
 
 Base = None
 
@@ -43,7 +43,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class ConcreteInhTest(
-    _RemoveListeners, DeclarativeTestBase, testing.AssertsCompiledSQL
+    RemoveORMEventsGlobally, DeclarativeTestBase, testing.AssertsCompiledSQL
 ):
     def _roundtrip(
         self,
@@ -735,7 +735,7 @@ class ConcreteInhTest(
 
 
 class ConcreteExtensionConfigTest(
-    _RemoveListeners, testing.AssertsCompiledSQL, DeclarativeTestBase
+    RemoveORMEventsGlobally, testing.AssertsCompiledSQL, DeclarativeTestBase
 ):
     __dialect__ = "default"
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 9232
+
+    Fixed obscure ORM inheritance issue caused by :ticket:`8705` where some
+    scenarios of inheriting mappers that indicated groups of columns from the
+    local table and the inheriting table together under a
+    :func:`_orm.column_property` would nonetheless warn that properties of the
+    same name were being combined implicitly.

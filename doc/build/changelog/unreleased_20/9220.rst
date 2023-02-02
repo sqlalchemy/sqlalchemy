@@ -1,0 +1,50 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 9220
+
+    Added new event hook :meth:`_orm.MapperEvents.after_mapper_constructed`,
+    which supplies an event hook to take place right as the
+    :class:`_orm.Mapper` object has been fully constructed, but before the
+    :meth:`_orm.registry.configure` call has been called. This allows code that
+    can create additional mappings and table structures based on the initial
+    configuration of a :class:`_orm.Mapper`, which also integrates within
+    Declarative configuration. Previously, when using Declarative, where the
+    :class:`_orm.Mapper` object is created within the class creation process,
+    there was no documented means of running code at this point.  The change
+    is to immediately benefit custom mapping schemes such as that
+    of the :ref:`examples_versioned_history` example, which generate additional
+    mappers and tables in response to the creation of mapped classes.
+
+
+.. change::
+    :tags: usecase, orm
+    :tickets: 9220
+
+    The infrequently used :attr:`_orm.Mapper.iterate_properties` attribute and
+    :meth:`_orm.Mapper.get_property` method, which are primarily used
+    internally, no longer implicitly invoke the :meth:`_orm.registry.configure`
+    process. Public access to these methods is extremely rare and the only
+    benefit to having :meth:`_orm.registry.configure` would have been allowing
+    "backref" properties be present in these collections. In order to support
+    the new :meth:`_orm.MapperEvents.after_mapper_constructed` event, iteration
+    and access to the internal :class:`_orm.MapperProperty` objects is now
+    possible without triggering an implicit configure of the mapper itself.
+
+    The more-public facing route to iteration of all mapper attributes, the
+    :attr:`_orm.Mapper.attrs` collection and similar, will still implicitly
+    invoke the :meth:`_orm.registry.configure` step thus making backref
+    attributes available.
+
+    In all cases, the :meth:`_orm.registry.configure` is always available to
+    be called directly.
+
+.. change::
+    :tags: bug, examples
+    :tickets: 9220
+
+    Reworked the :ref:`examples_versioned_history` to work with
+    version 2.0, while at the same time improving the overall working of
+    this example to use newer APIs, including a newly added hook
+    :meth:`_orm.MapperEvents.after_mapper_constructed`.
+
+

@@ -800,7 +800,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m = self.mapper(User, users)
         assert not m.configured
         assert list(m.iterate_properties)
-        assert m.configured
+
+        # as of 2.0 #9220
+        # iterate properties doesn't do "configure" now, there is
+        # no reason for this
+        assert not m.configured
 
     def test_configure_on_get_props_2(self):
         User, users = self.classes.User, self.tables.users
@@ -808,7 +812,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m = self.mapper(User, users)
         assert not m.configured
         assert m.get_property("name")
-        assert m.configured
+
+        # as of 2.0 #9220
+        # get_property() doesn't do "configure" now, there is
+        # no reason for this
+        assert not m.configured
 
     def test_configure_on_get_props_3(self):
         users, Address, addresses, User = (
@@ -827,7 +835,61 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             addresses,
             properties={"user": relationship(User, backref="addresses")},
         )
-        assert m.get_property("addresses")
+
+        # as of 2.0 #9220
+        # get_property() doesn't do "configure" now, there is
+        # no reason for this
+        with expect_raises_message(
+            sa.exc.InvalidRequestError, r".has no property 'addresses'"
+        ):
+            m.get_property("addresses")
+
+        configure_mappers()
+        is_(m.get_property("addresses"), m.attrs.addresses)
+
+    def test_backrefs_dont_automatically_configure(self):
+        """in #9220 for 2.0 we are changing an ancient behavior that
+        mapper.get_property() and mapper.iterate_properties() would call
+        configure_mappers().  The more modern public interface for this,
+        ``Mapper.attrs``, does.
+
+        """
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        m = self.mapper(User, users)
+        assert not m.configured
+        configure_mappers()
+
+        m2 = self.mapper(
+            Address,
+            addresses,
+            properties={"user": relationship(User, backref="addresses")},
+        )
+
+        with expect_raises_message(
+            AttributeError, r"no attribute 'addresses'"
+        ):
+            User.addresses
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Mapper 'Mapper\[User\(users\)\]' has no property 'addresses'",
+        ):
+            User.__mapper__.get_property("addresses")
+
+        assert not m2.configured
+
+        # the more public-facing collection, mapper.attrs, *does* call
+        # configure still.
+
+        m.attrs.addresses
+        assert m2.configured
+        User.addresses
 
     def test_info(self):
         users = self.tables.users

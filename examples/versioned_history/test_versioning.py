@@ -1,7 +1,7 @@
 """Unit tests illustrating usage of the ``history_meta.py``
 module functions."""
 
-from unittest import TestCase
+import unittest
 import warnings
 
 from sqlalchemy import Boolean
@@ -29,18 +29,13 @@ from .history_meta import versioned_session
 
 warnings.simplefilter("error")
 
-engine = None
 
-
-def setup_module():
-    global engine
-    engine = create_engine("sqlite://", echo=True)
-
-
-class TestVersioning(TestCase, AssertsCompiledSQL):
+class TestVersioning(AssertsCompiledSQL):
     __dialect__ = "default"
 
     def setUp(self):
+
+        self.engine = engine = create_engine("sqlite://")
         self.session = Session(engine)
         self.Base = declarative_base()
         versioned_session(self.session)
@@ -48,10 +43,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
     def tearDown(self):
         self.session.close()
         clear_mappers()
-        self.Base.metadata.drop_all(engine)
+        self.Base.metadata.drop_all(self.engine)
 
     def create_tables(self):
-        self.Base.metadata.create_all(engine)
+        self.Base.metadata.create_all(self.engine)
 
     def test_plain(self):
         class SomeClass(Versioned, self.Base, ComparableEntity):
@@ -378,12 +373,6 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         self.assert_compile(
             q,
             "SELECT "
-            "subsubtable_history.id AS subsubtable_history_id, "
-            "subtable_history.id AS subtable_history_id, "
-            "basetable_history.id AS basetable_history_id, "
-            "subsubtable_history.changed AS subsubtable_history_changed, "
-            "subtable_history.changed AS subtable_history_changed, "
-            "basetable_history.changed AS basetable_history_changed, "
             "basetable_history.name AS basetable_history_name, "
             "basetable_history.type AS basetable_history_type, "
             "subsubtable_history.version AS subsubtable_history_version, "
@@ -391,6 +380,12 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
             "basetable_history.version AS basetable_history_version, "
             "subtable_history.base_id AS subtable_history_base_id, "
             "subtable_history.subdata1 AS subtable_history_subdata1, "
+            "subsubtable_history.id AS subsubtable_history_id, "
+            "subtable_history.id AS subtable_history_id, "
+            "basetable_history.id AS basetable_history_id, "
+            "subsubtable_history.changed AS subsubtable_history_changed, "
+            "subtable_history.changed AS subtable_history_changed, "
+            "basetable_history.changed AS basetable_history_changed, "
             "subsubtable_history.subdata2 AS subsubtable_history_subdata2 "
             "FROM basetable_history "
             "JOIN subtable_history "
@@ -683,9 +678,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         DocumentHistory = Document.__history_mapper__.class_
         v2 = self.session.query(Document).one()
         v1 = self.session.query(DocumentHistory).one()
-        self.assertEqual(v1.id, v2.id)
-        self.assertEqual(v2.name, "Bar")
-        self.assertEqual(v1.name, "Foo")
+        eq_(v1.id, v2.id)
+        eq_(v2.name, "Bar")
+        eq_(v1.name, "Foo")
 
     def test_mutate_named_column(self):
         class Document(self.Base, Versioned):
@@ -706,9 +701,9 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         DocumentHistory = Document.__history_mapper__.class_
         v2 = self.session.query(Document).one()
         v1 = self.session.query(DocumentHistory).one()
-        self.assertEqual(v1.id, v2.id)
-        self.assertEqual(v2.description_, "Bar")
-        self.assertEqual(v1.description_, "Foo")
+        eq_(v1.id, v2.id)
+        eq_(v2.description_, "Bar")
+        eq_(v1.description_, "Foo")
 
     def test_unique_identifiers_across_deletes(self):
         """Ensure unique integer values are used for the primary table.
@@ -753,3 +748,11 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         # If previous assertion fails, this will also fail:
         sc2.name = "sc2 modified"
         sess.commit()
+
+
+class TestVersioningUnittest(unittest.TestCase, TestVersioning):
+    pass
+
+
+if __name__ == "__main__":
+    unittest.main()

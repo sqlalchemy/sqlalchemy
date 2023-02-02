@@ -54,6 +54,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
@@ -61,7 +62,6 @@ from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
-from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
@@ -1659,7 +1659,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
 
-class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_inserts = None
 
     def test_on_bulk_update_hook(self):
