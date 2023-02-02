@@ -1336,17 +1336,18 @@ class MySQLCompiler(compiler.SQLCompiler):
                         obj.type = column.type
                         return obj
                     elif (
-                      isinstance(obj, elements.ColumnClause)
-                      and obj.table is on_duplicate.inserted_alias
+                        isinstance(obj, elements.ColumnClause)
+                        and obj.table is on_duplicate.inserted_alias
                     ):
                         if not alias_clause:
-                          alias_clause = f"AS {ON_DUP_ALIAS_NAME} "
+                            alias_clause = f"AS {ON_DUP_ALIAS_NAME} "
                         return literal_column(
-                          f"{ON_DUP_ALIAS_NAME}.{self.preparer.quote(obj.name)}"
+                            f"{ON_DUP_ALIAS_NAME}."
+                            + self.preparer.quote(obj.name)
                         )
                     else:
-                      # element is not replaced
-                      return None
+                        # element is not replaced
+                        return None
 
                 val = visitors.replacement_traverse(val, {}, replace)
                 value_text = self.process(val.self_group(), use_schema=False)

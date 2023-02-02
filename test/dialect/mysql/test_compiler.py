@@ -1149,7 +1149,8 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
             f"AS {mysql.ON_DUP_ALIAS_NAME} ON DUPLICATE KEY UPDATE bar = "
             f"coalesce({mysql.ON_DUP_ALIAS_NAME}.bar), "
-            f"baz = (concat({mysql.ON_DUP_ALIAS_NAME}.baz, %s, {mysql.ON_DUP_ALIAS_NAME}.bar))"
+            f"baz = (concat({mysql.ON_DUP_ALIAS_NAME}.baz, %s, "
+            f"{mysql.ON_DUP_ALIAS_NAME}.bar))"
         )
         self.assert_compile(
             stmt,
@@ -1162,6 +1163,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "baz_1": "some literal",
             },
         )
+
 
 class RegexpCommon(testing.AssertsCompiledSQL):
     def setup_test(self):
