@@ -11,7 +11,6 @@ from sqlalchemy import Table
 from sqlalchemy import util
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import attributes
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm.exc import UnmappedColumnError
 from sqlalchemy.orm.relationships import RelationshipProperty
@@ -151,7 +150,7 @@ def _history_mapper(local_mapper):
         bases = local_mapper.base_mapper.class_.__bases__
     versioned_cls = type.__new__(type, "%sHistory" % cls.__name__, bases, {})
 
-    m = mapper(
+    m = cls.registry.map_imperatively(
         versioned_cls,
         table,
         inherits=super_history_mapper,
@@ -180,7 +179,7 @@ class Versioned:
     @declared_attr
     def __mapper_cls__(cls):
         def map_(cls, *arg, **kw):
-            mp = mapper(cls, *arg, **kw)
+            mp = cls.registry.map_imperatively(cls, *arg, **kw)
             _history_mapper(mp)
             return mp
 
