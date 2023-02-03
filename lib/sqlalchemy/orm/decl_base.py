@@ -1060,6 +1060,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                     attr_value,
                     originating_module,
                 ) in self.collected_annotations.items()
+                if key not in self.collected_attributes
+                # issue #9226; check for attributes that we've collected
+                # which are already instrumented, which we would assume
+                # mean we are in an ORM inheritance mapping and this attribute
+                # is already mapped on the superclass.   Under no circumstance
+                # should any QueryableAttribute be sent to the dataclass()
+                # function; anything that's mapped should be Field and
+                # that's it
+                or not isinstance(
+                    self.collected_attributes[key], QueryableAttribute
+                )
             )
         ]
         annotations = {}
