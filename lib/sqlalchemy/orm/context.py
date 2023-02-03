@@ -731,19 +731,13 @@ class ORMFromStatementCompileState(ORMCompileState):
             # those columns completely, don't interfere with the compiler
             # at all; just in ORM land, use an adapter to convert from
             # our ORM columns to whatever columns are in the statement,
-            # before we look in the result row.  If the inner statement is
-            # not ORM enabled, assume looser col matching based on name
-            statement_is_orm = (
-                self.statement._propagate_attrs.get(
-                    "compile_state_plugin", None
-                )
-                == "orm"
-            )
+            # before we look in the result row. Always adapt on names
+            # to accept cases such as issue #9217.
 
             self._from_obj_alias = ORMStatementAdapter(
                 _TraceAdaptRole.ADAPT_FROM_STATEMENT,
                 self.statement,
-                adapt_on_names=not statement_is_orm,
+                adapt_on_names=True,
             )
 
         return self
