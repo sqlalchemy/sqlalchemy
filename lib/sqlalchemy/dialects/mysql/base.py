@@ -249,7 +249,7 @@ different isolation level settings.  See the discussion at
 
     :ref:`dbapi_autocommit`
 
-AUTO_INCREMENT Behavior
+AUTO_INCREMENT Behaviour
 -----------------------
 
 When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT`` on
@@ -1339,12 +1339,17 @@ class MySQLCompiler(compiler.SQLCompiler):
                         isinstance(obj, elements.ColumnClause)
                         and obj.table is on_duplicate.inserted_alias
                     ):
-                        if not alias_clause:
+                        if self.dialect.supports_mysql_on_duplicate_alias:
+                            column_literal_clause = (
+                                f"{ON_DUP_ALIAS_NAME}."
+                                + self.preparer.quote(obj.name)
+                            )
                             alias_clause = f"AS {ON_DUP_ALIAS_NAME} "
-                        return literal_column(
-                            f"{ON_DUP_ALIAS_NAME}."
-                            + self.preparer.quote(obj.name)
-                        )
+                        else:
+                            column_literal_clause = (
+                                "VALUES(" + self.preparer.quote(obj.name) + ")"
+                            )
+                        return literal_column(column_literal_clause)
                     else:
                         # element is not replaced
                         return None
@@ -2393,6 +2398,9 @@ class MySQLDialect(default.DefaultDialect):
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
 
+    supports_mysql_on_duplicate_alias = False  # Only available ...
+    # ... in MySQL 8+
+
     # MySQL doesn't support "DEFAULT VALUES" but *does* support
     # "VALUES (DEFAULT)"
     supports_default_values = False
@@ -2783,6 +2791,10 @@ class MySQLDialect(default.DefaultDialect):
 
         self.insert_returning = (
             self.is_mariadb and self.server_version_info >= (10, 5)
+        )
+
+        self.supports_mysql_on_duplicate_alias = (
+            self._is_mysql and self.server_version_info >= (8, 0, 20)
         )
 
         self._warn_for_known_db_issues()
