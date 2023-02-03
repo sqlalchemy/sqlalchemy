@@ -1110,8 +1110,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
             "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
         )
-        dialect = mysql.dialect()
-        self.assert_compile(stmt, expected_sql, dialect=dialect)
+        self.assert_compile(stmt, expected_sql)
 
         expected_alias_supported_sql = (
             "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
@@ -1119,6 +1118,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             f"bar = {mysql.ON_DUP_ALIAS_NAME}.bar, "
             f"baz = {mysql.ON_DUP_ALIAS_NAME}.baz"
         )
+        dialect = mysql.dialect()
         dialect.supports_mysql_on_duplicate_alias = True
         self.assert_compile(
             stmt, expected_alias_supported_sql, dialect=dialect
@@ -1159,7 +1159,6 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
             "baz = (concat(VALUES(baz), %s, VALUES(bar)))"
         )
-        dialect = mysql.dialect()
         self.assert_compile(
             stmt,
             expected_sql,
@@ -1170,7 +1169,6 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "bar_m1": "b",
                 "baz_1": "some literal",
             },
-            dialect=dialect,
         )
 
         expected_alias_supported_sql = (
@@ -1180,6 +1178,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             f"baz = (concat({mysql.ON_DUP_ALIAS_NAME}.baz, %s, "
             f"{mysql.ON_DUP_ALIAS_NAME}.bar))"
         )
+        dialect = mysql.dialect()
         dialect.supports_mysql_on_duplicate_alias = True
         self.assert_compile(
             stmt,
