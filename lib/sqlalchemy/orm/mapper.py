@@ -83,6 +83,7 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import KeyedColumnElement
+from ..sql.schema import Column
 from ..sql.schema import Table
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
@@ -112,7 +113,6 @@ if TYPE_CHECKING:
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import ColumnClause
     from ..sql.elements import ColumnElement
-    from ..sql.schema import Column
     from ..sql.selectable import FromClause
     from ..util import OrderedSet
 
@@ -650,10 +650,14 @@ class Mapper(
                :ref:`orm_mapping_classes_toplevel`
 
         :param primary_key: A list of :class:`_schema.Column`
-           objects which define
+           objects, or alternatively string names of attribute names which
+           refer to :class:`_schema.Column`, which define
            the primary key to be used against this mapper's selectable unit.
            This is normally simply the primary key of the ``local_table``, but
            can be overridden here.
+
+           .. versionchanged:: 2.0.2 :paramref:`_orm.Mapper.primary_key`
+              arguments may be indicated as string attribute names as well.
 
            .. seealso::
 
@@ -1557,6 +1561,29 @@ class Mapper(
 
         self.__dict__.pop("_configure_failed", None)
 
+    def _str_arg_to_mapped_col(self, argname: str, key: str) -> Column[Any]:
+        try:
+            prop = self._props[key]
+        except KeyError as err:
+            raise sa_exc.ArgumentError(
+                f"Can't determine {argname} column '{key}' - "
+                "no attribute is mapped to this name."
+            ) from err
+        try:
+            expr = prop.expression
+        except AttributeError as ae:
+            raise sa_exc.ArgumentError(
+                f"Can't determine {argname} column '{key}'; "
+                "property does not refer to a single mapped Column"
+            ) from ae
+        if not isinstance(expr, Column):
+            raise sa_exc.ArgumentError(
+                f"Can't determine {argname} column '{key}'; "
+                "property does not refer to a single "
+                "mapped Column"
+            )
+        return expr
+
     def _configure_pks(self) -> None:
         self.tables = sql_util.find_tables(self.persist_selectable)
 
@@ -1585,10 +1612,28 @@ class Mapper(
                 all_cols
             )
 
+        if self._primary_key_argument:
+
+            coerced_pk_arg = [
+                self._str_arg_to_mapped_col("primary_key", c)
+                if isinstance(c, str)
+                else c
+                for c in (
+                    coercions.expect(  # type: ignore
+                        roles.DDLConstraintColumnRole,
+                        coerce_pk,
+                        argname="primary_key",
+                    )
+                    for coerce_pk in self._primary_key_argument
+                )
+            ]
+        else:
+            coerced_pk_arg = None
+
         # if explicit PK argument sent, add those columns to the
         # primary key mappings
-        if self._primary_key_argument:
-            for k in self._primary_key_argument:
+        if coerced_pk_arg:
+            for k in coerced_pk_arg:
                 if k.table not in self._pks_by_table:
                     self._pks_by_table[k.table] = util.OrderedSet()
                 self._pks_by_table[k.table].add(k)
@@ -1625,12 +1670,12 @@ class Mapper(
             # determine primary key from argument or persist_selectable pks
             primary_key: Collection[ColumnElement[Any]]
 
-            if self._primary_key_argument:
+            if coerced_pk_arg:
                 primary_key = [
                     cc if cc is not None else c
                     for cc, c in (
                         (self.persist_selectable.corresponding_column(c), c)
-                        for c in self._primary_key_argument
+                        for c in coerced_pk_arg
                     )
                 ]
             else:
