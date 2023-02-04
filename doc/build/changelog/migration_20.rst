@@ -1522,6 +1522,9 @@ following the table, and may include additional notes not summarized here.
             select(func.count()).
             select_from(User)
           ).one()
+
+          # or
+          
           session.scalars(
             select(func.count(User.id))
           ).one()
