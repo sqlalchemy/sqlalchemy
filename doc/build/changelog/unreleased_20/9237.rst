@@ -1,0 +1,40 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 9237
+
+    Repaired a regression caused by the fix for :ticket:`8419` which caused
+    asyncpg connections to be reset (i.e. transaction ``rollback()`` called)
+    and returned to the pool normally in the case that the connection were not
+    explicitly returned to the connection pool and was instead being
+    intercepted by Python garbage collection, which would fail if the garbage
+    collection operation were being called outside of the asyncio event loop,
+    leading to a large amount of stack trace activity dumped into logging
+    and standard output.
+
+    The correct behavior is restored, which is that all asyncio connections
+    that are garbage collected due to not being explicitly returned to the
+    connection pool are detached from the pool and discarded, along with a
+    warning, rather than being returned the pool, as they cannot be reliably
+    reset. In the case of asyncpg connections, the asyncpg-specific
+    ``terminate()`` method will be used to end the connection more gracefully
+    within this process as opposed to just dropping it.
+
+    This change includes a small behavioral change that is hoped to be useful
+    for debugging asyncio applications, where the warning that's emitted in the
+    case of asyncio connections being unexpectedly garbage collected has been
+    made slightly more aggressive by moving it outside of a ``try/except``
+    block and into a ``finally:`` block, where it will emit unconditionally
+    regardless of whether the detach/termination operation succeeded or not. It
+    will also have the effect that applications or test suites which promote
+    Python warnings to exceptions will see this as a full exception raise,
+    whereas previously it was not possible for this warning to actually
+    propagate as an exception. Applications and test suites which need to
+    tolerate this warning in the interim should adjust the Python warnings
+    filter to allow these warnings to not raise.
+
+    The behavior for traditional sync connections remains unchanged, that
+    garbage collected connections continue to be returned to the pool normally
+    without emitting a warning. This will likely be changed in a future major
+    release to at least emit a similar warning as is emitted for asyncio
+    drivers, as it is a usage error for pooled connections to be intercepted by
+    garbage collection without being properly returned to the pool.
