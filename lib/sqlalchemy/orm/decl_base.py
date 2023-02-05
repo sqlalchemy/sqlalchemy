@@ -1036,6 +1036,17 @@ class _ClassScanMapperConfig(_MapperConfig):
         if not dataclass_setup_arguments:
             return
 
+        # can't use is_dataclass since it uses hasattr
+        if "__dataclass_fields__" in self.cls.__dict__:
+            raise exc.InvalidRequestError(
+                f"Class {self.cls} is already a dataclass; ensure that "
+                "base classes / decorator styles of establishing dataclasses "
+                "are not being mixed. "
+                "This can happen if a class that inherits from "
+                "'MappedAsDataclass', even indirectly, is been mapped with "
+                "'@registry.mapped_as_dataclass'"
+            )
+
         manager = instrumentation.manager_of_class(self.cls)
         assert manager is not None
 
