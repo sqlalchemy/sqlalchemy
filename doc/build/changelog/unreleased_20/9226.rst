@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9226
+
+    More adjustments to ORM Declarative Dataclasses mappings, building on the
+    improved support for mixins with dataclasses added in 2.0.1 via
+    :ticket:`9179`, where a combination of using mixins plus ORM inheritance
+    would mis-classify fields in some cases leading to their dataclass
+    arguments such as ``init=False`` being lost.

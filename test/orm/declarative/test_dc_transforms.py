@@ -30,6 +30,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import Mapped
@@ -982,6 +983,130 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             c: Mapped[int] = mapped_column(primary_key=True)
 
         eq_regex(repr(Child(a=5, b=6, c=7)), r".*\.Child\(c=7\)")
+
+    @testing.variation(
+        "dataclass_scope",
+        ["on_base", "on_mixin", "on_base_class", "on_sub_class"],
+    )
+    def test_mixin_w_inheritance(self, dataclass_scope):
+        """test #9226"""
+
+        if dataclass_scope.on_base:
+
+            class Base(DeclarativeBase, MappedAsDataclass):
+                pass
+
+        else:
+
+            class Base(DeclarativeBase):
+                pass
+
+        if dataclass_scope.on_mixin:
+
+            class Mixin(MappedAsDataclass):
+                @declared_attr.directive
+                @classmethod
+                def __tablename__(cls) -> str:
+                    return cls.__name__.lower()
+
+                @declared_attr.directive
+                @classmethod
+                def __mapper_args__(cls) -> Dict[str, Any]:
+                    return {
+                        "polymorphic_identity": cls.__name__,
+                        "polymorphic_on": "polymorphic_type",
+                    }
+
+                @declared_attr
+                @classmethod
+                def polymorphic_type(cls) -> Mapped[str]:
+                    return mapped_column(
+                        String,
+                        insert_default=cls.__name__,
+                        init=False,
+                    )
+
+        else:
+
+            class Mixin:
+                @declared_attr.directive
+                @classmethod
+                def __tablename__(cls) -> str:
+                    return cls.__name__.lower()
+
+                @declared_attr.directive
+                @classmethod
+                def __mapper_args__(cls) -> Dict[str, Any]:
+                    return {
+                        "polymorphic_identity": cls.__name__,
+                        "polymorphic_on": "polymorphic_type",
+                    }
+
+                if dataclass_scope.on_base or dataclass_scope.on_base_class:
+
+                    @declared_attr
+                    @classmethod
+                    def polymorphic_type(cls) -> Mapped[str]:
+                        return mapped_column(
+                            String,
+                            insert_default=cls.__name__,
+                            init=False,
+                        )
+
+                else:
+
+                    @declared_attr
+                    @classmethod
+                    def polymorphic_type(cls) -> Mapped[str]:
+                        return mapped_column(
+                            String,
+                            insert_default=cls.__name__,
+                        )
+
+        if dataclass_scope.on_base_class:
+
+            class Book(Mixin, MappedAsDataclass, Base):
+                id: Mapped[int] = mapped_column(
+                    Integer,
+                    primary_key=True,
+                    init=False,
+                )
+
+        else:
+
+            class Book(Mixin, Base):
+                if not dataclass_scope.on_sub_class:
+                    id: Mapped[int] = mapped_column(  # noqa: A001
+                        Integer, primary_key=True, init=False
+                    )
+                else:
+                    id: Mapped[int] = mapped_column(  # noqa: A001
+                        Integer,
+                        primary_key=True,
+                    )
+
+        if dataclass_scope.on_sub_class:
+
+            class Novel(MappedAsDataclass, Book):
+                id: Mapped[int] = mapped_column(  # noqa: A001
+                    ForeignKey("book.id"),
+                    primary_key=True,
+                    init=False,
+                )
+                description: Mapped[Optional[str]]
+
+        else:
+
+            class Novel(Book):
+                id: Mapped[int] = mapped_column(
+                    ForeignKey("book.id"),
+                    primary_key=True,
+                    init=False,
+                )
+                description: Mapped[Optional[str]]
+
+        n1 = Novel("the description")
+        eq_(n1.description, "the description")
 
 
 class DataclassArgsTest(fixtures.TestBase):
