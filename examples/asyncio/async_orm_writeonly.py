@@ -1,12 +1,11 @@
-"""Illustrates use of the ``sqlalchemy.ext.asyncio.AsyncSession`` object
-for asynchronous ORM use.
+"""Illustrates using **write only relationships** for simpler handling
+of ORM collections under asyncio.
 
 """
 from __future__ import annotations
 
 import asyncio
 import datetime
-from typing import List
 from typing import Optional
 
 from sqlalchemy import ForeignKey
@@ -18,7 +17,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import WriteOnlyMapped
 
 Base = declarative_base()
 
@@ -31,7 +30,10 @@ class A(Base):
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
     )
-    bs: Mapped[List[B]] = relationship(lazy="raise")
+
+    # collection relationships are declared with WriteOnlyMapped.  There
+    # is no separate collection type
+    bs: WriteOnlyMapped[B] = relationship()
 
 
 class B(Base):
@@ -54,12 +56,12 @@ async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # expire_on_commit=False will prevent attributes from being expired
-    # after commit.
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
         async with session.begin():
+            # WriteOnlyMapped may be populated using any iterable,
+            # e.g. lists, sets, etc.
             session.add_all(
                 [
                     A(bs=[B(), B()], data="a1"),
@@ -68,36 +70,33 @@ async def async_main():
                 ]
             )
 
-        # for relationship loading, eager loading should be applied.
-        stmt = select(A).options(selectinload(A.bs))
+        stmt = select(A)
 
-        # AsyncSession.execute() is used for 2.0 style ORM execution
-        # (same as the synchronous API).
         result = await session.scalars(stmt)
 
-        # result is a buffered Result object.
         for a1 in result:
             print(a1)
             print(f"created at: {a1.create_date}")
-            for b1 in a1.bs:
+
+            # to iterate a collection, emit a SELECT statement
+            for b1 in await session.scalars(a1.bs.select()):
                 print(b1)
 
-        # for streaming ORM results, AsyncSession.stream() may be used.
         result = await session.stream(stmt)
 
-        # result is a streaming AsyncResult object.
         async for a1 in result.scalars():
             print(a1)
-            for b1 in a1.bs:
+
+            # similar using "streaming" (server side cursors)
+            async for b1 in (await session.stream(a1.bs.select())).scalars():
                 print(b1)
 
+        await session.commit()
         result = await session.scalars(select(A).order_by(A.id))
 
         a1 = result.first()
 
         a1.data = "new data"
-
-        await session.commit()
 
 
 asyncio.run(async_main())

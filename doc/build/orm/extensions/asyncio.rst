@@ -175,7 +175,7 @@ illustrates a complete example including mapper and session configuration::
         id: Mapped[int] = mapped_column(primary_key=True)
         data: Mapped[str]
         create_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
-        bs: Mapped[List[B]] = relationship()
+        bs: Mapped[List[B]] = relationship(lazy="raise")
 
 
     class B(Base):
@@ -192,7 +192,7 @@ illustrates a complete example including mapper and session configuration::
                 session.add_all(
                     [
                         A(bs=[B(), B()], data="a1"),
-                        A(bs=[B()], data="a2"),
+                        A(bs=[], data="a2"),
                         A(bs=[B(), B()], data="a3"),
                     ]
                 )
@@ -266,23 +266,44 @@ Preventing Implicit IO when Using AsyncSession
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using traditional asyncio, the application needs to avoid any points at which
-IO-on-attribute access may occur. Above, the following measures are taken to
-prevent this:
+IO-on-attribute access may occur.   Techniques that can be used to help
+this are below, many of which are illustrated in the preceding example.
 
-* The :func:`_orm.selectinload` eager loader is employed in order to eagerly
+* Collections can be replaced with **write only collections** that will never
+  emit IO implicitly, by using the :ref:`write_only_relationship` feature in
+  SQLAlchemy 2.0. Using this feature, collections are never read from, only
+  queried using explicit SQL calls.  See the example
+  ``async_orm_writeonly.py`` in the :ref:`examples_asyncio` section for
+  an example of write-only collections used with asyncio.
+
+  When using write only collections, the program's behavior is simple and easy
+  to predict regarding collections. However, the downside is that there is not
+  any built-in system for loading many of these collections all at once, which
+  instead would need to be performed manually.  Therefore, many of the
+  bullets below address specific techniques when using traditional lazy-loaded
+  relationships with asyncio, which requires more care.
+
+* If using traditional ORM relationships which are subject to lazy loading,
+  relationships can be declared with ``lazy="raise"`` so that by
+  default they will not attempt to emit SQL.  In order to load collections,
+  :term:`eager loading` must be used in all cases.
+
+* The most useful eager loading strategy is the
+  :func:`_orm.selectinload` eager loader, which is employed in the previous
+  example in order to eagerly
   load the ``A.bs`` collection within the scope of the
   ``await session.execute()`` call::
 
       stmt = select(A).options(selectinload(A.bs))
 
-  ..
+* When constructing new objects, **collections are always assigned a default,
+  empty collection**, such as a list in the above example::
 
-  If the default loader strategy of "lazyload" were left in place, the access
-  of the ``A.bs`` attribute would raise an asyncio exception.
-  There are a variety of ORM loader options available, which may be configured
-  at the default mapping level or used on a per-query basis, documented at
-  :ref:`loading_toplevel`.
+      A(bs=[], data="a2")
 
+  This allows the ``.bs`` collection on the above ``A`` object to be present and
+  readable when the ``A`` object is flushed; otherwise, when the ``A`` is
+  flushed, ``.bs`` would be unloaded and would raise an error on access.
 
 * The :class:`_asyncio.AsyncSession` is configured using
   :paramref:`_orm.Session.expire_on_commit` set to False, so that we may access
@@ -308,30 +329,13 @@ prevent this:
           # expire_on_commit=False allows
           print(a1.data)
 
-* The :paramref:`_schema.Column.server_default` value on the ``created_at``
-  column will not be refreshed by default after an INSERT; instead, it is
-  normally
-  :ref:`expired so that it can be loaded when needed <orm_server_defaults>`.
-  Similar behavior applies to a column where the
-  :paramref:`_schema.Column.default` parameter is assigned to a SQL expression
-  object. To access this value with asyncio, it has to be refreshed within the
-  flush process, which is achieved by setting the
-  :paramref:`_orm.Mapper.eager_defaults` parameter on the mapping::
-
-
-    class A(Base):
-        # ...
-
-        # column with a server_default, or SQL expression default
-        create_date = mapped_column(DateTime, server_default=func.now())
-
-        # add this so that it can be accessed
-        __mapper_args__ = {"eager_defaults": True}
-
 Other guidelines include:
 
 * Methods like :meth:`_asyncio.AsyncSession.expire` should be avoided in favor of
-  :meth:`_asyncio.AsyncSession.refresh`
+  :meth:`_asyncio.AsyncSession.refresh`; **if** expiration is absolutely needed.
+  Expiration should generally **not** be needed as
+  :paramref:`_orm.Session.expire_on_commit`
+  should normally be set to ``False`` when using asyncio.
 
 * Avoid using the ``all`` cascade option documented at :ref:`unitofwork_cascades`
   in favor of listing out the desired cascade features explicitly.   The
@@ -367,6 +371,14 @@ Other guidelines include:
   .. seealso::
 
     :ref:`migration_20_dynamic_loaders` - notes on migration to 2.0 style
+
+* If using asyncio with a database that does not support RETURNING, such as
+  MySQL 8, server default values such as generated timestamps will not be
+  available on newly flushed objects unless the
+  :paramref:`_orm.Mapper.eager_defaults` option is used. In SQLAlchemy 2.0,
+  this behavior is applied automatically to backends like PostgreSQL, SQLite
+  and MariaDB which use RETURNING to fetch new values when rows are
+  INSERTed.
 
 .. _session_run_sync:
 
