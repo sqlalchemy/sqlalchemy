@@ -1,0 +1,9 @@
+.. change::
+    :tags: orm, bug, regression
+    :tickets: 9228
+
+    Fixed regression where using the :paramref:`_orm.Mapper.version_id_col`
+    feature with a regular Python-side incrementing column would fail to work
+    for SQLite and other databases that don't support "rowcount" with
+    "RETURNING", as "RETURNING" would be assumed for such columns even though
+    that's not what actually takes place.

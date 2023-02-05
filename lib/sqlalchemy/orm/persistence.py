@@ -801,7 +801,7 @@ def _emit_update_statements(
             )
             return_defaults = True
 
-        if mapper.version_id_col is not None:
+        if mapper._version_id_has_server_side_value:
             statement = statement.return_defaults(mapper.version_id_col)
             return_defaults = True
 
@@ -1268,12 +1268,15 @@ def _emit_post_update_statements(
 
         stmt = table.update().where(clauses)
 
-        if mapper.version_id_col is not None:
-            stmt = stmt.return_defaults(mapper.version_id_col)
-
         return stmt
 
     statement = base_mapper._memo(("post_update", table), update_stmt)
+
+    if mapper._version_id_has_server_side_value:
+        statement = statement.return_defaults(mapper.version_id_col)
+        return_defaults = True
+    else:
+        return_defaults = False
 
     # execute each UPDATE in the order according to the original
     # list of states to guarantee row access order, but
@@ -1290,7 +1293,7 @@ def _emit_post_update_statements(
 
         assert_singlerow = (
             connection.dialect.supports_sane_rowcount
-            if mapper.version_id_col is None
+            if not return_defaults
             else connection.dialect.supports_sane_rowcount_returning
         )
         assert_multirow = (

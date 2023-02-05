@@ -83,6 +83,7 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import KeyedColumnElement
+from ..sql.schema import Column
 from ..sql.schema import Table
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
@@ -112,7 +113,6 @@ if TYPE_CHECKING:
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import ColumnClause
     from ..sql.elements import ColumnElement
-    from ..sql.schema import Column
     from ..sql.selectable import FromClause
     from ..util import OrderedSet
 
@@ -2521,6 +2521,24 @@ class Mapper(
                     )
 
         return from_obj
+
+    @HasMemoized.memoized_attribute
+    def _version_id_has_server_side_value(self) -> bool:
+        vid_col = self.version_id_col
+
+        if vid_col is None:
+            return False
+
+        elif not isinstance(vid_col, Column):
+            return True
+        else:
+            return vid_col.server_default is not None or (
+                vid_col.default is not None
+                and (
+                    not vid_col.default.is_scalar
+                    and not vid_col.default.is_callable
+                )
+            )
 
     @HasMemoized.memoized_attribute
     def _single_table_criterion(self):
