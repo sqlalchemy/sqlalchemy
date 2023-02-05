@@ -1743,6 +1743,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                 v = mapper_args[k]
                 mapper_args[k] = self.column_copies.get(v, v)
 
+        if "primary_key" in mapper_args:
+            mapper_args["primary_key"] = [
+                self.column_copies.get(v, v)
+                for v in util.to_list(mapper_args["primary_key"])
+            ]
+
         if "inherits" in mapper_args:
             inherits_arg = mapper_args["inherits"]
             if isinstance(inherits_arg, Mapper):

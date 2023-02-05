@@ -30,6 +30,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedColumn
 from sqlalchemy.orm import Mapper
@@ -187,6 +188,251 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
                 TypeError, "'x' is an invalid keyword argument for fakeself"
             ):
                 Base.__init__(fs, x=5)
+
+    @testing.variation("argument", ["version_id_col", "polymorphic_on"])
+    @testing.variation("column_type", ["anno", "non_anno", "plain_column"])
+    def test_mapped_column_version_poly_arg(
+        self, decl_base, column_type, argument
+    ):
+        """test #9240"""
+
+        if column_type.anno:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a: Mapped[int] = mapped_column(primary_key=True)
+                b: Mapped[int] = mapped_column()
+                c: Mapped[str] = mapped_column()
+
+                if argument.version_id_col:
+                    __mapper_args__ = {"version_id_col": b}
+                elif argument.polymorphic_on:
+                    __mapper_args__ = {"polymorphic_on": c}
+                else:
+                    argument.fail()
+
+        elif column_type.non_anno:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a = mapped_column(Integer, primary_key=True)
+                b = mapped_column(Integer)
+                c = mapped_column(String)
+
+                if argument.version_id_col:
+                    __mapper_args__ = {"version_id_col": b}
+                elif argument.polymorphic_on:
+                    __mapper_args__ = {"polymorphic_on": c}
+                else:
+                    argument.fail()
+
+        elif column_type.plain_column:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a = Column(Integer, primary_key=True)
+                b = Column(Integer)
+                c = Column(String)
+
+                if argument.version_id_col:
+                    __mapper_args__ = {"version_id_col": b}
+                elif argument.polymorphic_on:
+                    __mapper_args__ = {"polymorphic_on": c}
+                else:
+                    argument.fail()
+
+        else:
+            column_type.fail()
+
+        if argument.version_id_col:
+            assert A.__mapper__.version_id_col is A.__table__.c.b
+        elif argument.polymorphic_on:
+            assert A.__mapper__.polymorphic_on is A.__table__.c.c
+        else:
+            argument.fail()
+
+    @testing.variation(
+        "pk_type", ["single", "tuple", "list", "single_str", "list_str"]
+    )
+    @testing.variation("column_type", ["anno", "non_anno", "plain_column"])
+    def test_mapped_column_pk_arg(self, decl_base, column_type, pk_type):
+        """test #9240"""
+
+        if column_type.anno:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a: Mapped[int] = mapped_column()
+                b: Mapped[int] = mapped_column()
+
+                if pk_type.single:
+                    __mapper_args__ = {"primary_key": a}
+                elif pk_type.tuple:
+                    __mapper_args__ = {"primary_key": (a, b)}
+                elif pk_type.list:
+                    __mapper_args__ = {"primary_key": [a, b]}
+                elif pk_type.single_str:
+                    __mapper_args__ = {"primary_key": "a"}
+                elif pk_type.list_str:
+                    __mapper_args__ = {"primary_key": ["a", "b"]}
+                else:
+                    pk_type.fail()
+
+        elif column_type.non_anno:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a = mapped_column(Integer)
+                b = mapped_column(Integer)
+
+                if pk_type.single:
+                    __mapper_args__ = {"primary_key": a}
+                elif pk_type.tuple:
+                    __mapper_args__ = {"primary_key": (a, b)}
+                elif pk_type.list:
+                    __mapper_args__ = {"primary_key": [a, b]}
+                elif pk_type.single_str:
+                    __mapper_args__ = {"primary_key": "a"}
+                elif pk_type.list_str:
+                    __mapper_args__ = {"primary_key": ["a", "b"]}
+                else:
+                    pk_type.fail()
+
+        elif column_type.plain_column:
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a = Column(Integer)
+                b = Column(Integer)
+
+                if pk_type.single:
+                    __mapper_args__ = {"primary_key": a}
+                elif pk_type.tuple:
+                    __mapper_args__ = {"primary_key": (a, b)}
+                elif pk_type.list:
+                    __mapper_args__ = {"primary_key": [a, b]}
+                elif pk_type.single_str:
+                    __mapper_args__ = {"primary_key": "a"}
+                elif pk_type.list_str:
+                    __mapper_args__ = {"primary_key": ["a", "b"]}
+                else:
+                    pk_type.fail()
+
+        else:
+            column_type.fail()
+
+        if pk_type.single or pk_type.single_str:
+            assert A.__mapper__.primary_key[0] is A.__table__.c.a
+        else:
+            assert A.__mapper__.primary_key[0] is A.__table__.c.a
+            assert A.__mapper__.primary_key[1] is A.__table__.c.b
+
+    def test_mapper_pk_arg_degradation_no_col(self, decl_base):
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Can't determine primary_key column 'q' - no attribute is "
+            "mapped to this name.",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a: Mapped[int] = mapped_column()
+                b: Mapped[int] = mapped_column()
+
+                __mapper_args__ = {"primary_key": "q"}
+
+    @testing.variation("proptype", ["relationship", "colprop"])
+    def test_mapper_pk_arg_degradation_is_not_a_col(self, decl_base, proptype):
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Can't determine primary_key column 'b'; property does "
+            "not refer to a single mapped Column",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                a: Mapped[int] = mapped_column(Integer)
+
+                if proptype.colprop:
+                    b: Mapped[int] = column_property(a + 5)
+                elif proptype.relationship:
+                    b = relationship("B")
+                else:
+                    proptype.fail()
+
+                __mapper_args__ = {"primary_key": "b"}
+
+    @testing.variation(
+        "argument", ["version_id_col", "polymorphic_on", "primary_key"]
+    )
+    @testing.variation("argtype", ["callable", "fixed"])
+    @testing.variation("column_type", ["mapped_column", "plain_column"])
+    def test_mapped_column_pk_arg_via_mixin(
+        self, decl_base, argtype, column_type, argument
+    ):
+        """test #9240"""
+
+        class Mixin:
+            if column_type.mapped_column:
+                a: Mapped[int] = mapped_column()
+                b: Mapped[int] = mapped_column()
+                c: Mapped[str] = mapped_column()
+            elif column_type.plain_column:
+                a = Column(Integer)
+                b = Column(Integer)
+                c = Column(String)
+            else:
+                column_type.fail()
+
+            if argtype.callable:
+
+                @declared_attr.directive
+                @classmethod
+                def __mapper_args__(cls):
+                    if argument.primary_key:
+                        return {"primary_key": [cls.a, cls.b]}
+                    elif argument.version_id_col:
+                        return {"version_id_col": cls.b, "primary_key": cls.a}
+                    elif argument.polymorphic_on:
+                        return {"polymorphic_on": cls.c, "primary_key": cls.a}
+                    else:
+                        argument.fail()
+
+            elif argtype.fixed:
+                if argument.primary_key:
+                    __mapper_args__ = {"primary_key": [a, b]}
+                elif argument.version_id_col:
+                    __mapper_args__ = {"primary_key": a, "version_id_col": b}
+                elif argument.polymorphic_on:
+                    __mapper_args__ = {"primary_key": a, "polymorphic_on": c}
+                else:
+                    argument.fail()
+
+            else:
+                argtype.fail()
+
+        class A(Mixin, decl_base):
+            __tablename__ = "a"
+
+        if argument.primary_key:
+            assert A.__mapper__.primary_key[0] is A.__table__.c.a
+            assert A.__mapper__.primary_key[1] is A.__table__.c.b
+        elif argument.version_id_col:
+            assert A.__mapper__.version_id_col is A.__table__.c.b
+        elif argument.polymorphic_on:
+            assert A.__mapper__.polymorphic_on is A.__table__.c.c
+        else:
+            argtype.fail()
 
     def test_dispose_attrs(self):
         reg = registry()
