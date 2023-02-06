@@ -31,6 +31,7 @@ from sqlalchemy.testing import combinations
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -338,6 +339,68 @@ class AsyncEngineTest(EngineFixture):
             eq_(t1, t2)
 
             is_false(t1 == None)
+
+    @testing.variation("simulate_gc", [True, False])
+    def test_appropriate_warning_for_gced_connection(
+        self, async_engine, simulate_gc
+    ):
+        """test #9237 which builds upon a not really complete solution
+        added for #8419."""
+
+        async def go():
+            conn = await async_engine.connect()
+            await conn.begin()
+            await conn.execute(select(1))
+            pool_connection = await conn.get_raw_connection()
+            return pool_connection
+
+        from sqlalchemy.util.concurrency import await_only
+
+        pool_connection = await_only(go())
+
+        rec = pool_connection._connection_record
+        ref = rec.fairy_ref
+        pool = pool_connection._pool
+        echo = False
+
+        if simulate_gc:
+            # not using expect_warnings() here because we also want to do a
+            # negative test for warnings, and we want to absolutely make sure
+            # the thing here that emits the warning is the correct path
+            from sqlalchemy.pool.base import _finalize_fairy
+
+            with mock.patch.object(
+                pool._dialect,
+                "do_rollback",
+                mock.Mock(side_effect=Exception("can't run rollback")),
+            ), mock.patch("sqlalchemy.util.warn") as m:
+
+                _finalize_fairy(
+                    None, rec, pool, ref, echo, transaction_was_reset=False
+                )
+
+            if async_engine.dialect.has_terminate:
+                expected_msg = (
+                    "The garbage collector is trying to clean up.*which will "
+                    "be terminated."
+                )
+            else:
+                expected_msg = (
+                    "The garbage collector is trying to clean up.*which will "
+                    "be dropped, as it cannot be safely terminated."
+                )
+
+            # [1] == .args, not in 3.7
+            eq_regex(m.mock_calls[0][1][0], expected_msg)
+        else:
+            # the warning emitted by the pool is inside of a try/except:
+            # so it's impossible right now to have this warning "raise".
+            # for now, test by using mock.patch
+
+            with mock.patch("sqlalchemy.util.warn") as m:
+                pool_connection.close()
+
+            eq_(m.mock_calls, [])
 
     def test_clear_compiled_cache(self, async_engine):
         async_engine.sync_engine._compiled_cache["foo"] = "bar"
