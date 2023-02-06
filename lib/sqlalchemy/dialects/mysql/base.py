@@ -2690,7 +2690,21 @@ class MySQLDialect(default.DefaultDialect):
             ) as rs:
                 return rs.fetchone() is not None
         except exc.DBAPIError as e:
-            if self._extract_error_code(e.orig) == 1146:
+            # https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html  # noqa: E501
+            # there are a lot of codes that *may* pop up here at some point
+            # but we continue to be fairly conservative.  We include:
+            # 1146: Table '%s.%s' doesn't exist - what every MySQL has emitted
+            # for decades
+            #
+            # mysql 8 suddenly started emitting:
+            # 1049: Unknown database '%s'  - for nonexistent schema
+            #
+            # also added:
+            # 1051: Unknown table '%s' - not known to emit
+            #
+            # there's more "doesn't exist" kinds of messages but they are
+            # less clear if mysql 8 would suddenly start using one of those
+            if self._extract_error_code(e.orig) in (1146, 1049, 1051):
                 return False
             raise
 
