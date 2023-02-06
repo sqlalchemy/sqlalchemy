@@ -3587,6 +3587,21 @@ class UnaryExpression(ColumnElement[_T]):
             wraps_column_expression=False,
         )
 
+    @classmethod
+    def _create_bitwise_not(
+        cls,
+        expr: _ColumnExpressionArgument[_T],
+    ) -> UnaryExpression[_T]:
+        col_expr: ColumnElement[_T] = coercions.expect(
+            roles.ExpressionElementRole, expr
+        )
+        return UnaryExpression(
+            col_expr,
+            operator=operators.bitwise_not_op,
+            type_=col_expr.type,
+            wraps_column_expression=False,
+        )
+
     @property
     def _order_by_label_element(self) -> Optional[Label[Any]]:
         if self.modifier in (operators.desc_op, operators.asc_op):

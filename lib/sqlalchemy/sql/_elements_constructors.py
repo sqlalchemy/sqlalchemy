@@ -1030,6 +1030,23 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_distinct(expr)
 
 
+def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+    """Produce a unary bitwise NOT clause, typically via the ``~`` operator.
+
+    Not to be confused with boolean negation :func:`_sql.not_`.
+
+    .. versionadded:: 2.0.2
+
+    .. seealso::
+
+        :ref:`operators_bitwise`
+
+
+    """
+
+    return UnaryExpression._create_bitwise_not(expr)
+
+
 def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
     """Return a :class:`.Extract` construct.
 

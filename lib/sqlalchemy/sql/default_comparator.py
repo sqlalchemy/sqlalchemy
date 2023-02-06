@@ -273,6 +273,16 @@ def _neg_impl(
     return UnaryExpression(expr, operator=operators.neg, type_=expr.type)
 
 
+def _bitwise_not_impl(
+    expr: ColumnElement[Any], op: OperatorType, **kw: Any
+) -> ColumnElement[Any]:
+    """See :meth:`.ColumnOperators.bitwise_not`."""
+
+    return UnaryExpression(
+        expr, operator=operators.bitwise_not_op, type_=expr.type
+    )
+
+
 def _match_impl(
     expr: ColumnElement[Any], op: OperatorType, other: Any, **kw: Any
 ) -> ColumnElement[Any]:
@@ -420,6 +430,12 @@ operator_lookup: Dict[
     "sub": (_binary_operate, util.EMPTY_DICT),
     "div": (_binary_operate, util.EMPTY_DICT),
     "mod": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_xor_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_or_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_and_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_not_op": (_bitwise_not_impl, util.EMPTY_DICT),
+    "bitwise_lshift_op": (_binary_operate, util.EMPTY_DICT),
+    "bitwise_rshift_op": (_binary_operate, util.EMPTY_DICT),
     "truediv": (_binary_operate, util.EMPTY_DICT),
     "floordiv": (_binary_operate, util.EMPTY_DICT),
     "custom_op": (_custom_op_operate, util.EMPTY_DICT),

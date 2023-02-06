@@ -697,6 +697,90 @@ class ColumnOperators(Operators):
         """
         return self.operate(ilike_op, other, escape=escape)
 
+    def bitwise_xor(self, other: Any) -> ColumnOperators:
+        """Produce a bitwise XOR operation, typically via the ``^``
+        operator, or ``#`` for PostgreSQL.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_xor_op, other)
+
+    def bitwise_or(self, other: Any) -> ColumnOperators:
+        """Produce a bitwise OR operation, typically via the ``|``
+        operator.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_or_op, other)
+
+    def bitwise_and(self, other: Any) -> ColumnOperators:
+        """Produce a bitwise AND operation, typically via the ``&``
+        operator.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_and_op, other)
+
+    def bitwise_not(self) -> ColumnOperators:
+        """Produce a bitwise NOT operation, typically via the ``~``
+        operator.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_not_op)
+
+    def bitwise_lshift(self, other: Any) -> ColumnOperators:
+        """Produce a bitwise LSHIFT operation, typically via the ``<<``
+        operator.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_lshift_op, other)
+
+    def bitwise_rshift(self, other: Any) -> ColumnOperators:
+        """Produce a bitwise RSHIFT operation, typically via the ``>>``
+        operator.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+        """
+
+        return self.operate(bitwise_rshift_op, other)
+
     def in_(self, other: Any) -> ColumnOperators:
         """Implement the ``in`` operator.
 
@@ -2266,6 +2350,36 @@ def json_path_getitem_op(a: Any, b: Any) -> Any:
     raise NotImplementedError()
 
 
+@_operator_fn
+def bitwise_xor_op(a: Any, b: Any) -> Any:
+    return a.bitwise_xor(b)
+
+
+@_operator_fn
+def bitwise_or_op(a: Any, b: Any) -> Any:
+    return a.bitwise_or(b)
+
+
+@_operator_fn
+def bitwise_and_op(a: Any, b: Any) -> Any:
+    return a.bitwise_and(b)
+
+
+@_operator_fn
+def bitwise_not_op(a: Any) -> Any:
+    return a.bitwise_not()
+
+
+@_operator_fn
+def bitwise_lshift_op(a: Any, b: Any) -> Any:
+    return a.bitwise_lshift(b)
+
+
+@_operator_fn
+def bitwise_rshift_op(a: Any, b: Any) -> Any:
+    return a.bitwise_rshift(b)
+
+
 def is_comparison(op: OperatorType) -> bool:
     return op in _comparison or isinstance(op, custom_op) and op.is_comparison
 
@@ -2344,8 +2458,14 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     floordiv: 8,
     mod: 8,
     neg: 8,
+    bitwise_not_op: 8,
     add: 7,
     sub: 7,
+    bitwise_xor_op: 7,
+    bitwise_or_op: 7,
+    bitwise_and_op: 7,
+    bitwise_lshift_op: 7,
+    bitwise_rshift_op: 7,
     concat_op: 6,
     filter_op: 6,
     match_op: 5,
