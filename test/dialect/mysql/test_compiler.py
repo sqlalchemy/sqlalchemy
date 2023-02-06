@@ -63,6 +63,7 @@ from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import Variation
 
 
 class ReservedWordFixture(AssertsCompiledSQL):
@@ -1100,18 +1101,34 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 bar=stmt.inserted.bar, baz=stmt.inserted.baz
             )
 
-    def test_from_values(self):
+    @testing.variation("version", ["mysql8", "all_others"])
+    def test_from_values(self, version: Variation):
         stmt = insert(self.table).values(
             [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
         )
         stmt = stmt.on_duplicate_key_update(
             bar=stmt.inserted.bar, baz=stmt.inserted.baz
         )
-        expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
-            "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
-        )
-        self.assert_compile(stmt, expected_sql)
+
+        if version.all_others:
+            expected_sql = (
+                "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+                "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
+            )
+            dialect = None
+        elif version.mysql8:
+            expected_sql = (
+                "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+                "AS new ON DUPLICATE KEY UPDATE "
+                "bar = new.bar, "
+                "baz = new.baz"
+            )
+            dialect = mysql.dialect()
+            dialect._requires_alias_for_on_duplicate_key = True
+        else:
+            version.fail()
+
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
 
     def test_from_literal(self):
         stmt = insert(self.table).values(
@@ -1135,7 +1152,8 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(stmt, expected_sql)
 
-    def test_update_sql_expr(self):
+    @testing.variation("version", ["mysql8", "all_others"])
+    def test_update_sql_expr(self, version: Variation):
         stmt = insert(self.table).values(
             [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
         )
@@ -1143,11 +1161,28 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             bar=func.coalesce(stmt.inserted.bar),
             baz=stmt.inserted.baz + "some literal" + stmt.inserted.bar,
         )
-        expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
-            "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
-            "baz = (concat(VALUES(baz), %s, VALUES(bar)))"
-        )
+
+        if version.all_others:
+            expected_sql = (
+                "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
+                "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
+                "baz = (concat(VALUES(baz), %s, VALUES(bar)))"
+            )
+            dialect = None
+        elif version.mysql8:
+
+            expected_sql = (
+                "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+                "AS new ON DUPLICATE KEY UPDATE bar = "
+                "coalesce(new.bar), "
+                "baz = (concat(new.baz, %s, "
+                "new.bar))"
+            )
+            dialect = mysql.dialect()
+            dialect._requires_alias_for_on_duplicate_key = True
+        else:
+            version.fail()
+
         self.assert_compile(
             stmt,
             expected_sql,
@@ -1158,6 +1193,39 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "bar_m1": "b",
                 "baz_1": "some literal",
             },
+            dialect=dialect,
+        )
+
+    def test_mysql8_on_update_dont_dup_alias_name(self):
+        t = table("new", column("id"), column("bar"), column("baz"))
+        stmt = insert(t).values(
+            [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=func.coalesce(stmt.inserted.bar),
+            baz=stmt.inserted.baz + "some literal" + stmt.inserted.bar,
+        )
+
+        expected_sql = (
+            "INSERT INTO new (id, bar) VALUES (%s, %s), (%s, %s) "
+            "AS new_1 ON DUPLICATE KEY UPDATE bar = "
+            "coalesce(new_1.bar), "
+            "baz = (concat(new_1.baz, %s, "
+            "new_1.bar))"
+        )
+        dialect = mysql.dialect()
+        dialect._requires_alias_for_on_duplicate_key = True
+        self.assert_compile(
+            stmt,
+            expected_sql,
+            checkparams={
+                "id_m0": 1,
+                "bar_m0": "ab",
+                "id_m1": 2,
+                "bar_m1": "b",
+                "baz_1": "some literal",
+            },
+            dialect=dialect,
         )
 
 

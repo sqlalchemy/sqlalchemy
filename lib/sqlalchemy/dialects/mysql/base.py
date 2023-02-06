@@ -1080,7 +1080,6 @@ SET_RE = re.compile(
     r"\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w", re.I | re.UNICODE
 )
 
-
 # old names
 MSTime = TIME
 MSSet = SET
@@ -1316,9 +1315,19 @@ class MySQLCompiler(compiler.SQLCompiler):
             cols = statement.table.c
 
         clauses = []
+
+        requires_mysql8_alias = (
+            self.dialect._requires_alias_for_on_duplicate_key
+        )
+
+        if requires_mysql8_alias:
+            if statement.table.name.lower() == "new":
+                _on_dup_alias_name = "new_1"
+            else:
+                _on_dup_alias_name = "new"
+
         # traverses through all table columns to preserve table column order
         for column in (col for col in cols if col.key in on_duplicate.update):
-
             val = on_duplicate.update[column.key]
 
             if coercions._is_literal(val):
@@ -1338,10 +1347,16 @@ class MySQLCompiler(compiler.SQLCompiler):
                         isinstance(obj, elements.ColumnClause)
                         and obj.table is on_duplicate.inserted_alias
                     ):
-                        obj = literal_column(
-                            "VALUES(" + self.preparer.quote(obj.name) + ")"
-                        )
-                        return obj
+                        if requires_mysql8_alias:
+                            column_literal_clause = (
+                                f"{_on_dup_alias_name}."
+                                f"{self.preparer.quote(obj.name)}"
+                            )
+                        else:
+                            column_literal_clause = (
+                                f"VALUES({self.preparer.quote(obj.name)})"
+                            )
+                        return literal_column(column_literal_clause)
                     else:
                         # element is not replaced
                         return None
@@ -1363,7 +1378,13 @@ class MySQLCompiler(compiler.SQLCompiler):
                 )
             )
 
-        return "ON DUPLICATE KEY UPDATE " + ", ".join(clauses)
+        if requires_mysql8_alias:
+            return (
+                f"AS {_on_dup_alias_name} "
+                f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
+            )
+        else:
+            return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
 
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw
@@ -2391,6 +2412,9 @@ class MySQLDialect(default.DefaultDialect):
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
 
+    _requires_alias_for_on_duplicate_key = False  # Only available ...
+    # ... in MySQL 8+
+
     # MySQL doesn't support "DEFAULT VALUES" but *does* support
     # "VALUES (DEFAULT)"
     supports_default_values = False
@@ -2781,6 +2805,10 @@ class MySQLDialect(default.DefaultDialect):
 
         self.insert_returning = (
             self.is_mariadb and self.server_version_info >= (10, 5)
+        )
+
+        self._requires_alias_for_on_duplicate_key = (
+            self._is_mysql and self.server_version_info >= (8, 0, 20)
         )
 
         self._warn_for_known_db_issues()
