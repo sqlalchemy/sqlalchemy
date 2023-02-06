@@ -177,6 +177,15 @@ class HasTableTest(OneConnectionTablesTest):
                 )
             )
 
+    @testing.requires.schemas
+    def test_has_table_nonexistent_schema(self):
+        with config.db.begin() as conn:
+            is_false(
+                config.db.dialect.has_table(
+                    conn, "test_table", schema="nonexistent_schema"
+                )
+            )
+
     @testing.requires.views
     def test_has_table_view(self, connection):
         insp = inspect(connection)

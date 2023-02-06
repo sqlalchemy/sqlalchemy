@@ -2152,6 +2152,11 @@ class SQLiteDialect(default.DefaultDialect):
     def has_table(self, connection, table_name, schema=None, **kw):
         self._ensure_has_table_connection(connection)
 
+        if schema is not None and schema not in self.get_schema_names(
+            connection, **kw
+        ):
+            return False
+
         info = self._get_table_pragma(
             connection, "table_info", table_name, schema=schema
         )

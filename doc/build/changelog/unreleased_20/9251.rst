@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, mysql, regression
+    :tickets: 9251
+
+    Fixed regression caused by issue :ticket:`9058` which adjusted the MySQL
+    dialect's ``has_table()`` to again use "DESCRIBE", where the specific error
+    code raised by MySQL version 8 when using a non-existent schema name was
+    unexpected and failed to be interpreted as a boolean result.
+
+
+
+.. change::
+    :tags: bug, sqlite
+    :tickets: 9251
+
+    Fixed the SQLite dialect's ``has_table()`` function to correctly report
+    False for queries that include a non-None schema name for a schema that
+    doesn't exist; previously, a database error was raised.
+
