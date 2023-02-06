@@ -2577,6 +2577,54 @@ class OverrideColKeyTest(fixtures.MappedTest):
         is_(B.a_data.property.columns[0], A.__table__.c.a_data)
         is_(B.b_data.property.columns[0], A.__table__.c.a_data)
 
+    def test_subsubclass_groups_super_cols(self, decl_base):
+        """tested for #9220, which is a regression caused by #8705."""
+
+        class BaseClass(decl_base):
+            __tablename__ = "basetable"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            type = Column(String(20))
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "base",
+            }
+
+        class SubClass(BaseClass):
+            __tablename__ = "subtable"
+
+            id = column_property(
+                Column(Integer, primary_key=True), BaseClass.id
+            )
+            base_id = Column(Integer, ForeignKey("basetable.id"))
+            subdata1 = Column(String(50))
+
+            __mapper_args__ = {"polymorphic_identity": "sub"}
+
+        class SubSubClass(SubClass):
+            __tablename__ = "subsubtable"
+
+            id = column_property(
+                Column(Integer, ForeignKey("subtable.id"), primary_key=True),
+                SubClass.id,
+                BaseClass.id,
+            )
+            subdata2 = Column(String(50))
+
+            __mapper_args__ = {"polymorphic_identity": "subsub"}
+
+        is_(SubSubClass.id.property.columns[0], SubSubClass.__table__.c.id)
+        is_(
+            SubSubClass.id.property.columns[1]._deannotate(),
+            SubClass.__table__.c.id,
+        )
+        is_(
+            SubSubClass.id.property.columns[2]._deannotate(),
+            BaseClass.__table__.c.id,
+        )
+
     def test_column_setup_sanity_check(self, decl_base):
         class A(decl_base):
             __tablename__ = "a"

@@ -911,7 +911,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         before instrumentation is applied to the mapped class.
 
         This event is the earliest phase of mapper construction.
-        Most attributes of the mapper are not yet initialized.
+        Most attributes of the mapper are not yet initialized.   To
+        receive an event within initial mapper construction where basic
+        state is available such as the :attr:`_orm.Mapper.attrs` collection,
+        the :meth:`_orm.MapperEvents.after_mapper_constructed` event may
+        be a better choice.
 
         This listener can either be applied to the :class:`_orm.Mapper`
         class overall, or to any un-mapped class which serves as a base
@@ -927,6 +931,44 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
          of this event.
         :param class\_: the mapped class.
 
+        .. seealso::
+
+            :meth:`_orm.MapperEvents.after_mapper_constructed`
+
+        """
+
+    def after_mapper_constructed(
+        self, mapper: Mapper[_O], class_: Type[_O]
+    ) -> None:
+        """Receive a class and mapper when the :class:`_orm.Mapper` has been
+        fully constructed.
+
+        This event is called after the initial constructor for
+        :class:`_orm.Mapper` completes.  This occurs after the
+        :meth:`_orm.MapperEvents.instrument_class` event and after the
+        :class:`_orm.Mapper` has done an initial pass of its arguments
+        to generate its collection of :class:`_orm.MapperProperty` objects,
+        which are accessible via the :meth:`_orm.Mapper.get_property`
+        method and the :attr:`_orm.Mapper.iterate_properties` attribute.
+
+        This event differs from the
+        :meth:`_orm.MapperEvents.before_mapper_configured` event in that it
+        is invoked within the constructor for :class:`_orm.Mapper`, rather
+        than within the :meth:`_orm.registry.configure` process.   Currently,
+        this event is the only one which is appropriate for handlers that
+        wish to create additional mapped classes in response to the
+        construction of this :class:`_orm.Mapper`, which will be part of the
+        same configure step when :meth:`_orm.registry.configure` next runs.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`examples_versioning` - an example which illustrates the use
+            of the :meth:`_orm.MapperEvents.before_mapper_configured`
+            event to create new mappers to record change-audit histories on
+            objects.
+
         """
 
     def before_mapper_configured(
@@ -938,7 +980,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         the configure step, by returning the :attr:`.orm.interfaces.EXT_SKIP`
         symbol which indicates to the :func:`.configure_mappers` call that this
         particular mapper (or hierarchy of mappers, if ``propagate=True`` is
-        used) should be skipped in the current configuration run.  When one or
+        used) should be skipped in the current configuration run. When one or
         more mappers are skipped, the he "new mappers" flag will remain set,
         meaning the :func:`.configure_mappers` function will continue to be
         called when mappers are used, to continue to try to configure all
