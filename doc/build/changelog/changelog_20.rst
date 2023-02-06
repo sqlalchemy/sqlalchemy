@@ -10,7 +10,233 @@
 
 .. changelog::
     :version: 2.0.2
-    :include_notes_from: unreleased_20
+    :released: February 6, 2023
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 9249
+
+        Fixed regression caused by the fix for :ticket:`9171`, which itself was
+        fixing a regression, involving the mechanics of ``__init__()`` on classes
+        that extend from :class:`_orm.DeclarativeBase`. The change made it such
+        that ``__init__()`` was applied to the user-defined base if there were no
+        ``__init__()`` method directly on the class. This has been adjusted so that
+        ``__init__()`` is applied only if no other class in the hierarchy of the
+        user-defined base has an ``__init__()`` method. This again allows
+        user-defined base classes based on :class:`_orm.DeclarativeBase` to include
+        mixins that themselves include a custom ``__init__()`` method.
+
+    .. change::
+        :tags: bug, mysql, regression
+        :tickets: 9251
+
+        Fixed regression caused by issue :ticket:`9058` which adjusted the MySQL
+        dialect's ``has_table()`` to again use "DESCRIBE", where the specific error
+        code raised by MySQL version 8 when using a non-existent schema name was
+        unexpected and failed to be interpreted as a boolean result.
+
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 9251
+
+        Fixed the SQLite dialect's ``has_table()`` function to correctly report
+        False for queries that include a non-None schema name for a schema that
+        doesn't exist; previously, a database error was raised.
+
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 9226
+
+        Fixed issue in ORM Declarative Dataclass mappings related to newly added
+        support for mixins added in 2.0.1 via :ticket:`9179`, where a combination
+        of using mixins plus ORM inheritance would mis-classify fields in some
+        cases leading to field-level dataclass arguments such as ``init=False`` being
+        lost.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9232
+
+        Fixed obscure ORM inheritance issue caused by :ticket:`8705` where some
+        scenarios of inheriting mappers that indicated groups of columns from the
+        local table and the inheriting table together under a
+        :func:`_orm.column_property` would nonetheless warn that properties of the
+        same name were being combined implicitly.
+
+    .. change::
+        :tags: orm, bug, regression
+        :tickets: 9228
+
+        Fixed regression where using the :paramref:`_orm.Mapper.version_id_col`
+        feature with a regular Python-side incrementing column would fail to work
+        for SQLite and other databases that don't support "rowcount" with
+        "RETURNING", as "RETURNING" would be assumed for such columns even though
+        that's not what actually takes place.
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 9240
+
+        Repaired ORM Declarative mappings to allow for the
+        :paramref:`_orm.Mapper.primary_key` parameter to be specified within
+        ``__mapper_args__`` when using :func:`_orm.mapped_column`. Despite this
+        usage being directly in the 2.0 documentation, the :class:`_orm.Mapper` was
+        not accepting the :func:`_orm.mapped_column` construct in this context. Ths
+        feature was already working for the :paramref:`_orm.Mapper.version_id_col`
+        and :paramref:`_orm.Mapper.polymorphic_on` parameters.
+
+        As part of this change, the ``__mapper_args__`` attribute may be specified
+        without using :func:`_orm.declared_attr` on a non-mapped mixin class,
+        including a ``"primary_key"`` entry that refers to :class:`_schema.Column`
+        or :func:`_orm.mapped_column` objects locally present on the mixin;
+        Declarative will also translate these columns into the correct ones for a
+        particular mapped class. This again was working already for the
+        :paramref:`_orm.Mapper.version_id_col` and
+        :paramref:`_orm.Mapper.polymorphic_on` parameters.  Additionally,
+        elements within ``"primary_key"`` may be indicated as string names of
+        existing mapped properties.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 8780
+
+        Added a full suite of new SQL bitwise operators, for performing
+        database-side bitwise expressions on appropriate data values such as
+        integers, bit-strings, and similar. Pull request courtesy Yegor Statkevich.
+
+        .. seealso::
+
+            :ref:`operators_bitwise`
+
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 9211
+
+        An explicit error is raised if a mapping attempts to mix the use of
+        :class:`_orm.MappedAsDataclass` with
+        :meth:`_orm.registry.mapped_as_dataclass` within the same class hierarchy,
+        as this produces issues with the dataclass function being applied at the
+        wrong time to the mapped class, leading to errors during the mapping
+        process.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9217
+
+        Fixed regression when using :meth:`_sql.Select.from_statement` in an ORM
+        context, where matching of columns to SQL labels based on name alone was
+        disabled for ORM-statements that weren't fully textual. This would prevent
+        arbitrary SQL expressions with column-name labels from matching up to the
+        entity to be loaded, which previously would work within the 1.4
+        and previous series, so the previous behavior has been restored.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 9237
+
+        Repaired a regression caused by the fix for :ticket:`8419` which caused
+        asyncpg connections to be reset (i.e. transaction ``rollback()`` called)
+        and returned to the pool normally in the case that the connection were not
+        explicitly returned to the connection pool and was instead being
+        intercepted by Python garbage collection, which would fail if the garbage
+        collection operation were being called outside of the asyncio event loop,
+        leading to a large amount of stack trace activity dumped into logging
+        and standard output.
+
+        The correct behavior is restored, which is that all asyncio connections
+        that are garbage collected due to not being explicitly returned to the
+        connection pool are detached from the pool and discarded, along with a
+        warning, rather than being returned the pool, as they cannot be reliably
+        reset. In the case of asyncpg connections, the asyncpg-specific
+        ``terminate()`` method will be used to end the connection more gracefully
+        within this process as opposed to just dropping it.
+
+        This change includes a small behavioral change that is hoped to be useful
+        for debugging asyncio applications, where the warning that's emitted in the
+        case of asyncio connections being unexpectedly garbage collected has been
+        made slightly more aggressive by moving it outside of a ``try/except``
+        block and into a ``finally:`` block, where it will emit unconditionally
+        regardless of whether the detach/termination operation succeeded or not. It
+        will also have the effect that applications or test suites which promote
+        Python warnings to exceptions will see this as a full exception raise,
+        whereas previously it was not possible for this warning to actually
+        propagate as an exception. Applications and test suites which need to
+        tolerate this warning in the interim should adjust the Python warnings
+        filter to allow these warnings to not raise.
+
+        The behavior for traditional sync connections remains unchanged, that
+        garbage collected connections continue to be returned to the pool normally
+        without emitting a warning. This will likely be changed in a future major
+        release to at least emit a similar warning as is emitted for asyncio
+        drivers, as it is a usage error for pooled connections to be intercepted by
+        garbage collection without being properly returned to the pool.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9220
+
+        Added new event hook :meth:`_orm.MapperEvents.after_mapper_constructed`,
+        which supplies an event hook to take place right as the
+        :class:`_orm.Mapper` object has been fully constructed, but before the
+        :meth:`_orm.registry.configure` call has been called. This allows code that
+        can create additional mappings and table structures based on the initial
+        configuration of a :class:`_orm.Mapper`, which also integrates within
+        Declarative configuration. Previously, when using Declarative, where the
+        :class:`_orm.Mapper` object is created within the class creation process,
+        there was no documented means of running code at this point.  The change
+        is to immediately benefit custom mapping schemes such as that
+        of the :ref:`examples_versioned_history` example, which generate additional
+        mappers and tables in response to the creation of mapped classes.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9220
+
+        The infrequently used :attr:`_orm.Mapper.iterate_properties` attribute and
+        :meth:`_orm.Mapper.get_property` method, which are primarily used
+        internally, no longer implicitly invoke the :meth:`_orm.registry.configure`
+        process. Public access to these methods is extremely rare and the only
+        benefit to having :meth:`_orm.registry.configure` would have been allowing
+        "backref" properties be present in these collections. In order to support
+        the new :meth:`_orm.MapperEvents.after_mapper_constructed` event, iteration
+        and access to the internal :class:`_orm.MapperProperty` objects is now
+        possible without triggering an implicit configure of the mapper itself.
+
+        The more-public facing route to iteration of all mapper attributes, the
+        :attr:`_orm.Mapper.attrs` collection and similar, will still implicitly
+        invoke the :meth:`_orm.registry.configure` step thus making backref
+        attributes available.
+
+        In all cases, the :meth:`_orm.registry.configure` is always available to
+        be called directly.
+
+    .. change::
+        :tags: bug, examples
+        :tickets: 9220
+
+        Reworked the :ref:`examples_versioned_history` to work with
+        version 2.0, while at the same time improving the overall working of
+        this example to use newer APIs, including a newly added hook
+        :meth:`_orm.MapperEvents.after_mapper_constructed`.
+
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 8626
+
+        Added support for MySQL 8's new ``AS <name> ON DUPLICATE KEY`` syntax when
+        using :meth:`_mysql.Insert.on_duplicate_key_update`, which is required for
+        newer versions of MySQL 8 as the previous syntax using ``VALUES()`` now
+        emits a deprecation warning with those versions. Server version detection
+        is employed to determine if traditional MariaDB / MySQL < 8 ``VALUES()``
+        syntax should be used, vs. the newer MySQL 8 required syntax. Pull request
+        courtesy Caspar Wylie.
 
 .. changelog::
     :version: 2.0.1

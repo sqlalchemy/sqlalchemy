@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm declarative
-    :tickets: 9226
-
-    Fixed issue in ORM Declarative Dataclass mappings related to newly added
-    support for mixins added in 2.0.1 via :ticket:`9179`, where a combination
-    of using mixins plus ORM inheritance would mis-classify fields in some
-    cases leading to field-level dataclass arguments such as ``init=False`` being
-    lost.
