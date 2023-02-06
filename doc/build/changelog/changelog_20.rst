@@ -45,7 +45,7 @@
 
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm declarative
         :tickets: 9175
 
         Added support for :pep:`484` ``NewType`` to be used in the
@@ -66,7 +66,7 @@
 
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm declarative
         :tickets: 9179
 
         When using the :class:`.MappedAsDataclass` superclass, all classes within
@@ -96,7 +96,7 @@
         :class:`_schema.Index`.
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm declarative
         :tickets: 9187
 
         Added support for :pep:`586` ``Literal[]`` to be used in the
@@ -119,7 +119,7 @@
 
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm declarative
         :tickets: 9200
 
         Fixed issue involving the use of :class:`.sqltypes.Enum` within the
@@ -131,7 +131,7 @@
 
 
     .. change::
-        :tags: bug, orm, regression
+        :tags: bug, orm declarative, regression
         :tickets: 9171
 
         Fixed regression in :class:`.DeclarativeBase` class where the registry's
@@ -167,7 +167,7 @@
         only ``TypeEngine[T]`` was accepted.  Pull request courtesy Yurii Karabas.
 
     .. change::
-        :tags: bug, orm
+        :tags: bug, orm declarative
         :tickets: 9177
 
         Improved the ruleset used to interpret :pep:`593` ``Annotated`` types when
