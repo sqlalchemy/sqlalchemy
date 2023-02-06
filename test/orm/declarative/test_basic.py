@@ -134,7 +134,13 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
     @testing.variation(
         "base_type",
-        ["declbase", "declbasenometa", "declbasefn", "asdeclarative"],
+        [
+            "declbase",
+            "declbasenometa",
+            "declbasefn",
+            "asdeclarative",
+            "mixinonbase",
+        ],
     )
     def test_reg_constructor_custom_init(self, base_type):
         """test for #9171 testing what an explicit __init__ does.
@@ -165,6 +171,15 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
                     m1.init(x)
 
             Base = declarative_base(cls=_B)
+        elif base_type.mixinonbase:
+
+            class Mixin:
+                def __init__(self, x=None):
+                    m1.init(x)
+
+            class Base(Mixin, DeclarativeBase):
+                pass
+
         elif base_type.asdeclarative:
 
             @as_declarative()
@@ -180,7 +195,11 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
         fs = fakeself()
 
-        if base_type.declbase or base_type.declbasenometa:
+        if (
+            base_type.declbase
+            or base_type.declbasenometa
+            or base_type.mixinonbase
+        ):
             Base.__init__(fs, x=5)
             eq_(m1.mock_calls, [mock.call.init(5)])
         else:

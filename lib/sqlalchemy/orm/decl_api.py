@@ -567,7 +567,7 @@ def _setup_declarative_base(cls: Type[Any]) -> None:
     if "metadata" not in cls.__dict__:
         cls.metadata = cls.registry.metadata  # type: ignore
 
-    if "__init__" not in cls.__dict__:
+    if getattr(cls, "__init__", object.__init__) is object.__init__:
         cls.__init__ = cls.registry.constructor
 
 

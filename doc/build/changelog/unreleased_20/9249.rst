@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9249
+
+    Fixed regression caused by the fix for :ticket:`9171`, which itself was
+    fixing a regression, involving the mechanics of ``__init__()`` on classes
+    that extend from :class:`_orm.DeclarativeBase`. The change made it such
+    that ``__init__()`` was applied to the user-defined base if there were no
+    ``__init__()`` method directly on the class. This has been adjusted so that
+    ``__init__()`` is applied only if no other class in the hierarchy of the
+    user-defined base has an ``__init__()`` method. This again allows
+    user-defined base classes based on :class:`_orm.DeclarativeBase` to include
+    mixins that themselves include a custom ``__init__()`` method.
