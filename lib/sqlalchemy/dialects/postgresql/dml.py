@@ -6,8 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-import typing
-
 from . import ext
 from ... import util
 from ...sql import coercions
@@ -19,6 +17,7 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
+from ...util.typing import Self
 
 
 __all__ = ("Insert", "insert")
@@ -42,9 +41,6 @@ def insert(table):
 
     """
     return Insert(table)
-
-
-SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -100,13 +96,13 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self: SelfInsert,
+        self,
         constraint=None,
         index_elements=None,
         index_where=None,
         set_=None,
         where=None,
-    ) -> SelfInsert:
+    ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -168,11 +164,11 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
-        self: SelfInsert,
+        self,
         constraint=None,
         index_elements=None,
         index_where=None,
-    ) -> SelfInsert:
+    ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 

@@ -49,6 +49,7 @@ from ..orm.session import _BindArguments
 from ..orm.session import _PKIdentityArgument
 from ..orm.session import Session
 from ..util.typing import Protocol
+from ..util.typing import Self
 
 if TYPE_CHECKING:
     from ..engine.base import Connection
@@ -72,7 +73,6 @@ __all__ = ["ShardedSession", "ShardedQuery"]
 
 _T = TypeVar("_T", bound=Any)
 
-SelfShardedQuery = TypeVar("SelfShardedQuery", bound="ShardedQuery[Any]")
 
 ShardIdentifier = str
 
@@ -118,9 +118,7 @@ class ShardedQuery(Query[_T]):
         self.execute_chooser = self.session.execute_chooser
         self._shard_id = None
 
-    def set_shard(
-        self: SelfShardedQuery, shard_id: ShardIdentifier
-    ) -> SelfShardedQuery:
+    def set_shard(self, shard_id: ShardIdentifier) -> Self:
         """Return a new query, limited to a single shard ID.
 
         All subsequent operations with the returned query will

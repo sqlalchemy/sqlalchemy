@@ -339,11 +339,6 @@ class _AssociationProxyProtocol(Protocol[_T]):
         ...
 
 
-_SelfAssociationProxy = TypeVar(
-    "_SelfAssociationProxy", bound="AssociationProxy[Any]"
-)
-
-
 class AssociationProxy(
     interfaces.InspectionAttrInfo,
     ORMDescriptor[_T],
@@ -404,9 +399,7 @@ class AssociationProxy(
             self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
 
     @overload
-    def __get__(
-        self: _SelfAssociationProxy, instance: Any, owner: Literal[None]
-    ) -> _SelfAssociationProxy:
+    def __get__(self, instance: Any, owner: Literal[None]) -> Self:
         ...
 
     @overload
@@ -547,11 +540,6 @@ class AssociationProxy(
             self.target_collection,
             self.value_attr,
         )
-
-
-_SelfAssociationProxyInstance = TypeVar(
-    "_SelfAssociationProxyInstance", bound="AssociationProxyInstance[Any]"
-)
 
 
 class AssociationProxyInstance(SQLORMOperations[_T]):
@@ -847,7 +835,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         return self.parent.info
 
     @overload
-    def get(self: Self, obj: Literal[None]) -> Self:
+    def get(self, obj: Literal[None]) -> Self:
         ...
 
     @overload
@@ -1589,11 +1577,11 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
             return NotImplemented
         return n * list(self)
 
-    def __iadd__(self: Self, iterable: Iterable[_T]) -> Self:
+    def __iadd__(self, iterable: Iterable[_T]) -> Self:
         self.extend(iterable)
         return self
 
-    def __imul__(self: Self, n: SupportsIndex) -> Self:
+    def __imul__(self, n: SupportsIndex) -> Self:
         # unlike a regular list *=, proxied __imul__ will generate unique
         # backing objects for each copy.  *= on proxied lists is a bit of
         # a stretch anyhow, and this interpretation of the __imul__ contract
@@ -1875,7 +1863,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             remover(member)
 
     def __ior__(  # type: ignore
-        self: Self, other: AbstractSet[_S]
+        self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
         if not collections._set_binops_check_strict(self, other):
             raise NotImplementedError()
@@ -1903,7 +1891,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             for value in other:
                 self.discard(value)
 
-    def __isub__(self: Self, s: AbstractSet[Any]) -> Self:
+    def __isub__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
             raise NotImplementedError()
         for value in s:
@@ -1927,7 +1915,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             for value in add:
                 self.add(value)
 
-    def __iand__(self: Self, s: AbstractSet[Any]) -> Self:
+    def __iand__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
             raise NotImplementedError()
         want = self.intersection(s)

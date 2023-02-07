@@ -85,6 +85,7 @@ from ..sql import coercions
 from ..sql import roles
 from ..sql import visitors
 from ..util.typing import Literal
+from ..util.typing import Self
 from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
@@ -120,9 +121,6 @@ _AllPendingType = Sequence[
     Tuple[Optional["InstanceState[Any]"], Optional[object]]
 ]
 
-SelfQueryableAttribute = TypeVar(
-    "SelfQueryableAttribute", bound="QueryableAttribute[Any]"
-)
 
 _UNKNOWN_ATTR_KEY = object()
 
@@ -384,9 +382,7 @@ class QueryableAttribute(
 
         return self.comparator._bulk_update_tuples(value)
 
-    def adapt_to_entity(
-        self: SelfQueryableAttribute, adapt_to_entity: AliasedInsp[Any]
-    ) -> SelfQueryableAttribute:
+    def adapt_to_entity(self, adapt_to_entity: AliasedInsp[Any]) -> Self:
         assert not self._of_type
         return self.__class__(
             adapt_to_entity.entity,

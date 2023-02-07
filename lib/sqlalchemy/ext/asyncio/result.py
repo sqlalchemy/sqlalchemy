@@ -30,6 +30,7 @@ from ...engine.row import RowMapping
 from ...sql.base import _generative
 from ...util.concurrency import greenlet_spawn
 from ...util.typing import Literal
+from ...util.typing import Self
 
 if TYPE_CHECKING:
     from ...engine import CursorResult
@@ -60,9 +61,6 @@ class AsyncCommon(FilterResult[_R]):
 
         """
         return self._real_result.closed  # type: ignore
-
-
-SelfAsyncResult = TypeVar("SelfAsyncResult", bound="AsyncResult[Any]")
 
 
 class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
@@ -143,9 +141,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         return self  # type: ignore
 
     @_generative
-    def unique(
-        self: SelfAsyncResult, strategy: Optional[_UniqueFilterType] = None
-    ) -> SelfAsyncResult:
+    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncResult`.
 
@@ -156,9 +152,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def columns(
-        self: SelfAsyncResult, *col_expressions: _KeyIndexType
-    ) -> SelfAsyncResult:
+    def columns(self, *col_expressions: _KeyIndexType) -> Self:
         r"""Establish the columns that should be returned in each row.
 
         Refer to :meth:`_engine.Result.columns` in the synchronous
@@ -501,11 +495,6 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         return AsyncMappingResult(self._real_result)
 
 
-SelfAsyncScalarResult = TypeVar(
-    "SelfAsyncScalarResult", bound="AsyncScalarResult[Any]"
-)
-
-
 class AsyncScalarResult(AsyncCommon[_R]):
     """A wrapper for a :class:`_asyncio.AsyncResult` that returns scalar values
     rather than :class:`_row.Row` values.
@@ -537,9 +526,9 @@ class AsyncScalarResult(AsyncCommon[_R]):
         self._unique_filter_state = real_result._unique_filter_state
 
     def unique(
-        self: SelfAsyncScalarResult,
+        self,
         strategy: Optional[_UniqueFilterType] = None,
-    ) -> SelfAsyncScalarResult:
+    ) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncScalarResult`.
 
@@ -635,11 +624,6 @@ class AsyncScalarResult(AsyncCommon[_R]):
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
 
-SelfAsyncMappingResult = TypeVar(
-    "SelfAsyncMappingResult", bound="AsyncMappingResult"
-)
-
-
 class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
     """A wrapper for a :class:`_asyncio.AsyncResult` that returns dictionary
     values rather than :class:`_engine.Row` values.
@@ -668,9 +652,9 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
             self._metadata = self._metadata._reduce([0])
 
     def unique(
-        self: SelfAsyncMappingResult,
+        self,
         strategy: Optional[_UniqueFilterType] = None,
-    ) -> SelfAsyncMappingResult:
+    ) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncMappingResult`.
 
@@ -680,9 +664,7 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def columns(
-        self: SelfAsyncMappingResult, *col_expressions: _KeyIndexType
-    ) -> SelfAsyncMappingResult:
+    def columns(self, *col_expressions: _KeyIndexType) -> Self:
         r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
@@ -789,11 +771,6 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
         """
         return await greenlet_spawn(self._only_one_row, True, True, False)
-
-
-SelfAsyncTupleResult = TypeVar(
-    "SelfAsyncTupleResult", bound="AsyncTupleResult[Any]"
-)
 
 
 class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):

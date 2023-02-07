@@ -711,6 +711,7 @@ from ..util.typing import Concatenate
 from ..util.typing import Literal
 from ..util.typing import ParamSpec
 from ..util.typing import Protocol
+from ..util.typing import Self
 
 if TYPE_CHECKING:
     from ..orm.interfaces import MapperProperty
@@ -858,11 +859,6 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
         return self
 
 
-Selfhybrid_property = TypeVar(
-    "Selfhybrid_property", bound="hybrid_property[Any]"
-)
-
-
 class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     """A decorator which allows definition of a Python descriptor with both
     instance-level and class-level behavior.
@@ -908,9 +904,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         util.update_wrapper(self, fget)
 
     @overload
-    def __get__(
-        self: Selfhybrid_property, instance: Any, owner: Literal[None]
-    ) -> Selfhybrid_property:
+    def __get__(self, instance: Any, owner: Literal[None]) -> Self:
         ...
 
     @overload
@@ -953,7 +947,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         return type(self)(**defaults)
 
     @property
-    def overrides(self: Selfhybrid_property) -> Selfhybrid_property:
+    def overrides(self) -> Self:
         """Prefix for a method that is overriding an existing attribute.
 
         The :attr:`.hybrid_property.overrides` accessor just returns

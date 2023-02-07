@@ -32,6 +32,7 @@ from .. import exc
 from .. import util
 from ..util import topological
 from ..util.typing import Protocol
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from .compiler import Compiled
@@ -138,11 +139,6 @@ class DDLIf(typing.NamedTuple):
         return True
 
 
-SelfExecutableDDLElement = typing.TypeVar(
-    "SelfExecutableDDLElement", bound="ExecutableDDLElement"
-)
-
-
 class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     """Base class for standalone executable DDL expression constructs.
 
@@ -187,9 +183,7 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
         )
 
     @_generative
-    def against(
-        self: SelfExecutableDDLElement, target: SchemaItem
-    ) -> SelfExecutableDDLElement:
+    def against(self, target: SchemaItem) -> Self:
         """Return a copy of this :class:`_schema.ExecutableDDLElement` which
         will include the given target.
 
@@ -226,11 +220,11 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
 
     @_generative
     def execute_if(
-        self: SelfExecutableDDLElement,
+        self,
         dialect: Optional[str] = None,
         callable_: Optional[DDLIfCallable] = None,
         state: Optional[Any] = None,
-    ) -> SelfExecutableDDLElement:
+    ) -> Self:
         r"""Return a callable that will execute this
         :class:`_ddl.ExecutableDDLElement` conditionally within an event
         handler.
