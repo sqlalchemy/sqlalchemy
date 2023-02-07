@@ -25,14 +25,14 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.10"
+          - "3.11"
         build-type:
           - "cext"
           - "nocext"
         architecture:
           - x64
       # abort all jobs as soon as one fails
-      fail-fast: true
+      fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
     steps:
@@ -54,20 +54,22 @@ jobs:
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
 
-  run-mypy:
-    name: mypy-${{ matrix.python-version }}
+  run-tox:
+    name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
-      # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.10"
+          - "3.11"
+        tox-env:
+          - mypy
+          - lint
+          - pep484
 
       fail-fast: false
 
-    # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -84,69 +86,5 @@ jobs:
           pip install --upgrade tox setuptools
           pip list
 
-      - name: Run tests
-        run: tox -e mypy ${{ matrix.pytest-args }}
-
-  run-lint:
-    name: lint-${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # run this job using this matrix, excluding some combinations below.
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          - "3.10"
-
-      fail-fast: false
-
-    # steps to run in each job. Some are github actions, others run shell commands
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
-          pip list
-
-      - name: Run tests
-        run: tox -e lint
-
-  # Arm emulation is quite slow (~20min) so for now just run it when merging to main
-  # run-test-arm64:
-  #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       python-version:
-  #         - "3.9"
-  #       build-type:
-  #         - "cext"
-  #         - "nocext"
-  #     fail-fast: true
-
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v3
-
-  #     - name: Set up emulation
-  #       run: |
-  #         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-  #     - name: Run tests
-  #       uses: docker://arm64v8/python:3.8-buster
-  #       with:
-  #         args: |
-  #               bash -c "
-  #               python -m pip install --upgrade pip &&
-  #               pip install --upgrade tox setuptools &&
-  #               pip list &&
-  #               tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}"
+      - name: Run tox
+        run: tox -e ${{ matrix.tox-env }} ${{ matrix.pytest-args }}
