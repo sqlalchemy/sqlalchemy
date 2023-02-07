@@ -132,8 +132,8 @@ jobs:
             tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
             "
 
-  run-mypy:
-    name: mypy-${{ matrix.python-version }}
+  run-tox:
+    name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -141,9 +141,28 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
+          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
+        tox-env:
+          - mypy
+          - lint
+          - pep484
+        
+        exclude:
+          # run lint only on 3.11
+          - tox-env: lint
+            python-version: "3.8"
+          - tox-env: lint
+            python-version: "3.9"
+          - tox-env: lint
+            python-version: "3.10"
+          # run pep484 only on 3.10+
+          - tox-env: pep484
+            python-version: "3.8"
+          - tox-env: pep484
+            python-version: "3.9"
 
       fail-fast: false
 
@@ -164,72 +183,5 @@ jobs:
           pip install --upgrade tox setuptools
           pip list
 
-      - name: Run tests
-        run: tox -e mypy ${{ matrix.pytest-args }}
-
-  run-lint:
-    name: lint-${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # run this job using this matrix, excluding some combinations below.
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          - "3.11"
-
-      fail-fast: false
-
-    # steps to run in each job. Some are github actions, others run shell commands
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
-          pip list
-
-      - name: Run tests
-        run: tox -e lint
-
-  run-pep484:
-    name: pep484-${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # run this job using this matrix, excluding some combinations below.
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          - "3.10"
-          - "3.11"
-
-      fail-fast: false
-
-    # steps to run in each job. Some are github actions, others run shell commands
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
-          pip list
-
-      - name: Run tests
-        run: tox -e pep484
+      - name: Run tox
+        run: tox -e ${{ matrix.tox-env }} ${{ matrix.pytest-args }}
