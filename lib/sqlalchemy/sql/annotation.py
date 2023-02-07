@@ -39,7 +39,6 @@ from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Self
 
 if TYPE_CHECKING:
     from .base import _EntityNamespace
@@ -48,6 +47,11 @@ if TYPE_CHECKING:
 _AnnotationDict = Mapping[str, Any]
 
 EMPTY_ANNOTATIONS: util.immutabledict[str, Any] = util.EMPTY_DICT
+
+
+SelfSupportsAnnotations = TypeVar(
+    "SelfSupportsAnnotations", bound="SupportsAnnotations"
+)
 
 
 class SupportsAnnotations(ExternallyTraversible):
@@ -59,15 +63,17 @@ class SupportsAnnotations(ExternallyTraversible):
 
     _is_immutable: bool
 
-    def _annotate(self, values: _AnnotationDict) -> Self:
+    def _annotate(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         raise NotImplementedError()
 
     @overload
     def _deannotate(
-        self,
+        self: SelfSupportsAnnotations,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> Self:
+    ) -> SelfSupportsAnnotations:
         ...
 
     @overload
@@ -119,7 +125,9 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         ("_annotations", InternalTraversal.dp_annotations_key)
     ]
 
-    def _annotate(self, values: _AnnotationDict) -> Self:
+    def _annotate(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.
 
@@ -130,7 +138,9 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         new.__dict__.pop("_generate_cache_key", None)
         return new
 
-    def _with_annotations(self, values: _AnnotationDict) -> Self:
+    def _with_annotations(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
@@ -143,10 +153,10 @@ class SupportsCloneAnnotations(SupportsAnnotations):
 
     @overload
     def _deannotate(
-        self,
+        self: SelfSupportsAnnotations,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> Self:
+    ) -> SelfSupportsAnnotations:
         ...
 
     @overload
@@ -192,14 +202,18 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
         def entity_namespace(self) -> _EntityNamespace:
             ...
 
-    def _annotate(self, values: _AnnotationDict) -> Self:
+    def _annotate(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.
 
         """
         return Annotated._as_annotated_instance(self, values)  # type: ignore
 
-    def _with_annotations(self, values: _AnnotationDict) -> Self:
+    def _with_annotations(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
@@ -208,10 +222,10 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
 
     @overload
     def _deannotate(
-        self,
+        self: SelfSupportsAnnotations,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> Self:
+    ) -> SelfSupportsAnnotations:
         ...
 
     @overload
@@ -240,6 +254,9 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
             return s
         else:
             return self
+
+
+SelfAnnotated = TypeVar("SelfAnnotated", bound="Annotated")
 
 
 class Annotated(SupportsAnnotations):
@@ -278,7 +295,7 @@ class Annotated(SupportsAnnotations):
     __element: SupportsWrappingAnnotations
     _hash: int
 
-    def __new__(cls, *args: Any) -> Self:
+    def __new__(cls: Type[SelfAnnotated], *args: Any) -> SelfAnnotated:
         return object.__new__(cls)
 
     def __init__(
@@ -291,13 +308,15 @@ class Annotated(SupportsAnnotations):
         self._annotations = util.immutabledict(values)
         self._hash = hash(element)
 
-    def _annotate(self, values: _AnnotationDict) -> Self:
+    def _annotate(
+        self: SelfAnnotated, values: _AnnotationDict
+    ) -> SelfAnnotated:
         _values = self._annotations.union(values)
-        new: Self = self._with_annotations(_values)  # type: ignore
+        new: SelfAnnotated = self._with_annotations(_values)  # type: ignore
         return new
 
     def _with_annotations(
-        self, values: _AnnotationDict
+        self: SelfAnnotated, values: _AnnotationDict
     ) -> SupportsAnnotations:
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
@@ -308,10 +327,10 @@ class Annotated(SupportsAnnotations):
 
     @overload
     def _deannotate(
-        self,
+        self: SelfAnnotated,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> Self:
+    ) -> SelfAnnotated:
         ...
 
     @overload
@@ -351,7 +370,7 @@ class Annotated(SupportsAnnotations):
         def _constructor(self):
             return self.__element._constructor
 
-    def _clone(self, **kw: Any) -> Self:
+    def _clone(self: SelfAnnotated, **kw: Any) -> SelfAnnotated:
         clone = self.__element._clone(**kw)
         if clone is self.__element:
             # detect immutable, don't change anything

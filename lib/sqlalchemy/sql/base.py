@@ -134,6 +134,10 @@ def _is_has_entity_namespace(element: Any) -> TypeGuard[_HasEntityNamespace]:
     return hasattr(element, "entity_namespace")
 
 
+# Remove when https://github.com/python/mypy/issues/14640 will be fixed
+_Self = TypeVar("_Self", bound=Any)
+
+
 class Immutable:
     """mark a ClauseElement as 'immutable' when expressions are cloned.
 
@@ -157,7 +161,7 @@ class Immutable:
     def params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
-    def _clone(self, **kw: Any) -> Self:
+    def _clone(self: _Self, **kw: Any) -> _Self:
         return self
 
     def _copy_internals(

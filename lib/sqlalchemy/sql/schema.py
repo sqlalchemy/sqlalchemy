@@ -3702,7 +3702,7 @@ class FetchedValue(SchemaEventTarget):
     def _copy(self) -> FetchedValue:
         return FetchedValue(self.for_update)
 
-    def _clone(self, for_update: bool) -> Any:
+    def _clone(self, for_update: bool) -> Self:
         n = self.__class__.__new__(self.__class__)
         n.__dict__.update(self.__dict__)
         n.__dict__.pop("column", None)

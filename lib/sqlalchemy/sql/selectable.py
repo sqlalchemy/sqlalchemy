@@ -1612,7 +1612,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
 
     @classmethod
     def _construct(
-        cls: Type,
+        cls,
         selectable: Any,
         *,
         name: Optional[str] = None,

@@ -588,7 +588,7 @@ class MappedColumn(
         util.set_creation_order(self)
 
     def _copy(self, **kw: Any) -> Self:
-        new = cast(Self, self.__class__.__new__(self.__class__))
+        new = self.__class__.__new__(self.__class__)
         new.column = self.column._copy(**kw)
         new.deferred = self.deferred
         new.foreign_keys = new.column.foreign_keys

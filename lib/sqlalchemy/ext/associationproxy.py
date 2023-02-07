@@ -542,6 +542,9 @@ class AssociationProxy(
         )
 
 
+_Self = TypeVar("_Self", bound="AssociationProxyInstance[Any]")
+
+
 class AssociationProxyInstance(SQLORMOperations[_T]):
     """A per-class object that serves class- and object-specific results.
 
@@ -835,7 +838,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         return self.parent.info
 
     @overload
-    def get(self, obj: Literal[None]) -> Self:
+    def get(self: _Self, obj: Literal[None]) -> _Self:
         ...
 
     @overload
