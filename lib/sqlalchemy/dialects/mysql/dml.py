@@ -6,8 +6,6 @@
 # mypy: ignore-errors
 
 
-import typing
-
 from ... import exc
 from ... import util
 from ...sql.base import _exclusive_against
@@ -16,6 +14,7 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
+from ...util.typing import Self
 
 
 __all__ = ("Insert", "insert")
@@ -38,9 +37,6 @@ def insert(table):
 
     """
     return Insert(table)
-
-
-SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -102,7 +98,7 @@ class Insert(StandardInsert):
             "has an ON DUPLICATE KEY clause present"
         },
     )
-    def on_duplicate_key_update(self: SelfInsert, *args, **kw) -> SelfInsert:
+    def on_duplicate_key_update(self, *args, **kw) -> Self:
         r"""
         Specifies the ON DUPLICATE KEY UPDATE clause.
 

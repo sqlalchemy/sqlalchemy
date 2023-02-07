@@ -77,6 +77,7 @@ from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
 from ..util.typing import Literal
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -292,9 +293,6 @@ class CompilerElement(Visitable):
         return str(self.compile())
 
 
-SelfClauseElement = TypeVar("SelfClauseElement", bound="ClauseElement")
-
-
 @inspection._self_inspects
 class ClauseElement(
     SupportsWrappingAnnotations,
@@ -370,9 +368,7 @@ class ClauseElement(
     def _from_objects(self) -> List[FromClause]:
         return []
 
-    def _set_propagate_attrs(
-        self: SelfClauseElement, values: Mapping[str, Any]
-    ) -> SelfClauseElement:
+    def _set_propagate_attrs(self, values: Mapping[str, Any]) -> Self:
         # usually, self._propagate_attrs is empty here.  one case where it's
         # not is a subquery against ORM select, that is then pulled as a
         # property of an aliased class.   should all be good
@@ -382,7 +378,7 @@ class ClauseElement(
         self._propagate_attrs = util.immutabledict(values)
         return self
 
-    def _clone(self: SelfClauseElement, **kw: Any) -> SelfClauseElement:
+    def _clone(self, **kw: Any) -> Self:
         """Create a shallow copy of this ClauseElement.
 
         This method may be used by a generative API.  Its also used as
@@ -509,10 +505,10 @@ class ClauseElement(
         ).scalar()
 
     def unique_params(
-        self: SelfClauseElement,
+        self,
         __optionaldict: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> SelfClauseElement:
+    ) -> Self:
         """Return a copy with :func:`_expression.bindparam` elements
         replaced.
 
@@ -525,10 +521,10 @@ class ClauseElement(
         return self._replace_params(True, __optionaldict, kwargs)
 
     def params(
-        self: SelfClauseElement,
+        self,
         __optionaldict: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
-    ) -> SelfClauseElement:
+    ) -> Self:
         """Return a copy with :func:`_expression.bindparam` elements
         replaced.
 
@@ -546,11 +542,11 @@ class ClauseElement(
         return self._replace_params(False, __optionaldict, kwargs)
 
     def _replace_params(
-        self: SelfClauseElement,
+        self,
         unique: bool,
         optionaldict: Optional[Mapping[str, Any]],
         kwargs: Dict[str, Any],
-    ) -> SelfClauseElement:
+    ) -> Self:
 
         if optionaldict:
             kwargs.update(optionaldict)
@@ -1169,8 +1165,6 @@ class SQLColumnExpression(
 
 
 _SQO = SQLCoreOperations
-
-SelfColumnElement = TypeVar("SelfColumnElement", bound="ColumnElement[Any]")
 
 
 class ColumnElement(
@@ -1872,9 +1866,6 @@ class WrapsColumnExpression(ColumnElement[_T]):
         return super()._proxy_key
 
 
-SelfBindParameter = TypeVar("SelfBindParameter", bound="BindParameter[Any]")
-
-
 class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     r"""Represent a "bound expression".
 
@@ -2083,9 +2074,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         c.type = type_
         return c
 
-    def _clone(
-        self: SelfBindParameter, maintain_key: bool = False, **kw: Any
-    ) -> SelfBindParameter:
+    def _clone(self, maintain_key: bool = False, **kw: Any) -> Self:
         c = ClauseElement._clone(self, **kw)
         # ensure all the BindParameter objects stay in cloned set.
         # in #7823, we changed "clone" so that a clone only keeps a reference
@@ -2176,9 +2165,6 @@ class TypeClause(DQLDMLClauseElement):
         self.type = type_
 
 
-SelfTextClause = typing.TypeVar("SelfTextClause", bound="TextClause")
-
-
 class TextClause(
     roles.DDLConstraintColumnRole,
     roles.DDLExpressionRole,
@@ -2266,10 +2252,10 @@ class TextClause(
 
     @_generative
     def bindparams(
-        self: SelfTextClause,
+        self,
         *binds: BindParameter[Any],
         **names_to_values: Any,
-    ) -> SelfTextClause:
+    ) -> Self:
         """Establish the values and/or types of bound parameters within
         this :class:`_expression.TextClause` construct.
 

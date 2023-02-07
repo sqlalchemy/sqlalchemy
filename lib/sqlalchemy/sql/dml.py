@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import collections.abc as collections_abc
 import operator
-import typing
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -66,6 +65,7 @@ from .sqltypes import NullType
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+from ..util.typing import Self
 from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
@@ -378,9 +378,6 @@ class DeleteDMLState(DMLState):
         self.is_multitable = ef
 
 
-SelfUpdateBase = typing.TypeVar("SelfUpdateBase", bound="UpdateBase")
-
-
 class UpdateBase(
     roles.DMLRole,
     HasCTE,
@@ -438,9 +435,7 @@ class UpdateBase(
         )
 
     @_generative
-    def with_dialect_options(
-        self: SelfUpdateBase, **opt: Any
-    ) -> SelfUpdateBase:
+    def with_dialect_options(self, **opt: Any) -> Self:
         """Add dialect options to this INSERT/UPDATE/DELETE object.
 
         e.g.::
@@ -457,10 +452,10 @@ class UpdateBase(
 
     @_generative
     def return_defaults(
-        self: SelfUpdateBase,
+        self,
         *cols: _DMLColumnArgument,
         supplemental_cols: Optional[Iterable[_DMLColumnArgument]] = None,
-    ) -> SelfUpdateBase:
+    ) -> Self:
         """Make use of a :term:`RETURNING` clause for the purpose
         of fetching server-side expressions and defaults, for supporting
         backends only.
@@ -777,11 +772,11 @@ class UpdateBase(
 
     @_generative
     def with_hint(
-        self: SelfUpdateBase,
+        self,
         text: str,
         selectable: Optional[_DMLTableArgument] = None,
         dialect_name: str = "*",
-    ) -> SelfUpdateBase:
+    ) -> Self:
         """Add a table hint for a single table to this
         INSERT/UPDATE/DELETE statement.
 
@@ -902,9 +897,6 @@ class UpdateBase(
         return meth(self)
 
 
-SelfValuesBase = typing.TypeVar("SelfValuesBase", bound="ValuesBase")
-
-
 class ValuesBase(UpdateBase):
     """Supplies support for :meth:`.ValuesBase.values` to
     INSERT and UPDATE constructs."""
@@ -950,13 +942,13 @@ class ValuesBase(UpdateBase):
         },
     )
     def values(
-        self: SelfValuesBase,
+        self,
         *args: Union[
             Dict[_DMLColumnArgument, Any],
             Sequence[Any],
         ],
         **kwargs: Any,
-    ) -> SelfValuesBase:
+    ) -> Self:
         r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
@@ -1133,9 +1125,6 @@ class ValuesBase(UpdateBase):
         return self
 
 
-SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
-
-
 class Insert(ValuesBase):
     """Represent an INSERT construct.
 
@@ -1182,7 +1171,7 @@ class Insert(ValuesBase):
         super().__init__(table)
 
     @_generative
-    def inline(self: SelfInsert) -> SelfInsert:
+    def inline(self) -> Self:
         """Make this :class:`_expression.Insert` construct "inline" .
 
         When set, no attempt will be made to retrieve the
@@ -1204,11 +1193,11 @@ class Insert(ValuesBase):
 
     @_generative
     def from_select(
-        self: SelfInsert,
+        self,
         names: List[str],
         select: Selectable,
         include_defaults: bool = True,
-    ) -> SelfInsert:
+    ) -> Self:
         """Return a new :class:`_expression.Insert` construct which represents
         an ``INSERT...FROM SELECT`` statement.
 
@@ -1378,17 +1367,12 @@ class ReturningInsert(Insert, TypedReturnsRows[_TP]):
     """
 
 
-SelfDMLWhereBase = typing.TypeVar("SelfDMLWhereBase", bound="DMLWhereBase")
-
-
 class DMLWhereBase:
     table: _DMLTableElement
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
 
     @_generative
-    def where(
-        self: SelfDMLWhereBase, *whereclause: _ColumnExpressionArgument[bool]
-    ) -> SelfDMLWhereBase:
+    def where(self, *whereclause: _ColumnExpressionArgument[bool]) -> Self:
         """Return a new construct with the given expression(s) added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
@@ -1416,9 +1400,7 @@ class DMLWhereBase:
             self._where_criteria += (where_criteria,)
         return self
 
-    def filter(
-        self: SelfDMLWhereBase, *criteria: roles.ExpressionElementRole[Any]
-    ) -> SelfDMLWhereBase:
+    def filter(self, *criteria: roles.ExpressionElementRole[Any]) -> Self:
         """A synonym for the :meth:`_dml.DMLWhereBase.where` method.
 
         .. versionadded:: 1.4
@@ -1430,7 +1412,7 @@ class DMLWhereBase:
     def _filter_by_zero(self) -> _DMLTableElement:
         return self.table
 
-    def filter_by(self: SelfDMLWhereBase, **kwargs: Any) -> SelfDMLWhereBase:
+    def filter_by(self, **kwargs: Any) -> Self:
         r"""apply the given filtering criterion as a WHERE clause
         to this select.
 
@@ -1459,9 +1441,6 @@ class DMLWhereBase:
         return BooleanClauseList._construct_for_whereclause(
             self._where_criteria
         )
-
-
-SelfUpdate = typing.TypeVar("SelfUpdate", bound="Update")
 
 
 class Update(DMLWhereBase, ValuesBase):
@@ -1501,9 +1480,7 @@ class Update(DMLWhereBase, ValuesBase):
         super().__init__(table)
 
     @_generative
-    def ordered_values(
-        self: SelfUpdate, *args: Tuple[_DMLColumnArgument, Any]
-    ) -> SelfUpdate:
+    def ordered_values(self, *args: Tuple[_DMLColumnArgument, Any]) -> Self:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
         resulting UPDATE statement.
@@ -1540,7 +1517,7 @@ class Update(DMLWhereBase, ValuesBase):
         return self
 
     @_generative
-    def inline(self: SelfUpdate) -> SelfUpdate:
+    def inline(self) -> Self:
         """Make this :class:`_expression.Update` construct "inline" .
 
         When set, SQL defaults present on :class:`_schema.Column`
@@ -1664,9 +1641,6 @@ class ReturningUpdate(Update, TypedReturnsRows[_TP]):
     .. versionadded:: 2.0
 
     """
-
-
-SelfDelete = typing.TypeVar("SelfDelete", bound="Delete")
 
 
 class Delete(DMLWhereBase, UpdateBase):

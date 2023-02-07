@@ -6,8 +6,6 @@
 # mypy: ignore-errors
 
 
-import typing
-
 from ... import exc
 from ... import util
 from ...sql import coercions
@@ -16,9 +14,7 @@ from ...sql import operators
 from ...sql import roles
 from ...sql.base import _generative
 from ...sql.base import Generative
-
-
-Selfmatch = typing.TypeVar("Selfmatch", bound="match")
+from ...util.typing import Self
 
 
 class match(Generative, elements.BinaryExpression):
@@ -110,7 +106,7 @@ class match(Generative, elements.BinaryExpression):
         super().__init__(left, against, operators.match_op, modifiers=flags)
 
     @_generative
-    def in_boolean_mode(self: Selfmatch) -> Selfmatch:
+    def in_boolean_mode(self) -> Self:
         """Apply the "IN BOOLEAN MODE" modifier to the MATCH expression.
 
         :return: a new :class:`_mysql.match` instance with modifications
@@ -121,7 +117,7 @@ class match(Generative, elements.BinaryExpression):
         return self
 
     @_generative
-    def in_natural_language_mode(self: Selfmatch) -> Selfmatch:
+    def in_natural_language_mode(self) -> Self:
         """Apply the "IN NATURAL LANGUAGE MODE" modifier to the MATCH
         expression.
 
@@ -133,7 +129,7 @@ class match(Generative, elements.BinaryExpression):
         return self
 
     @_generative
-    def with_query_expansion(self: Selfmatch) -> Selfmatch:
+    def with_query_expansion(self) -> Self:
         """Apply the "WITH QUERY EXPANSION" modifier to the MATCH expression.
 
         :return: a new :class:`_mysql.match` instance with modifications

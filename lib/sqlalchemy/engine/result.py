@@ -42,6 +42,7 @@ from ..sql.base import InPlaceGenerative
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import tuplegetter as tuplegetter
@@ -370,8 +371,6 @@ class _NoRow(Enum):
 
 
 _NO_ROW = _NoRow._NO_ROW
-
-SelfResultInternal = TypeVar("SelfResultInternal", bound="ResultInternal[Any]")
 
 
 class ResultInternal(InPlaceGenerative, Generic[_R]):
@@ -819,9 +818,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             return row
 
     @_generative
-    def _column_slices(
-        self: SelfResultInternal, indexes: Sequence[_KeyIndexType]
-    ) -> SelfResultInternal:
+    def _column_slices(self, indexes: Sequence[_KeyIndexType]) -> Self:
         real_result = (
             self._real_result
             if self._real_result
@@ -887,9 +884,6 @@ class _WithKeys:
         return self._metadata.keys
 
 
-SelfResult = TypeVar("SelfResult", bound="Result[Any]")
-
-
 class Result(_WithKeys, ResultInternal[Row[_TP]]):
     """Represent a set of database results.
 
@@ -929,7 +923,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
     def __init__(self, cursor_metadata: ResultMetaData):
         self._metadata = cursor_metadata
 
-    def __enter__(self: SelfResult) -> SelfResult:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
@@ -971,7 +965,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         raise NotImplementedError()
 
     @_generative
-    def yield_per(self: SelfResult, num: int) -> SelfResult:
+    def yield_per(self, num: int) -> Self:
         """Configure the row-fetching strategy to fetch ``num`` rows at a time.
 
         This impacts the underlying behavior of the result when iterating over
@@ -1023,9 +1017,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         return self
 
     @_generative
-    def unique(
-        self: SelfResult, strategy: Optional[_UniqueFilterType] = None
-    ) -> SelfResult:
+    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.Result`.
 
@@ -1065,9 +1057,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def columns(
-        self: SelfResultInternal, *col_expressions: _KeyIndexType
-    ) -> SelfResultInternal:
+    def columns(self, *col_expressions: _KeyIndexType) -> Self:
         r"""Establish the columns that should be returned in each row.
 
         This method may be used to limit the columns returned as well
@@ -1582,9 +1572,6 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         return MergedResult(self._metadata, (self,) + others)
 
 
-SelfFilterResult = TypeVar("SelfFilterResult", bound="FilterResult[Any]")
-
-
 class FilterResult(ResultInternal[_R]):
     """A wrapper for a :class:`_engine.Result` that returns objects other than
     :class:`_engine.Row` objects, such as dictionaries or scalar objects.
@@ -1607,14 +1594,14 @@ class FilterResult(ResultInternal[_R]):
 
     _real_result: Result[Any]
 
-    def __enter__(self: SelfFilterResult) -> SelfFilterResult:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, type_: Any, value: Any, traceback: Any) -> None:
         self._real_result.__exit__(type_, value, traceback)
 
     @_generative
-    def yield_per(self: SelfFilterResult, num: int) -> SelfFilterResult:
+    def yield_per(self, num: int) -> Self:
         """Configure the row-fetching strategy to fetch ``num`` rows at a time.
 
         The :meth:`_engine.FilterResult.yield_per` method is a pass through
@@ -1681,9 +1668,6 @@ class FilterResult(ResultInternal[_R]):
         return self._real_result._fetchmany_impl(size=size)
 
 
-SelfScalarResult = TypeVar("SelfScalarResult", bound="ScalarResult[Any]")
-
-
 class ScalarResult(FilterResult[_R]):
     """A wrapper for a :class:`_engine.Result` that returns scalar values
     rather than :class:`_row.Row` values.
@@ -1718,9 +1702,7 @@ class ScalarResult(FilterResult[_R]):
 
         self._unique_filter_state = real_result._unique_filter_state
 
-    def unique(
-        self: SelfScalarResult, strategy: Optional[_UniqueFilterType] = None
-    ) -> SelfScalarResult:
+    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.ScalarResult`.
 
@@ -1815,9 +1797,6 @@ class ScalarResult(FilterResult[_R]):
         return self._only_one_row(
             raise_for_second_row=True, raise_for_none=True, scalar=False
         )
-
-
-SelfTupleResult = TypeVar("SelfTupleResult", bound="TupleResult[Any]")
 
 
 class TupleResult(FilterResult[_R], util.TypingOnly):
@@ -1989,9 +1968,6 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
 
-SelfMappingResult = TypeVar("SelfMappingResult", bound="MappingResult")
-
-
 class MappingResult(_WithKeys, FilterResult[RowMapping]):
     """A wrapper for a :class:`_engine.Result` that returns dictionary values
     rather than :class:`_engine.Row` values.
@@ -2014,9 +1990,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
 
-    def unique(
-        self: SelfMappingResult, strategy: Optional[_UniqueFilterType] = None
-    ) -> SelfMappingResult:
+    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.MappingResult`.
 
@@ -2026,9 +2000,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def columns(
-        self: SelfMappingResult, *col_expressions: _KeyIndexType
-    ) -> SelfMappingResult:
+    def columns(self, *col_expressions: _KeyIndexType) -> Self:
         r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
@@ -2305,11 +2277,6 @@ def null_result() -> IteratorResult[Any]:
     return IteratorResult(SimpleResultMetaData([]), iter([]))
 
 
-SelfChunkedIteratorResult = TypeVar(
-    "SelfChunkedIteratorResult", bound="ChunkedIteratorResult[Any]"
-)
-
-
 class ChunkedIteratorResult(IteratorResult[_TP]):
     """An :class:`_engine.IteratorResult` that works from an
     iterator-producing callable.
@@ -2344,9 +2311,7 @@ class ChunkedIteratorResult(IteratorResult[_TP]):
         self.dynamic_yield_per = dynamic_yield_per
 
     @_generative
-    def yield_per(
-        self: SelfChunkedIteratorResult, num: int
-    ) -> SelfChunkedIteratorResult:
+    def yield_per(self, num: int) -> Self:
         # TODO: this throws away the iterator which may be holding
         # onto a chunk.   the yield_per cannot be changed once any
         # rows have been fetched.   either find a way to enforce this,

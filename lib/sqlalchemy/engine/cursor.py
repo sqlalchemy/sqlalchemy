@@ -51,6 +51,7 @@ from ..sql.compiler import RM_TYPE
 from ..sql.type_api import TypeEngine
 from ..util import compat
 from ..util.typing import Literal
+from ..util.typing import Self
 
 _UNPICKLED = util.symbol("unpickled")
 
@@ -1366,9 +1367,6 @@ class _NoResultMetaData(ResultMetaData):
 _NO_RESULT_METADATA = _NoResultMetaData()
 
 
-SelfCursorResult = TypeVar("SelfCursorResult", bound="CursorResult[Any]")
-
-
 def null_dml_result() -> IteratorResult[Any]:
     it: IteratorResult[Any] = IteratorResult(_NoResultMetaData(), iter([]))
     it._soft_close()
@@ -2133,7 +2131,7 @@ class CursorResult(Result[_T]):
         self._soft_close(hard=True)
 
     @_generative
-    def yield_per(self: SelfCursorResult, num: int) -> SelfCursorResult:
+    def yield_per(self, num: int) -> Self:
         self._yield_per = num
         self.cursor_strategy.yield_per(self, self.cursor, num)
         return self

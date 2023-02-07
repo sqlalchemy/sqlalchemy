@@ -594,11 +594,6 @@ _dispatch_lookup = HasTraversalDispatch._dispatch_lookup
 _generate_traversal_dispatch()
 
 
-SelfExternallyTraversible = TypeVar(
-    "SelfExternallyTraversible", bound="ExternallyTraversible"
-)
-
-
 class ExternallyTraversible(HasTraverseInternals, Visitable):
     __slots__ = ()
 
@@ -606,9 +601,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
 
     if typing.TYPE_CHECKING:
 
-        def _annotate(
-            self: SelfExternallyTraversible, values: _AnnotationDict
-        ) -> SelfExternallyTraversible:
+        def _annotate(self, values: _AnnotationDict) -> Self:
             ...
 
         def get_children(
@@ -616,7 +609,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
         ) -> Iterable[ExternallyTraversible]:
             ...
 
-    def _clone(self: Self, **kw: Any) -> Self:
+    def _clone(self, **kw: Any) -> Self:
         """clone this element"""
         raise NotImplementedError()
 

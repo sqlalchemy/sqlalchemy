@@ -247,11 +247,6 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
     _use_schema_map = True
 
 
-SelfHasConditionalDDL = TypeVar(
-    "SelfHasConditionalDDL", bound="HasConditionalDDL"
-)
-
-
 class HasConditionalDDL:
     """define a class that includes the :meth:`.HasConditionalDDL.ddl_if`
     method, allowing for conditional rendering of DDL.
@@ -266,11 +261,11 @@ class HasConditionalDDL:
     _ddl_if: Optional[ddl.DDLIf] = None
 
     def ddl_if(
-        self: SelfHasConditionalDDL,
+        self,
         dialect: Optional[str] = None,
         callable_: Optional[ddl.DDLIfCallable] = None,
         state: Optional[Any] = None,
-    ) -> SelfHasConditionalDDL:
+    ) -> Self:
         r"""apply a conditional DDL rule to this schema item.
 
         These rules work in a similar manner to the
@@ -3707,7 +3702,7 @@ class FetchedValue(SchemaEventTarget):
     def _copy(self) -> FetchedValue:
         return FetchedValue(self.for_update)
 
-    def _clone(self, for_update: bool) -> Any:
+    def _clone(self, for_update: bool) -> Self:
         n = self.__class__.__new__(self.__class__)
         n.__dict__.update(self.__dict__)
         n.__dict__.pop("column", None)
@@ -3881,10 +3876,10 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         "The :meth:`_schema.Constraint.copy` method is deprecated "
         "and will be removed in a future release.",
     )
-    def copy(self: Self, **kw: Any) -> Self:
+    def copy(self, **kw: Any) -> Self:
         return self._copy(**kw)  # type: ignore
 
-    def _copy(self: Self, **kw: Any) -> Self:
+    def _copy(self, **kw: Any) -> Self:
         raise NotImplementedError()
 
 
