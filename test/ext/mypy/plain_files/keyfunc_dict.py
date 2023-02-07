@@ -1,4 +1,5 @@
 import typing
+from typing import Dict
 from typing import Optional
 
 from sqlalchemy import ForeignKey
@@ -18,7 +19,7 @@ class Item(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    notes: Mapped[dict[str, "Note"]] = relationship(
+    notes: Mapped[Dict[str, "Note"]] = relationship(
         collection_class=attribute_keyed_dict("keyword"),
         cascade="all, delete-orphan",
     )
