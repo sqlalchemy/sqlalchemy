@@ -59,36 +59,6 @@ of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=
     validations:
       required: true
 
-  - type: textarea
-    attributes:
-      label: To Reproduce
-      description: "
-Provide your [Minimal, Complete, and Verifiable](https://stackoverflow.com/help/mcve) example here.
-If you need help creating one, you can model yours after the MCV code shared in one of our previous
-[well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve%22)"
-      placeholder: "# Insert code here (text area already python formatted)"
-      render: python
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Error
-      description: "
-Provide the complete text of any errors received **including the complete stack trace**.
-If the message is a warning, run your program with the ``-Werror`` flag:   ``python -Werror myprogram.py``
-"
-      placeholder: "# Copy the complete stack trace and error message here, including SQL log output if applicable."
-      value: "\
-```
-
-# Copy the complete stack trace and error message here, including SQL log output if applicable.
-
-```
-"
-    validations:
-      required: true
-
   - type: input
     id: relevant_documentation
     attributes:
@@ -139,6 +109,36 @@ instead.
     attributes:
       label: Operating system
       description: Linux, Windows, OSX
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: To Reproduce
+      description: "
+Provide your [Minimal, Complete, and Verifiable](https://stackoverflow.com/help/mcve) example here.
+If you need help creating one, you can model yours after the MCV code shared in one of our previous
+[well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve%22)"
+      placeholder: "# Insert code here (text area already python formatted)"
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Error
+      description: "
+Provide the complete text of any errors received **including the complete stack trace**.
+If the message is a warning, run your program with the ``-Werror`` flag:   ``python -Werror myprogram.py``
+"
+      placeholder: "# Copy the complete stack trace and error message here, including SQL log output if applicable."
+      value: "\
+```
+
+# Copy the complete stack trace and error message here, including SQL log output if applicable.
+
+```
+"
     validations:
       required: true
 
