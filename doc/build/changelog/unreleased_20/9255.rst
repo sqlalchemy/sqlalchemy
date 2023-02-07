@@ -1,5 +1,5 @@
 .. change::
     :tags: typing
-    :tickets: 9255
+    :tickets: 9254
 
     Remove ``typing.Self`` workaround.
