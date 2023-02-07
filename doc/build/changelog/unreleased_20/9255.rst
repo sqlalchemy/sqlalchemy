@@ -2,4 +2,4 @@
     :tags: typing
     :tickets: 9254
 
-    Remove ``typing.Self`` workaround.
+    Remove ``typing.Self`` workaround. Pull request courtesy Yurii Karabas.

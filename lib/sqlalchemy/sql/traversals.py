@@ -199,9 +199,7 @@ class GenerativeOnTraversal(HasShallowCopy):
 
     __slots__ = ()
 
-    def _generate(
-        self,
-    ) -> Self:
+    def _generate(self) -> Self:
         cls = self.__class__
         s = cls.__new__(cls)
         self._shallow_copy_to(s)
