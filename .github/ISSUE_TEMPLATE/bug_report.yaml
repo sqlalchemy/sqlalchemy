@@ -12,7 +12,8 @@ body:
 **If you are writing new SQLAlchemy code and are observing a behavior that you did not expect,
 or if you are new to SQLAlchemy overall, please open a
 [discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
-instead of an issue report.  The vast majority of new issues are converted to discussions**
+instead of an issue report.  The VAST MAJORITY of issues are converted to discussions
+as they are not bugs.**
 
 [START A NEW USAGE QUESTIONS DISCUSSION HERE](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
 
@@ -89,15 +90,28 @@ If the message is a warning, run your program with the ``-Werror`` flag:   ``pyt
       required: true
 
   - type: input
-    id: sqlaversion
+    id: relevant_documentation
     attributes:
-      label: SQLAlchemy Version in Use
-      description: the full version of SQLAlchemy in use
+      label: Link from https://docs.sqlalchemy.org which documents the behavior that is expected
+      description:  "
+Please make sure the behavior you are seeing is definitely in contradiction
+to what's documented as the correct behavior.  If unsure, open a
+[discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+instead.
+"
     validations:
       required: true
 
   - type: input
-    id: dbapiversion
+    id: sqlalchemy_version
+    attributes:
+      label: SQLAlchemy Version in Use
+      description: e.g. 1.4.42, 2.0.2, etc
+    validations:
+      required: true
+
+  - type: input
+    id: dbapi_version
     attributes:
       label: DBAPI Version
       description: the DBAPI (database driver) version
@@ -105,10 +119,18 @@ If the message is a warning, run your program with the ``-Werror`` flag:   ``pyt
       required: true
 
   - type: input
-    id: database
+    id: database_version
     attributes:
       label: Database Vendor and Version
       description: e.g. SQLite, PostgreSQL 12, MariaDB 8
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+      description: assumes cpython unless otherwise stated, e.g. 3.10, 3.11, pypy
     validations:
       required: true
 
