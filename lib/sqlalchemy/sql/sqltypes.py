@@ -1636,7 +1636,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         # make a new Enum that looks like this one.
         # pop the "name" so that it gets generated based on the enum
         # arguments or other rules
-        kw = self._make_enum_kw({})
+        kw = self._make_enum_kw({})  # type: ignore
 
         kw.pop("name", None)
         if native_enum is False:
@@ -1758,7 +1758,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self, self._generic_type_affinity, *args, _disable_warnings=True
         )
 
-    def _make_enum_kw(self, kw):
+    def _make_enum_kw(self, kw: Dict[Any, Any]) -> Dict[Any, Any]:
         kw.setdefault("validate_strings", self.validate_strings)
         kw.setdefault("name", self.name)
         kw.setdefault("schema", self.schema)
@@ -1771,12 +1771,16 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         kw.setdefault("omit_aliases", self._omit_aliases)
         return kw
 
-    def adapt_to_emulated(self, impltype, **kw):
+    def adapt_to_emulated(
+        self,
+        impltype: Union[Type[TypeEngine[Any]], Type[TypeEngineMixin]],
+        **kw: Any,
+    ) -> TypeEngine[Any]:
         self._make_enum_kw(kw)
         kw["_disable_warnings"] = True
         kw.setdefault("_create_events", False)
         assert "_enums" in kw
-        return impltype(**kw)
+        return impltype(**kw)  # type: ignore
 
     def adapt(  # type: ignore
         self, impltype: Type[_TE], **kw: Any
