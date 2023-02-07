@@ -83,16 +83,16 @@ instead.
   - type: input
     id: dbapi_version
     attributes:
-      label: DBAPI Version
-      description: the DBAPI (database driver) version
+      label: DBAPI (i.e. the database driver)
+      description: examples include psycopg2, pyodbc, pysqlite, mysqlclient, asyncpg
     validations:
       required: true
 
   - type: input
     id: database_version
     attributes:
-      label: Database Vendor and Version
-      description: e.g. SQLite, PostgreSQL 12, MariaDB 8
+      label: Database Vendor and Major Version
+      description: e.g. SQLite, PostgreSQL 12, MySQL 8, MariaDB 10.10, etc
     validations:
       required: true
 
