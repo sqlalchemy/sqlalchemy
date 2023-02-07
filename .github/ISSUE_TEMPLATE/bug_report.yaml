@@ -62,7 +62,7 @@ of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=
   - type: input
     id: relevant_documentation
     attributes:
-      label: Link from https://docs.sqlalchemy.org which documents the behavior that is expected
+      label: Optional link from https://docs.sqlalchemy.org which documents the behavior that is expected
       description:  "
 Please make sure the behavior you are seeing is definitely in contradiction
 to what's documented as the correct behavior.  If unsure, open a
@@ -70,7 +70,7 @@ to what's documented as the correct behavior.  If unsure, open a
 instead.
 "
     validations:
-      required: true
+      required: false
 
   - type: input
     id: sqlalchemy_version
