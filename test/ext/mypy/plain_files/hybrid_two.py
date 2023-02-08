@@ -89,3 +89,21 @@ if typing.TYPE_CHECKING:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
     reveal_type(expr3)
+
+# test #9268
+
+
+class Foo(Base):
+    val: bool
+
+    def needs_update_getter(self) -> bool:
+        return self.val
+        ...
+
+    def needs_update_setter(self, value: bool) -> None:
+        self.val = value
+
+    needs_update: hybrid_property[bool] = hybrid_property(
+        needs_update_getter,
+        needs_update_setter,
+    )
