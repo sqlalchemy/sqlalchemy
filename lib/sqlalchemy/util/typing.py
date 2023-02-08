@@ -48,6 +48,7 @@ if True:  # zimports removes the tailing comments
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
     from typing_extensions import TypedDict as TypedDict  # 3.8
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
+    from typing_extensions import Self as Self  # 3.11
 
 
 _T = TypeVar("_T", bound=Any)
@@ -57,7 +58,6 @@ _KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
-Self = TypeVar("Self", bound=Any)
 
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,

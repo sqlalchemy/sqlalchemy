@@ -53,6 +53,7 @@ from ..sql import visitors
 from ..sql.base import _generative
 from ..util.typing import Final
 from ..util.typing import Literal
+from ..util.typing import Self
 
 _RELATIONSHIP_TOKEN: Final[Literal["relationship"]] = "relationship"
 _COLUMN_TOKEN: Final[Literal["column"]] = "column"
@@ -75,7 +76,6 @@ if typing.TYPE_CHECKING:
     from ..sql.cache_key import _CacheKeyTraversalType
     from ..sql.cache_key import CacheKey
 
-Self_AbstractLoad = TypeVar("Self_AbstractLoad", bound="_AbstractLoad")
 
 _AttrType = Union[str, "QueryableAttribute[Any]"]
 
@@ -92,11 +92,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     propagate_to_loaders: bool
 
     def contains_eager(
-        self: Self_AbstractLoad,
+        self,
         attr: _AttrType,
         alias: Optional[_FromClauseArgument] = None,
         _is_chain: bool = False,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         r"""Indicate that the given attribute should be eagerly loaded from
         columns stated manually in the query.
 
@@ -164,9 +164,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
         return cloned
 
-    def load_only(
-        self: Self_AbstractLoad, *attrs: _AttrType, raiseload: bool = False
-    ) -> Self_AbstractLoad:
+    def load_only(self, *attrs: _AttrType, raiseload: bool = False) -> Self:
         r"""Indicate that for a particular entity, only the given list
         of column-based attribute names should be loaded; all others will be
         deferred.
@@ -234,10 +232,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return cloned
 
     def joinedload(
-        self: Self_AbstractLoad,
+        self,
         attr: _AttrType,
         innerjoin: Optional[bool] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         """Indicate that the given attribute should be loaded using joined
         eager loading.
 
@@ -332,9 +330,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
         return loader
 
-    def subqueryload(
-        self: Self_AbstractLoad, attr: _AttrType
-    ) -> Self_AbstractLoad:
+    def subqueryload(self, attr: _AttrType) -> Self:
         """Indicate that the given attribute should be loaded using
         subquery eager loading.
 
@@ -366,10 +362,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "subquery"})
 
     def selectinload(
-        self: Self_AbstractLoad,
+        self,
         attr: _AttrType,
         recursion_depth: Optional[int] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         """Indicate that the given attribute should be loaded using
         SELECT IN eager loading.
 
@@ -421,9 +417,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             opts={"recursion_depth": recursion_depth},
         )
 
-    def lazyload(
-        self: Self_AbstractLoad, attr: _AttrType
-    ) -> Self_AbstractLoad:
+    def lazyload(self, attr: _AttrType) -> Self:
         """Indicate that the given attribute should be loaded using "lazy"
         loading.
 
@@ -440,10 +434,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(attr, {"lazy": "select"})
 
     def immediateload(
-        self: Self_AbstractLoad,
+        self,
         attr: _AttrType,
         recursion_depth: Optional[int] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         """Indicate that the given attribute should be loaded using
         an immediate load with a per-attribute SELECT statement.
 
@@ -488,7 +482,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
         return loader
 
-    def noload(self: Self_AbstractLoad, attr: _AttrType) -> Self_AbstractLoad:
+    def noload(self, attr: _AttrType) -> Self:
         """Indicate that the given relationship attribute should remain
         unloaded.
 
@@ -514,9 +508,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         return self._set_relationship_strategy(attr, {"lazy": "noload"})
 
-    def raiseload(
-        self: Self_AbstractLoad, attr: _AttrType, sql_only: bool = False
-    ) -> Self_AbstractLoad:
+    def raiseload(self, attr: _AttrType, sql_only: bool = False) -> Self:
         """Indicate that the given attribute should raise an error if accessed.
 
         A relationship attribute configured with :func:`_orm.raiseload` will
@@ -557,9 +549,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             attr, {"lazy": "raise_on_sql" if sql_only else "raise"}
         )
 
-    def defaultload(
-        self: Self_AbstractLoad, attr: _AttrType
-    ) -> Self_AbstractLoad:
+    def defaultload(self, attr: _AttrType) -> Self:
         """Indicate an attribute should load using its default loader style.
 
         This method is used to link to other loader options further into
@@ -590,9 +580,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         """
         return self._set_relationship_strategy(attr, None)
 
-    def defer(
-        self: Self_AbstractLoad, key: _AttrType, raiseload: bool = False
-    ) -> Self_AbstractLoad:
+    def defer(self, key: _AttrType, raiseload: bool = False) -> Self:
         r"""Indicate that the given column-oriented attribute should be
         deferred, e.g. not loaded until accessed.
 
@@ -652,7 +640,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             strategy["raiseload"] = True
         return self._set_column_strategy((key,), strategy)
 
-    def undefer(self: Self_AbstractLoad, key: _AttrType) -> Self_AbstractLoad:
+    def undefer(self, key: _AttrType) -> Self:
         r"""Indicate that the given column-oriented attribute should be
         undeferred, e.g. specified within the SELECT statement of the entity
         as a whole.
@@ -694,7 +682,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             (key,), {"deferred": False, "instrument": True}
         )
 
-    def undefer_group(self: Self_AbstractLoad, name: str) -> Self_AbstractLoad:
+    def undefer_group(self, name: str) -> Self:
         """Indicate that columns within the given deferred group name should be
         undeferred.
 
@@ -727,10 +715,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
 
     def with_expression(
-        self: Self_AbstractLoad,
+        self,
         key: _AttrType,
         expression: _ColumnExpressionArgument[Any],
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         r"""Apply an ad-hoc SQL expression to a "deferred expression"
         attribute.
 
@@ -765,9 +753,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             (key,), {"query_expression": True}, opts={"expression": expression}
         )
 
-    def selectin_polymorphic(
-        self: Self_AbstractLoad, classes: Iterable[Type[Any]]
-    ) -> Self_AbstractLoad:
+    def selectin_polymorphic(self, classes: Iterable[Type[Any]]) -> Self:
         """Indicate an eager load should take place for all attributes
         specific to a subclass.
 
@@ -811,13 +797,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     @_generative
     def _set_relationship_strategy(
-        self: Self_AbstractLoad,
+        self,
         attr: _AttrType,
         strategy: Optional[_StrategySpec],
         propagate_to_loaders: bool = True,
         opts: Optional[_OptsType] = None,
         _reconcile_to_other: Optional[bool] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(
@@ -832,11 +818,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     @_generative
     def _set_column_strategy(
-        self: Self_AbstractLoad,
+        self,
         attrs: Tuple[_AttrType, ...],
         strategy: Optional[_StrategySpec],
         opts: Optional[_OptsType] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(
@@ -850,11 +836,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     @_generative
     def _set_generic_strategy(
-        self: Self_AbstractLoad,
+        self,
         attrs: Tuple[_AttrType, ...],
         strategy: _StrategySpec,
         _reconcile_to_other: Optional[bool] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         strategy_key = self._coerce_strat(strategy)
         self._clone_for_bind_strategy(
             attrs,
@@ -867,8 +853,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     @_generative
     def _set_class_strategy(
-        self: Self_AbstractLoad, strategy: _StrategySpec, opts: _OptsType
-    ) -> Self_AbstractLoad:
+        self, strategy: _StrategySpec, opts: _OptsType
+    ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(None, strategy_key, None, opts=opts)
@@ -883,9 +869,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         """
         raise NotImplementedError()
 
-    def options(
-        self: Self_AbstractLoad, *opts: _AbstractLoad
-    ) -> Self_AbstractLoad:
+    def options(self, *opts: _AbstractLoad) -> Self:
         r"""Apply a series of options as sub-options to this
         :class:`_orm._AbstractLoad` object.
 
@@ -895,7 +879,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         raise NotImplementedError()
 
     def _clone_for_bind_strategy(
-        self: Self_AbstractLoad,
+        self,
         attrs: Optional[Tuple[_AttrType, ...]],
         strategy: Optional[_StrategyKey],
         wildcard_key: Optional[_WildcardKeyType],
@@ -903,7 +887,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
-    ) -> Self_AbstractLoad:
+    ) -> Self:
         raise NotImplementedError()
 
     def process_compile_state_replaced_entities(
@@ -1003,9 +987,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             else:
                 return None
         return to_chop[i + 1 :]
-
-
-SelfLoad = TypeVar("SelfLoad", bound="Load")
 
 
 class Load(_AbstractLoad):
@@ -1191,7 +1172,7 @@ class Load(_AbstractLoad):
             parent.context += cloned.context
 
     @_generative
-    def options(self: SelfLoad, *opts: _AbstractLoad) -> SelfLoad:
+    def options(self, *opts: _AbstractLoad) -> Self:
         r"""Apply a series of options as sub-options to this
         :class:`_orm.Load`
         object.
@@ -1235,7 +1216,7 @@ class Load(_AbstractLoad):
         return self
 
     def _clone_for_bind_strategy(
-        self: SelfLoad,
+        self,
         attrs: Optional[Tuple[_AttrType, ...]],
         strategy: Optional[_StrategyKey],
         wildcard_key: Optional[_WildcardKeyType],
@@ -1243,7 +1224,7 @@ class Load(_AbstractLoad):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
-    ) -> SelfLoad:
+    ) -> Self:
         # for individual strategy that needs to propagate, set the whole
         # Load container to also propagate, so that it shows up in
         # InstanceState.load_options
@@ -1332,9 +1313,6 @@ class Load(_AbstractLoad):
         self._shallow_from_dict(state)
 
 
-SelfWildcardLoad = TypeVar("SelfWildcardLoad", bound="_WildcardLoad")
-
-
 class _WildcardLoad(_AbstractLoad):
     """represent a standalone '*' load operation"""
 
@@ -1385,9 +1363,7 @@ class _WildcardLoad(_AbstractLoad):
         if opts:
             self.local_opts = util.immutabledict(opts)
 
-    def options(
-        self: SelfWildcardLoad, *opts: _AbstractLoad
-    ) -> SelfWildcardLoad:
+    def options(self, *opts: _AbstractLoad) -> Self:
         raise NotImplementedError("Star option does not support sub-options")
 
     def _apply_to_parent(self, parent: Load) -> None:

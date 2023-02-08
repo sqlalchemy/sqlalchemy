@@ -43,7 +43,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Self
+
 
 if TYPE_CHECKING:
     from .elements import BindParameter
@@ -368,7 +368,7 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _copy_internals(
-        self: Self,
+        self,
         clone: _CloneCallableType = _clone,
         deferred_copy_internals: Optional[_CloneCallableType] = None,
         **kw: Any,

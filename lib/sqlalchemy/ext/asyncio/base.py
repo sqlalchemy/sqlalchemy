@@ -22,24 +22,19 @@ from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Tuple
-from typing import Type
 from typing import TypeVar
 import weakref
 
 from . import exc as async_exc
 from ... import util
 from ...util.typing import Literal
+from ...util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 
 _PT = TypeVar("_PT", bound=Any)
-
-
-SelfReversibleProxy = TypeVar(
-    "SelfReversibleProxy", bound="ReversibleProxy[Any]"
-)
 
 
 class ReversibleProxy(Generic[_PT]):
@@ -73,38 +68,36 @@ class ReversibleProxy(Generic[_PT]):
 
     @classmethod
     def _target_gced(
-        cls: Type[SelfReversibleProxy],
+        cls,
         ref: weakref.ref[_PT],
-        proxy_ref: Optional[weakref.ref[SelfReversibleProxy]] = None,
+        proxy_ref: Optional[weakref.ref[Self]] = None,
     ) -> None:
         cls._proxy_objects.pop(ref, None)
 
     @classmethod
-    def _regenerate_proxy_for_target(
-        cls: Type[SelfReversibleProxy], target: _PT
-    ) -> SelfReversibleProxy:
+    def _regenerate_proxy_for_target(cls, target: _PT) -> Self:
         raise NotImplementedError()
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls: Type[SelfReversibleProxy],
+        cls,
         target: _PT,
         regenerate: Literal[True] = ...,
-    ) -> SelfReversibleProxy:
+    ) -> Self:
         ...
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls: Type[SelfReversibleProxy], target: _PT, regenerate: bool = True
-    ) -> Optional[SelfReversibleProxy]:
+        cls, target: _PT, regenerate: bool = True
+    ) -> Optional[Self]:
         ...
 
     @classmethod
     def _retrieve_proxy_for_target(
-        cls: Type[SelfReversibleProxy], target: _PT, regenerate: bool = True
-    ) -> Optional[SelfReversibleProxy]:
+        cls, target: _PT, regenerate: bool = True
+    ) -> Optional[Self]:
         try:
             proxy_ref = cls._proxy_objects[weakref.ref(target)]
         except KeyError:
@@ -120,24 +113,17 @@ class ReversibleProxy(Generic[_PT]):
             return None
 
 
-SelfStartableContext = TypeVar(
-    "SelfStartableContext", bound="StartableContext[Any]"
-)
-
-
 class StartableContext(Awaitable[_T_co], abc.ABC):
     __slots__ = ()
 
     @abc.abstractmethod
-    async def start(
-        self: SelfStartableContext, is_ctxmanager: bool = False
-    ) -> _T_co:
+    async def start(self, is_ctxmanager: bool = False) -> _T_co:
         raise NotImplementedError()
 
     def __await__(self) -> Generator[Any, Any, _T_co]:
         return self.start().__await__()
 
-    async def __aenter__(self: SelfStartableContext) -> _T_co:
+    async def __aenter__(self) -> _T_co:
         return await self.start(is_ctxmanager=True)  # type: ignore
 
     @abc.abstractmethod

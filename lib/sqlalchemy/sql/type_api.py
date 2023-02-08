@@ -37,6 +37,7 @@ from .visitors import Visitable
 from .. import exc
 from .. import util
 from ..util.typing import Protocol
+from ..util.typing import Self
 from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
@@ -68,7 +69,6 @@ _CT = TypeVar("_CT", bound=Any)
 _MatchedOnType = Union["GenericProtocol[Any]", NewType, Type[Any]]
 
 # replace with pep-673 when applicable
-SelfTypeEngine = typing.TypeVar("SelfTypeEngine", bound="TypeEngine[Any]")
 
 
 class _LiteralProcessorType(Protocol[_T_co]):
@@ -293,7 +293,7 @@ class TypeEngine(Visitable, Generic[_T]):
         str, TypeEngine[Any]
     ] = util.EMPTY_DICT
 
-    def evaluates_none(self: SelfTypeEngine) -> SelfTypeEngine:
+    def evaluates_none(self) -> Self:
         """Return a copy of this type which has the
         :attr:`.should_evaluate_none` flag set to True.
 
@@ -345,7 +345,7 @@ class TypeEngine(Visitable, Generic[_T]):
         typ.should_evaluate_none = True
         return typ
 
-    def copy(self: SelfTypeEngine, **kw: Any) -> SelfTypeEngine:
+    def copy(self, **kw: Any) -> Self:
         return self.adapt(self.__class__)
 
     def compare_against_backend(
@@ -646,10 +646,10 @@ class TypeEngine(Visitable, Generic[_T]):
         raise NotImplementedError()
 
     def with_variant(
-        self: SelfTypeEngine,
+        self,
         type_: _TypeEngineArgument[Any],
         *dialect_names: str,
-    ) -> SelfTypeEngine:
+    ) -> Self:
         r"""Produce a copy of this type object that will utilize the given
         type when applied to the dialect of the given name.
 
@@ -711,9 +711,7 @@ class TypeEngine(Visitable, Generic[_T]):
         )
         return new_type
 
-    def _resolve_for_literal(
-        self: SelfTypeEngine, value: Any
-    ) -> SelfTypeEngine:
+    def _resolve_for_literal(self, value: Any) -> Self:
         """adjust this type given a literal Python value that will be
         stored in a bound parameter.
 
@@ -731,11 +729,11 @@ class TypeEngine(Visitable, Generic[_T]):
         return self
 
     def _resolve_for_python_type(
-        self: SelfTypeEngine,
+        self,
         python_type: Type[Any],
         matched_on: _MatchedOnType,
         matched_on_flattened: Type[Any],
-    ) -> Optional[SelfTypeEngine]:
+    ) -> Optional[Self]:
         """given a Python type (e.g. ``int``, ``str``, etc. ) return an
         instance of this :class:`.TypeEngine` that's appropriate for this type.
 
@@ -1515,9 +1513,6 @@ class NativeForEmulated(TypeEngineMixin):
     #        ...
 
 
-SelfTypeDecorator = TypeVar("SelfTypeDecorator", bound="TypeDecorator[Any]")
-
-
 class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     """Allows the creation of types which add additional functionality
     to an existing type.
@@ -2229,7 +2224,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         """
         return self
 
-    def copy(self: SelfTypeDecorator, **kw: Any) -> SelfTypeDecorator:
+    def copy(self, **kw: Any) -> Self:
         """Produce a copy of this :class:`.TypeDecorator` instance.
 
         This is a shallow copy and is provided to fulfill part of
