@@ -764,7 +764,7 @@ class _HybridGetterType(Protocol[_T_co]):
 
 
 class _HybridSetterType(Protocol[_T_con]):
-    def __call__(self, instance: Any, value: _T_con) -> None:
+    def __call__(s, self: Any, value: _T_con) -> None:
         ...
 
 
