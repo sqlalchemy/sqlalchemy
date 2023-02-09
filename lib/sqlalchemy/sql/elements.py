@@ -547,7 +547,6 @@ class ClauseElement(
         optionaldict: Optional[Mapping[str, Any]],
         kwargs: Dict[str, Any],
     ) -> Self:
-
         if optionaldict:
             kwargs.update(optionaldict)
 
@@ -2780,7 +2779,6 @@ class OperatorExpression(ColumnElement[_T]):
         negate: Optional[OperatorType] = None,
         modifiers: Optional[Mapping[str, Any]] = None,
     ) -> OperatorExpression[_T]:
-
         if operators.is_associative(op):
             assert (
                 negate is None
@@ -2805,7 +2803,9 @@ class OperatorExpression(ColumnElement[_T]):
 
             if multi:
                 return ExpressionClauseList._construct_for_list(
-                    op, type_, *(left_flattened + right_flattened)
+                    op,
+                    type_,
+                    *(left_flattened + right_flattened),
                 )
 
         return BinaryExpression(
@@ -2886,7 +2886,12 @@ class ExpressionClauseList(OperatorExpression[_T]):
     ) -> ExpressionClauseList[_T]:
         self = cls.__new__(cls)
         self.group = group
-        self.clauses = clauses
+        if group:
+            self.clauses = tuple(
+                c.self_group(against=operator) for c in clauses
+            )
+        else:
+            self.clauses = clauses
         self.operator = operator
         self.type = type_
         return self
@@ -2961,7 +2966,6 @@ class BooleanClauseList(ExpressionClauseList[bool]):
         *clauses: Any,
         **kw: Any,
     ) -> ColumnElement[Any]:
-
         if initial_clause is _NoArg.NO_ARG:
             # no elements period.  deprecated use case.  return an empty
             # ClauseList construct that generates nothing unless it has
@@ -3233,7 +3237,6 @@ class Case(ColumnElement[_T]):
         value: Optional[Any] = None,
         else_: Optional[Any] = None,
     ):
-
         new_whens: Iterable[Any] = coercions._expression_collection_was_a_list(
             "whens", "case", whens
         )
@@ -4908,7 +4911,6 @@ class CollationClause(ColumnElement[str]):
 
 
 class _IdentifiedClause(Executable, ClauseElement):
-
     __visit_name__ = "identified"
 
     def __init__(self, ident):
@@ -5195,7 +5197,6 @@ class _anonymous_label(_truncated_label):
         enclosing_label: Optional[str] = None,
         sanitize_key: bool = False,
     ) -> _anonymous_label:
-
         # need to escape chars that interfere with format
         # strings in any case, issue #8724
         body = re.sub(r"[%\(\) \$]+", "_", body)
