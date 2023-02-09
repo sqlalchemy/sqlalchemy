@@ -10,7 +10,25 @@
 
 .. changelog::
     :version: 2.0.3
-    :include_notes_from: unreleased_20
+    :released: February 9, 2023
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 9254
+
+        Remove ``typing.Self`` workaround, now using :pep:`673` for most methods
+        that return ``Self``. Pull request courtesy Yurii Karabas.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 9271
+
+        Fixed critical regression in SQL expression formulation in the 2.0 series
+        due to :ticket:`7744` which improved support for SQL expressions that
+        contained many elements against the same operator repeatedly; parenthesis
+        grouping would be lost with expression elements beyond the first two
+        elements.
+
 
 .. changelog::
     :version: 2.0.2
