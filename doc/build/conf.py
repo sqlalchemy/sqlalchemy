@@ -51,6 +51,12 @@ copybutton_prompt_text = (
 )
 copybutton_prompt_is_regexp = True
 
+# workaround
+# https://sphinx-copybutton-exclude-issue.readthedocs.io/en/v0.5.1-go/
+# https://github.com/executablebooks/sphinx-copybutton/issues/185
+# while we're at it, add our SQL css classes to also not be copied
+copybutton_exclude = ".linenos .show_sql .show_sql_print .popup_sql"
+
 nitpicky = False
 
 # The suffix of source filenames.
