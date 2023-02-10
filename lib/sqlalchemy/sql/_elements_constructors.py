@@ -757,10 +757,9 @@ def case(
      .. versionchanged:: 1.4 the :func:`_sql.case`
         function now accepts the series of WHEN conditions positionally
 
-     In the first form, it accepts a list of 2-tuples; each 2-tuple
-     consists of ``(<sql expression>, <value>)``, where the SQL
-     expression is a boolean expression and "value" is a resulting value,
-     e.g.::
+     In the first form, it accepts multiple 2-tuples passed as positional arguments;
+     each 2-tuple consists of ``(<sql expression>, <value>)``, where the SQL expression
+     is a boolean expression and "value" is a resulting value, e.g.::
 
         case(
             (users_table.c.name == 'wendy', 'W'),

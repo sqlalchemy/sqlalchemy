@@ -409,7 +409,7 @@ accommodates two arguments::
     @compiles(greatest, 'oracle')
     def case_greatest(element, compiler, **kw):
         arg1, arg2 = list(element.clauses)
-        return compiler.process(case([(arg1 > arg2, arg1)], else_=arg2), **kw)
+        return compiler.process(case((arg1 > arg2, arg1), else_=arg2), **kw)
 
 Example usage::
 
