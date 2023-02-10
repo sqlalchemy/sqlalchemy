@@ -39,6 +39,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -2742,6 +2743,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         s = select(User).from_statement(q)
         sess = fixture_session()
         res = sess.scalars(s).one()
+        in_("name", res.__dict__)
         eq_(res, User(name="sandy", id=7))
 
     def test_unrelated_column_col_prop(self, decl_base):

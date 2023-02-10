@@ -89,6 +89,7 @@ class InsertStmtTest(fixtures.TestBase):
             [("d3", 5), ("d4", 6)],
         )
 
+    @testing.requires.insert_returning
     def test_insert_from_select_col_property(self, decl_base):
         """test #9273"""
 
