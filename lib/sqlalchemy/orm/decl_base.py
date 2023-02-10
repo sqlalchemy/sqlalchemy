@@ -126,6 +126,7 @@ class _DataclassArguments(TypedDict):
     unsafe_hash: Union[_NoArg, bool]
     match_args: Union[_NoArg, bool]
     kw_only: Union[_NoArg, bool]
+    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
 
 
 def _declared_mapping_info(
@@ -1099,26 +1100,81 @@ class _ClassScanMapperConfig(_MapperConfig):
         for k, v in defaults.items():
             setattr(self.cls, k, v)
 
-        self.cls.__annotations__ = annotations
-
         self._apply_dataclasses_to_any_class(
-            dataclass_setup_arguments, self.cls
+            dataclass_setup_arguments, self.cls, annotations
         )
 
     @classmethod
+    def _update_annotations_for_non_mapped_class(
+        cls, klass: Type[_O]
+    ) -> Mapping[str, _AnnotationScanType]:
+        cls_annotations = util.get_annotations(klass)
+
+        new_anno = {}
+        for name, annotation in cls_annotations.items():
+            if _is_mapped_annotation(annotation, klass, klass):
+
+                extracted = _extract_mapped_subtype(
+                    annotation,
+                    klass,
+                    klass.__module__,
+                    name,
+                    type(None),
+                    required=False,
+                    is_dataclass_field=False,
+                    expect_mapped=False,
+                )
+                if extracted:
+                    inner, _ = extracted
+                    new_anno[name] = inner
+            else:
+                new_anno[name] = annotation
+        return new_anno
+
+    @classmethod
     def _apply_dataclasses_to_any_class(
-        cls, dataclass_setup_arguments: _DataclassArguments, klass: Type[_O]
+        cls,
+        dataclass_setup_arguments: _DataclassArguments,
+        klass: Type[_O],
+        use_annotations: Mapping[str, _AnnotationScanType],
     ) -> None:
         cls._assert_dc_arguments(dataclass_setup_arguments)
 
-        dataclasses.dataclass(
-            klass,
-            **{
-                k: v
-                for k, v in dataclass_setup_arguments.items()
-                if v is not _NoArg.NO_ARG
-            },
-        )
+        dataclass_callable = dataclass_setup_arguments["dataclass_callable"]
+        if dataclass_callable is _NoArg.NO_ARG:
+            dataclass_callable = dataclasses.dataclass
+
+        restored: Optional[Any]
+
+        if use_annotations:
+            # apply constructed annotations that should look "normal" to a
+            # dataclasses callable, based on the fields present.  This
+            # means remove the Mapped[] container and ensure all Field
+            # entries have an annotation
+            restored = getattr(klass, "__annotations__", None)
+            klass.__annotations__ = cast("Dict[str, Any]", use_annotations)
+        else:
+            restored = None
+
+        try:
+            dataclass_callable(
+                klass,
+                **{
+                    k: v
+                    for k, v in dataclass_setup_arguments.items()
+                    if v is not _NoArg.NO_ARG and k != "dataclass_callable"
+                },
+            )
+        finally:
+            # restore original annotations outside of the dataclasses
+            # process; for mixins and __abstract__ superclasses, SQLAlchemy
+            # Declarative will need to see the Mapped[] container inside the
+            # annotations in order to map subclasses
+            if use_annotations:
+                if restored is None:
+                    del klass.__annotations__
+                else:
+                    klass.__annotations__ = restored
 
     @classmethod
     def _assert_dc_arguments(cls, arguments: _DataclassArguments) -> None:
@@ -1130,6 +1186,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             "unsafe_hash",
             "kw_only",
             "match_args",
+            "dataclass_callable",
         }
         disallowed_args = set(arguments).difference(allowed)
         if disallowed_args:

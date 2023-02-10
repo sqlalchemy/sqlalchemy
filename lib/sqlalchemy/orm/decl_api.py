@@ -593,6 +593,9 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
         match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
         kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        dataclass_callable: Union[
+            _NoArg, Callable[..., Type[Any]]
+        ] = _NoArg.NO_ARG,
     ) -> None:
         apply_dc_transforms: _DataclassArguments = {
             "init": init,
@@ -602,6 +605,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
             "unsafe_hash": unsafe_hash,
             "match_args": match_args,
             "kw_only": kw_only,
+            "dataclass_callable": dataclass_callable,
         }
 
         current_transforms: _DataclassArguments
@@ -623,8 +627,11 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         super().__init_subclass__()
 
         if not _is_mapped_class(cls):
+            new_anno = (
+                _ClassScanMapperConfig._update_annotations_for_non_mapped_class
+            )(cls)
             _ClassScanMapperConfig._apply_dataclasses_to_any_class(
-                current_transforms, cls
+                current_transforms, cls, new_anno
             )
 
 
@@ -1569,6 +1576,7 @@ class registry:
         unsafe_hash: Union[_NoArg, bool] = ...,
         match_args: Union[_NoArg, bool] = ...,
         kw_only: Union[_NoArg, bool] = ...,
+        dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]] = ...,
     ) -> Callable[[Type[_O]], Type[_O]]:
         ...
 
@@ -1583,6 +1591,9 @@ class registry:
         unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
         match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
         kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+        dataclass_callable: Union[
+            _NoArg, Callable[..., Type[Any]]
+        ] = _NoArg.NO_ARG,
     ) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
         """Class decorator that will apply the Declarative mapping process
         to a given class, and additionally convert the class to be a
@@ -1608,6 +1619,7 @@ class registry:
                 "unsafe_hash": unsafe_hash,
                 "match_args": match_args,
                 "kw_only": kw_only,
+                "dataclass_callable": dataclass_callable,
             }
             _as_declarative(self, cls, cls.__dict__)
             return cls
