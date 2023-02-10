@@ -565,10 +565,10 @@ class Mapper(
                 discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
-                    "polymorphic_on":case([
+                    "polymorphic_on":case(
                         (discriminator == "EN", "engineer"),
                         (discriminator == "MA", "manager"),
-                    ], else_="employee"),
+                        else_="employee"),
                     "polymorphic_identity":"employee"
                 }
 
