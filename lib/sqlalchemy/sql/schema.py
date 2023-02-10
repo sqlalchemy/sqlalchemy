@@ -1001,8 +1001,30 @@ class Table(
         pass
 
     @util.ro_non_memoized_property
-    def _autoincrement_column(self) -> Optional[Column[Any]]:
+    def _autoincrement_column(self) -> Optional[Column[int]]:
         return self.primary_key._autoincrement_column
+
+    @property
+    def autoincrement_column(self) -> Optional[Column[int]]:
+        """Returns the :class:`.Column` object which currently represents
+        the "auto increment" column, if any, else returns None.
+
+        This is based on the rules for :class:`.Column` as defined by the
+        :paramref:`.Column.autoincrement` parameter, which generally means the
+        column within a single integer column primary key constraint that is
+        not constrained by a foreign key.   If the table does not have such
+        a primary key constraint, then there's no "autoincrement" column.
+        A :class:`.Table` may have only one column defined as the
+        "autoincrement" column.
+
+        .. versionadded:: 2.0.4
+
+        .. seealso::
+
+            :paramref:`.Column.autoincrement`
+
+        """
+        return self._autoincrement_column
 
     @property
     def key(self) -> str:
@@ -4756,7 +4778,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             return list(self._columns)
 
     @util.ro_memoized_property
-    def _autoincrement_column(self) -> Optional[Column[Any]]:
+    def _autoincrement_column(self) -> Optional[Column[int]]:
         def _validate_autoinc(col: Column[Any], autoinc_true: bool) -> bool:
             if col.type._type_affinity is None or not issubclass(
                 col.type._type_affinity,

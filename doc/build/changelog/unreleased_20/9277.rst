@@ -1,0 +1,6 @@
+.. change::
+    :tags: sql
+    :tickets: 9277
+
+    Added public property :attr:`_sql.Table.autoincrement_column` that
+    returns the column identified as autoincrementing in the column.
