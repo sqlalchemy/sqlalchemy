@@ -11,12 +11,14 @@ from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import insert
 from sqlalchemy import inspect
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -27,10 +29,11 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 
 
-class NoReturningTest(fixtures.TestBase):
+class InsertStmtTest(fixtures.TestBase):
     def test_no_returning_error(self, decl_base):
         class A(fixtures.ComparableEntity, decl_base):
             __tablename__ = "a"
@@ -85,6 +88,38 @@ class NoReturningTest(fixtures.TestBase):
             s.execute(select(A.data, A.x).order_by(A.id)).all(),
             [("d3", 5), ("d4", 6)],
         )
+
+    def test_insert_from_select_col_property(self, decl_base):
+        """test #9273"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            age: Mapped[int] = mapped_column()
+
+            is_adult: Mapped[bool] = column_property(age >= 18)
+
+        decl_base.metadata.create_all(testing.db)
+
+        stmt = select(
+            literal(1).label("id"),
+            literal("John").label("name"),
+            literal(30).label("age"),
+        )
+
+        insert_stmt = (
+            insert(User)
+            .from_select(["id", "name", "age"], stmt)
+            .returning(User)
+        )
+
+        s = fixture_session()
+        result = s.scalars(insert_stmt)
+
+        eq_(result.all(), [User(id=1, name="John", age=30)])
 
 
 class BulkDMLReturningInhTest:

@@ -54,6 +54,7 @@ from .elements import ColumnElement
 from .elements import Grouping
 from .elements import KeyedColumnElement
 from .elements import Label
+from .elements import NamedColumn
 from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
@@ -712,7 +713,6 @@ class _repr_params(_repr_base):
             return "(%s)" % elements
 
     def _get_batches(self, params: Iterable[Any]) -> Any:
-
         lparams = list(params)
         lenparams = len(lparams)
         if lenparams > self.max_params:
@@ -1122,7 +1122,6 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
     def _corresponding_column(
         self, col, require_embedded, _seen=util.EMPTY_SET
     ):
-
         newcol = self.selectable.corresponding_column(
             col, require_embedded=require_embedded
         )
@@ -1135,7 +1134,12 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 )
                 if newcol is not None:
                     return newcol
-        if self.adapt_on_names and newcol is None:
+
+        if (
+            self.adapt_on_names
+            and newcol is None
+            and isinstance(col, NamedColumn)
+        ):
             newcol = self.selectable.exported_columns.get(col.name)
         return newcol
 

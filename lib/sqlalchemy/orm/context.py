@@ -619,6 +619,8 @@ class ORMFromStatementCompileState(ORMCompileState):
         **kw: Any,
     ) -> ORMFromStatementCompileState:
 
+        assert isinstance(statement_container, FromStatement)
+
         if compiler is not None:
             toplevel = not compiler.stack
         else:
@@ -731,13 +733,13 @@ class ORMFromStatementCompileState(ORMCompileState):
             # those columns completely, don't interfere with the compiler
             # at all; just in ORM land, use an adapter to convert from
             # our ORM columns to whatever columns are in the statement,
-            # before we look in the result row. Always adapt on names
-            # to accept cases such as issue #9217.
-
+            # before we look in the result row. Adapt on names
+            # to accept cases such as issue #9217, however also allow
+            # this to be overridden for cases such as #9273.
             self._from_obj_alias = ORMStatementAdapter(
                 _TraceAdaptRole.ADAPT_FROM_STATEMENT,
                 self.statement,
-                adapt_on_names=True,
+                adapt_on_names=statement_container._adapt_on_names,
             )
 
         return self
@@ -781,6 +783,8 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
 
     element: Union[ExecutableReturnsRows, TextClause]
 
+    _adapt_on_names: bool
+
     _traverse_internals = [
         ("_raw_columns", InternalTraversal.dp_clauseelement_list),
         ("element", InternalTraversal.dp_clauseelement),
@@ -794,6 +798,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
         self,
         entities: Iterable[_ColumnsClauseArgument[Any]],
         element: Union[ExecutableReturnsRows, TextClause],
+        _adapt_on_names: bool = True,
     ):
         self._raw_columns = [
             coercions.expect(
@@ -809,6 +814,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
         self._label_style = (
             element._label_style if is_select_base(element) else None
         )
+        self._adapt_on_names = _adapt_on_names
 
     def _compiler_dispatch(self, compiler, **kw):
 

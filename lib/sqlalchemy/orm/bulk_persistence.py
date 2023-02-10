@@ -481,7 +481,9 @@ class ORMDMLState(AbstractORMCompileState):
         if orm_level_statement._returning:
 
             fs = FromStatement(
-                orm_level_statement._returning, dml_level_statement
+                orm_level_statement._returning,
+                dml_level_statement,
+                _adapt_on_names=False,
             )
             fs = fs.options(*orm_level_statement._with_options)
             self.select_statement = fs

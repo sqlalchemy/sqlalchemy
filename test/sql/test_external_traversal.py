@@ -1194,7 +1194,6 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_this_thing_using_setup_joins_three(self):
-
         j = t1.join(t2, t1.c.col1 == t2.c.col2)
 
         s1 = select(j)
@@ -1239,7 +1238,6 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_this_thing_using_setup_joins_four(self):
-
         j = t1.join(t2, t1.c.col1 == t2.c.col2)
 
         s1 = select(j)
@@ -1606,6 +1604,36 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         # not covered by a1, rejected by a2
         is_(a3.columns[c2a1], c2a1)
 
+    @testing.combinations(True, False, argnames="colpresent")
+    @testing.combinations(True, False, argnames="adapt_on_names")
+    @testing.combinations(True, False, argnames="use_label")
+    def test_adapt_binary_col(self, colpresent, use_label, adapt_on_names):
+        """test #9273"""
+
+        if use_label:
+            stmt = select(t1.c.col1, (t1.c.col2 > 18).label("foo"))
+        else:
+            stmt = select(t1.c.col1, (t1.c.col2 > 18))
+
+        sq = stmt.subquery()
+
+        if colpresent:
+            s2 = select(sq.c[0], sq.c[1])
+        else:
+            s2 = select(sq.c[0])
+
+        a1 = sql_util.ColumnAdapter(s2, adapt_on_names=adapt_on_names)
+
+        is_(a1.columns[stmt.selected_columns[0]], s2.selected_columns[0])
+
+        if colpresent:
+            is_(a1.columns[stmt.selected_columns[1]], s2.selected_columns[1])
+        else:
+            is_(
+                a1.columns[stmt.selected_columns[1]],
+                a1.columns[stmt.selected_columns[1]],
+            )
+
 
 class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -1735,7 +1763,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_adapt_select_w_unlabeled_fn(self):
-
         expr = func.count(t1.c.col1)
         stmt = select(t1, expr)
 
@@ -2335,7 +2362,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         assert s2.is_derived_from(s1)
 
     def test_aliasedselect_to_aliasedselect_straight(self):
-
         # original issue from ticket #904
 
         s1 = select(t1).alias("foo")

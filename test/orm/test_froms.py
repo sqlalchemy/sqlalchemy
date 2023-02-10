@@ -6,6 +6,7 @@ from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
@@ -25,6 +26,8 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.context import ORMSelectCompileState
@@ -36,8 +39,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
@@ -2728,7 +2731,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             eq_(q.all(), expected)
 
     def test_unrelated_column(self):
-        """Test for 9217"""
+        """Test for #9217"""
 
         User = self.classes.User
 
@@ -2739,8 +2742,32 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         s = select(User).from_statement(q)
         sess = fixture_session()
         res = sess.scalars(s).one()
-        in_("name", res.__dict__)
-        eq_(res.name, "sandy")
+        eq_(res, User(name="sandy", id=7))
+
+    def test_unrelated_column_col_prop(self, decl_base):
+        """Test for #9217 combined with #9273"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "some_user_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            age: Mapped[int] = mapped_column()
+
+            is_adult: Mapped[bool] = column_property(age >= 18)
+
+        stmt = select(
+            literal(1).label("id"),
+            literal("John").label("name"),
+            literal(30).label("age"),
+        )
+
+        s = select(User).from_statement(stmt)
+        sess = fixture_session()
+        res = sess.scalars(s).one()
+
+        eq_(res, User(name="John", age=30, id=1))
 
     def test_expression_selectable_matches_mzero(self):
         User, Address = self.classes.User, self.classes.Address
