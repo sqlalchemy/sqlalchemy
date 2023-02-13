@@ -182,6 +182,65 @@ def and_(  # type: ignore[empty-body]
 if not TYPE_CHECKING:
     # handle deprecated case which allows zero-arguments
     def and_(*clauses):  # noqa: F811
+        r"""Produce a conjunction of expressions joined by ``AND``.
+
+        E.g.::
+
+            from sqlalchemy import and_
+
+            stmt = select(users_table).where(
+                            and_(
+                                users_table.c.name == 'wendy',
+                                users_table.c.enrolled == True
+                            )
+                        )
+
+        The :func:`.and_` conjunction is also available using the
+        Python ``&`` operator (though note that compound expressions
+        need to be parenthesized in order to function with Python
+        operator precedence behavior)::
+
+            stmt = select(users_table).where(
+                            (users_table.c.name == 'wendy') &
+                            (users_table.c.enrolled == True)
+                        )
+
+        The :func:`.and_` operation is also implicit in some cases;
+        the :meth:`_expression.Select.where`
+        method for example can be invoked multiple
+        times against a statement, which will have the effect of each
+        clause being combined using :func:`.and_`::
+
+            stmt = select(users_table).\
+                    where(users_table.c.name == 'wendy').\
+                    where(users_table.c.enrolled == True)
+
+        The :func:`.and_` construct must be given at least one positional
+        argument in order to be valid; a :func:`.and_` construct with no
+        arguments is ambiguous.   To produce an "empty" or dynamically
+        generated :func:`.and_`  expression, from a given list of expressions,
+        a "default" element of :func:`_sql.true` (or just ``True``) should be
+        specified::
+
+            from sqlalchemy import true
+            criteria = and_(true(), *expressions)
+
+        The above expression will compile to SQL as the expression ``true``
+        or ``1 = 1``, depending on backend, if no other expressions are
+        present.  If expressions are present, then the :func:`_sql.true` value
+        is ignored as it does not affect the outcome of an AND expression that
+        has other elements.
+
+        .. deprecated:: 1.4  The :func:`.and_` element now requires that at
+          least one argument is passed; creating the :func:`.and_` construct
+          with no arguments is deprecated, and will emit a deprecation warning
+          while continuing to produce a blank SQL string.
+
+        .. seealso::
+
+            :func:`.or_`
+
+        """
         return BooleanClauseList.and_(*clauses)
 
 
@@ -1339,6 +1398,55 @@ def or_(  # type: ignore[empty-body]
 if not TYPE_CHECKING:
     # handle deprecated case which allows zero-arguments
     def or_(*clauses):  # noqa: F811
+        """Produce a conjunction of expressions joined by ``OR``.
+
+        E.g.::
+
+            from sqlalchemy import or_
+
+            stmt = select(users_table).where(
+                            or_(
+                                users_table.c.name == 'wendy',
+                                users_table.c.name == 'jack'
+                            )
+                        )
+
+        The :func:`.or_` conjunction is also available using the
+        Python ``|`` operator (though note that compound expressions
+        need to be parenthesized in order to function with Python
+        operator precedence behavior)::
+
+            stmt = select(users_table).where(
+                            (users_table.c.name == 'wendy') |
+                            (users_table.c.name == 'jack')
+                        )
+
+        The :func:`.or_` construct must be given at least one positional
+        argument in order to be valid; a :func:`.or_` construct with no
+        arguments is ambiguous.   To produce an "empty" or dynamically
+        generated :func:`.or_`  expression, from a given list of expressions,
+        a "default" element of :func:`_sql.false` (or just ``False``) should be
+        specified::
+
+            from sqlalchemy import false
+            or_criteria = or_(false(), *expressions)
+
+        The above expression will compile to SQL as the expression ``false``
+        or ``0 = 1``, depending on backend, if no other expressions are
+        present.  If expressions are present, then the :func:`_sql.false` value
+        is ignored as it does not affect the outcome of an OR expression which
+        has other elements.
+
+        .. deprecated:: 1.4  The :func:`.or_` element now requires that at
+           least one argument is passed; creating the :func:`.or_` construct
+           with no arguments is deprecated, and will emit a deprecation warning
+           while continuing to produce a blank SQL string.
+
+        .. seealso::
+
+            :func:`.and_`
+
+        """
         return BooleanClauseList.or_(*clauses)
 
 
