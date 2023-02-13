@@ -455,6 +455,8 @@ created perhaps within distinct databases::
     :ref:`orm_inheritance_abstract_poly` - an alternative form of "abstract"
     mapped class that is appropriate for inheritance hierarchies.
 
+.. _declarative_table_cls:
+
 ``__table_cls__``
 ~~~~~~~~~~~~~~~~~
 

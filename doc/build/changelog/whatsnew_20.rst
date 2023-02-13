@@ -1822,6 +1822,138 @@ operations.
 
 :ticket:`8925`
 
+
+ORM Declarative Apples Column Orders Differently; Control behavior using ``__table_cls__``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Declarative has changed the system by which mapped columns that originate from
+mixin or abstract base classes are sorted along with the columns that are on the
+declared class itself to place columns from the declared class first, followed
+by mixin columns.  The following mapping::
+
+    class Foo:
+
+        col1 = Column(Integer)
+        col3 = Column(Integer)
+
+
+    class Bar:
+
+        col2 = Column(Integer)
+        col4 = Column(Integer)
+
+
+    class Model(Base, Foo, Bar):
+
+        id = Column(Integer, primary_key=True)
+        __tablename__ = "model"
+
+Produces a CREATE TABLE as follows on 1.4:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      col1 INTEGER,
+      col3 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      id INTEGER NOT NULL,
+      PRIMARY KEY (id)
+    )
+
+Whereas on 2.0 it produces:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col3 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+For the specific case above, this can be seen as an improvement, as the primary
+key columns on the ``Model`` are now where one would typically prefer.  However,
+this is no comfort for the application that defined models the other way
+around, as::
+
+    class Foo:
+
+        id = Column(Integer, primary_key=True)
+        col1 = Column(Integer)
+        col3 = Column(Integer)
+
+
+    class Model(Foo, Base):
+
+        col2 = Column(Integer)
+        col4 = Column(Integer)
+        __tablename__ = "model"
+
+This now produces CREATE TABLE output as:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      col2 INTEGER,
+      col4 INTEGER,
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col3 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+It seems clear that Declarative may benefit from a simple rule such as
+"place primary key columns first, no matter what", or the availability of a
+public "sort order" attribute on columns.   Many users have become familiar with
+a private attribute known as ``_creation_order``, however this attribute was
+never sufficient at controlling ordering in mixin inheritance scenarios, and
+is **no longer used** for column ordering in Declarative.
+
+In the interim, both SQLAlchemy 1.4 and 2.0 have a hook which can be used
+to apply such "sort ordering" right now, which is the
+:ref:`declarative_table_cls` hook.    The above model can be given a deterministic
+"primary key first" scheme that is cross-compatible with 1.4 / 2.0 right now,
+using this hook in conjunction with the :paramref:`_schema.Column.info`
+dictionary to apply custom parameters, as in the example below::
+
+    from sqlalchemy import Table
+
+
+    class Foo:
+        @classmethod
+        def __table_cls__(cls, name, metadata_obj, *arg, **kw):
+            arg = sorted(arg, key=lambda obj: obj.info.get("column_order", 0))
+
+            return Table(name, metadata_obj, *arg, **kw)
+
+        id = Column(Integer, primary_key=True, info={"column_order": -10})
+        col1 = Column(Integer, info={"column_order": -1})
+        col3 = Column(Integer)
+
+
+    class Model(Foo, Base):
+
+        col2 = Column(Integer)
+        col4 = Column(Integer)
+        __tablename__ = "model"
+
+The above model places "id" before all others and "col1" after "id"::
+
+    CREATE TABLE model (
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      col3 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+Future SQLAlchemy releases may opt to provide an explicit ordering hint for the
+:class:`_orm.mapped_column` construct, as this ordering is ORM specific.
+
 .. _change_7211:
 
 The ``Sequence`` construct reverts to not having any explicit default "start" value; impacts MS SQL Server
