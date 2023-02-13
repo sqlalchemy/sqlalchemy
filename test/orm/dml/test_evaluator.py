@@ -25,7 +25,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
-compiler = evaluator.EvaluatorCompiler()
+compiler = evaluator._EvaluatorCompiler()
 
 
 def eval_eq(clause, testcases=None):
@@ -119,7 +119,7 @@ class EvaluateTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        compiler = evaluator.EvaluatorCompiler(User)
+        compiler = evaluator._EvaluatorCompiler(User)
 
         with expect_raises_message(
             evaluator.UnevaluatableError,
@@ -130,7 +130,7 @@ class EvaluateTest(fixtures.MappedTest):
     def test_raise_on_unannotated_unmatched_column(self):
         User = self.classes.User
 
-        compiler = evaluator.EvaluatorCompiler(User)
+        compiler = evaluator._EvaluatorCompiler(User)
 
         assert_raises_message(
             evaluator.UnevaluatableError,
