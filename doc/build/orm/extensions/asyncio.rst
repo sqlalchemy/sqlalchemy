@@ -337,6 +337,31 @@ Other guidelines include:
   :paramref:`_orm.Session.expire_on_commit`
   should normally be set to ``False`` when using asyncio.
 
+* A lazy-loaded relationship **can be loaded explicitly under asyncio** using
+  :meth:`_asyncio.AsyncSession.refresh`, **if** the desired attribute name
+  is passed explicitly to
+  :paramref:`_orm.Session.refresh.attribute_names`, e.g.::
+
+    # assume a_obj is an A that has lazy loaded A.bs collection
+    a_obj = await async_session.get(A, [1])
+
+    # force the collection to load by naming it in attribute_names
+    await async_session.refresh(a_obj, ["bs"])
+
+    # collection is present
+    print(f"bs collection: {a_obj.bs}")
+
+  It's of course preferable to use eager loading up front in order to have
+  collections already set up without the need to lazy-load.
+
+  .. versionadded:: 2.0.4 Added support for
+     :meth:`_asyncio.AsyncSession.refresh` and the underlying
+     :meth:`_orm.Session.refresh` method to force lazy-loaded relationships
+     to load, if they are named explicitly in the
+     :paramref:`_orm.Session.refresh.attribute_names` parameter.
+     In previous versions, the relationship would be silently skipped even
+     if named in the parameter.
+
 * Avoid using the ``all`` cascade option documented at :ref:`unitofwork_cascades`
   in favor of listing out the desired cascade features explicitly.   The
   ``all`` cascade option implies among others the :ref:`cascade_refresh_expire`

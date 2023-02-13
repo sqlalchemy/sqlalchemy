@@ -141,6 +141,7 @@ class QueryContext:
         _lazy_loaded_from = None
         _legacy_uniquing = False
         _sa_top_level_orm_context = None
+        _is_user_refresh = False
 
     def __init__(
         self,

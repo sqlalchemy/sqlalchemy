@@ -164,6 +164,21 @@ class AsyncSessionQueryTest(AsyncFixture):
         is_(u3, None)
 
     @async_test
+    async def test_force_a_lazyload(self, async_session):
+        """test for #9298"""
+
+        User = self.classes.User
+
+        stmt = select(User).order_by(User.id)
+
+        result = (await async_session.scalars(stmt)).all()
+
+        for user_obj in result:
+            await async_session.refresh(user_obj, ["addresses"])
+
+        eq_(result, self.static.user_address_result)
+
+    @async_test
     async def test_get_loader_options(self, async_session):
         User = self.classes.User
 

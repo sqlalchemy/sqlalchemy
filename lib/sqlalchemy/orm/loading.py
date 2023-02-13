@@ -469,6 +469,7 @@ def load_on_ident(
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
     require_pk_cols: bool = False,
+    is_user_refresh: bool = False,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -490,6 +491,7 @@ def load_on_ident(
         bind_arguments=bind_arguments,
         execution_options=execution_options,
         require_pk_cols=require_pk_cols,
+        is_user_refresh=is_user_refresh,
     )
 
 
@@ -507,6 +509,7 @@ def load_on_pk_identity(
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
     require_pk_cols: bool = False,
+    is_user_refresh: bool = False,
 ):
 
     """Load the given primary key identity from the database."""
@@ -651,6 +654,7 @@ def load_on_pk_identity(
         only_load_props=only_load_props,
         refresh_state=refresh_state,
         identity_token=identity_token,
+        is_user_refresh=is_user_refresh,
     )
 
     q._compile_options = new_compile_options
@@ -687,6 +691,7 @@ def _set_get_options(
     only_load_props=None,
     refresh_state=None,
     identity_token=None,
+    is_user_refresh=None,
 ):
 
     compile_options = {}
@@ -703,6 +708,8 @@ def _set_get_options(
     if identity_token:
         load_options["_identity_token"] = identity_token
 
+    if is_user_refresh:
+        load_options["_is_user_refresh"] = is_user_refresh
     if load_options:
         load_opt += load_options
     if compile_options:

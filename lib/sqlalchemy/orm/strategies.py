@@ -589,6 +589,30 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
 
+    def _immediateload_create_row_processor(
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
+    ):
+        return self.parent_property._get_strategy(
+            (("lazy", "immediate"),)
+        ).create_row_processor(
+            context,
+            query_entity,
+            path,
+            loadopt,
+            mapper,
+            result,
+            adapter,
+            populators,
+        )
+
 
 @log.class_logger
 @relationships.RelationshipProperty.strategy_for(do_nothing=True)
@@ -1143,6 +1167,23 @@ class LazyLoader(
     ):
         key = self.key
 
+        if (
+            context.load_options._is_user_refresh
+            and context.query._compile_options._only_load_props
+            and self.key in context.query._compile_options._only_load_props
+        ):
+
+            return self._immediateload_create_row_processor(
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
+            )
+
         if not self.is_class_level or (loadopt and loadopt._extra_criteria):
             # we are not the primary manager for this attribute
             # on this class - set up a
@@ -1311,30 +1352,6 @@ class PostLoader(AbstractRelationshipLoader):
                 )
 
         return effective_path, True, execution_options, recursion_depth
-
-    def _immediateload_create_row_processor(
-        self,
-        context,
-        query_entity,
-        path,
-        loadopt,
-        mapper,
-        result,
-        adapter,
-        populators,
-    ):
-        return self.parent_property._get_strategy(
-            (("lazy", "immediate"),)
-        ).create_row_processor(
-            context,
-            query_entity,
-            path,
-            loadopt,
-            mapper,
-            result,
-            adapter,
-            populators,
-        )
 
 
 @relationships.RelationshipProperty.strategy_for(lazy="immediate")

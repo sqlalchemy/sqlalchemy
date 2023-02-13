@@ -960,7 +960,12 @@ class ExpireTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.combinations(
-        "selectin", "joined", "subquery", "immediate", argnames="lazy"
+        "selectin",
+        "joined",
+        "subquery",
+        "immediate",
+        "select",
+        argnames="lazy",
     )
     @testing.variation(
         "as_option",
@@ -983,7 +988,8 @@ class ExpireTest(_fixtures.FixtureTest):
     def test_load_only_relationships(
         self, lazy, expire_first, include_column, as_option, autoflush
     ):
-        """test #8703, #8997 as well as a regression for #8996"""
+        """test #8703, #8997, a regression for #8996, and new feature
+        for #9298."""
 
         users, Address, addresses, User = (
             self.tables.users,
@@ -1025,6 +1031,7 @@ class ExpireTest(_fixtures.FixtureTest):
                 "selectin": selectinload,
                 "subquery": subqueryload,
                 "immediate": immediateload,
+                "select": lazyload,
             }[lazy]
 
         u = sess.get(
@@ -1088,7 +1095,9 @@ class ExpireTest(_fixtures.FixtureTest):
                 sess.refresh(u, ["addresses"])
                 id_was_refreshed = False
 
-        expected_count = 2 if lazy != "joined" else 1
+        expect_addresses = lazy != "select" or not include_column.no_attrs
+
+        expected_count = 2 if (lazy != "joined" and expect_addresses) else 1
         if (
             autoflush
             and expire_first.not_pk_plus_pending
@@ -1106,7 +1115,11 @@ class ExpireTest(_fixtures.FixtureTest):
         else:
             assert "name" in u.__dict__
 
-        assert "addresses" in u.__dict__
+        if expect_addresses:
+            assert "addresses" in u.__dict__
+        else:
+            assert "addresses" not in u.__dict__
+
         u.addresses
         assert "addresses" in u.__dict__
         if include_column:

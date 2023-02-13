@@ -2919,11 +2919,23 @@ class Session(_SessionClassMethods, EventTarget):
         :func:`_orm.relationship` oriented attributes will also be immediately
         loaded if they were already eagerly loaded on the object, using the
         same eager loading strategy that they were loaded with originally.
-        Unloaded relationship attributes will remain unloaded, as will
-        relationship attributes that were originally lazy loaded.
 
         .. versionadded:: 1.4 - the :meth:`_orm.Session.refresh` method
            can also refresh eagerly loaded attributes.
+
+        :func:`_orm.relationship` oriented attributes that would normally
+        load using the ``select`` (or "lazy") loader strategy will also
+        load **if they are named explicitly in the attribute_names
+        collection**, emitting a SELECT statement for the attribute using the
+        ``immediate`` loader strategy.  If lazy-loaded relationships are not
+        named in :paramref:`_orm.Session.refresh.attribute_names`, then
+        they remain as "lazy loaded" attributes and are not implicitly
+        refreshed.
+
+        .. versionchanged:: 2.0.4  The :meth:`_orm.Session.refresh` method
+           will now refresh lazy-loaded :func:`_orm.relationship` oriented
+           attributes for those which are named explicitly in the
+           :paramref:`_orm.Session.refresh.attribute_names` collection.
 
         .. tip::
 
@@ -3004,6 +3016,7 @@ class Session(_SessionClassMethods, EventTarget):
                 # above, however removes the additional unnecessary
                 # call to _autoflush()
                 no_autoflush=True,
+                is_user_refresh=True,
             )
             is None
         ):
