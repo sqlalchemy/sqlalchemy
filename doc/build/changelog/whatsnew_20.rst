@@ -1940,7 +1940,9 @@ dictionary to apply custom parameters, as in the example below::
         col4 = Column(Integer)
         __tablename__ = "model"
 
-The above model places "id" before all others and "col1" after "id"::
+The above model places "id" before all others and "col1" after "id":
+
+.. sourcecode:: sql
 
     CREATE TABLE model (
       id INTEGER NOT NULL,
