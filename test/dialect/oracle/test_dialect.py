@@ -96,10 +96,12 @@ class OracledbMode(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "oracle+oracledb"
 
-    def _run_in_process(self, fn):
+    def _run_in_process(self, fn, fn_kw=None):
         ctx = get_context("spawn")
         queue = ctx.Queue()
-        process = ctx.Process(target=fn, args=(config.db_url, queue))
+        process = ctx.Process(
+            target=fn, args=(config.db_url, queue), kwargs=fn_kw or {}
+        )
         try:
             process.start()
             process.join(10)
@@ -108,19 +110,24 @@ class OracledbMode(fixtures.TestBase):
         finally:
             process.kill()
 
-    def test_thin_mode(self):
+    @testing.combinations({}, {"thick_mode": None}, {"thick_mode": False})
+    def test_thin_mode(self, options):
         from ._oracledb_mode import run_thin_mode
 
-        mode, is_thin = self._run_in_process(run_thin_mode)
+        mode, is_thin = self._run_in_process(run_thin_mode, options)
         is_true(is_thin)
         is_true(mode.startswith("python-oracledb thn"))
 
-    def test_thick_mode(self):
+    @testing.combinations(True, {}, {"driver_name": "custom-driver-name"})
+    def test_thick_mode(self, value):
         from ._oracledb_mode import run_thick_mode
 
-        mode, is_thin = self._run_in_process(run_thick_mode)
+        mode, is_thin = self._run_in_process(
+            run_thick_mode, {"thick_mode": value}
+        )
         is_false(is_thin)
-        eq_(mode.strip(), "custom-driver-name")
+        if isinstance(value, dict) and value.get("driver_name"):
+            eq_(mode.strip(), "custom-driver-name")
 
 
 class DialectWBackendTest(fixtures.TestBase):
