@@ -656,14 +656,14 @@ class DeclarativeBase(
     collection as well as a specific value for
     :paramref:`_orm.registry.type_annotation_map`::
 
-        from typing import Annotation
+        from typing_extensions import Annotated
 
         from sqlalchemy import BigInteger
         from sqlalchemy import MetaData
         from sqlalchemy import String
         from sqlalchemy.orm import DeclarativeBase
 
-        bigint = Annotation(int, "bigint")
+        bigint = Annotated(int, "bigint")
         my_metadata = MetaData()
 
         class Base(DeclarativeBase):
