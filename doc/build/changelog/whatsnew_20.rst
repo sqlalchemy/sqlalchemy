@@ -1823,7 +1823,7 @@ operations.
 :ticket:`8925`
 
 
-ORM Declarative Apples Column Orders Differently; Control behavior using ``__table_cls__``
+ORM Declarative Applies Column Orders Differently; Control behavior using ``__table_cls__``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Declarative has changed the system by which mapped columns that originate from
