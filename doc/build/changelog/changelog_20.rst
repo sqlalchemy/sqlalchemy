@@ -21,7 +21,9 @@
         :tickets: 9254
 
         Remove ``typing.Self`` workaround, now using :pep:`673` for most methods
-        that return ``Self``. Pull request courtesy Yurii Karabas.
+        that return ``Self``. As a consequence of this change ``mypy>=1.0.0`` is
+        now required to type check SQLAlchemy code.
+        Pull request courtesy Yurii Karabas.
 
     .. change::
         :tags: bug, sql, regression
