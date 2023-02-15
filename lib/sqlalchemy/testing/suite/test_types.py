@@ -945,6 +945,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 5) or None,
         )
 
+    @testing.requires.literal_float_coercion
     def test_float_coerce_round_trip(self, connection):
         expr = 15.7563
 
@@ -1199,10 +1200,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             ("integer", None),
             ("float", 28.5),
             ("float", None),
-            (
-                "float",
-                1234567.89,
-            ),
+            ("float", 1234567.89, testing.requires.literal_float_coercion),
             ("numeric", 1234567.89),
             # this one "works" because the float value you see here is
             # lost immediately to floating point stuff

@@ -471,6 +471,8 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     # fixed in mysql-connector as of 2.0.1,
     # see https://bugs.mysql.com/bug.php?id=73266
+
+    @testing.requires.literal_float_coercion
     def test_precision_float_roundtrip(self, metadata, connection):
         t = Table(
             "t",
