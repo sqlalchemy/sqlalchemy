@@ -593,8 +593,8 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a2 = A(id=1, data="foo")
         eq_(a1, a2)
 
-    @testing.only_if(lambda: compat.py310, "python 3.10 is required")
-    def test_kw_only(self, dc_decl_base: Type[MappedAsDataclass]):
+    @testing.requires.python310
+    def test_kw_only_attribute(self, dc_decl_base: Type[MappedAsDataclass]):
         class A(dc_decl_base):
             __tablename__ = "a"
 
@@ -604,6 +604,24 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         fas = pyinspect.getfullargspec(A.__init__)
         eq_(fas.args, ["self", "id"])
         eq_(fas.kwonlyargs, ["data"])
+
+    @testing.requires.python310
+    def test_kw_only_dataclass_constant(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class Mixin(MappedAsDataclass):
+            a: Mapped[int] = mapped_column(primary_key=True)
+            b: Mapped[int] = mapped_column(default=1)
+
+        class Child(Mixin, dc_decl_base):
+
+            __tablename__ = "child"
+
+            _: dataclasses.KW_ONLY
+            c: Mapped[int]
+
+        c1 = Child(1, c=5)
+        eq_(c1, Child(a=1, b=1, c=5))
 
     def test_mapped_column_overrides(self, dc_decl_base):
         """test #8688"""
