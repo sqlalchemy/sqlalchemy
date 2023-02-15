@@ -1044,6 +1044,20 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def literal_float_coercion(self):
+        """target backend will return the exact float value 15.7563
+        with only four significant digits from this statement:
+
+        SELECT :param
+
+        where :param is the Python float 15.7563
+
+        i.e. it does not return 15.75629997253418
+
+        """
+        return exclusions.open()
+
+    @property
     def floats_to_four_decimals(self):
         """target backend can return a floating-point number with four
         significant digits (such as 15.7563) accurately

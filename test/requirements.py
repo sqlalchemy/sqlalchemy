@@ -1361,6 +1361,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def literal_float_coercion(self):
+        return skip_if("+asyncmy")
+
+    @property
     def infinity_floats(self):
         return fails_on_everything_except(
             "sqlite", "postgresql+psycopg2", "postgresql+asyncpg"
