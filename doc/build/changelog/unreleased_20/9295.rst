@@ -1,0 +1,6 @@
+.. change::
+    :tags: oracle, bug
+    :tickets: 9295
+
+    Adjusted ``oracledb`` ``thick_mode`` flag to accept any falsy value that's
+    not a dict as off value. Previously only ``None`` was accepted as off value.
