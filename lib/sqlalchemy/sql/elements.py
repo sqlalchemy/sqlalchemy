@@ -1976,8 +1976,11 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             self._is_crud = True
 
         if type_ is None:
-            if expanding and value:
-                check_value = value[0]
+            if expanding:
+                if value:
+                    check_value = value[0]
+                else:
+                    check_value = type_api._NO_VALUE_IN_LIST
             else:
                 check_value = value
             if _compared_to_type is not None:
@@ -3166,7 +3169,8 @@ class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
                 _compared_to_operator=operator,
                 unique=True,
                 expanding=True,
-                type_=self.type,
+                type_=type_,
+                _compared_to_type=self.type,
             )
         else:
             return Tuple(

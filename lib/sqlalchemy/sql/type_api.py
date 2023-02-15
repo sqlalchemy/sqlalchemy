@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from types import ModuleType
 import typing
 from typing import Any
@@ -68,7 +69,14 @@ _CT = TypeVar("_CT", bound=Any)
 
 _MatchedOnType = Union["GenericProtocol[Any]", NewType, Type[Any]]
 
-# replace with pep-673 when applicable
+
+class _NoValueInList(Enum):
+    NO_VALUE_IN_LIST = 0
+    """indicates we are trying to determine the type of an expression
+    against an empty list."""
+
+
+_NO_VALUE_IN_LIST = _NoValueInList.NO_VALUE_IN_LIST
 
 
 class _LiteralProcessorType(Protocol[_T_co]):

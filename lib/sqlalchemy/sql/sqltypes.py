@@ -3157,6 +3157,20 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
             for item_type in types
         ]
 
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+
+        if value is type_api._NO_VALUE_IN_LIST:
+            return super().coerce_compared_value(op, value)
+        else:
+            return TupleType(
+                *[
+                    typ.coerce_compared_value(op, elem)
+                    for typ, elem in zip(self.types, value)
+                ]
+            )
+
     def _resolve_values_to_types(self, value: Any) -> TupleType:
         if self._fully_typed:
             return self
