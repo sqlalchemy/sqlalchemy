@@ -1111,6 +1111,7 @@ class AutoIncrementTest(fixtures.TestBase):
         id_ = r.inserted_primary_key[0]
         eq_(id_, 1)
         eq_(connection.scalar(sa.select(single.c.id)), 1)
+        assert single.autoincrement_column is single.c.id
 
     def test_autoinc_detection_no_affinity(self):
         class MyType(TypeDecorator):
@@ -1120,6 +1121,7 @@ class AutoIncrementTest(fixtures.TestBase):
         assert MyType()._type_affinity is None
         t = Table("x", MetaData(), Column("id", MyType(), primary_key=True))
         assert t._autoincrement_column is None
+        assert t.autoincrement_column is None
 
     def test_autoincrement_ignore_fk(self):
         m = MetaData()
