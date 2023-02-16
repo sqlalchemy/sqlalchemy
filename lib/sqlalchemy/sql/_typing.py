@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from .dml import UpdateBase
     from .dml import ValuesBase
     from .elements import ClauseElement
-    from .elements import ColumnClause
     from .elements import ColumnElement
     from .elements import KeyedColumnElement
     from .elements import quoted_name
@@ -224,7 +223,10 @@ _SelectStatementForCompoundArgument = Union[
 """SELECT statement acceptable by ``union()`` and other SQL set operations"""
 
 _DMLColumnArgument = Union[
-    str, "ColumnClause[Any]", _HasClauseElement, roles.DMLColumnRole
+    str,
+    _HasClauseElement,
+    roles.DMLColumnRole,
+    "SQLCoreOperations",
 ]
 """A DML column expression.  This is a "key" inside of insert().values(),
 update().values(), and related.
