@@ -1,9 +1,99 @@
 [build-system]
     build-backend = "setuptools.build_meta"
     requires = [
-        "setuptools>=47",
+        "setuptools>=61.2",
         "cython>=0.29.24; python_implementation == 'CPython'", # Skip cython when using pypy
     ]
+
+[project]
+name = "SQLAlchemy"
+description = "Database Abstraction Library"
+readme = "README.rst"
+authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Database :: Front-Ends",
+]
+requires-python = ">=3.7"
+dependencies = [
+    'importlib-metadata;python_version<"3.8"',
+    "greenlet != 0.4.17;(platform_machine=='aarch64' or (platform_machine=='ppc64le' or (platform_machine=='x86_64' or (platform_machine=='amd64' or (platform_machine=='AMD64' or (platform_machine=='win32' or platform_machine=='WIN32'))))))",
+    "typing-extensions >= 4.2.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://www.sqlalchemy.org"
+Documentation = "https://docs.sqlalchemy.org"
+"Issue Tracker" = "https://github.com/sqlalchemy/sqlalchemy/"
+
+[project.optional-dependencies]
+asyncio = ["greenlet!=0.4.17"]
+mypy = ["mypy >= 0.910"]
+mssql = ["pyodbc"]
+mssql_pymssql = ["pymssql"]
+mssql_pyodbc = ["pyodbc"]
+mysql = ["mysqlclient>=1.4.0"]
+mysql_connector = ["mysql-connector-python"]
+mariadb_connector = ["mariadb>=1.0.1,!=1.1.2,!=1.1.5"]
+oracle = ["cx_oracle>=7"]
+oracle_oracledb = ["oracledb>=1.0.1"]
+postgresql = ["psycopg2>=2.7"]
+postgresql_pg8000 = ["pg8000>=1.29.1"]
+postgresql_asyncpg = [
+    "greenlet!=0.4.17",
+    "asyncpg",
+]
+postgresql_psycopg2binary = ["psycopg2-binary"]
+postgresql_psycopg2cffi = ["psycopg2cffi"]
+postgresql_psycopg = ["psycopg>=3.0.7"]
+pymysql = ["pymysql"]
+aiomysql = [
+    "greenlet!=0.4.17",
+    "aiomysql",
+]
+asyncmy = [
+    "greenlet!=0.4.17",
+    "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
+]
+aiosqlite = [
+    "greenlet!=0.4.17",
+    "aiosqlite",
+    "typing_extensions!=3.10.0.1",
+]
+sqlcipher = ["sqlcipher3_binary"]
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {"" = "lib"}
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+namespaces = false
+
+[tool.setuptools.dynamic]
+version = {attr = "sqlalchemy.__version__"}
+
+[tool.distutils.egg_info]
+tag-build = "dev"
+
+[tool.distutils.upload]
+sign = 1
+identity = "C4DAFEE1"
 
 [tool.black]
 line-length = 79
