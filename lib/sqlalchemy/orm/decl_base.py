@@ -211,13 +211,13 @@ def _get_immediate_cls_attr(
         return getattr(cls, attrname)
 
     for base in cls.__mro__[1:]:
-        _is_classicial_inherits = _dive_for_cls_manager(base) is not None
+        _is_classical_inherits = _dive_for_cls_manager(base) is not None
 
         if attrname in base.__dict__ and (
             base is cls
             or (
                 (base in cls.__bases__ if strict else True)
-                and not _is_classicial_inherits
+                and not _is_classical_inherits
             )
         ):
             return getattr(base, attrname)
@@ -451,6 +451,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         "local_table",
         "persist_selectable",
         "declared_columns",
+        "column_ordering",
         "column_copies",
         "table_args",
         "tablename",
@@ -471,6 +472,7 @@ class _ClassScanMapperConfig(_MapperConfig):
     local_table: Optional[FromClause]
     persist_selectable: Optional[FromClause]
     declared_columns: util.OrderedSet[Column[Any]]
+    column_ordering: Dict[Column[Any], int]
     column_copies: Dict[
         Union[MappedColumn[Any], Column[Any]],
         Union[MappedColumn[Any], Column[Any]],
@@ -522,6 +524,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.collected_attributes = {}
         self.collected_annotations = {}
         self.declared_columns = util.OrderedSet()
+        self.column_ordering = {}
         self.column_copies = {}
 
         self.dataclass_setup_arguments = dca = getattr(
@@ -1557,6 +1560,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         # extract columns from the class dict
         declared_columns = self.declared_columns
+        column_ordering = self.column_ordering
         name_to_prop_key = collections.defaultdict(set)
 
         for key, c in list(our_stuff.items()):
@@ -1570,10 +1574,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # this is a MappedColumn that will produce a Column for us
                     del our_stuff[key]
 
-                for col in c.columns_to_assign:
+                for col, sort_order in c.columns_to_assign:
                     if not isinstance(c, CompositeProperty):
                         name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
+                    assert col not in column_ordering
+                    column_ordering[col] = sort_order
 
                     # if this is a MappedColumn and the attribute key we
                     # have is not what the column has for its key, map the
@@ -1613,6 +1619,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         table_args = self.table_args
         clsdict_view = self.clsdict_view
         declared_columns = self.declared_columns
+        column_ordering = self.column_ordering
 
         manager = attributes.manager_of_class(cls)
 
@@ -1647,12 +1654,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                 if autoload:
                     table_kw["autoload"] = True
 
+                sorted_columns = sorted(
+                    declared_columns,
+                    key=lambda c: column_ordering.get(c, 0),
+                )
                 table = self.set_cls_attribute(
                     "__table__",
                     table_cls(
                         tablename,
                         self._metadata_for_cls(manager),
-                        *(tuple(declared_columns) + tuple(args)),
+                        *sorted_columns,
+                        *args,
                         **table_kw,
                     ),
                 )
@@ -1998,7 +2010,7 @@ def _add_attribute(
             mapped_cls.__mapper__.add_property(key, value)
         elif isinstance(value, _MapsColumns):
             mp = value.mapper_property_to_assign
-            for col in value.columns_to_assign:
+            for col, _ in value.columns_to_assign:
                 _undefer_column_name(key, col)
                 _table_or_raise(mapped_cls).append_column(
                     col, replace_existing=True

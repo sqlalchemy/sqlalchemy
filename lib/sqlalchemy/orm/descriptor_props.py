@@ -502,8 +502,8 @@ class CompositeProperty(
         return self
 
     @property
-    def columns_to_assign(self) -> List[schema.Column[Any]]:
-        return [c for c in self.columns if c.table is None]
+    def columns_to_assign(self) -> List[Tuple[schema.Column[Any], int]]:
+        return [(c, 0) for c in self.columns if c.table is None]
 
     @util.preload_module("orm.properties")
     def _setup_arguments_on_columns(self) -> None:

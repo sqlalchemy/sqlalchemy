@@ -306,7 +306,7 @@ class _MapsColumns(_DCAttributeOptions, _MappedAttribute[_T]):
         raise NotImplementedError()
 
     @property
-    def columns_to_assign(self) -> List[Column[_T]]:
+    def columns_to_assign(self) -> List[Tuple[Column[_T], int]]:
         """A list of Column objects that should be declaratively added to the
         new Table object.
 

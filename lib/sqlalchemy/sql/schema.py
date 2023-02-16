@@ -84,6 +84,7 @@ from ..util.typing import Self
 from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
+    from ._typing import _AutoIncrementType
     from ._typing import _DDLColumnArgument
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
@@ -1375,7 +1376,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         *args: SchemaEventTarget,
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
-        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
+        autoincrement: _AutoIncrementType = "auto",
         default: Optional[Any] = None,
         doc: Optional[str] = None,
         key: Optional[str] = None,
@@ -1949,7 +1950,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         self.system = system
         self.doc = doc
-        self.autoincrement = autoincrement
+        self.autoincrement: _AutoIncrementType = autoincrement
         self.constraints = set()
         self.foreign_keys = set()
         self.comment = comment
@@ -2278,7 +2279,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     def _copy(self, **kw: Any) -> Column[Any]:
         """Create a copy of this ``Column``, uninitialized.
 
-        This is used in :meth:`_schema.Table.to_metadata`.
+        This is used in :meth:`_schema.Table.to_metadata` and by the ORM.
 
         """
 

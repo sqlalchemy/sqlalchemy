@@ -993,6 +993,48 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
         ):
             Foo.y = mapped_column(sa.Text)
 
+    def test_default_column_order(self, decl_base):
+        class M1:
+            a: Mapped[int]
+            b: Mapped[int] = mapped_column(primary_key=True)
+
+        class M2(decl_base):
+            __abstract__ = True
+            c: Mapped[int]
+            d: Mapped[int]
+
+        class M(M1, M2, decl_base):
+            e: Mapped[int]
+            f: Mapped[int]
+            g: Mapped[int]
+
+            __tablename__ = "m"
+
+        actual = list(M.__table__.c.keys())
+        expected = ["e", "f", "g", "a", "b", "c", "d"]
+        eq_(actual, expected)
+
+    def test_custom_column_sort_order(self, decl_base):
+        class M1:
+            a: Mapped[int] = mapped_column(sort_order=-42)
+            b: Mapped[int] = mapped_column(primary_key=True)
+
+        class M2(decl_base):
+            __abstract__ = True
+            c: Mapped[int] = mapped_column(sort_order=-1)
+            d: Mapped[int]
+
+        class M(M1, M2, decl_base):
+            e: Mapped[int]
+            f: Mapped[int] = mapped_column(sort_order=10)
+            g: Mapped[int] = mapped_column(sort_order=-10)
+
+            __tablename__ = "m"
+
+        actual = list(M.__table__.c.keys())
+        expected = ["a", "g", "c", "e", "b", "d", "f"]
+        eq_(actual, expected)
+
 
 @testing.combinations(
     ("declarative_base_nometa_superclass",),

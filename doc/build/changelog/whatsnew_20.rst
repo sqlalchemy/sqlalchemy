@@ -1822,9 +1822,10 @@ operations.
 
 :ticket:`8925`
 
+.. _change_9297:
 
-ORM Declarative Applies Column Orders Differently; Control behavior using ``__table_cls__``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ORM Declarative Applies Column Orders Differently; Control behavior using ``sort_order``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Declarative has changed the system by which mapped columns that originate from
 mixin or abstract base classes are sorted along with the columns that are on the
@@ -1833,19 +1834,19 @@ by mixin columns.  The following mapping::
 
     class Foo:
 
-        col1 = Column(Integer)
-        col3 = Column(Integer)
+        col1 = mapped_column(Integer)
+        col3 = mapped_column(Integer)
 
 
     class Bar:
 
-        col2 = Column(Integer)
-        col4 = Column(Integer)
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
 
 
     class Model(Base, Foo, Bar):
 
-        id = Column(Integer, primary_key=True)
+        id = mapped_column(Integer, primary_key=True)
         __tablename__ = "model"
 
 Produces a CREATE TABLE as follows on 1.4:
@@ -1881,15 +1882,15 @@ around, as::
 
     class Foo:
 
-        id = Column(Integer, primary_key=True)
-        col1 = Column(Integer)
-        col3 = Column(Integer)
+        id = mapped_column(Integer, primary_key=True)
+        col1 = mapped_column(Integer)
+        col3 = mapped_column(Integer)
 
 
     class Model(Foo, Base):
 
-        col2 = Column(Integer)
-        col4 = Column(Integer)
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
         __tablename__ = "model"
 
 This now produces CREATE TABLE output as:
@@ -1905,39 +1906,22 @@ This now produces CREATE TABLE output as:
       PRIMARY KEY (id)
     )
 
-It seems clear that Declarative may benefit from a simple rule such as
-"place primary key columns first, no matter what", or the availability of a
-public "sort order" attribute on columns.   Many users have become familiar with
-a private attribute known as ``_creation_order``, however this attribute was
-never sufficient at controlling ordering in mixin inheritance scenarios, and
-is **no longer used** for column ordering in Declarative.
-
-In the interim, both SQLAlchemy 1.4 and 2.0 have a hook which can be used
-to apply such "sort ordering" right now, which is the
-:ref:`declarative_table_cls` hook.    The above model can be given a deterministic
-"primary key first" scheme that is cross-compatible with 1.4 / 2.0 right now,
-using this hook in conjunction with the :paramref:`_schema.Column.info`
-dictionary to apply custom parameters, as in the example below::
-
-    from sqlalchemy import Table
-
+To solve this issue, SQLAlchemy 2.0.4 introduces a new parameter on
+:func:`_orm.mapped_column` called :paramref:`_orm.mapped_column.sort_order`,
+which is an integer value, defaulting to ``0``,
+that can be set to a positive or negative value so that columns are placed
+before or after other columns, as in the example below::
 
     class Foo:
-        @classmethod
-        def __table_cls__(cls, name, metadata_obj, *arg, **kw):
-            arg = sorted(arg, key=lambda obj: obj.info.get("column_order", 0))
-
-            return Table(name, metadata_obj, *arg, **kw)
-
-        id = Column(Integer, primary_key=True, info={"column_order": -10})
-        col1 = Column(Integer, info={"column_order": -1})
-        col3 = Column(Integer)
+        id = mapped_column(Integer, primary_key=True, sort_order=-10)
+        col1 = mapped_column(Integer, sort_order=-1)
+        col3 = mapped_column(Integer)
 
 
     class Model(Foo, Base):
 
-        col2 = Column(Integer)
-        col4 = Column(Integer)
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
         __tablename__ = "model"
 
 The above model places "id" before all others and "col1" after "id":

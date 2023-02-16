@@ -264,6 +264,8 @@ _EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 
 _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
 
+_AutoIncrementType = Union[bool, Literal["auto", "ignore_fk"]]
+
 if TYPE_CHECKING:
 
     def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]:

@@ -92,6 +92,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 Sequence("foo_seq"),
                 primary_key=True,
                 key="bar",
+                autoincrement="ignore_fk",
             ),
             Column(Integer(), ForeignKey("bat.blah"), doc="this is a col"),
             Column(
@@ -99,6 +100,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 Integer(),
                 ForeignKey("bat.blah"),
                 primary_key=True,
+                comment="this is a comment",
                 key="bar",
             ),
             Column("bar", Integer(), info={"foo": "bar"}),
@@ -113,6 +115,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 "unique",
                 "info",
                 "doc",
+                "autoincrement",
             ):
                 eq_(getattr(col, attr), getattr(c2, attr))
             eq_(len(col.foreign_keys), len(c2.foreign_keys))

@@ -1,0 +1,17 @@
+.. change::
+    :tags: orm, use_case
+    :tickets: 9297
+
+    To accommodate a change in column ordering used by ORM Declarative in
+    SQLAlchemy 2.0, a new parameter :paramref:`_orm.mapped_column.sort_order`
+    has been added that can be used to control the order of the columns defined
+    in the table by the ORM, for common use cases such as mixins with primary
+    key columns that should appear first in tables. The change notes at
+    :ref:`change_9297` illustrate the default change in ordering behavior
+    (which is part of all SQLAlchemy 2.0 releases) as well as use of the
+    :paramref:`_orm.mapped_column.sort_order` to control column ordering when
+    using mixins and multiple classes (new in 2.0.4).
+
+    .. seealso::
+
+        :ref:`change_9297`
