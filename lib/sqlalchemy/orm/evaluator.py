@@ -6,8 +6,20 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+"""Evaluation functions used **INTERNALLY** by ORM DML use cases.
+
+
+This module is **private, for internal use by SQLAlchemy**.
+
+.. versionchanged:: 2.0.4 renamed ``EvaluatorCompiler`` to
+   ``_EvaluatorCompiler``.
+
+"""
+
 
 from __future__ import annotations
+
+from typing import Type
 
 from . import exc as orm_exc
 from .base import LoaderCallableStatus
@@ -18,6 +30,7 @@ from ..sql import and_
 from ..sql import operators
 from ..sql.sqltypes import Integer
 from ..sql.sqltypes import Numeric
+from ..util import warn_deprecated
 
 
 class UnevaluatableError(exc.InvalidRequestError):
@@ -44,7 +57,7 @@ _NO_OBJECT = _NoObject()
 _EXPIRED_OBJECT = _ExpiredObject()
 
 
-class EvaluatorCompiler:
+class _EvaluatorCompiler:
     def __init__(self, target_cls=None):
         self.target_cls = target_cls
 
@@ -340,3 +353,16 @@ class EvaluatorCompiler:
         else:
             val = clause.value
         return lambda obj: val
+
+
+def __getattr__(name: str) -> Type[_EvaluatorCompiler]:
+    if name == "EvaluatorCompiler":
+        warn_deprecated(
+            "Direct use of 'EvaluatorCompiler' is not supported, and this "
+            "name will be removed in a future release.  "
+            "'_EvaluatorCompiler' is for internal use only",
+            "2.0",
+        )
+        return _EvaluatorCompiler
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

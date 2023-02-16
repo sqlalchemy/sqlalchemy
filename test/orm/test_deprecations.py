@@ -384,6 +384,20 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
         cls.mapper_registry.map_imperatively(Keyword, keywords)
 
 
+class MiscDeprecationsTest(fixtures.TestBase):
+    def test_evaluator_is_private(self):
+        with expect_deprecated(
+            "Direct use of 'EvaluatorCompiler' is not supported, and this "
+            "name will be removed in a future release.  "
+            "'_EvaluatorCompiler' is for internal use only"
+        ):
+            from sqlalchemy.orm.evaluator import EvaluatorCompiler
+
+        from sqlalchemy.orm.evaluator import _EvaluatorCompiler
+
+        is_(EvaluatorCompiler, _EvaluatorCompiler)
+
+
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 

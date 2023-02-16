@@ -871,7 +871,7 @@ class BulkUDCompileState(ORMDMLState):
         mapper = update_options._subject_mapper
         target_cls = mapper.class_
 
-        evaluator_compiler = evaluator.EvaluatorCompiler(target_cls)
+        evaluator_compiler = evaluator._EvaluatorCompiler(target_cls)
         crit = ()
         if statement._where_criteria:
             crit += statement._where_criteria
@@ -1686,7 +1686,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         """
         mapper = update_options._subject_mapper
         target_cls = mapper.class_
-        evaluator_compiler = evaluator.EvaluatorCompiler(target_cls)
+        evaluator_compiler = evaluator._EvaluatorCompiler(target_cls)
         resolved_values = cls._get_resolved_values(mapper, statement)
         resolved_keys_as_propnames = cls._resolved_keys_as_propnames(
             mapper, resolved_values
