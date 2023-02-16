@@ -4303,6 +4303,14 @@ class TupleTypingTest(fixtures.TestBase):
         expr = t1 == (3, "hi", b"there")
         self._assert_types(expr.right.type.types)
 
+    def test_tuple_type_left_type_ignored(self):
+        a, b = column("a", sqltypes.Date), column("b", sqltypes.DateTime)
+        c = column("c", sqltypes.Float)
+
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([(3, "hi", b"there")])
+        self._assert_types(expr.right.type.types)
+
 
 class InSelectableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
