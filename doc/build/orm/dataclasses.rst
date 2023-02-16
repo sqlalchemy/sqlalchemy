@@ -471,6 +471,54 @@ variable may be generated::
    even though the purpose of this attribute was only to allow legacy
    ORM typed mappings to continue to function.
 
+.. _dataclasses_pydantic:
+
+Integrating with Alternate Dataclass Providers such as Pydantic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy's :class:`_orm.MappedAsDataclass` class
+and :meth:`_orm.registry.mapped_as_dataclass` method call directly into
+the Python standard library ``dataclasses.dataclass`` class decorator, after
+the declarative mapping process has been applied to the class.  This
+function call may be swapped out for alternateive dataclasses providers,
+such as that of Pydantic, using the ``dataclass_callable`` parameter
+accepted by :class:`_orm.MappedAsDataclass` as a class keyword argument
+as well as by :meth:`_orm.registry.mapped_as_dataclass`::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+    from sqlalchemy.orm import registry
+
+
+    class Base(
+        MappedAsDataclass,
+        DeclarativeBase,
+        dataclass_callable=pydantic.dataclasses.dataclass,
+    ):
+        pass
+
+
+    class User(Base):
+        __tablename__ = "user"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+
+The above ``User`` class will be applied as a dataclass, using Pydantic's
+``pydantic.dataclasses.dataclasses`` callable.     The process is available
+both for mapped classes as well as mixins that extend from
+:class:`_orm.MappedAsDataclass` or which have
+:meth:`_orm.registry.mapped_as_dataclass` applied directly.
+
+.. versionadded:: 2.0.4 Added the ``dataclass_callable`` class and method
+   parameters for :class:`_orm.MappedAsDataclass` and
+   :meth:`_orm.registry.mapped_as_dataclass`, and adjusted some of the
+   dataclass internals to accommodate more strict dataclass functions such as
+   that of Pydantic.
+
+
 .. _orm_declarative_dataclasses:
 
 Applying ORM Mappings to an existing dataclass
