@@ -3561,7 +3561,7 @@ class SelectBase(
 
         .. seealso::
 
-            :meth:`_expression.SelectBase.as_scalar`.
+            :meth:`_expression.SelectBase.scalar_subquery`.
 
         """
         return self.scalar_subquery().label(name)
