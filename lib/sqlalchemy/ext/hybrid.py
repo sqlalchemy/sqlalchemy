@@ -232,7 +232,7 @@ example below that illustrates the use of :meth:`.hybrid_property.setter` and
 Above, there are three ``Interval.radius`` methods, but as each are decorated,
 first by the :class:`.hybrid_property` decorator and then by the
 ``@radius`` name itself, the end effect is that ``Interval.radius`` is
-a single attribute with two different functions contained within it.
+a single attribute with three different functions contained within it.
 This style of use is taken from `Python's documented use of @property
 <https://docs.python.org/3/library/functions.html#property>`_.
 It is important to note that the way both ``@property`` as well as
@@ -247,7 +247,7 @@ mypy and pyright.  Python's own ``@property`` decorator does not have this
 limitation only because
 `these tools hardcode the behavior of @property
 <https://github.com/python/typing/discussions/1102>`_, meaning this syntax
-is no longer available to SQLAlchemy under :pep:`484` compliance.
+is not available to SQLAlchemy under :pep:`484` compliance.
 
 In order to produce a reasonable syntax while remaining typing compliant,
 the :attr:`.hybrid_property.inplace` decorator allows the same
