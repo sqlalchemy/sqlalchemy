@@ -1,8 +1,0 @@
-.. change::
-    :tags: oracle, bug
-    :tickets: 9295
-
-    Adjusted the behavior of the ``thick_mode`` parameter for the
-    :ref:`oracledb` dialect to correctly accept ``False`` as a value.
-    Previously, only ``None`` would indicate that thick mode should be
-    disabled.

@@ -10,7 +10,135 @@
 
 .. changelog::
     :version: 2.0.4
-    :include_notes_from: unreleased_20
+    :released: February 17, 2023
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9273
+
+        Fixed regression introduced in version 2.0.2 due to :ticket:`9217` where
+        using DML RETURNING statements, as well as
+        :meth:`_sql.Select.from_statement` constructs as was "fixed" in
+        :ticket:`9217`, in conjunction with ORM mapped classes that used
+        expressions such as with :func:`_orm.column_property`, would lead to an
+        internal error within Core where it would attempt to match the expression
+        by name. The fix repairs the Core issue, and also adjusts the fix in
+        :ticket:`9217` to not take effect for the DML RETURNING use case, where it
+        adds unnecessary overhead.
+
+    .. change::
+        :tags: usecase, typing
+        :tickets: 9321
+
+        Improved the typing support for the :ref:`hybrids_toplevel`
+        extension, updated all documentation to use ORM Annotated Declarative
+        mappings, and added a new modifier called :attr:`.hybrid_property.inplace`.
+        This modifier provides a way to alter the state of a :class:`.hybrid_property`
+        **in place**, which is essentially what very early versions of hybrids
+        did, before SQLAlchemy version 1.2.0 :ticket:`3912` changed this to
+        remove in-place mutation.  This in-place mutation is now restored on an
+        **opt-in** basis to allow a single hybrid to have multiple methods
+        set up, without the need to name all the methods the same and without the
+        need to carefully "chain" differently-named methods in order to maintain
+        the composition.  Typing tools such as Mypy and Pyright do not allow
+        same-named methods on a class, so with this change a succinct method
+        of setting up hybrids with typing support is restored.
+
+        .. seealso::
+
+            :ref:`hybrid_pep484_naming`
+
+    .. change::
+        :tags: bug, orm
+
+        Marked the internal ``EvaluatorCompiler`` module as private to the ORM, and
+        renamed it to ``_EvaluatorCompiler``. For users that may have been relying
+        upon this, the name ``EvaluatorCompiler`` is still present, however this
+        use is not supported and will be removed in a future release.
+
+    .. change::
+        :tags: orm, use_case
+        :tickets: 9297
+
+        To accommodate a change in column ordering used by ORM Declarative in
+        SQLAlchemy 2.0, a new parameter :paramref:`_orm.mapped_column.sort_order`
+        has been added that can be used to control the order of the columns defined
+        in the table by the ORM, for common use cases such as mixins with primary
+        key columns that should appear first in tables. The change notes at
+        :ref:`change_9297` illustrate the default change in ordering behavior
+        (which is part of all SQLAlchemy 2.0 releases) as well as use of the
+        :paramref:`_orm.mapped_column.sort_order` to control column ordering when
+        using mixins and multiple classes (new in 2.0.4).
+
+        .. seealso::
+
+            :ref:`change_9297`
+
+    .. change::
+        :tags: sql
+        :tickets: 9277
+
+        Added public property :attr:`_schema.Table.autoincrement_column` that
+        returns the column identified as autoincrementing in the column.
+
+    .. change::
+        :tags: oracle, bug
+        :tickets: 9295
+
+        Adjusted the behavior of the ``thick_mode`` parameter for the
+        :ref:`oracledb` dialect to correctly accept ``False`` as a value.
+        Previously, only ``None`` would indicate that thick mode should be
+        disabled.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9298
+
+        The :meth:`_orm.Session.refresh` method will now immediately load a
+        relationship-bound attribute that is explicitly named within the
+        :paramref:`_orm.Session.refresh.attribute_names` collection even if it is
+        currently linked to the "select" loader, which normally is a "lazy" loader
+        that does not fire off during a refresh. The "lazy loader" strategy will
+        now detect that the operation is specifically a user-initiated
+        :meth:`_orm.Session.refresh` operation which named this attribute
+        explicitly, and will then call upon the "immediateload" strategy to
+        actually emit SQL to load the attribute. This should be helpful in
+        particular for some asyncio situations where the loading of an unloaded
+        lazy-loaded attribute must be forced, without using the actual lazy-loading
+        attribute pattern not supported in asyncio.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9313
+
+        Fixed issue where element types of a tuple value would be hardcoded to take
+        on the types from a compared-to tuple, when the comparison were using the
+        :meth:`.ColumnOperators.in_` operator. This was inconsistent with the usual
+        way that types are determined for a binary expression, which is that the
+        actual element type on the right side is considered first before applying
+        the left-hand-side type.
+
+    .. change::
+        :tags: usecase, orm declarative
+        :tickets: 9266
+
+        Added new parameter ``dataclasses_callable`` to both the
+        :class:`_orm.MappedAsDataclass` class as well as the
+        :meth:`_orm.registry.mapped_as_dataclass` method which allows an
+        alternative callable to Python ``dataclasses.dataclass`` to be used in
+        order to produce dataclasses. The use case here is to drop in Pydantic's
+        dataclass function instead. Adjustments have been made to the mixin support
+        added for :ticket:`9179` in version 2.0.1 so that the ``__annotations__``
+        collection of the mixin is rewritten to not include the
+        :class:`_orm.Mapped` container, in the same way as occurs with mapped
+        classes, so that the Pydantic dataclasses constructor is not exposed to
+        unknown types.
+
+        .. seealso::
+
+            :ref:`dataclasses_pydantic`
+
 
 .. changelog::
     :version: 2.0.3
