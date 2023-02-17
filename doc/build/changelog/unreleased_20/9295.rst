@@ -2,5 +2,7 @@
     :tags: oracle, bug
     :tickets: 9295
 
-    Adjusted ``oracledb`` ``thick_mode`` flag to accept any falsy value that's
-    not a dict as off value. Previously only ``None`` was accepted as off value.
+    Adjusted the behavior of the ``thick_mode`` parameter for the
+    :ref:`oracledb` dialect to correctly accept ``False`` as a value.
+    Previously, only ``None`` would indicate that thick mode should be
+    disabled.
