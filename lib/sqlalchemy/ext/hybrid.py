@@ -11,16 +11,16 @@ r"""Define attributes on ORM-mapped classes that have "hybrid" behavior.
 class level and at the instance level.
 
 The :mod:`~sqlalchemy.ext.hybrid` extension provides a special form of
-method decorator, is around 50 lines of code and has almost no
-dependencies on the rest of SQLAlchemy.  It can, in theory, work with
-any descriptor-based expression system.
+method decorator and has minimal dependencies on the rest of SQLAlchemy.
+Its basic theory of operation can work with any descriptor-based expression
+system.
 
 Consider a mapping ``Interval``, representing integer ``start`` and ``end``
 values. We can define higher level functions on mapped classes that produce SQL
 expressions at the class level, and Python expression evaluation at the
 instance level.  Below, each function decorated with :class:`.hybrid_method` or
 :class:`.hybrid_property` may receive ``self`` as an instance of the class, or
-as the class itself::
+may receive the class directly, depending on context::
 
     from __future__ import annotations
 
@@ -70,29 +70,28 @@ mechanics::
 When dealing with the ``Interval`` class itself, the :class:`.hybrid_property`
 descriptor evaluates the function body given the ``Interval`` class as
 the argument, which when evaluated with SQLAlchemy expression mechanics
-(here using the :attr:`.QueryableAttribute.expression` accessor)
 returns a new SQL expression:
 
 .. sourcecode:: pycon+sql
 
-    >>> print(Interval.length.expression)
-    interval."end" - interval.start
+    >>> from sqlalchemy import select
+    >>> print(select(Interval.length))
+    {printsql}SELECT interval."end" - interval.start AS length
+    FROM interval{stop}
 
-    >>> print(Session().query(Interval).filter(Interval.length > 10))
-    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
-    interval."end" AS interval_end
+
+    >>> print(select(Interval).filter(Interval.length > 10))
+    {printsql}SELECT interval.id, interval.start, interval."end"
     FROM interval
     WHERE interval."end" - interval.start > :param_1
 
-ORM methods such as :meth:`_query.Query.filter_by`
-generally use ``getattr()`` to
-locate attributes, so can also be used with hybrid attributes:
+Filtering methods such as :meth:`.Select.filter_by` are supported
+with hybrid attributes as well:
 
 .. sourcecode:: pycon+sql
 
-    >>> print(Session().query(Interval).filter_by(length=5))
-    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
-    interval."end" AS interval_end
+    >>> print(select(Interval).filter_by(length=5))
+    {printsql}SELECT interval.id, interval.start, interval."end"
     FROM interval
     WHERE interval."end" - interval.start = :param_1
 
@@ -115,16 +114,15 @@ SQL expression-level boolean behavior:
     >>> i1.intersects(Interval(25, 29))
     False
 
-    >>> print(Session().query(Interval).filter(Interval.contains(15)))
-    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
-    interval."end" AS interval_end
+    >>> print(select(Interval).filter(Interval.contains(15)))
+    {printsql}SELECT interval.id, interval.start, interval."end"
     FROM interval
     WHERE interval.start <= :start_1 AND interval."end" > :end_1{stop}
 
     >>> ia = aliased(Interval)
-    >>> print(Session().query(Interval, ia).filter(Interval.intersects(ia)))
-    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
-    interval."end" AS interval_end, interval_1.id AS interval_1_id,
+    >>> print(select(Interval, ia).filter(Interval.intersects(ia)))
+    {printsql}SELECT interval.id, interval.start,
+    interval."end", interval_1.id AS interval_1_id,
     interval_1.start AS interval_1_start, interval_1."end" AS interval_1_end
     FROM interval, interval AS interval_1
     WHERE interval.start <= interval_1.start
@@ -137,15 +135,15 @@ SQL expression-level boolean behavior:
 Defining Expression Behavior Distinct from Attribute Behavior
 --------------------------------------------------------------
 
-Our usage of the ``&`` and ``|`` bitwise operators above was
-fortunate, considering our functions operated on two boolean values to
-return a new one.   In many cases, the construction of an in-Python
-function and a SQLAlchemy SQL expression have enough differences that
-two separate Python expressions should be defined.  The
-:mod:`~sqlalchemy.ext.hybrid` decorators define the
-:meth:`.hybrid_property.expression` modifier for this purpose.   As an
-example we'll define the radius of the interval, which requires the
-usage of the absolute value function::
+In the previous section, our usage of the ``&`` and ``|`` bitwise operators
+within the ``Interval.contains`` and ``Interval.intersects`` methods was
+fortunate, considering our functions operated on two boolean values to return a
+new one. In many cases, the construction of an in-Python function and a
+SQLAlchemy SQL expression have enough differences that two separate Python
+expressions should be defined. The :mod:`~sqlalchemy.ext.hybrid` decorator
+defines a **modifier** :meth:`.hybrid_property.expression` for this purpose. As an
+example we'll define the radius of the interval, which requires the usage of
+the absolute value function::
 
     from sqlalchemy import ColumnElement
     from sqlalchemy import Float
@@ -164,41 +162,95 @@ usage of the absolute value function::
         def _radius_expression(cls) -> ColumnElement[float]:
             return type_coerce(func.abs(cls.length) / 2, Float)
 
-Above the Python function ``abs()`` is used for instance-level
-operations, the SQL function ``ABS()`` is used via the :data:`.func`
-object for class-level expressions:
+In the above example, the :class:`.hybrid_property` first assigned to the
+name ``Interval.radius`` is amended by a subsequent method called
+``Interval._radius_expression``, using the decorator
+``@radius.inplace.expression``, which chains together two modifiers
+:attr:`.hybrid_property.inplace` and :attr:`.hybrid_property.expression`.
+The use of :attr:`.hybrid_property.inplace` indicates that the
+:meth:`.hybrid_property.expression` modifier should mutate the
+existing hybrid object at ``Interval.radius`` in place, without creating a
+new object.   Notes on this modifier and its
+rationale are discussed in the next section :ref:`hybrid_pep484_naming`.
+The use of ``@classmethod`` is optional, and is strictly to give typing
+tools a hint that ``cls`` in this case is expected to be the ``Interval``
+class, and not an instance of ``Interval``.
+
+.. note:: :attr:`.hybrid_property.inplace` as well as the use of ``@classmethod``
+   for proper typing support are available as of SQLAlchemy 2.0.4, and will
+   not work in earlier versions.
+
+With ``Interval.radius`` now including an expression element, the SQL
+function ``ABS()`` is returned when accessing ``Interval.radius``
+at the class level:
 
 .. sourcecode:: pycon+sql
 
-    >>> i1.radius
-    2
-
-    >>> print(Session().query(Interval).filter(Interval.radius > 5))
-    {printsql}SELECT interval.id AS interval_id, interval.start AS interval_start,
-        interval."end" AS interval_end
+    >>> from sqlalchemy import select
+    >>> print(select(Interval).filter(Interval.radius > 5))
+    {printsql}SELECT interval.id, interval.start, interval."end"
     FROM interval
     WHERE abs(interval."end" - interval.start) / :abs_1 > :param_1
 
+
 .. _hybrid_pep484_naming:
 
-Notes on Method Names in a pep-484 World
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using ``inplace`` to create pep-484 compliant hybrid properties
+---------------------------------------------------------------
 
-In order to work with Python typing tools such as mypy, all method
-names on a class must be differently-named.   While experienced Python users
-will note that the Python ``@property`` decorator does not have this limitation
-with typing tools, as of this writing this is only because all Python typing
-tools have hardcoded rules that are specific to ``@property`` which are
-not made available to any other user-defined decorators
-(see https://github.com/python/typing/discussions/1102 .)
+In the previous section, a :class:`.hybrid_property` decorator is illustrated
+which includes two separate method-level functions being decorated, both
+to produce a single object attribute referred towards as ``Interval.radius``.
+There are actually several different modifiers we can use for
+:class:`.hybrid_property` including :meth:`.hybrid_property.expression`,
+:meth:`.hybrid_property.setter` and :meth:`.hybrid_property.update_expression`.
 
-Therefore SQLAlchemy 2.0 introduces a new modifier
-:attr:`.hybrid_property.inplace` that allows new methods to be added to an
-existing hybrid property **in place**, so that the official name of the hybrid
-can be stated once up front, and the correctly-named hybrid property can then
-be re-used to add more methods, **without** the need to name those methods the
-same way and thus avoiding naming conflicts::
+SQLAlchemy's :class:`.hybrid_property` decorator intends that adding on these
+methods may be done in the identical manner as Python's built-in
+``@property`` decorator, where idiomatic use is to continue to redefine the
+attribute repeatedly, using the **same attribute name** each time, as in the
+example below that illustrates the use of :meth:`.hybrid_property.setter` and
+:meth:`.hybrid_property.expression` for the ``Interval.radius`` descriptor::
 
+    class Interval(Base):
+        # ...
+
+        @hybrid_property
+        def radius(self):
+            return abs(self.length) / 2
+
+        @radius.setter
+        def radius(self, value):
+            self.length = value * 2
+
+        @radius.expression
+        def radius(cls):
+            return type_coerce(func.abs(cls.length) / 2, Float)
+
+Above, there are three ``Interval.radius`` methods, but as each are decorated,
+first by the :class:`.hybrid_property` decorator and then by the
+``@radius`` name itself, the end effect is that ``Interval.radius`` is
+a single attribute with two different functions contained within it.
+This style of use is taken from `Python's documented use of @property
+<https://docs.python.org/3/library/functions.html#property>`_.
+It is important to note that the way both ``@property`` as well as
+:class:`.hybrid_property` work, a **copy of the descriptor is made each time**.
+That is, each call to ``@radius.expression``, ``@radius.setter`` etc.
+make a new object entirely.  This allows the attribute to be re-defined in
+subclasses without issue (see :ref:`hybrid_reuse_subclass` later in this
+section for how this is used).
+
+However, the above approach is not compatible with typing tools such as
+mypy and pyright.  Python's own ``@property`` decorator does not have this
+limitation only because
+`these tools hardcode the behavior of @property
+<https://github.com/python/typing/discussions/1102>`_, meaning this syntax
+is no longer available to SQLAlchemy under :pep:`484` compliance.
+
+In order to produce a reasonable syntax while remaining typing compliant,
+the :attr:`.hybrid_property.inplace` decorator allows the same
+decorator to be re-used with different method names, while still producing
+a single decorator under one name::
 
     class Interval(Base):
         # ...
@@ -217,40 +269,27 @@ same way and thus avoiding naming conflicts::
         def _radius_expression(cls) -> ColumnElement[float]::
             return type_coerce(func.abs(cls.length) / 2, Float)
 
-When not using the :attr:`.hybrid_property.inplace` modifier, all hybrid
-property modifiers return a **new** object each time.   Without
-:attr:`.hybrid_property.inplace`, the above methods need to be carefully
-chained together::
+Using :attr:`.hybrid_property.inplace` further qualifies the use of the
+decorator that a new copy should not be made, thereby maintaining the
+``Interval.radius`` name while allowing additional methods
+``Interval._radius_setter`` and ``Interval._radius_expression`` to be
+differently named.
 
-    class Interval(Base):
-        # ...
-
-        # old approach not using .inplace
-
-        @hybrid_property
-        def _radius_getter(self) -> float:
-            return abs(self.length) / 2
-
-        @_radius_getter.setter
-        def _radius_setter(self, value: float) -> None:
-            # for example only
-            self.length = value * 2
-
-        @_radius_setter.expression
-        @classmethod
-        def _radius_expression(cls) -> ColumnElement[float]::
-            return type_coerce(func.abs(cls.length) / 2, Float)
 
 .. versionadded:: 2.0.4 Added :attr:`.hybrid_property.inplace` to allow
    less verbose construction of composite :class:`.hybrid_property` objects
-   while not having to use repeated method names.
+   while not having to use repeated method names.   Additionally allowed the
+   use of ``@classmethod`` within :attr:`.hybrid_property.expression`,
+   :attr:`.hybrid_property.update_expression`, and
+   :attr:`.hybrid_property.comparator` to allow typing tools to identify
+   ``cls`` as a class and not an instance in the method signature.
 
 
 Defining Setters
 ----------------
 
-Hybrid properties can also define setter methods.  If we wanted
-``length`` above, when set, to modify the endpoint value::
+The :meth:`.hybrid_property.setter` modifier allows the construction of a
+custom setter method, that can modify values on the object::
 
     class Interval(Base):
         # ...
@@ -277,20 +316,21 @@ The ``length(self, value)`` method is now called upon set::
 Allowing Bulk ORM Update
 ------------------------
 
-A hybrid can define a custom "UPDATE" handler for when using the
-:meth:`_query.Query.update` method, allowing the hybrid to be used in the
+A hybrid can define a custom "UPDATE" handler for when using
+ORM-enabled updates, allowing the hybrid to be used in the
 SET clause of the update.
 
-Normally, when using a hybrid with :meth:`_query.Query.update`, the SQL
+Normally, when using a hybrid with :func:`_sql.update`, the SQL
 expression is used as the column that's the target of the SET.  If our
 ``Interval`` class had a hybrid ``start_point`` that linked to
 ``Interval.start``, this could be substituted directly::
 
-    session.query(Interval).update({Interval.start_point: 10})
+    from sqlalchemy import update
+    stmt = update(Interval).values({Interval.start_point: 10})
 
 However, when using a composite hybrid like ``Interval.length``, this
 hybrid represents more than one column.   We can set up a handler that will
-accommodate a value passed to :meth:`_query.Query.update` which can affect
+accommodate a value passed in the VALUES expression which can affect
 this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
@@ -323,11 +363,12 @@ a hybrid SET expression:
     >>> print(update(Interval).values({Interval.length: 25}))
     {printsql}UPDATE interval SET "end"=(interval.start + :start_1)
 
-In some cases, the default "evaluate" strategy can't perform the SET
-expression in Python; while the addition operator we're using above
-is supported, for more complex SET expressions it will usually be necessary
-to use either the "fetch" or False synchronization strategy as illustrated
-above.
+This SET expression is accommodated by the ORM automatically.
+
+.. seealso::
+
+    :ref:`orm_expression_update_delete` - includes background on ORM-enabled
+    UPDATE statements
 
 
 Working with Relationships
@@ -665,9 +706,6 @@ reference the instrumented attribute back to the hybrid object::
         @classmethod
         def name(cls):
             return func.concat(cls.first_name, ' ', cls.last_name)
-
-.. versionadded:: 1.2 Added :meth:`.hybrid_property.getter` as well as the
-   ability to redefine accessors per-subclass.
 
 
 Hybrid Value Objects

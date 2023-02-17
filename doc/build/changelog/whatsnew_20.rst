@@ -2149,7 +2149,8 @@ originator of the state change throws the error instead:
        self._close_impl(invalidate=False)
     File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1827, in _close_impl
        transaction.close(invalidate)
-    File "<string>", line 2, in close
+    File "sudo killallsphinx
+    string>", line 2, in close
     File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 506, in _go
        raise sa_exc.InvalidRequestError(
     sqlalchemy.exc.InvalidRequestError: Method 'close()' can't be called here;
