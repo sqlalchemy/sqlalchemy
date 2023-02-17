@@ -212,6 +212,8 @@ attribute repeatedly, using the **same attribute name** each time, as in the
 example below that illustrates the use of :meth:`.hybrid_property.setter` and
 :meth:`.hybrid_property.expression` for the ``Interval.radius`` descriptor::
 
+    # correct use, however is not accepted by pep-484 tooling
+
     class Interval(Base):
         # ...
 
@@ -252,6 +254,8 @@ the :attr:`.hybrid_property.inplace` decorator allows the same
 decorator to be re-used with different method names, while still producing
 a single decorator under one name::
 
+    # correct use which is also accepted by pep-484 tooling
+
     class Interval(Base):
         # ...
 
@@ -266,7 +270,7 @@ a single decorator under one name::
 
         @radius.inplace.expression
         @classmethod
-        def _radius_expression(cls) -> ColumnElement[float]::
+        def _radius_expression(cls) -> ColumnElement[float]:
             return type_coerce(func.abs(cls.length) / 2, Float)
 
 Using :attr:`.hybrid_property.inplace` further qualifies the use of the
