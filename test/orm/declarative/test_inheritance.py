@@ -43,7 +43,11 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
         Base.metadata.drop_all(testing.db)
 
 
-class DeclarativeInheritanceTest(DeclarativeTestBase):
+class DeclarativeInheritanceTest(
+    testing.AssertsCompiledSQL, DeclarativeTestBase
+):
+    __dialect__ = "default"
+
     @testing.emits_warning(r".*does not indicate a 'polymorphic_identity'")
     def test_we_must_copy_mapper_args(self):
         class Person(Base):
@@ -810,13 +814,18 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
+    @testing.variation("different_attr", [True, False])
     def test_columns_single_inheritance_conflict_resolution(
-        self, connection, decl_base, decl_type
+        self, connection, decl_base, decl_type, different_attr
     ):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
 
-        See [ticket:2472].
+        See #2472.
+
+        use_existing_column variant is #8822
+
+        different_attr variant is #9332
 
         """
 
@@ -825,58 +834,108 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             id = Column(Integer, Identity(), primary_key=True)
 
         class Engineer(Person):
+            if different_attr:
+                if decl_type.legacy:
 
-            """single table inheritance"""
+                    @declared_attr
+                    def e_target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(
+                                "target_id", Integer, ForeignKey("other.id")
+                            ),
+                        )
 
-            if decl_type.legacy:
+                elif decl_type.use_existing_column:
+                    e_target_id: Mapped[int] = mapped_column(
+                        "target_id",
+                        ForeignKey("other.id"),
+                        use_existing_column=True,
+                    )
+            else:
+                if decl_type.legacy:
 
-                @declared_attr
-                def target_id(cls):
-                    return cls.__table__.c.get(
-                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    @declared_attr
+                    def target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(Integer, ForeignKey("other.id")),
+                        )
+
+                elif decl_type.use_existing_column:
+                    target_id: Mapped[int] = mapped_column(
+                        ForeignKey("other.id"), use_existing_column=True
                     )
 
-            elif decl_type.use_existing_column:
-                target_id: Mapped[int] = mapped_column(
-                    ForeignKey("other.id"), use_existing_column=True
-                )
-
-            @declared_attr
-            def target(cls):
-                return relationship("Other")
+            target = relationship("Other")
 
         class Manager(Person):
+            if different_attr:
+                if decl_type.legacy:
 
-            """single table inheritance"""
+                    @declared_attr
+                    def m_target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(
+                                "target_id", Integer, ForeignKey("other.id")
+                            ),
+                        )
 
-            if decl_type.legacy:
+                elif decl_type.use_existing_column:
+                    m_target_id: Mapped[int] = mapped_column(
+                        "target_id",
+                        ForeignKey("other.id"),
+                        use_existing_column=True,
+                    )
+            else:
+                if decl_type.legacy:
 
-                @declared_attr
-                def target_id(cls):
-                    return cls.__table__.c.get(
-                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    @declared_attr
+                    def target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(Integer, ForeignKey("other.id")),
+                        )
+
+                elif decl_type.use_existing_column:
+                    target_id: Mapped[int] = mapped_column(
+                        ForeignKey("other.id"), use_existing_column=True
                     )
 
-            elif decl_type.use_existing_column:
-                target_id: Mapped[int] = mapped_column(
-                    ForeignKey("other.id"), use_existing_column=True
-                )
-
-            @declared_attr
-            def target(cls):
-                return relationship("Other")
+            target = relationship("Other")
 
         class Other(decl_base):
             __tablename__ = "other"
             id = Column(Integer, Identity(), primary_key=True)
 
-        is_(
-            Engineer.target_id.property.columns[0],
-            Person.__table__.c.target_id,
-        )
-        is_(
-            Manager.target_id.property.columns[0], Person.__table__.c.target_id
-        )
+        if different_attr:
+            is_(
+                Engineer.e_target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            is_(
+                Manager.m_target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            self.assert_compile(
+                select(Engineer.e_target_id),
+                "SELECT person.target_id FROM person",
+            )
+            self.assert_compile(
+                select(Manager.m_target_id),
+                "SELECT person.target_id FROM person",
+            )
+        else:
+            is_(
+                Engineer.target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            is_(
+                Manager.target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+
         # do a brief round trip on this
         decl_base.metadata.create_all(connection)
         with Session(connection) as session:
@@ -946,11 +1005,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
     def test_columns_single_inheritance_cascading_resolution_pk(
-        self, decl_type
+        self, decl_type, decl_base
     ):
         """An additional test for #4352 in terms of the requested use case."""
 
-        class TestBase(Base):
+        class TestBase(decl_base):
             __abstract__ = True
 
             if decl_type.legacy:

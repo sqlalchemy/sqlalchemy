@@ -663,8 +663,9 @@ class MappedColumn(
                 )
             supercls_mapper = class_mapper(decl_scan.inherits, False)
 
+            colname = column.name if column.name is not None else key
             column = self.column = supercls_mapper.local_table.c.get(  # type: ignore # noqa: E501
-                key, column
+                colname, column
             )
 
         if column.key is None:
