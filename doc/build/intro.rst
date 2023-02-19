@@ -22,7 +22,7 @@ Core contains the breadth of SQLAlchemy's SQL and database
 integration and description services, the most prominent part of this
 being the **SQL Expression Language**.
 
-The SQL Expression Language is a toolkit all its own, independent of the ORM
+The SQL Expression Language is a toolkit on its own, independent of the ORM
 package, which provides a system of constructing SQL expressions represented by
 composable objects, which can then be "executed" against a target database
 within the scope of a specific transaction, returning a result set.
