@@ -718,7 +718,7 @@ class AsyncConnection(
 
         E.g.::
 
-            result = await conn.stream_scalars(stmt):
+            result = await conn.stream_scalars(stmt)
             async for scalar in result:
                 print(f"{scalar}")
 
