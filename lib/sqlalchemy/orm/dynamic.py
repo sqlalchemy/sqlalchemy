@@ -243,8 +243,8 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
     def append(self, item: _T) -> None:
         """Append an item to this :class:`_orm.AppenderQuery`.
 
-        The given item will be removed from the parent instance's collection on
-        the next flush.
+        The given item will be persisted to the database in terms of
+        the parent instance's collection on the next flush.
 
         """
         self._add_all_impl([item])
