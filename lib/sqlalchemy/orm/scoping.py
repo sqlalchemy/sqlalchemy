@@ -76,7 +76,14 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 
 
-class _QueryDescriptorType(Protocol):
+class QueryPropertyDescriptor(Protocol):
+    """Describes the type applied to a class-level
+    :meth:`_orm.scoped_session.query_property` attribute.
+
+    .. versionadded:: 2.0.5
+
+    """
+
     def __get__(self, instance: Any, owner: Type[_T]) -> Query[_T]:
         ...
 
@@ -254,17 +261,25 @@ class scoped_session(Generic[_S]):
 
     def query_property(
         self, query_cls: Optional[Type[Query[_T]]] = None
-    ) -> _QueryDescriptorType:
-        """return a class property which produces a :class:`_query.Query`
-        object
-        against the class and the current :class:`.Session` when called.
+    ) -> QueryPropertyDescriptor:
+        """return a class property which produces a legacy
+        :class:`_query.Query` object against the class and the current
+        :class:`.Session` when called.
+
+        .. legacy:: The :meth:`_orm.scoped_session.query_property` accessor
+           is specific to the legacy :class:`.Query` object and is not
+           considered to be part of :term:`2.0-style` ORM use.
 
         e.g.::
+
+            from sqlalchemy.orm import QueryPropertyDescriptor
+            from sqlalchemy.orm import scoped_session
+            from sqlalchemy.orm import sessionmaker
 
             Session = scoped_session(sessionmaker())
 
             class MyClass:
-                query = Session.query_property()
+                query: QueryPropertyDescriptor = Session.query_property()
 
             # after mappers are defined
             result = MyClass.query.filter(MyClass.name=='foo').all()

@@ -120,6 +120,7 @@ from .relationships import foreign as foreign
 from .relationships import Relationship as Relationship
 from .relationships import RelationshipProperty as RelationshipProperty
 from .relationships import remote as remote
+from .scoping import QueryPropertyDescriptor as QueryPropertyDescriptor
 from .scoping import scoped_session as scoped_session
 from .session import close_all_sessions as close_all_sessions
 from .session import make_transient as make_transient
