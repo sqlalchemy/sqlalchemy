@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 8853, 9335
+
+    Continued the fix for :ticket:`8853`, allowing the :class:`_orm.Mapped`
+    name to be fully qualified regardless of whether or not
+    ``from __annotations__ import future`` were present. This issue first fixed
+    in 2.0.0b3 confirmed that this case worked via the test suite, however the
+    test suite apparently was not testing the behavior for the name ``Mapped``
+    not being locally present at all; string resolution has been updated to
+    ensure the ``Mapped`` symbol is locatable as applies to how the ORM uses
+    these functions.

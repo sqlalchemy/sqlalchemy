@@ -42,7 +42,12 @@ class M3:
 
 class MappedColumnTest(_MappedColumnTest):
     def test_fully_qualified_mapped_name(self, decl_base):
-        """test #8853, regression caused by #8759 ;)"""  # noqa: E501
+        """test #8853, regression caused by #8759 ;)
+
+
+        See same test in test_abs_import_only
+
+        """
 
         class Foo(decl_base):
             __tablename__ = "foo"

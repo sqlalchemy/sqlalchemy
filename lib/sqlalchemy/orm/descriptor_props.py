@@ -44,6 +44,7 @@ from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .util import _none_set
+from .util import de_stringify_annotation
 from .. import event
 from .. import exc as sa_exc
 from .. import schema
@@ -52,7 +53,6 @@ from .. import util
 from ..sql import expression
 from ..sql import operators
 from ..sql.elements import BindParameter
-from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import typing_get_args

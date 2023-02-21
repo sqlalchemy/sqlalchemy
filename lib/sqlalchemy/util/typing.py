@@ -18,6 +18,7 @@ from typing import Dict
 from typing import ForwardRef
 from typing import Generic
 from typing import Iterable
+from typing import Mapping
 from typing import NewType
 from typing import NoReturn
 from typing import Optional
@@ -123,6 +124,8 @@ def de_stringify_annotation(
     cls: Type[Any],
     annotation: _AnnotationScanType,
     originating_module: str,
+    locals_: Mapping[str, Any],
+    *,
     str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
     include_generic: bool = False,
 ) -> Type[Any]:
@@ -150,7 +153,9 @@ def de_stringify_annotation(
         if str_cleanup_fn:
             annotation = str_cleanup_fn(annotation, originating_module)
 
-        annotation = eval_expression(annotation, originating_module)
+        annotation = eval_expression(
+            annotation, originating_module, locals_=locals_
+        )
 
     if (
         include_generic
@@ -162,6 +167,7 @@ def de_stringify_annotation(
                 cls,
                 elem,
                 originating_module,
+                locals_,
                 str_cleanup_fn=str_cleanup_fn,
                 include_generic=include_generic,
             )
@@ -183,7 +189,12 @@ def _copy_generic_annotation_with(
         return annotation.__origin__[elements]  # type: ignore
 
 
-def eval_expression(expression: str, module_name: str) -> Any:
+def eval_expression(
+    expression: str,
+    module_name: str,
+    *,
+    locals_: Optional[Mapping[str, Any]] = None,
+) -> Any:
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
     except KeyError as ke:
@@ -191,8 +202,9 @@ def eval_expression(expression: str, module_name: str) -> Any:
             f"Module {module_name} isn't present in sys.modules; can't "
             f"evaluate expression {expression}"
         ) from ke
+
     try:
-        annotation = eval(expression, base_globals, None)
+        annotation = eval(expression, base_globals, locals_)
     except Exception as err:
         raise NameError(
             f"Could not de-stringify annotation {expression!r}"
@@ -201,9 +213,14 @@ def eval_expression(expression: str, module_name: str) -> Any:
         return annotation
 
 
-def eval_name_only(name: str, module_name: str) -> Any:
+def eval_name_only(
+    name: str,
+    module_name: str,
+    *,
+    locals_: Optional[Mapping[str, Any]] = None,
+) -> Any:
     if "." in name:
-        return eval_expression(name, module_name)
+        return eval_expression(name, module_name, locals_=locals_)
 
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
@@ -237,12 +254,18 @@ def de_stringify_union_elements(
     cls: Type[Any],
     annotation: ArgsTypeProcotol,
     originating_module: str,
+    locals_: Mapping[str, Any],
+    *,
     str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
 ) -> Type[Any]:
     return make_union_type(
         *[
             de_stringify_annotation(
-                cls, anno, originating_module, str_cleanup_fn
+                cls,
+                anno,
+                originating_module,
+                {},
+                str_cleanup_fn=str_cleanup_fn,
             )
             for anno in annotation.__args__
         ]
