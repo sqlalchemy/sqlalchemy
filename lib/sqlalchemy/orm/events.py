@@ -1189,6 +1189,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance before an INSERT statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify local, non-object related
         attributes on the instance before an INSERT occurs, as well
         as to emit additional SQL statements on the given
@@ -1237,6 +1243,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance after an INSERT statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify in-Python-only
         state on the instance after an INSERT occurs, as well
         as to emit additional SQL statements on the given
@@ -1284,6 +1296,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     ) -> None:
         """Receive an object instance before an UPDATE statement
         is emitted corresponding to that instance.
+
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
 
         This event is used to modify local, non-object related
         attributes on the instance before an UPDATE occurs, as well
@@ -1352,6 +1370,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance after an UPDATE statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify in-Python-only
         state on the instance after an UPDATE occurs, as well
         as to emit additional SQL statements on the given
@@ -1418,6 +1442,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance before a DELETE statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to emit additional SQL statements on
         the given connection as well as to perform application
         specific bookkeeping related to a deletion event.
@@ -1459,6 +1489,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     ) -> None:
         """Receive an object instance after a DELETE statement
         has been emitted corresponding to that instance.
+
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
 
         This event is used to emit additional SQL statements on
         the given connection as well as to perform application
