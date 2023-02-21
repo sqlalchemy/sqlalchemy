@@ -2208,7 +2208,7 @@ def aliased(
 
 
 def with_polymorphic(
-    base: Union[_O, Mapper[_O]],
+    base: Union[Type[_O], Mapper[_O]],
     classes: Union[Literal["*"], Iterable[Type[Any]]],
     selectable: Union[Literal[False, None], FromClause] = False,
     flat: bool = False,
