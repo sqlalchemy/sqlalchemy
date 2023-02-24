@@ -1683,11 +1683,13 @@ class SessionEvents(event.Events[Session]):
         This event is invoked for all top-level SQL statements invoked from the
         :meth:`_orm.Session.execute` method, as well as related methods such as
         :meth:`_orm.Session.scalars` and :meth:`_orm.Session.scalar`. As of
-        SQLAlchemy 1.4, all ORM queries emitted on behalf of a
-        :class:`_orm.Session` will flow through this method, so this event hook
-        provides the single point at which ORM queries of all types may be
-        intercepted before they are invoked, and additionally to replace their
-        execution with a different process.
+        SQLAlchemy 1.4, all ORM queries that run through the
+        :meth:`_orm.Session.execute` method as well as related methods
+        :meth:`_orm.Session.scalars`, :meth:`_orm.Session.scalar` etc.
+        will participate in this event.
+        This event hook does **not** apply to the queries that are
+        emitted internally within the ORM flush process, i.e. the
+        process described at :ref:`session_flushing`.
 
         .. note::  The :meth:`_orm.SessionEvents.do_orm_execute` event hook
            is triggered **for ORM statement executions only**, meaning those
@@ -1698,10 +1700,16 @@ class SessionEvents(event.Events[Session]):
            otherwise originating from an :class:`_engine.Engine` object without
            any :class:`_orm.Session` involved. To intercept **all** SQL
            executions regardless of whether the Core or ORM APIs are in use,
-           see the event hooks at
-           :class:`.ConnectionEvents`, such as
+           see the event hooks at :class:`.ConnectionEvents`, such as
            :meth:`.ConnectionEvents.before_execute` and
            :meth:`.ConnectionEvents.before_cursor_execute`.
+
+           Also, this event hook does **not** apply to queries that are
+           emitted internally within the ORM flush process,
+           i.e. the process described at :ref:`session_flushing`; to
+           intercept steps within the flush process, see the event
+           hooks described at :ref:`session_persistence_events` as
+           well as :ref:`session_persistence_mapper`.
 
         This event is a ``do_`` event, meaning it has the capability to replace
         the operation that the :meth:`_orm.Session.execute` method normally
