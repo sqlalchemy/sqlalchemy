@@ -2772,7 +2772,7 @@ class MySQLDialect(default.DefaultDialect):
         )
 
         self._needs_correct_for_88718_96365 = (
-            not self.is_mariadb and self.server_version_info >= (8,)
+            not self.is_mariadb and (8, 0, 13) >= self.server_version_info >= (8,)
         )
 
         self.delete_returning = (
