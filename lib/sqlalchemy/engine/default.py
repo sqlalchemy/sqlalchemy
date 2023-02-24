@@ -669,16 +669,11 @@ class DefaultDialect(Dialect):
     def _dialect_specific_select_one(self):
         return str(expression.select(1).compile(dialect=self))
 
-    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
-        cursor = None
+    def _do_ping_w_event(self, dbapi_connection: DBAPIConnection) -> bool:
         try:
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(self._dialect_specific_select_one)
-            finally:
-                cursor.close()
+            return self.do_ping(dbapi_connection)
         except self.loaded_dbapi.Error as err:
-            is_disconnect = self.is_disconnect(err, dbapi_connection, cursor)
+            is_disconnect = self.is_disconnect(err, dbapi_connection, None)
 
             if self._has_events:
                 try:
@@ -687,19 +682,25 @@ class DefaultDialect(Dialect):
                         self,
                         is_disconnect=is_disconnect,
                         invalidate_pool_on_disconnect=False,
+                        is_pre_ping=True,
                     )
                 except exc.StatementError as new_err:
                     is_disconnect = new_err.connection_invalidated
-
-                # other exceptions modified by the event handler will be
-                # thrown
 
             if is_disconnect:
                 return False
             else:
                 raise
-        else:
-            return True
+
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
+        cursor = None
+
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(self._dialect_specific_select_one)
+        finally:
+            cursor.close()
+        return True
 
     def create_xid(self):
         """Create a random two-phase transaction ID.

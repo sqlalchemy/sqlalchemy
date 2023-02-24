@@ -178,20 +178,15 @@ class _PGDialect_common_psycopg(PGDialect):
     def do_ping(self, dbapi_connection):
         cursor = None
         before_autocommit = dbapi_connection.autocommit
+
+        if not before_autocommit:
+            dbapi_connection.autocommit = True
+        cursor = dbapi_connection.cursor()
         try:
-            if not before_autocommit:
-                self._do_autocommit(dbapi_connection, True)
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(self._dialect_specific_select_one)
-            finally:
-                cursor.close()
-                if not before_autocommit and not dbapi_connection.closed:
-                    self._do_autocommit(dbapi_connection, before_autocommit)
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, cursor):
-                return False
-            else:
-                raise
-        else:
-            return True
+            cursor.execute(self._dialect_specific_select_one)
+        finally:
+            cursor.close()
+            if not before_autocommit and not dbapi_connection.closed:
+                dbapi_connection.autocommit = before_autocommit
+
+        return True

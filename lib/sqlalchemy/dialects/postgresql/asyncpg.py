@@ -992,15 +992,8 @@ class PGDialect_asyncpg(PGDialect):
         return ([], opts)
 
     def do_ping(self, dbapi_connection):
-        try:
-            dbapi_connection.ping()
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, None):
-                return False
-            else:
-                raise
-        else:
-            return True
+        dbapi_connection.ping()
+        return True
 
     @classmethod
     def get_pool_class(cls, url):

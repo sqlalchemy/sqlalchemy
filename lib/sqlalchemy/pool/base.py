@@ -132,7 +132,7 @@ class _ConnDialect:
     def do_close(self, dbapi_connection: DBAPIConnection) -> None:
         dbapi_connection.close()
 
-    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
+    def _do_ping_w_event(self, dbapi_connection: DBAPIConnection) -> bool:
         raise NotImplementedError(
             "The ping feature requires that a dialect is "
             "passed to the connection pool."
@@ -1266,6 +1266,7 @@ class _ConnectionFairy(PoolProxiedConnection):
         threadconns: Optional[threading.local] = None,
         fairy: Optional[_ConnectionFairy] = None,
     ) -> _ConnectionFairy:
+
         if not fairy:
             fairy = _ConnectionRecord.checkout(pool)
 
@@ -1304,7 +1305,9 @@ class _ConnectionFairy(PoolProxiedConnection):
                                 "Pool pre-ping on connection %s",
                                 fairy.dbapi_connection,
                             )
-                        result = pool._dialect.do_ping(fairy.dbapi_connection)
+                        result = pool._dialect._do_ping_w_event(
+                            fairy.dbapi_connection
+                        )
                         if not result:
                             if fairy._echo:
                                 pool.logger.debug(

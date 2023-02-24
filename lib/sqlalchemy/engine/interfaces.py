@@ -1967,6 +1967,9 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
+    def _do_ping_w_event(self, dbapi_connection: DBAPIConnection) -> bool:
+        raise NotImplementedError()
+
     def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
         """ping the DBAPI connection and return True if the connection is
         usable."""
@@ -3288,6 +3291,17 @@ class ExceptionContext:
     based on other conditions, or even on a per-connection basis.
 
     .. versionadded:: 1.0.3
+
+    """
+
+    is_pre_ping: bool
+    """Indicates if this error is occurring within the "pre-ping" step
+    performed when :paramref:`_sa.create_engine.pool_pre_ping` is set to
+    ``True``.  In this mode, the :attr:`.ExceptionContext.engine` attribute
+    will be ``None``.  The dialect in use is accessible via the
+    :attr:`.ExceptionContext.dialect` attribute.
+
+    .. versionadded:: 2.0.5
 
     """
 

@@ -85,15 +85,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         return connector
 
     def do_ping(self, dbapi_connection):
-        try:
-            dbapi_connection.ping(False)
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, None):
-                return False
-            else:
-                raise
-        else:
-            return True
+        dbapi_connection.ping(False)
+        return True
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")

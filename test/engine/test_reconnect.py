@@ -1,3 +1,4 @@
+import itertools
 import time
 from unittest.mock import call
 from unittest.mock import Mock
@@ -28,6 +29,8 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.engines import DBAPIProxyConnection
+from sqlalchemy.testing.engines import DBAPIProxyCursor
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1000,6 +1003,155 @@ def _assert_invalidated(fn, *args):
     except tsa.exc.DBAPIError as e:
         if not e.connection_invalidated:
             raise
+
+
+class RealPrePingEventHandlerTest(fixtures.TestBase):
+    """real test for issue #5648, which had to be revisited for 2.0 as the
+    initial version was not adequately tested and non-implementation for
+    mysql, postgresql was not caught
+
+    """
+
+    __backend__ = True
+    __requires__ = "graceful_disconnects", "ad_hoc_engines"
+
+    @testing.fixture
+    def ping_fixture(self, testing_engine):
+        engine = testing_engine(
+            options={"pool_pre_ping": True, "_initialize": False}
+        )
+
+        existing_connect = engine.dialect.dbapi.connect
+
+        fail = False
+        fail_count = itertools.count()
+        DBAPIError = engine.dialect.dbapi.Error
+
+        class ExplodeConnection(DBAPIProxyConnection):
+            def ping(self, *arg, **kw):
+                if fail and next(fail_count) < 1:
+                    raise DBAPIError("unhandled disconnect situation")
+                else:
+                    return True
+
+        class ExplodeCursor(DBAPIProxyCursor):
+            def execute(self, stmt, parameters=None, **kw):
+                if fail and next(fail_count) < 1:
+                    raise DBAPIError("unhandled disconnect situation")
+                else:
+                    return super().execute(stmt, parameters=parameters, **kw)
+
+        def mock_connect(*arg, **kw):
+            real_connection = existing_connect(*arg, **kw)
+            return ExplodeConnection(engine, real_connection, ExplodeCursor)
+
+        with mock.patch.object(
+            engine.dialect.loaded_dbapi, "connect", mock_connect
+        ):
+
+            # set up initial connection.  pre_ping works on subsequent connects
+            engine.connect().close()
+
+            # ping / exec will fail
+            fail = True
+
+            yield engine
+
+    @testing.fixture
+    def ping_fixture_all_errs_disconnect(self, ping_fixture):
+        engine = ping_fixture
+
+        with mock.patch.object(
+            engine.dialect, "is_disconnect", lambda *arg, **kw: True
+        ):
+            yield engine
+
+    def test_control(self, ping_fixture):
+        """test the fixture raises on connect"""
+        engine = ping_fixture
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
+
+    def test_downgrade_control(self, ping_fixture_all_errs_disconnect):
+        """test the disconnect fixture doesn't raise, since it considers
+        all errors to be disconnect errors.
+
+        """
+
+        engine = ping_fixture_all_errs_disconnect
+
+        conn = engine.connect()
+        conn.close()
+
+    def test_event_handler_didnt_upgrade_disconnect(self, ping_fixture):
+        """test that having an event handler that doesn't do anything
+        keeps the behavior in place for a fatal error.
+
+        """
+        engine = ping_fixture
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert not ctx.is_disconnect
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
+
+    def test_event_handler_didnt_downgrade_disconnect(
+        self, ping_fixture_all_errs_disconnect
+    ):
+        """test that having an event handler that doesn't do anything
+        keeps the behavior in place for a disconnect error.
+
+        """
+        engine = ping_fixture_all_errs_disconnect
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_pre_ping
+            assert ctx.is_disconnect
+
+        conn = engine.connect()
+        conn.close()
+
+    def test_event_handler_can_upgrade_disconnect(self, ping_fixture):
+        """test that an event hook can receive a fatal error and convert
+        it to be a disconnect error during pre-ping"""
+
+        engine = ping_fixture
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_pre_ping
+            ctx.is_disconnect = True
+
+        conn = engine.connect()
+        # no error
+        conn.close()
+
+    def test_event_handler_can_downgrade_disconnect(
+        self, ping_fixture_all_errs_disconnect
+    ):
+        """test that an event hook can receive a disconnect error and convert
+        it to be a fatal error during pre-ping"""
+
+        engine = ping_fixture_all_errs_disconnect
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_disconnect
+            if ctx.is_pre_ping:
+                ctx.is_disconnect = False
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
 
 
 class RealReconnectTest(fixtures.TestBase):
