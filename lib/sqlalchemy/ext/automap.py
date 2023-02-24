@@ -1188,6 +1188,14 @@ class AutomapBase:
          .. versionadded:: 1.4
 
         """
+
+        for mr in cls.__mro__:
+            if "_sa_automapbase_bookkeeping" in mr.__dict__:
+                automap_base = cast("Type[AutomapBase]", mr)
+                break
+        else:
+            assert False, "Can't locate automap base in class hierarchy"
+
         glbls = globals()
         if classname_for_table is None:
             classname_for_table = glbls["classname_for_table"]
@@ -1237,7 +1245,7 @@ class AutomapBase:
             ]
             many_to_many = []
 
-            bookkeeping = cls._sa_automapbase_bookkeeping
+            bookkeeping = automap_base._sa_automapbase_bookkeeping
             metadata_tables = cls.metadata.tables
 
             for table_key in set(metadata_tables).difference(
@@ -1278,7 +1286,7 @@ class AutomapBase:
 
                     mapped_cls = type(
                         newname,
-                        (cls,),
+                        (automap_base,),
                         clsdict,
                     )
                     map_config = _DeferredMapperConfig.config_for_cls(
@@ -1309,7 +1317,7 @@ class AutomapBase:
 
             for map_config in table_to_map_config.values():
                 _relationships_for_fks(
-                    cls,
+                    automap_base,
                     map_config,
                     table_to_map_config,
                     collection_class,
@@ -1320,7 +1328,7 @@ class AutomapBase:
 
             for lcl_m2m, rem_m2m, m2m_const, table in many_to_many:
                 _m2m_relationship(
-                    cls,
+                    automap_base,
                     lcl_m2m,
                     rem_m2m,
                     m2m_const,
@@ -1332,7 +1340,9 @@ class AutomapBase:
                     generate_relationship,
                 )
 
-            for map_config in _DeferredMapperConfig.classes_for_base(cls):
+            for map_config in _DeferredMapperConfig.classes_for_base(
+                automap_base
+            ):
                 map_config.map()
 
     _sa_decl_prepare = True
