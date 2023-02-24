@@ -71,9 +71,7 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
         @fullname.expression
         def fullname(cls):
             return case(
-                [
-                    (cls.firstname != None, cls.firstname + " " + cls.lastname),
-                ],
+                (cls.firstname != None, cls.firstname + " " + cls.lastname),
                 else_=cls.lastname,
             )
 
