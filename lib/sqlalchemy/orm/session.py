@@ -2327,7 +2327,8 @@ class Session(_SessionClassMethods, EventTarget):
 
         :return:  a :class:`_result.ScalarResult` object
 
-        .. versionadded:: 1.4.24
+        .. versionadded:: 1.4.24 The :meth:`_orm.scoping.scoped_session.scalars`
+           proxy method was added in 1.4.26.
 
         .. seealso::
 
