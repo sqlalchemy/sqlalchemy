@@ -1,0 +1,6 @@
+.. change::
+    :tags: cextensions, performance
+    :tickets: 9343
+
+    Cython cdef optimized variable is used in the resultproxy.pyx file instead of the python global variable ``KEY_OBJECTS_ONLY``.
+    Using the cdef variable allows to avoid Python API calls during comparision yielding slightly faster getattr of the ``BaseRow`` class.
