@@ -972,17 +972,17 @@ def _instance_processor(
 
     if not refresh_state and _polymorphic_from is not None:
         key = ("loader", path.path)
+
         if key in context.attributes and context.attributes[key].strategy == (
             ("selectinload_polymorphic", True),
         ):
-            selectin_load_via = mapper._should_selectin_load(
-                context.attributes[key].local_opts["entities"],
-                _polymorphic_from,
-            )
+            option_entities = context.attributes[key].local_opts["entities"]
         else:
-            selectin_load_via = mapper._should_selectin_load(
-                None, _polymorphic_from
-            )
+            option_entities = None
+        selectin_load_via = mapper._should_selectin_load(
+            option_entities,
+            _polymorphic_from,
+        )
 
         if selectin_load_via and selectin_load_via is not _polymorphic_from:
             # only_load_props goes w/ refresh_state only, and in a refresh
@@ -990,8 +990,13 @@ def _instance_processor(
             # loading does not apply
             assert only_load_props is None
 
-            callable_ = _load_subclass_via_in(context, path, selectin_load_via)
-
+            callable_ = _load_subclass_via_in(
+                context,
+                path,
+                selectin_load_via,
+                _polymorphic_from,
+                option_entities,
+            )
             PostLoad.callable_for_path(
                 context,
                 load_path,
@@ -1212,17 +1217,42 @@ def _instance_processor(
     return _instance
 
 
-def _load_subclass_via_in(context, path, entity):
+def _load_subclass_via_in(
+    context, path, entity, polymorphic_from, option_entities
+):
     mapper = entity.mapper
+
+    # TODO: polymorphic_from seems to be a Mapper in all cases.
+    # this is likely not needed, but as we dont have typing in loading.py
+    # yet, err on the safe side
+    polymorphic_from_mapper = polymorphic_from.mapper
+    not_against_basemost = polymorphic_from_mapper.inherits is not None
 
     zero_idx = len(mapper.base_mapper.primary_key) == 1
 
-    if entity.is_aliased_class:
-        q, enable_opt, disable_opt = mapper._subclass_load_via_in(entity)
+    if entity.is_aliased_class or not_against_basemost:
+        q, enable_opt, disable_opt = mapper._subclass_load_via_in(
+            entity, polymorphic_from
+        )
     else:
         q, enable_opt, disable_opt = mapper._subclass_load_via_in_mapper
 
     def do_load(context, path, states, load_only, effective_entity):
+        if not option_entities:
+            # filter out states for those that would have selectinloaded
+            # from another loader
+            # TODO: we are currently ignoring the case where the
+            # "selectin_polymorphic" option is used, as this is much more
+            # complex / specific / very uncommon API use
+            states = [
+                (s, v)
+                for s, v in states
+                if s.mapper._would_selectin_load_only_from_given_mapper(mapper)
+            ]
+
+            if not states:
+                return
+
         orig_query = context.query
 
         options = (enable_opt,) + orig_query._with_options + (disable_opt,)

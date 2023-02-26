@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9373
+
+    Added support for the :paramref:`_orm.Mapper.polymorphic_load` parameter to
+    be applied to each mapper in an inheritance hierarchy more than one level
+    deep, allowing columns to load for all classes in the hierarchy that
+    indicate ``"selectin"`` using a single statement, rather than ignoring
+    elements on those intermediary classes that nonetheless indicate they also
+    would participate in ``"selectin"`` loading and were not part of the
+    base-most SELECT statement.

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import union
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
@@ -28,6 +29,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import EachOf
 from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.entities import ComparableEntity
@@ -371,6 +373,238 @@ class TestGeometries(GeometryFixtureBase):
         )
         with self.assert_statement_count(testing.db, 0):
             eq_(result, [d(d_data="d1"), e(e_data="e1")])
+
+    @testing.fixture
+    def threelevel_all_selectin_fixture(self):
+        self._fixture_from_geometry(
+            {
+                "a": {
+                    "subclasses": {
+                        "b": {"polymorphic_load": "selectin"},
+                        "c": {
+                            "subclasses": {
+                                "d": {
+                                    "polymorphic_load": "selectin",
+                                },
+                                "e": {
+                                    "polymorphic_load": "selectin",
+                                },
+                                "f": {},
+                            },
+                            "polymorphic_load": "selectin",
+                        },
+                    }
+                }
+            }
+        )
+
+    def test_threelevel_all_selectin_l1_load_l3(
+        self, threelevel_all_selectin_fixture
+    ):
+        """test for #9373 - load base to receive level 3 endpoints"""
+
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = fixture_session()
+        sess.add_all(
+            [d(c_data="cd1", d_data="d1"), e(c_data="ce1", e_data="e1")]
+        )
+        sess.commit()
+
+        for i in range(3):
+            sess.close()
+
+            q = sess.query(a)
+
+            result = self.assert_sql_execution(
+                testing.db,
+                q.all,
+                CompiledSQL(
+                    "SELECT a.id AS a_id, a.type AS a_type, "
+                    "a.a_data AS a_a_data FROM a",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT d.id AS d_id, c.id AS c_id, a.id AS a_id, "
+                    "a.type AS a_type, c.c_data AS c_c_data, "
+                    "d.d_data AS d_d_data "
+                    "FROM a JOIN c ON a.id = c.id JOIN d ON c.id = d.id "
+                    "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY a.id",
+                    [{"primary_keys": [1]}],
+                ),
+                CompiledSQL(
+                    "SELECT e.id AS e_id, c.id AS c_id, a.id AS a_id, "
+                    "a.type AS a_type, c.c_data AS c_c_data, "
+                    "e.e_data AS e_e_data "
+                    "FROM a JOIN c ON a.id = c.id JOIN e ON c.id = e.id "
+                    "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY a.id",
+                    [{"primary_keys": [2]}],
+                ),
+            )
+            with self.assert_statement_count(testing.db, 0):
+                eq_(
+                    result,
+                    [
+                        d(c_data="cd1", d_data="d1"),
+                        e(c_data="ce1", e_data="e1"),
+                    ],
+                )
+
+    def test_threelevel_partial_selectin_l1_load_l3(
+        self, threelevel_all_selectin_fixture
+    ):
+        """test for #9373 - load base to receive level 3 endpoints"""
+
+        a, b, c, d, f = self.classes("a", "b", "c", "d", "f")
+        sess = fixture_session()
+        sess.add_all(
+            [d(c_data="cd1", d_data="d1"), f(c_data="ce1", f_data="e1")]
+        )
+        sess.commit()
+
+        for i in range(3):
+            sess.close()
+            q = sess.query(a)
+
+            result = self.assert_sql_execution(
+                testing.db,
+                q.all,
+                CompiledSQL(
+                    "SELECT a.id AS a_id, a.type AS a_type, "
+                    "a.a_data AS a_a_data FROM a",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT d.id AS d_id, c.id AS c_id, a.id AS a_id, "
+                    "a.type AS a_type, c.c_data AS c_c_data, "
+                    "d.d_data AS d_d_data "
+                    "FROM a JOIN c ON a.id = c.id JOIN d ON c.id = d.id "
+                    "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY a.id",
+                    [{"primary_keys": [1]}],
+                ),
+                # only loads pk 2 - this is the filtering inside of do_load
+                CompiledSQL(
+                    "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
+                    "c.c_data AS c_c_data "
+                    "FROM a JOIN c ON a.id = c.id "
+                    "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY a.id",
+                    [{"primary_keys": [2]}],
+                ),
+                # no more SQL; if we hit pk 1 again, it would re-do the d here
+            )
+
+            with self.sql_execution_asserter(testing.db) as asserter_:
+                eq_(
+                    result,
+                    [
+                        d(c_data="cd1", d_data="d1"),
+                        f(c_data="ce1", f_data="e1"),
+                    ],
+                )
+
+            # f was told not to load its attrs, so they load here
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT f.f_data AS f_f_data FROM f WHERE :param_1 = f.id",
+                    [{"param_1": 2}],
+                ),
+            )
+
+    def test_threelevel_all_selectin_l1_load_l2(
+        self, threelevel_all_selectin_fixture
+    ):
+        """test for #9373 - load base to receive level 2 endpoint"""
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = fixture_session()
+        sess.add_all([c(c_data="c1", a_data="a1")])
+        sess.commit()
+
+        q = sess.query(a)
+
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.type AS a_type, "
+                "a.a_data AS a_a_data FROM a",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
+                "c.c_data AS c_c_data FROM a JOIN c ON a.id = c.id "
+                "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) ORDER BY a.id",
+                {"primary_keys": [1]},
+            ),
+        )
+        with self.assert_statement_count(testing.db, 0):
+            eq_(
+                result,
+                [c(c_data="c1", a_data="a1")],
+            )
+
+    @testing.variation("use_aliased_class", [True, False])
+    def test_threelevel_all_selectin_l2_load_l3(
+        self, threelevel_all_selectin_fixture, use_aliased_class
+    ):
+        """test for #9373 - load level 2 endpoing to receive level 3
+        endpoints"""
+        a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
+        sess = fixture_session()
+        sess.add_all(
+            [d(c_data="cd1", d_data="d1"), e(c_data="ce1", e_data="e1")]
+        )
+        sess.commit()
+
+        if use_aliased_class:
+            q = sess.query(aliased(c, flat=True))
+        else:
+            q = sess.query(c)
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            Conditional(
+                bool(use_aliased_class),
+                [
+                    CompiledSQL(
+                        "SELECT c_1.id AS c_1_id, a_1.id AS a_1_id, "
+                        "a_1.type AS a_1_type, a_1.a_data AS a_1_a_data, "
+                        "c_1.c_data AS c_1_c_data "
+                        "FROM a AS a_1 JOIN c AS c_1 ON a_1.id = c_1.id",
+                        {},
+                    )
+                ],
+                [
+                    CompiledSQL(
+                        "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
+                        "a.a_data AS a_a_data, c.c_data AS c_c_data "
+                        "FROM a JOIN c ON a.id = c.id",
+                        {},
+                    )
+                ],
+            ),
+            CompiledSQL(
+                "SELECT d.id AS d_id, c.id AS c_id, a.id AS a_id, "
+                "a.type AS a_type, d.d_data AS d_d_data "
+                "FROM a JOIN c ON a.id = c.id JOIN d ON c.id = d.id "
+                "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) ORDER BY a.id",
+                [{"primary_keys": [1]}],
+            ),
+            CompiledSQL(
+                "SELECT e.id AS e_id, c.id AS c_id, a.id AS a_id, "
+                "a.type AS a_type, e.e_data AS e_e_data "
+                "FROM a JOIN c ON a.id = c.id JOIN e ON c.id = e.id "
+                "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) ORDER BY a.id",
+                [{"primary_keys": [2]}],
+            ),
+        )
+        with self.assert_statement_count(testing.db, 0):
+            eq_(
+                result,
+                [d(c_data="cd1", d_data="d1"), e(c_data="ce1", e_data="e1")],
+            )
 
     def test_threelevel_selectin_to_inline_options(self):
         self._fixture_from_geometry(
