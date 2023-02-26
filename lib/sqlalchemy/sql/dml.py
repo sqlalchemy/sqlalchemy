@@ -72,6 +72,7 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnsClauseArgument
     from ._typing import _DMLColumnArgument
+    from ._typing import _DMLColumnKeyMapping
     from ._typing import _DMLTableArgument
     from ._typing import _T0  # noqa
     from ._typing import _T1  # noqa
@@ -944,7 +945,7 @@ class ValuesBase(UpdateBase):
     def values(
         self,
         *args: Union[
-            Dict[_DMLColumnArgument, Any],
+            _DMLColumnKeyMapping[Any],
             Sequence[Any],
         ],
         **kwargs: Any,
