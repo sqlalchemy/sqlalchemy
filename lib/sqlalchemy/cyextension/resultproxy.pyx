@@ -3,9 +3,10 @@
 import operator
 
 cdef int MD_INDEX = 0  # integer index in cursor.description
+cdef int _KEY_OBJECTS_ONLY = 1
 
 KEY_INTEGER_ONLY = 0
-KEY_OBJECTS_ONLY = 1
+KEY_OBJECTS_ONLY = _KEY_OBJECTS_ONLY
 
 cdef class BaseRow:
     cdef readonly object _parent
@@ -76,7 +77,7 @@ cdef class BaseRow:
         if mdindex is None:
             self._parent._raise_for_ambiguous_column_name(rec)
         elif (
-            self._key_style == KEY_OBJECTS_ONLY
+            self._key_style == _KEY_OBJECTS_ONLY
             and isinstance(key, int)
         ):
             raise KeyError(key)
