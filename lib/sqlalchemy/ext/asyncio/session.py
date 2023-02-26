@@ -258,7 +258,10 @@ class AsyncSession(ReversibleProxy):
 
         :return: a :class:`_result.ScalarResult` object
 
-        .. versionadded:: 1.4.24
+        .. versionadded:: 1.4.24 Added :meth:`_asyncio.AsyncSession.scalars`
+
+        .. versionadded:: 1.4.26 Added
+           :meth:`_asyncio.async_scoped_session.scalars`
 
         .. seealso::
 
