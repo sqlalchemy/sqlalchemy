@@ -271,7 +271,7 @@ otherwise self-managed.
 Contextual Session API
 ----------------------
 
-.. autoclass:: sqlalchemy.orm.scoping.scoped_session
+.. autoclass:: sqlalchemy.orm.scoped_session
     :members:
     :inherited-members:
 
