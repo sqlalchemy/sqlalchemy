@@ -11,6 +11,7 @@ import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Mapping
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -237,6 +238,9 @@ There's also edge cases like JSON expression assignment, which we would want
 the DMLColumnRole to be able to accommodate.
 
 """
+
+_DMLKey = TypeVar("_DMLKey", bound=_DMLColumnArgument)
+_DMLColumnKeyMapping = Mapping[_DMLKey, Any]
 
 
 _DDLColumnArgument = Union[str, "Column[Any]", roles.DDLConstraintColumnRole]
