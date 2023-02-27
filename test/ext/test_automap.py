@@ -65,6 +65,18 @@ class AutomapTest(fixtures.MappedTest):
         u1 = User(name="u1", addresses_collection={a1})
         assert a1.user is u1
 
+    def test_prepare_from_subclass(self):
+        """test #9367"""
+        Base = automap_base()
+
+        class User(Base):
+            __tablename__ = "users"
+
+        User.prepare(testing.db)
+
+        assert not hasattr(Base.classes, "users")
+        assert hasattr(Base.classes, "addresses")
+
     def test_prepare_w_only(self):
         Base = automap_base()
 

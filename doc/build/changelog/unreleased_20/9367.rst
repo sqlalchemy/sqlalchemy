@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 9367
+
+    Fixed issue in automap where calling ``.prepare()`` from one of the mapped
+    classes would not use the correct base class when automap detected new
+    tables, instead using the given class, leading to mappers trying to
+    configure inheritance. While one should normally call ``.prepare()`` from
+    the base in any case, it shouldn't misbehave that badly when called from a
+    subclass.
+
