@@ -164,15 +164,19 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         :param \*elements:
 
           A sequence of two tuples of the form ``(column, operator)`` where
-          "column" is a SQL expression element or the name of a column as
-          string, most typically a :class:`_schema.Column` object,
-          and "operator" is a string containing the operator to use.
+          "column" is either a :class:`_schema.Column` object, or a SQL
+          expression element (e.g. ``func.int8range(table.from, table.to)``)
+          or the name of a column as string, and "operator" is a string
+          containing the operator to use (e.g. `"&&"` or `"="`).
+
           In order to specify a column name when a :class:`_schema.Column`
           object is not available, while ensuring
           that any necessary quoting rules take effect, an ad-hoc
           :class:`_schema.Column` or :func:`_expression.column`
-          object should be used. ``column`` may also be a string SQL
-          expression when passed as :func:`_expression.literal_column`
+          object should be used.
+          The ``column`` may also be a string SQL expression when
+          passed as :func:`_expression.literal_column` or
+          :func:`_expression.text`
 
         :param name:
           Optional, the in-database name of this constraint.

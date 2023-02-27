@@ -64,6 +64,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
@@ -1054,13 +1055,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("valid_from_date", Date(), nullable=True),
             Column("valid_thru_date", Date(), nullable=True),
         )
+        sql_text = "daterange(valid_from_date, valid_thru_date, '[]')"
         cons = ExcludeConstraint(
-            (
-                literal_column(
-                    "daterange(valid_from_date, valid_thru_date, '[]')"
-                ),
-                "&&",
-            ),
+            (literal_column(sql_text), "&&"),
             where=column("valid_from_date") <= column("valid_thru_date"),
             name="ex_mytable_valid_date_range",
             deferrable=deferrable_value,
@@ -1068,6 +1065,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         table.append_constraint(cons)
+        eq_(cons.columns.keys(), [sql_text])
         expected = (
             "ALTER TABLE mytable ADD CONSTRAINT ex_mytable_valid_date_range "
             "EXCLUDE USING gist "
@@ -1164,6 +1162,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         cons = ExcludeConstraint((text("room::TEXT"), "="))
         Table("testtbl", m, Column("room", String), cons)
+        eq_(list(cons.columns), [])
         self.assert_compile(
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
@@ -1240,6 +1239,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
             "(room first_opsclass WITH =, during second_opclass WITH &&)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_exclude_constraint_expression(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint((func.int8range(column("x"), tbl.c.y), "&&"))
+        tbl.append_constraint(cons)
+        # only the first col is considered. see #9233
+        eq_(cons.columns.keys(), ["x"])
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE foo ADD EXCLUDE USING gist "
+            "(int8range(x, y) WITH &&)",
             dialect=postgresql.dialect(),
         )
 
