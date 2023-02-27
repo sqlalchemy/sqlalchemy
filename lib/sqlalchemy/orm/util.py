@@ -1053,7 +1053,7 @@ class AliasedInsp(
     @classmethod
     def _with_polymorphic_factory(
         cls,
-        base: Union[_O, Mapper[_O]],
+        base: Union[Type[_O], Mapper[_O]],
         classes: Union[Literal["*"], Iterable[_EntityType[Any]]],
         selectable: Union[Literal[False, None], FromClause] = False,
         flat: bool = False,
