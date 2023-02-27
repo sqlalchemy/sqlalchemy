@@ -152,4 +152,8 @@ from .selectable import Values as Values
 from .visitors import Visitable as Visitable
 
 nullsfirst = nulls_first
+"""Synonym for the :func:`.nulls_first` function."""
+
+
 nullslast = nulls_last
+"""Synonym for the :func:`.nulls_last` function."""
