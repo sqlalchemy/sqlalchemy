@@ -1,4 +1,6 @@
-"""test #7656"""
+"""test sessionmaker, originally for #7656"""
+
+from typing import reveal_type
 
 from sqlalchemy import create_engine
 from sqlalchemy import Engine
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import QueryPropertyDescriptor
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -110,3 +113,30 @@ def test_8837_async() -> None:
 
     # EXPECTED_TYPE: AsyncSession
     reveal_type(async_session)
+
+
+# test #9338
+ss_9338 = scoped_session_factory(engine)
+
+# EXPECTED_TYPE: QueryPropertyDescriptor
+reveal_type(ss_9338.query_property())
+qp: QueryPropertyDescriptor = ss_9338.query_property()
+
+
+class Foo:
+    query = qp
+
+
+# EXPECTED_TYPE: Query[Foo]
+reveal_type(Foo.query)
+
+# EXPECTED_TYPE: list[Foo]
+reveal_type(Foo.query.all())
+
+
+class Bar:
+    query: QueryPropertyDescriptor = ss_9338.query_property()
+
+
+# EXPECTED_TYPE: Query[Bar]
+reveal_type(Bar.query)

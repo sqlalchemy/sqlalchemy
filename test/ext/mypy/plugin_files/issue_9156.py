@@ -1,4 +1,5 @@
-from typing import Any, Type
+from typing import Any
+from typing import Type
 
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.type_api import TypeEngine
