@@ -1,7 +1,5 @@
 """test sessionmaker, originally for #7656"""
 
-from typing import reveal_type
-
 from sqlalchemy import create_engine
 from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import async_scoped_session
