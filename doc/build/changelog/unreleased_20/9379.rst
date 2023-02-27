@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 9379
+
+    Fixed bug that prevented SQLAlchemy to connect when using a very old
+    sqlite version (before 3.8.3) on python 3.8+.

@@ -2786,6 +2786,43 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable", column("myid", Integer), column("name", String)
         )
 
+    def _only_on_py38_w_sqlite_39():
+        """in python 3.9 and above you can actually do::
+
+            @(testing.requires.python38 + testing.only_on("sqlite > 3.9"))
+            def test_determinsitic_parameter(self):
+                ...
+
+        that'll be cool.  until then...
+
+        """
+        return testing.requires.python38 + testing.only_on("sqlite >= 3.9")
+
+    @_only_on_py38_w_sqlite_39()
+    def test_determinsitic_parameter(self):
+        """for #9379, make sure that "deterministic=True" is used when we are
+        on python 3.8 with modern SQLite version.
+
+        For the case where we are not on py3.8 or not on modern sqlite version,
+        the rest of the test suite confirms that connection still passes.
+
+        """
+        e = create_engine("sqlite://")
+
+        @event.listens_for(e, "do_connect", retval=True)
+        def _mock_connect(dialect, conn_rec, cargs, cparams):
+            conn = e.dialect.loaded_dbapi.connect(":memory:")
+            return mock.Mock(wraps=conn)
+
+        c = e.connect()
+        eq_(
+            c.connection.driver_connection.create_function.mock_calls,
+            [
+                mock.call("regexp", 2, mock.ANY, deterministic=True),
+                mock.call("floor", 1, mock.ANY, deterministic=True),
+            ],
+        )
+
     def test_regexp_match(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern"),
