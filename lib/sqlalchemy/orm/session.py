@@ -2327,7 +2327,9 @@ class Session(_SessionClassMethods, EventTarget):
 
         :return:  a :class:`_result.ScalarResult` object
 
-        .. versionadded:: 1.4.24
+        .. versionadded:: 1.4.24 Added :meth:`_orm.Session.scalars`
+
+        .. versionadded:: 1.4.26 Added :meth:`_orm.scoped_session.scalars`
 
         .. seealso::
 
