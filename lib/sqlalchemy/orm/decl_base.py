@@ -55,6 +55,7 @@ from .properties import MappedColumn
 from .util import _extract_mapped_subtype
 from .util import _is_mapped_annotation
 from .util import class_mapper
+from .util import de_stringify_annotation
 from .. import event
 from .. import exc
 from .. import util
@@ -64,7 +65,6 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
-from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_literal
 from ..util.typing import Protocol
