@@ -389,10 +389,13 @@ from ..orm.context import QueryContext
 from ..orm.decl_api import DeclarativeAttributeIntercept
 from ..orm.state import InstanceState
 from ..orm.unitofwork import UOWTransaction
+from ..sql.base import _NoArg
+from ..sql.base import NO_ARG
 from ..sql.base import SchemaEventTarget
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import memoized_property
+from ..util.typing import Literal
 from ..util.typing import SupportsIndex
 from ..util.typing import TypeGuard
 
@@ -781,8 +784,10 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         super().__setitem__(key, value)
         self.changed()
 
-    def _exists(self, value: _T | None) -> TypeGuard[_T]:
-        return value is not None
+    def _exists(
+        self, value: _T | None | Literal[_NoArg.NO_ARG]
+    ) -> TypeGuard[_T]:
+        return value is not NO_ARG
 
     def _is_none(self, value: _T | None) -> TypeGuard[None]:
         return value is None
@@ -795,7 +800,9 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     def setdefault(self, key: _KT, value: _VT) -> _VT:
         ...
 
-    def setdefault(self, key: _KT, value: _VT | None = None) -> _VT | None:
+    def setdefault(
+        self, key: _KT, value: _VT | None | Literal[_NoArg.NO_ARG] = NO_ARG
+    ) -> _VT | None:
         if self._exists(value):
             result = super().setdefault(key, value)
         else:
@@ -820,7 +827,11 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T:
         ...
 
-    def pop(self, __key: _KT, __default: _VT | _T | None = None) -> _VT | _T:
+    def pop(
+        self,
+        __key: _KT,
+        __default: _VT | _T | None | Literal[_NoArg.NO_ARG] = NO_ARG,
+    ) -> _VT | _T:
         if self._exists(__default):
             result = super().pop(__key, __default)
         else:

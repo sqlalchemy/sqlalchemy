@@ -349,6 +349,19 @@ class _MutableDictTestBase(_MutableDictTestFixture):
 
         eq_(f1.data, {"c": "d"})
 
+    def test_pop_default_none(self):
+        sess = fixture_session()
+
+        f1 = Foo(data={"a": "b", "c": "d"})
+        sess.add(f1)
+        sess.commit()
+
+        eq_(f1.data.pop("a", None), "b")
+        eq_(f1.data.pop("a", None), None)
+        sess.commit()
+
+        eq_(f1.data, {"c": "d"})
+
     def test_popitem(self):
         sess = fixture_session()
 
