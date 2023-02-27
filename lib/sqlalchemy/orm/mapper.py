@@ -3698,6 +3698,65 @@ class Mapper(
                 if m is mapper:
                     break
 
+    @HasMemoized.memoized_attribute
+    def _would_selectinload_combinations_cache(self):
+        return {}
+
+    def _would_selectin_load_only_from_given_mapper(self, super_mapper):
+        """return True if this mapper would "selectin" polymorphic load based
+        on the given super mapper, and not from a setting from a subclass.
+
+        given::
+
+            class A:
+                ...
+
+            class B(A):
+                __mapper_args__ = {"polymorphic_load": "selectin"}
+
+            class C(B):
+                ...
+
+            class D(B):
+                __mapper_args__ = {"polymorphic_load": "selectin"}
+
+        ``inspect(C)._would_selectin_load_only_from_given_mapper(inspect(B))``
+        returns True, because C does selectin loading because of B's setting.
+
+        OTOH, ``inspect(D)
+        ._would_selectin_load_only_from_given_mapper(inspect(B))``
+        returns False, because D does selectin loading because of its own
+        setting; when we are doing a selectin poly load from B, we want to
+        filter out D because it would already have its own selectin poly load
+        set up separately.
+
+        Added as part of #9373.
+
+        """
+        cache = self._would_selectinload_combinations_cache
+
+        try:
+            return cache[super_mapper]
+        except KeyError:
+            pass
+
+        # assert that given object is a supermapper, meaning we already
+        # strong reference it directly or indirectly.  this allows us
+        # to not worry that we are creating new strongrefs to unrelated
+        # mappers or other objects.
+        assert self.isa(super_mapper)
+
+        mapper = super_mapper
+        for m in self._iterate_to_target_viawpoly(mapper):
+            if m.polymorphic_load == "selectin":
+                retval = m is super_mapper
+                break
+        else:
+            retval = False
+
+        cache[super_mapper] = retval
+        return retval
+
     def _should_selectin_load(self, enabled_via_opt, polymorphic_from):
         if not enabled_via_opt:
             # common case, takes place for all polymorphic loads
@@ -3721,7 +3780,7 @@ class Mapper(
         return None
 
     @util.preload_module("sqlalchemy.orm.strategy_options")
-    def _subclass_load_via_in(self, entity):
+    def _subclass_load_via_in(self, entity, polymorphic_from):
         """Assemble a that can load the columns local to
         this subclass as a SELECT with IN.
 
@@ -3739,6 +3798,16 @@ class Mapper(
         disable_opt = strategy_options.Load(entity)
         enable_opt = strategy_options.Load(entity)
 
+        classes_to_include = {self}
+        m: Optional[Mapper[Any]] = self.inherits
+        while (
+            m is not None
+            and m is not polymorphic_from
+            and m.polymorphic_load == "selectin"
+        ):
+            classes_to_include.add(m)
+            m = m.inherits
+
         for prop in self.attrs:
 
             # skip prop keys that are not instrumented on the mapped class.
@@ -3747,7 +3816,7 @@ class Mapper(
             if prop.key not in self.class_manager:
                 continue
 
-            if prop.parent is self or prop in keep_props:
+            if prop.parent in classes_to_include or prop in keep_props:
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
                 if not isinstance(prop, StrategizedProperty):
@@ -3811,7 +3880,8 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _subclass_load_via_in_mapper(self):
-        return self._subclass_load_via_in(self)
+        # the default is loading this mapper against the basemost mapper
+        return self._subclass_load_via_in(self, self.base_mapper)
 
     def cascade_iterator(
         self,
