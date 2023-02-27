@@ -1034,7 +1034,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons)
         self.assert_compile(
             schema.AddConstraint(cons),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
             dialect=postgresql.dialect(),
         )
 
@@ -1134,7 +1134,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons_copy)
         self.assert_compile(
             schema.AddConstraint(cons_copy),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
         )
 
     def test_exclude_constraint_copy_where_using(self):
@@ -1240,6 +1240,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
             "(room first_opsclass WITH =, during second_opclass WITH &&)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_exclude_constraint_literal_binds(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint(
+            (func.power(tbl.c.x, 42), "="),
+            (func.int8range(column("x"), "y"), "&&"),
+        )
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE foo ADD EXCLUDE USING gist "
+            "(power(x, 42) WITH =, int8range(x, 'y') WITH &&)",
             dialect=postgresql.dialect(),
         )
 
