@@ -789,9 +789,6 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     ) -> TypeGuard[_T]:
         return value is not NO_ARG
 
-    def _is_none(self, value: _T | None) -> TypeGuard[None]:
-        return value is None
-
     @overload
     def setdefault(self, key: _KT) -> _VT | None:
         ...
