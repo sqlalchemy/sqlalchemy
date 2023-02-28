@@ -44,6 +44,7 @@ from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.orm.decl_base import _DeferredMapperConfig
 from sqlalchemy.orm.events import InstrumentationEvents
 from sqlalchemy.orm.events import MapperEvents
+from sqlalchemy.schema import PrimaryKeyConstraint
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -2395,7 +2396,9 @@ class DeclarativeMultiBaseTest(
         eq_(Foo.__table__.name, "foobat")
 
     def test_table_cls_attribute_return_none(self):
-        from sqlalchemy.schema import Column, PrimaryKeyConstraint
+        # this is separate from the "fixture" version of Column used in the
+        # rest of this suite
+        from sqlalchemy.schema import Column
 
         class AutoTable:
             @declared_attr

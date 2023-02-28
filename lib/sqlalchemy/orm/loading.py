@@ -37,6 +37,8 @@ from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .base import PassiveFlag
 from .context import FromStatement
+from .context import ORMCompileState
+from .context import QueryContext
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -55,7 +57,6 @@ from ..util import EMPTY_DICT
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
     from .base import LoaderCallableStatus
-    from .context import QueryContext
     from .interfaces import ORMOption
     from .mapper import Mapper
     from .query import Query
@@ -518,9 +519,6 @@ def load_on_pk_identity(
     q = query._clone()
 
     assert not q._is_lambda_element
-
-    # TODO: fix these imports ....
-    from .context import QueryContext, ORMCompileState
 
     if load_options is None:
         load_options = QueryContext.default_load_options

@@ -294,7 +294,9 @@ class PickleTest(fixtures.MappedTest):
         )
 
         # these must be module level for pickling
-        from .test_pickled import User, Address, Dingaling
+        from .test_pickled import Address
+        from .test_pickled import Dingaling
+        from .test_pickled import User
 
         self.mapper_registry.map_imperatively(
             User,

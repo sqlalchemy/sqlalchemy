@@ -10,10 +10,15 @@ with the basic operation of CachingQuery.
 
 """
 
+from dogpile.cache import make_region
 from dogpile.cache.api import CacheBackend
 from dogpile.cache.api import NO_VALUE
 from dogpile.cache.region import register_backend
-from examples.dogpile_caching import environment
+
+from . import environment
+from .caching_query import FromCache
+from .environment import regions
+from .environment import Session
 
 
 class ScopedSessionBackend(CacheBackend):
@@ -59,9 +64,6 @@ register_backend("sqlalchemy.session", __name__, "ScopedSessionBackend")
 
 
 if __name__ == "__main__":
-    from .environment import Session, regions
-    from .caching_query import FromCache
-    from dogpile.cache import make_region
 
     # set up a region based on the ScopedSessionBackend,
     # pointing to the scoped_session declared in the example

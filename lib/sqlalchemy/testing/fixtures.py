@@ -24,7 +24,12 @@ from .entities import ComparableEntity
 from .entities import ComparableMixin  # noqa
 from .util import adict
 from .util import drop_all_tables_from_metadata
+from .. import Column
 from .. import event
+from .. import func
+from .. import Integer
+from .. import select
+from .. import Table
 from .. import util
 from ..orm import DeclarativeBase
 from ..orm import events as orm_events
@@ -246,9 +251,6 @@ class TestBase:
     )
     def trans_ctx_manager_fixture(self, request, metadata):
         rollback, second_operation, begin_nested = request.param
-
-        from sqlalchemy import Table, Column, Integer, func, select
-        from . import eq_
 
         t = Table("test", metadata, Column("data", Integer))
         eng = getattr(self, "bind", None) or config.db

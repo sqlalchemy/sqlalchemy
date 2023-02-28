@@ -57,8 +57,6 @@ class AsyncFixture:
     def async_trans_ctx_manager_fixture(self, request, metadata):
         rollback, run_second_execute, begin_nested = request.param
 
-        from sqlalchemy import Table, Column, Integer, func, select
-
         t = Table("test", metadata, Column("data", Integer))
         eng = getattr(self, "bind", None) or config.db
 

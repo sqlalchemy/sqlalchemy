@@ -13,6 +13,8 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import select
@@ -115,7 +117,6 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_literal_binds_pgarray(self):
-        from sqlalchemy.dialects.postgresql import ARRAY, array
 
         m = MetaData()
         t = Table(

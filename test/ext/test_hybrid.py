@@ -19,7 +19,9 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.sql import coercions
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -520,8 +522,6 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_expression_isnt_clause_element(self):
         A = self._wrong_expr_fixture()
-
-        from sqlalchemy.sql import coercions, roles
 
         with testing.expect_raises_message(
             exc.InvalidRequestError,

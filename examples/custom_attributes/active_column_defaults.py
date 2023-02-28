@@ -5,7 +5,15 @@ when an un-set attribute is accessed.
 
 """
 
+import datetime
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import DateTime
 from sqlalchemy import event
+from sqlalchemy import Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
 
 
 def configure_listener(mapper, class_):
@@ -66,11 +74,6 @@ def default_listener(col_attr, default):
 
 
 if __name__ == "__main__":
-
-    from sqlalchemy import Column, Integer, DateTime, create_engine
-    from sqlalchemy.orm import Session
-    from sqlalchemy.ext.declarative import declarative_base
-    import datetime
 
     Base = declarative_base()
 

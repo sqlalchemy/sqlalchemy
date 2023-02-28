@@ -35,6 +35,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm.base import _is_aliased_class
+from sqlalchemy.orm.base import _is_mapped_class
 from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -219,8 +221,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         users = self.tables.users
         addresses = self.tables.addresses
         Address = self.classes.Address
-
-        from sqlalchemy.orm.base import _is_mapped_class, _is_aliased_class
 
         class Foo:
             x = "something"

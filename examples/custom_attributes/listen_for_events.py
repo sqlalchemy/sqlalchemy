@@ -3,7 +3,13 @@ and listen for change events.
 
 """
 
+from sqlalchemy import Column
 from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 
 def configure_listener(class_, key, inst):
@@ -22,10 +28,6 @@ def configure_listener(class_, key, inst):
 
 
 if __name__ == "__main__":
-
-    from sqlalchemy import Column, Integer, String, ForeignKey
-    from sqlalchemy.orm import relationship
-    from sqlalchemy.ext.declarative import declarative_base
 
     class Base:
         def receive_change_event(self, verb, key, value, oldvalue):

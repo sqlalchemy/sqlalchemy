@@ -553,7 +553,8 @@ def _resolver(
 
     if _fallback_dict is None:
         import sqlalchemy
-        from sqlalchemy.orm import foreign, remote
+        from . import foreign
+        from . import remote
 
         _fallback_dict = util.immutabledict(sqlalchemy.__dict__).union(
             {"foreign": foreign, "remote": remote}

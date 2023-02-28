@@ -30,6 +30,8 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import column
 from sqlalchemy.sql import functions
@@ -976,7 +978,6 @@ class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(expr.type.dimensions, col.type.dimensions)
 
     def test_array_agg_array_literal_implicit_type(self):
-        from sqlalchemy.dialects.postgresql import array, ARRAY as PG_ARRAY
 
         expr = array([column("data", Integer), column("d2", Integer)])
 

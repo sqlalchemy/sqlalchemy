@@ -14,10 +14,18 @@ that should be applied on a per-request basis, etc.
 
 from sqlalchemy import Boolean
 from sqlalchemy import Column
+from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
 from sqlalchemy import orm
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import true
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 
 @event.listens_for(Session, "do_orm_execute")
@@ -57,12 +65,6 @@ class HasPrivate:
 
 
 if __name__ == "__main__":
-
-    from sqlalchemy import Integer, Column, String, ForeignKey, Boolean
-    from sqlalchemy import select
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import relationship, sessionmaker
-    from sqlalchemy.ext.declarative import declarative_base
 
     Base = declarative_base()
 

@@ -38,6 +38,8 @@ from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import array_agg
+from sqlalchemy.dialects.postgresql import base
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
 from sqlalchemy.dialects.postgresql import DATERANGE
 from sqlalchemy.dialects.postgresql import DOMAIN
@@ -53,6 +55,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import NamedType
 from sqlalchemy.dialects.postgresql import NUMMULTIRANGE
 from sqlalchemy.dialects.postgresql import NUMRANGE
+from sqlalchemy.dialects.postgresql import pg8000
+from sqlalchemy.dialects.postgresql import psycopg2
+from sqlalchemy.dialects.postgresql import psycopg2cffi
 from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import TSMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
@@ -1225,12 +1230,6 @@ class NumericInterpretationTest(fixtures.TestBase):
     __backend__ = True
 
     def test_numeric_codes(self):
-        from sqlalchemy.dialects.postgresql import (
-            base,
-            pg8000,
-            psycopg2,
-            psycopg2cffi,
-        )
 
         dialects = (
             pg8000.dialect(),
@@ -1735,11 +1734,6 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         argnames="with_enum, using_aggregate_order_by",
     )
     def test_array_agg_specific(self, with_enum, using_aggregate_order_by):
-        from sqlalchemy.dialects.postgresql import (
-            ENUM,
-            aggregate_order_by,
-            array_agg,
-        )
 
         element = ENUM(name="pgenum") if with_enum else Integer()
         element_type = type(element)

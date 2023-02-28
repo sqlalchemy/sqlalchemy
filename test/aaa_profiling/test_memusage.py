@@ -6,6 +6,7 @@ import pickle
 import weakref
 
 import sqlalchemy as sa
+from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -14,8 +15,12 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import result
 from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
@@ -34,6 +39,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.util import visit_binary_product
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import replacement_traverse
 from sqlalchemy.testing import engines
@@ -309,9 +315,6 @@ class MemUsageTest(EnsureZeroed):
     def test_ad_hoc_types(self):
         """test storage of bind processors, result processors
         in dialect-wide registry."""
-
-        from sqlalchemy.dialects import mysql, postgresql, sqlite
-        from sqlalchemy import types
 
         eng = engines.testing_engine()
         for args in (
@@ -1668,9 +1671,6 @@ class CycleTest(_fixtures.FixtureTest):
 
     def test_visit_binary_product(self):
         a, b, q, e, f, j, r = (column(chr_) for chr_ in "abqefjr")
-
-        from sqlalchemy import and_, func
-        from sqlalchemy.sql.util import visit_binary_product
 
         expr = and_((a + b) == q + func.sum(e + f), j == r)
 

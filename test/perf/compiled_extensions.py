@@ -6,6 +6,9 @@ from textwrap import wrap
 from timeit import timeit
 from types import MappingProxyType
 
+from sqlalchemy import bindparam
+from sqlalchemy import column
+
 
 def test_case(fn):
     fn.__test_case__ = True
@@ -1012,7 +1015,6 @@ class CacheAnonMap(Case):
     NUMBER = 1000000
 
     def init_objects(self):
-        from sqlalchemy import column, bindparam
 
         self.object_1 = column("x")
         self.object_2 = bindparam("y")

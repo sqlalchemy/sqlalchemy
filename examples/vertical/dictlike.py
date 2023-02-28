@@ -31,6 +31,19 @@ can be used with many common vertical schemas as-is or with minor adaptations.
 
 """
 
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.collections import attribute_keyed_dict
+
 
 class ProxiedDictMixin:
     """Adds obj[key] access to a mapped class.
@@ -61,19 +74,6 @@ class ProxiedDictMixin:
 
 
 if __name__ == "__main__":
-    from sqlalchemy import (
-        Column,
-        Integer,
-        Unicode,
-        ForeignKey,
-        UnicodeText,
-        and_,
-        create_engine,
-    )
-    from sqlalchemy.orm import relationship, Session
-    from sqlalchemy.orm.collections import attribute_keyed_dict
-    from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.ext.associationproxy import association_proxy
 
     Base = declarative_base()
 

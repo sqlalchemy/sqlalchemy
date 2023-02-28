@@ -38,6 +38,8 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.engine import default
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.compiler import deregister
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.schema import DefaultClause
@@ -3725,7 +3727,6 @@ class ConstraintTest(fixtures.TestBase):
         assert c in t.indexes
 
     def test_auto_append_lowercase_table(self):
-        from sqlalchemy import table, column
 
         t = table("t", column("a"))
         t2 = table("t2", column("a"))
@@ -4319,8 +4320,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_custom_create(self):
-        from sqlalchemy.ext.compiler import compiles, deregister
-
         @compiles(schema.CreateColumn)
         def compile_(element, compiler, **kw):
             column = element.element

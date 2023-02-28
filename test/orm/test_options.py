@@ -34,6 +34,8 @@ from sqlalchemy.testing.assertions import emits_warning
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.pickleable import Address
+from sqlalchemy.testing.pickleable import User
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
@@ -1265,7 +1267,6 @@ class PickleTest(fixtures.MappedTest):
 
     @testing.fixture
     def user_address_fixture(self, registry):
-        from sqlalchemy.testing.pickleable import User, Address
 
         registry.map_imperatively(
             User,

@@ -87,6 +87,8 @@ from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.elements import Grouping
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
+from sqlalchemy.sql.expression import ColumnClause
+from sqlalchemy.sql.expression import TableClause
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
@@ -6045,8 +6047,6 @@ class StringifySpecialTest(fixtures.TestBase):
 class KwargPropagationTest(fixtures.TestBase):
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.sql.expression import ColumnClause, TableClause
-
         class CatchCol(ColumnClause):
             pass
 
