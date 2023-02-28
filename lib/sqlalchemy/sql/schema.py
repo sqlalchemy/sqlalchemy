@@ -5227,6 +5227,11 @@ class MetaData(HasSchemaAttr):
                 examples.
 
         """
+        if schema is not None and not isinstance(schema, str):
+            raise exc.ArgumentError(
+                "expected schema argument to be a string, "
+                f"got {type(schema)}."
+            )
         self.tables = util.FacadeDict()
         self.schema = quoted_name.construct(schema, quote_schema)
         self.naming_convention = (

@@ -783,6 +783,19 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         ):
             eq_(repr(const), exp)
 
+    @testing.variation("kind", ["engine", "conn", "something"])
+    def test_metadata_bind(self, connection, kind):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "expected schema argument to be a string, got",
+        ):
+            if kind.engine:
+                MetaData(connection.engine)
+            elif kind.conn:
+                MetaData(connection)
+            else:
+                MetaData(42)  # type: ignore
+
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
     @testing.requires.check_constraints
