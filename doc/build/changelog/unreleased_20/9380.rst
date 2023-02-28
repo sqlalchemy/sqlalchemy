@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, ext, regression
+    :tickets: 9380
+
+    Fixed regression caused by typing added to ``sqlalchemy.ext.mutable`` for
+    :ticket:`8667`, where the semantics of the ``.pop()`` method changed such
+    that the method was non-working. Pull request courtesy Nils Philippsen.
