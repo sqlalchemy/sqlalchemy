@@ -546,8 +546,8 @@ class ORMExecuteState(util.MemoizedSlots):
     def is_orm_statement(self) -> bool:
         """return True if the operation is an ORM statement.
 
-        This indicates that the select(), update(), or delete() being
-        invoked contains ORM entities as subjects.   For a statement
+        This indicates that the select(), insert(), update(), or delete()
+        being invoked contains ORM entities as subjects.   For a statement
         that does not have ORM entities and instead refers only to
         :class:`.Table` metadata, it is invoked as a Core SQL statement
         and no ORM-level automation takes place.
