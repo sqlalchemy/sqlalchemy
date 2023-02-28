@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import datetime
+import decimal
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -54,7 +55,6 @@ from .elements import WithinGroup
 from .selectable import FromClause
 from .selectable import Select
 from .selectable import TableValuedAlias
-from .sqltypes import _N
 from .sqltypes import TableValueType
 from .type_api import TypeEngine
 from .visitors import InternalTraversal
@@ -950,7 +950,7 @@ class _FunctionGenerator:
             ...
 
         @property
-        def cume_dist(self) -> Type[cume_dist[Any]]:
+        def cume_dist(self) -> Type[cume_dist]:
             ...
 
         @property
@@ -1014,7 +1014,7 @@ class _FunctionGenerator:
             ...
 
         @property
-        def percent_rank(self) -> Type[percent_rank[Any]]:
+        def percent_rank(self) -> Type[percent_rank]:
             ...
 
         @property
@@ -1703,7 +1703,7 @@ class dense_rank(GenericFunction[int]):
     inherit_cache = True
 
 
-class percent_rank(GenericFunction[_N]):
+class percent_rank(GenericFunction[decimal.Decimal]):
     """Implement the ``percent_rank`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1715,11 +1715,11 @@ class percent_rank(GenericFunction[_N]):
 
     """
 
-    type: sqltypes.Numeric[_N] = sqltypes.Numeric()
+    type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
     inherit_cache = True
 
 
-class cume_dist(GenericFunction[_N]):
+class cume_dist(GenericFunction[decimal.Decimal]):
     """Implement the ``cume_dist`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1731,7 +1731,7 @@ class cume_dist(GenericFunction[_N]):
 
     """
 
-    type: sqltypes.Numeric[_N] = sqltypes.Numeric()
+    type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
     inherit_cache = True
 
 

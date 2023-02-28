@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9391
+
+    Added missing init overload to :class:`_sql.Numeric` to allow
+    type checkers to properly resolve the type var given the
+    ``asdecimal`` parameter.
