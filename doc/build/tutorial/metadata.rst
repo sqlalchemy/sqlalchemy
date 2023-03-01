@@ -40,7 +40,7 @@ Setting up MetaData with Table objects
 ---------------------------------------
 
 When we work with a relational database, the basic data-holding structure
-in the database which we query from is known a **table**.
+in the database which we query from is known as a **table**.
 In SQLAlchemy, the database "table" is ultimately represented
 by a Python object similarly named :class:`_schema.Table`.
 
