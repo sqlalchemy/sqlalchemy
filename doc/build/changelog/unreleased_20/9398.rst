@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9398
+
+    Fixed typing bug where :meth:`_sql.Select.from_statement` would not accept
+    :func:`_sql.text` or :class:`.TextualSelect` objects as a valid type.
+    Additionally repaired the :class:`.TextClause.columns` method to have a
+    return type, which was missing.

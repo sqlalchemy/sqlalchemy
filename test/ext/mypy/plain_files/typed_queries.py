@@ -2,13 +2,19 @@ from __future__ import annotations
 
 from typing import Tuple
 
+from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import insert
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
@@ -28,6 +34,13 @@ class User(Base):
     name: Mapped[str]
     data: Mapped[str]
 
+
+user_table = Table(
+    "user",
+    MetaData(),
+    Column("id", Integer, primary_key=True),
+    Column("name", String, primary_key=True),
+)
 
 session = Session()
 
@@ -443,3 +456,29 @@ def t_dml_delete() -> None:
 
     # EXPECTED_TYPE: Result[Tuple[int, str]]
     reveal_type(r1)
+
+
+def t_from_statement() -> None:
+
+    t = text("select * from user")
+
+    # EXPECTED_TYPE: TextClause
+    reveal_type(t)
+
+    select(User).from_statement(t)
+
+    ts = text("select * from user").columns(User.id, User.name)
+
+    # EXPECTED_TYPE: TextualSelect
+    reveal_type(ts)
+
+    select(User).from_statement(ts)
+
+    ts2 = text("select * from user").columns(
+        user_table.c.id, user_table.c.name
+    )
+
+    # EXPECTED_TYPE: TextualSelect
+    reveal_type(ts2)
+
+    select(User).from_statement(ts2)
