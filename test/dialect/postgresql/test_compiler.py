@@ -1135,6 +1135,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
         )
 
+    def test_exclude_constraint_copy_complex(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint(
+            (tbl.c.x, "*"),
+            (text("x-y"), "%"),
+            (literal_column("x+y"), "$"),
+            (tbl.c.x // tbl.c.y, "??"),
+            (func.power(tbl.c.x, 42), "="),
+            (func.int8range(column("x"), column("y")), "&&"),
+            ("y", "^"),
+        )
+        tbl.append_constraint(cons)
+        expected = (
+            "ALTER TABLE {name} ADD EXCLUDE USING gist "
+            "(x WITH *, x-y WITH %, x+y WITH $, x / y WITH ??, "
+            "power(x, 42) WITH =, int8range(x, y) WITH &&, y WITH ^)"
+        )
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            expected.format(name="foo"),
+            dialect=postgresql.dialect(),
+        )
+        m2 = MetaData()
+        tbl2 = tbl.to_metadata(m2, name="bar")
+        (cons2,) = [
+            c for c in tbl2.constraints if isinstance(c, ExcludeConstraint)
+        ]
+        self.assert_compile(
+            schema.AddConstraint(cons2),
+            expected.format(name="bar"),
+            dialect=postgresql.dialect(),
+        )
+
     def test_exclude_constraint_copy_where_using(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("room", Integer, primary_key=True))

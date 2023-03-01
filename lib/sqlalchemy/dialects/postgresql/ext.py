@@ -7,7 +7,6 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-from itertools import zip_longest
 from typing import Any
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -256,22 +255,20 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 
         self._render_exprs = [
             (
-                expr if isinstance(expr, elements.ClauseElement) else colexpr,
+                expr if not isinstance(expr, str) else table.c[expr],
                 name,
                 operator,
             )
-            for (expr, name, operator), colexpr in zip_longest(
-                self._render_exprs, self.columns
-            )
+            for expr, name, operator in (self._render_exprs)
         ]
 
     def _copy(self, target_table=None, **kw):
         elements = [
             (
                 schema._copy_expression(expr, self.parent, target_table),
-                self.operators[expr.name],
+                operator,
             )
-            for expr in self.columns
+            for expr, _, operator in self._render_exprs
         ]
         c = self.__class__(
             *elements,
