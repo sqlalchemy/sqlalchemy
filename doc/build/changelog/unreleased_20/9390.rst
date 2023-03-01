@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 9390
+
+    Restore the :func:`.nullslast` and :func:`.nullsfirst` legacy functions
+    into the ``sqlalchemy`` import namespace. Previously, the newer
+    :func:`.nulls_last` and :func:`.nulls_first` functions were available, but
+    the legacy ones were inadvertently removed.

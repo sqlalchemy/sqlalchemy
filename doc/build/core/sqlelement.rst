@@ -102,7 +102,19 @@ Functions listed here are more commonly available as methods from any
 
 .. autofunction:: nulls_first
 
+.. function:: nullsfirst
+
+   Synonym for the :func:`_sql.nulls_first` function.
+
+   .. versionchanged:: 2.0.5 restored missing legacy symbol :func:`.nullsfirst`.
+
 .. autofunction:: nulls_last
+
+.. function:: nullslast
+
+   Legacy synonym for the :func:`_sql.nulls_last` function.
+
+   .. versionchanged:: 2.0.5 restored missing legacy symbol :func:`.nullslast`.
 
 .. autofunction:: over
 

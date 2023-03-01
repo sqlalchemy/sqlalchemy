@@ -162,6 +162,8 @@ from .sql.expression import Null as Null
 from .sql.expression import null as null
 from .sql.expression import nulls_first as nulls_first
 from .sql.expression import nulls_last as nulls_last
+from .sql.expression import nullsfirst as nullsfirst
+from .sql.expression import nullslast as nullslast
 from .sql.expression import Operators as Operators
 from .sql.expression import or_ as or_
 from .sql.expression import outerjoin as outerjoin
