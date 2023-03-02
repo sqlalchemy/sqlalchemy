@@ -6,6 +6,7 @@ from typing import cast
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import table
@@ -247,6 +248,74 @@ async def t_async_result_scalar_accessors() -> None:
 
     # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[builtins.str.*?\]
     reveal_type(r5)
+
+
+def t_result_insertmanyvalues_scalars() -> None:
+    stmt = insert(User).returning(User.id)
+
+    uids1 = connection.scalars(
+        stmt,
+        [
+            {"name": "n1"},
+            {"name": "n2"},
+            {"name": "n3"},
+        ],
+    ).all()
+
+    # EXPECTED_TYPE: Sequence[int]
+    reveal_type(uids1)
+
+    uids2 = (
+        connection.execute(
+            stmt,
+            [
+                {"name": "n1"},
+                {"name": "n2"},
+                {"name": "n3"},
+            ],
+        )
+        .scalars()
+        .all()
+    )
+
+    # EXPECTED_TYPE: Sequence[int]
+    reveal_type(uids2)
+
+
+async def t_async_result_insertmanyvalues_scalars() -> None:
+    stmt = insert(User).returning(User.id)
+
+    uids1 = (
+        await async_connection.scalars(
+            stmt,
+            [
+                {"name": "n1"},
+                {"name": "n2"},
+                {"name": "n3"},
+            ],
+        )
+    ).all()
+
+    # EXPECTED_TYPE: Sequence[int]
+    reveal_type(uids1)
+
+    uids2 = (
+        (
+            await async_connection.execute(
+                stmt,
+                [
+                    {"name": "n1"},
+                    {"name": "n2"},
+                    {"name": "n3"},
+                ],
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # EXPECTED_TYPE: Sequence[int]
+    reveal_type(uids2)
 
 
 def t_connection_execute_multi_row_t() -> None:
