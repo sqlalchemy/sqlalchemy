@@ -15,6 +15,7 @@ from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
 from mypy.nodes import Decorator
+from mypy.nodes import FuncDef
 from mypy.nodes import LambdaExpr
 from mypy.nodes import ListExpr
 from mypy.nodes import MemberExpr
@@ -381,6 +382,8 @@ def _scan_declarative_assignment_stmt(
     node = sym.node
 
     if isinstance(node, PlaceholderNode):
+        return
+    if isinstance(node, FuncDef):
         return
 
     assert node is lvalue.node
