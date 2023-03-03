@@ -10,7 +10,6 @@ a single Python interpreter::
 
     tox
 
-
 Advanced Tox Options
 ====================
 
@@ -50,7 +49,7 @@ database options and test selection.
 
 A generic pytest run looks like::
 
-    pytest -n4
+    pytest - n4
 
 Above, the full test suite will run against SQLite, using four processes.
 If the "-n" flag is not used, the pytest-xdist is skipped and the tests will
@@ -197,6 +196,13 @@ Additional steps specific to individual databases are as follows::
         postgres=# \c test;
         You are now connected to database "test" as user "postgresql".
         test=# create extension hstore;
+        CREATE EXTENSION
+
+    To include tests for CITEXT, create the CITEXT extension::
+
+        postgres=# \c test;
+        You are now connected to database "test" as user "postgresql".
+        test=# create extension citext;
         CREATE EXTENSION
 
     Full-text search configuration should be set to English, else

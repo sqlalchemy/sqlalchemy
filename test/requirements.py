@@ -1417,6 +1417,10 @@ class DefaultRequirements(SuiteRequirements):
         return self._has_pg_extension("hstore")
 
     @property
+    def citext(self):
+        return self._has_pg_extension("citext")
+
+    @property
     def btree_gist(self):
         return self._has_pg_extension("btree_gist")
 

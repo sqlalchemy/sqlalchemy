@@ -40,6 +40,7 @@ from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
 from sqlalchemy.dialects.postgresql import base
+from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
 from sqlalchemy.dialects.postgresql import DATERANGE
 from sqlalchemy.dialects.postgresql import DOMAIN
@@ -5748,3 +5749,30 @@ class JSONBCastSuiteTest(suite.JSONLegacyStringCastIndexTest):
     __requires__ = ("postgresql_jsonb",)
 
     datatype = JSONB
+
+
+class CITextTest(fixtures.TablesTest):
+    __requires__ = ("citext",)
+    __only_on__ = "postgresql"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "ci_test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("caseignore_text", CITEXT),
+        )
+
+    def test_citext(self, connection):
+        ci_test_table = self.tables.ci_test_table
+        connection.execute(
+            ci_test_table.insert(),
+            {"caseignore_text": "Hello World"},
+        )
+
+        ret = connection.execute(
+            select(ci_test_table.c.caseignore_text == "hello world")
+        ).scalar()
+
+        assert ret is not None

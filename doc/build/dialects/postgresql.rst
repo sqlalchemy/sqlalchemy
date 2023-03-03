@@ -312,6 +312,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         BYTEA,
         CHAR,
         CIDR,
+        CITEXT,
         DATE,
         DOUBLE_PRECISION,
         ENUM,
@@ -372,6 +373,7 @@ construction arguments, are as follows:
 
 .. autoclass:: CIDR
 
+.. autoclass:: CITEXT
 
 .. autoclass:: DOMAIN
     :members: __init__, create, drop
