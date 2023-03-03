@@ -1910,7 +1910,10 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_default_metavalue = False
 
+    # sqlite issue:
     # https://github.com/python/cpython/issues/93421
+    # note this parameter is no longer used by the ORM or default dialect
+    # see #9414
     supports_sane_rowcount_returning = False
 
     supports_empty_insert = False

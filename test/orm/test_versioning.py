@@ -45,12 +45,7 @@ def conditional_sane_rowcount_warnings(
     update=False, delete=False, only_returning=False
 ):
     warnings = ()
-    if (
-        only_returning
-        and not testing.db.dialect.supports_sane_rowcount_returning
-    ) or (
-        not only_returning and not testing.db.dialect.supports_sane_rowcount
-    ):
+    if not testing.db.dialect.supports_sane_rowcount:
         if update:
             warnings += (
                 "Dialect .* does not support "
@@ -1466,7 +1461,6 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         eq_(f1.version_id, 2)
 
-    @testing.requires.sane_rowcount_w_returning
     @testing.requires.updateable_autoincrement_pks
     @testing.requires.update_returning
     def test_sql_expr_w_mods_bump(self):
@@ -1636,7 +1630,6 @@ class ServerVersioningTest(fixtures.MappedTest):
             self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     @testing.requires.independent_connections
-    @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_expire_on_commit(self):
         sess = self._fixture()
 
@@ -1661,7 +1654,6 @@ class ServerVersioningTest(fixtures.MappedTest):
         )
 
     @testing.requires.independent_connections
-    @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_noexpire_on_commit(self):
         sess = self._fixture(expire_on_commit=False)
 

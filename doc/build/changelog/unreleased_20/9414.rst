@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 9414
+
+    Fixed issue in the new :class:`.Uuid` datatype which prevented it from
+    working with the pymssql driver. As pymssql seems to be maintained again,
+    restored testing support for pymssql.
+
+.. change::
+    :tags: bug, mssql
+
+    Tweaked the pymssql dialect to take better advantage of
+    RETURNING for INSERT statements in order to retrieve last inserted primary
+    key values, in the same way as occurs for the mssql+pyodbc dialect right
+    now.
+
+.. change::
+    :tags: bug, orm
+
+    Identified that the ``sqlite`` and ``mssql+pyodbc`` dialects are now
+    compatible with the SQLAlchemy ORM's "versioned rows" feature, since
+    SQLAlchemy now computes rowcount for a RETURNING statement in this specific
+    case by counting the rows returned, rather than relying upon
+    ``cursor.rowcount``.  In particular, the ORM versioned rows use case
+    (documented at :ref:`mapper_version_counter`) should now be fully
+    supported with the SQL Server pyodbc dialect.
+

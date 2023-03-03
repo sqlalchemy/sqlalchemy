@@ -815,7 +815,36 @@ class TypeRoundTripTest(
         )
         return t, (d1, t1, d2, d3)
 
-    def test_date_roundtrips(self, date_fixture, connection):
+    def test_date_roundtrips_no_offset(self, date_fixture, connection):
+        t, (d1, t1, d2, d3) = date_fixture
+        connection.execute(
+            t.insert(),
+            dict(
+                adate=d1,
+                adatetime=d2,
+                atime1=t1,
+                atime2=d2,
+            ),
+        )
+
+        row = connection.execute(t.select()).first()
+        eq_(
+            (
+                row.adate,
+                row.adatetime,
+                row.atime1,
+                row.atime2,
+            ),
+            (
+                d1,
+                d2,
+                t1,
+                d2.time(),
+            ),
+        )
+
+    @testing.skip_if("+pymssql", "offsets dont seem to work")
+    def test_date_roundtrips_w_offset(self, date_fixture, connection):
         t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
             t.insert(),
@@ -855,6 +884,7 @@ class TypeRoundTripTest(
         (datetime.datetime(2007, 10, 30, 11, 2, 32)),
         argnames="date",
     )
+    @testing.skip_if("+pymssql", "unknown failures")
     def test_tz_present_or_non_in_dates(self, date_fixture, connection, date):
         t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
@@ -954,6 +984,7 @@ class TypeRoundTripTest(
         id_="iaaa",
         argnames="dto_param_value, expected_offset_hours, should_fail",
     )
+    @testing.skip_if("+pymssql", "offsets dont seem to work")
     def test_datetime_offset(
         self,
         datetimeoffset_fixture,

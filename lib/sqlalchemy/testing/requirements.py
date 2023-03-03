@@ -493,6 +493,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def arraysize(self):
+        """dialect includes the required pep-249 attribute
+        ``cursor.arraysize``"""
+
+        return exclusions.open()
+
+    @property
     def emulated_lastrowid(self):
         """target dialect retrieves cursor.lastrowid, or fetches
         from a database-side function after an insert() construct executes,
@@ -849,6 +856,24 @@ class SuiteRequirements(Requirements):
         datetime.time() with tzinfo with Time(timezone=True)."""
 
         return exclusions.closed()
+
+    @property
+    def date_implicit_bound(self):
+        """target dialect when given a date object will bind it such
+        that the database server knows the object is a date, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
+    def time_implicit_bound(self):
+        """target dialect when given a time object will bind it such
+        that the database server knows the object is a time, and not
+        a plain string.
+
+        """
+        return exclusions.open()
 
     @property
     def datetime_implicit_bound(self):

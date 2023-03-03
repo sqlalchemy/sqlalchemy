@@ -450,11 +450,6 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
             Column("decorated_date_data", Decorated),
         )
 
-    @testing.requires.datetime_implicit_bound
-    def test_select_direct(self, connection):
-        result = connection.scalar(select(literal(self.data)))
-        eq_(result, self.data)
-
     def test_round_trip(self, connection):
         date_table = self.tables.date_table
 
@@ -531,6 +526,11 @@ class DateTimeTest(_DateFixture, fixtures.TablesTest):
     datatype = DateTime
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)
 
+    @testing.requires.datetime_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class DateTimeTZTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("datetime_timezone",)
@@ -539,6 +539,11 @@ class DateTimeTZTest(_DateFixture, fixtures.TablesTest):
     data = datetime.datetime(
         2012, 10, 15, 12, 57, 18, tzinfo=datetime.timezone.utc
     )
+
+    @testing.requires.datetime_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
 
 
 class DateTimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
@@ -566,12 +571,22 @@ class TimeTest(_DateFixture, fixtures.TablesTest):
     datatype = Time
     data = datetime.time(12, 57, 18)
 
+    @testing.requires.time_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class TimeTZTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("time_timezone",)
     __backend__ = True
     datatype = Time(timezone=True)
     data = datetime.time(12, 57, 18, tzinfo=datetime.timezone.utc)
+
+    @testing.requires.time_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
 
 
 class TimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
@@ -580,12 +595,22 @@ class TimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     datatype = Time
     data = datetime.time(12, 57, 18, 396)
 
+    @testing.requires.time_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class DateTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("date",)
     __backend__ = True
     datatype = Date
     data = datetime.date(2012, 10, 15)
+
+    @testing.requires.date_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
 
 
 class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
@@ -600,6 +625,11 @@ class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)
     compare = datetime.date(2012, 10, 15)
 
+    @testing.requires.datetime_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class DateTimeHistoricTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("datetime_historic",)
@@ -607,12 +637,22 @@ class DateTimeHistoricTest(_DateFixture, fixtures.TablesTest):
     datatype = DateTime
     data = datetime.datetime(1850, 11, 10, 11, 52, 35)
 
+    @testing.requires.date_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class DateHistoricTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("date_historic",)
     __backend__ = True
     datatype = Date
     data = datetime.date(1727, 4, 1)
+
+    @testing.requires.date_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
 
 
 class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
