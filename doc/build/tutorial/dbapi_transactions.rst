@@ -355,7 +355,7 @@ Sending Multiple Parameters
 
 In the example at :ref:`tutorial_committing_data`, we executed an INSERT
 statement where it appeared that we were able to INSERT multiple rows into the
-database at once.  For statements :term:`DML` statements such as "INSERT",
+database at once.  For :term:`DML` statements such as "INSERT",
 "UPDATE" and "DELETE", we can send **multiple parameter sets** to the
 :meth:`_engine.Connection.execute` method by passing a list of dictionaries
 instead of a single dictionary, which indicates that the single SQL statement
