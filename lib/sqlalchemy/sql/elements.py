@@ -99,6 +99,7 @@ if typing.TYPE_CHECKING:
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import NamedFromClause
+    from .selectable import TextualSelect
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
@@ -2385,7 +2386,9 @@ class TextClause(
         return self
 
     @util.preload_module("sqlalchemy.sql.selectable")
-    def columns(self, *cols, **types):
+    def columns(
+        self, *cols: _ColumnExpressionArgument[Any], **types: TypeEngine[Any]
+    ) -> TextualSelect:
         r"""Turn this :class:`_expression.TextClause` object into a
         :class:`_expression.TextualSelect`
         object that serves the same role as a SELECT
@@ -2503,29 +2506,38 @@ class TextClause(
 
         """
         selectable = util.preloaded.sql_selectable
+
+        input_cols: List[NamedColumn[Any]] = [
+            coercions.expect(roles.LabeledColumnExprRole, col) for col in cols
+        ]
+
         positional_input_cols = [
             ColumnClause(col.key, types.pop(col.key))
             if col.key in types
             else col
-            for col in cols
+            for col in input_cols
         ]
-        keyed_input_cols: List[ColumnClause[Any]] = [
+        keyed_input_cols: List[NamedColumn[Any]] = [
             ColumnClause(key, type_) for key, type_ in types.items()
         ]
 
-        return selectable.TextualSelect(
+        elem = selectable.TextualSelect.__new__(selectable.TextualSelect)
+        elem._init(
             self,
             positional_input_cols + keyed_input_cols,
             positional=bool(positional_input_cols) and not keyed_input_cols,
         )
+        return elem
 
     @property
-    def type(self):
+    def type(self) -> TypeEngine[Any]:
         return type_api.NULLTYPE
 
     @property
     def comparator(self):
-        return self.type.comparator_factory(self)
+        # TODO: this seems wrong, it seems like we might not
+        # be using this method.
+        return self.type.comparator_factory(self)  # type: ignore
 
     def self_group(self, against=None):
         if against is operators.in_op:
