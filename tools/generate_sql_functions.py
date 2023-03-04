@@ -5,12 +5,10 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 import inspect
 import re
 from tempfile import NamedTemporaryFile
 import textwrap
-from typing import Any
 
 from sqlalchemy.sql.functions import _registry
 from sqlalchemy.types import TypeEngine
@@ -99,17 +97,7 @@ def {key}(self) -> Type[{fn_class.__name__}{
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-
-                        # TODO: numeric types don't seem to be coming out
-                        # at the moment, because Numeric is typed generically
-                        # in that it can return Decimal or float. We would need
-                        # to further break out Numeric / Float into types
-                        # that type out as returning an exact Decimal or float
-                        if python_type is Decimal:
-                            python_type = Any
-                            python_expr = f"{python_type.__name__}"
-                        else:
-                            python_expr = rf"Tuple\[.*{python_type.__name__}\]"
+                        python_expr = rf"Tuple\[.*{python_type.__name__}\]"
                         argspec = inspect.getfullargspec(fn_class)
                         args = ", ".join(
                             'column("x")' for elem in argspec.args[1:]

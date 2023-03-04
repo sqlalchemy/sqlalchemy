@@ -29,7 +29,7 @@ reveal_type(stmt3)
 
 stmt4 = select(func.cume_dist())
 
-# EXPECTED_RE_TYPE: .*Select\[Any\]
+# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*Decimal\]\]
 reveal_type(stmt4)
 
 
@@ -89,7 +89,7 @@ reveal_type(stmt13)
 
 stmt14 = select(func.percent_rank())
 
-# EXPECTED_RE_TYPE: .*Select\[Any\]
+# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*Decimal\]\]
 reveal_type(stmt14)
 
 
