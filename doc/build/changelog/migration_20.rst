@@ -1518,16 +1518,16 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.scalars(
+          session.scalar(
             select(func.count()).
             select_from(User)
-          ).one()
+          )
 
           # or
           
-          session.scalars(
+          session.scalar(
             select(func.count(User.id))
-          ).one()
+          )
 
       - :meth:`_orm.Session.scalar`
 
