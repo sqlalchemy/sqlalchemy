@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 9423
+
+    Fixed bug where :meth:`_engine.Row`s could not be
+    unpickled by other processes.
