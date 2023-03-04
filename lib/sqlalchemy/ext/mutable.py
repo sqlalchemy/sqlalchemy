@@ -369,6 +369,7 @@ from typing import Optional
 from typing import overload
 from typing import Set
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -781,27 +782,25 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         super().__setitem__(key, value)
         self.changed()
 
-    def _exists(self, value: _T | None) -> TypeGuard[_T]:
-        return value is not None
+    if TYPE_CHECKING:
 
-    def _is_none(self, value: _T | None) -> TypeGuard[None]:
-        return value is None
+        @overload
+        def setdefault(self, key: _KT) -> _VT | None:
+            ...
 
-    @overload
-    def setdefault(self, key: _KT) -> _VT | None:
-        ...
+        @overload
+        def setdefault(self, key: _KT, value: _VT) -> _VT:
+            ...
 
-    @overload
-    def setdefault(self, key: _KT, value: _VT) -> _VT:
-        ...
+        def setdefault(self, key: _KT, value: _VT | None = None) -> _VT | None:
+            ...
 
-    def setdefault(self, key: _KT, value: _VT | None = None) -> _VT | None:
-        if self._exists(value):
-            result = super().setdefault(key, value)
-        else:
-            result = super().setdefault(key)  # type: ignore[call-arg]
-        self.changed()
-        return result
+    else:
+
+        def setdefault(self, *arg):  # noqa: F811
+            result = super().setdefault(*arg)
+            self.changed()
+            return result
 
     def __delitem__(self, key: _KT) -> None:
         """Detect dictionary del events and emit change events."""
@@ -812,21 +811,27 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         super().update(*a, **kw)
         self.changed()
 
-    @overload
-    def pop(self, __key: _KT) -> _VT:
-        ...
+    if TYPE_CHECKING:
 
-    @overload
-    def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T:
-        ...
+        @overload
+        def pop(self, __key: _KT) -> _VT:
+            ...
 
-    def pop(self, __key: _KT, __default: _VT | _T | None = None) -> _VT | _T:
-        if self._exists(__default):
-            result = super().pop(__key, __default)
-        else:
-            result = super().pop(__key)
-        self.changed()
-        return result
+        @overload
+        def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T:
+            ...
+
+        def pop(
+            self, __key: _KT, __default: _VT | _T | None = None
+        ) -> _VT | _T:
+            ...
+
+    else:
+
+        def pop(self, *arg):  # noqa: F811
+            result = super().pop(*arg)
+            self.changed()
+            return result
 
     def popitem(self) -> Tuple[_KT, _VT]:
         result = super().popitem()
