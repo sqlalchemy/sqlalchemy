@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import reflection as _engine_reflection
     from sqlalchemy.engine import result as _engine_result
     from sqlalchemy.engine import url as _engine_url
+    from sqlalchemy.orm import attributes as _orm_attributes
     from sqlalchemy.orm import base as _orm_base
     from sqlalchemy.orm import clsregistry as _orm_clsregistry
     from sqlalchemy.orm import decl_api as _orm_decl_api
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     orm_clsregistry = _orm_clsregistry
     orm_base = _orm_base
     orm = _orm
+    orm_attributes = _orm_attributes
     orm_decl_api = _orm_decl_api
     orm_decl_base = _orm_decl_base
     orm_descriptor_props = _orm_descriptor_props

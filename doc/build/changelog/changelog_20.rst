@@ -2329,12 +2329,14 @@
 
         Changed the attribute access method used by
         :func:`_orm.attribute_mapped_collection` and
-        :func:`_orm.column_mapped_collection`, used when populating the dictionary,
-        to assert that the data value on the object to be used as the dictionary
-        key is actually present, and is not instead using "None" due to the
-        attribute never being actually assigned. This is used to prevent a
-        mis-population of None for a key when assigning via a backref where the
-        "key" attribute on the object is not yet assigned.
+        :func:`_orm.column_mapped_collection` (now called
+        :func:`_orm.attribute_keyed_dict` and :func:`_orm.column_keyed_dict`) ,
+        used when populating the dictionary, to assert that the data value on
+        the object to be used as the dictionary key is actually present, and is
+        not instead using "None" due to the attribute never being actually
+        assigned. This is used to prevent a mis-population of None for a key
+        when assigning via a backref where the "key" attribute on the object is
+        not yet assigned.
 
         As the failure mode here is a transitory condition that is not typically
         persisted to the database, and is easy to produce via the constructor of
@@ -2342,9 +2344,9 @@
         possible that many applications include this behavior already which is
         silently passed over. To accommodate for applications where this error is
         now raised, a new parameter
-        :paramref:`_orm.attribute_mapped_collection.ignore_unpopulated_attribute`
-        is also added to both :func:`_orm.attribute_mapped_collection` and
-        :func:`_orm.column_mapped_collection` that instead causes the erroneous
+        :paramref:`_orm.attribute_keyed_dict.ignore_unpopulated_attribute`
+        is also added to both :func:`_orm.attribute_keyed_dict` and
+        :func:`_orm.column_keyed_dict` that instead causes the erroneous
         backref assignment to be skipped.
 
     .. change::
