@@ -984,7 +984,11 @@ class PKDefaultTest(fixtures.TestBase):
                 metadata,
                 Column(
                     "date_id",
-                    DateTime(timezone=True),
+                    # we want no tzinfo normally since pymssql doesn't do
+                    # it right now
+                    DateTime().with_variant(
+                        DateTime(timezone=True), "postgresql"
+                    ),
                     default=text("current_timestamp"),
                     primary_key=True,
                 ),

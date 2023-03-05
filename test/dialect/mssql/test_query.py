@@ -18,6 +18,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects.mssql import base as mssql
+from sqlalchemy.dialects.mssql import pyodbc as mssql_pyodbc
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -409,7 +410,7 @@ def full_text_search_missing():
         return result.scalar() == 0
 
 
-class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
+class MatchTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     __only_on__ = "mssql"
     __skip_if__ = (full_text_search_missing,)
@@ -517,6 +518,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "CONTAINS (matchtable.title, ?)",
+            dialect=mssql_pyodbc.dialect(paramstyle="qmark"),
         )
 
     def test_simple_match(self, connection):

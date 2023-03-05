@@ -281,9 +281,9 @@ non-ODBC drivers such as pymssql where it works very well.
 Rowcount Support
 ----------------
 
-Pyodbc only has partial support for rowcount.  See the notes at
-:ref:`mssql_rowcount_versioning` for important notes when using ORM
-versioning.
+Previous limitations with the SQLAlchemy ORM's "versioned rows" feature with
+Pyodbc have been resolved as of SQLAlchemy 2.0.5. See the notes at
+:ref:`mssql_rowcount_versioning`.
 
 .. _mssql_pyodbc_fastexecutemany:
 
@@ -607,10 +607,9 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     supports_statement_cache = True
 
-    # mssql still has problems with this on Linux
+    # note this parameter is no longer used by the ORM or default dialect
+    # see #9414
     supports_sane_rowcount_returning = False
-
-    favor_returning_over_lastrowid = True
 
     execution_ctx_cls = MSExecutionContext_pyodbc
 

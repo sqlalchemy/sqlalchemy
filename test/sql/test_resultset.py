@@ -539,6 +539,7 @@ class CursorResultTest(fixtures.TablesTest):
             rows.append(row)
         eq_(len(rows), 2)
 
+    @testing.requires.arraysize
     def test_fetchmany_arraysize_default(self, connection):
         users = self.tables.users
 
@@ -552,6 +553,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         eq_(len(rows), min(arraysize, 150))
 
+    @testing.requires.arraysize
     def test_fetchmany_arraysize_set(self, connection):
         users = self.tables.users
 

@@ -805,11 +805,7 @@ def _emit_update_statements(
             statement = statement.return_defaults(mapper.version_id_col)
             return_defaults = True
 
-        assert_singlerow = (
-            connection.dialect.supports_sane_rowcount
-            if not return_defaults
-            else connection.dialect.supports_sane_rowcount_returning
-        )
+        assert_singlerow = connection.dialect.supports_sane_rowcount
 
         assert_multirow = (
             assert_singlerow
@@ -1274,9 +1270,6 @@ def _emit_post_update_statements(
 
     if mapper._version_id_has_server_side_value:
         statement = statement.return_defaults(mapper.version_id_col)
-        return_defaults = True
-    else:
-        return_defaults = False
 
     # execute each UPDATE in the order according to the original
     # list of states to guarantee row access order, but
@@ -1291,11 +1284,7 @@ def _emit_post_update_statements(
         records = list(records)
         connection = key[0]
 
-        assert_singlerow = (
-            connection.dialect.supports_sane_rowcount
-            if not return_defaults
-            else connection.dialect.supports_sane_rowcount_returning
-        )
+        assert_singlerow = connection.dialect.supports_sane_rowcount
         assert_multirow = (
             assert_singlerow
             and connection.dialect.supports_sane_multi_rowcount

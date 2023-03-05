@@ -12,11 +12,33 @@ from ...schema import Table
 from ...testing.provision import create_db
 from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
+from ...testing.provision import generate_driver_url
 from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
 from ...testing.provision import normalize_sequence
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
+
+
+@generate_driver_url.for_db("mssql")
+def generate_driver_url(url, driver, query_str):
+
+    backend = url.get_backend_name()
+
+    new_url = url.set(drivername="%s+%s" % (backend, driver))
+
+    if driver != "pyodbc":
+        new_url = new_url.set(query="")
+
+    if query_str:
+        new_url = new_url.update_query_string(query_str)
+
+    try:
+        new_url.get_dialect()
+    except exc.NoSuchModuleError:
+        return None
+    else:
+        return new_url
 
 
 @create_db.for_db("mssql")

@@ -885,29 +885,20 @@ The SQL Server drivers may have limited ability to return the number
 of rows updated from an UPDATE or DELETE statement.
 
 As of this writing, the PyODBC driver is not able to return a rowcount when
-OUTPUT INSERTED is used.  This impacts the SQLAlchemy ORM's versioning feature
-in many cases where server-side value generators are in use in that while the
-versioning operations can succeed, the ORM cannot always check that an UPDATE
-or DELETE statement matched the number of rows expected, which is how it
-verifies that the version identifier matched.   When this condition occurs, a
-warning will be emitted but the operation will proceed.
+OUTPUT INSERTED is used.    Previous versions of SQLAlchemy therefore had
+limitations for features such as the "ORM Versioning" feature that relies upon
+accurate rowcounts in order to match version numbers with matched rows.
 
-The use of OUTPUT INSERTED can be disabled by setting the
-:paramref:`_schema.Table.implicit_returning` flag to ``False`` on a particular
-:class:`_schema.Table`, which in declarative looks like::
+SQLAlchemy 2.0 now retrieves the "rowcount" manually for these particular use
+cases based on counting the rows that arrived back within RETURNING; so while
+the driver still has this limitation, the ORM Versioning feature is no longer
+impacted by it. As of SQLAlchemy 2.0.5, ORM versioning has been fully
+re-enabled for the pyodbc driver.
 
-    class MyTable(Base):
-        __tablename__ = 'mytable'
-        id = Column(Integer, primary_key=True)
-        stuff = Column(String(10))
-        timestamp = Column(TIMESTAMP(), default=text('DEFAULT'))
-        __mapper_args__ = {
-            'version_id_col': timestamp,
-            'version_id_generator': False,
-        }
-        __table_args__ = {
-            'implicit_returning': False
-        }
+.. versionchanged:: 2.0.5  ORM versioning support is restored for the pyodbc
+   driver.  Previously, a warning would be emitted during ORM flush that
+   versioning was not supported.
+
 
 Enabling Snapshot Isolation
 ---------------------------
@@ -2965,6 +2956,7 @@ class MSDialect(default.DefaultDialect):
     supports_statement_cache = True
     supports_default_values = True
     supports_empty_insert = False
+    favor_returning_over_lastrowid = True
 
     supports_comments = True
     supports_default_metavalue = False
