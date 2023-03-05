@@ -1,0 +1,24 @@
+.. change::
+    :tags: bug, mysql, postgresql
+    :tickets: 5648
+
+    The support for pool ping listeners to receive exception events via the
+    :meth:`.ConnectionEvents.handle_error` event added in 2.0.0b1 for
+    :ticket:`5648` failed to take into account dialect-specific ping routines
+    such as that of MySQL and PostgreSQL. The dialect feature has been reworked
+    so that all dialects participate within event handling.   Additionally,
+    a new boolean element :attr:`.ExceptionContext.is_pre_ping` is added
+    which identifies if this operation is occurring within the pre-ping
+    operation.
+
+    For this release, third party dialects which implement a custom
+    :meth:`_engine.Dialect.do_ping` method can opt in to the newly improved
+    behavior by having their method no longer catch exceptions or check
+    exceptions for "is_disconnect", instead just propagating all exceptions
+    outwards. Checking the exception for "is_disconnect" is now done by an
+    enclosing method on the default dialect, which ensures that the event hook
+    is invoked for all exception scenarios before testing the exception as a
+    "disconnect" exception. If an existing ``do_ping()`` method continues to
+    catch exceptions and check "is_disconnect", it will continue to work as it
+    did previously, but ``handle_error`` hooks will not have access to the
+    exception if it isn't propagated outwards.

@@ -454,8 +454,8 @@ class DBAPIProxyConnection:
 
     """
 
-    def __init__(self, engine, cursor_cls):
-        self.conn = engine.pool._creator()
+    def __init__(self, engine, conn, cursor_cls):
+        self.conn = conn
         self.engine = engine
         self.cursor_cls = cursor_cls
 
