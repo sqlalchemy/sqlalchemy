@@ -53,8 +53,6 @@ from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
 
-_UNPICKLED = util.symbol("unpickled")
-
 
 if typing.TYPE_CHECKING:
     from .base import Connection
@@ -445,7 +443,12 @@ class CursorResultMetaData(ResultMetaData):
 
                 # then for the dupe keys, put the "ambiguous column"
                 # record into by_key.
-                by_key.update({key: (None, None, (), key) for key in dupes})
+                by_key.update(
+                    {
+                        key: (None, None, [], key, key, None, None)
+                        for key in dupes
+                    }
+                )
 
             else:
 
@@ -886,7 +889,7 @@ class CursorResultMetaData(ResultMetaData):
                 # ensure it raises
                 CursorResultMetaData._key_fallback(self, ke.args[0], ke)
 
-            index = rec[0]
+            index = rec[MD_INDEX]
 
             if index is None:
                 self._raise_for_ambiguous_column_name(rec)
@@ -894,15 +897,23 @@ class CursorResultMetaData(ResultMetaData):
             yield cast(_NonAmbigCursorKeyMapRecType, rec)
 
     def __getstate__(self):
+        # TODO: consider serializing this as SimpleResultMetaData
         return {
             "_keymap": {
-                key: (rec[MD_INDEX], rec[MD_RESULT_MAP_INDEX], _UNPICKLED, key)
+                key: (
+                    rec[MD_INDEX],
+                    rec[MD_RESULT_MAP_INDEX],
+                    [],
+                    key,
+                    rec[MD_RENDERED_NAME],
+                    None,
+                    None,
+                )
                 for key, rec in self._keymap.items()
                 if isinstance(key, (str, int))
             },
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,
-            "_tuplefilter": self._tuplefilter,
         }
 
     def __setstate__(self, state):
