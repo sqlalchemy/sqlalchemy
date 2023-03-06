@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm declarative
-    :tickets: 9332
-
-    Fixed issue where new :paramref:`_orm.mapped_column.use_existing_column`
-    feature would not work if the two same-named columns were mapped under
-    attribute names that were differently-named from an explicit name given to
-    the column itself. The attribute names can now be differently named when
-    using this parameter.

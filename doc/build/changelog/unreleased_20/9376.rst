@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9376
-
-    Improved typing for the mapping passed to :meth:`.Insert.values` and
-    :meth:`.Update.values` to be more open-ended about collection type, by
-    indicating read-only ``Mapping`` instead of writeable ``Dict`` which would
-    error out on too limited of a key type.

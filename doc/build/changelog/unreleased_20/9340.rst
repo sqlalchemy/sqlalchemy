@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9340
-
-    Fixed typing issue where :func:`_orm.with_polymorphic` would not
-    record the class type correctly.

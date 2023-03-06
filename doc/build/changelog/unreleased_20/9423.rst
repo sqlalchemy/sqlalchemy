@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 9423
-
-    Fixed bug where :class:`_engine.Row` objects could not be reliably unpickled
-    across processes due to an accidental reliance on an unstable hash value.

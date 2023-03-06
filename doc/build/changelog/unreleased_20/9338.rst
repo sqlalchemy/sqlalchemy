@@ -1,7 +1,0 @@
-.. change::
-    :tags: typing, usecase
-    :tickets: 9338
-
-    Exported the type returned by
-    :meth:`_orm.scoped_session.query_property` using a new public type
-    :class:`.orm.QueryPropertyDescriptor`.

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 9401
-
-    Fixed issue where the PostgreSQL :class:`_postgresql.ExcludeConstraint`
-    construct would not be copyable within operations such as
-    :meth:`_schema.Table.to_metadata` as well as within some Alembic scenarios,
-    if the constraint contained textual expression elements.

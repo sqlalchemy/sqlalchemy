@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 9349
-
-    Fixed issue in PostgreSQL :class:`_postgresql.ExcludeConstraint` where
-    literal values were being compiled as bound parameters and not direct
-    inline values as is required for DDL.
