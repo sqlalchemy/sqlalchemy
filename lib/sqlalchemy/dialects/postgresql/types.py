@@ -257,8 +257,8 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
     __visit_name__ = "TSVECTOR"
 
 
-class CITEXT(sqltypes.TypeEngine[str]):
+class CITEXT(sqltypes.TEXT):
 
-    """The :class:`_postgresql.CITEXT` type implements the PostgreSQL"""
+    """Provide the PostgreSQL CITEXT type."""
 
     __visit_name__ = "CITEXT"
