@@ -255,3 +255,14 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
     """
 
     __visit_name__ = "TSVECTOR"
+
+
+class CITEXT(sqltypes.TEXT):
+
+    """Provide the PostgreSQL CITEXT type.
+
+    .. versionadded:: 2.0.7
+
+    """
+
+    __visit_name__ = "CITEXT"

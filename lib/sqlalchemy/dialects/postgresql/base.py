@@ -1450,6 +1450,7 @@ from .types import _INT_TYPES  # noqa: F401
 from .types import BIT as BIT
 from .types import BYTEA as BYTEA
 from .types import CIDR as CIDR
+from .types import CITEXT as CITEXT
 from .types import INET as INET
 from .types import INTERVAL as INTERVAL
 from .types import MACADDR as MACADDR
@@ -1651,6 +1652,7 @@ ischema_names = {
     "real": REAL,
     "inet": INET,
     "cidr": CIDR,
+    "citext": CITEXT,
     "uuid": UUID,
     "bit": BIT,
     "bit varying": BIT,
@@ -1920,7 +1922,6 @@ class PGCompiler(compiler.SQLCompiler):
             return ""
 
     def for_update_clause(self, select, **kw):
-
         if select._for_update_arg.read:
             if select._for_update_arg.key_share:
                 tmp = " FOR KEY SHARE"
@@ -1932,7 +1933,6 @@ class PGCompiler(compiler.SQLCompiler):
             tmp = " FOR UPDATE"
 
         if select._for_update_arg.of:
-
             tables = util.OrderedSet()
             for c in select._for_update_arg.of:
                 tables.update(sql_util.surface_selectables_only(c))
@@ -1959,7 +1959,6 @@ class PGCompiler(compiler.SQLCompiler):
             return "SUBSTRING(%s FROM %s)" % (s, start)
 
     def _on_conflict_target(self, clause, **kw):
-
         if clause.constraint_target is not None:
             # target may be a name of an Index, UniqueConstraint or
             # ExcludeConstraint.  While there is a separate
@@ -1993,7 +1992,6 @@ class PGCompiler(compiler.SQLCompiler):
         return target_text
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
-
         target_text = self._on_conflict_target(on_conflict, **kw)
 
         if target_text:
@@ -2002,7 +2000,6 @@ class PGCompiler(compiler.SQLCompiler):
             return "ON CONFLICT DO NOTHING"
 
     def visit_on_conflict_do_update(self, on_conflict, **kw):
-
         clause = on_conflict
 
         target_text = self._on_conflict_target(on_conflict, **kw)
@@ -2110,7 +2107,6 @@ class PGCompiler(compiler.SQLCompiler):
 
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-
         colspec = self.preparer.format_column(column)
         impl_type = column.type.dialect_impl(self.dialect)
         if isinstance(impl_type, sqltypes.TypeDecorator):
@@ -2472,6 +2468,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_CIDR(self, type_, **kw):
         return "CIDR"
 
+    def visit_CITEXT(self, type_, **kw):
+        return "CITEXT"
+
     def visit_MACADDR(self, type_, **kw):
         return "MACADDR"
 
@@ -2621,7 +2620,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "BYTEA"
 
     def visit_ARRAY(self, type_, **kw):
-
         inner = self.process(type_.item_type, **kw)
         return re.sub(
             r"((?: COLLATE.*)?)$",
@@ -2644,7 +2642,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
-
     reserved_words = RESERVED_WORDS
 
     def _unquote_identifier(self, value):
@@ -2843,7 +2840,6 @@ class PGExecutionContext(default.DefaultExecutionContext):
     def get_insert_default(self, column):
         if column.primary_key and column is column.table._autoincrement_column:
             if column.server_default and column.server_default.has_argument:
-
                 # pre-execute passive defaults on primary key columns
                 return self._execute_scalar(
                     "select %s" % column.server_default.arg, column.type
@@ -4222,7 +4218,6 @@ class PGDialect(default.DefaultDialect):
     def get_multi_indexes(
         self, connection, schema, filter_names, scope, kind, **kw
     ):
-
         table_oids = self._get_table_oids(
             connection, schema, filter_names, scope, kind, **kw
         )

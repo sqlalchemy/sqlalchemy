@@ -72,6 +72,7 @@ from .ranges import TSTZRANGE
 from .types import BIT
 from .types import BYTEA
 from .types import CIDR
+from .types import CITEXT
 from .types import INET
 from .types import INTERVAL
 from .types import MACADDR
@@ -105,6 +106,7 @@ __all__ = (
     "REAL",
     "INET",
     "CIDR",
+    "CITEXT",
     "UUID",
     "BIT",
     "MACADDR",

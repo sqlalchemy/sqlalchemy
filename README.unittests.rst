@@ -10,7 +10,6 @@ a single Python interpreter::
 
     tox
 
-
 Advanced Tox Options
 ====================
 
@@ -197,6 +196,16 @@ Additional steps specific to individual databases are as follows::
         postgres=# \c test;
         You are now connected to database "test" as user "postgresql".
         test=# create extension hstore;
+        CREATE EXTENSION
+
+    To include tests for CITEXT for PostgreSQL versions lower than 13,
+    create the CITEXT extension; for PostgreSQL 13 and above, this
+    extension is created automatically as part of the test suite if not
+    already present::
+
+        postgres=# \c test;
+        You are now connected to database "test" as user "postgresql".
+        test=# create extension citext;
         CREATE EXTENSION
 
     Full-text search configuration should be set to English, else

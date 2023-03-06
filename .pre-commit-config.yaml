@@ -34,3 +34,4 @@ repos:
         entry: python tools/format_docs_code.py -f
         language: system
         types: [rst]
+        exclude: README.*
