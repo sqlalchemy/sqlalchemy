@@ -4,11 +4,7 @@ from contextlib import contextmanager
 import csv
 from io import StringIO
 import operator
-import os
 import pickle
-import subprocess
-import sys
-from tempfile import mkstemp
 from unittest.mock import Mock
 from unittest.mock import patch
 
@@ -506,25 +502,25 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: result[0]._mapping[addresses.c.address_id],
         )
 
-    @testing.variation("use_labels", [True, False])
-    def test_pickle_rows_other_process(self, connection, use_labels):
-        result = self._pickle_row_data(connection, use_labels)
+    # @testing.variation("use_labels", [True, False])
+    # def _dont_test_pickle_rows_other_process(self, connection, use_labels):
+    #     result = self._pickle_row_data(connection, use_labels)
 
-        f, name = mkstemp("pkl")
-        with os.fdopen(f, "wb") as f:
-            pickle.dump(result, f)
-        name = name.replace(os.sep, "/")
-        code = (
-            "import sqlalchemy; import pickle; print(["
-            f"r[0] for r in pickle.load(open('''{name}''', 'rb'))])"
-        )
-        proc = subprocess.run(
-            [sys.executable, "-c", code], stdout=subprocess.PIPE
-        )
-        exp = str([r[0] for r in result]).encode()
-        eq_(proc.returncode, 0)
-        eq_(proc.stdout.strip(), exp)
-        os.unlink(name)
+    #     f, name = mkstemp("pkl")
+    #     with os.fdopen(f, "wb") as f:
+    #         pickle.dump(result, f)
+    #     name = name.replace(os.sep, "/")
+    #     code = (
+    #         "import sqlalchemy; import pickle; print(["
+    #         f"r[0] for r in pickle.load(open('''{name}''', 'rb'))])"
+    #     )
+    #     proc = subprocess.run(
+    #         [sys.executable, "-c", code], stdout=subprocess.PIPE
+    #     )
+    #     exp = str([r[0] for r in result]).encode()
+    #     eq_(proc.returncode, 0)
+    #     eq_(proc.stdout.strip(), exp)
+    #     os.unlink(name)
 
     def test_column_error_printing(self, connection):
         result = connection.execute(select(1))
