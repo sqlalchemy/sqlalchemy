@@ -242,7 +242,7 @@ copyright = "2007-2023, the SQLAlchemy authors and contributors"  # noqa
 # The short X.Y version.
 version = "2.0"
 # The full version, including alpha/beta/rc tags.
-release = "2.0.5"
+release = "2.0.5.post1"
 
 release_date = "March 5, 2023"
 
