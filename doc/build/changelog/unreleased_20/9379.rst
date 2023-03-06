@@ -1,6 +1,8 @@
 .. change::
-    :tags: bug, sqlite
+    :tags: bug, sqlite, regression
     :tickets: 9379
 
-    Fixed bug that prevented SQLAlchemy to connect when using a very old
-    sqlite version (before 3.8.3) on python 3.8+.
+    Fixed regression for SQLite connections where use of the ``deterministic``
+    parameter when establishing database functions would fail for older SQLite
+    versions, those prior to version 3.8.3. The version checking logic has been
+    improved to accommodate for this case.

@@ -1,5 +1,5 @@
 .. change::
     :tags: schema
 
-    Validate that when provided the :paramref:`_sql.MetaData.schema`
-    argument of :class:`_sql.MetaData` is a string.
+    Validate that when provided the :paramref:`_schema.MetaData.schema`
+    argument of :class:`_schema.MetaData` is a string.

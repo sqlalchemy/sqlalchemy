@@ -744,6 +744,25 @@ class DialectEvents(event.Events[Dialect]):
         make use of a native ``ping()`` method supplied by the DBAPI which does
         not make use of disconnect codes.
 
+        .. versionchanged:: 2.0.0 The :meth:`.DialectEvents.handle_error`
+           event hook participates in connection pool "pre-ping" operations.
+           Within this usage, the :attr:`.ExceptionContext.engine` attribute
+           will be ``None``, however the :class:`.Dialect` in use is always
+           available via the :attr:`.ExceptionContext.dialect` attribute.
+
+        .. versionchanged:: 2.0.5 Added :attr:`.ExceptionContext.is_pre_ping`
+           attribute which will be set to ``True`` when the
+           :meth:`.DialectEvents.handle_error` event hook is triggered within
+           a connection pool pre-ping operation.
+
+        .. versionchanged:: 2.0.5 An issue was repaired that allows for the
+           PostgreSQL ``psycopg`` and ``psycopg2`` drivers, as well as all
+           MySQL drivers, to properly participate in the
+           :meth:`.DialectEvents.handle_error` event hook during
+           connection pool "pre-ping" operations; previously, the
+           implementation was non-working for these drivers.
+
+
         A handler function has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
         defined.   It can either raise this new exception directly, in

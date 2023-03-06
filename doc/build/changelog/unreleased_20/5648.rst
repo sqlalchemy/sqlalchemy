@@ -3,7 +3,7 @@
     :tickets: 5648
 
     The support for pool ping listeners to receive exception events via the
-    :meth:`.ConnectionEvents.handle_error` event added in 2.0.0b1 for
+    :meth:`.DialectEvents.handle_error` event added in 2.0.0b1 for
     :ticket:`5648` failed to take into account dialect-specific ping routines
     such as that of MySQL and PostgreSQL. The dialect feature has been reworked
     so that all dialects participate within event handling.   Additionally,

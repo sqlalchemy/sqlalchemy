@@ -1,6 +1,7 @@
 .. change::
-    :tags: bug, schema, postgresql
-    :tickets: 9332
+    :tags: bug, postgresql
+    :tickets: 9349
 
-    ExcludeConstraint correctly uses literal compile when compiling
-    expression ddl.
+    Fixed issue in PostgreSQL :class:`_postgresql.ExcludeConstraint` where
+    literal values were being compiled as bound parameters and not direct
+    inline values as is required for DDL.

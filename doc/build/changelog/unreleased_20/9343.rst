@@ -2,7 +2,7 @@
     :tags: engine, performance
     :tickets: 9343
 
-    A small optimization to the Cython implementation of :class:`.ResultProxy`
+    A small optimization to the Cython implementation of :class:`.Result`
     using a cdef for a particular int value to avoid Python overhead. Pull
     request courtesy Matus Valo.
 

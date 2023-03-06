@@ -2,6 +2,7 @@
     :tags: bug, typing
     :tickets: 9391
 
-    Added missing init overload to :class:`_sql.Numeric` to allow
-    type checkers to properly resolve the type var given the
-    ``asdecimal`` parameter.
+    Added missing init overload to the :class:`_types.Numeric` type object so
+    that pep-484 type checkers may properly resolve the complete type, deriving
+    from the :paramref:`_types.Numeric.asdecimal` parameter whether ``Decimal``
+    or ``float`` objects will be represented.

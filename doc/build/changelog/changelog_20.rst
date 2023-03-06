@@ -217,7 +217,7 @@
         lost.
 
     .. change::
-        :tags: bug, orm, regression
+        :tags: bug, orm, ression
         :tickets: 9232
 
         Fixed obscure ORM inheritance issue caused by :ticket:`8705` where some
