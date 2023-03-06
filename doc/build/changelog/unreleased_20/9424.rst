@@ -1,0 +1,28 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 9424
+
+    Fixed multiple regressions due to :ticket:`8372`, involving
+    :func:`_orm.attribute_mapped_collection` (now called
+    :func:`_orm.attribute_keyed_dict`).
+
+    First, the collection was no longer usable with "key" attributes that were
+    not themselves ordinary mapped attributes; attributes linked to descriptors
+    and/or association proxy attributes have been fixed.
+
+    Second, if an event or other operation needed access to the "key" in order
+    to populate the dictionary from an mapped attribute that was not
+    loaded, this also would raise an error inappropriately, rather than
+    trying to load the attribute as was the behavior in 1.4.  This is also
+    fixed.
+
+    For both cases, the behavior of :ticket:`8372` has been expanded.
+    :ticket:`8372` introduced an error that raises when the derived key that
+    would be used as a mapped dictionary key is effectively unassigned. In this
+    change, a warning only is emitted if the effective value of the ".key"
+    attribute is ``None``, where it cannot be unambiguously determined if this
+    ``None`` was intentional or not. ``None`` will be not supported as mapped
+    collection dictionary keys going forward (as it typically refers to NULL
+    which means "unknown"). Setting
+    :paramref:`_orm.attribute_keyed_dict.ignore_unpopulated_attribute` will now
+    cause such ``None`` keys to be ignored as well.

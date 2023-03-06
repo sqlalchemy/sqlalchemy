@@ -203,7 +203,11 @@ class AutoFlushTest(fixtures.MappedTest):
             collection[obj.name] = obj
 
         self._test_premature_flush(
-            collections.attribute_keyed_dict("name"), set_, is_dict=True
+            collections.attribute_keyed_dict(
+                "name", ignore_unpopulated_attribute=True
+            ),
+            set_,
+            is_dict=True,
         )
 
 
