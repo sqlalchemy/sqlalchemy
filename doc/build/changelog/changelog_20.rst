@@ -10,7 +10,6 @@
 
 .. changelog::
     :version: 2.0.5.post1
-    :released: March 5, 2023
 
     .. change::
         :tags: bug, orm
