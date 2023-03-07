@@ -4668,6 +4668,16 @@ class SQLCompiler(Compiled):
             from_linter = None
             warn_linting = False
 
+        # adjust the whitespace for no inner columns, part of #9440,
+        # so that a no-col SELECT comes out as "SELECT WHERE..." or
+        # "SELECT FROM ...".
+        # while it would be better to have built the SELECT starting string
+        # without trailing whitespace first, then add whitespace only if inner
+        # cols were present, this breaks compatibility with various custom
+        # compilation schemes that are currently being tested.
+        if not inner_columns:
+            text = text.rstrip()
+
         if froms:
             text += " \nFROM "
 

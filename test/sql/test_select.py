@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import column
@@ -76,6 +77,29 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid FROM mytable, myothertable "
             "WHERE mytable.myid = myothertable.otherid",
         )
+
+    @testing.combinations(
+        (
+            lambda tbl: select().select_from(tbl).where(tbl.c.id == 123),
+            "SELECT FROM tbl WHERE tbl.id = :id_1",
+        ),
+        (lambda tbl: select().where(true()), "SELECT WHERE 1 = 1"),
+        (
+            lambda tbl: select()
+            .select_from(tbl)
+            .where(tbl.c.id == 123)
+            .exists(),
+            "EXISTS (SELECT FROM tbl WHERE tbl.id = :id_1)",
+        ),
+    )
+    def test_select_no_columns(self, stmt, expected):
+        """test #9440"""
+
+        tbl = table("tbl", column("id"))
+
+        stmt = testing.resolve_lambda(stmt, tbl=tbl)
+
+        self.assert_compile(stmt, expected)
 
     def test_new_calling_style_clauseelement_thing_that_has_iter(self):
         class Thing:
