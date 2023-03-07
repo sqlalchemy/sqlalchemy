@@ -337,16 +337,19 @@ fast_executemany=True where it is not supported (assuming
 :ref:`insertmanyvalues <engine_insertmanyvalues>` is kept enabled,
 "fastexecutemany" will not take place for INSERT statements in any case).
 
-The behavior of setinputsizes can be customized via the
-:meth:`.DialectEvents.do_setinputsizes` hook. See that method for usage
-examples.
+The use of ``cursor.setinputsizes()`` can be disabled by passing
+``use_setinputsizes=False`` to :func:`_sa.create_engine`.
 
-.. versionchanged:: 1.4.1  The pyodbc dialects will not use setinputsizes
-   unless ``use_setinputsizes=True`` is passed.
+When ``use_setinputsizes`` is left at its default of ``True``, the
+specific per-type symbols passed to ``cursor.setinputsizes()`` can be
+programmatically customized using the :meth:`.DialectEvents.do_setinputsizes`
+hook. See that method for usage examples.
 
 .. versionchanged:: 2.0  The mssql+pyodbc dialect now defaults to using
-   setinputsizes for all statement executions with the exception of
-   cursor.executemany() calls when fast_executemany=True.
+   ``use_setinputsizes=True`` for all statement executions with the exception of
+   cursor.executemany() calls when fast_executemany=True.  The behavior can
+   be turned off by passing ``use_setinputsizes=False`` to
+   :func:`_sa.create_engine`.
 
 """  # noqa
 
