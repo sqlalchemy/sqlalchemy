@@ -23,8 +23,11 @@ from typing import NoReturn
 from typing import Optional
 from typing import Set
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+
+from ..util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
 _S = TypeVar("_S", bound=Any)
@@ -54,6 +57,14 @@ class ReadOnlyContainer:
 
 
 class ImmutableDictBase(ReadOnlyContainer, Dict[_KT, _VT]):
+    if TYPE_CHECKING:
+
+        def __new__(cls, *args: Any) -> Self:
+            ...
+
+        def __init__(cls, *args: Any):
+            ...
+
     def _readonly(self, *arg: Any, **kw: Any) -> NoReturn:
         self._immutable()
 
@@ -75,7 +86,7 @@ class ImmutableDictBase(ReadOnlyContainer, Dict[_KT, _VT]):
 
 class immutabledict(ImmutableDictBase[_KT, _VT]):
     def __new__(cls, *args):
-        new = dict.__new__(cls)
+        new = ImmutableDictBase.__new__(cls)
         dict.__init__(new, *args)
         return new
 
@@ -93,7 +104,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         if not __d:
             return self
 
-        new = dict.__new__(self.__class__)
+        new = ImmutableDictBase.__new__(self.__class__)
         dict.__init__(new, self)
         dict.update(new, __d)  # type: ignore
         return new
@@ -105,7 +116,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         if not __d and not kw:
             return self
 
-        new = dict.__new__(self.__class__)
+        new = ImmutableDictBase.__new__(self.__class__)
         dict.__init__(new, self)
         if __d:
             dict.update(new, __d)  # type: ignore
@@ -119,7 +130,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         for d in dicts:
             if d:
                 if new is None:
-                    new = dict.__new__(self.__class__)
+                    new = ImmutableDictBase.__new__(self.__class__)
                     dict.__init__(new, self)
                 dict.update(new, d)  # type: ignore
         if new is None:

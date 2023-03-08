@@ -143,7 +143,7 @@ class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
     def __new__(cls, *args: Any) -> FacadeDict[Any, Any]:
-        new = dict.__new__(cls)
+        new = ImmutableDictBase.__new__(cls)
         return new
 
     def copy(self) -> NoReturn:

@@ -150,11 +150,11 @@ class DeclarativeAttributeIntercept(
 
 @compat_typing.dataclass_transform(
     field_specifiers=(
-        MappedColumn[Any],
-        RelationshipProperty[Any],
-        Composite[Any],
-        ColumnProperty[Any],
-        Synonym[Any],
+        MappedColumn,
+        RelationshipProperty,
+        Composite,
+        ColumnProperty,
+        Synonym,
         mapped_column,
         relationship,
         composite,
@@ -1546,11 +1546,11 @@ class registry:
 
     @compat_typing.dataclass_transform(
         field_specifiers=(
-            MappedColumn[Any],
-            RelationshipProperty[Any],
-            Composite[Any],
-            ColumnProperty[Any],
-            Synonym[Any],
+            MappedColumn,
+            RelationshipProperty,
+            Composite,
+            ColumnProperty,
+            Synonym,
             mapped_column,
             relationship,
             composite,
