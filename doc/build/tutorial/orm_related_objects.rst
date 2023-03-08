@@ -5,11 +5,12 @@
 
 .. include:: tutorial_nav_include.rst
 
+.. rst-class:: orm-header
 
 .. _tutorial_orm_related_objects:
 
-Working with Related Objects
-============================
+Working with ORM Related Objects
+================================
 
 In this section, we will cover one more essential ORM concept, which is
 how the ORM interacts with mapped classes that refer to other objects. In the

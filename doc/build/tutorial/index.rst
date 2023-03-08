@@ -42,9 +42,14 @@ These APIs are known as **Core** and **ORM**.
     to a database, interacting with database queries and results, and
     programmatic construction of SQL statements.
 
-    Sections that have a **dark blue border on the right** will discuss
-    concepts that are **primarily Core-only**; when using the ORM, these
-    concepts are still in play but are less often explicit in user code.
+    Sections that are **primarily Core-only** will not refer to the ORM.
+    SQLAlchemy constructs used in these sections will be imported from the
+    ``sqlalchemy`` namespace. As an additional indicator of subject
+    classification, they will also include a **dark blue border on the right**.
+    When using the ORM, these concepts are still in play but are less often
+    explicit in user code. ORM users should read these sections, but not expect
+    to be using these APIs directly for ORM-centric code.
+
 
 .. container:: orm-header
 
@@ -56,14 +61,28 @@ These APIs are known as **Core** and **ORM**.
     SQL Expression Language to allow SQL queries to be composed and invoked
     in terms of user-defined objects.
 
-    Sections that have a **light blue border on the left** will discuss
-    concepts that are **primarily ORM-only**.  Core-only users
-    can skip these.
+    Sections that are **primarily ORM-only** should be **titled to
+    include the phrase "ORM"**, so that it's clear this is an ORM related topic.
+    SQLAlchemy constructs used in these sections will be imported from the
+    ``sqlalchemy.orm`` namespace. Finally, as an additional indicator of
+    subject classification, they will also include a **light blue border on the
+    left**. Core-only users can skip these.
 
 .. container:: core-header, orm-dependency
 
-    A section that has **both light and dark borders on both sides** will
-    discuss a **Core concept that is also used explicitly with the ORM**.
+    **Most** sections in this tutorial discuss **Core concepts that
+    are also used explicitly with the ORM**. SQLAlchemy 2.0 in particular
+    features a much greater level of integration of Core API use within the
+    ORM.
+
+    For each of these sections, there will be **introductory text** discussing the
+    degree to which ORM users should expect to be using these programming
+    patterns. SQLAlchemy constructs in these sections will be imported from the
+    ``sqlalchemy`` namespace with some potential use of ``sqlalchemy.orm``
+    constructs at the same time. As an additional indicator of subject
+    classification, these sections will also include **both a thinner light
+    border on the left, and a thicker dark border on the right**. Core and ORM
+    users should familiarize with concepts in these sections equally.
 
 
 Tutorial Overview
