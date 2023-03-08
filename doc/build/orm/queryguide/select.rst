@@ -175,11 +175,12 @@ above using this form as well::
 Selecting Individual Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The attributes on a mapped class, such as ``User.name`` and ``Address.email_address``,
-have a similar behavior as that of the entity class itself such as ``User``
-in that they are automatically converted into ORM-annotated Core objects
-when passed to :func:`_sql.select`.   They may be used in the same way
-as table columns are used::
+The attributes on a mapped class, such as ``User.name`` and
+``Address.email_address``, can be used just like :class:`_schema.Column` or
+other SQL expression objects when passed to :func:`_sql.select`. Creating a
+:func:`_sql.select` that is against specific columns will return :class:`.Row`
+objects, and **not** entities like ``User`` or ``Address`` objects.
+Each :class:`.Row` will have each column represented individually::
 
     >>> result = session.execute(
     ...     select(User.name, Address.email_address)
@@ -191,11 +192,8 @@ as table columns are used::
     ORDER BY user_account.id, address.id
     [...] (){stop}
 
-ORM attributes, themselves known as
-:class:`_orm.InstrumentedAttribute`
-objects, can be used in the same way as any :class:`_sql.ColumnElement`,
-and are delivered in result rows just the same way, such as below
-where we refer to their values by column name within each row::
+The above statement returns :class:`.Row` objects with ``name`` and
+``email_address`` columns, as illustrated in the runtime demonstration below::
 
     >>> for row in result:
     ...     print(f"{row.name}  {row.email_address}")
