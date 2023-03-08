@@ -5,9 +5,7 @@
 
 .. include:: tutorial_nav_include.rst
 
-
-.. rst-class:: core-header
-
+.. rst-class:: core-header, orm-addin
 
 .. _tutorial_core_insert:
 
