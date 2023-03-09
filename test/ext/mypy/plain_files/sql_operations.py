@@ -2,8 +2,11 @@ import typing
 
 from sqlalchemy import and_
 from sqlalchemy import Boolean
+from sqlalchemy import cast
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import false
+from sqlalchemy import Float
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import or_
@@ -74,6 +77,13 @@ and_(c1.not_like("x"))
 and_(c1.notlike("x"))
 and_(c1.not_ilike("x"))
 and_(c1.notilike("x"))
+
+# issue #9451
+s1 = c1.cast(Integer)
+s2 = c1.cast(Float)
+s3 = c1.op("foobar")("operand").cast(DateTime)
+s4 = cast(c1, Float)
+s5 = cast(c1.op("foobar")("operand"), DateTime)
 
 
 if typing.TYPE_CHECKING:
