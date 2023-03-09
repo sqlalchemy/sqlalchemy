@@ -38,7 +38,7 @@ as though it were explicitly decorated using the ``@dataclasses.dataclass``
 decorator.
 
 .. note::  Support for :pep:`681` in typing tools as of **July 3, 2022** is
-   limited and is currently known to be supported by Pyright_, but not yet
+   limited and is currently known to be supported by Pyright_ and
    Mypy_.   When :pep:`681` is not supported, typing tools will see the
    ``__init__()`` constructor provided by the :class:`_orm.DeclarativeBase`
    superclass, if used, else will see the constructor as untyped.
@@ -193,7 +193,7 @@ Another key difference from dataclasses is that default values for attributes
 **must** be configured using the ``default`` parameter of the ORM construct,
 such as ``mapped_column(default=None)``.   A syntax that resembles dataclass
 syntax which accepts simple Python values as defaults without using
-``@dataclases.field()`` is not supported.
+``@dataclasses.field()`` is not supported.
 
 As an example using :func:`_orm.mapped_column`, the mapping below will
 produce an ``__init__()`` method that accepts only the fields ``name`` and
