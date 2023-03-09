@@ -37,8 +37,8 @@ as having Dataclass-specific behaviors, most notably  by taking advantage of :pe
 as though it were explicitly decorated using the ``@dataclasses.dataclass``
 decorator.
 
-.. note::  Support for :pep:`681` in typing tools as of **July 3, 2022** is
-   limited and is currently known to be supported by Pyright_ and
+.. note::  Support for :pep:`681` in typing tools as of **March 6, 2023** is
+   limited and is currently known to be fully supported by Pyright_ and
    Mypy_.   When :pep:`681` is not supported, typing tools will see the
    ``__init__()`` constructor provided by the :class:`_orm.DeclarativeBase`
    superclass, if used, else will see the constructor as untyped.
