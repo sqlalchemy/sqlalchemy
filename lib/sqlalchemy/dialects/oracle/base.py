@@ -1640,7 +1640,7 @@ class OracleDialect(default.DefaultDialect):
 
         params = {
             "table_name": self.denormalize_name(table_name),
-            "owner": self.denormalize_name(schema),
+            "owner": self.denormalize_schema_name(schema),
         }
         cursor = self._execute_reflection(
             connection,
@@ -1661,9 +1661,9 @@ class OracleDialect(default.DefaultDialect):
 
         query = select(dictionary.all_sequences.c.sequence_name).where(
             dictionary.all_sequences.c.sequence_name
-            == self.denormalize_name(sequence_name),
+            == self.denormalize_schema_name(sequence_name),
             dictionary.all_sequences.c.sequence_owner
-            == self.denormalize_name(schema),
+            == self.denormalize_schema_name(schema),
         )
 
         cursor = self._execute_reflection(
@@ -1678,13 +1678,23 @@ class OracleDialect(default.DefaultDialect):
             ).scalar()
         )
 
+    def denormalize_schema_name(self, name):
+        # look for quoted_name
+        force = getattr(name, "quote", None)
+        if force is None and name == "public":
+            # look for case insensitive, no quoting specified, "public"
+            return "PUBLIC"
+        return super().denormalize_name(name)
+
     @reflection.flexi_cache(
         ("schema", InternalTraversal.dp_string),
         ("filter_names", InternalTraversal.dp_string_list),
         ("dblink", InternalTraversal.dp_string),
     )
     def _get_synonyms(self, connection, schema, filter_names, dblink, **kw):
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
 
         has_filter_names, params = self._prepare_filter_names(filter_names)
         query = select(
@@ -1775,7 +1785,9 @@ class OracleDialect(default.DefaultDialect):
     def _get_all_objects(
         self, connection, schema, scope, kind, filter_names, dblink, **kw
     ):
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
 
         has_filter_names, params = self._prepare_filter_names(filter_names)
         has_mat_views = False
@@ -1864,7 +1876,7 @@ class OracleDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        den_schema = self.denormalize_name(schema)
+        den_schema = self.denormalize_schema_name(schema)
         if kw.get("oracle_resolve_synonyms", False):
             tables = (
                 select(
@@ -1935,7 +1947,7 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_temp_table_names(self, connection, dblink=None, **kw):
         """Supported kw arguments are: ``dblink`` to reflect via a db link."""
-        schema = self.denormalize_name(self.default_schema_name)
+        schema = self.denormalize_schema_name(self.default_schema_name)
 
         query = select(dictionary.all_tables.c.table_name)
         if self.exclude_tablespaces:
@@ -1964,7 +1976,8 @@ class OracleDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         query = select(dictionary.all_mviews.c.mview_name).where(
-            dictionary.all_mviews.c.owner == self.denormalize_name(schema)
+            dictionary.all_mviews.c.owner
+            == self.denormalize_schema_name(schema)
         )
         result = self._execute_reflection(
             connection, query, dblink, returns_long=False
@@ -1981,7 +1994,8 @@ class OracleDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         query = select(dictionary.all_views.c.view_name).where(
-            dictionary.all_views.c.owner == self.denormalize_name(schema)
+            dictionary.all_views.c.owner
+            == self.denormalize_schema_name(schema)
         )
         result = self._execute_reflection(
             connection, query, dblink, returns_long=False
@@ -1995,7 +2009,7 @@ class OracleDialect(default.DefaultDialect):
             schema = self.default_schema_name
         query = select(dictionary.all_sequences.c.sequence_name).where(
             dictionary.all_sequences.c.sequence_owner
-            == self.denormalize_name(schema)
+            == self.denormalize_schema_name(schema)
         )
 
         result = self._execute_reflection(
@@ -2095,7 +2109,9 @@ class OracleDialect(default.DefaultDialect):
         """Supported kw arguments are: ``dblink`` to reflect via a db link;
         ``oracle_resolve_synonyms`` to resolve names to synonyms
         """
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
 
         has_filter_names, params = self._prepare_filter_names(filter_names)
         has_mat_views = False
@@ -2270,7 +2286,9 @@ class OracleDialect(default.DefaultDialect):
         """Supported kw arguments are: ``dblink`` to reflect via a db link;
         ``oracle_resolve_synonyms`` to resolve names to synonyms
         """
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
         query = self._column_query(owner)
 
         if (
@@ -2505,7 +2523,9 @@ class OracleDialect(default.DefaultDialect):
         """Supported kw arguments are: ``dblink`` to reflect via a db link;
         ``oracle_resolve_synonyms`` to resolve names to synonyms
         """
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
         has_filter_names, params = self._prepare_filter_names(filter_names)
         query = self._comment_query(owner, scope, kind, has_filter_names)
 
@@ -2586,7 +2606,9 @@ class OracleDialect(default.DefaultDialect):
         ("all_objects", InternalTraversal.dp_string_list),
     )
     def _get_indexes_rows(self, connection, schema, dblink, all_objects, **kw):
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
 
         query = self._index_query(owner)
 
@@ -2755,7 +2777,9 @@ class OracleDialect(default.DefaultDialect):
     def _get_all_constraint_rows(
         self, connection, schema, dblink, all_objects, **kw
     ):
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
         query = self._constraint_query(owner)
 
         # since the result is cached a list must be created
@@ -2859,7 +2883,9 @@ class OracleDialect(default.DefaultDialect):
 
         resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
 
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
 
         all_remote_owners = set()
         fkeys = defaultdict(dict)
@@ -3080,7 +3106,9 @@ class OracleDialect(default.DefaultDialect):
                 view_name = row_dict["table_name"]
 
         name = self.denormalize_name(view_name)
-        owner = self.denormalize_name(schema or self.default_schema_name)
+        owner = self.denormalize_schema_name(
+            schema or self.default_schema_name
+        )
         query = (
             select(dictionary.all_views.c.text)
             .where(

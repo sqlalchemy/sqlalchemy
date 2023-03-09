@@ -1597,3 +1597,120 @@ drop table %(schema)sparent;
             connection.exec_driver_sql("DROP SYNONYM s1")
             connection.exec_driver_sql("DROP SYNONYM s2")
             connection.exec_driver_sql("DROP SYNONYM s3")
+
+    @testing.fixture
+    def public_synonym_fixture(self, connection):
+        foo_syn = f"foo_syn_{config.ident}"
+
+        connection.exec_driver_sql("CREATE TABLE foobar (id integer)")
+
+        try:
+            connection.exec_driver_sql(
+                f"CREATE PUBLIC SYNONYM {foo_syn} for foobar"
+            )
+        except:
+            # assume the synonym exists is the main problem here.
+            # since --dropfirst will not get this synonym, drop it directly
+            # for the next run.
+            try:
+                connection.exec_driver_sql(f"DROP PUBLIC SYNONYM {foo_syn}")
+            except:
+                pass
+
+            raise
+
+        try:
+            yield foo_syn
+        finally:
+            try:
+                connection.exec_driver_sql(f"DROP PUBLIC SYNONYM {foo_syn}")
+            except:
+                pass
+            try:
+                connection.exec_driver_sql("DROP TABLE foobar")
+            except:
+                pass
+
+    @testing.variation(
+        "case_convention", ["uppercase", "lowercase", "mixedcase"]
+    )
+    def test_public_synonym_fetch(
+        self,
+        connection,
+        public_synonym_fixture,
+        case_convention: testing.Variation,
+    ):
+        """test #9459"""
+
+        foo_syn = public_synonym_fixture
+
+        if case_convention.uppercase:
+            public = "PUBLIC"
+        elif case_convention.lowercase:
+            public = "public"
+        elif case_convention.mixedcase:
+            public = "Public"
+        else:
+            case_convention.fail()
+
+        syns = connection.dialect._get_synonyms(connection, public, None, None)
+
+        if case_convention.mixedcase:
+            assert not syns
+            return
+
+        syns_by_name = {syn["synonym_name"]: syn for syn in syns}
+        eq_(
+            syns_by_name[foo_syn.upper()],
+            {
+                "synonym_name": foo_syn.upper(),
+                "table_name": "FOOBAR",
+                "table_owner": connection.dialect.default_schema_name.upper(),
+                "db_link": None,
+            },
+        )
+
+    @testing.variation(
+        "case_convention", ["uppercase", "lowercase", "mixedcase"]
+    )
+    def test_public_synonym_resolve_table(
+        self,
+        connection,
+        public_synonym_fixture,
+        case_convention: testing.Variation,
+    ):
+        """test #9459"""
+
+        foo_syn = public_synonym_fixture
+
+        if case_convention.uppercase:
+            public = "PUBLIC"
+        elif case_convention.lowercase:
+            public = "public"
+        elif case_convention.mixedcase:
+            public = "Public"
+        else:
+            case_convention.fail()
+
+        if case_convention.mixedcase:
+            with expect_raises(exc.NoSuchTableError):
+                cols = inspect(connection).get_columns(
+                    foo_syn, schema=public, oracle_resolve_synonyms=True
+                )
+        else:
+            cols = inspect(connection).get_columns(
+                foo_syn, schema=public, oracle_resolve_synonyms=True
+            )
+
+            eq_(
+                cols,
+                [
+                    {
+                        "name": "id",
+                        "type": testing.eq_type_affinity(INTEGER),
+                        "nullable": True,
+                        "default": None,
+                        "comment": None,
+                    }
+                ],
+            )
