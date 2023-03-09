@@ -3,8 +3,10 @@ import operator
 import random
 
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -14,13 +16,16 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Composite
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import LoaderCallableStatus
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -849,6 +854,189 @@ class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             s.query(Thing).filter(Thing.ab == AB("a", "b", CD("c", "d"))).one()
         )
         eq_(t1.ab, AB("a", "b", CD("c", "d")))
+
+
+class EventsEtcTest(fixtures.MappedTest):
+    @testing.fixture
+    def point_fixture(self, decl_base):
+        def go(active_history):
+            @dataclasses.dataclass
+            class Point:
+                x: int
+                y: int
+
+            class Edge(decl_base):
+                __tablename__ = "edge"
+                id = mapped_column(Integer, primary_key=True)
+
+                start = composite(
+                    Point,
+                    mapped_column("x1", Integer),
+                    mapped_column("y1", Integer),
+                    active_history=active_history,
+                )
+                end = composite(
+                    Point,
+                    mapped_column("x2", Integer, nullable=True),
+                    mapped_column("y2", Integer, nullable=True),
+                    active_history=active_history,
+                )
+
+            decl_base.metadata.create_all(testing.db)
+
+            return Point, Edge
+
+        return go
+
+    @testing.variation("active_history", [True, False])
+    @testing.variation("hist_on_mapping", [True, False])
+    def test_event_listener_no_value_to_set(
+        self, point_fixture, active_history, hist_on_mapping
+    ):
+        if hist_on_mapping:
+            config_active_history = bool(active_history)
+        else:
+            config_active_history = False
+
+        Point, Edge = point_fixture(config_active_history)
+
+        if not hist_on_mapping and active_history:
+            Edge.start.impl.active_history = True
+
+        m1 = mock.Mock()
+
+        event.listen(Edge.start, "set", m1)
+
+        e1 = Edge()
+        e1.start = Point(5, 6)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call(
+                    e1,
+                    Point(5, 6),
+                    LoaderCallableStatus.NO_VALUE
+                    if not active_history
+                    else None,
+                    Edge.start.impl,
+                )
+            ],
+        )
+
+        eq_(
+            inspect(e1).attrs.start.history,
+            ([Point(5, 6)], (), [Point(None, None)]),
+        )
+
+    @testing.variation("active_history", [True, False])
+    @testing.variation("hist_on_mapping", [True, False])
+    def test_event_listener_set_to_new(
+        self, point_fixture, active_history, hist_on_mapping
+    ):
+        if hist_on_mapping:
+            config_active_history = bool(active_history)
+        else:
+            config_active_history = False
+
+        Point, Edge = point_fixture(config_active_history)
+
+        if not hist_on_mapping and active_history:
+            Edge.start.impl.active_history = True
+
+        e1 = Edge()
+        e1.start = Point(5, 6)
+
+        sess = fixture_session()
+
+        sess.add(e1)
+        sess.commit()
+        assert "start" not in e1.__dict__
+
+        m1 = mock.Mock()
+
+        event.listen(Edge.start, "set", m1)
+
+        e1.start = Point(7, 8)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call(
+                    e1,
+                    Point(7, 8),
+                    LoaderCallableStatus.NO_VALUE
+                    if not active_history
+                    else Point(5, 6),
+                    Edge.start.impl,
+                )
+            ],
+        )
+
+        if active_history:
+            eq_(
+                inspect(e1).attrs.start.history,
+                ([Point(7, 8)], (), [Point(5, 6)]),
+            )
+        else:
+            eq_(
+                inspect(e1).attrs.start.history,
+                ([Point(7, 8)], (), [Point(None, None)]),
+            )
+
+    @testing.variation("active_history", [True, False])
+    @testing.variation("hist_on_mapping", [True, False])
+    def test_event_listener_set_to_deleted(
+        self, point_fixture, active_history, hist_on_mapping
+    ):
+        if hist_on_mapping:
+            config_active_history = bool(active_history)
+        else:
+            config_active_history = False
+
+        Point, Edge = point_fixture(config_active_history)
+
+        if not hist_on_mapping and active_history:
+            Edge.start.impl.active_history = True
+
+        e1 = Edge()
+        e1.start = Point(5, 6)
+
+        sess = fixture_session()
+
+        sess.add(e1)
+        sess.commit()
+        assert "start" not in e1.__dict__
+
+        m1 = mock.Mock()
+
+        event.listen(Edge.start, "remove", m1)
+
+        del e1.start
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call(
+                    e1,
+                    LoaderCallableStatus.NO_VALUE
+                    if not active_history
+                    else Point(5, 6),
+                    Edge.start.impl,
+                )
+            ],
+        )
+
+        if active_history:
+            eq_(
+                inspect(e1).attrs.start.history,
+                ([Point(None, None)], (), [Point(5, 6)]),
+            )
+        else:
+            eq_(
+                inspect(e1).attrs.start.history,
+                ([Point(None, None)], (), [Point(None, None)]),
+            )
 
 
 class PrimaryKeyTest(fixtures.MappedTest):
