@@ -305,7 +305,12 @@ class CompositeProperty(
             dict_ = attributes.instance_dict(instance)
             state = attributes.instance_state(instance)
             attr = state.manager[self.key]
-            previous = dict_.get(self.key, LoaderCallableStatus.NO_VALUE)
+
+            if attr.dispatch._active_history:
+                previous = fget(instance)
+            else:
+                previous = dict_.get(self.key, LoaderCallableStatus.NO_VALUE)
+
             for fn in attr.dispatch.set:
                 value = fn(state, value, previous, attr.impl)
             dict_[self.key] = value
@@ -322,7 +327,14 @@ class CompositeProperty(
         def fdel(instance: Any) -> None:
             state = attributes.instance_state(instance)
             dict_ = attributes.instance_dict(instance)
-            previous = dict_.pop(self.key, LoaderCallableStatus.NO_VALUE)
+            attr = state.manager[self.key]
+
+            if attr.dispatch._active_history:
+                previous = fget(instance)
+                dict_.pop(self.key, None)
+            else:
+                previous = dict_.pop(self.key, LoaderCallableStatus.NO_VALUE)
+
             attr = state.manager[self.key]
             attr.dispatch.remove(state, previous, attr.impl)
             for key in self._attribute_keys:
@@ -613,6 +625,10 @@ class CompositeProperty(
         event.listen(
             self.parent, "expire", expire_handler, raw=True, propagate=True
         )
+
+        proxy_attr = self.parent.class_manager[self.key]
+        proxy_attr.impl.dispatch = proxy_attr.dispatch  # type: ignore
+        proxy_attr.impl.dispatch._active_history = self.active_history  # type: ignore  # noqa: E501
 
         # TODO: need a deserialize hook here
 

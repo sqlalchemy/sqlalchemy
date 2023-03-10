@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9460
+
+    Fixed bug where the "active history" feature was not fully
+    implemented for composite attributes, making it impossible to receive
+    events that included the "old" value.   This seems to have been the case
+    with older SQLAlchemy versions as well, where "active_history" would
+    be propagated to the underlying column-based attributes, but an event
+    handler listening to the composite attribute itself would not be given
+    the "old" value being replaced, even if the composite() were set up
+    with active_history=True.
+
+    Additionally, fixed a regression that's local to 2.0 which disallowed
+    active_history on composite from being assigned to the impl with
+    ``attr.impl.active_history=True``.
+
