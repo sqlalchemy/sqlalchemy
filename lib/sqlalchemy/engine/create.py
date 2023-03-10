@@ -637,6 +637,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
                     )
                     if connection is not None:
                         return connection
+
             return dialect.connect(*cargs, **cparams)
 
         creator = pop_kwarg("creator", connect)
