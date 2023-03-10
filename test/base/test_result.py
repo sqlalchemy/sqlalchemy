@@ -195,35 +195,48 @@ class ResultTupleTest(fixtures.TestBase):
             eq_(kt._asdict(), {"a": 1, "b": 3})
 
     @testing.requires.cextensions
-    def test_serialize_cy_py_cy(self):
-        from sqlalchemy.engine._py_row import BaseRow as _PyRow
-        from sqlalchemy.cyextension.resultproxy import BaseRow as _CyRow
+    @testing.variation("direction", ["py_to_cy", "cy_to_py"])
+    def test_serialize_cy_py_cy(self, direction: testing.Variation):
+        from sqlalchemy.engine import _py_row
+        from sqlalchemy.cyextension import resultproxy as _cy_row
 
         global Row
 
-        p = result.SimpleResultMetaData(["a", None, "b"])
+        p = result.SimpleResultMetaData(["a", "w", "b"])
+
+        if direction.py_to_cy:
+            dump_cls = _py_row.BaseRow
+            num = _py_row.KEY_INTEGER_ONLY
+            load_cls = _cy_row.BaseRow
+        elif direction.cy_to_py:
+            dump_cls = _cy_row.BaseRow
+            num = _cy_row.KEY_INTEGER_ONLY
+            load_cls = _py_row.BaseRow
+        else:
+            direction.fail()
 
         for loads, dumps in picklers():
 
-            class Row(_CyRow):
+            class Row(dump_cls):
                 pass
 
-            row = Row(p, p._processors, p._keymap, 0, (1, 2, 3))
+            row = Row(p, p._processors, p._keymap, num, (1, 2, 3))
 
             state = dumps(row)
 
-            class Row(_PyRow):
+            class Row(load_cls):
                 pass
 
             row2 = loads(state)
-            is_true(isinstance(row2, _PyRow))
+            is_true(isinstance(row2, load_cls))
+            is_false(isinstance(row2, dump_cls))
             state2 = dumps(row2)
 
-            class Row(_CyRow):
+            class Row(dump_cls):
                 pass
 
             row3 = loads(state2)
-            is_true(isinstance(row3, _CyRow))
+            is_true(isinstance(row3, dump_cls))
 
 
 class ResultTest(fixtures.TestBase):

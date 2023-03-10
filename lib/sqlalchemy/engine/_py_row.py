@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
 MD_INDEX = 0  # integer index in cursor.description
 
 
-class _KeyStyle(enum.Enum):
+class _KeyStyle(enum.IntEnum):
     KEY_INTEGER_ONLY = 0
     """__getitem__ only allows integer values and slices, raises TypeError
     otherwise"""
@@ -121,6 +121,9 @@ class BaseRow:
         mdindex = rec[MD_INDEX]
         if mdindex is None:
             self._parent._raise_for_ambiguous_column_name(rec)
+        # NOTE: keep "== KEY_OBJECTS_ONLY" instead of "is KEY_OBJECTS_ONLY"
+        # since deserializing the class from cython will load an int in
+        # _key_style, not an instance of _KeyStyle
         elif self._key_style == KEY_OBJECTS_ONLY and isinstance(key, int):
             raise KeyError(key)
 

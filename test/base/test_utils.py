@@ -2458,9 +2458,8 @@ class SymbolTest(fixtures.TestBase):
         s = pickle.dumps(sym1)
         pickle.loads(s)
 
-        for protocol in 0, 1, 2:
-            print(protocol)
-            serial = pickle.dumps(sym1)
+        for _, dumper in picklers():
+            serial = dumper(sym1)
             rt = pickle.loads(serial)
             assert rt is sym1
             assert rt is sym2

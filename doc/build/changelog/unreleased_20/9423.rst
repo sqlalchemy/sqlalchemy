@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9418
+
+    Fixed regression involving pickling of Python rows between the cython and
+    pure Python implementations of :class:`.Row`, which occurred as part of
+    refactoring code for version 2.0 with typing. A particular constant were
+    turned into a string based ``Enum`` for the pure Python version of
+    :class:`.Row` whereas the cython version continued to use an integer
+    constant, leading to deserialization failures.
