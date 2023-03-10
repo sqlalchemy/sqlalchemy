@@ -272,11 +272,16 @@ class LambdaElement(elements.ClauseElement):
 
         if rec is None:
             if cache_key is not _cache_key.NO_CACHE:
-                rec = AnalyzedFunction(
-                    tracker, self, apply_propagate_attrs, fn
-                )
-                rec.closure_bindparams = bindparams
-                lambda_cache[tracker_key + cache_key] = rec
+                with AnalyzedCode._generation_mutex:
+                    key = tracker_key + cache_key
+                    if key not in lambda_cache:
+                        rec = AnalyzedFunction(
+                            tracker, self, apply_propagate_attrs, fn
+                        )
+                        rec.closure_bindparams = bindparams
+                        lambda_cache[key] = rec
+                    else:
+                        rec = lambda_cache[key]
             else:
                 rec = NonAnalyzedFunction(self._invoke_user_fn(fn))
 

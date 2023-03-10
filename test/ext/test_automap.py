@@ -657,7 +657,7 @@ class AutomapInhTest(fixtures.MappedTest):
 
 
 class ConcurrentAutomapTest(fixtures.TestBase):
-    __only_on__ = "sqlite"
+    __only_on__ = "sqlite+pysqlite"
 
     def _make_tables(self, e):
         m = MetaData()

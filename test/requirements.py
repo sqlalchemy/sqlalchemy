@@ -367,22 +367,22 @@ class DefaultRequirements(SuiteRequirements):
         Target must support simultaneous, independent database connections.
         """
 
-        # This is also true of some configurations of UnixODBC and probably
-        # win32 ODBC as well.
+        # note:  **do not** let any sqlite driver run "independent connection"
+        # tests.  Use independent_readonly_connections for a concurrency
+        # related test that only uses reads to use sqlite
+        return skip_if(["sqlite"])
+
+    @property
+    def independent_readonly_connections(self):
+        """
+        Target must support simultaneous, independent database connections
+        that will be used in a readonly fashion.
+
+        """
         return skip_if(
             [
-                no_support(
-                    "sqlite",
-                    "independent connections disabled "
-                    "when :memory: connections are used",
-                ),
-                exclude(
-                    "mssql",
-                    "<",
-                    (9, 0, 0),
-                    "SQL Server 2005+ is required for "
-                    "independent connections",
-                ),
+                self._sqlite_memory_db,
+                "+aiosqlite",
             ]
         )
 
