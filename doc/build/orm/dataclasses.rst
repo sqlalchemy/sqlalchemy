@@ -37,11 +37,56 @@ as having Dataclass-specific behaviors, most notably  by taking advantage of :pe
 as though it were explicitly decorated using the ``@dataclasses.dataclass``
 decorator.
 
-.. note::  Support for :pep:`681` in typing tools as of **July 3, 2022** is
-   limited and is currently known to be supported by Pyright_, but not yet
-   Mypy_.   When :pep:`681` is not supported, typing tools will see the
-   ``__init__()`` constructor provided by the :class:`_orm.DeclarativeBase`
-   superclass, if used, else will see the constructor as untyped.
+.. note::  Support for :pep:`681` in typing tools as of **March 11, 2023** is
+   limited and is currently known to be supported by Pyright_, but
+   **not correctly supported** by Mypy_ version 1.1.1.  Mypy 1.1.1 introduced
+   :pep:`681` support but failed to accommodate for Python descriptors
+   correctly (see Github issue below).
+
+   In order to resolve errors when using :class:`_orm.MappedAsDataclass` with
+   Mypy version 1.1.1 or other typing tools that have similar errors, the
+   following workaround may be used, which uses a plain non-pep681 mixin within
+   ``TYPE_CHECKING`` to avoid errors::
+
+      import typing
+
+      if typing.TYPE_CHECKING:
+
+          class MappedAsDataclass:
+              """Mixin class which works in the same way as
+              :class:`_orm.MappedAsDataclass`,
+              but does not include :pep:`681` directives.
+
+              """
+
+              def __init__(self, *arg: typing.Any, **kw: typing.Any):
+                  pass
+
+      else:
+          from sqlalchemy.orm import MappedAsDataclass
+
+   Above, the SQLAlchemy :class:`_orm.MappedAsDataclass` mixin is hidden
+   from typing tools and replaced with a plain mixin that sets up an
+   ``__init__`` constructor that accommodates any arguments.
+
+   When using the :meth:`_orm.registry.mapped_as_dataclass` method,
+   similar approaches can be taken using a plain decorator, however classes
+   would need to also include an explicit ``__init__()`` method on a mixin
+   like the one indicated above for the workaround to work completely::
+
+
+        def mapped_as_dataclass(registry, cls, **kw):
+            """Will conceal the pep-681 enabled methods from typing tools"""
+
+            return registry.mapped_as_dataclass(cls, **kw)
+
+   .. seealso::
+
+      https://github.com/python/mypy/issues/13856 - Mypy issue on github
+
+      https://peps.python.org/pep-0681/#the-dataclass-transform-decorator - background
+      on how libraries like SQLAlchemy enable :pep:`681` support
+
 
 Dataclass conversion may be added to any Declarative class either by adding the
 :class:`_orm.MappedAsDataclass` mixin to a :class:`_orm.DeclarativeBase` class

@@ -138,7 +138,6 @@ Class Mapping API
 .. autoclass:: Mapper
    :members:
 
-
 .. autoclass:: MappedAsDataclass
     :members:
 
