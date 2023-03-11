@@ -4118,8 +4118,8 @@ class CompositeJoinedInTest(fixtures.DeclarativeMappedTest):
         class A(fixtures.ComparableEntity, Base):
             __tablename__ = "table_a"
 
-            order_id: Mapped[str] = mapped_column(primary_key=True)
-            _sku: Mapped[str] = mapped_column(primary_key=True)
+            order_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+            _sku: Mapped[str] = mapped_column(String(50), primary_key=True)
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
@@ -4135,8 +4135,10 @@ class CompositeJoinedInTest(fixtures.DeclarativeMappedTest):
         class B(A):
             __tablename__ = "table_b"
 
-            _increment_id: Mapped[str] = mapped_column(primary_key=True)
-            _sku: Mapped[str] = mapped_column(primary_key=True)
+            _increment_id: Mapped[str] = mapped_column(
+                String(50), primary_key=True
+            )
+            _sku: Mapped[str] = mapped_column(String(50), primary_key=True)
 
             __table_args__ = (
                 ForeignKeyConstraint(
