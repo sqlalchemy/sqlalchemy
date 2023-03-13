@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.0.7
+    :include_notes_from: unreleased_20
+
+.. changelog::
     :version: 2.0.6
     :released: March 13, 2023
 
