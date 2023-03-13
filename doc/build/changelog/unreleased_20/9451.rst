@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9451
-
-    Fixed typing issue where :meth:`.ColumnElement.cast` did not allow a
-    :class:`.TypeEngine` argument independent of the type of the
-    :class:`.ColumnElement` itself, which is the purpose of
-    :meth:`.ColumnElement.cast`.

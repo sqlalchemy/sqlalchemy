@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql, regression
-    :tickets: 9461
-
-    Fixed regression where the fix for :ticket:`8098`, which was released in
-    the 1.4 series and provided a layer of concurrency-safe checks for the
-    lambda SQL API, included additional fixes in the patch that failed to be
-    applied to the main branch. These additional fixes have been applied.

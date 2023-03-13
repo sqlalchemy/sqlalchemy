@@ -10,7 +10,83 @@
 
 .. changelog::
     :version: 2.0.6
-    :include_notes_from: unreleased_20
+    :released: March 13, 2023
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 9461
+
+        Fixed regression where the fix for :ticket:`8098`, which was released in
+        the 1.4 series and provided a layer of concurrency-safe checks for the
+        lambda SQL API, included additional fixes in the patch that failed to be
+        applied to the main branch. These additional fixes have been applied.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9451
+
+        Fixed typing issue where :meth:`.ColumnElement.cast` did not allow a
+        :class:`.TypeEngine` argument independent of the type of the
+        :class:`.ColumnElement` itself, which is the purpose of
+        :meth:`.ColumnElement.cast`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9460
+
+        Fixed bug where the "active history" feature was not fully
+        implemented for composite attributes, making it impossible to receive
+        events that included the "old" value.   This seems to have been the case
+        with older SQLAlchemy versions as well, where "active_history" would
+        be propagated to the underlying column-based attributes, but an event
+        handler listening to the composite attribute itself would not be given
+        the "old" value being replaced, even if the composite() were set up
+        with active_history=True.
+
+        Additionally, fixed a regression that's local to 2.0 which disallowed
+        active_history on composite from being assigned to the impl with
+        ``attr.impl.active_history=True``.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 9459
+
+        Fixed reflection bug where Oracle "name normalize" would not work correctly
+        for reflection of symbols that are in the "PUBLIC" schema, such as
+        synonyms, meaning the PUBLIC name could not be indicated as lower case on
+        the Python side for the :paramref:`_schema.Table.schema` argument. Using
+        uppercase "PUBLIC" would work, but would then lead to awkward SQL queries
+        including a quoted ``"PUBLIC"`` name as well as indexing the table under
+        uppercase "PUBLIC", which was inconsistent.
+
+    .. change::
+        :tags: bug, typing
+
+        Fixed issues to allow typing tests to pass under Mypy 1.1.1.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9440
+
+        Fixed regression where the :func:`_sql.select` construct would not be able
+        to render if it were given no columns and then used in the context of an
+        EXISTS, raising an internal exception instead. While an empty "SELECT" is
+        not typically valid SQL, in the context of EXISTS databases such as
+        PostgreSQL allow it, and in any case the condition now no longer raises
+        an internal exception.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9418
+
+        Fixed regression involving pickling of Python rows between the cython and
+        pure Python implementations of :class:`.Row`, which occurred as part of
+        refactoring code for version 2.0 with typing. A particular constant were
+        turned into a string based ``Enum`` for the pure Python version of
+        :class:`.Row` whereas the cython version continued to use an integer
+        constant, leading to deserialization failures.
 
 .. changelog::
     :version: 2.0.5.post1
