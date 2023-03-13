@@ -3030,10 +3030,7 @@ class PGDialect(default.DefaultDialect):
         # https://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)
 
-        std_string = connection.exec_driver_sql(
-            "show standard_conforming_strings"
-        ).scalar()
-        self._backslash_escapes = std_string == "off"
+        self._set_backslash_escapes(connection)
 
         self._supports_drop_index_concurrently = self.server_version_info >= (
             9,
@@ -4699,3 +4696,11 @@ class PGDialect(default.DefaultDialect):
             domains.append(domain_rec)
 
         return domains
+
+    def _set_backslash_escapes(self, connection):
+        # this method is provided as an override hook for descendant
+        # dialects (e.g. Redshift), so removing it may break them
+        std_string = connection.exec_driver_sql(
+            "show standard_conforming_strings"
+        ).scalar()
+        self._backslash_escapes = std_string == "off"
