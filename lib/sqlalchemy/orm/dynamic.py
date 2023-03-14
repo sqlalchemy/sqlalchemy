@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from typing import Union
 
     from . import QueryableAttribute
+    from ._typing import _LoaderCallable
     from .mapper import Mapper
     from .session import Session
     from .state import InstanceState
@@ -91,7 +92,7 @@ class DynamicAttributeImpl(WriteOnlyAttributeImpl):
         self,
         class_: Union[Type[_T], AliasedClass[_T]],
         key: str,
-        typecallable: type,
+        typecallable: _LoaderCallable,
         dispatch: _Dispatch[QueryableAttribute[_T]],
         target_mapper: Mapper[_T],
         order_by: Tuple[()],
@@ -129,7 +130,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
     """
 
     query_class = None
-    autoflush: Callable[[_T, bool], AppenderQuery[_T]]
+    autoflush: Callable[[bool], AppenderQuery[_T]]
     _order_by_clauses: Tuple[ColumnElement[Any], ...]
 
     def __init__(
