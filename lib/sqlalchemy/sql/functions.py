@@ -100,6 +100,11 @@ def register_function(identifier, fn, package="_default"):
 class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     """Base for SQL function-oriented constructs.
 
+    This is a `generic type <https://peps.python.org/pep-0484/#generics>`_,
+    meaning that type checkers and IDEs can be instructed on the types to
+    expect in a :class:`_engine.Result` for this function. See
+    :class:`.GenericFunction` for an example of how this is done.
+
     .. seealso::
 
         :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
@@ -1248,6 +1253,19 @@ class GenericFunction(Function[_T]):
 
         >>> print(func.geo.buffer())
         {printsql}"ST_Buffer"()
+
+    Type parameters for this class as a
+    `generic type <https://peps.python.org/pep-0484/#generics>`_ can be passed
+    and should match the type seen in a :class:`_engine.Result`. For example::
+
+        class as_utc(GenericFunction[datetime.datetime]):
+            type = DateTime()
+            inherit_cache = True
+
+    The above indicates that the following expression returns a ``datetime``
+    object::
+
+        connection.scalar(select(func.as_utc()))
 
     .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
        recognized for quoting when used with the "name" attribute of the
