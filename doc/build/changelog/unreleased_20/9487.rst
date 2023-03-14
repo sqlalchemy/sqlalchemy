@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, util
+    :tickets: 9487
+
+    Implemented missing methods ``copy`` and ``pop`` in
+    OrderedSet class.
