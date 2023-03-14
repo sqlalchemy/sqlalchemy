@@ -107,8 +107,6 @@ if typing.TYPE_CHECKING:
     from .selectable import FromClause
     from .selectable import NamedFromClause
     from .selectable import TextualSelect
-    from .selectable import Select
-    from .sqltypes import ARRAY
     from .sqltypes import Boolean
     from .sqltypes import NullType
     from .sqltypes import String
@@ -421,10 +419,10 @@ class ClauseElement(
         return c
 
     def _negate_in_binary(
-        self: SelfClauseElement,
+        self,
         negated_op: OperatorType,
         original_op: OperatorType,
-    ) -> SelfClauseElement:
+    ) -> Self:
         """a hook to allow the right side of a binary expression to respond
         to a negation of the binary expression.
 
