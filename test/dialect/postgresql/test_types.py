@@ -5176,24 +5176,36 @@ class _DateTimeTZMultiRangeTests:
     _col_type = TSTZMULTIRANGE
     _col_str = "TSTZMULTIRANGE"
 
+    __only_on__ = "postgresql"
+
     # make sure we use one, steady timestamp with timezone pair
     # for all parts of all these tests
     _tstzs = None
     _tstzs_delta = None
 
     def tstzs(self):
+        utc_now = cast(
+            func.current_timestamp().op("AT TIME ZONE")("utc"),
+            DateTime(timezone=True),
+        )
+
         if self._tstzs is None:
             with testing.db.connect() as connection:
-                lower = connection.scalar(func.current_timestamp().select())
+                lower = connection.scalar(select(utc_now))
                 upper = lower + datetime.timedelta(1)
                 self._tstzs = (lower, upper)
         return self._tstzs
 
     def tstzs_delta(self):
+        utc_now = cast(
+            func.current_timestamp().op("AT TIME ZONE")("utc"),
+            DateTime(timezone=True),
+        )
+
         if self._tstzs_delta is None:
             with testing.db.connect() as connection:
                 lower = connection.scalar(
-                    func.current_timestamp().select()
+                    select(utc_now)
                 ) + datetime.timedelta(3)
                 upper = lower + datetime.timedelta(2)
                 self._tstzs_delta = (lower, upper)
