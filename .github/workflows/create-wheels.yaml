@@ -4,32 +4,47 @@ on:
   # run when a release has been created
   release:
     types: [created]
+  # push:
+  #   branches:
+  #     - "go_wheel_*"
 
 # env:
-  # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
-  # TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
+#   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
+#   TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
 
 jobs:
   build_wheels:
-    name: Build ${{ matrix.wheel_mode }} wheels on ${{ matrix.os }} ${{ matrix.linux_archs }}
+    name: ${{ matrix.wheel_mode }} wheels ${{ matrix.python }} on ${{ matrix.os }} ${{ matrix.os == 'ubuntu-22.04' && matrix.linux_archs || '' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        # emulated wheels on linux take too much time, split wheels into multiple runs
+        python:
+          - "cp37-* cp38-*"
+          - "cp39-* cp310-*"
+          - "cp311-*"
+        wheel_mode:
+          - compiled
+        os:
+          - "windows-2022"
+          - "macos-12"
+          - "ubuntu-22.04"
+        linux_archs:
+          # this is only meaningful on linux. windows and macos ignore exclude all but one arch
+          - "aarch64"
+          - "x86_64"
+
         include:
-          - os: windows-2022
-            wheel_mode: compiled
-          - os: macos-12
-            wheel_mode: compiled
-          # emulated wheels on linux take too much time, so run two jobs
-          - os: ubuntu-22.04
-            wheel_mode: compiled
-            linux_archs: "x86_64"
-          - os: ubuntu-22.04
-            wheel_mode: compiled
-            linux_archs: "aarch64"
           # create pure python build
           - os: ubuntu-22.04
             wheel_mode: pure-python
+            python: "cp-311*"
+
+        exclude:
+          - os: "windows-2022"
+            linux_archs: "aarch64"
+          - os: "macos-12"
+            linux_archs: "aarch64"
 
       fail-fast: false
 
@@ -61,6 +76,9 @@ jobs:
         uses: pypa/cibuildwheel@v2.12.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
+          CIBW_BUILD: ${{ matrix.python }}
+          # setting it here does not work on linux
+          # PYTHONNOUSERSITE: "1"
 
 
       - name: Set up Python for twine and pure-python wheel
