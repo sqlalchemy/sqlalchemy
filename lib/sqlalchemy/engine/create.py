@@ -63,7 +63,6 @@ def create_engine(
     json_deserializer: Callable[..., Any] = ...,
     json_serializer: Callable[..., Any] = ...,
     label_length: Optional[int] = ...,
-    listeners: Any = ...,
     logging_name: str = ...,
     max_identifier_length: Optional[int] = ...,
     max_overflow: int = ...,
@@ -350,10 +349,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         .. seealso::
 
             :paramref:`_sa.create_engine.max_identifier_length`
-
-    :param listeners: A list of one or more
-        :class:`~sqlalchemy.interfaces.PoolListener` objects which will
-        receive connection pool events.
 
     :param logging_name:  String identifier which will be used within
         the "name" field of logging records generated within the
